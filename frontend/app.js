@@ -291,19 +291,6 @@ function showBrowserNotifications(notifications) {
         // Handle notification click
         notification.onclick = function() {
             window.focus();
-            
-            // Scroll to the specific job
-            setTimeout(() => {
-                const jobElement = document.querySelector(`[data-job-id="${jobId}"]`);
-                if (jobElement) {
-                    jobElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    jobElement.style.animation = 'highlight-flash 2s ease-in-out';
-                    setTimeout(() => {
-                        jobElement.style.animation = '';
-                    }, 2000);
-                }
-            }, 100);
-            
             this.close();
         };
         
@@ -1223,10 +1210,7 @@ function testDeliveryTemplate() {
     // Show preview
     previewContent.innerHTML = `<pre>${escapeHtml(templatedMessage)}</pre>`;
     previewSection.style.display = 'block';
-    
-    // Scroll to preview
-    previewSection.scrollIntoView({ behavior: 'smooth' });
-    
+        
     showInfo('Template preview generated with test data');
 }
 
@@ -1641,14 +1625,7 @@ function stopAutoRefresh() {
 }
 
 function loadJobsWithoutScroll() {
-    // Store current scroll position
-    const currentScrollY = window.scrollY;
-    const currentScrollX = window.scrollX;
-    
-    return loadJobs().then(() => {
-        // Restore scroll position after update
-        window.scrollTo(currentScrollX, currentScrollY);
-    }).catch(error => {
+    return loadJobs().catch(error => {
         console.error('Error in loadJobsWithoutScroll:', error);
         // Don't throw the error to prevent auto-refresh from stopping
         showError('Auto-refresh failed: ' + error.message);
@@ -3179,10 +3156,7 @@ function displayLogLevelSettings(logLevelData) {
             adminPanel.appendChild(logLevelSection);
         }
         logLevelSection.innerHTML = logLevelHtml;
-        
-        // Scroll to the section
-        logLevelSection.scrollIntoView({ behavior: 'smooth' });
-        
+                
         showSuccess('Log level settings loaded');
     }
 }
@@ -4170,13 +4144,7 @@ async function handlePostSubmission() {
     showInfo('Refreshing job list...');
     const jobs = await loadJobs();
     
-    if (jobs) {
-        // Scroll to jobs section to show the new job
-        const jobsSection = document.querySelector('.jobs-section');
-        if (jobsSection) {
-            jobsSection.scrollIntoView({ behavior: 'smooth' });
-        }
-        
+    if (jobs) {        
         // Auto-refresh job data after 2, 5, and 10 seconds to ensure the new job shows up
         setTimeout(async () => {
             await loadJobs();
@@ -6954,12 +6922,6 @@ async function executeJobClone(event) {
             
             // Refresh jobs list to show the cloned job
             await loadJobs();
-            
-            // Scroll to jobs section to show the new clone
-            const jobsSection = document.querySelector('.jobs-section');
-            if (jobsSection) {
-                jobsSection.scrollIntoView({ behavior: 'smooth' });
-            }
             
         } else {
             showError('Error cloning job: ' + result.message);
