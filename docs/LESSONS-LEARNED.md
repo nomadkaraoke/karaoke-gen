@@ -304,6 +304,36 @@ Default 5-minute timeout may not be enough for video encoding. Consider:
 - Breaking encoding into smaller chunks
 - Increasing timeout for specific operations
 
+### Two-Layer Timeout Pattern for Long-Running Loops
+
+**Problem**: A loop processing many items (e.g., 74 LLM calls at 15s each = 18+ minutes) can block indefinitely. Single outer timeout isn't enough because it may interrupt mid-operation and leave state inconsistent.
+
+**Solution**: Use two layers of timeout protection:
+
+```python
+# Layer 1: Inner deadline check (cooperative, clean exit)
+deadline = time.time() + timeout_seconds
+for item in items:
+    if time.time() > deadline:
+        logger.warning("Deadline exceeded, breaking early")
+        break  # Exit gracefully with partial/no results
+    process(item)
+
+# Layer 2: Outer asyncio.wait_for (safety net for hung operations)
+result = await asyncio.wait_for(
+    asyncio.to_thread(run_loop_with_deadline),
+    timeout=timeout_seconds + 60  # Buffer for cleanup
+)
+```
+
+**Why both layers**:
+- Inner check: Handles normal case (many items). Exits cleanly between iterations.
+- Outer timeout: Catches edge case (single operation hangs). Hard stop if inner check never runs.
+
+**Design choice**: Use `break` not `raise` for inner timeout. This returns partial/uncorrected results rather than failing the job, allowing downstream human review to fix issues.
+
+See `docs/archive/2025-12-31-agentic-timeout-implementation.md` for implementation details.
+
 ### Secret Manager Access
 
 Cloud Run service account needs `Secret Manager Secret Accessor` role. This is managed via Pulumi in `infrastructure/`.
