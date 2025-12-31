@@ -330,8 +330,12 @@ async def process_lyrics_transcription(job_id: str) -> bool:
 
                     with metrics.time_external_api("audioshake", job_id):
                         if settings.use_agentic_ai:
-                            # Apply agentic-specific timeout (shorter, with inner deadline check)
-                            outer_timeout = timeout_seconds + 60  # Extra buffer for cleanup
+                            # Outer timeout must be generous to allow for AudioShake time
+                            # (can take 2-5+ minutes for long songs) PLUS agentic correction.
+                            # The inner deadline check in corrector.py handles the 3-minute
+                            # correction limit gracefully by returning partial results.
+                            # This outer timeout is a safety net for completely hung LLM calls.
+                            outer_timeout = TRANSCRIPTION_TIMEOUT_SECONDS  # Same as non-agentic
                             try:
                                 result = await asyncio.wait_for(
                                     transcription_coro,
@@ -339,7 +343,7 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                                 )
                             except asyncio.TimeoutError:
                                 # This should rarely trigger since inner deadline check breaks first
-                                # But provides hard stop if e.g. single LLM call takes >3 min
+                                # But provides hard stop if e.g. single LLM call hangs completely
                                 job_log.error(
                                     f"HARD TIMEOUT: Transcription exceeded {outer_timeout}s. "
                                     "This indicates the inner deadline check failed to trigger."
