@@ -174,7 +174,7 @@ class LangChainBridge(BaseAIProvider):
 
             except InitializationTimeoutError as e:
                 self._circuit_breaker.record_failure(self._model)
-                logger.exception(f"🤖 {e}")
+                logger.exception("🤖 Model initialization timeout")
                 return [{
                     "error": INIT_TIMEOUT_ERROR,
                     "message": str(e),
