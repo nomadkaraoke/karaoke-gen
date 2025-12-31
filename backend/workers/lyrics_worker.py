@@ -344,9 +344,9 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                                     f"HARD TIMEOUT: Transcription exceeded {outer_timeout}s. "
                                     "This indicates the inner deadline check failed to trigger."
                                 )
-                                raise Exception(
+                                raise RuntimeError(
                                     f"Lyrics transcription timed out after {outer_timeout}s"
-                                )
+                                ) from None
                         else:
                             # Non-agentic mode: use general timeout (10 minutes)
                             try:

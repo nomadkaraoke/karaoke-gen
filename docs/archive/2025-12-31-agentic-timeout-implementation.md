@@ -65,4 +65,4 @@ Environment variable: `AGENTIC_CORRECTION_TIMEOUT_SECONDS` (default: 180)
 
 2. **Two-layer protection**: The inner check handles normal cases (many gaps). The outer timeout catches edge cases (single LLM call hanging). Both are needed for reliability.
 
-3. **Configurable timeout**: Default 3 minutes balances correction quality vs. user experience. Can be adjusted via environment variable per deployment.
+3. **Configurable timeout**: Default 3 minutes balances correction quality vs. user experience. It can be adjusted via environment variable per deployment.
