@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import logging
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -32,6 +34,14 @@ from .constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Error constant for initialization timeout
+INIT_TIMEOUT_ERROR = "initialization_timeout"
+
+
+class InitializationTimeoutError(Exception):
+    """Raised when model initialization exceeds the configured timeout."""
+    pass
 
 
 class LangChainBridge(BaseAIProvider):
@@ -131,15 +141,45 @@ class LangChainBridge(BaseAIProvider):
                 "until": open_until
             }]
         
-        # Step 2: Get or create chat model
+        # Step 2: Get or create chat model with initialization timeout
         if not self._chat_model:
+            timeout = self._config.initialization_timeout_seconds
+            logger.info(f"🤖 Initializing model {self._model} with {timeout}s timeout...")
+            init_start = time.time()
+
             try:
-                self._chat_model = self._factory.create_chat_model(
-                    self._model,
-                    self._config
-                )
+                # Use ThreadPoolExecutor for cross-platform timeout
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(
+                        self._factory.create_chat_model,
+                        self._model,
+                        self._config
+                    )
+                    try:
+                        self._chat_model = future.result(timeout=timeout)
+                    except FuturesTimeoutError:
+                        raise InitializationTimeoutError(
+                            f"Model initialization timed out after {timeout}s. "
+                            f"This may indicate network issues or service unavailability."
+                        )
+
+                init_elapsed = time.time() - init_start
+                logger.info(f"🤖 Model created in {init_elapsed:.2f}s, starting warm-up...")
+
                 # Warm up the model to establish connection before real work
                 self._warm_up_model()
+
+                total_elapsed = time.time() - init_start
+                logger.info(f"🤖 Model initialization complete in {total_elapsed:.2f}s")
+
+            except InitializationTimeoutError as e:
+                self._circuit_breaker.record_failure(self._model)
+                logger.error(f"🤖 {e}")
+                return [{
+                    "error": INIT_TIMEOUT_ERROR,
+                    "message": str(e),
+                    "timeout_seconds": timeout
+                }]
             except Exception as e:
                 self._circuit_breaker.record_failure(self._model)
                 logger.error(f"🤖 Failed to initialize chat model: {e}")
@@ -149,24 +189,27 @@ class LangChainBridge(BaseAIProvider):
                 }]
         
         # Step 3: Execute with retry logic
-        logger.debug(
-            f"🤖 [LangChain] Sending prompt to {self._model}: "
-            f"{prompt[:PROMPT_LOG_LENGTH]}..."
+        logger.info(
+            f"🤖 [LangChain] Sending prompt to {self._model} ({len(prompt)} chars)"
         )
-        
+        logger.debug(f"🤖 [LangChain] Prompt preview: {prompt[:PROMPT_LOG_LENGTH]}...")
+
+        invoke_start = time.time()
         result = self._executor.execute_with_retry(
             operation=lambda: self._invoke_model(prompt),
             operation_name=f"invoke_{self._model}"
         )
-        
+        invoke_elapsed = time.time() - invoke_start
+
         # Step 4: Handle result and update circuit breaker
         if result.success:
             self._circuit_breaker.record_success(self._model)
-            
+
             logger.info(
-                f"🤖 [LangChain] Got response from {self._model}: "
-                f"{result.value[:RESPONSE_LOG_LENGTH]}..."
+                f"🤖 [LangChain] Got response from {self._model} in {invoke_elapsed:.2f}s "
+                f"({len(result.value)} chars)"
             )
+            logger.debug(f"🤖 [LangChain] Response preview: {result.value[:RESPONSE_LOG_LENGTH]}...")
             
             # Step 5: Cache the raw response for future use
             self._cache.set(
@@ -231,29 +274,44 @@ class LangChainBridge(BaseAIProvider):
     def _warm_up_model(self) -> None:
         """Send a lightweight request to warm up the model connection.
 
-        This helps establish the gRPC connection and potentially warm up any
+        This helps establish the REST connection and potentially warm up any
         server-side resources before processing real correction requests.
-        The warm-up is non-blocking - if it fails, we log and continue.
+        The warm-up uses a timeout to fail fast if the service is unresponsive.
         """
         if self._warmed_up:
             return
 
+        timeout = self._config.warmup_timeout_seconds
         # Use print with flush=True for visibility when output is redirected
-        print(f"🔥 Warming up {self._model} connection...", flush=True)
-        logger.info(f"🔥 Warming up {self._model} connection...")
+        print(f"🔥 Warming up {self._model} connection (timeout: {timeout}s)...", flush=True)
+        logger.info(f"🔥 Warming up {self._model} connection (timeout: {timeout}s)...")
+
+        warmup_start = time.time()
         try:
             from langchain_core.messages import HumanMessage
 
             # Minimal prompt that requires almost no processing
             warm_up_prompt = 'Respond with exactly: {"status":"ready"}'
-            response = self._chat_model.invoke([HumanMessage(content=warm_up_prompt)])
 
+            # Use ThreadPoolExecutor for timeout on warm-up call
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    self._chat_model.invoke,
+                    [HumanMessage(content=warm_up_prompt)]
+                )
+                try:
+                    future.result(timeout=timeout)
+                except FuturesTimeoutError:
+                    raise TimeoutError(f"Warm-up timed out after {timeout}s")
+
+            elapsed = time.time() - warmup_start
             self._warmed_up = True
-            print(f"🔥 Warm-up complete for {self._model}", flush=True)
-            logger.info(f"🔥 Warm-up complete for {self._model}")
+            print(f"🔥 Warm-up complete for {self._model} in {elapsed:.2f}s", flush=True)
+            logger.info(f"🔥 Warm-up complete for {self._model} in {elapsed:.2f}s")
         except Exception as e:
+            elapsed = time.time() - warmup_start
             # Don't fail the actual request if warm-up fails
             # Just log and continue - the real request might still work
-            print(f"🔥 Warm-up failed for {self._model}: {e} (continuing anyway)", flush=True)
-            logger.warning(f"🔥 Warm-up failed for {self._model}: {e} (continuing anyway)")
+            print(f"🔥 Warm-up failed for {self._model} after {elapsed:.2f}s: {e} (continuing anyway)", flush=True)
+            logger.warning(f"🔥 Warm-up failed for {self._model} after {elapsed:.2f}s: {e} (continuing anyway)")
 

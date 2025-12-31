@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any, Optional, List
 
 from .config import ProviderConfig
@@ -203,22 +204,39 @@ class ModelFactory:
     def _create_vertexai_model(
         self, model_name: str, callbacks: List[Any], config: ProviderConfig
     ) -> Any:
-        """Create ChatVertexAI model for Google Gemini via Vertex AI.
+        """Create ChatGoogleGenerativeAI model for Google Gemini.
 
-        Uses Application Default Credentials (ADC) for authentication.
-        In Cloud Run, this uses the service account automatically.
-        Locally, run: gcloud auth application-default login
+        Uses Google AI Studio API with GOOGLE_API_KEY for authentication.
+        This is a REST-based API that avoids the gRPC connection issues
+        seen with the deprecated langchain-google-vertexai package.
+
+        Note: Despite the method name (kept for backward compatibility),
+        this now uses the Google AI Studio API, not Vertex AI.
         """
-        from langchain_google_vertexai import ChatVertexAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatVertexAI(
+        start_time = time.time()
+
+        # Check for API key
+        api_key = config.google_api_key
+        if not api_key:
+            raise ValueError(
+                "GOOGLE_API_KEY environment variable is required for Google/Gemini models. "
+                "Get an API key from https://aistudio.google.com/app/apikey"
+            )
+
+        logger.info(f"🤖 Creating Google Gemini model: {model_name}")
+
+        model = ChatGoogleGenerativeAI(
             model=model_name,
-            project=config.gcp_project_id,
-            location=config.gcp_location,
-            timeout=config.request_timeout_seconds,
+            google_api_key=api_key,
+            convert_system_message_to_human=True,  # Gemini doesn't support system messages
             max_retries=config.max_retries,
+            timeout=config.request_timeout_seconds,
             callbacks=callbacks,
         )
-        logger.debug(f"🤖 Created Vertex AI model: {model_name} (project={config.gcp_project_id})")
+
+        elapsed = time.time() - start_time
+        logger.info(f"🤖 Google Gemini model created in {elapsed:.2f}s: {model_name}")
         return model
 

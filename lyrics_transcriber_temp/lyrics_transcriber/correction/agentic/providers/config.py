@@ -35,6 +35,11 @@ class ProviderConfig:
     circuit_breaker_failure_threshold: int = 3
     circuit_breaker_open_seconds: int = 60
 
+    # Initialization timeouts - fail fast instead of hanging forever
+    # These are separate from request_timeout to catch connection establishment issues
+    initialization_timeout_seconds: float = 30.0  # Model creation + warm-up
+    warmup_timeout_seconds: float = 15.0  # Just the warm-up call
+
     @staticmethod
     def from_env(cache_dir: Optional[str] = None) -> "ProviderConfig":
         """Create config from environment variables.
@@ -64,6 +69,8 @@ class ProviderConfig:
             retry_backoff_factor=float(os.getenv("AGENTIC_BACKOFF_FACTOR", "2.0")),
             circuit_breaker_failure_threshold=int(os.getenv("AGENTIC_CIRCUIT_THRESHOLD", "3")),
             circuit_breaker_open_seconds=int(os.getenv("AGENTIC_CIRCUIT_OPEN_SECONDS", "60")),
+            initialization_timeout_seconds=float(os.getenv("AGENTIC_INIT_TIMEOUT_SECONDS", "30.0")),
+            warmup_timeout_seconds=float(os.getenv("AGENTIC_WARMUP_TIMEOUT_SECONDS", "15.0")),
         )
 
     def validate_environment(self, logger: Optional[object] = None) -> None:

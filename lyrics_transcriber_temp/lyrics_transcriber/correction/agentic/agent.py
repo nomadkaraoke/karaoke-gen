@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import json
+import time
 from typing import Dict, Any, List, Optional
 
 from .providers.base import BaseAIProvider
@@ -120,7 +121,7 @@ class AgenticCorrector:
         title: Optional[str] = None
     ) -> Optional[GapClassification]:
         """Classify a gap using the AI provider.
-        
+
         Args:
             gap_id: Unique identifier for the gap
             gap_text: The text of the gap
@@ -129,10 +130,13 @@ class AgenticCorrector:
             reference_contexts: Dictionary of reference lyrics from each source
             artist: Song artist name
             title: Song title
-        
+
         Returns:
             GapClassification object or None if classification fails
         """
+        logger.info(f"🤖 Classifying gap {gap_id} ({len(gap_text)} chars)")
+        start_time = time.time()
+
         # Build classification prompt
         prompt = build_classification_prompt(
             gap_text=gap_text,
@@ -143,7 +147,7 @@ class AgenticCorrector:
             title=title,
             gap_id=gap_id
         )
-        
+
         # Call AI provider to get classification
         try:
             data = self._provider.generate_correction_proposals(
@@ -151,17 +155,25 @@ class AgenticCorrector:
                 schema=GapClassification.model_json_schema(),
                 session_id=self._session_id
             )
-            
+
+            elapsed = time.time() - start_time
+
             # Extract first result
             if data and len(data) > 0:
                 item = data[0]
                 if isinstance(item, dict) and "error" not in item:
                     classification = GapClassification.model_validate(item)
-                    logger.debug(f"🤖 Classified gap {gap_id} as {classification.category} (confidence: {classification.confidence})")
+                    logger.info(
+                        f"🤖 Classified gap {gap_id} as {classification.category} "
+                        f"(confidence: {classification.confidence:.2f}) in {elapsed:.2f}s"
+                    )
                     return classification
+                else:
+                    logger.warning(f"🤖 Classification returned error for gap {gap_id}: {item}")
         except Exception as e:
-            logger.warning(f"🤖 Failed to classify gap {gap_id}: {e}")
-        
+            elapsed = time.time() - start_time
+            logger.warning(f"🤖 Failed to classify gap {gap_id} after {elapsed:.2f}s: {e}")
+
         return None
     
     def propose_for_gap(
