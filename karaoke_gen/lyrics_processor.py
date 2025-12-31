@@ -3,6 +3,7 @@ import re
 import logging
 import shutil
 import json
+from typing import Optional
 from lyrics_transcriber import LyricsTranscriber, OutputConfig, TranscriberConfig, LyricsConfig
 from lyrics_transcriber.core.controller import LyricsControllerResult
 from dotenv import load_dotenv
@@ -252,10 +253,11 @@ class LyricsProcessor:
             "See README.md 'Transcription Providers' section for detailed setup instructions."
         )
 
-    def transcribe_lyrics(self, input_audio_wav, artist, title, track_output_dir, lyrics_artist=None, lyrics_title=None):
+    def transcribe_lyrics(self, input_audio_wav, artist, title, track_output_dir, lyrics_artist=None, lyrics_title=None,
+                          agentic_deadline: Optional[float] = None):
         """
         Transcribe lyrics for a track.
-        
+
         Args:
             input_audio_wav: Path to the audio file
             artist: Original artist name (used for filename generation)
@@ -263,7 +265,9 @@ class LyricsProcessor:
             track_output_dir: Output directory path
             lyrics_artist: Artist name for lyrics processing (defaults to artist if None)
             lyrics_title: Title for lyrics processing (defaults to title if None)
-            
+            agentic_deadline: Optional Unix timestamp. If agentic correction is still
+                running after this time, it will abort and return uncorrected results.
+
         Raises:
             ValueError: If transcription is enabled but no providers are configured
         """
@@ -423,8 +427,8 @@ class LyricsProcessor:
             logger=self.logger,
         )
 
-        # Process and get results
-        results: LyricsControllerResult = transcriber.process()
+        # Process and get results (pass deadline for agentic timeout)
+        results: LyricsControllerResult = transcriber.process(agentic_deadline=agentic_deadline)
         self.logger.info(f"Transcriber Results Filepaths:")
         for key, value in results.__dict__.items():
             if key.endswith("_filepath"):

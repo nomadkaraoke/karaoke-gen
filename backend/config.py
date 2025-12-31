@@ -45,7 +45,10 @@ class Settings(BaseSettings):
     # When enabled, uses Gemini via Vertex AI for intelligent lyrics correction
     use_agentic_ai: bool = os.getenv("USE_AGENTIC_AI", "true").lower() in ("true", "1", "yes")
     agentic_ai_model: str = os.getenv("AGENTIC_AI_MODEL", "vertexai/gemini-3-flash-preview")
-    
+    # Timeout for agentic correction in seconds. If correction takes longer, abort and
+    # use uncorrected transcription - human review will fix any issues.
+    agentic_correction_timeout_seconds: int = int(os.getenv("AGENTIC_CORRECTION_TIMEOUT_SECONDS", "180"))
+
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
     # When disabled (default), workers are triggered via direct HTTP (for development)

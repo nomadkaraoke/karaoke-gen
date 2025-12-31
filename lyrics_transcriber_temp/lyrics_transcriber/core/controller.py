@@ -289,8 +289,13 @@ class LyricsTranscriber:
         """Initialize output generation service."""
         return OutputGenerator(config=self.output_config, logger=self.logger)
 
-    def process(self) -> LyricsControllerResult:
-        """Main processing method that orchestrates the entire workflow."""
+    def process(self, agentic_deadline: Optional[float] = None) -> LyricsControllerResult:
+        """Main processing method that orchestrates the entire workflow.
+
+        Args:
+            agentic_deadline: Optional Unix timestamp. If agentic correction is still
+                running after this time, it will abort and return uncorrected results.
+        """
 
         self.logger.info(f"LyricsTranscriber controller beginning processing for {self.artist} - {self.title}")
 
@@ -390,7 +395,7 @@ class LyricsTranscriber:
 
         # Step 3: Process and correct lyrics if enabled AND we have transcription results
         if self.output_config.run_correction and self.results.transcription_results:
-            self.correct_lyrics()
+            self.correct_lyrics(agentic_deadline=agentic_deadline)
         elif self.output_config.run_correction:
             self.logger.info("Skipping lyrics correction - no transcription results available")
 
@@ -494,8 +499,13 @@ class LyricsTranscriber:
         else:
             self.logger.debug("  - LocalWhisper: DISABLED (enable_local_whisper=False)")
 
-    def correct_lyrics(self) -> None:
-        """Run lyrics correction using transcription and internet lyrics."""
+    def correct_lyrics(self, agentic_deadline: Optional[float] = None) -> None:
+        """Run lyrics correction using transcription and internet lyrics.
+
+        Args:
+            agentic_deadline: Optional Unix timestamp. If agentic correction is still
+                running after this time, it will abort and return uncorrected results.
+        """
         self.logger.info("Starting lyrics correction process")
 
         # Check if we have reference lyrics to work with
@@ -553,6 +563,7 @@ class LyricsTranscriber:
                 transcription_results=self.results.transcription_results,
                 lyrics_results=self.results.lyrics_results,
                 metadata=metadata,
+                agentic_deadline=agentic_deadline,
             )
 
             # Store corrected results

@@ -44,8 +44,14 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Timeout for transcription (10 minutes) - used by asyncio.wait_for to prevent hanging
+# Timeout for non-agentic transcription (10 minutes) - prevents hanging on AudioShake API
 TRANSCRIPTION_TIMEOUT_SECONDS = 600
+
+# Default agentic correction timeout (3 minutes)
+# Configurable via AGENTIC_CORRECTION_TIMEOUT_SECONDS environment variable
+# If agentic AI takes longer than this, abort and use uncorrected transcription
+# Human review will correct any issues
+DEFAULT_AGENTIC_TIMEOUT_SECONDS = 180
 
 
 def _configure_agentic_ai():
@@ -290,31 +296,67 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 logger.info(f"[job:{job_id}] Calling lyrics_processor.transcribe_lyrics()")
 
                 # Run transcription + correction with timeout
-                # AudioShake typically takes 1-2 minutes, but can hang. Uses TRANSCRIPTION_TIMEOUT_SECONDS.
+                # AudioShake typically takes 1-2 minutes, but can hang.
                 with job_span("audioshake-transcription", job_id) as trans_span:
                     trans_start = time.time()
                     add_span_event("transcription_started")
 
-                    # Run transcription in thread pool to avoid blocking the event loop
-                    # (transcribe_lyrics is synchronous and takes 1-2 minutes)
-                    # Note: transcribe_lyrics internally calls AudioShake and lyrics APIs
-                    try:
-                        with metrics.time_external_api("audioshake", job_id):
-                            result = await asyncio.wait_for(
-                                asyncio.to_thread(
-                                    lyrics_processor.transcribe_lyrics,
-                                    input_audio_wav=audio_path,
-                                    artist=job.artist,  # Original artist for file naming
-                                    title=job.title,    # Original title for file naming
-                                    track_output_dir=temp_dir,
-                                    lyrics_artist=lyrics_search_artist,  # Override for lyrics search
-                                    lyrics_title=lyrics_search_title     # Override for lyrics search
-                                ),
-                                timeout=TRANSCRIPTION_TIMEOUT_SECONDS
-                            )
-                    except asyncio.TimeoutError:
-                        raise Exception(f"Transcription timed out after {TRANSCRIPTION_TIMEOUT_SECONDS} seconds")
-                    
+                    # Calculate deadline for agentic correction
+                    # If agentic AI is enabled, the correction loop will check this deadline
+                    # and abort early if exceeded, returning uncorrected transcription for human review
+                    settings = get_settings()
+                    agentic_deadline = None
+                    timeout_seconds = settings.agentic_correction_timeout_seconds
+                    if settings.use_agentic_ai:
+                        agentic_deadline = time.time() + timeout_seconds
+                        job_log.info(
+                            f"Agentic AI enabled with {timeout_seconds}s timeout"
+                        )
+
+                    # Run transcription in thread pool
+                    # When agentic AI is enabled, wrap with outer timeout as safety net
+                    # Inner deadline check in corrector.py will break out of gap loop gracefully
+                    # Outer timeout catches case where single LLM call hangs for too long
+                    transcription_coro = asyncio.to_thread(
+                        lyrics_processor.transcribe_lyrics,
+                        input_audio_wav=audio_path,
+                        artist=job.artist,  # Original artist for file naming
+                        title=job.title,    # Original title for file naming
+                        track_output_dir=temp_dir,
+                        lyrics_artist=lyrics_search_artist,  # Override for lyrics search
+                        lyrics_title=lyrics_search_title,    # Override for lyrics search
+                        agentic_deadline=agentic_deadline,   # Deadline for agentic timeout
+                    )
+
+                    with metrics.time_external_api("audioshake", job_id):
+                        if settings.use_agentic_ai:
+                            # Apply agentic-specific timeout (shorter, with inner deadline check)
+                            outer_timeout = timeout_seconds + 60  # Extra buffer for cleanup
+                            try:
+                                result = await asyncio.wait_for(
+                                    transcription_coro,
+                                    timeout=outer_timeout
+                                )
+                            except asyncio.TimeoutError:
+                                # This should rarely trigger since inner deadline check breaks first
+                                # But provides hard stop if e.g. single LLM call takes >3 min
+                                job_log.error(
+                                    f"HARD TIMEOUT: Transcription exceeded {outer_timeout}s. "
+                                    "This indicates the inner deadline check failed to trigger."
+                                )
+                                raise Exception(
+                                    f"Lyrics transcription timed out after {outer_timeout}s"
+                                )
+                        else:
+                            # Non-agentic mode: use general timeout (10 minutes)
+                            try:
+                                result = await asyncio.wait_for(
+                                    transcription_coro,
+                                    timeout=TRANSCRIPTION_TIMEOUT_SECONDS
+                                )
+                            except asyncio.TimeoutError:
+                                raise Exception(f"Transcription timed out after {TRANSCRIPTION_TIMEOUT_SECONDS} seconds")
+
                     trans_duration = time.time() - trans_start
                     trans_span.set_attribute("duration_seconds", trans_duration)
                     add_span_event("transcription_completed", {"duration_seconds": trans_duration})
