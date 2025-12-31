@@ -289,6 +289,12 @@ class AudioSearchService:
                 logger.info(f"No local cache, using remote download with search_id={effective_search_id}, index={result_index}")
                 return self._download_remote(result_index, output_dir, output_filename, gcs_path, effective_search_id)
             else:
+                # Provide clear error message based on whether cache is empty or index out of bounds
+                if len(self._cached_results) == 0:
+                    raise DownloadError(
+                        f"No cached result for index {result_index}. "
+                        "No cached results available. Run search() first."
+                    )
                 raise DownloadError(
                     f"No cached result for index {result_index}. "
                     f"Available indices: 0-{len(self._cached_results) - 1}. "
