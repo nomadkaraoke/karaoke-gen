@@ -276,19 +276,28 @@ class AudioSearchService:
         Raises:
             DownloadError: If download fails or no cached result for index
         """
-        if result_index < 0 or result_index >= len(self._cached_results):
-            raise DownloadError(
-                f"No cached result for index {result_index}. "
-                f"Available indices: 0-{len(self._cached_results) - 1}. "
-                "Run search() first."
-            )
+        # Use provided search_id or fall back to service-level cache
+        effective_search_id = remote_search_id or self._remote_search_id
+
+        # Check if we have local cached results
+        has_local_cache = result_index >= 0 and result_index < len(self._cached_results)
+
+        # If no local cache but we have remote search_id, use remote download
+        # This handles multi-instance deployments where the cache doesn't persist
+        if not has_local_cache:
+            if effective_search_id and self._remote_client:
+                logger.info(f"No local cache, using remote download with search_id={effective_search_id}, index={result_index}")
+                return self._download_remote(result_index, output_dir, output_filename, gcs_path, effective_search_id)
+            else:
+                raise DownloadError(
+                    f"No cached result for index {result_index}. "
+                    f"Available indices: 0-{len(self._cached_results) - 1}. "
+                    "Run search() first."
+                )
 
         result = self._cached_results[result_index]
 
         logger.info(f"Downloading: {result.artist} - {result.title} from {result.provider}")
-
-        # Use provided search_id or fall back to service-level cache
-        effective_search_id = remote_search_id or self._remote_search_id
 
         # Check if this was a remote search (torrent sources need remote download)
         if effective_search_id and self._remote_client:
@@ -481,8 +490,12 @@ class AudioSearchService:
         if not effective_search_id:
             raise DownloadError("No remote search ID - run search() first")
 
-        result = self._cached_results[result_index]
-        
+        # Try to get local result for metadata, but it's optional
+        # The remote service maintains its own cache by search_id
+        result = None
+        if result_index >= 0 and result_index < len(self._cached_results):
+            result = self._cached_results[result_index]
+
         try:
             # Enable nested event loops (needed when called from FastAPI async context)
             try:
@@ -529,13 +542,15 @@ class AudioSearchService:
                 raise DownloadError("Remote download completed but no file path returned")
             
             logger.info(f"Remote download complete: {filepath}")
-            
+
+            # Use local result metadata if available, otherwise use empty strings
+            # (the actual download is handled by the remote service using search_id)
             return AudioDownloadResult(
                 filepath=filepath,
-                artist=result.artist,
-                title=result.title,
-                provider=result.provider,
-                quality=result.quality,
+                artist=result.artist if result else "",
+                title=result.title if result else "",
+                provider=result.provider if result else "remote",
+                quality=result.quality if result else "",
             )
             
         except FlacfetchServiceError as e:

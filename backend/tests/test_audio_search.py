@@ -460,16 +460,18 @@ class TestAudioSearchServiceDownload:
             url="https://youtube.com/watch?v=abc123",
             index=0,
         )
-        
+
         service = AudioSearchService(red_api_key=None, red_api_url=None, ops_api_key=None, ops_api_url=None)
         service._fetcher = Mock()
         service._fetcher.search.return_value = [mock_result]
-        
+        # Ensure no remote client so we test the local cache path
+        service._remote_client = None
+
         service.search("ABBA", "Waterloo")
-        
+
         with pytest.raises(DownloadError) as exc_info:
             service.download(99, "/tmp")
-        
+
         assert "No cached result for index 99" in str(exc_info.value)
 
 
