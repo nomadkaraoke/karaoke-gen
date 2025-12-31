@@ -116,8 +116,15 @@ class LyricsCorrector:
             transcription_results: List of transcription results to correct.
             lyrics_results: Dictionary of lyrics data from various sources.
             metadata: Optional metadata including artist, title, audio file hash.
-            agentic_deadline: Optional Unix timestamp. If agentic correction is still
-                running after this time, it will abort and return uncorrected results.
+            agentic_deadline: Optional Unix timestamp (from time.time()). If agentic
+                correction is still running after this time, it will abort and return
+                uncorrected results for human review.
+
+        Note:
+            The deadline is checked between gap iterations, not during LLM processing.
+            A single long-running LLM call may exceed the deadline. The caller should
+            wrap this method with an outer timeout (e.g., asyncio.wait_for) as a safety
+            net for hung operations.
         """
         # Optional agentic routing flag from environment; default off for safety
         agentic_enabled = os.getenv("USE_AGENTIC_AI", "").lower() in {"1", "true", "yes"}
@@ -192,6 +199,17 @@ class LyricsCorrector:
         deadline: Optional[float] = None
     ) -> Tuple[List[WordCorrection], List[LyricsSegment], List[CorrectionStep], Dict[str, str], Dict[str, str]]:
         """Process corrections using handlers.
+
+        Args:
+            segments: List of lyrics segments to process.
+            gap_sequences: List of gap sequences to correct.
+            metadata: Optional metadata including artist, title, audio file hash.
+            deadline: Optional Unix timestamp (from time.time()). When agentic mode is
+                enabled and this deadline is exceeded, remaining gaps are skipped and
+                the method returns with whatever corrections have been made (likely none).
+
+        Returns:
+            Tuple of (corrections, corrected_segments, correction_steps, word_id_map, segment_id_map).
 
         The correction flow works as follows:
         1. First pass: Process all gaps
