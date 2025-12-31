@@ -356,6 +356,42 @@ Code must handle both formats when invoking LangChain ChatVertexAI.
 
 See `docs/archive/2025-12-30-gemini3-agentic-correction-fix.md` for full details.
 
+### LangChain gRPC vs REST Providers
+
+**Problem**: `langchain-google-vertexai` uses gRPC which can hang indefinitely during connection establishment with no timeout, causing cloud jobs to freeze silently.
+
+**Symptoms**:
+- Job hangs at "Initializing model..." with no further logs
+- No timeout or error - just waits forever
+- Hard to diagnose because no exception is raised
+
+**Solution**: Use `langchain-google-genai` (REST-based) instead:
+```python
+# Before (gRPC, can hang)
+from langchain_google_vertexai import ChatVertexAI
+model = ChatVertexAI(model=model_name, project=project)
+
+# After (REST, reliable)
+from langchain_google_genai import ChatGoogleGenerativeAI
+model = ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key)
+```
+
+**Additional protection**: Wrap model initialization in ThreadPoolExecutor timeout:
+```python
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+with ThreadPoolExecutor(max_workers=1) as executor:
+    future = executor.submit(create_model)
+    try:
+        model = future.result(timeout=30)  # Fail fast
+    except FuturesTimeoutError:
+        raise InitializationTimeoutError("Model init timed out")
+```
+
+**Why ThreadPoolExecutor**: Works cross-platform (Windows, Linux, macOS). Python's `signal.alarm` only works on Unix.
+
+See `docs/archive/2025-12-30-langchain-vertexai-to-genai-migration.md` for full details.
+
 ### CI/CD: GitHub Actions
 
 Migrated from Cloud Build to GitHub Actions for:
