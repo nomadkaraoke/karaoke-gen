@@ -161,7 +161,7 @@ class LangChainBridge(BaseAIProvider):
                         raise InitializationTimeoutError(
                             f"Model initialization timed out after {timeout}s. "
                             f"This may indicate network issues or service unavailability."
-                        )
+                        ) from None
 
                 init_elapsed = time.time() - init_start
                 logger.info(f"🤖 Model created in {init_elapsed:.2f}s, starting warm-up...")
@@ -174,7 +174,7 @@ class LangChainBridge(BaseAIProvider):
 
             except InitializationTimeoutError as e:
                 self._circuit_breaker.record_failure(self._model)
-                logger.error(f"🤖 {e}")
+                logger.exception(f"🤖 {e}")
                 return [{
                     "error": INIT_TIMEOUT_ERROR,
                     "message": str(e),
@@ -302,7 +302,7 @@ class LangChainBridge(BaseAIProvider):
                 try:
                     future.result(timeout=timeout)
                 except FuturesTimeoutError:
-                    raise TimeoutError(f"Warm-up timed out after {timeout}s")
+                    raise TimeoutError(f"Warm-up timed out after {timeout}s") from None
 
             elapsed = time.time() - warmup_start
             self._warmed_up = True

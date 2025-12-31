@@ -10,6 +10,12 @@ from .config import ProviderConfig
 
 logger = logging.getLogger(__name__)
 
+# Error message constant for TRY003 compliance
+GOOGLE_API_KEY_MISSING_ERROR = (
+    "GOOGLE_API_KEY environment variable is required for Google/Gemini models. "
+    "Get an API key from https://aistudio.google.com/app/apikey"
+)
+
 
 class ModelFactory:
     """Creates and configures LangChain ChatModels with observability.
@@ -220,10 +226,7 @@ class ModelFactory:
         # Check for API key
         api_key = config.google_api_key
         if not api_key:
-            raise ValueError(
-                "GOOGLE_API_KEY environment variable is required for Google/Gemini models. "
-                "Get an API key from https://aistudio.google.com/app/apikey"
-            )
+            raise ValueError(GOOGLE_API_KEY_MISSING_ERROR)
 
         logger.info(f"🤖 Creating Google Gemini model: {model_name}")
 
