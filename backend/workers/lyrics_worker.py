@@ -44,8 +44,13 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Timeout for non-agentic transcription (10 minutes) - prevents hanging on AudioShake API
-TRANSCRIPTION_TIMEOUT_SECONDS = 600
+# Timeout for entire transcription process including agentic AI correction (20 minutes)
+# This needs to account for:
+# - Cloud Run cold start / worker initialization (1-5 min)
+# - AudioShake transcription (1-2 min)
+# - spaCy model loading for correction (2-3 min on cold start)
+# - Agentic AI correction (1-3 min)
+TRANSCRIPTION_TIMEOUT_SECONDS = 1200
 
 # Default agentic correction timeout (3 minutes)
 # Configurable via AGENTIC_CORRECTION_TIMEOUT_SECONDS environment variable

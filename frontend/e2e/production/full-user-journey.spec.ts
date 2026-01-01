@@ -47,8 +47,9 @@ const TIMEOUTS = {
   action: 30_000,       // 30s for UI actions
   expect: 60_000,       // 60s for assertions
   apiCall: 120_000,     // 2min for API calls
+  download: 900_000,    // 15min for remote flacfetch downloads (torrents can be slow)
   jobProcessing: 600_000, // 10min for job processing
-  fullTest: 900_000,    // 15min for full test
+  fullTest: 2400_000,   // 40min for full test (download + processing + video generation)
 } as const;
 
 // =============================================================================
@@ -388,73 +389,48 @@ test.describe('Production E2E - Full User Journey', () => {
     console.log('STEP 5 COMPLETE: Audio selection handled');
 
     // =========================================================================
-    // STEP 6: Wait for Processing (Lyrics)
+    // STEP 6: Wait for Processing (Download + Audio Separation + Lyrics)
     // =========================================================================
     console.log('\n========================================');
     console.log('STEP 6: Wait for Processing');
     console.log('========================================');
 
-    console.log('  Polling job status...');
+    console.log('  Polling job status (this may take 15-20 minutes for remote downloads)...');
     const { status: statusAfterProcessing, job: jobAfterProcessing } = await pollJobStatus(
       request,
       jobId,
-      ['in_review', 'awaiting_instrumental_selection', 'completed'],
-      accessToken!
+      ['awaiting_review', 'in_review', 'awaiting_instrumental_selection', 'complete'],
+      accessToken!,
+      TIMEOUTS.download  // Use longer timeout for downloads
     );
 
     console.log(`STEP 6 COMPLETE: Job reached ${statusAfterProcessing}`);
 
     // =========================================================================
-    // STEP 7: Lyrics Review
+    // STEP 7: Complete Lyrics Review (via API)
     // =========================================================================
     console.log('\n========================================');
     console.log('STEP 7: Lyrics Review');
     console.log('========================================');
 
-    if (statusAfterProcessing === 'in_review') {
-      await page.reload();
-      await page.waitForLoadState('networkidle');
+    if (statusAfterProcessing === 'awaiting_review' || statusAfterProcessing === 'in_review') {
+      console.log('  Completing lyrics review via API (accepting AI-generated lyrics)...');
 
-      const reviewBtn = page.getByRole('button', { name: /review.*lyrics/i }).first();
-
-      if (await reviewBtn.isVisible({ timeout: 10000 }).catch(() => false)) {
-        console.log('  Opening lyrics review...');
-
-        // This opens a new tab
-        const [popup] = await Promise.all([
-          page.context().waitForEvent('page', { timeout: 15000 }).catch(() => null),
-          reviewBtn.click(),
-        ]);
-
-        if (popup) {
-          await popup.waitForLoadState('networkidle');
-          await popup.waitForTimeout(5000);
-          await popup.screenshot({
-            path: 'test-results/07a-review-ui.png',
-            fullPage: true,
-          });
-
-          // Click Preview Video
-          const previewBtn = popup.getByRole('button', { name: /preview.*video/i }).first();
-          if (await previewBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-            console.log('  Clicking Preview Video...');
-            await previewBtn.click();
-            await popup.waitForTimeout(30000); // Preview generation
-
-            // Click Complete Review
-            const completeBtn = popup.getByRole('button', { name: /complete.*review/i }).first();
-            if (await completeBtn.isVisible({ timeout: 60000 }).catch(() => false)) {
-              console.log('  Clicking Complete Review...');
-              await completeBtn.click();
-              await popup.waitForTimeout(3000);
-              console.log('  Review completed');
-            }
-          }
-
-          if (!popup.isClosed()) {
-            await popup.close();
-          }
+      // Use the API to complete the review - this accepts the current lyrics as-is
+      const completeReviewResponse = await request.post(
+        `${API_URL}/api/jobs/${jobId}/complete-review`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          timeout: TIMEOUTS.apiCall,
         }
+      );
+
+      if (completeReviewResponse.ok()) {
+        const result = await completeReviewResponse.json();
+        console.log(`  Review completed: ${result.message}`);
+      } else {
+        const errorText = await completeReviewResponse.text();
+        throw new Error(`Failed to complete review: ${completeReviewResponse.status()} - ${errorText}`);
       }
     } else {
       console.log(`  Skipping - job status is ${statusAfterProcessing}`);
@@ -463,43 +439,44 @@ test.describe('Production E2E - Full User Journey', () => {
     console.log('STEP 7 COMPLETE: Lyrics review handled');
 
     // =========================================================================
-    // STEP 8: Instrumental Selection
+    // STEP 8: Wait for Video Rendering and Instrumental Selection (via API)
     // =========================================================================
     console.log('\n========================================');
     console.log('STEP 8: Instrumental Selection');
     console.log('========================================');
 
-    // Wait for job to reach instrumental selection
+    // Wait for job to reach instrumental selection (after video rendering)
+    console.log('  Waiting for video rendering to complete...');
     const { status: statusBeforeInstrumental } = await pollJobStatus(
       request,
       jobId,
-      ['awaiting_instrumental_selection', 'completed'],
+      ['awaiting_instrumental_selection', 'complete'],
       accessToken!,
-      120000 // 2 minutes
+      TIMEOUTS.jobProcessing  // Video rendering can take several minutes
     ).catch(() => ({ status: 'unknown', job: null }));
 
     if (statusBeforeInstrumental === 'awaiting_instrumental_selection') {
-      await page.reload();
-      await page.waitForLoadState('networkidle');
+      console.log('  Selecting clean instrumental via API...');
 
-      const instrumentalBtn = page.getByRole('button', { name: /select.*instrumental/i }).first();
-      if (await instrumentalBtn.isVisible({ timeout: 10000 }).catch(() => false)) {
-        console.log('  Opening instrumental selection...');
-        await instrumentalBtn.click();
-        await page.waitForTimeout(2000);
-
-        const dialog = page.locator('[role="dialog"]');
-        if (await dialog.isVisible()) {
-          await page.screenshot({ path: 'test-results/08-instrumental-dialog.png' });
-
-          // Select first instrumental (usually "Clean")
-          const selectBtn = dialog.getByRole('button', { name: /select/i }).first();
-          if (await selectBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await selectBtn.click();
-            console.log('  Instrumental selected');
-            await page.waitForTimeout(3000);
-          }
+      // Use the API to select the clean instrumental
+      const selectInstrumentalResponse = await request.post(
+        `${API_URL}/api/jobs/${jobId}/select-instrumental`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          data: { selection: 'clean' },
+          timeout: TIMEOUTS.apiCall,
         }
+      );
+
+      if (selectInstrumentalResponse.ok()) {
+        const result = await selectInstrumentalResponse.json();
+        console.log(`  Instrumental selected: ${result.message}`);
+      } else {
+        const errorText = await selectInstrumentalResponse.text();
+        throw new Error(`Failed to select instrumental: ${selectInstrumentalResponse.status()} - ${errorText}`);
       }
     } else {
       console.log(`  Skipping - job status is ${statusBeforeInstrumental}`);
@@ -508,17 +485,17 @@ test.describe('Production E2E - Full User Journey', () => {
     console.log('STEP 8 COMPLETE: Instrumental selection handled');
 
     // =========================================================================
-    // STEP 9: Wait for Completion
+    // STEP 9: Wait for Final Video Generation and Completion
     // =========================================================================
     console.log('\n========================================');
     console.log('STEP 9: Wait for Completion');
     console.log('========================================');
 
-    console.log('  Waiting for job to complete...');
+    console.log('  Waiting for final video generation (encoding 4 formats)...');
     const { status: finalStatus, job: finalJob } = await pollJobStatus(
       request,
       jobId,
-      ['completed'],
+      ['complete'],  // Note: status is 'complete' not 'completed'
       accessToken!,
       TIMEOUTS.jobProcessing
     );
@@ -526,29 +503,57 @@ test.describe('Production E2E - Full User Journey', () => {
     console.log('STEP 9 COMPLETE: Job completed');
 
     // =========================================================================
-    // STEP 10: Verify Outputs
+    // STEP 10: Verify Outputs and Download URLs
     // =========================================================================
     console.log('\n========================================');
     console.log('STEP 10: Verify Outputs');
     console.log('========================================');
 
+    console.log(`  Job ID: ${finalJob.job_id}`);
+    console.log(`  Artist: ${finalJob.artist}`);
+    console.log(`  Title: ${finalJob.title}`);
     console.log(`  Theme ID: ${finalJob.theme_id || 'N/A'}`);
-    console.log(`  YouTube URL: ${finalJob.youtube_url || 'N/A'}`);
-    console.log(`  Dropbox URL: ${finalJob.dropbox_url || 'N/A'}`);
-    console.log(`  Google Drive URL: ${finalJob.gdrive_url || 'N/A'}`);
 
-    // Verify required outputs
-    expect(finalJob.theme_id).toBeTruthy();
+    // Verify required fields
+    expect(finalJob.status).toBe('complete');
+    expect(finalJob.artist).toBeTruthy();
+    expect(finalJob.title).toBeTruthy();
 
-    // Check for download URLs
+    // Check for download URLs - this is the key verification
     const downloadResponse = await request.get(`${API_URL}/api/jobs/${jobId}/download-urls`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       timeout: TIMEOUTS.apiCall,
-    }).catch(() => null);
+    });
 
-    if (downloadResponse?.ok()) {
+    if (downloadResponse.ok()) {
       const downloadUrls = await downloadResponse.json();
-      console.log(`  Download URLs available: ${Object.keys(downloadUrls).length}`);
+      const urlKeys = Object.keys(downloadUrls);
+      console.log(`  Download formats available: ${urlKeys.length}`);
+
+      // Should have multiple video formats
+      for (const key of urlKeys) {
+        console.log(`    - ${key}: ${downloadUrls[key] ? 'Available' : 'Missing'}`);
+      }
+
+      // Verify we have at least one download URL
+      expect(urlKeys.length).toBeGreaterThan(0);
+
+      // Verify at least one URL is actually present
+      const hasUrl = urlKeys.some(key => downloadUrls[key]);
+      expect(hasUrl).toBe(true);
+    } else {
+      console.log(`  WARNING: Could not fetch download URLs (status ${downloadResponse.status()})`);
+    }
+
+    // Get final job state for reference
+    const finalJobResponse = await request.get(`${API_URL}/api/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: TIMEOUTS.apiCall,
+    });
+
+    if (finalJobResponse.ok()) {
+      const fullJob = await finalJobResponse.json();
+      console.log(`  File URLs available: ${Object.keys(fullJob.file_urls || {}).length} categories`);
     }
 
     await page.reload();

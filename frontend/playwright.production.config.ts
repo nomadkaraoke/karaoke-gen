@@ -74,7 +74,8 @@ export default defineConfig({
   },
 
   // Much longer timeout for production tests (karaoke generation takes time!)
-  timeout: 900000, // 15 minutes per test
+  // Remote downloads can take 15+ minutes, plus processing and video generation
+  timeout: 2400000, // 40 minutes per test
 
   // Expect timeout for assertions
   expect: {

@@ -426,15 +426,21 @@ class TestTranscriptionTimeout:
 
         assert TRANSCRIPTION_TIMEOUT_SECONDS > 0
         assert TRANSCRIPTION_TIMEOUT_SECONDS >= 300, "Timeout should be at least 5 minutes for long songs"
-        assert TRANSCRIPTION_TIMEOUT_SECONDS <= 900, "Timeout shouldn't be more than 15 minutes"
+        assert TRANSCRIPTION_TIMEOUT_SECONDS <= 1500, "Timeout shouldn't be more than 25 minutes"
 
     def test_transcription_timeout_value(self):
         """
-        Verify the specific timeout value (10 minutes = 600 seconds).
+        Verify the specific timeout value (20 minutes = 1200 seconds).
+
+        This accounts for:
+        - Cloud Run cold start / worker initialization (1-5 min)
+        - AudioShake transcription (1-2 min)
+        - spaCy model loading for correction (2-3 min on cold start)
+        - Agentic AI correction (1-3 min)
         """
         from backend.workers.lyrics_worker import TRANSCRIPTION_TIMEOUT_SECONDS
 
-        assert TRANSCRIPTION_TIMEOUT_SECONDS == 600, "Transcription timeout should be 10 minutes (600 seconds)"
+        assert TRANSCRIPTION_TIMEOUT_SECONDS == 1200, "Transcription timeout should be 20 minutes (1200 seconds)"
 
     @pytest.mark.asyncio
     async def test_asyncio_wait_for_raises_timeout_error(self):
@@ -467,7 +473,7 @@ class TestTranscriptionTimeout:
 
         assert error_message is not None
         assert "timed out" in error_message.lower()
-        assert "600" in error_message
+        assert "1200" in error_message
 
     def test_lyrics_worker_exception_marks_job_failed(self):
         """
@@ -482,7 +488,7 @@ class TestTranscriptionTimeout:
         if error_occurred:
             # This is what happens in the except block
             job_status = JobStatus.FAILED
-            error_message = "Lyrics transcription failed: Transcription timed out after 600 seconds"
+            error_message = "Lyrics transcription failed: Transcription timed out after 1200 seconds"
 
         assert job_status == JobStatus.FAILED
         assert "timed out" in error_message.lower()
