@@ -304,6 +304,32 @@ Default 5-minute timeout may not be enough for video encoding. Consider:
 - Breaking encoding into smaller chunks
 - Increasing timeout for specific operations
 
+### Cloud Tasks dispatch_deadline (Separate from Cloud Run Timeout)
+
+**Problem**: Cloud Tasks HTTP handlers have a separate `dispatch_deadline` (default 10 minutes, max 30 minutes) that controls how long Cloud Tasks waits for the HTTP response. This is DIFFERENT from Cloud Run's service timeout.
+
+**Symptom**: Worker killed silently after 10 minutes even though Cloud Run timeout was set to 30 minutes. Job appears stuck with no error.
+
+**Solution**: Set explicit `dispatch_deadline` when creating Cloud Tasks:
+```python
+from google.protobuf import duration_pb2
+
+task = {
+    "http_request": {...},
+    "dispatch_deadline": duration_pb2.Duration(seconds=1800),  # 30 min max
+}
+```
+
+**Key insight**: For tasks that might take >30 minutes, Cloud Tasks HTTP targets won't work. Use Cloud Run Jobs instead (supports up to 24-hour execution).
+
+| Timeout Type | Default | Max | What It Controls |
+|-------------|---------|-----|------------------|
+| Cloud Tasks `dispatch_deadline` | 10 min | 30 min | How long Cloud Tasks waits for HTTP response |
+| Cloud Run service timeout | 5 min | 60 min | How long a single HTTP request can run |
+| Cloud Run Jobs timeout | 10 min | 24 hr | How long a batch job execution can run |
+
+See `docs/archive/2026-01-01-worker-timeout-fixes.md` for full details.
+
 ### Two-Layer Timeout Pattern for Long-Running Loops
 
 **Problem**: A loop processing many items (e.g., 74 LLM calls at 15s each = 18+ minutes) can block indefinitely. Single outer timeout isn't enough because it may interrupt mid-operation and leave state inconsistent.

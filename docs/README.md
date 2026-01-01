@@ -30,9 +30,10 @@
 ## Known Issues
 
 - CDG format generation requires additional style configuration
-- Long audio files (>10 min) may timeout on some workers
 
 ## Recent Changes
+
+- **Worker Timeout Fixes** (2026-01-01): Fixed 3 timeout issues blocking job completion: (1) Lyrics transcription timeout increased to 20 min (PR #153), (2) Cloud Tasks dispatch_deadline added for audio worker - default 10 min was killing Modal API calls (PR #154), (3) Enabled Cloud Run Jobs for video encoding - 1-hour timeout vs 30-min Cloud Run service limit (PR #155). Full E2E pipeline now verified working. See [archive/2026-01-01-worker-timeout-fixes.md](archive/2026-01-01-worker-timeout-fixes.md)
 
 - **Agentic Correction Timeout** (2025-12-31): Added 3-minute configurable timeout for agentic AI lyrics correction. Prevents stuck jobs when songs have many gaps (74+ gaps could take 30+ minutes). On timeout, skips correction and proceeds to human review with raw transcription. See [archive/2025-12-31-agentic-timeout-implementation.md](archive/2025-12-31-agentic-timeout-implementation.md)
 - **Job Failure Fixes** (2025-12-31): Fixed 4 critical issues causing job failures: (1) user_email not set on jobs - users couldn't see their jobs, (2) YouTube URL race condition - lyrics worker started before audio downloaded, (3) Audio search cache not persisting across Cloud Run instances, (4) Jobs stuck in downloading state - added 10min transcription timeout. See [archive/2024-12-31-job-failure-investigation.md](archive/2024-12-31-job-failure-investigation.md)
