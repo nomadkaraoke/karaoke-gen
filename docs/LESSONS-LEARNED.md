@@ -32,6 +32,31 @@ Audio separation and lyrics transcription run in parallel:
 - Progress tracked separately in `state_data`
 - Screens generation waits for both to complete
 
+### Cloud Run Performance: Cold Starts and FFmpeg
+
+**Problem**: Cloud karaoke generation was ~3x slower than local CLI (15 min vs 5 min for a typical song).
+
+**Root causes identified**:
+
+1. **Cold start penalty**: Cloud Run with `min-instances: 0` caused 77-second cold starts for FFmpeg-heavy operations (title screen generation). Warm instances take only 6 seconds.
+
+2. **FFmpeg version**: Debian's package (5.1.8) is outdated and built with security-focused `--toolchain=hardened` which reduces performance. Static builds (7.0.2) from johnvansickle.com are ~20-40% faster.
+
+3. **Generic x86_64 build**: Debian packages use generic CPU instructions, not optimized for Cloud Run's Cascade Lake/Ice Lake processors.
+
+**Solutions applied**:
+- Set `min-instances: 4` to keep workers warm (eliminates cold start entirely)
+- Use John Van Sickle's static FFmpeg 7.0.2 instead of Debian package
+- Added `/api/health/detailed` endpoint to expose FFmpeg version for debugging
+
+**Key insight**: For CPU-bound encoding workloads on Cloud Run:
+- GPU acceleration often doesn't help (filters like libass aren't GPU-accelerated)
+- Newer FFmpeg versions have significant encoding optimizations
+- Static builds with CPU-specific tuning outperform generic distribution packages
+- Cold starts hurt more than expected for initialization-heavy binaries like FFmpeg
+
+**Debugging**: Use `scripts/compare_local_vs_remote.py` to benchmark local vs cloud performance.
+
 ## Common Gotchas
 
 ### Cross-Domain localStorage Isolation

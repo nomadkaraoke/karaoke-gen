@@ -3,6 +3,8 @@ Health check routes.
 """
 import os
 import logging
+import subprocess
+import platform
 from fastapi import APIRouter
 from typing import Dict, Any, Optional
 
@@ -13,6 +15,108 @@ from backend.services.stripe_service import get_stripe_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def get_system_info() -> Dict[str, Any]:
+    """Get system information for performance analysis."""
+    info = {
+        "platform": platform.system(),
+        "platform_release": platform.release(),
+        "python_version": platform.python_version(),
+    }
+
+    # Get CPU info
+    try:
+        cpu_count = os.cpu_count() or 0
+        info["cpu_count"] = cpu_count
+
+        # Try to get more detailed CPU info on Linux
+        if platform.system() == "Linux":
+            try:
+                with open("/proc/cpuinfo", "r") as f:
+                    for line in f:
+                        if "model name" in line:
+                            info["cpu_model"] = line.split(":")[1].strip()
+                            break
+            except Exception:
+                pass
+    except Exception as e:
+        info["cpu_error"] = str(e)
+
+    # Get memory info
+    try:
+        if platform.system() == "Linux":
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        mem_kb = int(line.split()[1])
+                        info["memory_gb"] = round(mem_kb / (1024 * 1024), 1)
+                        break
+    except Exception as e:
+        info["memory_error"] = str(e)
+
+    return info
+
+
+def get_ffmpeg_info() -> Dict[str, Any]:
+    """Get FFmpeg version and configuration for debugging encoding performance."""
+    try:
+        # Get FFmpeg version
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            lines = result.stdout.split("\n")
+            version_line = lines[0] if lines else "unknown"
+
+            # Check for hardware acceleration support
+            hw_accel = {}
+            config_result = subprocess.run(
+                ["ffmpeg", "-hwaccels"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if config_result.returncode == 0:
+                hw_lines = config_result.stdout.strip().split("\n")
+                hw_accel["available"] = [h.strip() for h in hw_lines[1:] if h.strip()]
+
+            # Check encoder availability
+            encoders = {}
+            encoder_result = subprocess.run(
+                ["ffmpeg", "-encoders"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if encoder_result.returncode == 0:
+                encoder_output = encoder_result.stdout
+                # Check for specific encoders we care about
+                encoders["libx264"] = "libx264" in encoder_output
+                encoders["h264_nvenc"] = "h264_nvenc" in encoder_output
+                encoders["h264_vaapi"] = "h264_vaapi" in encoder_output
+                encoders["hevc_nvenc"] = "hevc_nvenc" in encoder_output
+
+            return {
+                "available": True,
+                "version": version_line,
+                "hw_acceleration": hw_accel,
+                "encoders": encoders,
+            }
+        else:
+            return {
+                "available": False,
+                "error": result.stderr[:500] if result.stderr else "Unknown error",
+            }
+    except subprocess.TimeoutExpired:
+        return {"available": False, "error": "Timeout getting FFmpeg info"}
+    except FileNotFoundError:
+        return {"available": False, "error": "FFmpeg not found"}
+    except Exception as e:
+        return {"available": False, "error": str(e)}
 
 
 def check_transmission_status() -> Dict[str, Any]:
@@ -141,10 +245,16 @@ async def detailed_health_check() -> Dict[str, Any]:
     if not stripe_status["configured"]:
         logger.warning("Stripe service not configured - payments will not work")
 
+    # Get system and FFmpeg info for performance analysis
+    system_info = get_system_info()
+    ffmpeg_info = get_ffmpeg_info()
+
     return {
         "status": "healthy",
         "service": "karaoke-gen-backend",
         "version": VERSION,
+        "system": system_info,
+        "ffmpeg": ffmpeg_info,
         "dependencies": {
             "transmission_local": transmission_status,
             "flacfetch_remote": flacfetch_status,

@@ -166,6 +166,12 @@ TESTMAIL_NAMESPACE=...       # testmail.app namespace
 | `./scripts/run-backend-local.sh` | Start backend with emulators |
 | `./scripts/start-emulators.sh` | Start emulators only |
 | `./scripts/stop-emulators.sh` | Stop emulators |
+| `./scripts/debug-job.sh <job_id>` | Debug a cloud job (status, logs, files) |
+| `./scripts/get_job.py <job_id>` | Fetch job data from Firestore |
+| `./scripts/fetch_job_logs.py <job_id>` | Fetch cloud job logs to local file |
+| `./scripts/analyze_log_timing.py <log>` | Profile karaoke-gen performance from logs |
+| `./scripts/benchmark_ffmpeg.py` | Isolated FFmpeg encoding benchmark |
+| `./scripts/compare_local_vs_remote.py` | Compare local vs cloud karaoke-gen performance |
 
 ## Project Structure
 
