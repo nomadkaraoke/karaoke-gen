@@ -1082,6 +1082,18 @@ async def get_download_urls(
     }
 
 
+# Map file keys to human-readable suffixes (matching Dropbox naming from karaoke_finalise.py)
+DOWNLOAD_FILENAME_SUFFIXES = {
+    "lossless_4k_mp4": " (Final Karaoke Lossless 4k).mp4",
+    "lossless_4k_mkv": " (Final Karaoke Lossless 4k).mkv",
+    "lossy_4k_mp4": " (Final Karaoke Lossy 4k).mp4",
+    "lossy_720p_mp4": " (Final Karaoke Lossy 720p).mp4",
+    "cdg_zip": " (Final Karaoke CDG).zip",
+    "txt_zip": " (Final Karaoke TXT).zip",
+    "with_vocals": " (With Vocals).mkv",
+}
+
+
 @router.get("/{job_id}/download/{category}/{file_key}")
 async def download_file(
     job_id: str,
@@ -1146,8 +1158,28 @@ async def download_file(
     }
     content_type = content_types.get(ext, 'application/octet-stream')
     
-    # Get filename for Content-Disposition
-    filename = gcs_path.split('/')[-1]
+    # Build proper filename: "Artist - Title (Final Karaoke Lossy 4k).mp4"
+    # Sanitize artist/title to remove filesystem-unsafe characters
+    def sanitize_filename_part(s: str) -> str:
+        if not s:
+            return ""
+        # Remove/replace characters unsafe for filesystems: / \ : * ? " < > |
+        unsafe_chars = r'[/\\:*?"<>|]'
+        import re
+        sanitized = re.sub(unsafe_chars, '', s)
+        # Collapse multiple spaces and trim
+        sanitized = ' '.join(sanitized.split())
+        # Limit length to prevent overly long filenames
+        return sanitized[:100].strip()
+
+    artist_clean = sanitize_filename_part(job.artist) if job.artist else None
+    title_clean = sanitize_filename_part(job.title) if job.title else None
+    base_name = f"{artist_clean} - {title_clean}" if artist_clean and title_clean else None
+
+    if base_name and file_key in DOWNLOAD_FILENAME_SUFFIXES:
+        filename = f"{base_name}{DOWNLOAD_FILENAME_SUFFIXES[file_key]}"
+    else:
+        filename = gcs_path.split('/')[-1]  # Fallback to original
     
     try:
         # Download to temp file and stream
