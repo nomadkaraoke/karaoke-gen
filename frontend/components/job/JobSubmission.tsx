@@ -272,8 +272,8 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
                   Skip lyrics review (non-interactive)
                 </Label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  <span className="text-amber-500 font-medium">Warning:</span> AI lyrics correction isn&apos;t perfect.
-                  Skipping review will likely result in timing errors and incorrect words in your karaoke video.
+                  <span className="text-amber-500 font-medium">Warning:</span> auto lyrics correction isn&apos;t perfect.
+                  Skipping review will likely result in incorrect words in your karaoke video.
                 </p>
               </div>
             </div>
@@ -377,8 +377,8 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
                   Skip lyrics review (non-interactive)
                 </Label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  <span className="text-amber-500 font-medium">Warning:</span> AI lyrics correction isn&apos;t perfect.
-                  Skipping review will likely result in timing errors and incorrect words in your karaoke video.
+                  <span className="text-amber-500 font-medium">Warning:</span> auto lyrics correction isn&apos;t perfect.
+                  Skipping review will likely result in incorrect words in your karaoke video.
                 </p>
               </div>
             </div>
@@ -465,8 +465,8 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
                   Skip lyrics review (non-interactive)
                 </Label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  <span className="text-amber-500 font-medium">Warning:</span> AI lyrics correction isn&apos;t perfect.
-                  Skipping review will likely result in timing errors and incorrect words in your karaoke video.
+                  <span className="text-amber-500 font-medium">Warning:</span> auto lyrics correction isn&apos;t perfect.
+                  Skipping review will likely result in incorrect words in your karaoke video.
                 </p>
               </div>
             </div>
