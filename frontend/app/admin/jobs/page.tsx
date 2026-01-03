@@ -168,7 +168,7 @@ export default function AdminJobsPage() {
             placeholder="Filter by user email..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             className="max-w-sm"
           />
           <Button variant="secondary" onClick={handleSearch}>

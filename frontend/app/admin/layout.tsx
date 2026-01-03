@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getAccessToken } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
@@ -42,9 +42,9 @@ function AdminBreadcrumb() {
         } else if (segments[1] === "jobs") {
           if (segments.length === 2) {
             breadcrumbs.push({ label: "Jobs" })
-          } else {
+          } else if (segments[2]) {
             breadcrumbs.push({ label: "Jobs", href: "/admin/jobs" })
-            breadcrumbs.push({ label: segments[2] })
+            breadcrumbs.push({ label: decodeURIComponent(segments[2]) })
           }
         } else if (segments[1] === "beta") {
           breadcrumbs.push({ label: "Beta Program" })
@@ -61,14 +61,16 @@ function AdminBreadcrumb() {
     <Breadcrumb>
       <BreadcrumbList>
         {breadcrumbs.map((crumb, index) => (
-          <BreadcrumbItem key={index}>
+          <React.Fragment key={`${crumb.href || ''}-${crumb.label}`}>
             {index > 0 && <BreadcrumbSeparator />}
-            {crumb.href ? (
-              <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
-            ) : (
-              <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-            )}
-          </BreadcrumbItem>
+            <BreadcrumbItem>
+              {crumb.href ? (
+                <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
+              ) : (
+                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+              )}
+            </BreadcrumbItem>
+          </React.Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>

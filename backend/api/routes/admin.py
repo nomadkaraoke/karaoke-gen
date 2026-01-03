@@ -175,8 +175,10 @@ async def get_admin_stats_overview(
                             txn_date = datetime.fromisoformat(txn_date.replace("Z", "+00:00"))
                         except Exception:
                             continue
-                    if hasattr(txn_date, 'replace'):
+                    if isinstance(txn_date, datetime):
                         txn_date = txn_date.replace(tzinfo=None)
+                    else:
+                        continue
                     if txn_date >= thirty_days_ago:
                         amount = txn.get("amount", 0)
                         if amount > 0:  # Only count additions, not deductions

@@ -60,9 +60,9 @@ export function StatsCard({
         {trend && (
           <p className={cn(
             "text-xs mt-1",
-            trend.positive ? "text-green-500" : "text-red-500"
+            trend.positive === true ? "text-green-500" : trend.positive === false ? "text-red-500" : "text-muted-foreground"
           )}>
-            {trend.positive ? "+" : ""}{trend.value}% {trend.label}
+            {trend.positive === true ? "+" : ""}{trend.value}% {trend.label}
           </p>
         )}
       </CardContent>

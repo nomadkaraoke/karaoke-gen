@@ -30,8 +30,9 @@ export default function AdminDashboardPage() {
       setError(null)
       const data = await adminApi.getStats()
       setStats(data)
-    } catch (err: any) {
-      setError(err.message || "Failed to load statistics")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load statistics"
+      setError(message)
       console.error("Failed to load admin stats:", err)
     } finally {
       setLoading(false)
@@ -124,49 +125,49 @@ export default function AdminDashboardPage() {
                     <Clock className="w-4 h-4 text-yellow-500" />
                     <span className="text-sm">Pending</span>
                   </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status.pending ?? 0}</Badge>
+                  <Badge variant="secondary">{stats?.jobs_by_status?.pending ?? 0}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 text-blue-500" />
                     <span className="text-sm">Processing</span>
                   </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status.processing ?? 0}</Badge>
+                  <Badge variant="secondary">{stats?.jobs_by_status?.processing ?? 0}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-orange-500" />
                     <span className="text-sm">Awaiting Review</span>
                   </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status.awaiting_review ?? 0}</Badge>
+                  <Badge variant="secondary">{stats?.jobs_by_status?.awaiting_review ?? 0}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-purple-500" />
                     <span className="text-sm">Awaiting Instrumental</span>
                   </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status.awaiting_instrumental ?? 0}</Badge>
+                  <Badge variant="secondary">{stats?.jobs_by_status?.awaiting_instrumental ?? 0}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500" />
                     <span className="text-sm">Complete</span>
                   </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status.complete ?? 0}</Badge>
+                  <Badge variant="secondary">{stats?.jobs_by_status?.complete ?? 0}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-500" />
                     <span className="text-sm">Failed</span>
                   </div>
-                  <Badge variant="destructive">{stats?.jobs_by_status.failed ?? 0}</Badge>
+                  <Badge variant="destructive">{stats?.jobs_by_status?.failed ?? 0}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-gray-500" />
                     <span className="text-sm">Cancelled</span>
                   </div>
-                  <Badge variant="outline">{stats?.jobs_by_status.cancelled ?? 0}</Badge>
+                  <Badge variant="outline">{stats?.jobs_by_status?.cancelled ?? 0}</Badge>
                 </div>
               </div>
             )}

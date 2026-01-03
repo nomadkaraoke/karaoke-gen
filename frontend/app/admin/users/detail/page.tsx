@@ -82,9 +82,19 @@ export default function AdminUserDetailPage() {
   const handleAddCredits = async () => {
     if (!creditAmount || !creditReason) return
 
+    const amount = parseInt(creditAmount.trim(), 10)
+    if (!Number.isInteger(amount) || amount < 1 || amount > 100000) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount between 1 and 100,000",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setActionLoading(true)
-      await adminApi.addCredits(email, parseInt(creditAmount), creditReason)
+      await adminApi.addCredits(email, amount, creditReason)
       toast({
         title: "Credits Added",
         description: `Added ${creditAmount} credits`,

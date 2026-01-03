@@ -110,9 +110,19 @@ export default function AdminUsersPage() {
   const handleAddCredits = async () => {
     if (!selectedUser || !creditAmount || !creditReason) return
 
+    const amount = parseInt(creditAmount.trim(), 10)
+    if (!Number.isInteger(amount) || amount < 1 || amount > 100000) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount between 1 and 100,000",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setAddingCredits(true)
-      await adminApi.addCredits(selectedUser.email, parseInt(creditAmount), creditReason)
+      await adminApi.addCredits(selectedUser.email, amount, creditReason)
       toast({
         title: "Credits Added",
         description: `Added ${creditAmount} credits to ${selectedUser.email}`,
@@ -291,7 +301,7 @@ export default function AdminUsersPage() {
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {offset + 1}-{Math.min(offset + users.length, total)} of {total} users
+          {total === 0 ? "No users found" : `Showing ${offset + 1}-${Math.min(offset + users.length, total)} of ${total} users`}
         </p>
         <div className="flex gap-2">
           <Button
