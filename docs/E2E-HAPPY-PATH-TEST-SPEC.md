@@ -14,14 +14,14 @@
 
 ## Test Requirements
 
-### 1. New User Registration (MailSlurp)
+### 1. New User Registration (testmail.app)
 
 - [ ] Navigate to landing page (`gen.nomadkaraoke.com`)
 - [ ] Click "Sign In" or "Get Started" button
-- [ ] Create a NEW MailSlurp inbox (fresh email address for each test run)
+- [ ] Create a NEW testmail.app inbox (fresh email address for each test run)
 - [ ] Enter the test email in the beta enrollment form
 - [ ] Submit the form
-- [ ] Wait for welcome/magic-link email in MailSlurp inbox
+- [ ] Wait for welcome/magic-link email in testmail.app inbox
 - [ ] Extract the magic link from the email
 - [ ] Click/navigate to the magic link to authenticate
 - [ ] Verify user is logged in and has credits
@@ -118,7 +118,8 @@
 ### Environment Variables
 
 ```bash
-MAILSLURP_API_KEY=xxx          # Required - for email testing
+TESTMAIL_API_KEY=xxx           # Required - for email testing
+TESTMAIL_NAMESPACE=xxx         # Required - testmail.app namespace
 # No pre-auth tokens - test handles full signup
 ```
 
@@ -160,7 +161,8 @@ Log detailed progress at each step with timestamps for debugging.
 
 ### Secrets Required
 
-- `MAILSLURP_API_KEY` - For email testing
+- `TESTMAIL_API_KEY` - For email testing
+- `TESTMAIL_NAMESPACE` - testmail.app namespace
 
 ### Workflow Steps
 

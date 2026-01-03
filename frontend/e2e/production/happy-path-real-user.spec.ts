@@ -11,7 +11,7 @@ import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-tes
  *
  * Test Flow:
  * 1. Landing Page - Navigate and verify
- * 2. New User Signup - Create MailSlurp inbox, submit beta form, verify email
+ * 2. New User Signup - Create testmail.app inbox, submit beta form, verify email
  * 3. Magic Link Auth - Click magic link to authenticate
  * 4. Create Job - Search for test song via UI
  * 5. Audio Selection - Select audio source via UI dialog
@@ -24,7 +24,7 @@ import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-tes
  * 12. Cleanup - Delete distributed content and job
  *
  * Environment Variables:
- *   - MAILSLURP_API_KEY: Required for email testing (can be skipped with E2E_TEST_TOKEN)
+ *   - TESTMAIL_API_KEY + TESTMAIL_NAMESPACE: Required for email testing (can be skipped with E2E_TEST_TOKEN)
  *   - E2E_TEST_TOKEN: Pre-configured user token to skip signup flow (for iterations)
  *   - E2E_ADMIN_TOKEN: Required for cleanup endpoint (optional - cleanup skipped if not set)
  */
@@ -138,12 +138,12 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
   }) => {
     test.setTimeout(TIMEOUTS.fullTest);
 
-    // Check if we have a pre-configured token (for iterations without using MailSlurp)
+    // Check if we have a pre-configured token (for iterations without using testmail.app)
     const usePreConfiguredToken = hasPreConfiguredToken();
 
-    // Skip if neither pre-configured token nor MailSlurp is available
+    // Skip if neither pre-configured token nor testmail.app is available
     if (!usePreConfiguredToken && !isEmailTestingAvailable()) {
-      test.skip(true, 'Neither E2E_TEST_TOKEN nor MAILSLURP_API_KEY set - cannot run test');
+      test.skip(true, 'Neither E2E_TEST_TOKEN nor TESTMAIL_API_KEY/TESTMAIL_NAMESPACE set - cannot run test');
       return;
     }
 
@@ -217,7 +217,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log('STEP 3 COMPLETE: User authenticated with pre-configured token');
 
       } else {
-        // ----- FULL PATH: Beta signup with MailSlurp -----
+        // ----- FULL PATH: Beta signup with testmail.app -----
         console.log('\n========================================');
         console.log('STEP 2: New User Beta Enrollment');
         console.log('========================================');
