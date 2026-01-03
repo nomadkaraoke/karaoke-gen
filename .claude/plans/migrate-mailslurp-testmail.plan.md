@@ -45,9 +45,7 @@ Replace MailSlurp email testing service with testmail.app for E2E testing of mag
 | `MAILSLURP_API_KEY` | `TESTMAIL_API_KEY` |
 | (none) | `TESTMAIL_NAMESPACE` |
 
-Values provided by user:
-- Namespace: `k1l43`
-- API Key: `a4349f26-b481-4f32-9110-8a21f395a055`
+Values: Set via environment variables (see `frontend/.env.local.example`)
 
 ## Implementation Steps
 
@@ -72,7 +70,7 @@ Values provided by user:
 
 6. [x] **Create `.env.local.example`** - Document required env vars for local testing
 
-7. [ ] **Update archive docs** - Skip - historical accuracy preserved (docs reference old system)
+7. [x] **Update archive docs** - Skipped intentionally; historical docs preserved for accuracy
 
 ## Files to Create/Modify
 
@@ -87,11 +85,11 @@ Values provided by user:
 
 ## Testing Strategy
 
-- **Manual testing**: Run production E2E test with real testmail.app credentials
+- **Manual testing**: Run production E2E test with testmail.app credentials
   ```bash
   cd frontend
-  TESTMAIL_API_KEY=a4349f26-b481-4f32-9110-8a21f395a055 \
-  TESTMAIL_NAMESPACE=k1l43 \
+  TESTMAIL_API_KEY=your-api-key \
+  TESTMAIL_NAMESPACE=your-namespace \
   npm run test:e2e:prod:headed
   ```
 - **Verify**: Email received, magic link extracted, auth flow completes
