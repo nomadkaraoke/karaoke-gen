@@ -70,7 +70,8 @@ jobs:
       - name: Run E2E Happy Path Test
         working-directory: frontend
         env:
-          MAILSLURP_API_KEY: ${{ secrets.MAILSLURP_API_KEY }}
+          TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
+          TESTMAIL_NAMESPACE: ${{ secrets.TESTMAIL_NAMESPACE }}
           E2E_TEST_TOKEN: ${{ inputs.use_test_token == 'true' && secrets.E2E_TEST_TOKEN || '' }}
           E2E_ADMIN_TOKEN: ${{ secrets.E2E_ADMIN_TOKEN }}
           DEBUG_MODE: ${{ inputs.debug_mode || 'false' }}
