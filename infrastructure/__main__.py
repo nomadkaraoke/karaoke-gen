@@ -1237,8 +1237,10 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
     jobs[job_id]["progress"] = 10
 
     try:
-        # Find input files
-        input_files = list(work_dir.glob("*.mkv")) + list(work_dir.glob("*.mp4")) + list(work_dir.glob("*.mov"))
+        # Find input files (search recursively since GCS downloads preserve directory structure)
+        input_files = list(work_dir.glob("**/*.mkv")) + list(work_dir.glob("**/*.mp4")) + list(work_dir.glob("**/*.mov"))
+        # Exclude files in the outputs directory to avoid re-encoding previous outputs
+        input_files = [f for f in input_files if "outputs" not in str(f)]
         if not input_files:
             raise ValueError(f"No video files found in {work_dir}")
 
@@ -1246,8 +1248,14 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         input_video = input_files[0]
         logger.info(f"Using input video: {input_video}")
 
-        # Find instrumental audio
-        instrumental_files = list(work_dir.glob("*Instrumental*.flac")) + list(work_dir.glob("*Instrumental*.wav"))
+        # Find instrumental audio (search recursively, case-insensitive patterns)
+        # GCS stores as: instrumental_clean.flac, instrumental_with_backing.flac
+        instrumental_files = (
+            list(work_dir.glob("**/*instrumental*.flac")) +
+            list(work_dir.glob("**/*instrumental*.wav")) +
+            list(work_dir.glob("**/*Instrumental*.flac")) +
+            list(work_dir.glob("**/*Instrumental*.wav"))
+        )
         instrumental = instrumental_files[0] if instrumental_files else None
 
         output_dir = work_dir / "outputs"

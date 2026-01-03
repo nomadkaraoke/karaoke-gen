@@ -38,6 +38,8 @@
 
 - **Admin Dashboard** (2026-01-03): Added comprehensive admin dashboard at `/admin` with: stats overview (users, jobs, credits), user management (search, sort, add credits, toggle role, enable/disable), job browser (filter by status/user, view details, delete), and beta program monitoring. Query-param based routing for static export compatibility. See [API.md](API.md#admin-endpoints) for backend endpoints.
 
+- **GCE Encoding Worker** (2026-01-03): Added optional high-performance encoding on dedicated GCE VM (C4-standard-8 with Intel Granite Rapids 3.9 GHz). Uses `USE_GCE_ENCODING=true` env var. Falls back to Cloud Run if unavailable. See [ARCHITECTURE.md](ARCHITECTURE.md).
+
 - **Runner Disk Space Auto-Cleanup** (2026-01-03): Fixed CI failures caused by self-hosted runners filling up with Docker images. Changed cleanup from daily/7-day-old to hourly/threshold-based (70%). Added pre-job disk checks to all self-hosted CI jobs. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#docker-disk-space-management-on-self-hosted-runners)
 
 - **E2E Happy Path Test** (2026-01-02): Added comprehensive E2E test that validates the complete karaoke generation journey using ONLY browser UI interactions (no API shortcuts). Test covers all 12 steps from landing page through cleanup. Runs daily via GitHub Actions and takes ~38 minutes. See [E2E-HAPPY-PATH-TEST-SPEC.md](E2E-HAPPY-PATH-TEST-SPEC.md)

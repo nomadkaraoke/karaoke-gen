@@ -770,6 +770,31 @@ result = job.state_data['search_results'][selection_index]
 
 **Lesson**: Design for stateless request handling. Any state that must survive between requests must be persisted externally.
 
+### GCS Downloads Preserve Directory Structure
+
+**Problem**: When downloading files from GCS, the directory structure is preserved. Code that uses non-recursive glob patterns won't find files in subdirectories.
+
+**Example**: GCE encoding worker downloaded from `gs://bucket/jobs/{job_id}/` but files were stored as:
+- `videos/with_vocals.mkv`
+- `stems/instrumental_clean.flac`
+
+The original code used `work_dir.glob("*.mkv")` which only searched the root directory, causing "No video files found" errors.
+
+**Solution**: Use recursive glob patterns and filter results:
+```python
+# BAD - only searches root directory
+input_files = list(work_dir.glob("*.mkv"))
+
+# GOOD - searches all subdirectories
+input_files = list(work_dir.glob("**/*.mkv"))
+# Filter out outputs directory to avoid re-encoding
+input_files = [f for f in input_files if "outputs" not in str(f)]
+```
+
+**Related gotcha**: Case sensitivity matters. GCS stores filenames as-is, so if files are uploaded as `instrumental_clean.flac` (lowercase), searching for `*Instrumental*.flac` (capital I) won't find them. Use case-insensitive patterns or search for both cases.
+
+**Lesson**: When writing code that processes files downloaded from GCS, always use recursive glob patterns and verify the expected directory structure matches what's actually stored.
+
 ### Library Caches Need GCS Sync in Cloud Run
 
 **Problem**: Libraries like LyricsTranscriber cache API responses to local directories (e.g., `~/lyrics-transcriber-cache`). In Cloud Run, each container is ephemeral - the cache is lost on every restart or scale-up, causing redundant API calls.
