@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Load .env.local file if it exists (for KARAOKE_ACCESS_TOKEN, MAILSLURP_API_KEY)
+// Load .env.local file if it exists (for KARAOKE_ACCESS_TOKEN, TESTMAIL_API_KEY, TESTMAIL_NAMESPACE)
 const envLocalPath = path.join(__dirname, '.env.local');
 if (fs.existsSync(envLocalPath)) {
   const envContent = fs.readFileSync(envLocalPath, 'utf-8');

@@ -25,7 +25,8 @@ import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-tes
  * 10. Verify Outputs - Check download URLs
  *
  * Environment Variables:
- *   - MAILSLURP_API_KEY: For email testing (required for full flow)
+ *   - TESTMAIL_API_KEY: For email testing (required for full flow)
+ *   - TESTMAIL_NAMESPACE: Your testmail.app namespace
  *   - KARAOKE_ACCESS_TOKEN: Skip enrollment and use existing token
  */
 
@@ -189,11 +190,11 @@ test.describe('Production E2E - Full User Journey', () => {
       });
       console.log('  Authenticated successfully with existing token');
     } else if (isEmailTestingAvailable()) {
-      console.log('  Starting beta enrollment with MailSlurp');
+      console.log('  Starting beta enrollment with testmail.app');
       const emailHelper = await createEmailHelper();
 
       if (!emailHelper.isAvailable) {
-        throw new Error('MailSlurp not available');
+        throw new Error('testmail.app not available');
       }
 
       // Create test inbox
@@ -249,7 +250,7 @@ test.describe('Production E2E - Full User Journey', () => {
       }
     } else {
       throw new Error(
-        'No KARAOKE_ACCESS_TOKEN and no MAILSLURP_API_KEY - cannot authenticate'
+        'No KARAOKE_ACCESS_TOKEN and no TESTMAIL_API_KEY/TESTMAIL_NAMESPACE - cannot authenticate'
       );
     }
 
