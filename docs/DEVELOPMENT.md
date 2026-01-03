@@ -151,7 +151,11 @@ ADMIN_TOKENS=token1,token2
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
-KARAOKE_ACCESS_TOKEN=...  # For E2E tests
+
+# For E2E tests (see frontend/.env.local.example)
+KARAOKE_ACCESS_TOKEN=...     # Skip email enrollment
+TESTMAIL_API_KEY=...         # testmail.app API key
+TESTMAIL_NAMESPACE=...       # testmail.app namespace
 ```
 
 ## Key Scripts
