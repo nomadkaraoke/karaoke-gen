@@ -1439,7 +1439,7 @@ async def process_job(job_id: str, request: EncodeRequest):
 
             # Convert local paths to blob paths (backend expects blob paths, not full gs:// URIs)
             # output_gcs_path is like "gs://bucket/jobs/id/encoded/"
-            # We need paths like "jobs/id/encoded/output_4k.mp4"
+            # We need paths like "jobs/id/encoded/output_4k_lossless.mp4"
             gcs_path = request.output_gcs_path.replace("gs://", "")
             parts = gcs_path.split("/", 1)
             prefix = parts[1].rstrip("/") if len(parts) > 1 else ""
