@@ -1268,12 +1268,12 @@ def upload_to_gcs(local_path: Path, gcs_uri: str):
     # Upload a file or folder to GCS
     parts = gcs_uri.replace("gs://", "").split("/", 1)
     bucket_name = parts[0]
-    prefix = parts[1] if len(parts) > 1 else ""
+    prefix = parts[1].rstrip("/") if len(parts) > 1 else ""
 
     bucket = storage_client.bucket(bucket_name)
 
     if local_path.is_file():
-        blob_name = f"{prefix}/{local_path.name}".strip("/")
+        blob_name = f"{prefix}/{local_path.name}" if prefix else local_path.name
         blob = bucket.blob(blob_name)
         blob.upload_from_filename(str(local_path))
         logger.info(f"Uploaded: {local_path} -> gs://{bucket_name}/{blob_name}")
@@ -1281,7 +1281,7 @@ def upload_to_gcs(local_path: Path, gcs_uri: str):
         for file in local_path.rglob("*"):
             if file.is_file():
                 rel_path = file.relative_to(local_path)
-                blob_name = f"{prefix}/{rel_path}".strip("/")
+                blob_name = f"{prefix}/{rel_path}" if prefix else str(rel_path)
                 blob = bucket.blob(blob_name)
                 blob.upload_from_filename(str(file))
                 logger.info(f"Uploaded: {file} -> gs://{bucket_name}/{blob_name}")
