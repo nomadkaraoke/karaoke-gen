@@ -272,6 +272,117 @@ Content-Type: application/json
 
 Bonus credit for detailed feedback (50+ chars).
 
+## Admin Endpoints
+
+All admin endpoints require an admin-role session token.
+
+### Admin Dashboard Stats
+
+```http
+GET /api/admin/stats/overview
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Returns platform statistics:
+```json
+{
+  "total_users": 100,
+  "active_users_7d": 25,
+  "active_users_30d": 60,
+  "total_jobs": 500,
+  "jobs_last_7d": 50,
+  "jobs_last_30d": 150,
+  "jobs_by_status": {
+    "pending": 5,
+    "processing": 3,
+    "awaiting_review": 10,
+    "complete": 400,
+    "failed": 20
+  },
+  "total_credits_issued_30d": 200,
+  "total_beta_testers": 30
+}
+```
+
+### List Users (Admin)
+
+```http
+GET /api/users/admin/users
+GET /api/users/admin/users?search=user@example.com
+GET /api/users/admin/users?limit=20&offset=0&sort_by=created_at&sort_order=desc
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Returns paginated user list with total count.
+
+### User Detail (Admin)
+
+```http
+GET /api/users/admin/users/{email}/detail
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Returns full user profile including:
+- User info and stats
+- Recent credit transactions (last 20)
+- Recent jobs (last 10)
+- Active sessions count
+
+### Add Credits (Admin)
+
+```http
+POST /api/users/admin/credits
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "amount": 5,
+  "reason": "Beta reward"
+}
+```
+
+### Set User Role (Admin)
+
+```http
+POST /api/users/admin/users/{email}/role
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{"role": "admin"}
+```
+
+### Enable/Disable User (Admin)
+
+```http
+POST /api/users/admin/users/{email}/enable
+POST /api/users/admin/users/{email}/disable
+Authorization: Bearer ADMIN_TOKEN
+```
+
+### Beta Stats (Admin)
+
+```http
+GET /api/users/admin/beta/stats
+Authorization: Bearer ADMIN_TOKEN
+```
+
+### Beta Feedback List (Admin)
+
+```http
+GET /api/users/admin/beta/feedback?limit=50
+Authorization: Bearer ADMIN_TOKEN
+```
+
+### Delete Job (Admin)
+
+```http
+DELETE /api/jobs/{job_id}?delete_files=true
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Admins can delete any job. Regular users can only delete their own jobs.
+
 ## Rate Limits
 
 No rate limits currently implemented.

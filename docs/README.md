@@ -7,6 +7,7 @@
 - **Web App**: https://gen.nomadkaraoke.com
   - `/` - Landing page with pricing and beta enrollment
   - `/app` - Main app (upload audio, review lyrics, download videos)
+  - `/admin` - Admin dashboard (user management, job monitoring, beta program)
 - **Backend API**: https://api.nomadkaraoke.com - FastAPI on Cloud Run
 - **CLI Tools**: `karaoke-gen` (local), `karaoke-gen-remote` (cloud)
 
@@ -25,6 +26,7 @@
 | Magic link auth | Working |
 | Payment flow (Stripe) | Working |
 | Beta tester program | Working |
+| Admin dashboard | Working |
 | CI/CD self-hosted runner | Working (GCP) |
 | E2E happy path test | Working (38 min full pipeline) |
 
@@ -33,6 +35,8 @@
 - CDG format generation requires additional style configuration
 
 ## Recent Changes
+
+- **Admin Dashboard** (2026-01-03): Added comprehensive admin dashboard at `/admin` with: stats overview (users, jobs, credits), user management (search, sort, add credits, toggle role, enable/disable), job browser (filter by status/user, view details, delete), and beta program monitoring. Query-param based routing for static export compatibility. See [API.md](API.md#admin-endpoints) for backend endpoints.
 
 - **Runner Disk Space Auto-Cleanup** (2026-01-03): Fixed CI failures caused by self-hosted runners filling up with Docker images. Changed cleanup from daily/7-day-old to hourly/threshold-based (70%). Added pre-job disk checks to all self-hosted CI jobs. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#docker-disk-space-management-on-self-hosted-runners)
 
