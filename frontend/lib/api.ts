@@ -669,5 +669,270 @@ export interface BetaEnrollResponse {
   session_token: string | null;
 }
 
+// ==========================================================================
+// Admin Types
+// ==========================================================================
+
+export interface AdminStatsOverview {
+  total_users: number;
+  active_users_7d: number;
+  active_users_30d: number;
+  total_jobs: number;
+  jobs_last_7d: number;
+  jobs_last_30d: number;
+  jobs_by_status: {
+    pending: number;
+    processing: number;
+    awaiting_review: number;
+    awaiting_instrumental: number;
+    complete: number;
+    failed: number;
+    cancelled: number;
+  };
+  total_credits_issued_30d: number;
+  total_beta_testers: number;
+}
+
+export interface AdminUser {
+  email: string;
+  role: 'user' | 'admin';
+  credits: number;
+  display_name?: string;
+  total_jobs_created?: number;
+  total_jobs_completed?: number;
+}
+
+export interface AdminUserListResponse {
+  users: AdminUser[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+}
+
+export interface AdminUserDetail {
+  email: string;
+  role: 'user' | 'admin';
+  credits: number;
+  display_name?: string;
+  is_active: boolean;
+  email_verified: boolean;
+  created_at?: string;
+  updated_at?: string;
+  last_login_at?: string;
+  total_jobs_created: number;
+  total_jobs_completed: number;
+  is_beta_tester: boolean;
+  beta_tester_status?: string;
+  credit_transactions: Array<{
+    id: string;
+    amount: number;
+    reason: string;
+    created_at: string;
+    job_id?: string;
+    created_by?: string;
+  }>;
+  recent_jobs: Array<{
+    job_id: string;
+    status: string;
+    artist?: string;
+    title?: string;
+    created_at?: string;
+  }>;
+  active_sessions_count: number;
+}
+
+export interface AdminBetaStats {
+  total_beta_testers: number;
+  active_testers: number;
+  pending_feedback: number;
+  completed_feedback: number;
+  total_feedback_submissions: number;
+  average_ratings: {
+    overall: number;
+    ease_of_use: number;
+    lyrics_accuracy: number;
+    correction_experience: number;
+  };
+}
+
+export interface AdminBetaFeedback {
+  id: string;
+  user_email: string;
+  job_id?: string;
+  overall_rating: number;
+  ease_of_use_rating?: number;
+  lyrics_accuracy_rating?: number;
+  correction_experience_rating?: number;
+  what_went_well?: string;
+  what_could_improve?: string;
+  additional_comments?: string;
+  would_recommend?: boolean;
+  would_use_again?: boolean;
+  created_at: string;
+}
+
+export interface AdminJobListParams {
+  status?: string;
+  user_email?: string;
+  environment?: string;
+  created_after?: string;
+  created_before?: string;
+  limit?: number;
+}
+
+// Admin API namespace
+export const adminApi = {
+  /**
+   * Get admin dashboard statistics
+   */
+  async getStats(): Promise<AdminStatsOverview> {
+    const response = await fetch(`${API_BASE_URL}/api/admin/stats/overview`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * List all users with pagination and search
+   */
+  async listUsers(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    sort_by?: 'created_at' | 'last_login_at' | 'credits' | 'email';
+    sort_order?: 'asc' | 'desc';
+    include_inactive?: boolean;
+  }): Promise<AdminUserListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort_by) searchParams.set('sort_by', params.sort_by);
+    if (params?.sort_order) searchParams.set('sort_order', params.sort_order);
+    if (params?.include_inactive) searchParams.set('include_inactive', 'true');
+
+    const url = `${API_BASE_URL}/api/users/admin/users${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get detailed user information
+   */
+  async getUserDetail(email: string): Promise<AdminUserDetail> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/detail`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Add credits to a user
+   */
+  async addCredits(email: string, amount: number, reason: string): Promise<{
+    status: string;
+    email: string;
+    credits_added: number;
+    new_balance: number;
+    message: string;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/credits`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ email, amount, reason }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Set user role
+   */
+  async setUserRole(email: string, role: 'user' | 'admin'): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/role?role=${role}`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Enable a user account
+   */
+  async enableUser(email: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/enable`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Disable a user account
+   */
+  async disableUser(email: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/disable`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * List all jobs (admin view)
+   */
+  async listAllJobs(params?: AdminJobListParams): Promise<Job[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.user_email) searchParams.set('user_email', params.user_email);
+    if (params?.environment) searchParams.set('environment', params.environment);
+    if (params?.created_after) searchParams.set('created_after', params.created_after);
+    if (params?.created_before) searchParams.set('created_before', params.created_before);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+
+    const url = `${API_BASE_URL}/api/jobs${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse<Job[]>(response);
+  },
+
+  /**
+   * Get beta program statistics
+   */
+  async getBetaStats(): Promise<AdminBetaStats> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/beta/stats`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get beta program feedback list
+   */
+  async getBetaFeedback(limit: number = 50): Promise<{ feedback: AdminBetaFeedback[]; total: number }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/beta/feedback?limit=${limit}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Delete a job (admin)
+   */
+  async deleteJob(jobId: string, deleteFiles: boolean = true): Promise<{ status: string; message: string }> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/jobs/${jobId}?delete_files=${deleteFiles}`,
+      { method: 'DELETE', headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+};
+
 export { ApiError };
 

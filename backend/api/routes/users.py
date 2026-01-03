@@ -607,31 +607,185 @@ async def get_feedback_form_data(
 # Admin Endpoints
 # =============================================================================
 
-@router.get("/admin/users", response_model=UserListResponse)
+class UserListResponsePaginated(BaseModel):
+    """Paginated response for user list."""
+    users: list[UserPublic]
+    total: int
+    offset: int
+    limit: int
+    has_more: bool
+
+
+class UserDetailResponse(BaseModel):
+    """Detailed user information for admin view."""
+    email: str
+    role: UserRole
+    credits: int
+    display_name: Optional[str] = None
+    is_active: bool = True
+    email_verified: bool = False
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    last_login_at: Optional[str] = None
+    total_jobs_created: int = 0
+    total_jobs_completed: int = 0
+    is_beta_tester: bool = False
+    beta_tester_status: Optional[str] = None
+    credit_transactions: list[dict] = []
+    recent_jobs: list[dict] = []
+    active_sessions_count: int = 0
+
+
+@router.get("/admin/users", response_model=UserListResponsePaginated)
 async def list_users(
-    limit: int = 100,
+    limit: int = 50,
+    offset: int = 0,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
     include_inactive: bool = False,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
-    List all users (admin only).
+    List all users with search, pagination, and sorting (admin only).
+
+    Args:
+        limit: Maximum users to return (default 50, max 100)
+        offset: Number of users to skip for pagination
+        search: Search by email (case-insensitive prefix match)
+        sort_by: Field to sort by (created_at, last_login_at, credits, email)
+        sort_order: Sort direction (asc, desc)
+        include_inactive: Include disabled users
     """
-    users = user_service.list_users(limit=limit, include_inactive=include_inactive)
+    from google.cloud import firestore
+    from google.cloud.firestore_v1 import FieldFilter
 
-    users_public = [
-        UserPublic(
-            email=u.email,
-            role=u.role,
-            credits=u.credits,
-            display_name=u.display_name,
-            total_jobs_created=u.total_jobs_created,
-            total_jobs_completed=u.total_jobs_completed,
-        )
-        for u in users
-    ]
+    # Validate and cap limit
+    limit = min(limit, 100)
 
-    return UserListResponse(users=users_public, total=len(users_public))
+    db = user_service.db
+    query = db.collection("users")
+
+    # Filter inactive users
+    if not include_inactive:
+        query = query.where(filter=FieldFilter('is_active', '==', True))
+
+    # Search by email prefix (case-insensitive via range query)
+    if search:
+        search_lower = search.lower()
+        # Use range query for prefix matching
+        query = query.where(filter=FieldFilter('email', '>=', search_lower))
+        query = query.where(filter=FieldFilter('email', '<', search_lower + '\uffff'))
+
+    # Sorting
+    direction = firestore.Query.DESCENDING if sort_order == "desc" else firestore.Query.ASCENDING
+    if sort_by in ["created_at", "last_login_at", "credits", "email"]:
+        query = query.order_by(sort_by, direction=direction)
+    else:
+        query = query.order_by("created_at", direction=direction)
+
+    # Get total count (without pagination) for has_more calculation
+    # Note: This is expensive for large datasets, consider caching
+    all_docs = list(query.stream())
+    total_count = len(all_docs)
+
+    # Apply pagination manually (Firestore doesn't support offset well)
+    paginated_docs = all_docs[offset:offset + limit]
+
+    users_public = []
+    for doc in paginated_docs:
+        data = doc.to_dict()
+        users_public.append(UserPublic(
+            email=data.get("email", ""),
+            role=data.get("role", UserRole.USER),
+            credits=data.get("credits", 0),
+            display_name=data.get("display_name"),
+            total_jobs_created=data.get("total_jobs_created", 0),
+            total_jobs_completed=data.get("total_jobs_completed", 0),
+        ))
+
+    return UserListResponsePaginated(
+        users=users_public,
+        total=total_count,
+        offset=offset,
+        limit=limit,
+        has_more=(offset + limit) < total_count,
+    )
+
+
+@router.get("/admin/users/{email}/detail", response_model=UserDetailResponse)
+async def get_user_detail(
+    email: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Get detailed user information including credit history and recent jobs (admin only).
+    """
+    from google.cloud import firestore
+    from google.cloud.firestore_v1 import FieldFilter
+    from urllib.parse import unquote
+
+    # URL decode the email (handles @ and other special chars)
+    email = unquote(email).lower()
+
+    user = user_service.get_user(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db = user_service.db
+
+    # Get recent jobs for this user
+    jobs_query = db.collection("jobs").where(
+        filter=FieldFilter("user_email", "==", email)
+    ).order_by("created_at", direction=firestore.Query.DESCENDING).limit(10)
+
+    recent_jobs = []
+    for job_doc in jobs_query.stream():
+        job_data = job_doc.to_dict()
+        recent_jobs.append({
+            "job_id": job_data.get("job_id"),
+            "status": job_data.get("status"),
+            "artist": job_data.get("artist"),
+            "title": job_data.get("title"),
+            "created_at": job_data.get("created_at").isoformat() if job_data.get("created_at") else None,
+        })
+
+    # Count active sessions
+    sessions_query = db.collection("sessions").where(
+        filter=FieldFilter("user_email", "==", email)
+    ).where(
+        filter=FieldFilter("is_active", "==", True)
+    )
+    active_sessions_count = sum(1 for _ in sessions_query.stream())
+
+    # Format credit transactions
+    credit_transactions = []
+    for txn in user.credit_transactions[-20:]:  # Last 20 transactions
+        if hasattr(txn, 'model_dump'):
+            credit_transactions.append(txn.model_dump(mode='json'))
+        elif isinstance(txn, dict):
+            credit_transactions.append(txn)
+
+    return UserDetailResponse(
+        email=user.email,
+        role=user.role,
+        credits=user.credits,
+        display_name=user.display_name,
+        is_active=user.is_active,
+        email_verified=user.email_verified,
+        created_at=user.created_at.isoformat() if user.created_at else None,
+        updated_at=user.updated_at.isoformat() if user.updated_at else None,
+        last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+        total_jobs_created=user.total_jobs_created,
+        total_jobs_completed=user.total_jobs_completed,
+        is_beta_tester=user.is_beta_tester,
+        beta_tester_status=user.beta_tester_status,
+        credit_transactions=credit_transactions,
+        recent_jobs=recent_jobs,
+        active_sessions_count=active_sessions_count,
+    )
 
 
 @router.post("/admin/credits", response_model=AddCreditsResponse)
