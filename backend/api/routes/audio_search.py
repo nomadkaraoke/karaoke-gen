@@ -117,6 +117,9 @@ class AudioSearchRequest(BaseModel):
     # Style params JSON and related assets (background images, fonts)
     style_files: Optional[List[StyleFileRequest]] = Field(None, description="Style files to upload (style_params JSON, backgrounds, fonts)")
 
+    # Non-interactive mode
+    non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
+
 
 class AudioSearchResultResponse(BaseModel):
     """A single audio search result.
@@ -552,10 +555,11 @@ async def search_audio(
             audio_search_title=body.title,
             auto_download=body.auto_download,
             request_metadata=request_metadata,
+            non_interactive=body.non_interactive,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id
-        
+
         logger.info(f"Created job {job_id} for audio search: {body.artist} - {body.title}")
         
         # Update job with audio search fields

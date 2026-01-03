@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { api, Job, getAccessToken } from "@/lib/api"
-import { useAutoMode, getAutoModeFromUrl } from "@/lib/auto-mode"
 import { useJobNotifications, useVisibilityRefresh } from "@/hooks/use-notifications"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Music2, RefreshCw, Loader2, Zap, ZapOff, Moon, Sun } from "lucide-react"
+import { Music2, RefreshCw, Loader2, Moon, Sun } from "lucide-react"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { JobSubmission } from "@/components/job/JobSubmission"
@@ -28,7 +27,6 @@ export default function AppPage() {
   const [isLoadingJobs, setIsLoadingJobs] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const { enabled: autoModeEnabled, setEnabled: setAutoMode, toggle: toggleAutoMode } = useAutoMode()
   const { isDarkMode, toggleTheme, mounted } = useTheme()
 
   // Memoize loadJobs for use with visibility refresh
@@ -69,14 +67,6 @@ export default function AppPage() {
     setIsAuthenticated(true)
   }, [router])
 
-  // Initialize auto-mode from URL parameter on mount
-  useEffect(() => {
-    const urlAutoMode = getAutoModeFromUrl()
-    if (urlAutoMode) {
-      setAutoMode(true)
-    }
-  }, [setAutoMode])
-
   // Load jobs on mount (only if authenticated)
   useEffect(() => {
     if (isAuthenticated !== true) {
@@ -109,7 +99,7 @@ export default function AppPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      {/* AutoProcessor - handles non-interactive mode */}
+      {/* AutoProcessor - handles non-interactive mode for jobs with that flag */}
       <AutoProcessor jobs={jobs} onJobsChanged={loadJobs} />
 
       {/* Header */}
@@ -122,36 +112,6 @@ export default function AppPage() {
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleAutoMode}
-                    className={`min-h-[40px] px-2 sm:px-3 ${autoModeEnabled ? "text-amber-400 hover:text-amber-300 bg-amber-500/10" : ""}`}
-                    style={!autoModeEnabled ? { color: 'var(--text-muted)' } : undefined}
-                  >
-                    {autoModeEnabled ? (
-                      <Zap className="w-4 h-4 sm:mr-2" />
-                    ) : (
-                      <ZapOff className="w-4 h-4 sm:mr-2" />
-                    )}
-                    <span className="hidden sm:inline">Auto</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
-                  <p className="font-medium">
-                    {autoModeEnabled ? "Auto Mode Enabled" : "Auto Mode Disabled"}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                    {autoModeEnabled
-                      ? "Jobs will auto-complete review and select clean instrumental (like -y flag)"
-                      : "Click to enable non-interactive mode"}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             <Button
               variant="ghost"
               size="sm"
@@ -193,27 +153,6 @@ export default function AppPage() {
       </header>
 
       <main className="px-4 py-8 space-y-6">
-        {/* Auto Mode Banner */}
-        {autoModeEnabled && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex items-center gap-3">
-            <Zap className="w-5 h-5 text-amber-400 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm text-amber-200 font-medium">Non-Interactive Mode Active</p>
-              <p className="text-xs text-amber-200/70 mt-0.5">
-                Jobs will automatically accept lyrics and select clean instrumental (equivalent to -y flag)
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleAutoMode}
-              className="text-amber-200 hover:text-amber-100 hover:bg-amber-500/20"
-            >
-              Disable
-            </Button>
-          </div>
-        )}
-
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Submit Job Card */}
           <Card className="backdrop-blur" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>

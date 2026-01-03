@@ -7,14 +7,6 @@
 import { render, screen } from '@testing-library/react'
 import { JobCard } from '../job/JobCard'
 import { Job } from '@/lib/api'
-import { useAutoMode } from '@/lib/auto-mode'
-
-// Mock the auto-mode hook
-jest.mock('@/lib/auto-mode', () => ({
-  useAutoMode: jest.fn()
-}))
-
-const mockUseAutoMode = useAutoMode as jest.Mock
 
 // Mock the child components
 jest.mock('../job/JobActions', () => ({
@@ -48,11 +40,6 @@ describe('JobCard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    // Default mock: auto-mode disabled
-    mockUseAutoMode.mockReturnValue({
-      enabled: false,
-      isProcessing: jest.fn().mockReturnValue(false)
-    })
   })
 
   it('renders job information', () => {
@@ -104,14 +91,7 @@ describe('JobCard', () => {
     expect(card).toHaveClass('border-red-500/30')
   })
 
-  describe('when auto-mode is disabled', () => {
-    beforeEach(() => {
-      mockUseAutoMode.mockReturnValue({
-        enabled: false,
-        isProcessing: jest.fn().mockReturnValue(false)
-      })
-    })
-
+  describe('regular jobs (non_interactive: false)', () => {
     it('shows lyrics review link for awaiting_review status', () => {
       const reviewJob = { ...mockJob, status: 'awaiting_review', review_token: 'test-token-123' }
       render(<JobCard job={reviewJob} onRefresh={mockOnRefresh} />)
@@ -146,18 +126,24 @@ describe('JobCard', () => {
       expect(href).toContain('baseApiUrl=')
       expect(href).toContain('instrumentalToken=test-instrumental-token')
     })
+
+    it('does not show Auto badge for regular jobs', () => {
+      render(<JobCard job={mockJob} onRefresh={mockOnRefresh} />)
+
+      expect(screen.queryByText('Auto')).not.toBeInTheDocument()
+    })
   })
 
-  describe('when auto-mode is enabled', () => {
-    beforeEach(() => {
-      mockUseAutoMode.mockReturnValue({
-        enabled: true,
-        isProcessing: jest.fn().mockReturnValue(false)
-      })
+  describe('non-interactive jobs (non_interactive: true)', () => {
+    it('shows Auto badge for non-interactive jobs', () => {
+      const nonInteractiveJob = { ...mockJob, non_interactive: true }
+      render(<JobCard job={nonInteractiveJob} onRefresh={mockOnRefresh} />)
+
+      expect(screen.getByText('Auto')).toBeInTheDocument()
     })
 
     it('shows auto-accept message for awaiting_review status', () => {
-      const reviewJob = { ...mockJob, status: 'awaiting_review' }
+      const reviewJob = { ...mockJob, status: 'awaiting_review', non_interactive: true }
       render(<JobCard job={reviewJob} onRefresh={mockOnRefresh} />)
 
       expect(screen.getByText(/Will auto-accept/)).toBeInTheDocument()
@@ -165,31 +151,19 @@ describe('JobCard', () => {
     })
 
     it('shows auto-select message for awaiting_instrumental_selection status', () => {
-      const instrumentalJob = { ...mockJob, status: 'awaiting_instrumental_selection' }
+      const instrumentalJob = { ...mockJob, status: 'awaiting_instrumental_selection', non_interactive: true }
       render(<JobCard job={instrumentalJob} onRefresh={mockOnRefresh} />)
 
-      expect(screen.getByText(/Will auto-select clean/)).toBeInTheDocument()
+      expect(screen.getByText(/Will auto-select/)).toBeInTheDocument()
       expect(screen.queryByText('Select Instrumental')).not.toBeInTheDocument()
     })
 
-    it('shows auto-select message for awaiting_audio_selection status', () => {
-      const audioJob = { ...mockJob, status: 'awaiting_audio_selection' }
+    it('shows auto-select first message for awaiting_audio_selection status', () => {
+      const audioJob = { ...mockJob, status: 'awaiting_audio_selection', non_interactive: true }
       render(<JobCard job={audioJob} onRefresh={mockOnRefresh} />)
 
       expect(screen.getByText(/Will auto-select first/)).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Select Audio' })).not.toBeInTheDocument()
-    })
-
-    it('shows auto-processing indicator when processing', () => {
-      mockUseAutoMode.mockReturnValue({
-        enabled: true,
-        isProcessing: jest.fn().mockReturnValue(true)
-      })
-
-      const reviewJob = { ...mockJob, status: 'awaiting_review' }
-      render(<JobCard job={reviewJob} onRefresh={mockOnRefresh} />)
-
-      expect(screen.getByText(/Auto-processing.../)).toBeInTheDocument()
     })
   })
 

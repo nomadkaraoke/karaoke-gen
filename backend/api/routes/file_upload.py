@@ -92,6 +92,9 @@ class CreateJobFromUrlRequest(BaseModel):
     backing_vocals_models: Optional[List[str]] = Field(None, description="Models for backing vocals separation")
     other_stems_models: Optional[List[str]] = Field(None, description="Models for other stems")
 
+    # Non-interactive mode
+    non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
+
 
 class CreateJobFromUrlResponse(BaseModel):
     """Response from creating a job from URL."""
@@ -149,6 +152,9 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # Two-phase workflow configuration (Batch 6)
     prep_only: bool = Field(False, description="Stop after review phase, don't run finalisation")
     keep_brand_code: Optional[str] = Field(None, description="Preserve existing brand code instead of generating new one")
+
+    # Non-interactive mode
+    non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
 
 
 class SignedUploadUrl(BaseModel):
@@ -419,6 +425,8 @@ async def upload_and_create_job(
     clean_instrumental_model: Optional[str] = Form(None, description="Model for clean instrumental separation (e.g., model_bs_roformer_ep_317_sdr_12.9755.ckpt)"),
     backing_vocals_models: Optional[str] = Form(None, description="Comma-separated list of models for backing vocals separation"),
     other_stems_models: Optional[str] = Form(None, description="Comma-separated list of models for other stems (bass, drums, guitar, etc.)"),
+    # Non-interactive mode
+    non_interactive: bool = Form(False, description="Skip interactive steps (lyrics review, instrumental selection)"),
 ):
     """
     Upload an audio file and create a karaoke generation job with full style configuration.
@@ -606,6 +614,8 @@ async def upload_and_create_job(
             other_stems_models=parsed_other_stems_models,
             # Request metadata for tracking and filtering
             request_metadata=request_metadata,
+            # Non-interactive mode
+            non_interactive=non_interactive,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id
@@ -1111,6 +1121,7 @@ async def create_job_with_upload_urls(
             backing_vocals_models=body.backing_vocals_models,
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
+            non_interactive=body.non_interactive,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id
@@ -1526,6 +1537,7 @@ async def create_job_from_url(
             backing_vocals_models=body.backing_vocals_models,
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
+            non_interactive=body.non_interactive,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id

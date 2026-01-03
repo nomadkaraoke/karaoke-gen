@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { Job } from "@/lib/api"
-import { useAutoMode } from "@/lib/auto-mode"
 import { Button } from "@/components/ui/button"
-import { Loader2, ExternalLink, Zap } from "lucide-react"
+import { ExternalLink, Zap } from "lucide-react"
 import { JobActions } from "./JobActions"
 import { JobLogs } from "./JobLogs"
 import { OutputLinks } from "./OutputLinks"
@@ -77,7 +76,6 @@ interface JobCardProps {
 export function JobCard({ job, onRefresh }: JobCardProps) {
   const [showLogs, setShowLogs] = useState(false)
   const [showAudioSearch, setShowAudioSearch] = useState(false)
-  const { enabled: autoModeEnabled, isProcessing: isAutoProcessing } = useAutoMode()
 
   const createdAt = new Date(job.created_at).toLocaleString()
   const isInteractive = job.status === "awaiting_review" ||
@@ -86,14 +84,6 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
                         job.status === "awaiting_audio_selection"
   const isComplete = job.status === "complete"
   const isFailed = job.status === "failed"
-  const isProcessing = !isComplete && !isFailed && job.status !== "cancelled"
-
-  // Check if this job is being auto-processed
-  const isBeingAutoProcessed = autoModeEnabled && isInteractive && (
-    isAutoProcessing(`${job.job_id}-review`) ||
-    isAutoProcessing(`${job.job_id}-instrumental`) ||
-    isAutoProcessing(`${job.job_id}-audio`)
-  )
 
   // Build review URL for awaiting_review status
   const getReviewUrl = () => {
@@ -125,22 +115,14 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
 
   // Render primary action button based on status
   const renderPrimaryAction = () => {
-    if (autoModeEnabled && isInteractive) {
+    // For non-interactive jobs in interactive states, show auto-processing message
+    if (job.non_interactive && isInteractive) {
       return (
         <div className="flex items-center gap-1 text-xs text-amber-400">
-          {isBeingAutoProcessed ? (
-            <>
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Auto-processing...
-            </>
-          ) : (
-            <>
-              <Zap className="w-3 h-3" />
-              Will auto-{job.status === "awaiting_review" || job.status === "in_review" ? "accept" :
-                         job.status === "awaiting_instrumental_selection" ? "select clean" :
-                         "select first"}
-            </>
-          )}
+          <Zap className="w-3 h-3" />
+          Will auto-{job.status === "awaiting_review" || job.status === "in_review" ? "accept" :
+                     job.status === "awaiting_instrumental_selection" ? "select" :
+                     "select first"}
         </div>
       )
     }
@@ -198,10 +180,18 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
         backgroundColor: 'var(--card)',
       }}
     >
-      {/* Header row with title */}
-      <p className="font-medium truncate" style={{ color: 'var(--text)' }}>
-        {job.artist || "Unknown"} - {job.title || "Unknown"}
-      </p>
+      {/* Header row with title and non-interactive badge */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium truncate" style={{ color: 'var(--text)' }}>
+          {job.artist || "Unknown"} - {job.title || "Unknown"}
+        </p>
+        {job.non_interactive && (
+          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">
+            <Zap className="w-2.5 h-2.5" />
+            Auto
+          </span>
+        )}
+      </div>
 
       {/* Meta row: ID, date, status */}
       <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -254,4 +244,3 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
     </div>
   )
 }
-

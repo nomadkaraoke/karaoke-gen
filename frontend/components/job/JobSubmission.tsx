@@ -39,6 +39,9 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   const [selectedTheme, setSelectedTheme] = useState<string | undefined>()
   const [colorOverrides, setColorOverrides] = useState<ColorOverrides>({})
 
+  // Non-interactive mode (shared across all tabs)
+  const [nonInteractive, setNonInteractive] = useState(false)
+
   async function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
@@ -57,6 +60,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       await api.uploadJob(uploadFile, uploadArtist.trim(), uploadTitle.trim(), {
         theme_id: selectedTheme,
         color_overrides: cleanColorOverrides(colorOverrides),
+        non_interactive: nonInteractive,
       })
       setUploadFile(null)
       setUploadArtist("")
@@ -91,6 +95,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
         {
           theme_id: selectedTheme,
           color_overrides: cleanColorOverrides(colorOverrides),
+          non_interactive: nonInteractive,
         }
       )
       setYoutubeUrl("")
@@ -122,6 +127,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       await api.searchAudio(searchArtist.trim(), searchTitle.trim(), false, {
         theme_id: selectedTheme,
         color_overrides: cleanColorOverrides(colorOverrides),
+        non_interactive: nonInteractive,
       })
       setSearchArtist("")
       setSearchTitle("")
@@ -250,6 +256,29 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             />
           </div>
 
+          {/* Non-interactive mode */}
+          <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--card-border)' }}>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="non-interactive-upload"
+                checked={nonInteractive}
+                onChange={(e) => setNonInteractive(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-800"
+              />
+              <div>
+                <Label htmlFor="non-interactive-upload" className="cursor-pointer" style={{ color: 'var(--text)' }}>
+                  Skip lyrics review (non-interactive)
+                </Label>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-amber-500 font-medium">Warning:</span> AI lyrics correction isn&apos;t perfect.
+                  Skipping review will likely result in timing errors and incorrect words in your karaoke video.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {error && activeTab === "upload" && (
             <p className="text-sm text-red-400 bg-red-500/10 rounded p-2">{error}</p>
           )}
@@ -332,6 +361,29 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             />
           </div>
 
+          {/* Non-interactive mode */}
+          <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--card-border)' }}>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="non-interactive-url"
+                checked={nonInteractive}
+                onChange={(e) => setNonInteractive(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-800"
+              />
+              <div>
+                <Label htmlFor="non-interactive-url" className="cursor-pointer" style={{ color: 'var(--text)' }}>
+                  Skip lyrics review (non-interactive)
+                </Label>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-amber-500 font-medium">Warning:</span> AI lyrics correction isn&apos;t perfect.
+                  Skipping review will likely result in timing errors and incorrect words in your karaoke video.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {error && activeTab === "url" && (
             <p className="text-sm text-red-400 bg-red-500/10 rounded p-2">{error}</p>
           )}
@@ -395,6 +447,29 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               onChange={setColorOverrides}
               disabled={isSubmitting}
             />
+          </div>
+
+          {/* Non-interactive mode */}
+          <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--card-border)' }}>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="non-interactive-search"
+                checked={nonInteractive}
+                onChange={(e) => setNonInteractive(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-800"
+              />
+              <div>
+                <Label htmlFor="non-interactive-search" className="cursor-pointer" style={{ color: 'var(--text)' }}>
+                  Skip lyrics review (non-interactive)
+                </Label>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-amber-500 font-medium">Warning:</span> AI lyrics correction isn&apos;t perfect.
+                  Skipping review will likely result in timing errors and incorrect words in your karaoke video.
+                </p>
+              </div>
+            </div>
           </div>
 
           {error && activeTab === "search" && (

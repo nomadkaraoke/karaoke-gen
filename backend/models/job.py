@@ -204,6 +204,7 @@ class Job(BaseModel):
     youtube_description: Optional[str] = None    # YouTube video description
     webhook_url: Optional[str] = None            # Webhook for notifications
     user_email: Optional[str] = None             # Email for notifications
+    non_interactive: bool = False                # Skip interactive steps (lyrics review, instrumental selection)
     
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")
@@ -419,6 +420,7 @@ class JobCreate(BaseModel):
     youtube_description: Optional[str] = None
     webhook_url: Optional[str] = None
     user_email: Optional[str] = None
+    non_interactive: bool = False  # Skip interactive steps (lyrics review, instrumental selection)
     
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")

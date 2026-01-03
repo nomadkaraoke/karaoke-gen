@@ -65,6 +65,7 @@ export interface Job {
   review_token?: string;
   instrumental_token?: string;
   audio_hash?: string;
+  non_interactive?: boolean;
 }
 
 export interface UploadJobResponse {
@@ -225,6 +226,7 @@ export const api = {
       enable_youtube_upload?: boolean;
       theme_id?: string;
       color_overrides?: ColorOverrides;
+      non_interactive?: boolean;
     }
   ): Promise<UploadJobResponse> {
     const formData = new FormData();
@@ -250,6 +252,9 @@ export const api = {
     if (options?.color_overrides) {
       formData.append('color_overrides', JSON.stringify(options.color_overrides));
     }
+    if (options?.non_interactive !== undefined) {
+      formData.append('non_interactive', String(options.non_interactive));
+    }
 
     const response = await fetch(`${API_BASE_URL}/api/jobs/upload`, {
       method: 'POST',
@@ -274,6 +279,7 @@ export const api = {
       enable_youtube_upload?: boolean;
       theme_id?: string;
       color_overrides?: ColorOverrides;
+      non_interactive?: boolean;
     }
   ): Promise<{ status: string; job_id: string; message: string }> {
     const body: Record<string, any> = { url };
@@ -285,6 +291,7 @@ export const api = {
     if (options?.enable_youtube_upload !== undefined) body.enable_youtube_upload = options.enable_youtube_upload;
     if (options?.theme_id) body.theme_id = options.theme_id;
     if (options?.color_overrides) body.color_overrides = options.color_overrides;
+    if (options?.non_interactive !== undefined) body.non_interactive = options.non_interactive;
 
     const response = await fetch(`${API_BASE_URL}/api/jobs/create-from-url`, {
       method: 'POST',
@@ -409,6 +416,7 @@ export const api = {
       enable_youtube_upload?: boolean;
       theme_id?: string;
       color_overrides?: ColorOverrides;
+      non_interactive?: boolean;
     }
   ): Promise<AudioSearchResponse> {
     const body: Record<string, any> = { artist, title, auto_download: autoDownload };
@@ -418,6 +426,7 @@ export const api = {
     if (options?.enable_youtube_upload !== undefined) body.enable_youtube_upload = options.enable_youtube_upload;
     if (options?.theme_id) body.theme_id = options.theme_id;
     if (options?.color_overrides) body.color_overrides = options.color_overrides;
+    if (options?.non_interactive !== undefined) body.non_interactive = options.non_interactive;
 
     const response = await fetch(`${API_BASE_URL}/api/audio-search/search`, {
       method: 'POST',
