@@ -215,7 +215,7 @@ export default function AdminJobDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm truncate">
-              {(job as any).user_email || "Unknown"}
+              {job.user_email || "Unknown"}
             </p>
           </CardContent>
         </Card>

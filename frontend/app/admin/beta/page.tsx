@@ -74,7 +74,9 @@ export default function AdminBetaPage() {
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "—"
-    return new Date(dateStr).toLocaleDateString()
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return "—"
+    return date.toLocaleDateString()
   }
 
   return (

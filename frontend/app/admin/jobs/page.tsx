@@ -225,7 +225,7 @@ export default function AdminJobsPage() {
                 >
                   <TableCell className="font-mono text-sm">{job.job_id}</TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
-                    {(job as any).user_email || "—"}
+                    {job.user_email || "—"}
                   </TableCell>
                   <TableCell>
                     {job.artist && job.title ? (

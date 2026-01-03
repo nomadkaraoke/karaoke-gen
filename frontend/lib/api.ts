@@ -66,6 +66,7 @@ export interface Job {
   instrumental_token?: string;
   audio_hash?: string;
   non_interactive?: boolean;
+  user_email?: string;
 }
 
 export interface UploadJobResponse {
