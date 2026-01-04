@@ -468,6 +468,42 @@ async def clear_audio_search_cache(
     )
 
 
+@router.post("/jobs/{job_id}/reset-worker-state")
+async def reset_worker_state(
+    job_id: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    Reset stale worker progress state for a job.
+
+    This clears the video_progress, render_progress, and screens_progress
+    from state_data, allowing workers to be re-triggered.
+
+    Use this when a job is stuck because worker progress shows 'running'
+    from a previous failed attempt.
+    """
+    from backend.services.job_manager import JobManager
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Reset worker progress states
+    job_manager.update_state_data(job_id, 'video_progress', {'stage': 'pending'})
+    job_manager.update_state_data(job_id, 'render_progress', {'stage': 'pending'})
+    job_manager.update_state_data(job_id, 'screens_progress', {'stage': 'pending'})
+
+    logger.info(f"Admin {auth_data[0]} reset worker state for job {job_id}")
+
+    return {
+        "status": "success",
+        "job_id": job_id,
+        "message": "Worker progress states reset to pending"
+    }
+
+
 @router.delete("/cache", response_model=ClearAllCacheResponse)
 async def clear_all_flacfetch_cache(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
