@@ -266,14 +266,17 @@ class GCEEncodingBackend(EncodingBackend):
 
     def __init__(
         self,
+        dry_run: bool = False,
         logger: Optional[logging.Logger] = None,
     ):
         """
         Initialize the GCE encoding backend.
 
         Args:
+            dry_run: Ignored for GCE backend (remote service doesn't support dry run)
             logger: Optional logger instance
         """
+        self.dry_run = dry_run  # Stored but not used (GCE is remote)
         self.logger = logger or logging.getLogger(__name__)
         self._service = None
 
