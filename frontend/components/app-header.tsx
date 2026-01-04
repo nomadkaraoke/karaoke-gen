@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { User, LogOut, Settings } from "lucide-react"
+import { User, LogOut, Settings, Shield } from "lucide-react"
 import Link from "next/link"
 
 export function AppHeader() {
@@ -40,7 +40,7 @@ export function AppHeader() {
           <Link href="/jobs" className="text-sm font-medium hover:text-primary transition-colors">
             My Jobs
           </Link>
-          {user.role === "admin" && (
+          {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
             <Link href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
               Admin
             </Link>
@@ -73,6 +73,14 @@ export function AppHeader() {
                   <span>{user.credits} credits</span>
                 </div>
               </DropdownMenuItem>
+              {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
+                <DropdownMenuItem asChild>
+                  <Link href="/admin">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Admin Dashboard
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem>
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
