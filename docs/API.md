@@ -383,6 +383,68 @@ Authorization: Bearer ADMIN_TOKEN
 
 Admins can delete any job. Regular users can only delete their own jobs.
 
+### Audio Search Management (Admin)
+
+#### List Audio Searches
+
+```http
+GET /api/admin/audio-searches
+GET /api/admin/audio-searches?limit=50&status_filter=awaiting_audio_selection
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Returns jobs with cached audio search results. Useful for:
+- Monitoring search activity
+- Identifying stale cached results (YouTube-only when lossless should be available)
+- Clearing cache for specific jobs
+
+Response:
+```json
+{
+  "jobs": [
+    {
+      "job_id": "abc123",
+      "status": "awaiting_audio_selection",
+      "user_email": "user@example.com",
+      "audio_search_artist": "Artist Name",
+      "audio_search_title": "Song Title",
+      "created_at": "2026-01-03T12:00:00Z",
+      "results_count": 5,
+      "has_lossless": false,
+      "providers": ["YouTube"],
+      "results_summary": [...]
+    }
+  ],
+  "total": 1
+}
+```
+
+#### Clear Audio Search Cache
+
+```http
+POST /api/admin/audio-searches/{job_id}/clear-cache
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Clears cached search results and resets job to `pending` status, allowing a new search.
+
+Use when:
+- Cached results are stale (e.g., flacfetch was updated with new providers)
+- User wants to search again
+- Results appear incomplete (YouTube-only when lossless should exist)
+
+Response:
+```json
+{
+  "status": "success",
+  "job_id": "abc123",
+  "message": "Cleared 5 cached search results. Job reset to pending.",
+  "previous_status": "awaiting_audio_selection",
+  "new_status": "pending",
+  "results_cleared": 5
+}
+```
+
 ## Rate Limits
 
 No rate limits currently implemented.

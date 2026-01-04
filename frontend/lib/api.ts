@@ -782,6 +782,44 @@ export interface AdminJobListParams {
   limit?: number;
 }
 
+// Audio Search Admin Types
+export interface AudioSearchResultSummary {
+  index: number;
+  provider: string;
+  artist: string;
+  title: string;
+  is_lossless: boolean;
+  quality?: string;
+  seeders?: number;
+}
+
+export interface AudioSearchJobSummary {
+  job_id: string;
+  status: string;
+  user_email?: string;
+  audio_search_artist?: string;
+  audio_search_title?: string;
+  created_at?: string;
+  results_count: number;
+  results_summary: AudioSearchResultSummary[];
+  has_lossless: boolean;
+  providers: string[];
+}
+
+export interface AudioSearchListResponse {
+  jobs: AudioSearchJobSummary[];
+  total: number;
+}
+
+export interface ClearSearchCacheResponse {
+  status: string;
+  job_id: string;
+  message: string;
+  previous_status: string;
+  new_status: string;
+  results_cleared: number;
+}
+
 // Admin API namespace
 export const adminApi = {
   /**
@@ -930,6 +968,35 @@ export const adminApi = {
     const response = await fetch(
       `${API_BASE_URL}/api/jobs/${jobId}?delete_files=${deleteFiles}`,
       { method: 'DELETE', headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * List jobs with audio search results
+   */
+  async listAudioSearches(params?: {
+    limit?: number;
+    status_filter?: string;
+  }): Promise<AudioSearchListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.status_filter) searchParams.set('status_filter', params.status_filter);
+
+    const url = `${API_BASE_URL}/api/admin/audio-searches${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Clear audio search cache for a job
+   */
+  async clearAudioSearchCache(jobId: string): Promise<ClearSearchCacheResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/audio-searches/${jobId}/clear-cache`,
+      { method: 'POST', headers: getAuthHeaders() }
     );
     return handleResponse(response);
   },

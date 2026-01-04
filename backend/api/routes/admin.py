@@ -5,12 +5,13 @@ Handles:
 - Dashboard overview statistics
 - System-wide metrics
 - Admin-only operations
+- Audio search cache management
 """
 import logging
 from datetime import datetime, timedelta
-from typing import Tuple
+from typing import Tuple, List, Optional, Any, Dict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.dependencies import require_admin
@@ -196,4 +197,218 @@ async def get_admin_stats_overview(
         jobs_by_status=jobs_by_status,
         total_credits_issued_30d=total_credits_issued_30d,
         total_beta_testers=total_beta_testers,
+    )
+
+
+# =============================================================================
+# Audio Search Management Models
+# =============================================================================
+
+class AudioSearchResultSummary(BaseModel):
+    """Summary of a single audio search result."""
+    index: int
+    provider: str
+    artist: str
+    title: str
+    is_lossless: bool
+    quality: Optional[str] = None
+    seeders: Optional[int] = None
+
+
+class AudioSearchJobSummary(BaseModel):
+    """Summary of a job with audio search results."""
+    job_id: str
+    status: str
+    user_email: Optional[str] = None
+    audio_search_artist: Optional[str] = None
+    audio_search_title: Optional[str] = None
+    created_at: Optional[datetime] = None
+    results_count: int
+    results_summary: List[AudioSearchResultSummary]
+    has_lossless: bool
+    providers: List[str]
+
+
+class AudioSearchListResponse(BaseModel):
+    """Response for listing audio search jobs."""
+    jobs: List[AudioSearchJobSummary]
+    total: int
+
+
+class ClearSearchCacheResponse(BaseModel):
+    """Response for clearing search cache."""
+    status: str
+    job_id: str
+    message: str
+    previous_status: str
+    new_status: str
+    results_cleared: int
+
+
+# =============================================================================
+# Audio Search Management Endpoints
+# =============================================================================
+
+@router.get("/audio-searches", response_model=AudioSearchListResponse)
+async def list_audio_searches(
+    limit: int = 50,
+    status_filter: Optional[str] = None,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    List jobs with audio search results.
+
+    Returns jobs that have cached audio search results, useful for:
+    - Monitoring search activity
+    - Identifying stale cached results
+    - Clearing cache for specific jobs
+
+    Args:
+        limit: Maximum number of jobs to return (default 50)
+        status_filter: Optional filter by job status (e.g., 'awaiting_audio_selection')
+    """
+    from google.cloud.firestore_v1 import FieldFilter
+
+    db = user_service.db
+    jobs_collection = db.collection("jobs")
+
+    # Query jobs - we'll filter for those with audio_search_results in Python
+    # since Firestore can't query for existence of nested fields efficiently
+    query = jobs_collection.order_by("created_at", direction="DESCENDING").limit(500)
+
+    if status_filter:
+        query = jobs_collection.where(
+            filter=FieldFilter("status", "==", status_filter)
+        ).order_by("created_at", direction="DESCENDING").limit(500)
+
+    jobs_with_searches = []
+
+    for doc in query.stream():
+        data = doc.to_dict()
+        state_data = data.get("state_data", {})
+        audio_results = state_data.get("audio_search_results", [])
+
+        if not audio_results:
+            continue
+
+        # Compute has_lossless and providers from ALL results (not just first 10)
+        has_lossless = any(r.get("is_lossless", False) for r in audio_results)
+        providers = {r.get("provider", "Unknown") for r in audio_results}
+
+        # Build summary from first 10 results only
+        results_summary = []
+        for r in audio_results[:10]:
+            results_summary.append(AudioSearchResultSummary(
+                index=r.get("index", 0),
+                provider=r.get("provider", "Unknown"),
+                artist=r.get("artist", ""),
+                title=r.get("title", ""),
+                is_lossless=r.get("is_lossless", False),
+                quality=r.get("quality"),
+                seeders=r.get("seeders"),
+            ))
+
+        jobs_with_searches.append(AudioSearchJobSummary(
+            job_id=doc.id,
+            status=data.get("status", "unknown"),
+            user_email=data.get("user_email"),
+            audio_search_artist=data.get("audio_search_artist"),
+            audio_search_title=data.get("audio_search_title"),
+            created_at=data.get("created_at"),
+            results_count=len(audio_results),
+            results_summary=results_summary,
+            has_lossless=has_lossless,
+            providers=sorted(providers),
+        ))
+
+        if len(jobs_with_searches) >= limit:
+            break
+
+    return AudioSearchListResponse(
+        jobs=jobs_with_searches,
+        total=len(jobs_with_searches),
+    )
+
+
+@router.post("/audio-searches/{job_id}/clear-cache", response_model=ClearSearchCacheResponse)
+async def clear_audio_search_cache(
+    job_id: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Clear the cached audio search results for a job.
+
+    This will:
+    1. Remove the cached search results from job.state_data
+    2. Reset the job status to 'pending' so a new search can be performed
+
+    Use this when:
+    - Cached results are stale (e.g., flacfetch was updated)
+    - User wants to search again with different terms
+    - Results appear incomplete or incorrect
+    """
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Get current state
+    state_data = job.state_data or {}
+    audio_results = state_data.get("audio_search_results", [])
+    results_count = len(audio_results)
+    previous_status = job.status
+
+    if not audio_results:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job {job_id} has no cached audio search results"
+        )
+
+    # Validate job status - only allow cache clear for appropriate states
+    # Don't allow clearing cache for jobs that are actively processing or complete
+    forbidden_statuses = {
+        "downloading", "downloading_audio", "searching_audio",
+        "separating_stage1", "separating_stage2", "transcribing", "correcting",
+        "generating_screens", "applying_padding", "rendering_video",
+        "generating_video", "encoding", "packaging", "uploading",
+        "complete", "prep_complete",
+    }
+    if previous_status in forbidden_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot clear cache for job in '{previous_status}' state. "
+            f"Only jobs in pending, awaiting_audio_selection, failed, or cancelled states can have cache cleared."
+        )
+
+    # Clear the cache by removing the keys
+    db = user_service.db
+    job_ref = db.collection("jobs").document(job_id)
+
+    from google.cloud.firestore_v1 import DELETE_FIELD
+
+    # Update job: clear cache and reset status
+    job_ref.update({
+        "state_data.audio_search_results": DELETE_FIELD,
+        "state_data.audio_search_count": DELETE_FIELD,
+        "state_data.remote_search_id": DELETE_FIELD,
+        "status": "pending",
+        "progress": 0,
+        "message": "Audio search cache cleared by admin. Ready for new search.",
+        "updated_at": datetime.utcnow(),
+    })
+
+    logger.info(
+        f"Admin {auth_data[0]} cleared audio search cache for job {job_id}. "
+        f"Cleared {results_count} results. Status changed from {previous_status} to pending."
+    )
+
+    return ClearSearchCacheResponse(
+        status="success",
+        job_id=job_id,
+        message=f"Cleared {results_count} cached search results. Job reset to pending.",
+        previous_status=previous_status,
+        new_status="pending",
+        results_cleared=results_count,
     )

@@ -36,6 +36,8 @@
 
 ## Recent Changes
 
+- **Audio Search Cache Management** (2026-01-03): Added admin UI at `/admin/searches` to view and manage cached audio search results. Admins can clear stale caches (e.g., when flacfetch is updated with new providers) and allow users to re-search. Fixes issue where jobs showed only YouTube results when lossless sources should be available. See [API.md](API.md#audio-search-management-admin) and [LESSONS-LEARNED.md](LESSONS-LEARNED.md#firestore-cache-has-no-automatic-invalidation).
+
 - **User Database Separation** (2026-01-03): Migrated karaoke-gen users from shared `users` collection to dedicated `gen_users` collection. This separates karaoke-gen user data from karaoke-decide user data (both apps share the same GCP project/Firestore instance). Migration script in `scripts/migrate_users_to_gen_users.py`. See [ARCHITECTURE.md](ARCHITECTURE.md#firestore-collections) for collection details.
 
 - **Admin Dashboard** (2026-01-03): Added comprehensive admin dashboard at `/admin` with: stats overview (users, jobs, credits), user management (search, sort, add credits, toggle role, enable/disable), job browser (filter by status/user, view details, delete), and beta program monitoring. Query-param based routing for static export compatibility. See [API.md](API.md#admin-endpoints) for backend endpoints.

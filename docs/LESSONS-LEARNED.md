@@ -789,6 +789,29 @@ result = job.state_data['search_results'][selection_index]
 
 **Lesson**: Design for stateless request handling. Any state that must survive between requests must be persisted externally.
 
+### Firestore Cache Has No Automatic Invalidation
+
+**Problem**: Audio search results are cached in Firestore (`job.state_data.audio_search_results`) with no expiration or invalidation. When a library like flacfetch is updated with new providers or bug fixes, existing cached results remain stale forever.
+
+**Symptoms**:
+- Job shows only 5 YouTube results when CLI shows 59 results including lossless sources
+- User cannot get better search results without admin intervention
+- No "re-search" option in the UI
+
+**Example**: Job `6ddbbef1` was searched when flacfetch had a bug returning only YouTube results. After flacfetch was fixed, the job still showed the old 5-result cache.
+
+**Solution**: Added admin endpoints and UI to manage cached searches:
+- `GET /api/admin/audio-searches` - List jobs with cached results
+- `POST /api/admin/audio-searches/{job_id}/clear-cache` - Clear cache and reset to pending
+- Admin UI at `/admin/searches` shows which jobs have YouTube-only results vs lossless
+
+**Future consideration**: Add automatic cache invalidation based on:
+- Time (TTL)
+- flacfetch version change
+- User-initiated "re-search" button
+
+**Lesson**: When caching external API results, consider how/when the cache should be invalidated. Permanent caches need admin tooling to manage stale data.
+
 ### GCS Downloads Preserve Directory Structure
 
 **Problem**: When downloading files from GCS, the directory structure is preserved. Code that uses non-recursive glob patterns won't find files in subdirectories.

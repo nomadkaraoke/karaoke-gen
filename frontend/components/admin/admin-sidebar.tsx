@@ -9,6 +9,7 @@ import {
   TestTube2,
   ArrowLeft,
   Settings,
+  Search,
 } from "lucide-react"
 
 import {
@@ -40,6 +41,11 @@ const navItems = [
     title: "Jobs",
     href: "/admin/jobs",
     icon: Briefcase,
+  },
+  {
+    title: "Audio Searches",
+    href: "/admin/searches",
+    icon: Search,
   },
   {
     title: "Beta Program",
