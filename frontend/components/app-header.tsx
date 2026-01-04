@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { User, LogOut, Settings, Shield } from "lucide-react"
+import { User, LogOut, Settings, Shield, Mail } from "lucide-react"
 import Link from "next/link"
 
 export function AppHeader() {
@@ -48,6 +48,14 @@ export function AppHeader() {
         </nav>
 
         <div className="flex items-center gap-4">
+          <a
+            href="mailto:andrew@nomadkaraoke.com"
+            className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Need help?</span>
+          </a>
+
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="text-sm font-medium text-primary">{user.credits} credits</span>
@@ -84,6 +92,12 @@ export function AppHeader() {
               <DropdownMenuItem>
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="mailto:andrew@nomadkaraoke.com">
+                  <Mail className="w-4 h-4 mr-2" />
+                  Need help? Contact us
+                </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
