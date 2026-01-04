@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, LogOut, CreditCard, Coins, KeyRound } from "lucide-react"
+import { User, LogOut, CreditCard, Coins, KeyRound, Shield } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -97,6 +98,17 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             <CreditCard className="w-4 h-4 mr-2" />
             <span>Buy More Credits</span>
           </DropdownMenuItem>
+          {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
+            <>
+              <DropdownMenuSeparator className="bg-slate-700" />
+              <DropdownMenuItem asChild className="text-slate-300 focus:text-white focus:bg-slate-800">
+                <Link href="/admin">
+                  <Shield className="w-4 h-4 mr-2" />
+                  <span>Admin Dashboard</span>
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator className="bg-slate-700" />
           <DropdownMenuItem
             onClick={handleLogout}
