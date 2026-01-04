@@ -1291,12 +1291,13 @@ async def retry_job(
             
             logger.info(f"Job {job_id}: Has rendered video and instrumental selection, retrying video generation")
             
-            # Clear error state
+            # Clear error state and reset worker progress for idempotency
             job_manager.update_job(job_id, {
                 'error_message': None,
                 'error_details': None,
             })
-            
+            job_manager.update_state_data(job_id, 'video_progress', {'stage': 'pending'})
+
             # Reset to INSTRUMENTAL_SELECTED and trigger video worker
             if not job_manager.transition_to_state(
                 job_id=job_id,
@@ -1324,13 +1325,14 @@ async def retry_job(
               file_urls.get('screens', {}).get('title')):
             
             logger.info(f"Job {job_id}: Has corrections and screens, retrying from render stage")
-            
-            # Clear error state
+
+            # Clear error state and reset worker progress for idempotency
             job_manager.update_job(job_id, {
                 'error_message': None,
                 'error_details': None,
             })
-            
+            job_manager.update_state_data(job_id, 'render_progress', {'stage': 'pending'})
+
             # Reset to REVIEW_COMPLETE and trigger render worker
             if not job_manager.transition_to_state(
                 job_id=job_id,
@@ -1358,13 +1360,14 @@ async def retry_job(
               file_urls.get('lyrics', {}).get('corrections')):
             
             logger.info(f"Job {job_id}: Has stems and corrections, retrying from screens stage")
-            
-            # Clear error state
+
+            # Clear error state and reset worker progress for idempotency
             job_manager.update_job(job_id, {
                 'error_message': None,
                 'error_details': None,
             })
-            
+            job_manager.update_state_data(job_id, 'screens_progress', {'stage': 'pending'})
+
             # Reset to a state before screens and trigger screens worker
             if not job_manager.transition_to_state(
                 job_id=job_id,
