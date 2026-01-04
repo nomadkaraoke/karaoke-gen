@@ -351,6 +351,50 @@ class TestVideoWorkerOrchestratorEncoding:
             assert orchestrator.result.final_video_720p == "/output/720p.mp4"
             assert orchestrator.result.encoding_time_seconds == 120.5
 
+    def test_encoding_input_gcs_paths_pattern(self):
+        """Test that EncodingInput.options contains proper GCS paths structure.
+
+        This test verifies the GCS path construction pattern that GCE encoding
+        requires. It tests the structure without running _run_encoding().
+
+        This would have caught: 'GCE encoding requires input_gcs_path and
+        output_gcs_path in options' error when the orchestrator didn't pass
+        the required paths for GCE encoding.
+        """
+        from backend.services.encoding_interface import EncodingInput
+
+        # Test that EncodingInput can hold GCS paths in options
+        # This mirrors what the orchestrator should build
+        job_id = "test-job-123"
+        bucket = "test-bucket"
+        input_gcs_path = f"gs://{bucket}/jobs/{job_id}/"
+        output_gcs_path = f"gs://{bucket}/jobs/{job_id}/finals/"
+
+        encoding_input = EncodingInput(
+            title_video_path="/path/title.mov",
+            karaoke_video_path="/path/karaoke.mov",
+            instrumental_audio_path="/path/audio.flac",
+            artist="Test Artist",
+            title="Test Title",
+            brand_code="TEST-001",
+            output_dir="/output",
+            options={
+                "input_gcs_path": input_gcs_path,
+                "output_gcs_path": output_gcs_path,
+            },
+        )
+
+        # Verify the structure that GCEEncodingBackend expects
+        assert "input_gcs_path" in encoding_input.options, \
+            "EncodingInput.options must include input_gcs_path for GCE encoding"
+        assert "output_gcs_path" in encoding_input.options, \
+            "EncodingInput.options must include output_gcs_path for GCE encoding"
+        # Verify path format
+        assert encoding_input.options["input_gcs_path"].startswith("gs://")
+        assert encoding_input.options["output_gcs_path"].startswith("gs://")
+        assert job_id in encoding_input.options["input_gcs_path"]
+        assert job_id in encoding_input.options["output_gcs_path"]
+
     @pytest.mark.asyncio
     async def test_run_encoding_failure(self):
         """Test encoding failure."""

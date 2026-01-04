@@ -313,6 +313,40 @@ class TestGCEEncodingBackend:
         assert output.success is False
         assert "GCE worker error" in output.error_message
 
+    @patch.object(GCEEncodingBackend, "_get_service")
+    @pytest.mark.asyncio
+    async def test_encode_handles_list_result(self, mock_get_service):
+        """Test GCE encoding handles list response gracefully.
+
+        This would have caught: 'list' object has no attribute 'get' error
+        when GCE worker returns a list instead of a dict.
+        """
+        mock_service = MagicMock()
+        # Simulate GCE worker returning a list instead of dict
+        mock_service.encode_videos = AsyncMock(return_value=[
+            {"output_files": {"mp4_4k_lossless": "gs://bucket/output/lossless.mp4"}}
+        ])
+        mock_get_service.return_value = mock_service
+
+        backend = GCEEncodingBackend()
+        input_config = EncodingInput(
+            title_video_path="/input/title.mov",
+            karaoke_video_path="/input/karaoke.mov",
+            instrumental_audio_path="/input/audio.flac",
+            options={
+                "job_id": "test-job",
+                "input_gcs_path": "gs://bucket/input/",
+                "output_gcs_path": "gs://bucket/output/",
+            }
+        )
+
+        # This should not raise an error
+        output = await backend.encode(input_config)
+
+        # Should still succeed by extracting from the list
+        assert output.success is True
+        assert output.lossless_4k_mp4_path == "gs://bucket/output/lossless.mp4"
+
 
 class TestGetEncodingBackend:
     """Test encoding backend factory function."""
@@ -349,3 +383,30 @@ class TestGetEncodingBackend:
         with pytest.raises(ValueError) as exc_info:
             get_encoding_backend("unknown")
         assert "Unknown encoding backend type" in str(exc_info.value)
+
+    def test_get_gce_backend_with_options(self):
+        """Test getting GCE backend with common options like dry_run.
+
+        This ensures all backends accept the same kwargs, preventing
+        errors when get_encoding_backend() passes **kwargs to different backends.
+        """
+        # This would have caught: GCEEncodingBackend.__init__() got an unexpected keyword argument 'dry_run'
+        backend = get_encoding_backend("gce", dry_run=True)
+        assert isinstance(backend, GCEEncodingBackend)
+        assert backend.dry_run is True
+
+    @patch.object(GCEEncodingBackend, "_get_service")
+    def test_all_backends_accept_dry_run(self, mock_get_service):
+        """Test that all backend types accept dry_run parameter.
+
+        This is an integration test to ensure the factory function
+        can pass dry_run to any backend without TypeError.
+        """
+        mock_service = MagicMock()
+        mock_service.is_enabled = False
+        mock_get_service.return_value = mock_service
+
+        for backend_type in ["local", "gce", "auto"]:
+            # This should not raise TypeError
+            backend = get_encoding_backend(backend_type, dry_run=True)
+            assert backend is not None

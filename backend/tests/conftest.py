@@ -6,23 +6,29 @@ Provides common mocks and test utilities across all test modules.
 NOTE: Module-level mocks are NOT applied here to allow emulator tests to work.
 Individual tests must mock dependencies as needed.
 """
+# IMPORTANT: Set environment variables FIRST, before ANY imports that might
+# trigger backend module loading and Settings singleton creation.
 import os
-import pytest
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
-from datetime import datetime, UTC
-from fastapi.testclient import TestClient
 
-# Mock google.auth.default AND firestore for unit tests if not using emulator
-# This prevents DefaultCredentialsError and FirestoreClient initialization during imports
+# Set up test environment variables BEFORE importing any backend modules
+# This must happen before Settings is instantiated, which occurs on first import
 if 'FIRESTORE_EMULATOR_HOST' not in os.environ:
-    from unittest.mock import MagicMock
-    
-    # Set up test environment variables BEFORE importing any backend modules
     os.environ.setdefault('ADMIN_TOKENS', 'test-admin-token')
     os.environ.setdefault('GOOGLE_CLOUD_PROJECT', 'test-project')
     os.environ.setdefault('GCS_BUCKET_NAME', 'test-bucket')
     os.environ.setdefault('FIRESTORE_COLLECTION', 'jobs')
     os.environ.setdefault('ENVIRONMENT', 'test')
+
+import pytest
+from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from datetime import datetime, UTC
+from fastapi.testclient import TestClient
+
+
+# Mock google.auth.default AND firestore for unit tests if not using emulator
+# This prevents DefaultCredentialsError and FirestoreClient initialization during imports
+if 'FIRESTORE_EMULATOR_HOST' not in os.environ:
+    from unittest.mock import MagicMock
     
     # Mock google.auth.default - prevents credential errors
     try:

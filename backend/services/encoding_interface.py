@@ -341,6 +341,14 @@ class GCEEncodingBackend(EncodingBackend):
             encoding_time = time.time() - start_time
 
             # Extract output file paths from result
+            # Handle case where GCE worker returns a list or unexpected format
+            if isinstance(result, list):
+                # If result is a list, try to find the output_files in the first dict
+                self.logger.warning(f"GCE returned list instead of dict: {result}")
+                result = result[0] if result and isinstance(result[0], dict) else {}
+            if not isinstance(result, dict):
+                self.logger.error(f"Unexpected GCE result type: {type(result)}")
+                result = {}
             output_files = result.get("output_files", {})
 
             return EncodingOutput(
