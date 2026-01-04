@@ -330,6 +330,12 @@ class VideoWorkerOrchestrator:
 
         # Build encoding input
         from backend.services.encoding_interface import EncodingInput
+        from backend.config import settings
+
+        # For GCE encoding, we need to provide GCS paths
+        gcs_bucket = settings.gcs_bucket_name
+        input_gcs_path = f"gs://{gcs_bucket}/jobs/{self.config.job_id}/"
+        output_gcs_path = f"gs://{gcs_bucket}/jobs/{self.config.job_id}/finals/"
 
         encoding_input = EncodingInput(
             title_video_path=self.config.title_video_path,
@@ -340,6 +346,10 @@ class VideoWorkerOrchestrator:
             title=self.config.title,
             brand_code=self.config.keep_brand_code,
             output_dir=self.config.output_dir,
+            options={
+                "input_gcs_path": input_gcs_path,
+                "output_gcs_path": output_gcs_path,
+            },
         )
 
         # Run encoding
