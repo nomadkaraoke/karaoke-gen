@@ -247,6 +247,43 @@ def _get_effective_distribution_settings(...) -> EffectiveDistributionSettings:
 
 **Lesson**: When you see the same logic repeated in multiple places, refactor into a helper function immediately. Otherwise bugs will be fixed in one place but not others.
 
+### Python `or` Operator Can't Override True Defaults with False
+
+**Problem**: Using Python's `or` operator for default logic prevents explicit `false` from overriding a `true` server default.
+
+```python
+# BAD - can't explicitly disable if server default is true
+effective_value = body.enable_feature or settings.default_enable_feature
+# When body.enable_feature=False and settings.default=True:
+# False or True = True  (ignores explicit False!)
+```
+
+**Symptoms**:
+- Feature can be enabled but never disabled via API
+- Works fine when server default is `false` but breaks when default is `true`
+- No errors - just ignores the explicit `false` value
+
+**Solution**: Use `Optional[bool] = None` with explicit `is not None` check:
+
+```python
+# Request model
+enable_feature: Optional[bool] = None  # None = use server default
+
+# Default logic
+effective_value = (
+    body.enable_feature
+    if body.enable_feature is not None
+    else settings.default_enable_feature
+)
+```
+
+This allows three states:
+- `None` (not specified) → use server default
+- `True` → explicitly enable
+- `False` → explicitly disable (overrides server default)
+
+**Lesson**: When a boolean field needs to support "use server default" behavior, use `Optional[bool] = None` instead of `bool = False`. The `or` operator conflates "not specified" with "explicitly false".
+
 ### Field Name Mismatches Between Endpoints
 
 **Problem**: Different endpoints setting different field names for the same logical value, where consumers check only one field name.

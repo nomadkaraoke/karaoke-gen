@@ -95,7 +95,7 @@ class AudioSearchRequest(BaseModel):
     
     # Finalisation options
     brand_prefix: Optional[str] = Field(None, description="Brand code prefix (e.g., NOMAD)")
-    enable_youtube_upload: bool = Field(False, description="Upload to YouTube")
+    enable_youtube_upload: Optional[bool] = Field(None, description="Upload to YouTube. None = use server default")
     youtube_description: Optional[str] = Field(None, description="YouTube video description text")
     discord_webhook_url: Optional[str] = Field(None, description="Discord webhook URL for notifications")
     
@@ -485,7 +485,8 @@ async def search_audio(
         effective_discord_webhook_url = body.discord_webhook_url or settings.default_discord_webhook_url
 
         # Apply defaults for YouTube/Dropbox distribution (for web service)
-        effective_enable_youtube_upload = body.enable_youtube_upload or settings.default_enable_youtube_upload
+        # Use explicit value if provided, otherwise fall back to server default
+        effective_enable_youtube_upload = body.enable_youtube_upload if body.enable_youtube_upload is not None else settings.default_enable_youtube_upload
         effective_brand_prefix = body.brand_prefix or settings.default_brand_prefix
         effective_youtube_description = body.youtube_description or settings.default_youtube_description
 

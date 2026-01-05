@@ -149,7 +149,8 @@ class TestUploadSubmissionRequest:
         # CDG/TXT disabled by default (requires style config)
         assert request.enable_cdg is False
         assert request.enable_txt is False
-        assert request.enable_youtube_upload is False
+        # YouTube upload default is None (use server default)
+        assert request.enable_youtube_upload is None
 
 
 class TestStartReviewRequest:

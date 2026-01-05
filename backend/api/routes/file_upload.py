@@ -69,7 +69,7 @@ class CreateJobFromUrlRequest(BaseModel):
 
     # Finalisation options
     brand_prefix: Optional[str] = Field(None, description="Brand code prefix (e.g., NOMAD)")
-    enable_youtube_upload: bool = Field(False, description="Upload to YouTube")
+    enable_youtube_upload: Optional[bool] = Field(None, description="Upload to YouTube. None = use server default")
     youtube_description: Optional[str] = Field(None, description="YouTube video description text")
     discord_webhook_url: Optional[str] = Field(None, description="Discord webhook URL for notifications")
     webhook_url: Optional[str] = Field(None, description="Generic webhook URL")
@@ -123,7 +123,7 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     
     # Finalisation options
     brand_prefix: Optional[str] = Field(None, description="Brand code prefix (e.g., NOMAD)")
-    enable_youtube_upload: bool = Field(False, description="Upload to YouTube")
+    enable_youtube_upload: Optional[bool] = Field(None, description="Upload to YouTube. None = use server default")
     youtube_description: Optional[str] = Field(None, description="YouTube video description text")
     discord_webhook_url: Optional[str] = Field(None, description="Discord webhook URL for notifications")
     webhook_url: Optional[str] = Field(None, description="Generic webhook URL")
@@ -406,7 +406,7 @@ async def upload_and_create_job(
     enable_txt: Optional[bool] = Form(None, description="Generate TXT+MP3 package. Default: True if theme_id set, False otherwise"),
     # Finalisation options
     brand_prefix: Optional[str] = Form(None, description="Brand code prefix (e.g., NOMAD)"),
-    enable_youtube_upload: bool = Form(False, description="Upload to YouTube"),
+    enable_youtube_upload: Optional[bool] = Form(None, description="Upload to YouTube. None = use server default"),
     youtube_description: Optional[str] = Form(None, description="YouTube video description text"),
     discord_webhook_url: Optional[str] = Form(None, description="Discord webhook URL for notifications"),
     webhook_url: Optional[str] = Form(None, description="Generic webhook URL"),
@@ -510,12 +510,19 @@ async def upload_and_create_job(
         if dist.brand_prefix and not brand_prefix:
             logger.info(f"Using default brand_prefix: {dist.brand_prefix}")
 
+        # Apply YouTube upload default from settings
+        # Use explicit value if provided, otherwise fall back to server default
+        settings = get_settings()
+        effective_enable_youtube_upload = enable_youtube_upload if enable_youtube_upload is not None else settings.default_enable_youtube_upload
+        if effective_enable_youtube_upload and enable_youtube_upload is None:
+            logger.info("Using default enable_youtube_upload: True (from env)")
+
         # Validate credentials for requested distribution services (including defaults)
         # This prevents accepting jobs that will fail later due to missing credentials
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if enable_youtube_upload:
+        if effective_enable_youtube_upload:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -594,7 +601,7 @@ async def upload_and_create_job(
             enable_cdg=resolved_cdg,
             enable_txt=resolved_txt,
             brand_prefix=dist.brand_prefix,
-            enable_youtube_upload=enable_youtube_upload,
+            enable_youtube_upload=effective_enable_youtube_upload,
             youtube_description=youtube_description,
             discord_webhook_url=dist.discord_webhook_url,
             webhook_url=webhook_url,
@@ -815,11 +822,12 @@ async def upload_and_create_job(
                 "using_default": gdrive_folder_id is None,
             }
         
-        if enable_youtube_upload:
+        if effective_enable_youtube_upload:
             youtube_result = credential_manager.check_youtube_credentials()
             distribution_services["youtube"] = {
                 "enabled": True,
                 "credentials_valid": youtube_result.status == CredentialStatus.VALID,
+                "using_default": enable_youtube_upload is None,
             }
         
         if dist.discord_webhook_url:
@@ -908,7 +916,7 @@ class CreateFinaliseOnlyJobRequest(BaseModel):
     # Finalisation options
     brand_prefix: Optional[str] = Field(None, description="Brand code prefix (e.g., NOMAD)")
     keep_brand_code: Optional[str] = Field(None, description="Preserve existing brand code from folder name")
-    enable_youtube_upload: bool = Field(False, description="Upload to YouTube")
+    enable_youtube_upload: Optional[bool] = Field(None, description="Upload to YouTube. None = use server default")
     youtube_description: Optional[str] = Field(None, description="YouTube video description text")
     discord_webhook_url: Optional[str] = Field(None, description="Discord webhook URL for notifications")
     
@@ -1048,11 +1056,16 @@ async def create_job_with_upload_urls(
             brand_prefix=body.brand_prefix,
         )
 
+        # Apply YouTube upload default from settings
+        # Use explicit value if provided, otherwise fall back to server default
+        settings = get_settings()
+        effective_enable_youtube_upload = body.enable_youtube_upload if body.enable_youtube_upload is not None else settings.default_enable_youtube_upload
+
         # Validate credentials for requested distribution services
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if body.enable_youtube_upload:
+        if effective_enable_youtube_upload:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -1105,7 +1118,7 @@ async def create_job_with_upload_urls(
             enable_cdg=resolved_cdg,
             enable_txt=resolved_txt,
             brand_prefix=dist.brand_prefix,
-            enable_youtube_upload=body.enable_youtube_upload,
+            enable_youtube_upload=effective_enable_youtube_upload,
             youtube_description=body.youtube_description,
             youtube_description_template=body.youtube_description,  # video_worker reads this field
             discord_webhook_url=dist.discord_webhook_url,
@@ -1466,11 +1479,16 @@ async def create_job_from_url(
             brand_prefix=body.brand_prefix,
         )
 
+        # Apply YouTube upload default from settings
+        # Use explicit value if provided, otherwise fall back to server default
+        settings = get_settings()
+        effective_enable_youtube_upload = body.enable_youtube_upload if body.enable_youtube_upload is not None else settings.default_enable_youtube_upload
+
         # Validate credentials for requested distribution services
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if body.enable_youtube_upload:
+        if effective_enable_youtube_upload:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -1522,7 +1540,7 @@ async def create_job_from_url(
             enable_cdg=resolved_cdg,
             enable_txt=resolved_txt,
             brand_prefix=dist.brand_prefix,
-            enable_youtube_upload=body.enable_youtube_upload,
+            enable_youtube_upload=effective_enable_youtube_upload,
             youtube_description=body.youtube_description,
             discord_webhook_url=dist.discord_webhook_url,
             webhook_url=body.webhook_url,
@@ -1712,11 +1730,16 @@ async def create_finalise_only_job(
             brand_prefix=body.brand_prefix,
         )
 
+        # Apply YouTube upload default from settings
+        # Use explicit value if provided, otherwise fall back to server default
+        settings = get_settings()
+        effective_enable_youtube_upload = body.enable_youtube_upload if body.enable_youtube_upload is not None else settings.default_enable_youtube_upload
+
         # Validate distribution credentials if services are requested
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if body.enable_youtube_upload:
+        if effective_enable_youtube_upload:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -1766,7 +1789,7 @@ async def create_finalise_only_job(
             enable_cdg=resolved_cdg,
             enable_txt=resolved_txt,
             brand_prefix=dist.brand_prefix,
-            enable_youtube_upload=body.enable_youtube_upload,
+            enable_youtube_upload=effective_enable_youtube_upload,
             youtube_description=body.youtube_description,
             discord_webhook_url=dist.discord_webhook_url,
             dropbox_path=dist.dropbox_path,

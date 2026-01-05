@@ -87,6 +87,11 @@ async def create_job(
             user_email = request.user_email
             logger.info(f"Admin {auth_result.user_email} creating job on behalf of {user_email}")
 
+        # Apply YouTube upload default from settings
+        # Use explicit value if provided, otherwise fall back to server default
+        settings = get_settings()
+        effective_enable_youtube_upload = request.enable_youtube_upload if request.enable_youtube_upload is not None else settings.default_enable_youtube_upload
+
         # Create job with all preferences
         job_create = JobCreate(
             url=str(request.url),
@@ -94,7 +99,7 @@ async def create_job(
             title=request.title,
             enable_cdg=request.enable_cdg,
             enable_txt=request.enable_txt,
-            enable_youtube_upload=request.enable_youtube_upload,
+            enable_youtube_upload=effective_enable_youtube_upload,
             youtube_description=request.youtube_description,
             webhook_url=request.webhook_url,
             user_email=user_email

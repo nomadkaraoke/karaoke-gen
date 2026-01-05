@@ -1128,7 +1128,8 @@ class TestFinaliseOnlyModels:
         assert request.enable_txt is None
         assert request.brand_prefix is None
         assert request.keep_brand_code is None
-        assert request.enable_youtube_upload is False
+        # YouTube upload default is None (server applies default_enable_youtube_upload)
+        assert request.enable_youtube_upload is None
         assert request.dropbox_path is None
         assert request.gdrive_folder_id is None
 

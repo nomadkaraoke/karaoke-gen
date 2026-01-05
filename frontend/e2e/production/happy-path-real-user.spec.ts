@@ -154,6 +154,23 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
     // Only create email helper if we're doing the full signup flow
     const emailHelper = usePreConfiguredToken ? null : await createEmailHelper();
 
+    // Intercept API requests to disable YouTube upload for E2E tests
+    // This prevents test jobs from uploading to YouTube when server default is true
+    await page.route('**/api/audio-search/search', async (route) => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        const postData = request.postDataJSON();
+        // Explicitly disable YouTube upload for E2E test jobs
+        postData.enable_youtube_upload = false;
+        console.log('  [Request Intercept] Disabled YouTube upload for audio search');
+        await route.continue({
+          postData: JSON.stringify(postData),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
     try {
       // =========================================================================
       // STEP 1: Landing Page

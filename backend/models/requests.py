@@ -14,7 +14,7 @@ class URLSubmissionRequest(BaseModel):
     # Optional preferences
     enable_cdg: bool = False  # Requires style config
     enable_txt: bool = False  # Requires style config
-    enable_youtube_upload: bool = False
+    enable_youtube_upload: Optional[bool] = None  # None = use server default
     youtube_description: Optional[str] = None
     webhook_url: Optional[str] = None
     user_email: Optional[str] = None
@@ -28,7 +28,7 @@ class UploadSubmissionRequest(BaseModel):
     # Optional preferences
     enable_cdg: bool = False  # Requires style config
     enable_txt: bool = False  # Requires style config
-    enable_youtube_upload: bool = False
+    enable_youtube_upload: Optional[bool] = None  # None = use server default
     youtube_description: Optional[str] = None
     webhook_url: Optional[str] = None
     user_email: Optional[str] = None
