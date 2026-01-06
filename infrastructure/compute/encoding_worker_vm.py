@@ -8,7 +8,7 @@ including static IP and firewall rules.
 import pulumi
 from pulumi_gcp import compute, serviceaccount
 
-from config import REGION, ZONE, MachineTypes, DiskSizes
+from config import REGION, ZONE, PROJECT_ID, MachineTypes, DiskSizes
 from .startup_scripts import read_script
 
 
@@ -38,6 +38,10 @@ def create_encoding_worker_vm(
     This VM runs video encoding jobs with high CPU/memory resources.
     Uses hyperdisk-balanced for fast I/O during encoding.
 
+    Uses a custom Packer-built image with Python 3.13, FFmpeg, and fonts
+    pre-installed to reduce startup time from ~10 minutes to ~30 seconds.
+    See infrastructure/packer/README.md for image build instructions.
+
     Args:
         ip: The static IP address for the VM.
         service_account: The encoding worker service account.
@@ -47,6 +51,11 @@ def create_encoding_worker_vm(
     """
     startup_script = read_script("encoding_worker.sh")
 
+    # Use custom Packer image with dependencies pre-installed
+    # Image family returns latest image in the family
+    # Fallback: "debian-cloud/debian-12" if image doesn't exist yet
+    custom_image = f"projects/{PROJECT_ID}/global/images/family/encoding-worker"
+
     return compute.Instance(
         "encoding-worker",
         name="encoding-worker",
@@ -54,7 +63,7 @@ def create_encoding_worker_vm(
         zone=ZONE,
         boot_disk=compute.InstanceBootDiskArgs(
             initialize_params=compute.InstanceBootDiskInitializeParamsArgs(
-                image="debian-cloud/debian-12",
+                image=custom_image,
                 size=DiskSizes.ENCODING_WORKER,
                 type="hyperdisk-balanced",
             ),
