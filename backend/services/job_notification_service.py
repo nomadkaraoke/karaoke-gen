@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 # Environment variable to enable/disable auto emails
 ENABLE_AUTO_EMAILS = os.getenv("ENABLE_AUTO_EMAILS", "true").lower() == "true"
 
-# Feedback form URL (configured per environment)
-FEEDBACK_FORM_URL = os.getenv("FEEDBACK_FORM_URL", "https://forms.gle/your-feedback-form")
+# Feedback form URL (configured per environment, empty by default to avoid placeholder in emails)
+FEEDBACK_FORM_URL = os.getenv("FEEDBACK_FORM_URL", "")
 
 
 def _mask_email(email: str) -> str:

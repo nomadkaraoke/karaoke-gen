@@ -98,9 +98,18 @@ class SendGridEmailProvider(EmailProvider):
                 html_content=Content("text/html", html_content)
             )
 
-            # Add CC recipients if provided
+            # Add CC recipients if provided (deduplicated and normalized)
             if cc_emails:
+                # Normalize emails (lowercase, strip whitespace) and deduplicate
+                seen = set()
+                unique_cc_emails = []
                 for cc_email in cc_emails:
+                    normalized = cc_email.strip().lower()
+                    if normalized and normalized not in seen:
+                        seen.add(normalized)
+                        unique_cc_emails.append(cc_email.strip())
+
+                for cc_email in unique_cc_emails:
                     message.add_cc(Cc(cc_email))
 
             if text_content:
