@@ -633,10 +633,11 @@ async def get_job_completion_message(
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-    # Get youtube and dropbox URLs from state_data (may be None)
+    # Get youtube, dropbox URLs, and brand_code from state_data (may be None)
     state_data = job.state_data or {}
     youtube_url = state_data.get('youtube_url')
     dropbox_url = state_data.get('dropbox_link')
+    brand_code = state_data.get('brand_code')
 
     # Render the completion message
     notification_service = get_job_notification_service()
@@ -649,9 +650,11 @@ async def get_job_completion_message(
         dropbox_url=dropbox_url,
     )
 
-    # Build subject
-    if job.artist and job.title:
-        subject = f"Your karaoke video is ready: {job.artist} - {job.title}"
+    # Build subject: "NOMAD-1178: Artist - Title (Your karaoke video is ready!)"
+    if brand_code and job.artist and job.title:
+        subject = f"{brand_code}: {job.artist} - {job.title} (Your karaoke video is ready!)"
+    elif job.artist and job.title:
+        subject = f"{job.artist} - {job.title} (Your karaoke video is ready!)"
     else:
         subject = "Your karaoke video is ready!"
 
@@ -690,10 +693,11 @@ async def send_job_completion_email(
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-    # Get youtube and dropbox URLs from state_data (may be None)
+    # Get youtube, dropbox URLs, and brand_code from state_data (may be None)
     state_data = job.state_data or {}
     youtube_url = state_data.get('youtube_url')
     dropbox_url = state_data.get('dropbox_link')
+    brand_code = state_data.get('brand_code')
 
     # Render the completion message
     notification_service = get_job_notification_service()
@@ -713,6 +717,7 @@ async def send_job_completion_email(
         message_content=message,
         artist=job.artist,
         title=job.title,
+        brand_code=brand_code,
         cc_admin=request.cc_admin,
     )
 

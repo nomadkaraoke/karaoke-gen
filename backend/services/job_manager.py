@@ -412,10 +412,11 @@ class JobManager:
 
             notification_service = get_job_notification_service()
 
-            # Get youtube and dropbox URLs from state_data (may be None)
+            # Get youtube, dropbox URLs, and brand_code from state_data (may be None)
             state_data = job.state_data or {}
             youtube_url = state_data.get('youtube_url')
             dropbox_url = state_data.get('dropbox_link')
+            brand_code = state_data.get('brand_code')
 
             # Create async task (fire-and-forget)
             async def send_email():
@@ -427,6 +428,7 @@ class JobManager:
                     title=job.title,
                     youtube_url=youtube_url,
                     dropbox_url=dropbox_url,
+                    brand_code=brand_code,
                 )
 
             # Try to get existing event loop, create new one if none exists

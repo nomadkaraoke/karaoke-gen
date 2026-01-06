@@ -49,6 +49,7 @@ def mock_job():
     job.state_data = {
         "youtube_url": "https://youtube.com/watch?v=test123",
         "dropbox_link": "https://dropbox.com/folder/test",
+        "brand_code": "NOMAD-1234",
     }
     return job
 
@@ -79,8 +80,8 @@ class TestGetCompletionMessage:
             data = response.json()
             assert data["job_id"] == "test-job-123"
             assert data["message"] == "Your video is ready!"
-            assert "Test Artist" in data["subject"]
-            assert "Test Song" in data["subject"]
+            # Subject format: "NOMAD-1234: Test Artist - Test Song (Your karaoke video is ready!)"
+            assert data["subject"] == "NOMAD-1234: Test Artist - Test Song (Your karaoke video is ready!)"
             assert data["youtube_url"] == "https://youtube.com/watch?v=test123"
             assert data["dropbox_url"] == "https://dropbox.com/folder/test"
 
@@ -188,6 +189,7 @@ class TestSendCompletionEmail:
                 message_content="Your video is ready!",
                 artist="Test Artist",
                 title="Test Song",
+                brand_code="NOMAD-1234",
                 cc_admin=True,
             )
 

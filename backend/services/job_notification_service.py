@@ -87,6 +87,7 @@ class JobNotificationService:
         title: Optional[str] = None,
         youtube_url: Optional[str] = None,
         dropbox_url: Optional[str] = None,
+        brand_code: Optional[str] = None,
     ) -> bool:
         """
         Send job completion email to user.
@@ -99,6 +100,7 @@ class JobNotificationService:
             title: Song title
             youtube_url: YouTube video URL
             dropbox_url: Dropbox folder URL
+            brand_code: Release ID (e.g., "NOMAD-1178")
 
         Returns:
             True if email was sent successfully
@@ -129,6 +131,7 @@ class JobNotificationService:
                 message_content=message_content,
                 artist=artist,
                 title=title,
+                brand_code=brand_code,
                 cc_admin=True,
             )
 

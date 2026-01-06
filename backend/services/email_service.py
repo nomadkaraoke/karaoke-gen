@@ -842,6 +842,7 @@ Thanks for being part of making Nomad Karaoke better!
         message_content: str,
         artist: Optional[str] = None,
         title: Optional[str] = None,
+        brand_code: Optional[str] = None,
         cc_admin: bool = True,
     ) -> bool:
         """
@@ -852,14 +853,17 @@ Thanks for being part of making Nomad Karaoke better!
             message_content: Pre-rendered message content (plain text)
             artist: Artist name for subject line
             title: Song title for subject line
+            brand_code: Release ID (e.g., "NOMAD-1178") for subject line
             cc_admin: Whether to CC gen@nomadkaraoke.com
 
         Returns:
             True if email was sent successfully
         """
-        # Build subject with song info if available
-        if artist and title:
-            subject = f"Your karaoke video is ready: {artist} - {title}"
+        # Build subject: "NOMAD-1178: Artist - Title (Your karaoke video is ready!)"
+        if brand_code and artist and title:
+            subject = f"{brand_code}: {artist} - {title} (Your karaoke video is ready!)"
+        elif artist and title:
+            subject = f"{artist} - {title} (Your karaoke video is ready!)"
         else:
             subject = "Your karaoke video is ready!"
 

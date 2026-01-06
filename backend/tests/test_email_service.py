@@ -188,6 +188,25 @@ class TestEmailServiceJobCompletion:
         assert "Test Artist" in subject
         assert "Test Song" in subject
 
+    def test_send_job_completion_with_brand_code(self):
+        """Test job completion email includes brand code in subject."""
+        service = EmailService()
+        service.provider = Mock()
+        service.provider.send_email.return_value = True
+
+        service.send_job_completion(
+            to_email="user@example.com",
+            message_content="Your video is ready!",
+            artist="Seether",
+            title="Tonight",
+            brand_code="NOMAD-1178",
+        )
+
+        call_args = service.provider.send_email.call_args
+        subject = call_args.kwargs.get('subject') or call_args[0][1]
+        # Subject format: "NOMAD-1178: Seether - Tonight (Your karaoke video is ready!)"
+        assert subject == "NOMAD-1178: Seether - Tonight (Your karaoke video is ready!)"
+
     def test_send_job_completion_default_subject(self):
         """Test job completion email default subject without song info."""
         service = EmailService()
