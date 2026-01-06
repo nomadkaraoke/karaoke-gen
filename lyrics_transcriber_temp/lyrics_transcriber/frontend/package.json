@@ -2,7 +2,7 @@
   "name": "lyrics-transcriber-frontend",
   "private": true,
   "homepage": "https://nomadkaraoke.github.io/lyrics-transcriber-frontend",
-  "version": "0.83.0",
+  "version": "0.84.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

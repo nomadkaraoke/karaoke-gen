@@ -268,12 +268,26 @@ class LyricsCorrector:
         _adapt = None
         _ModelRouter = None
         
+        # Pre-initialized agentic corrector (created once, reused for all gaps)
+        _agentic_agent = None
+
         if use_agentic_env:
             try:
                 from lyrics_transcriber.correction.agentic.agent import AgenticCorrector as _AgenticCorrector
                 from lyrics_transcriber.correction.agentic.adapter import adapt_proposals_to_word_corrections as _adapt
                 from lyrics_transcriber.correction.agentic.router import ModelRouter as _ModelRouter
                 self.logger.info("🤖 Agentic modules imported successfully - running in AGENTIC-ONLY mode")
+
+                # Create agent ONCE and reuse for all gaps (avoids repeated model initialization)
+                _router = _ModelRouter()
+                model_id = _router.choose_model("gap", uncertainty=0.5)  # Use default uncertainty
+                self.logger.info(f"🤖 Creating single AgenticCorrector with model: {model_id}")
+                _agentic_agent = _AgenticCorrector.from_model(
+                    model=model_id,
+                    session_id=session_id,
+                    cache_dir=str(self._cache_dir)
+                )
+                self.logger.info("🤖 AgenticCorrector initialized and ready for all gaps")
             except Exception as e:
                 self.logger.error(f"🤖 Failed to import agentic modules but USE_AGENTIC_AI=1: {e}")
                 raise RuntimeError(f"Agentic AI correction is enabled but required modules could not be imported: {e}") from e
@@ -443,144 +457,192 @@ class LyricsCorrector:
             sys.exit(0)
         # === END TEMPORARY CODE ===
 
+        # AGENTIC-ONLY MODE: Process all gaps in parallel for better performance
+        if use_agentic_env:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            from lyrics_transcriber.correction.agentic.providers.config import ProviderConfig
+
+            # Get parallel processing config
+            _config = ProviderConfig.from_env()
+            max_workers = _config.max_parallel_gaps
+            self.logger.info(f"🤖 Processing {len(gap_sequences)} gaps in parallel (max_workers={max_workers})")
+
+            # Pre-compute shared data structures once (not per-gap)
+            all_transcribed_words = []
+            for seg in segments:
+                all_transcribed_words.extend(seg.words)
+            word_position = {w.id: idx for idx, w in enumerate(all_transcribed_words)}
+
+            # Build reference contexts once (same for all gaps)
+            reference_contexts = {}
+            for source, lyrics_data in self.reference_lyrics.items():
+                if lyrics_data and lyrics_data.segments:
+                    ref_words = []
+                    for seg in lyrics_data.segments:
+                        ref_words.extend([w.text for w in seg.words])
+                    reference_contexts[source] = " ".join(ref_words)
+
+            # Get artist and title once
+            artist = metadata.get("artist") if metadata else None
+            title = metadata.get("title") if metadata else None
+
+            # Prepare all gap inputs upfront
+            gap_inputs = []
+            for i, gap in enumerate(gap_sequences, 1):
+                # Prepare gap words data
+                gap_words_data = []
+                for word_id in gap.transcribed_word_ids:
+                    if word_id in word_map:
+                        word = word_map[word_id]
+                        gap_words_data.append({
+                            "id": word_id,
+                            "text": word.text,
+                            "start_time": getattr(word, 'start_time', 0),
+                            "end_time": getattr(word, 'end_time', 0)
+                        })
+
+                # Compute context words
+                gap_positions = [word_position[wid] for wid in gap.transcribed_word_ids if wid in word_position]
+                preceding_words = ""
+                following_words = ""
+
+                if gap_positions:
+                    first_gap_pos = min(gap_positions)
+                    last_gap_pos = max(gap_positions)
+
+                    # Get 10 words before
+                    start_pos = max(0, first_gap_pos - 10)
+                    preceding_list = [all_transcribed_words[idx].text for idx in range(start_pos, first_gap_pos) if idx < len(all_transcribed_words)]
+                    preceding_words = " ".join(preceding_list)
+
+                    # Get 10 words after
+                    end_pos = min(len(all_transcribed_words), last_gap_pos + 11)
+                    following_list = [all_transcribed_words[idx].text for idx in range(last_gap_pos + 1, end_pos) if idx < len(all_transcribed_words)]
+                    following_words = " ".join(following_list)
+
+                gap_inputs.append({
+                    'index': i,
+                    'gap': gap,
+                    'gap_id': f"gap_{i}",
+                    'gap_words': gap_words_data,
+                    'preceding_words': preceding_words,
+                    'following_words': following_words,
+                    'reference_contexts': reference_contexts,
+                    'artist': artist,
+                    'title': title
+                })
+
+            # Function to process a single gap (runs in thread pool)
+            def process_single_gap(gap_input):
+                """Process a single gap and return proposals. Thread-safe."""
+                idx = gap_input['index']
+                try:
+                    proposals = _agentic_agent.propose_for_gap(
+                        gap_id=gap_input['gap_id'],
+                        gap_words=gap_input['gap_words'],
+                        preceding_words=gap_input['preceding_words'],
+                        following_words=gap_input['following_words'],
+                        reference_contexts=gap_input['reference_contexts'],
+                        artist=gap_input['artist'],
+                        title=gap_input['title']
+                    )
+                    return {'index': idx, 'gap': gap_input['gap'], 'proposals': proposals, 'error': None}
+                except Exception as e:
+                    return {'index': idx, 'gap': gap_input['gap'], 'proposals': None, 'error': str(e)}
+
+            # Process gaps in parallel
+            results = [None] * len(gap_inputs)
+            completed_count = 0
+            errors = []
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all tasks
+                future_to_input = {executor.submit(process_single_gap, g): g for g in gap_inputs}
+
+                # Collect results as they complete
+                for future in as_completed(future_to_input):
+                    # Check deadline
+                    if deadline and time.time() > deadline:
+                        self.logger.warning(
+                            f"⏰ AGENTIC TIMEOUT: Deadline exceeded after processing {completed_count}/{len(gap_sequences)} gaps. "
+                            "Cancelling remaining gaps - human review will correct any issues."
+                        )
+                        # Cancel remaining futures
+                        for f in future_to_input:
+                            f.cancel()
+                        break
+
+                    result = future.result()
+                    idx = result['index'] - 1  # Convert 1-based to 0-based
+                    results[idx] = result
+                    completed_count += 1
+
+                    if result['error']:
+                        errors.append(f"Gap {result['index']}: {result['error']}")
+                        self.logger.error(f"🤖 Gap {result['index']} failed: {result['error']}")
+                    else:
+                        proposal_count = len(result['proposals']) if result['proposals'] else 0
+                        self.logger.info(f"🤖 Gap {result['index']}/{len(gap_sequences)} completed ({proposal_count} proposals)")
+
+            self.logger.info(f"🤖 Parallel processing complete: {completed_count}/{len(gap_sequences)} gaps processed")
+
+            # If any errors occurred, fail fast
+            if errors:
+                raise RuntimeError(f"Agentic AI correction failed for {len(errors)} gaps: {'; '.join(errors)}")
+
+            # Apply corrections sequentially (must be in order due to segment modifications)
+            for result in results:
+                if result is None:
+                    continue  # Skipped due to deadline
+
+                i = result['index']
+                gap = result['gap']
+                _proposals = result['proposals']
+
+                _agentic_corrections = _adapt(_proposals, word_map, linear_position_map) if _proposals else []
+
+                if _agentic_corrections:
+                    self.logger.info(f"🤖 Applying {len(_agentic_corrections)} agentic corrections for gap {i}")
+                    affected_word_ids = [w.id for w in self._get_affected_words(gap, segments)]
+                    affected_segment_ids = [s.id for s in self._get_affected_segments(gap, segments)]
+                    updated_segments = self._apply_corrections_to_segments(self._get_affected_segments(gap, segments), _agentic_corrections)
+                    for correction in _agentic_corrections:
+                        if correction.word_id and correction.corrected_word_id:
+                            word_id_map[correction.word_id] = correction.corrected_word_id
+                    for old_seg, new_seg in zip(self._get_affected_segments(gap, segments), updated_segments):
+                        segment_id_map[old_seg.id] = new_seg.id
+                    step = CorrectionStep(
+                        handler_name="AgenticCorrector",
+                        affected_word_ids=affected_word_ids,
+                        affected_segment_ids=affected_segment_ids,
+                        corrections=_agentic_corrections,
+                        segments_before=self._get_affected_segments(gap, segments),
+                        segments_after=updated_segments,
+                        created_word_ids=[w.id for w in self._get_new_words(updated_segments, affected_word_ids)],
+                        deleted_word_ids=[id for id in affected_word_ids if not self._word_exists(id, updated_segments)],
+                    )
+                    correction_steps.append(step)
+                    all_corrections.extend(_agentic_corrections)
+                    # Log corrections made
+                    for correction in _agentic_corrections:
+                        self.logger.info(
+                            f"Made correction: '{correction.original_word}' -> '{correction.corrected_word}' "
+                            f"(confidence: {correction.confidence:.2f}, reason: {correction.reason})"
+                        )
+                else:
+                    self.logger.debug(f"🤖 No agentic corrections needed for gap {i}")
+
+        # RULE-BASED MODE: Process gaps sequentially
         for i, gap in enumerate(gap_sequences, 1):
-            # Check deadline before processing each gap (agentic mode only)
-            # This allows us to abort early and return uncorrected results for human review
-            if deadline and use_agentic_env and time.time() > deadline:
-                self.logger.warning(
-                    f"⏰ AGENTIC TIMEOUT: Deadline exceeded after processing {i-1}/{len(gap_sequences)} gaps. "
-                    "Skipping remaining gaps - human review will correct any issues."
-                )
-                # Break out of loop - continue with whatever corrections we have (likely none)
-                break
+            # Skip if we already processed in agentic mode
+            if use_agentic_env:
+                continue
 
             self.logger.info(f"Processing gap {i}/{len(gap_sequences)} at position {gap.transcription_position}")
 
             # Get the actual words for logging
             gap_words = [word_map[word_id] for word_id in gap.transcribed_word_ids]
             self.logger.debug(f"Gap text: '{' '.join(w.text for w in gap_words)}'")
-
-            # AGENTIC-ONLY MODE: Use agentic correction exclusively
-            if use_agentic_env:
-                self.logger.info(f"🤖 Attempting agentic correction for gap {i}/{len(gap_sequences)}")
-                try:
-                    # Prepare gap data for classification-first workflow
-                    gap_words_data = []
-                    for word_id in gap.transcribed_word_ids:
-                        if word_id in word_map:
-                            word = word_map[word_id]
-                            gap_words_data.append({
-                                "id": word_id,
-                                "text": word.text,
-                                "start_time": getattr(word, 'start_time', 0),
-                                "end_time": getattr(word, 'end_time', 0)
-                            })
-                    
-                    # Get context words
-                    all_transcribed_words = []
-                    for seg in segments:
-                        all_transcribed_words.extend(seg.words)
-                    word_position = {w.id: idx for idx, w in enumerate(all_transcribed_words)}
-                    
-                    gap_positions = [word_position[wid] for wid in gap.transcribed_word_ids if wid in word_position]
-                    preceding_words = ""
-                    following_words = ""
-                    
-                    if gap_positions:
-                        first_gap_pos = min(gap_positions)
-                        last_gap_pos = max(gap_positions)
-                        
-                        # Get 10 words before
-                        start_pos = max(0, first_gap_pos - 10)
-                        preceding_list = [all_transcribed_words[idx].text for idx in range(start_pos, first_gap_pos) if idx < len(all_transcribed_words)]
-                        preceding_words = " ".join(preceding_list)
-                        
-                        # Get 10 words after
-                        end_pos = min(len(all_transcribed_words), last_gap_pos + 11)
-                        following_list = [all_transcribed_words[idx].text for idx in range(last_gap_pos + 1, end_pos) if idx < len(all_transcribed_words)]
-                        following_words = " ".join(following_list)
-                    
-                    # Get reference contexts from all sources
-                    reference_contexts = {}
-                    for source, lyrics_data in self.reference_lyrics.items():
-                        if lyrics_data and lyrics_data.segments:
-                            ref_words = []
-                            for seg in lyrics_data.segments:
-                                ref_words.extend([w.text for w in seg.words])
-                            # For now, use full text (handlers will extract relevant portions)
-                            reference_contexts[source] = " ".join(ref_words)
-                    
-                    # Get artist and title from metadata
-                    artist = metadata.get("artist") if metadata else None
-                    title = metadata.get("title") if metadata else None
-                    
-                    # Choose model via router
-                    _router = _ModelRouter()
-                    uncertainty = 0.3 if len(gap_words_data) <= 2 else 0.7
-                    model_id = _router.choose_model("gap", uncertainty)
-                    self.logger.debug(f"🤖 Router selected model: {model_id}")
-                    
-                    # Create agent and use new classification-first workflow
-                    self.logger.debug(f"🤖 Creating AgenticCorrector with model: {model_id}")
-                    _agent = _AgenticCorrector.from_model(
-                        model=model_id,
-                        session_id=session_id,
-                        cache_dir=str(self._cache_dir)
-                    )
-                    
-                    # Use new propose_for_gap method
-                    self.logger.debug(f"🤖 Calling agent.propose_for_gap() for gap {i}")
-                    _proposals = _agent.propose_for_gap(
-                        gap_id=f"gap_{i}",
-                        gap_words=gap_words_data,
-                        preceding_words=preceding_words,
-                        following_words=following_words,
-                        reference_contexts=reference_contexts,
-                        artist=artist,
-                        title=title
-                    )
-                    self.logger.debug(f"🤖 Agent returned {len(_proposals) if _proposals else 0} proposals")
-                    _agentic_corrections = _adapt(_proposals, word_map, linear_position_map) if _proposals else []
-                    self.logger.debug(f"🤖 Adapter returned {len(_agentic_corrections)} corrections")
-                    
-                    if _agentic_corrections:
-                        self.logger.info(f"🤖 Applying {len(_agentic_corrections)} agentic corrections for gap {i}")
-                        affected_word_ids = [w.id for w in self._get_affected_words(gap, segments)]
-                        affected_segment_ids = [s.id for s in self._get_affected_segments(gap, segments)]
-                        updated_segments = self._apply_corrections_to_segments(self._get_affected_segments(gap, segments), _agentic_corrections)
-                        for correction in _agentic_corrections:
-                            if correction.word_id and correction.corrected_word_id:
-                                word_id_map[correction.word_id] = correction.corrected_word_id
-                        for old_seg, new_seg in zip(self._get_affected_segments(gap, segments), updated_segments):
-                            segment_id_map[old_seg.id] = new_seg.id
-                        step = CorrectionStep(
-                            handler_name="AgenticCorrector",
-                            affected_word_ids=affected_word_ids,
-                            affected_segment_ids=affected_segment_ids,
-                            corrections=_agentic_corrections,
-                            segments_before=self._get_affected_segments(gap, segments),
-                            segments_after=updated_segments,
-                            created_word_ids=[w.id for w in self._get_new_words(updated_segments, affected_word_ids)],
-                            deleted_word_ids=[id for id in affected_word_ids if not self._word_exists(id, updated_segments)],
-                        )
-                        correction_steps.append(step)
-                        all_corrections.extend(_agentic_corrections)
-                        # Log corrections made
-                        for correction in _agentic_corrections:
-                            self.logger.info(
-                                f"Made correction: '{correction.original_word}' -> '{correction.corrected_word}' "
-                                f"(confidence: {correction.confidence:.2f}, reason: {correction.reason})"
-                            )
-                    else:
-                        self.logger.info(f"🤖 No agentic corrections needed for gap {i}")
-                        
-                except Exception as e:
-                    # In agentic-only mode, fail fast instead of falling back
-                    self.logger.error(f"🤖 Agentic correction failed for gap {i}: {e}", exc_info=True)
-                    raise RuntimeError(f"Agentic AI correction failed for gap {i}: {e}") from e
-                
-                # Skip rule-based handlers completely in agentic mode
-                continue
 
             # RULE-BASED MODE: Try each handler in order
             for handler in self.handlers:

@@ -97,7 +97,6 @@ class LangChainBridge(BaseAIProvider):
         
         # Lazy-initialized chat model
         self._chat_model: Optional[Any] = None
-        self._warmed_up: bool = False
     
     def name(self) -> str:
         """Return provider name for logging."""
@@ -164,13 +163,7 @@ class LangChainBridge(BaseAIProvider):
                         ) from None
 
                 init_elapsed = time.time() - init_start
-                logger.info(f"🤖 Model created in {init_elapsed:.2f}s, starting warm-up...")
-
-                # Warm up the model to establish connection before real work
-                self._warm_up_model()
-
-                total_elapsed = time.time() - init_start
-                logger.info(f"🤖 Model initialization complete in {total_elapsed:.2f}s")
+                logger.info(f"🤖 Model initialized in {init_elapsed:.2f}s")
 
             except InitializationTimeoutError as e:
                 self._circuit_breaker.record_failure(self._model)
@@ -271,47 +264,4 @@ class LangChainBridge(BaseAIProvider):
 
         return content
 
-    def _warm_up_model(self) -> None:
-        """Send a lightweight request to warm up the model connection.
-
-        This helps establish the REST connection and potentially warm up any
-        server-side resources before processing real correction requests.
-        The warm-up uses a timeout to fail fast if the service is unresponsive.
-        """
-        if self._warmed_up:
-            return
-
-        timeout = self._config.warmup_timeout_seconds
-        # Use print with flush=True for visibility when output is redirected
-        print(f"🔥 Warming up {self._model} connection (timeout: {timeout}s)...", flush=True)
-        logger.info(f"🔥 Warming up {self._model} connection (timeout: {timeout}s)...")
-
-        warmup_start = time.time()
-        try:
-            from langchain_core.messages import HumanMessage
-
-            # Minimal prompt that requires almost no processing
-            warm_up_prompt = 'Respond with exactly: {"status":"ready"}'
-
-            # Use ThreadPoolExecutor for timeout on warm-up call
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(
-                    self._chat_model.invoke,
-                    [HumanMessage(content=warm_up_prompt)]
-                )
-                try:
-                    future.result(timeout=timeout)
-                except FuturesTimeoutError:
-                    raise TimeoutError(f"Warm-up timed out after {timeout}s") from None
-
-            elapsed = time.time() - warmup_start
-            self._warmed_up = True
-            print(f"🔥 Warm-up complete for {self._model} in {elapsed:.2f}s", flush=True)
-            logger.info(f"🔥 Warm-up complete for {self._model} in {elapsed:.2f}s")
-        except Exception as e:
-            elapsed = time.time() - warmup_start
-            # Don't fail the actual request if warm-up fails
-            # Just log and continue - the real request might still work
-            print(f"🔥 Warm-up failed for {self._model} after {elapsed:.2f}s: {e} (continuing anyway)", flush=True)
-            logger.warning(f"🔥 Warm-up failed for {self._model} after {elapsed:.2f}s: {e} (continuing anyway)")
 
