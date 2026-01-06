@@ -148,6 +148,7 @@ ExecStartPre=/opt/encoding-worker/startup.sh
 ExecStart=/opt/encoding-worker/venv/bin/uvicorn backend.services.gce_encoding.main:app --host 0.0.0.0 --port 8080
 Restart=always
 RestartSec=10
+TimeoutStartSec=300
 Environment="GOOGLE_CLOUD_PROJECT=nomadkaraoke"
 EnvironmentFile=/opt/encoding-worker/env
 
