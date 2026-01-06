@@ -908,6 +908,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      base_rebuilt: ${{ steps.check-base.outputs.needs_rebuild }}
     env:
       REGISTRY: us-central1-docker.pkg.dev
       PROJECT_ID: nomadkaraoke
@@ -1164,6 +1166,54 @@ jobs:
           echo ""
           echo "📊 Built on self-hosted GCP runner (200GB SSD, no disk space issues)"
           echo "   Runner: gcp-runner with 4 vCPU, 16GB RAM"
+
+  # ============================================
+  # PROPAGATE BASE IMAGE TO ALL RUNNERS
+  # When base image is rebuilt, pull it to all 20 runners
+  # so subsequent app builds don't wait 8 min for the pull
+  # ============================================
+
+  propagate-base-image:
+    name: "Propagate Base Image"
+    needs: deploy-backend
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.deploy-backend.outputs.base_rebuilt == 'true'
+    runs-on: [self-hosted, linux, gcp]
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        # 20 parallel jobs to hit all runners
+        runner_index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+      max-parallel: 20
+      fail-fast: false  # Don't cancel other runners if one fails
+    env:
+      REGISTRY: us-central1-docker.pkg.dev
+      PROJECT_ID: nomadkaraoke
+      REPOSITORY: karaoke-repo
+      BASE_IMAGE_NAME: karaoke-backend-base
+    steps:
+      - name: Authenticate to Google Cloud (Workload Identity)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: "latest"
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Pull latest base image
+        run: |
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:latest"
+          RUNNER_NAME=$(hostname)
+          echo "📥 Pulling latest base image on runner $RUNNER_NAME..."
+          docker pull $BASE_IMAGE
+          echo "✅ Base image cached on $RUNNER_NAME"
 
   deploy-infrastructure:
     name: "Deploy - Infrastructure (Pulumi)"
