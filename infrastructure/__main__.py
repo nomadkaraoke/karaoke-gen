@@ -2260,11 +2260,11 @@ github_runner_logging_iam = gcp.projects.IAMMember(
     member=github_runner_sa.email.apply(lambda email: f"serviceAccount:{email}"),
 )
 
-# Grant runner service account storage write permissions (for uploading wheels to GCS)
+# Grant runner service account storage admin permissions (for uploading/overwriting wheels in GCS)
 github_runner_storage_iam = gcp.projects.IAMMember(
     "github-runner-storage-write",
     project=project_id,
-    role="roles/storage.objectCreator",
+    role="roles/storage.objectAdmin",
     member=github_runner_sa.email.apply(lambda email: f"serviceAccount:{email}"),
 )
 
