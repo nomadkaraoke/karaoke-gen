@@ -461,6 +461,14 @@ github_actions_iap_tunnel = gcp.projects.IAMMember(
     member=github_actions_sa.email.apply(lambda email: f"serviceAccount:{email}"),
 )
 
+# Grant broad Editor access to avoid permission issues when adding new resources
+github_actions_editor = gcp.projects.IAMMember(
+    "github-actions-editor",
+    project=project_id,
+    role="roles/editor",
+    member=github_actions_sa.email.apply(lambda email: f"serviceAccount:{email}"),
+)
+
 # ==================== Claude Code Automation Service Account ====================
 # This service account provides long-lived read-only access for Claude Code CLI
 # to monitor deployments, view logs, and check build status without requiring
