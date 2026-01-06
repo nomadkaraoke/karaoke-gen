@@ -1171,10 +1171,17 @@ jobs:
   # PROPAGATE BASE IMAGE TO ALL RUNNERS
   # When base image is rebuilt, pull it to all 20 runners
   # so subsequent app builds don't wait 8 min for the pull
+  #
+  # NOTE: This is best-effort distribution. GitHub Actions doesn't
+  # support targeting specific runners by name, so we spawn 20 jobs
+  # and rely on the scheduler to distribute them across idle runners.
+  # In practice, with all runners idle after deploy-backend, distribution
+  # is good. Runners that miss this pull will get the image on their
+  # next app build (with the 8 min delay).
   # ============================================
 
   propagate-base-image:
-    name: "Propagate Base Image"
+    name: "Propagate Base Image (${{ matrix.runner_index }})"
     needs: deploy-backend
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.deploy-backend.outputs.base_rebuilt == 'true'
     runs-on: [self-hosted, linux, gcp]
@@ -1183,7 +1190,7 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        # 20 parallel jobs to hit all runners
+        # 20 parallel jobs - GitHub distributes across available runners
         runner_index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
       max-parallel: 20
       fail-fast: false  # Don't cancel other runners if one fails
