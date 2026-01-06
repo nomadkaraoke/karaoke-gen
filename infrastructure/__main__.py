@@ -1246,6 +1246,17 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install fastapi uvicorn google-cloud-storage aiofiles aiohttp
 
+# Pre-install karaoke-gen wheel from GCS (for LocalEncodingService)
+echo "Installing karaoke-gen wheel from GCS..."
+gsutil cp "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl" /tmp/ 2>/dev/null || true
+WHEEL_FILE=$(ls -t /tmp/karaoke_gen-*.whl 2>/dev/null | head -1)
+if [ -n "$WHEEL_FILE" ]; then
+    echo "Installing wheel: $WHEEL_FILE"
+    pip install --upgrade "$WHEEL_FILE" || echo "WARNING: Failed to install wheel, will retry at job start"
+else
+    echo "No wheel found in GCS, will install at job start"
+fi
+
 # Get API key from Secret Manager
 echo "Fetching API key from Secret Manager..."
 ENCODING_API_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key 2>/dev/null || echo "")
@@ -1523,9 +1534,11 @@ def ensure_latest_wheel():
         logger.info(f"Installing wheel: {wheel_path}")
 
         # Install (or upgrade) the wheel
+        # Use 5-minute timeout - first install at job start may need to resolve dependencies
+        # Subsequent installs are faster since dependencies are cached
         install_result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", wheel_path],
-            capture_output=True, text=True, timeout=120
+            capture_output=True, text=True, timeout=300
         )
 
         if install_result.returncode != 0:
