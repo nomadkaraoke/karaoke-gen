@@ -1498,11 +1498,11 @@ def run_preview_encoding(job_id: str, work_dir: Path, request: "EncodePreviewReq
 
 
 def ensure_latest_wheel():
-    """Download and install latest karaoke-gen wheel from GCS.
+    '''Download and install latest karaoke-gen wheel from GCS.
 
     Called at the start of each job to enable hot code updates without restart.
     In-progress jobs continue with their version, new jobs get latest code.
-    """
+    '''
     try:
         logger.info("Checking for latest karaoke-gen wheel in GCS...")
 
@@ -1544,7 +1544,7 @@ def ensure_latest_wheel():
 
 
 def find_file(work_dir: Path, *patterns):
-    """Find a file matching any of the given glob patterns."""
+    '''Find a file matching any of the given glob patterns.'''
     for pattern in patterns:
         matches = list(work_dir.glob(f"**/{pattern}"))
         if matches:
@@ -1553,7 +1553,7 @@ def find_file(work_dir: Path, *patterns):
 
 
 def run_encoding(job_id: str, work_dir: Path, config: dict):
-    """Run encoding using LocalEncodingService (single source of truth).
+    '''Run encoding using LocalEncodingService (single source of truth).
 
     Uses LocalEncodingService from the installed karaoke-gen wheel to ensure
     output files match local CLI exactly:
@@ -1562,7 +1562,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
     - All formats: lossless 4K MP4, lossy 4K MP4, lossless MKV, 720p MP4
 
     Requires the karaoke-gen wheel to be installed (done by ensure_latest_wheel).
-    """
+    '''
     jobs[job_id]["status"] = "running"
     jobs[job_id]["progress"] = 10
 
@@ -2244,6 +2244,14 @@ github_runner_logging_iam = gcp.projects.IAMMember(
     "github-runner-logging-access",
     project=project_id,
     role="roles/logging.logWriter",
+    member=github_runner_sa.email.apply(lambda email: f"serviceAccount:{email}"),
+)
+
+# Grant runner service account storage write permissions (for uploading wheels to GCS)
+github_runner_storage_iam = gcp.projects.IAMMember(
+    "github-runner-storage-write",
+    project=project_id,
+    role="roles/storage.objectCreator",
     member=github_runner_sa.email.apply(lambda email: f"serviceAccount:{email}"),
 )
 
