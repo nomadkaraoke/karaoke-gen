@@ -81,6 +81,37 @@ function generateUniqueTag(): string {
 }
 
 /**
+ * Check if an email is a job completion email.
+ * Extracted to standalone function for TypeScript compatibility.
+ */
+function checkIsCompletionEmail(email: Email): boolean {
+  const subject = (email.subject || '').toLowerCase();
+  const body = (email.body || '').toLowerCase();
+
+  // Check subject for completion indicators
+  const subjectIndicators = [
+    'karaoke video is ready',
+    'your video is ready',
+    'video ready',
+    'complete',
+  ];
+
+  // Check body for completion indicators
+  const bodyIndicators = [
+    'your karaoke video is ready',
+    'video has been created',
+    'youtube',
+    'dropbox',
+    'download your video',
+  ];
+
+  const hasSubjectMatch = subjectIndicators.some(indicator => subject.includes(indicator));
+  const hasBodyMatch = bodyIndicators.some(indicator => body.includes(indicator));
+
+  return hasSubjectMatch || hasBodyMatch;
+}
+
+/**
  * Creates an email testing helper.
  * Returns a helper with isAvailable=false if testmail.app env vars are not set.
  */
@@ -240,30 +271,7 @@ export async function createEmailHelper(): Promise<EmailHelper> {
      * Check if an email is a job completion email
      */
     isCompletionEmail(email: Email): boolean {
-      const subject = (email.subject || '').toLowerCase();
-      const body = (email.body || '').toLowerCase();
-
-      // Check subject for completion indicators
-      const subjectIndicators = [
-        'karaoke video is ready',
-        'your video is ready',
-        'video ready',
-        'complete',
-      ];
-
-      // Check body for completion indicators
-      const bodyIndicators = [
-        'your karaoke video is ready',
-        'video has been created',
-        'youtube',
-        'dropbox',
-        'download your video',
-      ];
-
-      const hasSubjectMatch = subjectIndicators.some(indicator => subject.includes(indicator));
-      const hasBodyMatch = bodyIndicators.some(indicator => body.includes(indicator));
-
-      return hasSubjectMatch || hasBodyMatch;
+      return checkIsCompletionEmail(email);
     },
 
     /**
@@ -329,7 +337,7 @@ export async function createEmailHelper(): Promise<EmailHelper> {
               };
 
               // Check if this is a completion email
-              if (this.isCompletionEmail(email)) {
+              if (checkIsCompletionEmail(email)) {
                 console.log(`Found completion email: ${email.subject}`);
 
                 // Optionally verify artist/title in subject or body

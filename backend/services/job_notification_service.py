@@ -26,6 +26,16 @@ ENABLE_AUTO_EMAILS = os.getenv("ENABLE_AUTO_EMAILS", "true").lower() == "true"
 FEEDBACK_FORM_URL = os.getenv("FEEDBACK_FORM_URL", "https://forms.gle/your-feedback-form")
 
 
+def _mask_email(email: str) -> str:
+    """Mask email for logging to protect PII. Shows first char + domain."""
+    if not email or "@" not in email:
+        return "***"
+    local, domain = email.split("@", 1)
+    if len(local) <= 1:
+        return f"*@{domain}"
+    return f"{local[0]}***@{domain}"
+
+
 class JobNotificationService:
     """
     Service for sending job-related email notifications.
@@ -123,7 +133,7 @@ class JobNotificationService:
             )
 
             if success:
-                logger.info(f"Sent completion email for job {job_id} to {user_email}")
+                logger.info(f"Sent completion email for job {job_id} to {_mask_email(user_email)}")
             else:
                 logger.error(f"Failed to send completion email for job {job_id}")
 
@@ -202,7 +212,7 @@ class JobNotificationService:
             )
 
             if success:
-                logger.info(f"Sent {action_type} reminder for job {job_id} to {user_email}")
+                logger.info(f"Sent {action_type} reminder for job {job_id} to {_mask_email(user_email)}")
             else:
                 logger.error(f"Failed to send {action_type} reminder for job {job_id}")
 

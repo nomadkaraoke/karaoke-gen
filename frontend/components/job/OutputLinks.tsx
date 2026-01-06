@@ -34,6 +34,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
   const [emailSent, setEmailSent] = useState(false)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -50,6 +51,9 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
       }
       if (messageTimeoutRef.current) {
         clearTimeout(messageTimeoutRef.current)
+      }
+      if (emailTimeoutRef.current) {
+        clearTimeout(emailTimeoutRef.current)
       }
     }
   }, [])
@@ -135,7 +139,13 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
     try {
       await adminApi.sendCompletionEmail(jobId, emailInput.trim(), true)
       setEmailSent(true)
-      setTimeout(() => {
+
+      // Clear any existing timeout
+      if (emailTimeoutRef.current) {
+        clearTimeout(emailTimeoutRef.current)
+      }
+      // Set new timeout to close dialog after success message
+      emailTimeoutRef.current = setTimeout(() => {
         setShowEmailDialog(false)
         setEmailSent(false)
         setEmailInput("")
