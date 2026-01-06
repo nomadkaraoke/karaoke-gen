@@ -36,6 +36,8 @@
 
 ## Recent Changes
 
+- **Email Notification System** (2026-01-06): Added automated email notifications for job completion and user action reminders. Features: GCS-backed HTML email templates with fallback defaults, SendGrid with CC support, auto-completion emails on job finish, idle reminder emails via Cloud Tasks (5-min delay for blocking states), admin UI buttons to copy message or send email manually. Endpoints: `GET /api/admin/jobs/{id}/completion-message`, `POST /api/admin/jobs/{id}/send-completion-email`. Feature flag `ENABLE_AUTO_EMAILS` (default: false). See [API.md](API.md#email-notifications-admin) and [ARCHITECTURE.md](ARCHITECTURE.md#video-worker-orchestrator).
+
 - **Agentic Correction Performance** (2026-01-05): Optimized agentic AI correction from ~5 minutes to ~55 seconds for 20 gaps (~5-6x speedup). Fixed anti-pattern of creating new model instance per gap (caused repeated 2s warm-up overhead). Now creates model once and processes gaps in parallel using ThreadPoolExecutor (default 5 workers). Configure via `AGENTIC_MAX_PARALLEL_GAPS` env var. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#reuse-llm-model-instances-across-operations).
 
 - **Worker Logs Subcollection** (2026-01-04): Moved `worker_logs` from embedded array in job documents to Firestore subcollection (`jobs/{job_id}/logs`). Fixes job failures when logs exceed 1MB (job 501258e1 had 1.26MB of logs). New logs stored with 30-day TTL via Firestore TTL policy. Feature flag `USE_LOG_SUBCOLLECTION=true` (default). See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#firestore-document-1mb-limit-with-embedded-arrays).

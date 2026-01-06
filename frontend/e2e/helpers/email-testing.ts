@@ -43,8 +43,10 @@ export interface EmailHelper {
   isAvailable: boolean;
   createInbox: () => Promise<InboxDto>;
   waitForEmail: (inboxId: string, timeout?: number) => Promise<Email>;
+  waitForCompletionEmail: (inboxId: string, artist?: string, title?: string, timeout?: number) => Promise<Email>;
   extractMagicLink: (email: Email) => string | null;
   extractVerificationCode: (email: Email) => string | null;
+  isCompletionEmail: (email: Email) => boolean;
   deleteInbox: (inboxId: string) => Promise<void>;
 }
 
@@ -235,6 +237,133 @@ export async function createEmailHelper(): Promise<EmailHelper> {
     },
 
     /**
+     * Check if an email is a job completion email
+     */
+    isCompletionEmail(email: Email): boolean {
+      const subject = (email.subject || '').toLowerCase();
+      const body = (email.body || '').toLowerCase();
+
+      // Check subject for completion indicators
+      const subjectIndicators = [
+        'karaoke video is ready',
+        'your video is ready',
+        'video ready',
+        'complete',
+      ];
+
+      // Check body for completion indicators
+      const bodyIndicators = [
+        'your karaoke video is ready',
+        'video has been created',
+        'youtube',
+        'dropbox',
+        'download your video',
+      ];
+
+      const hasSubjectMatch = subjectIndicators.some(indicator => subject.includes(indicator));
+      const hasBodyMatch = bodyIndicators.some(indicator => body.includes(indicator));
+
+      return hasSubjectMatch || hasBodyMatch;
+    },
+
+    /**
+     * Wait for a job completion email to arrive
+     * @param inboxId - The tag to check (returned from createInbox as id)
+     * @param artist - Optional artist name to verify in email
+     * @param title - Optional song title to verify in email
+     * @param timeout - Timeout in ms (default: 120000 = 2 minutes)
+     */
+    async waitForCompletionEmail(
+      inboxId: string,
+      artist?: string,
+      title?: string,
+      timeout = 120000
+    ): Promise<Email> {
+      console.log(`Waiting for completion email with tag ${inboxId}...`);
+
+      const pollInterval = Math.min(timeout, 30000);
+      const startTime = Date.now();
+
+      // Track emails we've already seen (by timestamp)
+      const seenTimestamps = new Set<number>();
+
+      while (Date.now() - startTime < timeout) {
+        const remainingTime = timeout - (Date.now() - startTime);
+        const waitTime = Math.min(pollInterval, remainingTime);
+        const waitSeconds = Math.ceil(waitTime / 1000);
+
+        const url = new URL(TESTMAIL_API_URL);
+        url.searchParams.set('apikey', TESTMAIL_API_KEY!);
+        url.searchParams.set('namespace', TESTMAIL_NAMESPACE!);
+        url.searchParams.set('tag', inboxId);
+        url.searchParams.set('livequery', 'true');
+        url.searchParams.set('wait', waitSeconds.toString());
+
+        try {
+          const response = await fetch(url.toString());
+
+          if (!response.ok) {
+            throw new Error(`testmail.app API error: ${response.status} ${response.statusText}`);
+          }
+
+          const data: TestmailResponse = await response.json();
+
+          if (data.result !== 'success') {
+            throw new Error(`testmail.app API error: ${data.message || 'Unknown error'}`);
+          }
+
+          if (data.emails && data.emails.length > 0) {
+            // Look for completion emails we haven't seen yet
+            for (const testmailEmail of data.emails.sort((a, b) => b.timestamp - a.timestamp)) {
+              // Skip if we've already processed this email
+              if (seenTimestamps.has(testmailEmail.timestamp)) {
+                continue;
+              }
+              seenTimestamps.add(testmailEmail.timestamp);
+
+              const email: Email = {
+                subject: testmailEmail.subject,
+                body: testmailEmail.html || testmailEmail.text,
+                from: testmailEmail.from,
+                timestamp: testmailEmail.timestamp,
+              };
+
+              // Check if this is a completion email
+              if (this.isCompletionEmail(email)) {
+                console.log(`Found completion email: ${email.subject}`);
+
+                // Optionally verify artist/title in subject or body
+                if (artist && title) {
+                  const content = `${email.subject} ${email.body}`.toLowerCase();
+                  const hasArtist = content.includes(artist.toLowerCase());
+                  const hasTitle = content.includes(title.toLowerCase());
+
+                  if (hasArtist && hasTitle) {
+                    console.log(`  ✓ Verified artist "${artist}" and title "${title}" in email`);
+                  } else {
+                    console.log(`  ⚠ Artist/title verification: artist=${hasArtist}, title=${hasTitle}`);
+                  }
+                }
+
+                return email;
+              } else {
+                console.log(`  Skipping non-completion email: ${testmailEmail.subject}`);
+              }
+            }
+          }
+        } catch (error) {
+          if (Date.now() - startTime < timeout) {
+            console.log(`Polling for completion email... (${Math.round((Date.now() - startTime) / 1000)}s elapsed)`);
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      throw new Error(`Timed out waiting for completion email after ${timeout}ms`);
+    },
+
+    /**
      * Delete an inbox after testing.
      * In testmail.app, emails auto-expire - this is a no-op.
      */
@@ -257,8 +386,10 @@ function createDisabledHelper(): EmailHelper {
     isAvailable: false,
     createInbox: notAvailable,
     waitForEmail: notAvailable,
+    waitForCompletionEmail: notAvailable,
     extractMagicLink: () => null,
     extractVerificationCode: () => null,
+    isCompletionEmail: () => false,
     deleteInbox: notAvailable,
   };
 }

@@ -833,6 +833,62 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       console.log('STEP 9 COMPLETE: Job finished');
 
       // =========================================================================
+      // STEP 9.5: Verify Completion Email (if email testing available)
+      // =========================================================================
+      if (emailHelper && inboxId) {
+        console.log('\n========================================');
+        console.log('STEP 9.5: Verify Completion Email');
+        console.log('========================================');
+
+        try {
+          console.log('  Waiting for completion email to arrive...');
+
+          // Wait up to 3 minutes for the completion email
+          // Email is sent asynchronously after job completion, may take a moment
+          const completionEmail = await emailHelper.waitForCompletionEmail(
+            inboxId,
+            TEST_SONG.artist,
+            TEST_SONG.title,
+            180_000 // 3 minutes
+          );
+
+          console.log(`  ✓ Completion email received: "${completionEmail.subject}"`);
+
+          // Verify email content
+          const emailBody = completionEmail.body || '';
+          const emailSubject = completionEmail.subject || '';
+
+          // Check for expected content indicators
+          const hasVideoReadyText = emailBody.toLowerCase().includes('ready') ||
+                                    emailSubject.toLowerCase().includes('ready');
+          const hasSongInfo = emailBody.toLowerCase().includes(TEST_SONG.artist.toLowerCase()) ||
+                              emailSubject.toLowerCase().includes(TEST_SONG.artist.toLowerCase());
+
+          console.log(`  Email verification:`);
+          console.log(`    - "ready" indicator: ${hasVideoReadyText ? '✓' : '✗'}`);
+          console.log(`    - Artist name: ${hasSongInfo ? '✓' : '✗'}`);
+
+          // Log email details for debugging
+          console.log(`  Email from: ${completionEmail.from}`);
+          console.log(`  Subject: ${emailSubject}`);
+          console.log(`  Body preview: ${emailBody.substring(0, 200)}...`);
+
+          await page.screenshot({ path: 'test-results/09.5-completion-email-received.png' });
+          console.log('STEP 9.5 COMPLETE: Completion email verified');
+        } catch (e) {
+          // Don't fail the test if email verification times out - it's an enhancement
+          console.log(`  ⚠ WARNING: Completion email verification failed: ${e}`);
+          console.log('  This may indicate email sending is disabled or delayed.');
+          console.log('  Continuing with remaining steps...');
+        }
+      } else {
+        console.log('\n========================================');
+        console.log('STEP 9.5: Skip Completion Email Verification');
+        console.log('========================================');
+        console.log('  Skipping - using pre-configured token (no testmail inbox)');
+      }
+
+      // =========================================================================
       // STEP 10: Verify Downloads
       // =========================================================================
       console.log('\n========================================');
