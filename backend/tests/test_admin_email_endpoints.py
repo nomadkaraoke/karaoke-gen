@@ -4,7 +4,7 @@ Unit tests for admin email endpoints.
 Tests the completion message and send email API endpoints.
 """
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -43,6 +43,9 @@ def mock_job():
     job.artist = "Test Artist"
     job.title = "Test Song"
     job.status = JobStatus.COMPLETE
+    job.audio_hash = "hash123"
+    job.review_token = "review123"
+    job.instrumental_token = "inst123"
     job.state_data = {
         "youtube_url": "https://youtube.com/watch?v=test123",
         "dropbox_link": "https://dropbox.com/folder/test",
@@ -288,23 +291,41 @@ class TestSendCompletionEmail:
 
             assert response.status_code == 200
 
-    def test_validates_email_format(self, client):
-        """Test that invalid email format is rejected."""
-        # FastAPI/Pydantic doesn't validate email format by default
-        # This test documents current behavior
-        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+    def test_accepts_any_email_string(self, client, mock_job):
+        """Test that any string is currently accepted as email (no validation).
+
+        Documents current behavior: FastAPI/Pydantic doesn't validate email
+        format by default. If validation is added later, this test should
+        be updated to expect 422 for invalid emails.
+        """
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.job_notification_service.get_job_notification_service') as mock_get_ns, \
+             patch('backend.services.email_service.get_email_service') as mock_get_es:
+
             mock_jm = Mock()
-            mock_jm.get_job.return_value = None  # Will fail at job lookup
+            mock_jm.get_job.return_value = mock_job
             mock_jm_class.return_value = mock_jm
+
+            mock_ns = Mock()
+            mock_ns.get_completion_message.return_value = "Message"
+            mock_get_ns.return_value = mock_ns
+
+            mock_es = Mock()
+            mock_es.send_job_completion.return_value = True
+            mock_get_es.return_value = mock_es
 
             response = client.post(
                 "/api/admin/jobs/test-job-123/send-completion-email",
-                json={"to_email": "invalid-email"},
+                json={"to_email": "invalid-email"},  # Not a valid email format
                 headers={"Authorization": "Bearer admin-token"}
             )
 
-            # Currently accepts any string as email
-            # If validation is added, this test should check for 422
+            # Currently accepts any string - endpoint succeeds
+            assert response.status_code == 200
+            # Verify the invalid email was passed through
+            mock_es.send_job_completion.assert_called_once()
+            call_kwargs = mock_es.send_job_completion.call_args.kwargs
+            assert call_kwargs["to_email"] == "invalid-email"
 
 
 class TestIdleReminderEndpoint:
@@ -316,11 +337,12 @@ class TestIdleReminderEndpoint:
         from backend.api.dependencies import require_admin
 
         # Create test app for internal router
+        # The router already has prefix="/internal", so we add /api prefix
         test_app = FastAPI()
-        test_app.include_router(internal_router, prefix="/api/internal")
+        test_app.include_router(internal_router, prefix="/api")
         test_app.dependency_overrides[require_admin] = get_mock_admin
 
-        mock_job.status = JobStatus.AWAITING_REVIEW
+        mock_job.status = JobStatus.AWAITING_REVIEW.value  # Use .value for string comparison
         mock_job.state_data = {
             "blocking_state_entered_at": "2024-01-01T00:00:00",
             "blocking_action_type": "lyrics",
@@ -332,10 +354,11 @@ class TestIdleReminderEndpoint:
 
             mock_jm = Mock()
             mock_jm.get_job.return_value = mock_job
+            mock_jm.firestore = Mock()  # Mock firestore for update_job call
             mock_jm_class.return_value = mock_jm
 
             mock_ns = Mock()
-            mock_ns.send_action_reminder_email = Mock(return_value=True)
+            mock_ns.send_action_reminder_email = AsyncMock(return_value=True)
             mock_get_ns.return_value = mock_ns
 
             test_client = TestClient(test_app)
@@ -344,9 +367,11 @@ class TestIdleReminderEndpoint:
                 headers={"Authorization": "Bearer admin-token"}
             )
 
-            # The endpoint should attempt to process the reminder
-            # Response depends on implementation - just check it doesn't error
-            assert response.status_code in [200, 404, 500]  # Accept various outcomes
+            # Should succeed and return "sent" status
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "sent"
+            assert data["job_id"] == "test-job-123"
 
     def test_skips_reminder_when_already_sent(self, mock_job):
         """Test that reminder is skipped if already sent."""
@@ -354,11 +379,12 @@ class TestIdleReminderEndpoint:
         from backend.api.dependencies import require_admin
 
         # Create test app for internal router
+        # The router already has prefix="/internal", so we add /api prefix
         test_app = FastAPI()
-        test_app.include_router(internal_router, prefix="/api/internal")
+        test_app.include_router(internal_router, prefix="/api")
         test_app.dependency_overrides[require_admin] = get_mock_admin
 
-        mock_job.status = JobStatus.AWAITING_REVIEW
+        mock_job.status = JobStatus.AWAITING_REVIEW.value  # Use .value for string comparison
         mock_job.state_data = {
             "blocking_state_entered_at": "2024-01-01T00:00:00",
             "blocking_action_type": "lyrics",
@@ -376,8 +402,8 @@ class TestIdleReminderEndpoint:
                 headers={"Authorization": "Bearer admin-token"}
             )
 
-            # When reminder already sent, should return skipped status
-            if response.status_code == 200:
-                data = response.json()
-                # Accept either 'skipped' or any response that indicates no action taken
-                assert data.get("status") == "skipped" or "already" in data.get("message", "").lower() or data.get("reminder_sent") is False
+            # Should succeed with "already_sent" status
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "already_sent"
+            assert data["job_id"] == "test-job-123"

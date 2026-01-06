@@ -362,8 +362,11 @@ async def check_idle_reminder(
             "message": f"Job not in blocking state (current: {job.status})"
         }
 
+    # Normalize state_data to prevent None errors
+    state_data = job.state_data or {}
+
     # Check if reminder was already sent (idempotency)
-    if job.state_data.get('reminder_sent'):
+    if state_data.get('reminder_sent'):
         logger.info(f"[job:{job_id}] Reminder already sent, skipping")
         add_span_event("already_sent")
         return {"status": "already_sent", "job_id": job_id, "message": "Reminder already sent"}
@@ -375,7 +378,7 @@ async def check_idle_reminder(
         return {"status": "no_email", "job_id": job_id, "message": "No user email configured"}
 
     # Determine action type
-    action_type = job.state_data.get('blocking_action_type')
+    action_type = state_data.get('blocking_action_type')
     if not action_type:
         action_type = "lyrics" if job.status == JobStatus.AWAITING_REVIEW.value else "instrumental"
 
@@ -398,7 +401,7 @@ async def check_idle_reminder(
         if success:
             # Mark reminder as sent (prevents duplicate sends)
             job_manager.firestore.update_job(job_id, {
-                'state_data': {**job.state_data, 'reminder_sent': True}
+                'state_data': {**state_data, 'reminder_sent': True}
             })
             logger.info(f"[job:{job_id}] Sent {action_type} reminder email to {job.user_email}")
             add_span_event("reminder_sent", {"action_type": action_type})
