@@ -155,6 +155,8 @@ LyricsTranscriber                 LyricsTranscriber
 | Vertex AI | Agentic AI correction (Gemini 3 Flash) | Default on |
 | Genius | Reference lyrics | Yes |
 | YouTube API | Video upload | Optional |
+| SendGrid | Email notifications | Optional |
+| Cloud Tasks | Delayed task scheduling (idle reminders) | Optional |
 
 ## Firestore Collections
 
@@ -191,7 +193,8 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 │                            └─ YouTube upload               │
 │                                                             │
 │  Stage 5: NOTIFICATIONS                                     │
-│  └─ Discord webhooks                                        │
+│  ├─ Discord webhooks                                        │
+│  └─ Email notifications (completion, reminders)             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -209,6 +212,9 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `local_encoding_service.py` | FFmpeg encoding (Cloud Run) |
 | `encoding_interface.py` | Abstract interface + GCE backend |
 | `video_worker_orchestrator.py` | Stage coordination |
+| `email_service.py` | SendGrid email delivery with CC support |
+| `template_service.py` | GCS-backed email templates |
+| `job_notification_service.py` | Email orchestration (completion, reminders) |
 
 ## Tech Stack
 
@@ -217,5 +223,7 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 - **Database**: Firestore
 - **Storage**: Google Cloud Storage
 - **Secrets**: Google Secret Manager
+- **Task Queues**: Cloud Tasks (idle reminders)
+- **Email**: SendGrid
 - **IaC**: Pulumi
 - **CI/CD**: GitHub Actions

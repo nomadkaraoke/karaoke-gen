@@ -579,4 +579,154 @@ async def get_flacfetch_cache_stats(
             status_code=502,
             detail=f"Failed to get cache stats: {e}"
         )
-# Trigger deployment
+
+
+# =============================================================================
+# Job Completion Message Endpoints (for admin copy/send functionality)
+# =============================================================================
+
+class CompletionMessageResponse(BaseModel):
+    """Response containing the rendered completion message."""
+    job_id: str
+    message: str
+    subject: str
+    youtube_url: Optional[str] = None
+    dropbox_url: Optional[str] = None
+
+
+class SendCompletionEmailRequest(BaseModel):
+    """Request to send a completion email."""
+    to_email: str
+    cc_admin: bool = True
+
+
+class SendCompletionEmailResponse(BaseModel):
+    """Response from sending a completion email."""
+    success: bool
+    job_id: str
+    to_email: str
+    message: str
+
+
+@router.get("/jobs/{job_id}/completion-message", response_model=CompletionMessageResponse)
+async def get_job_completion_message(
+    job_id: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    Get the rendered completion message for a job.
+
+    Returns the plain text message that would be sent to the user,
+    rendered using the job completion template with the job's details.
+
+    This is useful for:
+    - Copying the message to clipboard (e.g., for Fiverr)
+    - Previewing the email before sending
+
+    Requires admin authentication.
+    """
+    from backend.services.job_notification_service import get_job_notification_service
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Get youtube and dropbox URLs from state_data (may be None)
+    state_data = job.state_data or {}
+    youtube_url = state_data.get('youtube_url')
+    dropbox_url = state_data.get('dropbox_link')
+
+    # Render the completion message
+    notification_service = get_job_notification_service()
+    message = notification_service.get_completion_message(
+        job_id=job.job_id,
+        user_name=None,  # Use default "there"
+        artist=job.artist,
+        title=job.title,
+        youtube_url=youtube_url,
+        dropbox_url=dropbox_url,
+    )
+
+    # Build subject
+    if job.artist and job.title:
+        subject = f"Your karaoke video is ready: {job.artist} - {job.title}"
+    else:
+        subject = "Your karaoke video is ready!"
+
+    return CompletionMessageResponse(
+        job_id=job_id,
+        message=message,
+        subject=subject,
+        youtube_url=youtube_url,
+        dropbox_url=dropbox_url,
+    )
+
+
+@router.post("/jobs/{job_id}/send-completion-email", response_model=SendCompletionEmailResponse)
+async def send_job_completion_email(
+    job_id: str,
+    request: SendCompletionEmailRequest,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    Send a completion email for a job to a specified email address.
+
+    This allows admins to manually send (or re-send) completion emails,
+    useful for:
+    - Sending to customers who didn't have an email on file
+    - Re-sending if the original email was lost
+    - Sending to alternate email addresses
+
+    Requires admin authentication.
+    """
+    from backend.services.job_notification_service import get_job_notification_service
+    from backend.services.email_service import get_email_service
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Get youtube and dropbox URLs from state_data (may be None)
+    state_data = job.state_data or {}
+    youtube_url = state_data.get('youtube_url')
+    dropbox_url = state_data.get('dropbox_link')
+
+    # Render the completion message
+    notification_service = get_job_notification_service()
+    message = notification_service.get_completion_message(
+        job_id=job.job_id,
+        user_name=None,  # Use default "there"
+        artist=job.artist,
+        title=job.title,
+        youtube_url=youtube_url,
+        dropbox_url=dropbox_url,
+    )
+
+    # Send the email
+    email_service = get_email_service()
+    success = email_service.send_job_completion(
+        to_email=request.to_email,
+        message_content=message,
+        artist=job.artist,
+        title=job.title,
+        cc_admin=request.cc_admin,
+    )
+
+    if success:
+        logger.info(f"Admin sent completion email for job {job_id} to {request.to_email}")
+        return SendCompletionEmailResponse(
+            success=True,
+            job_id=job_id,
+            to_email=request.to_email,
+            message=f"Completion email sent to {request.to_email}",
+        )
+    else:
+        logger.error(f"Failed to send completion email for job {job_id}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send email. Check email service configuration."
+        )

@@ -316,13 +316,115 @@ async def trigger_render_video_worker(
     )
 
 
+@router.post("/jobs/{job_id}/check-idle-reminder")
+async def check_idle_reminder(
+    job_id: str,
+    http_request: Request,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """
+    Check if a job needs an idle reminder email.
+
+    This endpoint is called by a Cloud Tasks scheduled task 5 minutes after
+    a job enters a blocking state (AWAITING_REVIEW or AWAITING_INSTRUMENTAL_SELECTION).
+
+    If the job is still in the blocking state and no reminder has been sent yet,
+    sends a reminder email to the user.
+
+    Idempotency: Only one reminder per job (tracked via reminder_sent flag).
+    """
+    from backend.models.job import JobStatus
+    from backend.services.job_notification_service import get_job_notification_service
+
+    # Extract trace context from incoming request
+    trace_context = extract_trace_context(dict(http_request.headers))
+
+    logger.info(f"[job:{job_id}] IDLE_REMINDER_CHECK starting")
+    add_span_attribute("job_id", job_id)
+    add_span_attribute("operation", "idle_reminder_check")
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        logger.warning(f"[job:{job_id}] Job not found for idle reminder check")
+        add_span_event("job_not_found")
+        return {"status": "not_found", "job_id": job_id, "message": "Job not found"}
+
+    # Check if job is still in a blocking state
+    blocking_states = [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION]
+    if job.status not in [s.value for s in blocking_states]:
+        logger.info(f"[job:{job_id}] Job no longer in blocking state ({job.status}), skipping reminder")
+        add_span_event("not_blocking", {"current_status": job.status})
+        return {
+            "status": "skipped",
+            "job_id": job_id,
+            "message": f"Job not in blocking state (current: {job.status})"
+        }
+
+    # Check if reminder was already sent (idempotency)
+    if job.state_data.get('reminder_sent'):
+        logger.info(f"[job:{job_id}] Reminder already sent, skipping")
+        add_span_event("already_sent")
+        return {"status": "already_sent", "job_id": job_id, "message": "Reminder already sent"}
+
+    # Check if user has an email
+    if not job.user_email:
+        logger.warning(f"[job:{job_id}] No user email, cannot send reminder")
+        add_span_event("no_email")
+        return {"status": "no_email", "job_id": job_id, "message": "No user email configured"}
+
+    # Determine action type
+    action_type = job.state_data.get('blocking_action_type')
+    if not action_type:
+        action_type = "lyrics" if job.status == JobStatus.AWAITING_REVIEW.value else "instrumental"
+
+    # Send the reminder email
+    try:
+        notification_service = get_job_notification_service()
+
+        success = await notification_service.send_action_reminder_email(
+            job_id=job.job_id,
+            user_email=job.user_email,
+            action_type=action_type,
+            user_name=None,  # Could fetch from user service if needed
+            artist=job.artist,
+            title=job.title,
+            audio_hash=job.audio_hash,
+            review_token=job.review_token,
+            instrumental_token=job.instrumental_token,
+        )
+
+        if success:
+            # Mark reminder as sent (prevents duplicate sends)
+            job_manager.firestore.update_job(job_id, {
+                'state_data': {**job.state_data, 'reminder_sent': True}
+            })
+            logger.info(f"[job:{job_id}] Sent {action_type} reminder email to {job.user_email}")
+            add_span_event("reminder_sent", {"action_type": action_type})
+            return {
+                "status": "sent",
+                "job_id": job_id,
+                "message": f"Sent {action_type} reminder to {job.user_email}"
+            }
+        else:
+            logger.error(f"[job:{job_id}] Failed to send reminder email")
+            add_span_event("send_failed")
+            return {"status": "failed", "job_id": job_id, "message": "Failed to send reminder"}
+
+    except Exception as e:
+        logger.exception(f"[job:{job_id}] Error sending reminder: {e}")
+        add_span_event("error", {"error": str(e)})
+        return {"status": "error", "job_id": job_id, "message": str(e)}
+
+
 @router.get("/health")
 async def internal_health(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
 ):
     """
     Internal health check endpoint.
-    
+
     Used to verify the internal API is responsive.
     Requires admin authentication.
     """

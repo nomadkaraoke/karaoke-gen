@@ -359,9 +359,145 @@ class JobManager:
                 'instrumental_token': updates['instrumental_token'],
                 'instrumental_token_expires_at': updates['instrumental_token_expires_at']
             })
-        
+
         logger.info(f"Job {job_id} transitioned to {new_status}")
+
+        # Trigger notifications asynchronously (fire-and-forget)
+        self._trigger_state_notifications(job_id, new_status)
+
         return True
+
+    def _trigger_state_notifications(self, job_id: str, new_status: JobStatus) -> None:
+        """
+        Trigger email notifications based on state transitions.
+
+        This is fire-and-forget - notification failures don't affect job processing.
+
+        Args:
+            job_id: Job ID
+            new_status: New job status
+        """
+        import asyncio
+
+        try:
+            # Get the job to access user info
+            job = self.get_job(job_id)
+            if not job or not job.user_email:
+                logger.debug(f"No user email for job {job_id}, skipping notifications")
+                return
+
+            # Job completion notification
+            if new_status == JobStatus.COMPLETE:
+                self._schedule_completion_email(job)
+
+            # Idle reminder scheduling for blocking states
+            elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION]:
+                self._schedule_idle_reminder(job, new_status)
+
+        except Exception as e:
+            # Never let notification failures affect job processing
+            logger.error(f"Error triggering notifications for job {job_id}: {e}")
+
+    def _schedule_completion_email(self, job: Job) -> None:
+        """
+        Schedule sending a job completion email.
+
+        Uses asyncio to fire-and-forget the email sending.
+        """
+        import asyncio
+        import threading
+
+        try:
+            from backend.services.job_notification_service import get_job_notification_service
+
+            notification_service = get_job_notification_service()
+
+            # Get youtube and dropbox URLs from state_data (may be None)
+            state_data = job.state_data or {}
+            youtube_url = state_data.get('youtube_url')
+            dropbox_url = state_data.get('dropbox_link')
+
+            # Create async task (fire-and-forget)
+            async def send_email():
+                await notification_service.send_job_completion_email(
+                    job_id=job.job_id,
+                    user_email=job.user_email,
+                    user_name=None,  # Could fetch from user service if needed
+                    artist=job.artist,
+                    title=job.title,
+                    youtube_url=youtube_url,
+                    dropbox_url=dropbox_url,
+                )
+
+            # Try to get existing event loop, create new one if none exists
+            try:
+                loop = asyncio.get_running_loop()
+                # If we're in an async context, create a task
+                loop.create_task(send_email())
+            except RuntimeError:
+                # No event loop - we're likely in a sync context
+                # Use daemon thread to avoid blocking job completion
+                def run_in_thread():
+                    asyncio.run(send_email())
+                thread = threading.Thread(target=run_in_thread, daemon=True)
+                thread.start()
+
+            logger.info(f"Scheduled completion email for job {job.job_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to schedule completion email for job {job.job_id}: {e}")
+
+    def _schedule_idle_reminder(self, job: Job, new_status: JobStatus) -> None:
+        """
+        Schedule an idle reminder for a blocking state.
+
+        Records the timestamp when the blocking state was entered and
+        schedules a Cloud Tasks task for 5 minutes later.
+        """
+        import asyncio
+        import threading
+
+        try:
+            # Record when we entered blocking state (for idle detection)
+            blocking_entered_at = datetime.utcnow().isoformat()
+
+            action_type = "lyrics" if new_status == JobStatus.AWAITING_REVIEW else "instrumental"
+
+            # Update state_data with blocking state info (handle None state_data)
+            existing_state_data = job.state_data or {}
+            state_data_update = {
+                'blocking_state_entered_at': blocking_entered_at,
+                'blocking_action_type': action_type,
+                'reminder_sent': False,  # Will be set to True after reminder is sent
+            }
+
+            self.firestore.update_job(job.job_id, {
+                'state_data': {**existing_state_data, **state_data_update}
+            })
+
+            # Schedule the idle reminder check via worker service (5 min delay)
+            from backend.services.worker_service import get_worker_service
+
+            async def schedule_reminder():
+                worker_service = get_worker_service()
+                await worker_service.schedule_idle_reminder(job.job_id)
+
+            # Try to get existing event loop, create new one if none exists
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(schedule_reminder())
+            except RuntimeError:
+                # No event loop - we're in a sync context
+                # Use daemon thread to avoid blocking job processing
+                def run_in_thread():
+                    asyncio.run(schedule_reminder())
+                thread = threading.Thread(target=run_in_thread, daemon=True)
+                thread.start()
+
+            logger.info(f"Scheduled idle reminder for job {job.job_id} ({action_type})")
+
+        except Exception as e:
+            logger.error(f"Failed to schedule idle reminder for job {job.job_id}: {e}")
     
     def update_state_data(self, job_id: str, key: str, value: Any) -> None:
         """

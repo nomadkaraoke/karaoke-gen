@@ -1,9 +1,20 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
-import { api } from "@/lib/api"
+import { api, adminApi } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Download, Loader2, ExternalLink, FolderOpen, Copy } from "lucide-react"
+import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, MessageSquare } from "lucide-react"
+import { useAuth } from "@/lib/auth"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 interface OutputLinksProps {
   jobId: string
@@ -15,17 +26,30 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
   const [dropboxUrl, setDropboxUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
+  const [copiedMessage, setCopiedMessage] = useState(false)
+  const [isLoadingMessage, setIsLoadingMessage] = useState(false)
+  const [showEmailDialog, setShowEmailDialog] = useState(false)
+  const [emailInput, setEmailInput] = useState("")
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
     loadOutputLinks()
   }, [jobId])
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
+      }
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current)
       }
     }
   }, [])
@@ -75,6 +99,54 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
       console.error("Failed to copy to clipboard:", err)
     }
   }, [])
+
+  const copyCompletionMessage = useCallback(async () => {
+    if (!navigator?.clipboard?.writeText) {
+      console.error("Clipboard API not available")
+      return
+    }
+
+    setIsLoadingMessage(true)
+    try {
+      const response = await adminApi.getCompletionMessage(jobId)
+      await navigator.clipboard.writeText(response.message)
+      setCopiedMessage(true)
+
+      // Clear any existing timeout
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current)
+      }
+
+      // Set new timeout
+      messageTimeoutRef.current = setTimeout(() => {
+        setCopiedMessage(false)
+      }, 2000)
+    } catch (err) {
+      console.error("Failed to copy completion message:", err)
+    } finally {
+      setIsLoadingMessage(false)
+    }
+  }, [jobId])
+
+  const handleSendEmail = useCallback(async () => {
+    if (!emailInput.trim()) return
+
+    setIsSendingEmail(true)
+    try {
+      await adminApi.sendCompletionEmail(jobId, emailInput.trim(), true)
+      setEmailSent(true)
+      setTimeout(() => {
+        setShowEmailDialog(false)
+        setEmailSent(false)
+        setEmailInput("")
+      }, 1500)
+    } catch (err) {
+      console.error("Failed to send email:", err)
+      alert("Failed to send email. Please check the email address and try again.")
+    } finally {
+      setIsSendingEmail(false)
+    }
+  }, [jobId, emailInput])
 
   if (isLoading) {
     return (
@@ -193,12 +265,99 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
               </a>
             )}
           </div>
+
+          {/* Admin-only buttons */}
+          {isAdmin && (
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-700/50 mt-2">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); copyCompletionMessage() }}
+                disabled={isLoadingMessage}
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
+                title="Copy completion message to clipboard"
+              >
+                {isLoadingMessage ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <MessageSquare className="w-3 h-3" />
+                )}
+                {copiedMessage ? "Copied!" : "Copy Message"}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowEmailDialog(true) }}
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-teal-600 hover:bg-teal-500 text-white"
+                title="Send completion email"
+              >
+                <Mail className="w-3 h-3" />
+                Send Email
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {!hasOutputs && (
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No outputs available yet</p>
       )}
+
+      {/* Send Email Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Send Completion Email</DialogTitle>
+            <DialogDescription>
+              Send the job completion message to an email address. The email will be CC'd to gen@nomadkaraoke.com.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="customer@example.com"
+                className="col-span-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSendEmail()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowEmailDialog(false)}
+              disabled={isSendingEmail}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSendEmail}
+              disabled={isSendingEmail || !emailInput.trim() || emailSent}
+            >
+              {isSendingEmail ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : emailSent ? (
+                "Sent!"
+              ) : (
+                "Send Email"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

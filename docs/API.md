@@ -487,6 +487,66 @@ Response:
 }
 ```
 
+### Email Notifications (Admin)
+
+#### Get Completion Message
+
+```http
+GET /api/admin/jobs/{job_id}/completion-message
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Returns the rendered completion message for a job (for copying to clipboard).
+
+Response:
+```json
+{
+  "job_id": "abc123",
+  "message": "Hi there! Your karaoke video is ready...",
+  "subject": "Your Karaoke Video is Ready! 🎤",
+  "youtube_url": "https://youtube.com/watch?v=...",
+  "dropbox_url": "https://dropbox.com/..."
+}
+```
+
+#### Send Completion Email
+
+```http
+POST /api/admin/jobs/{job_id}/send-completion-email
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{
+  "to_email": "customer@example.com",
+  "cc_admin": true
+}
+```
+
+Sends the job completion email to the specified address. When `cc_admin` is true (default), CCs gen@nomadkaraoke.com.
+
+Response:
+```json
+{
+  "success": true,
+  "job_id": "abc123",
+  "to_email": "customer@example.com",
+  "message": "Completion email sent successfully"
+}
+```
+
+### Internal Email Endpoints
+
+These endpoints are used by Cloud Tasks for automated notifications.
+
+#### Check Idle Reminder
+
+```http
+POST /api/internal/jobs/{job_id}/check-idle-reminder
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Called by Cloud Tasks 5 minutes after a job enters a blocking state (awaiting_review or awaiting_instrumental_selection). Sends a reminder email if the user is still idle and no reminder has been sent yet.
+
 ## Rate Limits
 
 No rate limits currently implemented.

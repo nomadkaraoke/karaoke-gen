@@ -37,6 +37,7 @@ WORKER_QUEUES = {
     "screens": "screens-worker-queue",
     "render-video": "render-worker-queue",
     "video": "video-worker-queue",
+    "idle-reminder": "idle-reminder-queue",  # For delayed idle reminder checks
 }
 
 # Dispatch deadlines for each worker type (in seconds)
@@ -49,7 +50,11 @@ WORKER_DISPATCH_DEADLINES = {
     "screens": 600,      # 10 min - Screen generation is fast
     "render-video": 1800,  # 30 min - Video encoding can be slow
     "video": 1800,       # 30 min - Video encoding can be slow
+    "idle-reminder": 60, # 1 min - Quick check and potential email send
 }
+
+# Default delay for idle reminders (seconds)
+IDLE_REMINDER_DELAY_SECONDS = 5 * 60  # 5 minutes
 
 
 class WorkerService:
@@ -429,6 +434,99 @@ class WorkerService:
     async def trigger_render_video_worker(self, job_id: str) -> bool:
         """Trigger render video worker (post-review)."""
         return await self.trigger_worker("render-video", job_id)
+
+    async def schedule_idle_reminder(
+        self,
+        job_id: str,
+        delay_seconds: int = IDLE_REMINDER_DELAY_SECONDS
+    ) -> bool:
+        """
+        Schedule an idle reminder check for a job.
+
+        The reminder task will be delivered after the specified delay.
+        When the task executes, it checks if the job is still in a blocking
+        state and sends a reminder email if the user hasn't taken action.
+
+        Args:
+            job_id: Job ID to check
+            delay_seconds: Delay before executing the check (default: 5 minutes)
+
+        Returns:
+            True if task was scheduled successfully, False otherwise
+        """
+        if not self._use_cloud_tasks:
+            # In development mode, log and skip (no delayed execution support)
+            logger.info(
+                f"[job:{job_id}] Idle reminder not scheduled (Cloud Tasks disabled). "
+                f"Would have fired in {delay_seconds}s."
+            )
+            return True
+
+        try:
+            from google.cloud import tasks_v2
+            from google.protobuf import timestamp_pb2
+            import time
+
+            queue_name = WORKER_QUEUES.get("idle-reminder")
+            if not queue_name:
+                logger.error("Idle reminder queue not configured")
+                return False
+
+            project = self.settings.google_cloud_project
+            if not project:
+                logger.error("GOOGLE_CLOUD_PROJECT not set")
+                return False
+
+            location = self.settings.gcp_region
+
+            # Build queue path
+            parent = self.tasks_client.queue_path(project, location, queue_name)
+
+            # Build headers
+            headers = {
+                "Content-Type": "application/json",
+            }
+
+            if self._admin_token:
+                headers["X-Admin-Token"] = self._admin_token
+
+            # Inject trace context
+            headers = inject_trace_context(headers)
+
+            # Calculate schedule time
+            schedule_time = timestamp_pb2.Timestamp()
+            schedule_time.FromSeconds(int(time.time()) + delay_seconds)
+
+            dispatch_deadline_seconds = WORKER_DISPATCH_DEADLINES.get("idle-reminder", 60)
+
+            # Build task payload
+            task = {
+                "http_request": {
+                    "http_method": tasks_v2.HttpMethod.POST,
+                    "url": f"{self._base_url}/api/internal/jobs/{job_id}/check-idle-reminder",
+                    "headers": headers,
+                    "body": json.dumps({"job_id": job_id}).encode(),
+                    "oidc_token": {
+                        "service_account_email": f"karaoke-backend@{project}.iam.gserviceaccount.com",
+                    },
+                },
+                "schedule_time": schedule_time,
+                "dispatch_deadline": duration_pb2.Duration(seconds=dispatch_deadline_seconds),
+            }
+
+            # Create task
+            response = self.tasks_client.create_task(parent=parent, task=task)
+            logger.info(
+                f"[job:{job_id}] Scheduled idle reminder check in {delay_seconds}s: {response.name}"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                f"[job:{job_id}] Failed to schedule idle reminder: {e}",
+                exc_info=True
+            )
+            return False
 
 
 # Global worker service instance

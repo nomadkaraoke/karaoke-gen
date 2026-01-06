@@ -1038,7 +1038,52 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  /**
+   * Get rendered completion message for a job (for copy to clipboard)
+   */
+  async getCompletionMessage(jobId: string): Promise<CompletionMessageResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/jobs/${jobId}/completion-message`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Send completion email for a job
+   */
+  async sendCompletionEmail(jobId: string, toEmail: string, ccAdmin: boolean = true): Promise<SendCompletionEmailResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/jobs/${jobId}/send-completion-email`,
+      {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ to_email: toEmail, cc_admin: ccAdmin }),
+      }
+    );
+    return handleResponse(response);
+  },
 };
+
+// Types for admin completion message API
+export interface CompletionMessageResponse {
+  job_id: string;
+  message: string;
+  subject: string;
+  youtube_url?: string;
+  dropbox_url?: string;
+}
+
+export interface SendCompletionEmailResponse {
+  success: boolean;
+  job_id: string;
+  to_email: string;
+  message: string;
+}
 
 export { ApiError };
 

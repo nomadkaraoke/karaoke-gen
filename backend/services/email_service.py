@@ -14,7 +14,7 @@ import html
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 
 from backend.config import get_settings
 
@@ -31,7 +31,8 @@ class EmailProvider(ABC):
         to_email: str,
         subject: str,
         html_content: str,
-        text_content: Optional[str] = None
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
     ) -> bool:
         """Send an email. Returns True if successful."""
         pass
@@ -49,10 +50,13 @@ class ConsoleEmailProvider(EmailProvider):
         to_email: str,
         subject: str,
         html_content: str,
-        text_content: Optional[str] = None
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
     ) -> bool:
         logger.info("=" * 60)
         logger.info(f"EMAIL TO: {to_email}")
+        if cc_emails:
+            logger.info(f"CC: {', '.join(cc_emails)}")
         logger.info(f"SUBJECT: {subject}")
         logger.info("-" * 60)
         logger.info(text_content or html_content)
@@ -77,12 +81,13 @@ class SendGridEmailProvider(EmailProvider):
         to_email: str,
         subject: str,
         html_content: str,
-        text_content: Optional[str] = None
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
     ) -> bool:
         try:
             # Import here to avoid requiring sendgrid in all environments
             from sendgrid import SendGridAPIClient
-            from sendgrid.helpers.mail import Mail, Email, To, Content
+            from sendgrid.helpers.mail import Mail, Email, To, Content, Cc
 
             sg = SendGridAPIClient(api_key=self.api_key)
 
@@ -93,13 +98,19 @@ class SendGridEmailProvider(EmailProvider):
                 html_content=Content("text/html", html_content)
             )
 
+            # Add CC recipients if provided
+            if cc_emails:
+                for cc_email in cc_emails:
+                    message.add_cc(Cc(cc_email))
+
             if text_content:
                 message.add_content(Content("text/plain", text_content))
 
             response = sg.send(message)
 
             if response.status_code >= 200 and response.status_code < 300:
-                logger.info(f"Email sent to {to_email} via SendGrid")
+                cc_info = f" (CC: {', '.join(cc_emails)})" if cc_emails else ""
+                logger.info(f"Email sent to {to_email}{cc_info} via SendGrid")
                 return True
             else:
                 logger.error(f"SendGrid returned status {response.status_code}")
@@ -815,6 +826,193 @@ Thanks for being part of making Nomad Karaoke better!
         """Get current year for copyright notices."""
         from datetime import datetime
         return datetime.now().year
+
+    def send_job_completion(
+        self,
+        to_email: str,
+        message_content: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        cc_admin: bool = True,
+    ) -> bool:
+        """
+        Send job completion email with the rendered template content.
+
+        Args:
+            to_email: User's email address
+            message_content: Pre-rendered message content (plain text)
+            artist: Artist name for subject line
+            title: Song title for subject line
+            cc_admin: Whether to CC gen@nomadkaraoke.com
+
+        Returns:
+            True if email was sent successfully
+        """
+        # Build subject with song info if available
+        if artist and title:
+            subject = f"Your karaoke video is ready: {artist} - {title}"
+        else:
+            subject = "Your karaoke video is ready!"
+
+        # Convert plain text to simple HTML (preserve line breaks)
+        html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            white-space: pre-wrap;
+        }}
+        .header {{
+            text-align: center;
+            padding: 20px 0;
+        }}
+        .logo {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #3b82f6;
+        }}
+        .content {{
+            white-space: pre-wrap;
+            font-size: 14px;
+        }}
+        .footer {{
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🎤 Nomad Karaoke</div>
+    </div>
+
+    <div class="content">{html.escape(message_content)}</div>
+
+    <div class="footer">
+        <p>© {self._get_year()} Nomad Karaoke. All rights reserved.</p>
+    </div>
+</body>
+</html>
+"""
+
+        cc_emails = ["gen@nomadkaraoke.com"] if cc_admin else None
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=message_content,
+            cc_emails=cc_emails,
+        )
+
+    def send_action_reminder(
+        self,
+        to_email: str,
+        message_content: str,
+        action_type: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+    ) -> bool:
+        """
+        Send action-needed reminder email.
+
+        Args:
+            to_email: User's email address
+            message_content: Pre-rendered message content (plain text)
+            action_type: Type of action needed ("lyrics" or "instrumental")
+            artist: Artist name for subject line
+            title: Song title for subject line
+
+        Returns:
+            True if email was sent successfully
+        """
+        # Build subject based on action type
+        song_info = f" for {artist} - {title}" if artist and title else ""
+        if action_type == "lyrics":
+            subject = f"Action needed: Review lyrics{song_info}"
+        elif action_type == "instrumental":
+            subject = f"Action needed: Select instrumental{song_info}"
+        else:
+            subject = f"Action needed{song_info}"
+
+        # Convert plain text to simple HTML
+        html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        .header {{
+            text-align: center;
+            padding: 20px 0;
+        }}
+        .logo {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #3b82f6;
+        }}
+        .alert {{
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }}
+        .content {{
+            white-space: pre-wrap;
+            font-size: 14px;
+        }}
+        .footer {{
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🎤 Nomad Karaoke</div>
+    </div>
+
+    <div class="alert">
+        ⏰ Your karaoke video is waiting for you!
+    </div>
+
+    <div class="content">{html.escape(message_content)}</div>
+
+    <div class="footer">
+        <p>© {self._get_year()} Nomad Karaoke. All rights reserved.</p>
+    </div>
+</body>
+</html>
+"""
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=message_content,
+        )
 
 
 # Global instance

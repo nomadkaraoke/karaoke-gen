@@ -636,6 +636,24 @@ video_worker_queue = cloudtasks.Queue(
     ),
 )
 
+# Idle reminder queue - delayed tasks for sending reminder emails
+# Tasks are scheduled with a 5-minute delay when jobs enter blocking states
+idle_reminder_queue = cloudtasks.Queue(
+    "idle-reminder-queue",
+    name="idle-reminder-queue",
+    location="us-central1",
+    rate_limits=cloudtasks.QueueRateLimitsArgs(
+        max_dispatches_per_second=10,   # Email sending is fast
+        max_concurrent_dispatches=50,
+    ),
+    retry_config=cloudtasks.QueueRetryConfigArgs(
+        max_attempts=3,
+        min_backoff="10s",
+        max_backoff="60s",
+        max_retry_duration="600s",      # 10 min total
+    ),
+)
+
 # Grant Cloud Tasks permission to invoke Cloud Run service
 # Cloud Tasks service agent needs to authenticate to Cloud Run
 cloud_tasks_invoker = gcp.projects.IAMMember(
