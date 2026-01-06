@@ -639,40 +639,45 @@ async def upload_lyrics_results(
         logger.error(f"Job {job_id}: {error_msg}")
         raise Exception(error_msg)
     
-    # Upload reference lyrics if available
+    # Upload ALL reference lyrics files (not just first) so they're available for distribution
     # Note: Source names use .title() so "lrclib" -> "Lrclib", "genius" -> "Genius"
     # Use sanitized artist/title to match LyricsProcessor's file naming
     reference_files = [
-        (f"{safe_artist} - {safe_title} (Lyrics Genius).txt", "Genius"),
-        (f"{safe_artist} - {safe_title} (Lyrics Spotify).txt", "Spotify"),
-        (f"{safe_artist} - {safe_title} (Lyrics Musixmatch).txt", "Musixmatch"),
-        (f"{safe_artist} - {safe_title} (Lyrics Lrclib).txt", "LRCLib"),  # Note: source is 'lrclib', .title() = 'Lrclib'
+        (f"{safe_artist} - {safe_title} (Lyrics Genius).txt", "genius"),
+        (f"{safe_artist} - {safe_title} (Lyrics Spotify).txt", "spotify"),
+        (f"{safe_artist} - {safe_title} (Lyrics Musixmatch).txt", "musixmatch"),
+        (f"{safe_artist} - {safe_title} (Lyrics Lrclib).txt", "lrclib"),
     ]
-    
-    found_reference = False
-    for ref_filename, source_name in reference_files:
+
+    found_references = []
+    for ref_filename, source_key in reference_files:
         ref_path = os.path.join(lyrics_dir, ref_filename)
         if os.path.exists(ref_path):
+            # Upload with original filename to preserve proper naming
             gcs_path = f"jobs/{job_id}/lyrics/{ref_filename}"
             url = storage.upload_file(ref_path, gcs_path)
+            # Track in job.files so video_worker can download for distribution
+            job_manager.update_file_url(job_id, 'lyrics', f'reference_{source_key}', url)
             if job_log:
-                job_log.info(f"Found reference lyrics from {source_name}")
+                job_log.info(f"Found reference lyrics from {source_key}")
             logger.info(f"Job {job_id}: Uploaded reference lyrics: {ref_filename}")
-            found_reference = True
-            break  # Only upload first available reference
-    
-    if not found_reference:
+            found_references.append(source_key)
+
+    if not found_references:
         if job_log:
             job_log.warning("No reference lyrics found from any source (Genius, Spotify, Musixmatch, LRCLib)")
         logger.warning(f"Job {job_id}: No reference lyrics found from any source")
+    else:
+        logger.info(f"Job {job_id}: Found {len(found_references)} reference lyrics sources: {found_references}")
     
-    # Upload uncorrected transcription if available (use sanitized names)
-    uncorrected_file = os.path.join(lyrics_dir, f"{safe_artist} - {safe_title} (Lyrics Uncorrected).txt")
+    # Upload uncorrected transcription if available (preserve original filename for distribution)
+    uncorrected_filename = f"{safe_artist} - {safe_title} (Lyrics Uncorrected).txt"
+    uncorrected_file = os.path.join(lyrics_dir, uncorrected_filename)
     if os.path.exists(uncorrected_file):
-        gcs_path = f"jobs/{job_id}/lyrics/uncorrected.txt"
+        gcs_path = f"jobs/{job_id}/lyrics/{uncorrected_filename}"
         url = storage.upload_file(uncorrected_file, gcs_path)
         job_manager.update_file_url(job_id, 'lyrics', 'uncorrected', url)
-        logger.info(f"Job {job_id}: Uploaded uncorrected transcription")
+        logger.info(f"Job {job_id}: Uploaded uncorrected transcription: {uncorrected_filename}")
     
     logger.info(f"Job {job_id}: All lyrics results uploaded successfully")
 

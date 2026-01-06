@@ -160,14 +160,17 @@ async def _encode_via_gce(
             storage.download_file(gcs_path, local_path)
 
             # Map to result keys expected by _upload_results
-            if "4K Lossless" in filename or "4k_lossless" in filename.lower():
-                local_files["final_video"] = local_path
-            elif "4K Lossy" in filename or "4k_lossy" in filename.lower():
+            # Files are named like "Artist - Title (Final Karaoke Lossless 4k).mp4"
+            filename_lower = filename.lower()
+            if "lossless 4k" in filename_lower:
+                if filename.endswith(".mkv"):
+                    local_files["final_video_mkv"] = local_path
+                else:
+                    local_files["final_video"] = local_path
+            elif "lossy 4k" in filename_lower:
                 local_files["final_video_lossy"] = local_path
-            elif "720p" in filename:
+            elif "720p" in filename_lower:
                 local_files["final_video_720p"] = local_path
-            elif filename.endswith(".mkv"):
-                local_files["final_video_mkv"] = local_path
 
         job_log.info(f"Downloaded {len(local_files)} encoded files")
 
@@ -1108,28 +1111,62 @@ async def _prepare_distribution_directory(
             log_progress(f"Downloaded {stem_key} to stems/")
 
     # --- Download lyrics files to lyrics/ subfolder ---
+    # Use proper filenames matching local CLI output structure
 
-    # Common lyrics file types
-    lyrics_file_keys = ['lrc', 'ass', 'srt', 'txt', 'json', 'original_json', 'corrected_json']
-    for lyrics_key in lyrics_file_keys:
+    # Map job.files.lyrics keys to proper local filenames
+    # Format: (job_files_key, local_filename_pattern)
+    lyrics_file_mappings = [
+        # Karaoke output files
+        ('lrc', f"{base_name} (Karaoke).lrc"),
+        ('ass', f"{base_name} (Karaoke).ass"),
+        # Corrections and transcription files
+        ('corrections', f"{base_name} (Lyrics Corrections).json"),
+        ('corrected_txt', f"{base_name} (Lyrics Corrected).txt"),
+        ('uncorrected', f"{base_name} (Lyrics Uncorrected).txt"),
+        # Reference lyrics from various sources
+        ('reference_genius', f"{base_name} (Lyrics Genius).txt"),
+        ('reference_spotify', f"{base_name} (Lyrics Spotify).txt"),
+        ('reference_musixmatch', f"{base_name} (Lyrics Musixmatch).txt"),
+        ('reference_lrclib', f"{base_name} (Lyrics Lrclib).txt"),
+    ]
+
+    for lyrics_key, local_filename in lyrics_file_mappings:
         if lyrics.get(lyrics_key):
-            # Determine proper extension
-            ext_map = {
-                'lrc': '.lrc',
-                'ass': '.ass',
-                'srt': '.srt',
-                'txt': '.txt',
-                'json': '.json',
-                'original_json': '_original.json',
-                'corrected_json': '_corrected.json',
-            }
-            ext = ext_map.get(lyrics_key, f'.{lyrics_key}')
-            dest_path = os.path.join(lyrics_dir, f"{base_name} (Karaoke){ext}")
+            dest_path = os.path.join(lyrics_dir, local_filename)
             try:
                 storage.download_file(lyrics[lyrics_key], dest_path)
-                log_progress(f"Downloaded {lyrics_key} to lyrics/")
+                log_progress(f"Downloaded {lyrics_key} to lyrics/{local_filename}")
             except Exception as e:
                 log_progress(f"Could not download {lyrics_key}: {e}")
+
+    # --- Download (With Vocals).mkv to lyrics/ subfolder ---
+    # Local CLI places the karaoke video with vocals in the lyrics folder
+    videos = job.file_urls.get('videos', {})
+    if videos.get('with_vocals'):
+        with_vocals_dest = os.path.join(lyrics_dir, f"{base_name} (With Vocals).mkv")
+        try:
+            storage.download_file(videos['with_vocals'], with_vocals_dest)
+            log_progress(f"Downloaded with_vocals to lyrics/{base_name} (With Vocals).mkv")
+        except Exception as e:
+            log_progress(f"Could not download with_vocals to lyrics/: {e}")
+
+    # --- Download preview ASS files to lyrics/previews/ subfolder ---
+    # Preview files are stored in jobs/{job_id}/previews/ in GCS
+    previews_dir = os.path.join(lyrics_dir, "previews")
+    os.makedirs(previews_dir, exist_ok=True)
+
+    # List all preview files from GCS and download them
+    try:
+        preview_prefix = f"jobs/{job_id}/previews/"
+        preview_files = storage.list_files(preview_prefix)
+        for blob_name in preview_files:
+            if blob_name.endswith('.ass'):
+                filename = os.path.basename(blob_name)
+                dest_path = os.path.join(previews_dir, filename)
+                storage.download_file(blob_name, dest_path)
+                log_progress(f"Downloaded preview {filename} to lyrics/previews/")
+    except Exception as e:
+        log_progress(f"Could not download preview files: {e}")
 
     log_progress("Distribution directory prepared with stems/ and lyrics/ subfolders")
 

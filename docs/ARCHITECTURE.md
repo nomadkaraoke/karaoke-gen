@@ -32,7 +32,7 @@
 
 (*) GCE Encoding Worker: C4-standard-8 VM with Intel Granite Rapids for
     high-performance FFmpeg encoding. Used for both final video encoding and
-    preview video generation. Optional - falls back to Cloud Run.
+    preview video generation. Uses LocalEncodingService via GCS wheel deployment.
 ```
 
 ## Processing Pipeline

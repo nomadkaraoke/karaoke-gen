@@ -903,6 +903,7 @@ jobs:
 
   deploy-backend:
     name: "Deploy - Backend (Cloud Run)"
+    needs: [package-build]
     runs-on: [self-hosted, linux, gcp]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -966,6 +967,32 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           version: "latest"
+
+      # ============================================
+      # Upload wheel to GCS for GCE encoding worker
+      # The GCE worker installs this wheel at job start for hot code updates
+      # ============================================
+
+      - name: Download wheel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: package-dist
+          path: dist/
+
+      - name: Upload wheel to GCS for GCE worker
+        run: |
+          echo "📦 Uploading wheel to GCS for GCE encoding worker..."
+          WHEEL_FILE=$(ls dist/*.whl | head -1)
+          if [ -z "$WHEEL_FILE" ]; then
+            echo "::error::No wheel file found in dist/"
+            exit 1
+          fi
+          echo "Found wheel: $WHEEL_FILE"
+
+          # Upload to GCS (GCE worker downloads latest at job start)
+          gsutil cp "$WHEEL_FILE" gs://karaoke-gen-storage-${{ env.PROJECT_ID }}/wheels/
+
+          echo "✅ Wheel uploaded - GCE worker will pick up changes on next job"
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet

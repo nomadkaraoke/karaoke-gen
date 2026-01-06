@@ -1410,6 +1410,136 @@ if encoding_backend.name == "gce" and self.storage:
 
 **Testing tip**: Test the full pipeline with each backend type, not just the encoding step in isolation. The bug only manifested when YouTube upload ran after GCE encoding - unit tests of each stage passed.
 
+### Unify Encoding Logic with GCS Wheel Deployment
+
+**Problem**: The GCE encoding worker had simplified, duplicated encoding logic that:
+- Didn't concatenate title + karaoke + end screens
+- Used generic filenames like `output_4k_lossless.mp4` instead of proper names
+- Lacked feature parity with the local CLI's `LocalEncodingService`
+
+This caused cloud-generated videos to be incomplete (no title/end screens) and have unhelpful filenames that didn't match the local CLI output.
+
+**Solution**: Deploy the karaoke-gen wheel to GCS, have the GCE worker install and use `LocalEncodingService`:
+
+1. **CI uploads wheel to GCS**: `deploy-backend` job uploads wheel to `gs://bucket/wheels/`
+
+2. **Dynamic wheel loading**: GCE worker downloads and installs latest wheel at job start:
+   ```python
+   def ensure_latest_wheel():
+       """Download and install latest karaoke-gen wheel from GCS."""
+       subprocess.run(["gsutil", "cp", "gs://bucket/wheels/karaoke_gen-*.whl", "/tmp/"])
+       wheel = sorted(glob.glob("/tmp/karaoke_gen-*.whl"))[-1]
+       subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", wheel])
+
+   async def process_job(job_id, request):
+       ensure_latest_wheel()  # Get latest code at job start
+       # ... rest of processing
+   ```
+
+3. **Single encoding path**: GCE worker imports and uses `LocalEncodingService`:
+   ```python
+   from backend.services.local_encoding_service import LocalEncodingService, EncodingConfig
+
+   service = LocalEncodingService(logger=logger)
+   config = EncodingConfig(
+       title_video=str(title_video),
+       karaoke_video=str(karaoke_video),
+       output_lossless_4k_mp4=f"{base_name} (Final Karaoke Lossless 4k).mp4",
+       # ... proper naming for all formats
+   )
+   result = service.encode_all_formats(config)
+   ```
+
+**Key benefits**:
+1. **Single source of truth**: Same encoding logic used by CLI, Cloud Run, and GCE
+2. **Hot updates without restart**: New code deployed on next job, not VM restart
+3. **In-progress jobs unaffected**: Jobs use the code version they started with
+4. **Proper output**: Titles/end screens concatenated, files named correctly
+
+**No fallback by design**: We removed all fallback logic to ensure there's only ONE code path. If the wheel fails to load, the job fails clearly rather than producing inconsistent output.
+
+**Lesson**: When multiple deployment targets (CLI, Cloud Run, GCE) need the same complex logic, package it as a library and deploy via a shared mechanism (GCS wheel). Duplicating logic leads to feature drift and inconsistent behavior.
+
+### Cloud Distribution Must Match Local CLI Output Structure
+
+**Problem**: Cloud-generated karaoke outputs had different file organization than local CLI, causing confusion and missing files in Dropbox uploads:
+
+1. **lyrics/ folder filename differences**:
+   - Cloud used generic `(Karaoke).json` instead of `(Lyrics Corrections).json`
+   - Cloud used `(Karaoke).txt` instead of `(Lyrics Corrected).txt`
+   - Reference lyrics files (`(Lyrics Genius).txt`, etc.) weren't downloaded
+
+2. **Missing files in lyrics/ folder**:
+   - `(With Vocals).mkv` wasn't copied to lyrics/ subfolder
+   - `previews/` subfolder with preview ASS files wasn't created
+   - Reference lyrics from multiple sources weren't included
+
+**Root causes**:
+- Lyrics worker uploaded reference files to GCS but didn't track them in `job.files`
+- Video worker used generic naming pattern for all lyrics files
+- Video worker didn't copy `(With Vocals).mkv` or previews to lyrics folder
+
+**Solution**:
+
+1. **Track all files in job.files** (lyrics_worker.py):
+   ```python
+   # Upload ALL reference lyrics and track them for distribution
+   for ref_filename, source_key in reference_files:
+       if os.path.exists(ref_path):
+           url = storage.upload_file(ref_path, gcs_path)
+           # Track in job.files so video_worker can download
+           job_manager.update_file_url(job_id, 'lyrics', f'reference_{source_key}', url)
+   ```
+
+2. **Use proper filenames in distribution** (video_worker.py):
+   ```python
+   lyrics_file_mappings = [
+       ('lrc', f"{base_name} (Karaoke).lrc"),
+       ('corrections', f"{base_name} (Lyrics Corrections).json"),
+       ('corrected_txt', f"{base_name} (Lyrics Corrected).txt"),
+       ('uncorrected', f"{base_name} (Lyrics Uncorrected).txt"),
+       ('reference_genius', f"{base_name} (Lyrics Genius).txt"),
+       # ... etc
+   ]
+   ```
+
+3. **Copy (With Vocals).mkv to lyrics folder**:
+   ```python
+   if videos.get('with_vocals'):
+       dest = os.path.join(lyrics_dir, f"{base_name} (With Vocals).mkv")
+       storage.download_file(videos['with_vocals'], dest)
+   ```
+
+4. **Create previews/ subfolder**:
+   ```python
+   previews_dir = os.path.join(lyrics_dir, "previews")
+   os.makedirs(previews_dir, exist_ok=True)
+   preview_files = storage.list_files(f"jobs/{job_id}/previews/")
+   for blob_name in preview_files:
+       if blob_name.endswith('.ass'):
+           storage.download_file(blob_name, dest_path)
+   ```
+
+**Expected output structure** (matches local CLI):
+```
+NOMAD-XXXX - Artist - Title/
+├── stems/
+│   ├── Artist - Title (Vocals model_bs_roformer_...).flac
+│   └── ...
+└── lyrics/
+    ├── Artist - Title (Karaoke).lrc
+    ├── Artist - Title (Karaoke).ass
+    ├── Artist - Title (Lyrics Corrections).json
+    ├── Artist - Title (Lyrics Corrected).txt
+    ├── Artist - Title (Lyrics Uncorrected).txt
+    ├── Artist - Title (Lyrics Genius).txt
+    ├── Artist - Title (With Vocals).mkv
+    └── previews/
+        └── preview_abc123 (Karaoke).ass
+```
+
+**Lesson**: When building distribution packages from cloud storage, the organization code must replicate the exact structure users expect from local execution. Track ALL intermediate files in `job.files` even if they're "optional" - users may rely on them.
+
 ## What We'd Do Differently
 
 1. **Add Pydantic model fields test first** - Would have caught the silent field issue immediately

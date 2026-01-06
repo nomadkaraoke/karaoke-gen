@@ -351,8 +351,8 @@ class GCEEncodingBackend(EncodingBackend):
                 result = {}
             raw_output_files = result.get("output_files", {})
 
-            # Convert output_files from list of paths to dict if needed
-            # GCE worker returns list like: ["path/output_4k_lossless.mp4", "path/output_720p.mp4"]
+            # Convert output_files from list of paths to dict
+            # GCE worker returns list like: ["path/Artist - Title (Final Karaoke Lossless 4k).mp4", ...]
             # We need dict like: {"mp4_4k_lossless": "path/...", "mp4_720p": "path/..."}
             if isinstance(raw_output_files, list):
                 output_files = {}
@@ -360,15 +360,18 @@ class GCEEncodingBackend(EncodingBackend):
                     if not isinstance(path, str):
                         continue
                     filename = path.split("/")[-1] if "/" in path else path
+                    filename_lower = filename.lower()
                     # Map filename patterns to output format keys
-                    if "4k_lossless" in filename:
-                        output_files["mp4_4k_lossless"] = path
-                    elif "4k_lossy" in filename:
+                    # Files are named like "Artist - Title (Final Karaoke Lossless 4k).mp4"
+                    if "lossless 4k" in filename_lower:
+                        if filename.endswith(".mkv"):
+                            output_files["mkv_4k"] = path
+                        else:
+                            output_files["mp4_4k_lossless"] = path
+                    elif "lossy 4k" in filename_lower:
                         output_files["mp4_4k_lossy"] = path
-                    elif "720p" in filename:
+                    elif "720p" in filename_lower:
                         output_files["mp4_720p"] = path
-                    elif filename.endswith(".mkv"):
-                        output_files["mkv_4k"] = path
                 self.logger.info(f"Converted output_files list to dict: {output_files}")
             else:
                 output_files = raw_output_files if isinstance(raw_output_files, dict) else {}

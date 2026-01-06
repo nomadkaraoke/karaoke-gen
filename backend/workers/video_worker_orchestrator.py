@@ -386,7 +386,7 @@ class VideoWorkerOrchestrator:
         Download GCE-encoded files from GCS to the local output directory.
 
         GCE encoding stores files in GCS and returns blob paths like:
-        'jobs/{job_id}/finals/output_4k_lossless.mp4'
+        'jobs/{job_id}/finals/Artist - Title (Final Karaoke Lossless 4k).mp4'
 
         This method downloads those files locally so that subsequent stages
         (YouTube upload, etc.) can access them as local files.
