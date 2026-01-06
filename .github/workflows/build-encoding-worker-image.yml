@@ -1,0 +1,115 @@
+# Build Encoding Worker GCE Image
+#
+# Rebuilds the custom Packer image when provisioning changes.
+# The image includes Python 3.13, FFmpeg, fonts, and dependencies
+# pre-installed to reduce VM startup time from ~10 min to ~30 sec.
+#
+# Triggers:
+# - Push to main with changes to infrastructure/packer/**
+# - Manual dispatch (workflow_dispatch)
+#
+# After image build, the encoding-worker VM will use the new image
+# on next recreation (e.g., via pulumi up or manual restart).
+
+name: Build Encoding Worker Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/packer/**'
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: 'Python version to install'
+        required: false
+        default: '3.13.1'
+
+concurrency:
+  group: build-encoding-worker-image
+  cancel-in-progress: false  # Don't cancel in-progress builds
+
+jobs:
+  build-image:
+    name: Build Packer Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Workload Identity)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: "latest"
+
+      - name: Install Packer
+        run: |
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt-get update && sudo apt-get install -y packer
+
+      - name: Initialize Packer
+        working-directory: infrastructure/packer
+        run: packer init encoding-worker.pkr.hcl
+
+      - name: Validate Packer Template
+        working-directory: infrastructure/packer
+        run: packer validate encoding-worker.pkr.hcl
+
+      - name: Build Image
+        working-directory: infrastructure/packer
+        env:
+          PYTHON_VERSION: ${{ github.event.inputs.python_version || '3.13.1' }}
+        run: |
+          echo "Building encoding worker image with Python ${PYTHON_VERSION}..."
+          packer build \
+            -var "python_version=${PYTHON_VERSION}" \
+            encoding-worker.pkr.hcl
+
+      - name: Get Latest Image Info
+        id: image-info
+        run: |
+          IMAGE_NAME=$(gcloud compute images list \
+            --project=nomadkaraoke \
+            --filter="family:encoding-worker" \
+            --sort-by="~creationTimestamp" \
+            --limit=1 \
+            --format="value(name)")
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "Built image: ${IMAGE_NAME}"
+
+      - name: Summary
+        run: |
+          echo "## Encoding Worker Image Built" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ steps.image-info.outputs.image_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Family:** \`encoding-worker\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** \`nomadkaraoke\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The encoding-worker VM will use this image on next recreation." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To force VM recreation now:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "gcloud compute instances delete encoding-worker --zone=us-central1-a --project=nomadkaraoke" >> $GITHUB_STEP_SUMMARY
+          echo "# Then run pulumi up or wait for next infrastructure deploy" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  notify-on-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: build-image
+    if: failure()
+    steps:
+      - name: Log Failure
+        run: |
+          echo "::error::Encoding worker image build failed. Check the build-image job logs."
