@@ -567,8 +567,8 @@ class LyricsCorrector:
                             f"⏰ AGENTIC TIMEOUT: Deadline exceeded after processing {completed_count}/{len(gap_sequences)} gaps. "
                             "Cancelling remaining gaps - human review will correct any issues."
                         )
-                        # Cancel remaining futures
-                        for f in future_to_input:
+                        # Cancel remaining futures (use list() to avoid mutating dict during iteration)
+                        for f in list(future_to_input.keys()):
                             f.cancel()
                         break
 
