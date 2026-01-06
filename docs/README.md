@@ -36,6 +36,8 @@
 
 ## Recent Changes
 
+- **Agentic Correction Performance** (2026-01-05): Optimized agentic AI correction from ~5 minutes to ~55 seconds for 20 gaps (~5-6x speedup). Fixed anti-pattern of creating new model instance per gap (caused repeated 2s warm-up overhead). Now creates model once and processes gaps in parallel using ThreadPoolExecutor (default 5 workers). Configure via `AGENTIC_MAX_PARALLEL_GAPS` env var. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#reuse-llm-model-instances-across-operations).
+
 - **Worker Logs Subcollection** (2026-01-04): Moved `worker_logs` from embedded array in job documents to Firestore subcollection (`jobs/{job_id}/logs`). Fixes job failures when logs exceed 1MB (job 501258e1 had 1.26MB of logs). New logs stored with 30-day TTL via Firestore TTL policy. Feature flag `USE_LOG_SUBCOLLECTION=true` (default). See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#firestore-document-1mb-limit-with-embedded-arrays).
 
 - **GCE Encoding Response Fixes** (2026-01-04): Fixed multiple response format mismatches with GCE encoding worker. The worker returns `output_files` as a list of paths, not a dict with format keys - added conversion logic. Also added defensive type checking for status responses that could be lists. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#external-service-response-format-mismatches).

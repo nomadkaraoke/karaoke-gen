@@ -741,6 +741,61 @@ RUN apt-get update && apt-get install -y \
 
 **Lesson**: When building Docker images for video/subtitle rendering, install fonts explicitly. The default slim images have nothing, and font fallback behavior differs from local development machines.
 
+### Reuse LLM Model Instances Across Operations
+
+**Problem**: Creating a new LLM model instance for each operation in a loop causes massive overhead. Each instance creation triggers model initialization, connection establishment, and optional "warm-up" calls - adding 2+ seconds per operation.
+
+**Example**: Agentic lyrics correction was creating a new `AgenticCorrector` for each gap (lyric segment needing correction):
+
+```python
+# BAD - 31 gaps × 2s initialization = 62s overhead
+for gap in gaps_to_correct:
+    agent = AgenticCorrector.from_model(model_id, ...)  # New instance every time!
+    agent.correct_gap(gap)
+```
+
+**Symptoms**:
+- Operations that should take ~1 minute take 5+ minutes
+- Logs show "Initializing model..." or "Warming up..." repeatedly
+- Each loop iteration has a consistent ~2s overhead before actual work
+- Total time scales linearly with loop count, not with actual work
+
+**Solution**: Create the model instance ONCE before the loop, then reuse:
+
+```python
+# GOOD - 1 initialization, reused for all gaps
+agent = AgenticCorrector.from_model(model_id, ...)  # Create once
+for gap in gaps_to_correct:
+    agent.correct_gap(gap)  # Reuse existing instance
+```
+
+**Additional optimization**: If operations are independent, process them in parallel:
+
+```python
+# BETTER - parallel processing with shared model
+agent = AgenticCorrector.from_model(model_id, ...)
+with ThreadPoolExecutor(max_workers=5) as executor:
+    futures = {executor.submit(agent.correct_gap, gap): gap for gap in gaps}
+    for future in as_completed(futures):
+        result = future.result()
+```
+
+**Results**:
+- Before: 31 gaps → ~5 minutes (2s init + 3s work per gap)
+- After: 20 gaps → ~55 seconds (1 init + parallel processing)
+- Speedup: ~5-6x
+
+**Why warm-up is often unnecessary**: The warm-up pattern (sending a trivial request to "prime" the model) made sense for cold-start scenarios in older systems. Modern LLM APIs:
+- Don't have cold-start penalties per request
+- Handle connection pooling internally
+- May even rate-limit warm-up calls
+
+If you're already making real requests, warm-up adds latency without benefit.
+
+**Key insight**: LLM client instances are designed for reuse. They maintain connection pools, authentication state, and caching. Creating a new instance per request throws away these benefits.
+
+**Configuration**: Added `AGENTIC_MAX_PARALLEL_GAPS` env var (default: 5) to control parallelism. Higher values increase throughput but may hit rate limits.
+
 ## Performance Observations
 
 | Operation | Duration |
