@@ -172,6 +172,15 @@ export const useAuth = create<AuthStore>()(
 
       // Start impersonating a user (admin only)
       startImpersonation: async (email: string) => {
+        // Prevent nested impersonation - must end current impersonation first
+        const currentState = get()
+        if (currentState.isImpersonating) {
+          set({
+            error: 'Already impersonating a user. End current impersonation first.'
+          })
+          return false
+        }
+
         set({ isLoading: true, error: null })
         const originalToken = getAccessToken()
 
