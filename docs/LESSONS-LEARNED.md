@@ -105,6 +105,8 @@ Audio separation and lyrics transcription run in parallel:
 
 **Important**: C4D instances require `hyperdisk-balanced` disk type, not `pd-balanced`.
 
+**Zone availability**: High-end C4D instances (e.g., c4d-highcpu-32) may not be available in all zones. During deployment, us-central1-a and us-central1-b failed with "does not have enough resources available" while us-central1-c succeeded. Added `ENCODING_WORKER_ZONE` config to explicitly specify zone instead of using the default region zone.
+
 **Scripts**: See `scripts/benchmark_candidates.sh` for multi-instance benchmarking orchestration.
 
 ## Common Gotchas
