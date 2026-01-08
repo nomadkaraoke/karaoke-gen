@@ -106,73 +106,29 @@ test.describe('User Impersonation', () => {
     await expect(makeAdminButtons).toHaveCount(0);
   });
 
-  test('impersonation banner shows target user email', async ({ page }) => {
-    // Set up with impersonation state already active
-    await page.addInitScript(() => {
-      // Set the impersonation token
-      localStorage.setItem('karaoke_access_token', 'impersonation-token-123');
-      // Set zustand state with impersonation
-      const authState = {
-        state: {
-          user: {
-            email: 'user@example.com',
-            role: 'user',
-            credits: 5,
-          },
-        },
-        version: 0,
-      };
-      localStorage.setItem('nomad-karaoke-auth', JSON.stringify(authState));
-    });
-
-    // Set impersonation state in memory (zustand doesn't persist impersonation state)
-    await setupApiFixtures(page, {
-      mocks: [
-        {
-          method: 'GET',
-          path: '/api/users/me',
-          response: { body: { user: mockTargetUser } },
-        },
-        {
-          method: 'GET',
-          path: '/api/jobs',
-          response: { body: [] },
-        },
-      ],
-    });
-
-    await page.goto('/app');
-
-    // Note: The impersonation banner only shows when isImpersonating is true in zustand,
-    // which is not persisted. This test verifies the banner component renders correctly
-    // when impersonation state is set programmatically.
+  // TODO: Test skipped - impersonation banner requires in-memory zustand state
+  // that cannot be reliably set via localStorage persistence.
+  // The banner component is tested indirectly via the "admin can see impersonate button"
+  // test and manual verification. The ImpersonationBanner component itself is simple
+  // and renders based on isImpersonating state from the auth store.
+  test.skip('impersonation banner shows target user email', async ({ page }) => {
+    // This test would need to inject isImpersonating: true into zustand's in-memory
+    // state before hydration, which is not reliably possible with the current test setup.
+    // The banner only renders when useAuth().isImpersonating is true, which is
+    // intentionally NOT persisted to localStorage for security reasons.
   });
 
-  test('stop impersonating returns to admin context', async ({ page }) => {
-    await setAuthToken(page, 'admin-test-token');
-
-    await setupApiFixtures(page, {
-      mocks: [
-        {
-          method: 'GET',
-          path: '/api/users/me',
-          response: { body: { user: mockAdminUser } },
-        },
-        {
-          method: 'GET',
-          path: '/api/jobs',
-          response: { body: [] },
-        },
-      ],
-    });
-
-    // This test would need to simulate the full impersonation flow
-    // and then click "Stop Impersonating" to verify admin context is restored
-    // For now, we verify the banner component has the stop button
-    await page.goto('/app');
-
-    // The banner would only be visible during active impersonation
-    // which requires client-side state manipulation beyond localStorage
+  // TODO: Test skipped - requires full impersonation flow simulation
+  // The end-to-end impersonation flow requires dynamic API mocking that returns
+  // different users for the same endpoint at different times.
+  test.skip('stop impersonating returns to admin context', async ({ page }) => {
+    // This test would need to:
+    // 1. Start as admin
+    // 2. Click impersonate (requires dynamic /api/users/me mock)
+    // 3. Verify banner appears
+    // 4. Click "Stop Impersonating"
+    // 5. Verify admin context is restored
+    // The mock infrastructure doesn't easily support this stateful flow.
   });
 
   test('make admin button is removed from users page', async ({ page }) => {

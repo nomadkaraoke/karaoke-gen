@@ -173,9 +173,10 @@ export const useAuth = create<AuthStore>()(
       // Start impersonating a user (admin only)
       startImpersonation: async (email: string) => {
         set({ isLoading: true, error: null })
+        const originalToken = getAccessToken()
+
         try {
           // Store original admin token before switching
-          const originalToken = getAccessToken()
           if (!originalToken) {
             throw new Error('No active session to preserve')
           }
@@ -187,7 +188,15 @@ export const useAuth = create<AuthStore>()(
           setAccessToken(response.session_token)
 
           // Fetch the impersonated user's profile
-          const userResponse = await api.getCurrentUser()
+          // If this fails, we need to restore the original token
+          let userResponse
+          try {
+            userResponse = await api.getCurrentUser()
+          } catch (profileErr) {
+            // Restore original admin token if profile fetch fails
+            setAccessToken(originalToken)
+            throw profileErr
+          }
 
           const user: User = {
             token: response.session_token,
