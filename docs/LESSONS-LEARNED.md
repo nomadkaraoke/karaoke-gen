@@ -2069,6 +2069,38 @@ NOMAD-XXXX - Artist - Title/
 
 **Lesson**: When building distribution packages from cloud storage, the organization code must replicate the exact structure users expect from local execution. Track ALL intermediate files in `job.files` even if they're "optional" - users may rely on them.
 
+### Avoid Duplicate Operations in Layered Architectures
+
+**Problem**: The orchestrator ran Google Drive upload in `_run_distribution()`, then `_handle_native_distribution()` was called after and uploaded AGAIN because it also checked `job.gdrive_folder_id`. This created duplicate files with different file IDs, and only one set was stored in `state_data.gdrive_files` for cleanup.
+
+**Symptoms**:
+- Duplicate files in Google Drive with identical names
+- Test cleanup logs showed "success" but files remained
+- Dropbox cleanup worked correctly (no duplication issue)
+
+**Root cause sequence**:
+1. Orchestrator runs `_upload_to_gdrive()` → uploads files → stores file IDs in `result.gdrive_files`
+2. `_handle_native_distribution()` called with result as dict → checks `job.gdrive_folder_id` → uploads AGAIN → stores NEW file IDs
+3. Final state_data update uses orchestrator's file IDs (from the original `OrchestratorResult` object, not the dict passed to `_handle_native_distribution`)
+4. Cleanup deletes orchestrator's files, leaving `_handle_native_distribution`'s files orphaned
+
+**Solution**: Check if the operation was already performed before re-doing it:
+
+```python
+# Skip if orchestrator already uploaded (gdrive_files already populated)
+existing_gdrive_files = result.get('gdrive_files')
+if gdrive_folder_id and not existing_gdrive_files:
+    # Do the upload
+    uploaded = gdrive.upload_to_public_share(...)
+    result['gdrive_files'] = uploaded
+elif existing_gdrive_files:
+    job_log.info(f"Skipping Google Drive upload - orchestrator already uploaded {len(existing_gdrive_files)} files")
+```
+
+**Key insight**: When refactoring to add new orchestration layers (like `VideoWorkerOrchestrator`), audit all downstream functions to ensure they don't duplicate operations. The pattern of "check if already done" prevents duplicate work and data inconsistencies.
+
+**Lesson**: In layered architectures, each layer should check whether an operation was already performed by a higher layer before executing. Pass results through the call chain and use presence of results to skip redundant operations.
+
 ## What We'd Do Differently
 
 1. **Add Pydantic model fields test first** - Would have caught the silent field issue immediately

@@ -831,9 +831,12 @@ async def _handle_native_distribution(
             # Don't fail the job - distribution is optional
     
     # Upload to Google Drive using native API
+    # Skip if orchestrator already uploaded (gdrive_files already populated)
+    # This prevents duplicate uploads when using the orchestrator path
     gdrive_folder_id = getattr(job, 'gdrive_folder_id', None)
-    
-    if gdrive_folder_id:
+    existing_gdrive_files = result.get('gdrive_files')
+
+    if gdrive_folder_id and not existing_gdrive_files:
         try:
             from backend.services.gdrive_service import get_gdrive_service
             
@@ -869,7 +872,9 @@ async def _handle_native_distribution(
         except Exception as e:
             job_log.error(f"Native Google Drive upload failed: {e}", exc_info=True)
             # Don't fail the job - distribution is optional
-    
+    elif existing_gdrive_files:
+        job_log.info(f"Skipping Google Drive upload - orchestrator already uploaded {len(existing_gdrive_files)} files")
+
     # Update job state_data with brand code and links
     if brand_code or result.get('dropbox_link') or result.get('gdrive_files'):
         try:
