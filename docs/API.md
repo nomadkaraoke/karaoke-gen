@@ -199,6 +199,70 @@ GET /api/themes
 
 No auth required. Returns available video themes.
 
+### Tenant Config
+
+```http
+GET /api/tenant/config
+GET /api/tenant/config?tenant=vocalstar
+```
+
+No auth required. Returns tenant configuration for white-label portals.
+
+**Detection priority**:
+1. `X-Tenant-ID` header (explicitly set by frontend)
+2. `tenant` query parameter (development/testing only, disabled in production)
+3. Host header subdomain detection (e.g., `vocalstar.nomadkaraoke.com`)
+
+Response:
+```json
+{
+  "tenant": {
+    "id": "vocalstar",
+    "name": "Vocal Star",
+    "subdomain": "vocalstar.nomadkaraoke.com",
+    "is_active": true,
+    "branding": {
+      "logo_url": "https://storage.googleapis.com/...",
+      "logo_height": 60,
+      "primary_color": "#ffff00",
+      "secondary_color": "#006CF9",
+      "accent_color": "#ffffff",
+      "background_color": "#000000",
+      "favicon_url": null,
+      "site_title": "Vocal Star Karaoke Generator",
+      "tagline": "Whoever You Are, Be a Vocal Star!"
+    },
+    "features": {
+      "audio_search": false,
+      "file_upload": true,
+      "youtube_url": false,
+      "youtube_upload": false,
+      "dropbox_upload": false,
+      "gdrive_upload": false,
+      "theme_selection": false,
+      "color_overrides": false,
+      "enable_cdg": true,
+      "enable_4k": true,
+      "admin_access": false
+    },
+    "defaults": {
+      "theme_id": "vocalstar",
+      "locked_theme": "vocalstar",
+      "distribution_mode": "download_only"
+    }
+  },
+  "is_default": false
+}
+```
+
+When no tenant is detected, returns `tenant: null` with `is_default: true` and the default Nomad Karaoke configuration is used.
+
+```http
+GET /api/tenant/config/{tenant_id}
+```
+
+Get specific tenant config by ID. Returns 404 if tenant not found or inactive.
+
 ### Internal (Admin Only)
 
 These endpoints are used by workers and require admin tokens.

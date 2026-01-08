@@ -85,6 +85,8 @@ class JobManager:
             keep_brand_code=job_create.keep_brand_code,
             # Request metadata (for tracking and filtering)
             request_metadata=job_create.request_metadata,
+            # Tenant scoping
+            tenant_id=job_create.tenant_id,
         )
         
         self.firestore.create_job(job)
@@ -125,6 +127,7 @@ class JobManager:
         created_after: Optional[datetime] = None,
         created_before: Optional[datetime] = None,
         user_email: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         limit: int = 100
     ) -> List[Job]:
         """
@@ -137,6 +140,7 @@ class JobManager:
             created_after: Filter jobs created after this datetime
             created_before: Filter jobs created before this datetime
             user_email: Filter by user_email (job owner)
+            tenant_id: Filter by tenant_id (white-label portal scoping)
             limit: Maximum number of jobs to return
 
         Returns:
@@ -149,6 +153,7 @@ class JobManager:
             created_after=created_after,
             created_before=created_before,
             user_email=user_email,
+            tenant_id=tenant_id,
             limit=limit
         )
     

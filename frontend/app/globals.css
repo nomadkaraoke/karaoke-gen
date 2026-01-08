@@ -19,6 +19,15 @@
   --brand-blue: #3b82f6;
   --brand-soft-pink: #ec4899;
 
+  /* ===========================================
+     Tenant Branding Colors (set dynamically by JS)
+     These are overridden by TenantProvider for white-label portals
+     =========================================== */
+  --tenant-primary: var(--brand-pink);
+  --tenant-secondary: var(--brand-purple);
+  --tenant-accent: var(--brand-gold);
+  --tenant-background: #0f0f0f;
+
   /* Dark theme (default) */
   --bg: #0f0f0f;
   --card: #1a1a1a;
@@ -28,9 +37,9 @@
   --text-muted: #888888;
   --text-subtle: #666666;
 
-  /* Primary now uses brand pink */
-  --primary: var(--brand-pink);
-  --primary-hover: var(--brand-pink-hover);
+  /* Primary uses tenant color (defaults to brand pink) */
+  --primary: var(--tenant-primary);
+  --primary-hover: color-mix(in srgb, var(--tenant-primary) 80%, white 20%);
 
   --secondary: #252525;
   --secondary-hover: #333333;

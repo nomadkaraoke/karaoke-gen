@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
+import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,9 +16,30 @@ interface JobSubmissionProps {
 
 export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   const { user } = useAuth()
+  const { features, isDefault, tenant } = useTenant()
   const isAdmin = user?.role === "admin"
 
-  const [activeTab, setActiveTab] = useState("search")
+  // Determine which tabs are available based on tenant features
+  const availableTabs = useMemo(() => {
+    const tabs: string[] = []
+    if (features.audio_search) tabs.push("search")
+    if (features.file_upload) tabs.push("upload")
+    if (features.youtube_url) tabs.push("url")
+    // Fallback: at least show upload if no tabs enabled
+    if (tabs.length === 0) tabs.push("upload")
+    return tabs
+  }, [features])
+
+  // Default to first available tab
+  const [activeTab, setActiveTab] = useState(availableTabs[0])
+
+  // Keep activeTab in sync with availableTabs when features change
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0])
+    }
+  }, [availableTabs, activeTab])
+
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -156,37 +178,52 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className="grid w-full grid-cols-3 h-auto rounded-lg p-1" style={{ backgroundColor: 'var(--secondary)' }}>
-        <TabsTrigger
-          value="search"
-          className="gap-1.5 sm:gap-2 py-3 min-h-[44px] text-xs sm:text-sm rounded-md data-[state=active]:!bg-[var(--brand-pink)] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-[var(--brand-pink)]/10"
-          style={{ color: activeTab === 'search' ? 'white' : 'var(--text-muted)' }}
+      {/* Only show tabs bar when there are multiple options */}
+      {availableTabs.length > 1 && (
+        <TabsList
+          className={`grid w-full h-auto rounded-lg p-1 ${
+            availableTabs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+          }`}
+          style={{ backgroundColor: 'var(--secondary)' }}
         >
-          <Music className="w-4 h-4 shrink-0" />
-          <span className="truncate">Search</span>
-        </TabsTrigger>
-        <TabsTrigger
-          value="upload"
-          className="gap-1.5 sm:gap-2 py-3 min-h-[44px] text-xs sm:text-sm rounded-md data-[state=active]:!bg-[var(--brand-pink)] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-[var(--brand-pink)]/10"
-          style={{ color: activeTab === 'upload' ? 'white' : 'var(--text-muted)' }}
-        >
-          <Upload className="w-4 h-4 shrink-0" />
-          <span className="truncate">Upload</span>
-        </TabsTrigger>
-        <TabsTrigger
-          value="url"
-          className="gap-1.5 sm:gap-2 py-3 min-h-[44px] text-xs sm:text-sm rounded-md data-[state=active]:!bg-[var(--brand-pink)] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-[var(--brand-pink)]/10"
-          style={{ color: activeTab === 'url' ? 'white' : 'var(--text-muted)' }}
-        >
-          <Youtube className="w-4 h-4 shrink-0" />
-          <span className="truncate">URL</span>
-        </TabsTrigger>
-      </TabsList>
+          {availableTabs.includes("search") && (
+            <TabsTrigger
+              value="search"
+              className="gap-1.5 sm:gap-2 py-3 min-h-[44px] text-xs sm:text-sm rounded-md data-[state=active]:!bg-[var(--brand-pink)] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-[var(--brand-pink)]/10"
+              style={{ color: activeTab === 'search' ? 'white' : 'var(--text-muted)' }}
+            >
+              <Music className="w-4 h-4 shrink-0" />
+              <span className="truncate">Search</span>
+            </TabsTrigger>
+          )}
+          {availableTabs.includes("upload") && (
+            <TabsTrigger
+              value="upload"
+              className="gap-1.5 sm:gap-2 py-3 min-h-[44px] text-xs sm:text-sm rounded-md data-[state=active]:!bg-[var(--brand-pink)] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-[var(--brand-pink)]/10"
+              style={{ color: activeTab === 'upload' ? 'white' : 'var(--text-muted)' }}
+            >
+              <Upload className="w-4 h-4 shrink-0" />
+              <span className="truncate">Upload</span>
+            </TabsTrigger>
+          )}
+          {availableTabs.includes("url") && (
+            <TabsTrigger
+              value="url"
+              className="gap-1.5 sm:gap-2 py-3 min-h-[44px] text-xs sm:text-sm rounded-md data-[state=active]:!bg-[var(--brand-pink)] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-[var(--brand-pink)]/10"
+              style={{ color: activeTab === 'url' ? 'white' : 'var(--text-muted)' }}
+            >
+              <Youtube className="w-4 h-4 shrink-0" />
+              <span className="truncate">URL</span>
+            </TabsTrigger>
+          )}
+        </TabsList>
+      )}
 
-      <TabsContent value="upload" className="mt-4">
-        <form onSubmit={handleUploadSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="audio-file" style={{ color: 'var(--text)' }}>Audio File</Label>
+      {availableTabs.includes("upload") && (
+        <TabsContent value="upload" className={availableTabs.length === 1 ? "" : "mt-4"}>
+          <form onSubmit={handleUploadSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="audio-file" style={{ color: 'var(--text)' }}>Audio File</Label>
             <div
               className="relative border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer"
               style={{
@@ -288,13 +325,15 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               "Create Karaoke Video"
             )}
           </Button>
-        </form>
-      </TabsContent>
+          </form>
+        </TabsContent>
+      )}
 
-      <TabsContent value="url" className="mt-4">
-        <form onSubmit={handleUrlSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="youtube-url" style={{ color: 'var(--text)' }}>YouTube URL</Label>
+      {availableTabs.includes("url") && (
+        <TabsContent value="url" className={availableTabs.length === 1 ? "" : "mt-4"}>
+          <form onSubmit={handleUrlSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="youtube-url" style={{ color: 'var(--text)' }}>YouTube URL</Label>
             <div className="relative">
               <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               <Input
@@ -380,15 +419,17 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             ) : (
               "Create Karaoke Video"
             )}
-          </Button>
-        </form>
-      </TabsContent>
+            </Button>
+          </form>
+        </TabsContent>
+      )}
 
-      <TabsContent value="search" className="mt-4">
-        <form onSubmit={handleSearchSubmit} className="space-y-4">
-          {/* Search For section */}
-          <div className="space-y-2">
-            <Label style={{ color: 'var(--text)' }}>Search For Audio Online</Label>
+      {availableTabs.includes("search") && (
+        <TabsContent value="search" className={availableTabs.length === 1 ? "" : "mt-4"}>
+          <form onSubmit={handleSearchSubmit} className="space-y-4">
+            {/* Search For section */}
+            <div className="space-y-2">
+              <Label style={{ color: 'var(--text)' }}>Search For Audio Online</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="search-artist" className="text-xs" style={{ color: 'var(--text-muted)' }}>Artist</Label>
@@ -511,9 +552,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             ) : (
               "Search & Create Job"
             )}
-          </Button>
-        </form>
-      </TabsContent>
+            </Button>
+          </form>
+        </TabsContent>
+      )}
     </Tabs>
   )
 }

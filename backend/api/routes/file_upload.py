@@ -34,6 +34,7 @@ from backend.version import VERSION
 from backend.services.metrics import metrics
 from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
+from backend.middleware.tenant import get_tenant_config_from_request
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["jobs"])
@@ -446,6 +447,14 @@ async def upload_and_create_job(
     The style_params JSON can reference the uploaded images/fonts by their original
     filenames, and the backend will update the paths to GCS locations.
     """
+    # Check tenant feature flag
+    tenant_config = get_tenant_config_from_request(request)
+    if tenant_config and not tenant_config.features.file_upload:
+        raise HTTPException(
+            status_code=403,
+            detail="File upload is not available for this portal"
+        )
+
     try:
         # Validate main audio file type
         file_ext = Path(file.filename).suffix.lower()
@@ -632,10 +641,12 @@ async def upload_and_create_job(
             request_metadata=request_metadata,
             # Non-interactive mode
             non_interactive=non_interactive,
+            # Tenant scoping
+            tenant_id=tenant_config.id if tenant_config else None,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id
-        
+
         # Record job creation metric
         metrics.record_job_created(job_id, source="upload")
 
@@ -1029,6 +1040,14 @@ async def create_job_with_upload_urls(
     - Works with any HTTP client (no HTTP/2 required)
     - Resumable uploads possible with GCS
     """
+    # Check tenant feature flag
+    tenant_config = get_tenant_config_from_request(request)
+    if tenant_config and not tenant_config.features.file_upload:
+        raise HTTPException(
+            status_code=403,
+            detail="File upload is not available for this portal"
+        )
+
     try:
         # Validate files list
         if not body.files:
@@ -1153,6 +1172,8 @@ async def create_job_with_upload_urls(
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            # Tenant scoping
+            tenant_id=tenant_config.id if tenant_config else None,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id
@@ -1481,6 +1502,14 @@ async def create_job_from_url(
     Note: YouTube rate limiting may cause occasional download failures.
     The backend will retry automatically.
     """
+    # Check tenant feature flag
+    tenant_config = get_tenant_config_from_request(request)
+    if tenant_config and not tenant_config.features.youtube_url:
+        raise HTTPException(
+            status_code=403,
+            detail="URL-based job creation is not available for this portal"
+        )
+
     try:
         # Validate URL
         if not _validate_url(body.url):
@@ -1583,6 +1612,8 @@ async def create_job_from_url(
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            # Tenant scoping
+            tenant_id=tenant_config.id if tenant_config else None,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id
@@ -1703,6 +1734,14 @@ async def create_finalise_only_job(
     
     The endpoint returns signed URLs for uploading all the prep files.
     """
+    # Check tenant feature flag - finalise-only requires file upload capability
+    tenant_config = get_tenant_config_from_request(request)
+    if tenant_config and not tenant_config.features.file_upload:
+        raise HTTPException(
+            status_code=403,
+            detail="File upload is not available for this portal"
+        )
+
     try:
         # Validate files list
         if not body.files:
@@ -1834,6 +1873,8 @@ async def create_finalise_only_job(
             finalise_only=True,
             keep_brand_code=body.keep_brand_code,
             request_metadata=request_metadata,
+            # Tenant scoping
+            tenant_id=tenant_config.id if tenant_config else None,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id

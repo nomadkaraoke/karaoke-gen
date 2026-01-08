@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
+import { useTenant } from "@/lib/tenant"
 import type { VideoThemeSummary } from "@/lib/video-themes"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { Palette, AlertCircle, Eye, EyeOff } from "lucide-react"
+import { Palette, AlertCircle, Eye, EyeOff, Lock } from "lucide-react"
 
 interface ThemeSelectorProps {
   value?: string
@@ -16,10 +17,14 @@ interface ThemeSelectorProps {
 }
 
 export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps) {
+  const { defaults, isDefault: isDefaultTenant } = useTenant()
   const [themes, setThemes] = useState<VideoThemeSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
+
+  // Check if theme is locked by tenant config
+  const lockedTheme = defaults.locked_theme
 
   useEffect(() => {
     async function loadThemes() {
@@ -28,6 +33,12 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
         setError(null)
         const themeList = await api.listThemes()
         setThemes(themeList)
+
+        // If theme is locked by tenant, always use that
+        if (lockedTheme) {
+          onChange(lockedTheme)
+          return
+        }
 
         // If no value is set and there's a default theme, select it
         if (!value && themeList.length > 0) {
@@ -47,7 +58,7 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
     }
 
     loadThemes()
-  }, []) // Only run once on mount
+  }, [lockedTheme]) // Re-run if locked theme changes
 
   const selectedTheme = themes.find(t => t.id === value)
 
@@ -78,6 +89,35 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
     )
   }
 
+  // If theme is locked by tenant, show read-only display
+  if (lockedTheme && selectedTheme) {
+    return (
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2" style={{ color: 'var(--text)' }}>
+          <Palette className="w-4 h-4" />
+          Video Theme
+        </Label>
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-md border"
+          style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
+        >
+          <Lock className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          <span>{selectedTheme.name}</span>
+        </div>
+        {/* Optional: Show theme preview for locked themes */}
+        {selectedTheme.thumbnail_url && (
+          <div className="mt-2 relative w-full aspect-video max-w-xs rounded-lg overflow-hidden border" style={{ borderColor: 'var(--card-border)' }}>
+            <img
+              src={selectedTheme.thumbnail_url}
+              alt={`${selectedTheme.name} preview`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-2">
       <Label htmlFor="theme-select" className="flex items-center gap-2" style={{ color: 'var(--text)' }}>
@@ -88,7 +128,7 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
       <Select
         value={value || ""}
         onValueChange={(val) => onChange(val || undefined)}
-        disabled={disabled}
+        disabled={disabled || !!lockedTheme}
       >
         <SelectTrigger
           id="theme-select"

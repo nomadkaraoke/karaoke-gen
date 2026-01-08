@@ -7,7 +7,7 @@ import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse } 
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
-const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+export const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? ''  // Relative URL - goes through Next.js proxy
   : (process.env.NEXT_PUBLIC_API_URL || 'https://api.nomadkaraoke.com');
 

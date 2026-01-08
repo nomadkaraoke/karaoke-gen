@@ -128,6 +128,8 @@ class TestUserEmailExtraction:
         mock_request.headers = {}
         mock_request.client = Mock(host="127.0.0.1")
         mock_request.url = Mock(path="/api/jobs/create-from-url")
+        # Mock tenant state (no tenant = default Nomad Karaoke)
+        mock_request.state.tenant_config = None
 
         mock_background_tasks = Mock()
         body = CreateJobFromUrlRequest(
@@ -168,6 +170,8 @@ class TestUserEmailExtraction:
         mock_request.headers = {}
         mock_request.client = Mock(host="127.0.0.1")
         mock_request.url = Mock(path="/api/audio-search/search")
+        # Mock tenant state (no tenant = default Nomad Karaoke)
+        mock_request.state.tenant_config = None
 
         mock_background_tasks = Mock()
         body = AudioSearchRequest(

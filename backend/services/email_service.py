@@ -34,8 +34,19 @@ class EmailProvider(ABC):
         html_content: str,
         text_content: Optional[str] = None,
         cc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
     ) -> bool:
-        """Send an email. Returns True if successful."""
+        """
+        Send an email. Returns True if successful.
+
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            html_content: HTML content
+            text_content: Plain text content (optional)
+            cc_emails: CC recipients (optional)
+            from_email_override: Override the default sender email (optional, for multi-tenant)
+        """
         pass
 
 
@@ -53,8 +64,11 @@ class ConsoleEmailProvider(EmailProvider):
         html_content: str,
         text_content: Optional[str] = None,
         cc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
     ) -> bool:
         logger.info("=" * 60)
+        if from_email_override:
+            logger.info(f"FROM: {from_email_override}")
         logger.info(f"EMAIL TO: {to_email}")
         if cc_emails:
             logger.info(f"CC: {', '.join(cc_emails)}")
@@ -85,6 +99,7 @@ class PreviewEmailProvider(EmailProvider):
         html_content: str,
         text_content: Optional[str] = None,
         cc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
     ) -> bool:
         self.last_to_email = to_email
         self.last_subject = subject
@@ -115,6 +130,7 @@ class SendGridEmailProvider(EmailProvider):
         html_content: str,
         text_content: Optional[str] = None,
         cc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
     ) -> bool:
         try:
             # Import here to avoid requiring sendgrid in all environments
@@ -123,8 +139,11 @@ class SendGridEmailProvider(EmailProvider):
 
             sg = SendGridAPIClient(api_key=self.api_key)
 
+            # Use override sender if provided (for multi-tenant)
+            sender_email = from_email_override or self.from_email
+
             message = Mail(
-                from_email=Email(self.from_email, self.from_name),
+                from_email=Email(sender_email, self.from_name),
                 to_emails=To(to_email),
                 subject=subject,
                 html_content=Content("text/html", html_content)
@@ -200,13 +219,19 @@ class EmailService:
         """Check if a real email provider is configured (not just console logging)."""
         return isinstance(self.provider, SendGridEmailProvider)
 
-    def send_magic_link(self, email: str, token: str) -> bool:
+    def send_magic_link(
+        self,
+        email: str,
+        token: str,
+        sender_email: Optional[str] = None,
+    ) -> bool:
         """
         Send a magic link email for authentication.
 
         Args:
             email: User's email address
             token: Magic link token
+            sender_email: Override sender email address (for multi-tenant)
 
         Returns:
             True if email was sent successfully
@@ -264,7 +289,9 @@ If you didn't request this email, you can safely ignore it.
 © {self._get_year()} Nomad Karaoke
 """
 
-        return self.provider.send_email(email, subject, html_content, text_content)
+        return self.provider.send_email(
+            email, subject, html_content, text_content, from_email_override=sender_email
+        )
 
     def send_credits_added(self, email: str, credits: int, total_credits: int) -> bool:
         """

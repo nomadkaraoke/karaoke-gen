@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import { api, adminApi } from "@/lib/api"
+import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, MessageSquare } from "lucide-react"
 import { useAuth } from "@/lib/auth"
@@ -37,7 +38,12 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
   const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const { user } = useAuth()
+  const { features } = useTenant()
   const isAdmin = user?.role === 'admin'
+
+  // Filter external links based on tenant features
+  const showYoutubeLink = features.youtube_upload && youtubeUrl
+  const showDropboxLink = features.dropbox_upload && dropboxUrl
 
   useEffect(() => {
     loadOutputLinks()
@@ -167,7 +173,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
     )
   }
 
-  const hasOutputs = youtubeUrl || dropboxUrl || (downloadUrls && Object.keys(downloadUrls).length > 0)
+  const hasOutputs = showYoutubeLink || showDropboxLink || (downloadUrls && Object.keys(downloadUrls).length > 0)
 
   // Check if we have any downloads
   const hasDownloads = downloadUrls && (
@@ -178,8 +184,8 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
     downloadUrls?.packages?.txt_zip
   )
 
-  // Check if we have any external links
-  const hasExternalLinks = youtubeUrl || dropboxUrl
+  // Check if we have any external links (filtered by tenant features)
+  const hasExternalLinks = showYoutubeLink || showDropboxLink
 
   return (
     <div className="space-y-3">
@@ -242,12 +248,12 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
         </div>
       )}
 
-      {/* Actions Section */}
+      {/* Actions Section - only show links enabled for tenant */}
       {hasExternalLinks && (
         <div className="space-y-1.5">
           <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Links</p>
           <div className="flex flex-wrap gap-1.5">
-            {youtubeUrl && (
+            {showYoutubeLink && youtubeUrl && (
               <div className="flex">
                 <a
                   href={youtubeUrl}
@@ -270,7 +276,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
                 </button>
               </div>
             )}
-            {dropboxUrl && (
+            {showDropboxLink && dropboxUrl && (
               <div className="flex">
                 <a
                   href={dropboxUrl}

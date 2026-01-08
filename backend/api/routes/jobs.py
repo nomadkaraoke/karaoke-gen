@@ -11,7 +11,7 @@ import asyncio
 import logging
 import httpx
 from typing import List, Optional, Dict, Any, Tuple
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -30,6 +30,7 @@ from backend.config import get_settings
 from backend.api.dependencies import require_admin, require_auth, require_instrumental_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.services.metrics import metrics
+from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
 
 
@@ -190,6 +191,7 @@ def _check_job_ownership(job: Job, auth_result: AuthResult) -> bool:
 
 @router.get("", response_model=List[Job])
 async def list_jobs(
+    request: Request,
     status: Optional[JobStatus] = None,
     environment: Optional[str] = None,
     client_id: Optional[str] = None,
@@ -203,6 +205,7 @@ async def list_jobs(
     List jobs with optional filters.
 
     Regular users only see their own jobs. Admins see all jobs.
+    Users on tenant portals only see jobs from their tenant.
 
     Args:
         status: Filter by job status (pending, complete, failed, etc.)
@@ -247,6 +250,10 @@ async def list_jobs(
                 logger.warning("Non-admin auth without user_email, returning empty job list")
                 return []
 
+        # Get tenant_id from request for portal scoping
+        # Tenant users only see jobs from their tenant
+        tenant_id = get_tenant_from_request(request)
+
         jobs = job_manager.list_jobs(
             status=status,
             environment=environment,
@@ -254,6 +261,7 @@ async def list_jobs(
             created_after=created_after_dt,
             created_before=created_before_dt,
             user_email=user_email_filter,
+            tenant_id=tenant_id,
             limit=limit
         )
 

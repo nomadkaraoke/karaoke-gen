@@ -217,6 +217,126 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
 
+## Multitenancy
+
+The platform supports white-label B2B portals where business customers get their own branded karaoke generation experience.
+
+### Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  Tenant Detection Flow                                          │
+│                                                                 │
+│  Request arrives at vocalstar.nomadkaraoke.com                  │
+│         │                                                       │
+│         ▼                                                       │
+│  Frontend: detectTenantFromUrl()                                │
+│  - Extracts subdomain from hostname                             │
+│  - Calls GET /api/tenant/config?tenant=vocalstar                │
+│         │                                                       │
+│         ▼                                                       │
+│  Backend: TenantMiddleware                                      │
+│  1. X-Tenant-ID header (from frontend)                          │
+│  2. Query param (dev only, disabled in production)              │
+│  3. Host header subdomain detection                             │
+│         │                                                       │
+│         ▼                                                       │
+│  TenantService.get_tenant_config()                              │
+│  - Loads from GCS: tenants/{tenant_id}/config.json              │
+│  - Caches in memory (5 min TTL)                                 │
+│         │                                                       │
+│         ▼                                                       │
+│  Request proceeds with tenant context                           │
+│  - request.state.tenant_id                                      │
+│  - request.state.tenant_config                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### GCS Storage Layout
+
+```text
+tenants/{tenant_id}/
+├── config.json          # TenantConfig with branding, features, defaults
+└── logo.jpg             # Tenant logo (optional)
+
+themes/{theme_id}/
+├── style_params.json    # Full theme configuration
+└── assets/
+    ├── intro_background.png
+    ├── karaoke_background.jpg
+    ├── end_background.png
+    ├── font.ttf
+    └── cdg_*.gif
+```
+
+### Tenant Config Schema
+
+```python
+TenantConfig:
+  id: str                    # e.g., "vocalstar"
+  name: str                  # Display name: "Vocal Star"
+  subdomain: str             # e.g., "vocalstar.nomadkaraoke.com"
+  is_active: bool            # Enable/disable tenant
+  branding:
+    logo_url: str | None     # GCS path to logo
+    logo_height: int         # Pixels
+    primary_color: str       # Hex color
+    secondary_color: str
+    accent_color: str | None
+    background_color: str | None
+    favicon_url: str | None
+    site_title: str
+    tagline: str | None
+  features:
+    audio_search: bool       # Enable audio search (vs file upload only)
+    file_upload: bool
+    youtube_url: bool
+    youtube_upload: bool     # YouTube distribution
+    dropbox_upload: bool
+    gdrive_upload: bool
+    theme_selection: bool    # Allow user to pick theme
+    color_overrides: bool
+    enable_cdg: bool
+    enable_4k: bool
+    admin_access: bool
+  defaults:
+    theme_id: str | None     # Default theme if not locked
+    locked_theme: str | None # Force this theme (user cannot change)
+    distribution_mode: str   # "all", "download_only", etc.
+  auth:
+    allowed_email_domains: list[str]  # e.g., ["vocal-star.com"]
+    require_email_domain: bool
+    sender_email: str | None  # Override email sender
+```
+
+### Feature Enforcement
+
+**Frontend**: The `useTenant()` hook provides `features` object. UI components conditionally render based on enabled features:
+
+```typescript
+const { features } = useTenant()
+if (!features.audio_search) {
+  // Hide audio search tab
+}
+```
+
+**Backend**: Routes check tenant config from request state:
+
+```python
+tenant_config = get_tenant_config_from_request(request)
+if tenant_config and not tenant_config.features.audio_search:
+    raise HTTPException(403, "Audio search not enabled for this tenant")
+```
+
+### First Tenant: Vocal Star
+
+- Subdomain: `vocalstar.nomadkaraoke.com`
+- Features: File upload only (no audio search, no YouTube URL)
+- Distribution: Download only (no YouTube/Dropbox/GDrive)
+- Theme: Locked to "vocalstar" theme (yellow/blue)
+- Auth: Restricted to `@vocal-star.com` and `@vocalstarmusic.com` emails
+- Setup: `python scripts/setup-vocalstar-tenant.py`
+
 ## Tech Stack
 
 - **Backend**: FastAPI, Python 3.12, Cloud Run

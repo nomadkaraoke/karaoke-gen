@@ -38,6 +38,7 @@ from backend.config import get_settings
 from backend.version import VERSION
 from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
+from backend.middleware.tenant import get_tenant_config_from_request
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -479,17 +480,25 @@ async def search_audio(
 ):
     """
     Search for audio by artist and title, creating a new job.
-    
+
     This endpoint:
     1. Creates a job in PENDING state
     2. Searches for audio using flacfetch
     3. Either returns search results for user selection, or
     4. If auto_download=True, automatically selects best and starts processing
-    
+
     Use cases:
     - Interactive mode (default): Returns results, user calls /select endpoint
     - Auto mode (auto_download=True): Automatically selects and downloads best
     """
+    # Check tenant feature flag
+    tenant_config = get_tenant_config_from_request(request)
+    if tenant_config and not tenant_config.features.audio_search:
+        raise HTTPException(
+            status_code=403,
+            detail="Audio search is not available for this portal"
+        )
+
     try:
         # Apply default distribution settings
         settings = get_settings()
@@ -585,6 +594,8 @@ async def search_audio(
             auto_download=body.auto_download,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            # Tenant scoping
+            tenant_id=tenant_config.id if tenant_config else None,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id

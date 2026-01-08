@@ -116,6 +116,7 @@ class FirestoreService:
         created_after: Optional[datetime] = None,
         created_before: Optional[datetime] = None,
         user_email: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         limit: int = 100
     ) -> List[Job]:
         """
@@ -128,6 +129,7 @@ class FirestoreService:
             created_after: Filter jobs created after this datetime
             created_before: Filter jobs created before this datetime
             user_email: Filter by user_email (owner of the job)
+            tenant_id: Filter by tenant_id (white-label portal scoping)
             limit: Maximum number of jobs to return
 
         Returns:
@@ -149,6 +151,10 @@ class FirestoreService:
             # Filter by user_email (job owner)
             if user_email:
                 query = query.where(filter=FieldFilter('user_email', '==', user_email.lower()))
+
+            # Filter by tenant_id (white-label portal scoping)
+            if tenant_id:
+                query = query.where(filter=FieldFilter('tenant_id', '==', tenant_id))
 
             # Date range filters
             if created_after:

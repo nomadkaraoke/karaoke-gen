@@ -2101,6 +2101,137 @@ elif existing_gdrive_files:
 
 **Lesson**: In layered architectures, each layer should check whether an operation was already performed by a higher layer before executing. Pass results through the call chain and use presence of results to skip redundant operations.
 
+### Multitenancy: Config-Driven Feature Flags
+
+**Problem**: Adding B2B white-label support required tenant-specific feature restrictions (e.g., Vocal Star can't use audio search) without creating separate codebases or hardcoding tenant checks throughout the code.
+
+**Solution**: Config-driven multitenancy with feature flags:
+
+1. **GCS-backed config**: Each tenant has `tenants/{tenant_id}/config.json` in GCS containing branding, features, and defaults. Changes don't require deployment.
+
+2. **Middleware-based detection**: `TenantMiddleware` extracts tenant from X-Tenant-ID header, query param (dev only), or Host subdomain, then loads config and attaches to request state.
+
+3. **Feature flags in config**:
+   ```json
+   "features": {
+     "audio_search": false,
+     "youtube_upload": false,
+     "theme_selection": false
+   }
+   ```
+
+4. **Frontend checks via Zustand store**:
+   ```typescript
+   const { features } = useTenant()
+   // Conditionally render UI based on features.audio_search
+   ```
+
+5. **Backend enforcement**:
+   ```python
+   tenant_config = get_tenant_config_from_request(request)
+   if tenant_config and not tenant_config.features.audio_search:
+       raise HTTPException(403, "Feature not enabled")
+   ```
+
+**Key decisions**:
+- **Query param disabled in production**: Prevents tenant spoofing via URL manipulation
+- **Strict subdomain patterns**: Only accept `{tenant}.nomadkaraoke.com` or `{tenant}.gen.nomadkaraoke.com`
+- **PII protection**: Mask emails in logs (`an***@vo***.com`)
+- **Locked themes**: `locked_theme` field prevents users from changing theme even if `theme_selection` is enabled elsewhere
+- **CSS variables for branding**: Dynamic colors via `--tenant-primary`, `--tenant-secondary` etc.
+
+**Lesson**: Config-driven multitenancy scales better than code branches. New tenants require only a JSON file in GCS, not code changes. Feature flags belong in config, not environment variables.
+
+### Frontend Tab State Sync with Feature Flags
+
+**Problem**: When tenant config changes which tabs are available (e.g., audio_search disabled), the active tab state could point to a tab that no longer exists, causing UI to show nothing.
+
+**Solution**: Add useEffect to sync activeTab with available tabs:
+```typescript
+useEffect(() => {
+  if (!availableTabs.includes(activeTab)) {
+    setActiveTab(availableTabs[0])
+  }
+}, [availableTabs, activeTab])
+```
+
+**Lesson**: When feature flags control UI visibility, derived state (like "which tab is selected") must react to flag changes. Initialize state to valid values AND keep it valid as context changes.
+
+### Hydration-Safe Initialization in Next.js
+
+**Problem**: Module-level auto-initialization (e.g., `setTimeout(fetchTenantConfig, 0)`) in a Zustand store caused hydration mismatches in Next.js. Server renders with default state, client starts fetching immediately, causing React hydration errors.
+
+**Solution**: Remove module-level auto-init. Use explicit `TenantProvider` component that calls `fetchTenantConfig()` in useEffect:
+```typescript
+// TenantProvider.tsx
+useEffect(() => {
+  if (!isInitialized) {
+    fetchTenantConfig()
+  }
+}, [isInitialized, fetchTenantConfig])
+```
+
+**Lesson**: In Next.js with SSR, never auto-initialize async state at module load time. Use React lifecycle (useEffect) to trigger client-side fetches after hydration completes.
+
+### Zustand Getters Don't Work with Direct setState
+
+**Problem**: Unit tests for Zustand stores that use JavaScript getter properties (`get branding() {}`) fail when using `useTenant.setState()` to set up test state.
+
+```typescript
+// Store definition
+const useTenant = create<TenantStore>()((set, get) => ({
+  tenant: null,
+  get branding() {
+    const { tenant } = get()
+    return tenant?.branding ?? DEFAULT_BRANDING
+  },
+  // ...
+}))
+
+// Test that FAILS
+useTenant.setState({ tenant: SAMPLE_CONFIG })
+const state = useTenant.getState()
+expect(state.branding.primary_color).toBe("#ffff00")  // Gets default instead!
+```
+
+**Why**: Zustand's `setState` merges state using object spread, which evaluates getters once and stores static values. The getter function isn't preserved - its current value is copied.
+
+**Solution**: Use the store's action methods (like `setTenant()`) instead of direct `setState()`, or access the raw data (`state.tenant?.branding`) rather than computed properties:
+
+```typescript
+// Working test - use the store's action
+useTenant.getState().setTenant(SAMPLE_CONFIG, false)
+const state = useTenant.getState()
+expect(state.tenant?.branding.primary_color).toBe("#ffff00")  // Works!
+```
+
+**Lesson**: For Zustand stores with computed properties (getters), test through the store's actions rather than direct `setState()`. The actions update the internal state that the getters reference.
+
+### Middleware Mocking Requires Patching Multiple Locations
+
+**Problem**: API route unit tests fail with real service calls despite mocking `get_tenant_service` in the routes module.
+
+```python
+# Test that FAILS
+with patch("backend.api.routes.tenant.get_tenant_service", return_value=mock_service):
+    response = client.get("/api/tenant/config")
+    # Still calls real TenantService!
+```
+
+**Why**: FastAPI middleware runs BEFORE routes. `TenantMiddleware` also calls `get_tenant_service()` to load tenant config. The route mock doesn't affect the middleware.
+
+**Solution**: Patch in BOTH the routes AND middleware modules:
+
+```python
+# Working test
+with patch("backend.api.routes.tenant.get_tenant_service", return_value=mock_service), \
+     patch("backend.middleware.tenant.get_tenant_service", return_value=mock_service):
+    response = client.get("/api/tenant/config")
+    # Now properly mocked!
+```
+
+**Lesson**: When mocking singleton/factory functions in FastAPI, trace all call sites. Middleware often shares services with routes - mock both locations.
+
 ## What We'd Do Differently
 
 1. **Add Pydantic model fields test first** - Would have caught the silent field issue immediately

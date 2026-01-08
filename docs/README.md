@@ -29,6 +29,7 @@
 | Admin dashboard | Working |
 | CI/CD self-hosted runner | Working (GCP) |
 | E2E happy path test | Working (~20-25 min full pipeline) |
+| **White-label B2B portals** | Working (Vocal Star first tenant) |
 
 ## Known Issues
 
@@ -39,6 +40,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **White-Label B2B Portal Infrastructure** (2026-01-08): Added multi-tenant support for white-label karaoke portals. Vocal Star is the first tenant at `vocalstar.nomadkaraoke.com`. Features: subdomain-based tenant detection (frontend and backend), GCS-backed tenant config storage, per-tenant feature flags (audio search, file upload, YouTube, theme selection, etc.), dynamic branding (logo, colors, site title via CSS variables), locked themes per tenant, email domain restrictions for auth, and tenant-scoped jobs/users in Firestore. Backend: `TenantMiddleware` extracts tenant from X-Tenant-ID header, query param (dev only), or Host subdomain; `TenantService` loads config from GCS with caching. Frontend: Zustand store for tenant state, `TenantProvider` for initialization, `TenantLogo` component. Setup script: `scripts/setup-vocalstar-tenant.py`. See [ARCHITECTURE.md](ARCHITECTURE.md#multitenancy) and [API.md](API.md#tenant-config).
 
 - **Encoding Worker Infrastructure Upgrade** (2026-01-08): Upgraded GCE encoding worker from c4-standard-8 (Intel) to c4d-highcpu-32 (AMD EPYC 9B45 Turin). Benchmarking showed **4.92x faster encoding** (135s vs 666s total). Key improvements: With Vocals 4K rendering 6x faster (54s vs 324s), 720p downscale 4.6x faster (11s vs 50s). Reduces total encoding time from ~11 min to ~2.3 min per job. See [archive/2026-01-08-performance-investigation.md](archive/2026-01-08-performance-investigation.md) for full benchmark methodology and results.
 

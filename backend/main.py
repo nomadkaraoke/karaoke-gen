@@ -7,13 +7,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
-from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin
+from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant
 from backend.services.tracing import setup_tracing, instrument_app, get_current_trace_id
 from backend.services.structured_logging import setup_structured_logging
 from backend.services.spacy_preloader import preload_spacy_model
 from backend.services.nltk_preloader import preload_all_nltk_resources
 from backend.services.langfuse_preloader import preload_langfuse_handler
 from backend.middleware.audit_logging import AuditLoggingMiddleware
+from backend.middleware.tenant import TenantMiddleware
 
 
 from backend.version import VERSION
@@ -128,6 +129,9 @@ app.add_middleware(
 # Add audit logging middleware (captures all requests with request_id for correlation)
 app.add_middleware(AuditLoggingMiddleware)
 
+# Add tenant detection middleware (extracts tenant from subdomain/headers)
+app.add_middleware(TenantMiddleware)
+
 # Include routers
 app.include_router(health.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
@@ -139,6 +143,7 @@ app.include_router(audio_search.router, prefix="/api")  # Audio search (artist+t
 app.include_router(themes.router, prefix="/api")  # Theme selection for styles
 app.include_router(users.router, prefix="/api")  # User auth, credits, and Stripe webhooks
 app.include_router(admin.router, prefix="/api")  # Admin dashboard and management
+app.include_router(tenant.router)  # Tenant/white-label configuration (no /api prefix, router has it)
 
 
 @app.get("/")

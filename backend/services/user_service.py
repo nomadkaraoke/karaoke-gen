@@ -73,16 +73,26 @@ class UserService:
             logger.exception(f"Error getting user {email}")
             return None
 
-    def get_or_create_user(self, email: str) -> User:
+    def get_or_create_user(self, email: str, tenant_id: Optional[str] = None) -> User:
         """
         Get existing user or create a new one.
 
         New users receive a welcome credit to try the service.
+
+        Args:
+            email: User's email address
+            tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
+
+        Note: If user exists but has a different tenant_id, the existing user is returned.
+        Users are uniquely identified by email, not email+tenant.
         """
         email = email.lower()
         user = self.get_user(email)
 
         if user:
+            # If user exists but tenant_id differs, we still return the user
+            # This allows users to access multiple tenants with one account
+            # (though features may be restricted per-tenant)
             return user
 
         # Create new user with welcome credit
@@ -97,9 +107,10 @@ class UserService:
             email=email,
             credits=welcome_credit,
             credit_transactions=[welcome_transaction],
+            tenant_id=tenant_id,  # Associate with tenant on creation
         )
         self._save_user(user)
-        logger.info(f"Created new user: {email} with {welcome_credit} welcome credit(s)")
+        logger.info(f"Created new user: {email} with {welcome_credit} welcome credit(s) (tenant: {tenant_id or 'default'})")
         return user
 
     def _save_user(self, user: User) -> None:
@@ -153,6 +164,7 @@ class UserService:
             display_name=user.display_name,
             total_jobs_created=user.total_jobs_created,
             total_jobs_completed=user.total_jobs_completed,
+            tenant_id=user.tenant_id,
         )
 
     # =========================================================================
@@ -163,18 +175,25 @@ class UserService:
         self,
         email: str,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None
     ) -> MagicLinkToken:
         """
         Create a magic link token for email authentication.
 
         Returns the token object. The actual sending of the email
         should be handled by the caller (or an email service).
+
+        Args:
+            email: User's email address
+            ip_address: Client IP for auditing
+            user_agent: Client user agent for auditing
+            tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
         """
         email = email.lower()
 
-        # Ensure user exists
-        self.get_or_create_user(email)
+        # Ensure user exists (with tenant association)
+        self.get_or_create_user(email, tenant_id=tenant_id)
 
         # Generate secure token
         token = secrets.token_urlsafe(32)
@@ -185,6 +204,7 @@ class UserService:
             expires_at=datetime.utcnow() + timedelta(minutes=MAGIC_LINK_EXPIRY_MINUTES),
             ip_address=ip_address,
             user_agent=user_agent,
+            tenant_id=tenant_id,
         )
 
         # Save to Firestore
@@ -262,9 +282,18 @@ class UserService:
         self,
         user_email: str,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None
     ) -> Session:
-        """Create a new session for an authenticated user."""
+        """
+        Create a new session for an authenticated user.
+
+        Args:
+            user_email: User's email address
+            ip_address: Client IP for auditing
+            user_agent: Client user agent for auditing
+            tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
+        """
         token = secrets.token_urlsafe(32)
         token_prefix = token[:12]
 
@@ -274,6 +303,7 @@ class UserService:
             expires_at=datetime.utcnow() + timedelta(days=SESSION_ABSOLUTE_EXPIRY_DAYS),
             ip_address=ip_address,
             user_agent=user_agent,
+            tenant_id=tenant_id,
         )
 
         # Serialize and write to Firestore

@@ -45,10 +45,16 @@ class User(BaseModel):
 
     Users are identified by email address. Authentication is via magic links
     (no passwords). Credits are consumed when creating karaoke jobs.
+
+    For multi-tenant white-label portals, users are scoped to a tenant.
+    Users with tenant_id=None are default Nomad Karaoke users.
     """
     email: str  # Primary identifier
     role: UserRole = UserRole.USER
     credits: int = 0
+
+    # Multi-tenant support (None = default Nomad Karaoke)
+    tenant_id: Optional[str] = None
 
     # Stripe integration
     stripe_customer_id: Optional[str] = None
@@ -87,6 +93,9 @@ class MagicLinkToken(BaseModel):
 
     Tokens are short-lived (15 minutes) and single-use.
     Stored in Firestore with automatic TTL.
+
+    For multi-tenant portals, the tenant_id determines which portal
+    the user will be redirected to after verification.
     """
     token: str  # Secure random token
     email: str
@@ -97,6 +106,9 @@ class MagicLinkToken(BaseModel):
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
 
+    # Multi-tenant support (None = default Nomad Karaoke)
+    tenant_id: Optional[str] = None
+
 
 class Session(BaseModel):
     """
@@ -104,6 +116,8 @@ class Session(BaseModel):
 
     Sessions are created after successful magic link verification.
     Sessions expire after 7 days of inactivity or 30 days absolute.
+
+    For multi-tenant portals, sessions are scoped to a tenant.
     """
     token: str  # Secure random session token
     user_email: str
@@ -113,6 +127,9 @@ class Session(BaseModel):
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     is_active: bool = True
+
+    # Multi-tenant support (None = default Nomad Karaoke)
+    tenant_id: Optional[str] = None
 
 
 # Pydantic models for API requests/responses
@@ -149,6 +166,7 @@ class UserPublic(BaseModel):
     display_name: Optional[str] = None
     total_jobs_created: int = 0
     total_jobs_completed: int = 0
+    tenant_id: Optional[str] = None
 
 
 class AddCreditsRequest(BaseModel):
