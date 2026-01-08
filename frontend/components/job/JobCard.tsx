@@ -183,6 +183,7 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
       {/* Header row with title and non-interactive badge */}
       <div className="flex items-start justify-between gap-2">
         <p className="font-medium truncate" style={{ color: 'var(--text)' }}>
+          {job.state_data?.brand_code && `${job.state_data.brand_code}: `}
           {job.artist || "Unknown"} - {job.title || "Unknown"}
         </p>
         {job.non_interactive && (
