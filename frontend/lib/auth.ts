@@ -10,6 +10,11 @@ interface AuthStore {
   isLoading: boolean
   error: string | null
 
+  // Impersonation state (not persisted)
+  isImpersonating: boolean
+  originalAdminToken: string | null
+  impersonatedUserEmail: string | null
+
   // Actions
   sendMagicLink: (email: string) => Promise<boolean>
   verifyMagicLink: (token: string) => Promise<boolean>
@@ -20,6 +25,10 @@ interface AuthStore {
 
   // For legacy token-based auth (admin tokens)
   loginWithToken: (token: string) => Promise<boolean>
+
+  // Impersonation actions
+  startImpersonation: (email: string) => Promise<boolean>
+  endImpersonation: () => void
 }
 
 export const useAuth = create<AuthStore>()(
@@ -28,6 +37,11 @@ export const useAuth = create<AuthStore>()(
       user: null,
       isLoading: false,
       error: null,
+
+      // Impersonation state
+      isImpersonating: false,
+      originalAdminToken: null,
+      impersonatedUserEmail: null,
 
       sendMagicLink: async (email: string) => {
         set({ isLoading: true, error: null })
@@ -155,9 +169,77 @@ export const useAuth = create<AuthStore>()(
           return false
         }
       },
+
+      // Start impersonating a user (admin only)
+      startImpersonation: async (email: string) => {
+        set({ isLoading: true, error: null })
+        try {
+          // Store original admin token before switching
+          const originalToken = getAccessToken()
+          if (!originalToken) {
+            throw new Error('No active session to preserve')
+          }
+
+          // Call API to get impersonation token
+          const response = await api.adminApi.impersonateUser(email)
+
+          // Switch to impersonation token
+          setAccessToken(response.session_token)
+
+          // Fetch the impersonated user's profile
+          const userResponse = await api.getCurrentUser()
+
+          const user: User = {
+            token: response.session_token,
+            email: userResponse.user.email,
+            role: userResponse.user.role,
+            credits: userResponse.user.credits,
+            display_name: userResponse.user.display_name,
+            total_jobs_created: userResponse.user.total_jobs_created,
+            total_jobs_completed: userResponse.user.total_jobs_completed,
+          }
+
+          set({
+            user,
+            isLoading: false,
+            isImpersonating: true,
+            originalAdminToken: originalToken,
+            impersonatedUserEmail: email,
+          })
+
+          return true
+        } catch (err) {
+          set({
+            isLoading: false,
+            error: err instanceof Error ? err.message : 'Failed to impersonate user'
+          })
+          return false
+        }
+      },
+
+      // End impersonation and return to admin session
+      endImpersonation: () => {
+        const { originalAdminToken } = get()
+
+        if (originalAdminToken) {
+          // Restore original admin token
+          setAccessToken(originalAdminToken)
+
+          // Clear impersonation state and refetch admin user
+          set({
+            isImpersonating: false,
+            originalAdminToken: null,
+            impersonatedUserEmail: null,
+          })
+
+          // Fetch the admin user profile
+          get().fetchUser()
+        }
+      },
     }),
     {
       name: "nomad-karaoke-auth",
+      // Only persist user, not impersonation state (impersonation should not survive page refresh)
       partialize: (state) => ({ user: state.user }),
     },
   ),

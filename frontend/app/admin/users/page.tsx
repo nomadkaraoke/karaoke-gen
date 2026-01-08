@@ -40,17 +40,18 @@ import {
   Plus,
   Loader2,
   CreditCard,
-  Shield,
-  ShieldOff,
+  LogIn,
   UserX,
   UserCheck,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth"
 
 export default function AdminUsersPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { showTestData } = useAdminSettings()
+  const { startImpersonation, user: currentUser } = useAuth()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -146,19 +147,31 @@ export default function AdminUsersPage() {
     }
   }
 
-  const handleToggleRole = async (user: AdminUser) => {
-    const newRole = user.role === "admin" ? "user" : "admin"
-    try {
-      await adminApi.setUserRole(user.email, newRole)
+  const handleImpersonate = async (user: AdminUser) => {
+    // Don't allow impersonating yourself
+    if (user.email === currentUser?.email) {
       toast({
-        title: "Role Updated",
-        description: `${user.email} is now ${newRole}`,
+        title: "Cannot Impersonate",
+        description: "You cannot impersonate yourself",
+        variant: "destructive",
       })
-      loadUsers()
+      return
+    }
+
+    try {
+      const success = await startImpersonation(user.email)
+      if (success) {
+        toast({
+          title: "Impersonating User",
+          description: `Now viewing as ${user.email}`,
+        })
+        // Redirect to main app to see the user's view
+        router.push("/app")
+      }
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message || "Failed to update role",
+        description: err.message || "Failed to impersonate user",
         variant: "destructive",
       })
     }
@@ -283,14 +296,11 @@ export default function AdminUsersPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleToggleRole(user)}
-                        title={user.role === "admin" ? "Remove admin" : "Make admin"}
+                        onClick={() => handleImpersonate(user)}
+                        title="Impersonate user"
+                        disabled={user.email === currentUser?.email}
                       >
-                        {user.role === "admin" ? (
-                          <ShieldOff className="w-4 h-4" />
-                        ) : (
-                          <Shield className="w-4 h-4" />
-                        )}
+                        <LogIn className="w-4 h-4" />
                       </Button>
                     </div>
                   </TableCell>

@@ -833,3 +833,77 @@ async def send_job_completion_email(
             status_code=500,
             detail="Failed to send email. Check email service configuration."
         )
+
+
+# =============================================================================
+# User Impersonation
+# =============================================================================
+
+class ImpersonateUserResponse(BaseModel):
+    """Response from impersonate user endpoint."""
+    session_token: str
+    user_email: str
+    message: str
+
+
+@router.post("/users/{email}/impersonate", response_model=ImpersonateUserResponse)
+async def impersonate_user(
+    email: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Create a session token to impersonate a user (admin only).
+
+    This allows admins to view the application exactly as a specific user would see it.
+    The admin's original session remains valid and can be restored client-side.
+
+    Security:
+    - Only admins can impersonate
+    - Creates a real session (auditable in Firestore)
+    - Impersonation is logged for security audit
+
+    Args:
+        email: Email of the user to impersonate
+
+    Returns:
+        session_token: A valid session token for the target user
+        user_email: The impersonated user's email
+        message: Success message
+    """
+    admin_email = auth_data[0]
+    target_email = email.lower()
+
+    # Cannot impersonate yourself
+    if target_email == admin_email.lower():
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot impersonate yourself"
+        )
+
+    # Verify target user exists
+    target_user = user_service.get_user(target_email)
+    if not target_user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"User {target_email} not found"
+        )
+
+    # Create a real session for the target user
+    session = user_service.create_session(
+        user_email=target_email,
+        ip_address=None,  # Not tracking IP for impersonation
+        user_agent=f"Impersonation by {admin_email}",
+    )
+
+    # Log impersonation for audit trail
+    logger.info(
+        f"IMPERSONATION: Admin {admin_email} started impersonating user {target_email}. "
+        f"Session token prefix: {session.token[:12]}..."
+    )
+
+    return ImpersonateUserResponse(
+        session_token=session.token,
+        user_email=target_email,
+        message=f"Now impersonating {target_email}",
+    )

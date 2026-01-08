@@ -939,10 +939,15 @@ export const adminApi = {
   },
 
   /**
-   * Set user role
+   * Impersonate a user (admin only)
+   * Creates a session token that allows viewing the app as the target user
    */
-  async setUserRole(email: string, role: 'user' | 'admin'): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/role?role=${role}`, {
+  async impersonateUser(email: string): Promise<{
+    session_token: string;
+    user_email: string;
+    message: string;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/impersonate`, {
       method: 'POST',
       headers: getAuthHeaders()
     });

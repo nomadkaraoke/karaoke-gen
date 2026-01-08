@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TenantProvider } from "@/components/tenant-provider"
+import { ImpersonationBannerWrapper } from "@/components/impersonation-banner-wrapper"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -32,6 +33,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TenantProvider>
+            <ImpersonationBannerWrapper />
             {children}
           </TenantProvider>
         </ThemeProvider>
