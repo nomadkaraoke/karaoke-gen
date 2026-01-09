@@ -3,7 +3,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { User, UserPublic } from "./types"
-import { api, setAccessToken, clearAccessToken, getAccessToken } from "./api"
+import { api, adminApi, setAccessToken, clearAccessToken, getAccessToken } from "./api"
 
 interface AuthStore {
   user: User | null
@@ -191,7 +191,7 @@ export const useAuth = create<AuthStore>()(
           }
 
           // Call API to get impersonation token
-          const response = await api.adminApi.impersonateUser(email)
+          const response = await adminApi.impersonateUser(email)
 
           // Switch to impersonation token
           setAccessToken(response.session_token)

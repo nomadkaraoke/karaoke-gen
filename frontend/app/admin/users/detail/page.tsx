@@ -29,8 +29,6 @@ import {
   RefreshCw,
   Loader2,
   Plus,
-  Shield,
-  ShieldOff,
   UserX,
   UserCheck,
   CreditCard,
@@ -107,29 +105,6 @@ export default function AdminUserDetailPage() {
       toast({
         title: "Error",
         description: err.message || "Failed to add credits",
-        variant: "destructive",
-      })
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  const handleToggleRole = async () => {
-    if (!user) return
-    const newRole = user.role === "admin" ? "user" : "admin"
-
-    try {
-      setActionLoading(true)
-      await adminApi.setUserRole(email, newRole)
-      toast({
-        title: "Role Updated",
-        description: `User is now ${newRole}`,
-      })
-      loadUser()
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update role",
         variant: "destructive",
       })
     } finally {
@@ -236,23 +211,6 @@ export default function AdminUserDetailPage() {
         <Button onClick={() => setCreditDialogOpen(true)} disabled={actionLoading}>
           <Plus className="w-4 h-4 mr-2" />
           Add Credits
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleToggleRole}
-          disabled={actionLoading}
-        >
-          {user.role === "admin" ? (
-            <>
-              <ShieldOff className="w-4 h-4 mr-2" />
-              Remove Admin
-            </>
-          ) : (
-            <>
-              <Shield className="w-4 h-4 mr-2" />
-              Make Admin
-            </>
-          )}
         </Button>
         <Button
           variant={user.is_active ? "destructive" : "outline"}
