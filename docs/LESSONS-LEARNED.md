@@ -663,6 +663,54 @@ async def test_job_created_with_made_for_you_flag(self, mock_job_manager, ...):
 
 **Lesson**: Webhook handlers often contain critical business logic that's easy to overlook in testing because they're "just glue code." If a function creates database records, transitions state machines, or sends notifications, it needs unit tests that verify the exact parameters - not just integration tests that verify "something happened."
 
+### Test DTO-to-Entity Field Mapping, Not Just DTO Construction
+
+**Problem**: Made-for-you orders were created with `made_for_you=False`, `customer_email=None`, and `customer_notes=None` in Firestore, even though the webhook handler correctly set these values on the `JobCreate` DTO. This broke order completion emails and ownership transfer.
+
+**Root cause**: `JobManager.create_job()` constructs a `Job` entity from the `JobCreate` DTO, but the code had explicit field-by-field assignment. When new fields were added to `JobCreate` (made_for_you, customer_email, customer_notes), they were not added to the Job construction in `create_job()`.
+
+```python
+# job_manager.py - the bug
+def create_job(self, job_create: JobCreate) -> Job:
+    job = Job(
+        job_id=job_id,
+        user_email=job_create.user_email,
+        artist=job_create.artist,
+        # ... many fields copied ...
+        # BUT these were missing:
+        # made_for_you=job_create.made_for_you,
+        # customer_email=job_create.customer_email,
+        # customer_notes=job_create.customer_notes,
+    )
+```
+
+**Why existing tests didn't catch it**:
+- Tests verified webhook set the right values on `JobCreate` (via `mock_job_manager.create_job.call_args[0][0]`)
+- Tests verified `JobCreate` model had the fields with correct defaults
+- No tests verified `JobManager.create_job()` propagated those fields to `Job`
+
+**Solution**: Add explicit tests for the DTO-to-entity mapping layer:
+
+```python
+@pytest.mark.asyncio
+async def test_create_job_copies_made_for_you_flag(self, mock_firestore_service):
+    """CRITICAL: JobManager must copy made_for_you from JobCreate to Job."""
+    manager = JobManager(firestore_service=mock_firestore_service)
+    job_create = JobCreate(made_for_you=True, ...)
+
+    job = manager.create_job(job_create)
+
+    assert job.made_for_you is True, "made_for_you must be copied from JobCreate"
+```
+
+**Pattern to follow**: When adding fields to a DTO that affects downstream entities:
+1. Add field to DTO with appropriate default
+2. Add field mapping in manager/service that creates entities from DTO
+3. Add unit test that creates entity and verifies field was copied
+4. Consider using `**job_create.model_dump()` patterns to reduce manual field copying
+
+**Lesson**: Testing that "the webhook creates a JobCreate with field X=Y" only tests half the data flow. You also need to test that "JobManager.create_job() creates a Job with field X=Y". Any manual field mapping between types is a bug waiting to happen when new fields are added.
+
 ### E2E Mock Responses Must Match API Types Exactly
 
 **Problem**: E2E tests with mocked API responses were failing silently because mock response format didn't match the TypeScript type the app expected.
