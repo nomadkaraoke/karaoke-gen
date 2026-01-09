@@ -1217,14 +1217,10 @@ class TestHandleMadeForYouOrder:
                 email_service=mock_email_service,
             )
 
-            # Check email_service.send_email was called with admin email
-            email_calls = mock_email_service.send_email.call_args_list
-            admin_email_calls = [
-                call for call in email_calls
-                if call.kwargs.get('to_email') == ADMIN_EMAIL
-            ]
-
-            assert len(admin_email_calls) >= 1, \
+            # Check email_service.send_made_for_you_admin_notification was called
+            mock_email_service.send_made_for_you_admin_notification.assert_called_once()
+            call_kwargs = mock_email_service.send_made_for_you_admin_notification.call_args.kwargs
+            assert call_kwargs['to_email'] == ADMIN_EMAIL, \
                 f"Admin at {ADMIN_EMAIL} must receive notification email"
 
     @pytest.mark.asyncio
@@ -1255,14 +1251,10 @@ class TestHandleMadeForYouOrder:
                 email_service=mock_email_service,
             )
 
-            # Check email_service.send_email was called with customer email
-            email_calls = mock_email_service.send_email.call_args_list
-            customer_email_calls = [
-                call for call in email_calls
-                if call.kwargs.get('to_email') == order_metadata["customer_email"]
-            ]
-
-            assert len(customer_email_calls) >= 1, \
+            # Check email_service.send_made_for_you_order_confirmation was called
+            mock_email_service.send_made_for_you_order_confirmation.assert_called_once()
+            call_kwargs = mock_email_service.send_made_for_you_order_confirmation.call_args.kwargs
+            assert call_kwargs['to_email'] == order_metadata["customer_email"], \
                 "Customer must receive order confirmation email"
 
     @pytest.mark.asyncio
@@ -1293,20 +1285,13 @@ class TestHandleMadeForYouOrder:
                 email_service=mock_email_service,
             )
 
-            # Find admin email call
-            email_calls = mock_email_service.send_email.call_args_list
-            admin_email_calls = [
-                call for call in email_calls
-                if call.kwargs.get('to_email') == ADMIN_EMAIL
-            ]
+            # Check email_service.send_made_for_you_admin_notification was called with job_id
+            mock_email_service.send_made_for_you_admin_notification.assert_called_once()
+            call_kwargs = mock_email_service.send_made_for_you_admin_notification.call_args.kwargs
 
-            assert len(admin_email_calls) >= 1
-            admin_call = admin_email_calls[0]
-            html_content = admin_call.kwargs.get('html_content', '')
-
-            # Should include job ID for linking
-            assert "test-job-123" in html_content, \
-                "Admin email must include job ID link"
+            # The template method builds the link using job_id, so verify job_id was passed
+            assert call_kwargs.get('job_id') == "test-job-123", \
+                "Admin email must include job ID for linking"
 
     @pytest.mark.asyncio
     async def test_youtube_url_order_skips_search(
