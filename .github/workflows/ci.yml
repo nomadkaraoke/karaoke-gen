@@ -1017,7 +1017,14 @@ jobs:
           # Upload to GCS (GCE worker downloads latest at job start)
           gsutil cp "$WHEEL_FILE" gs://karaoke-gen-storage-${{ env.PROJECT_ID }}/wheels/
 
-          echo "✅ Wheel uploaded - GCE worker will pick up changes on next job"
+          echo "✅ Wheel uploaded to GCS"
+
+      - name: Restart GCE Encoding Worker
+        run: |
+          echo "🔄 Restarting encoding worker to pick up new wheel..."
+          gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
+            --command="sudo systemctl restart encoding-worker" || true
+          echo "✅ Encoding worker restart triggered"
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
@@ -1326,13 +1333,6 @@ jobs:
           # Skip preview to avoid needing broad read permissions on all GCP resources
           # Pulumi state is authoritative since infrastructure is only managed via Pulumi
           pulumi up --yes --skip-preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod
-
-      - name: Restart GCE Encoding Worker
-        run: |
-          echo "🔄 Restarting encoding worker to pick up new code..."
-          gcloud compute ssh encoding-worker --zone=us-central1-a --project=nomadkaraoke \
-            --command="sudo systemctl restart encoding-worker" || true
-          echo "✅ Encoding worker restart triggered"
 
       - name: Summary
         if: success()
