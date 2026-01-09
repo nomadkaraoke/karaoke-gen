@@ -446,9 +446,15 @@ async def _handle_made_for_you_order(
     """
     Handle a completed made-for-you order by creating a job and notifying Andrew.
 
-    For orders with a YouTube URL, the job is created and workers are triggered immediately.
-    For orders without a URL (search mode), the audio search flow is used to find and
-    download the best matching audio source automatically.
+    The made-for-you flow:
+    1. Job is created with made_for_you=True, owned by admin during processing
+    2. For search orders: audio search runs, results stored, job pauses at AWAITING_AUDIO_SELECTION
+    3. Admin receives notification email with link to select audio source
+    4. Customer receives order confirmation email
+    5. Admin selects audio in UI, job proceeds through normal pipeline
+    6. On completion, ownership transfers to customer
+
+    For orders with a YouTube URL, workers are triggered immediately (no search needed).
 
     Args:
         session_id: Stripe checkout session ID
@@ -465,6 +471,7 @@ async def _handle_made_for_you_order(
         AudioSearchError,
     )
     from backend.services.storage_service import StorageService
+    from backend.config import get_settings
     import asyncio
     import tempfile
     import os
@@ -485,6 +492,7 @@ async def _handle_made_for_you_order(
         job_manager = JobManager()
         worker_service = get_worker_service()
         storage_service = StorageService()
+        settings = get_settings()
 
         # Apply default theme (Nomad) - same as audio_search endpoint
         theme_service = get_theme_service()
@@ -492,24 +500,44 @@ async def _handle_made_for_you_order(
         if effective_theme_id:
             logger.info(f"Applying default theme '{effective_theme_id}' for made-for-you order")
 
-        # Create job for the customer
-        # Note: made-for-you jobs should NOT be non_interactive - Andrew needs to review
+        # Get distribution defaults from settings (same as audio_search endpoint)
+        effective_dropbox_path = settings.default_dropbox_path
+        effective_gdrive_folder_id = settings.default_gdrive_folder_id
+        effective_enable_youtube_upload = settings.default_enable_youtube_upload
+        effective_brand_prefix = settings.default_brand_prefix
+        effective_discord_webhook_url = settings.default_discord_webhook_url
+        effective_youtube_description = settings.default_youtube_description
+
+        # Create job with admin ownership during processing
+        # CRITICAL: made_for_you=True, user_email=ADMIN_EMAIL, customer_email for delivery
+        # auto_download=False to pause at audio selection for admin to choose
         job_create = JobCreate(
             url=youtube_url if youtube_url else None,
             artist=artist,
             title=title,
-            user_email=customer_email,  # Customer owns the job
+            user_email=ADMIN_EMAIL,  # Admin owns during processing
             theme_id=effective_theme_id,  # Apply default theme
-            non_interactive=False,  # Andrew will review lyrics/instrumental
-            # Set audio search fields for search-based orders
+            non_interactive=False,  # Admin will review lyrics/instrumental
+            # Made-for-you specific fields
+            made_for_you=True,  # Flag for ownership transfer on completion
+            customer_email=customer_email,  # Customer email for final delivery
+            customer_notes=notes if notes else None,  # Customer's special requests
+            # Audio search fields for search-based orders
             audio_search_artist=artist if not youtube_url else None,
             audio_search_title=title if not youtube_url else None,
-            auto_download=True,  # Auto-select best audio source
+            auto_download=False,  # Pause at audio selection for admin to choose
+            # Distribution settings from server defaults
+            enable_youtube_upload=effective_enable_youtube_upload,
+            dropbox_path=effective_dropbox_path,
+            gdrive_folder_id=effective_gdrive_folder_id,
+            brand_prefix=effective_brand_prefix,
+            discord_webhook_url=effective_discord_webhook_url,
+            youtube_description=effective_youtube_description,
         )
         job = job_manager.create_job(job_create)
         job_id = job.job_id
 
-        logger.info(f"Created made-for-you job {job_id} for {customer_email}")
+        logger.info(f"Created made-for-you job {job_id} for {_mask_email(customer_email)} (owned by {_mask_email(ADMIN_EMAIL)})")
 
         # Prepare theme style assets for the job (same as audio_search endpoint)
         if effective_theme_id:
@@ -538,21 +566,22 @@ async def _handle_made_for_you_order(
 
         # Handle based on whether we have a YouTube URL or need to search
         if youtube_url:
-            # URL provided - trigger workers directly
+            # URL provided - trigger workers directly (no audio selection needed)
             logger.info(f"Job {job_id}: YouTube URL provided, triggering workers")
             await asyncio.gather(
                 worker_service.trigger_audio_worker(job_id),
                 worker_service.trigger_lyrics_worker(job_id)
             )
         else:
-            # No URL - use audio search flow with auto_download
+            # No URL - use audio search flow, pause for admin selection
+            # Made-for-you jobs require admin to select audio source
             logger.info(f"Job {job_id}: No URL, using audio search for '{artist} - {title}'")
 
             # Update job with audio search fields
             job_manager.update_job(job_id, {
                 'audio_search_artist': artist,
                 'audio_search_title': title,
-                'auto_download': True,
+                'auto_download': False,  # Admin must select
             })
 
             # Transition to searching state
@@ -569,7 +598,8 @@ async def _handle_made_for_you_order(
             try:
                 search_results = audio_search_service.search(artist, title)
             except NoResultsError as e:
-                # No results found - transition to AWAITING_AUDIO_SELECTION so Andrew can handle manually
+                # No results found - still transition to AWAITING_AUDIO_SELECTION
+                # Admin can manually provide audio
                 logger.warning(f"Job {job_id}: No audio sources found for '{artist} - {title}'")
                 job_manager.transition_to_state(
                     job_id=job_id,
@@ -577,7 +607,6 @@ async def _handle_made_for_you_order(
                     progress=10,
                     message=f"No automatic audio sources found. Manual intervention required."
                 )
-                # Don't fail the job - Andrew can manually provide audio
                 search_results = None
             except AudioSearchError as e:
                 logger.error(f"Job {job_id}: Audio search failed: {e}")
@@ -590,7 +619,7 @@ async def _handle_made_for_you_order(
                 search_results = None
 
             if search_results:
-                # Store search results in state_data
+                # Store search results in state_data for admin to review
                 results_dicts = [r.to_dict() for r in search_results]
                 state_data_update = {
                     'audio_search_results': results_dicts,
@@ -600,141 +629,18 @@ async def _handle_made_for_you_order(
                     state_data_update['remote_search_id'] = audio_search_service.last_remote_search_id
                 job_manager.update_job(job_id, {'state_data': state_data_update})
 
-                # Auto-select best result and download
-                best_index = audio_search_service.select_best(search_results)
-                selected = results_dicts[best_index]
+                # Transition to AWAITING_AUDIO_SELECTION for admin to choose
+                # Do NOT auto-select or download - admin must review and select
+                logger.info(f"Job {job_id}: Found {len(results_dicts)} audio sources, awaiting admin selection")
 
-                logger.info(f"Job {job_id}: Auto-selected result {best_index}: {selected.get('provider')} - {selected.get('title')}")
-
-                # Transition to downloading state
+                # Transition to AWAITING_AUDIO_SELECTION for admin to choose
+                # Admin will select from results in the UI, then job proceeds
                 job_manager.transition_to_state(
                     job_id=job_id,
-                    new_status=JobStatus.DOWNLOADING_AUDIO,
+                    new_status=JobStatus.AWAITING_AUDIO_SELECTION,
                     progress=10,
-                    message=f"Downloading from {selected.get('provider')}: {selected.get('artist')} - {selected.get('title')}",
-                    state_data_updates={
-                        'selected_audio_index': best_index,
-                        'selected_audio_provider': selected.get('provider'),
-                    }
+                    message=f"Found {len(results_dicts)} audio sources. Awaiting admin selection."
                 )
-
-                # Download audio
-                try:
-                    is_torrent_source = selected.get('provider') in ['RED', 'OPS']
-                    is_remote_enabled = audio_search_service.is_remote_enabled()
-                    source_id = selected.get('source_id')
-                    source_name = selected.get('provider')
-                    target_file = selected.get('target_file')
-                    download_url = selected.get('url')
-                    remote_search_id = state_data_update.get('remote_search_id')
-
-                    if is_torrent_source and is_remote_enabled:
-                        # Remote torrent download - upload directly to GCS
-                        gcs_destination = f"uploads/{job_id}/audio/"
-
-                        if source_id and source_name:
-                            result = audio_search_service.download_by_id(
-                                source_name=source_name,
-                                source_id=source_id,
-                                output_dir="",
-                                target_file=target_file,
-                                download_url=download_url,
-                                gcs_path=gcs_destination,
-                            )
-                        else:
-                            result = audio_search_service.download(
-                                result_index=best_index,
-                                output_dir="",
-                                gcs_path=gcs_destination,
-                                remote_search_id=remote_search_id,
-                            )
-
-                        # Extract GCS path
-                        if result.filepath.startswith("gs://"):
-                            parts = result.filepath.replace("gs://", "").split("/", 1)
-                            audio_gcs_path = parts[1] if len(parts) == 2 else result.filepath
-                            filename = os.path.basename(result.filepath)
-                        else:
-                            filename = os.path.basename(result.filepath)
-                            audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
-                    else:
-                        # Local download (YouTube or local torrent)
-                        temp_dir = tempfile.mkdtemp(prefix=f"audio_download_{job_id}_")
-                        import shutil
-
-                        try:
-                            if source_id and source_name and is_remote_enabled:
-                                result = audio_search_service.download_by_id(
-                                    source_name=source_name,
-                                    source_id=source_id,
-                                    output_dir=temp_dir,
-                                    target_file=target_file,
-                                    download_url=download_url,
-                                )
-                            elif source_name == 'YouTube' and download_url:
-                                # YouTube download
-                                from backend.workers.audio_worker import download_from_url
-                                local_path = await download_from_url(
-                                    download_url,
-                                    temp_dir,
-                                    selected.get('artist'),
-                                    selected.get('title')
-                                )
-                                if not local_path or not os.path.exists(local_path):
-                                    raise Exception(f"Failed to download from YouTube: {download_url}")
-
-                                class DownloadResult:
-                                    def __init__(self, filepath):
-                                        self.filepath = filepath
-                                result = DownloadResult(local_path)
-                            else:
-                                result = audio_search_service.download(
-                                    result_index=best_index,
-                                    output_dir=temp_dir,
-                                    remote_search_id=remote_search_id,
-                                )
-
-                            # Upload to GCS
-                            filename = os.path.basename(result.filepath)
-                            audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
-
-                            with open(result.filepath, 'rb') as f:
-                                storage_service.upload_fileobj(f, audio_gcs_path, content_type='audio/flac')
-                        finally:
-                            # Always cleanup temp directory
-                            shutil.rmtree(temp_dir, ignore_errors=True)
-
-                    # Update job with GCS path
-                    job_manager.update_job(job_id, {
-                        'input_media_gcs_path': audio_gcs_path,
-                        'filename': filename,
-                    })
-
-                    # Transition to DOWNLOADING and trigger workers
-                    job_manager.transition_to_state(
-                        job_id=job_id,
-                        new_status=JobStatus.DOWNLOADING,
-                        progress=15,
-                        message="Audio downloaded, starting processing"
-                    )
-
-                    # Trigger workers
-                    await asyncio.gather(
-                        worker_service.trigger_audio_worker(job_id),
-                        worker_service.trigger_lyrics_worker(job_id)
-                    )
-
-                    logger.info(f"Job {job_id}: Audio downloaded and workers triggered")
-
-                except Exception as download_error:
-                    logger.error(f"Job {job_id}: Audio download failed: {download_error}")
-                    # Don't fail job - transition to awaiting selection so Andrew can handle
-                    job_manager.transition_to_state(
-                        job_id=job_id,
-                        new_status=JobStatus.AWAITING_AUDIO_SELECTION,
-                        progress=10,
-                        message=f"Auto-download failed: {download_error}. Manual intervention required."
-                    )
 
         # Send confirmation email to customer
         email_service.send_email(

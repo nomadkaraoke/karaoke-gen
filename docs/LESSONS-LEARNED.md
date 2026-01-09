@@ -622,6 +622,47 @@ if getattr(job, 'made_for_you', False):
 
 ## Testing Insights
 
+### Test Webhook Handlers with Unit Tests, Not Just Integration Tests
+
+**Problem**: Made-for-you order webhook handler shipped to production with multiple critical bugs that caused orders to skip audio selection and miss distribution settings. The code passed code review and integration tests because:
+1. Integration tests verified the Stripe webhook was *called*, not what it *created*
+2. The function had many local imports and complex mocking requirements
+3. Documentation described the *intended* behavior, but code implemented the *old* behavior
+
+**Symptoms** (from production job 77488314):
+- `made_for_you=False` (should be True) - Broke ownership transfer
+- `user_email=customer_email` (should be admin) - Customer saw job during processing
+- `customer_email=None` (should be set) - No delivery recipient
+- `auto_download=True` (should be False) - Skipped admin audio selection entirely
+- Distribution settings not applied - No YouTube/Dropbox/GDrive upload
+
+**Root cause**: The `_handle_made_for_you_order` function was never unit tested. It had complex business logic (create job, perform search, transition states, send emails) but tests only verified helper functions and model fields in isolation.
+
+**Solution**: Write comprehensive unit tests for the webhook handler that assert on JobCreate parameters:
+
+```python
+@pytest.mark.asyncio
+async def test_job_created_with_made_for_you_flag(self, mock_job_manager, ...):
+    """CRITICAL: Job must be created with made_for_you=True."""
+    with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager):
+        await _handle_made_for_you_order(session_id="sess_123", metadata=order_metadata, ...)
+
+        job_create_arg = mock_job_manager.create_job.call_args[0][0]
+        assert job_create_arg.made_for_you is True
+        assert job_create_arg.user_email == ADMIN_EMAIL
+        assert job_create_arg.customer_email == "customer@example.com"
+        assert job_create_arg.auto_download is False
+```
+
+**Key testing patterns for webhook handlers**:
+1. Mock service classes at their module path (e.g., `backend.services.job_manager.JobManager`)
+2. Capture and assert on method call arguments (not just that methods were called)
+3. Test each critical field individually with descriptive assertion messages
+4. Test state transitions (verify `transition_to_state` called with expected status)
+5. Test both success and error paths
+
+**Lesson**: Webhook handlers often contain critical business logic that's easy to overlook in testing because they're "just glue code." If a function creates database records, transitions state machines, or sends notifications, it needs unit tests that verify the exact parameters - not just integration tests that verify "something happened."
+
 ### E2E Mock Responses Must Match API Types Exactly
 
 **Problem**: E2E tests with mocked API responses were failing silently because mock response format didn't match the TypeScript type the app expected.

@@ -831,3 +831,870 @@ class TestMadeForYouEdgeCases:
         )
         assert job.made_for_you is False
         assert job.customer_email is None
+
+
+# =============================================================================
+# Webhook Handler Tests - _handle_made_for_you_order
+# =============================================================================
+
+class TestHandleMadeForYouOrder:
+    """
+    Comprehensive tests for the _handle_made_for_you_order webhook handler.
+
+    This function processes Stripe checkout completions for made-for-you orders.
+    It must:
+    1. Create a job with made_for_you=True
+    2. Set user_email to admin email (admin owns during processing)
+    3. Set customer_email for final delivery
+    4. Set customer_notes from order
+    5. Set auto_download=False to pause at audio selection
+    6. Perform audio search to populate options
+    7. Transition job to AWAITING_AUDIO_SELECTION state
+    8. Send admin notification email with audio selection link
+    9. Send customer order confirmation email
+    """
+
+    @pytest.fixture
+    def mock_job_manager(self):
+        """Create mock JobManager that captures job creation params."""
+        manager = MagicMock()
+        # Return a mock Job object when create_job is called
+        mock_job = MagicMock()
+        mock_job.job_id = "test-job-123"
+        manager.create_job.return_value = mock_job
+        return manager
+
+    @pytest.fixture
+    def mock_worker_service(self):
+        """Create mock worker service."""
+        service = MagicMock()
+        service.trigger_audio_worker = AsyncMock()
+        service.trigger_lyrics_worker = AsyncMock()
+        return service
+
+    @pytest.fixture
+    def mock_audio_search_service(self):
+        """Create mock audio search service with results."""
+        service = MagicMock()
+
+        # Mock search results
+        mock_result = MagicMock()
+        mock_result.to_dict.return_value = {
+            'provider': 'RED',
+            'artist': 'Test Artist',
+            'title': 'Test Album',
+            'quality': 'FLAC 16bit CD',
+            'is_lossless': True,
+        }
+        service.search.return_value = [mock_result, mock_result, mock_result]
+        service.last_remote_search_id = "search_abc123"
+        return service
+
+    @pytest.fixture
+    def mock_storage_service(self):
+        """Create mock storage service."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_email_service(self):
+        """Create mock email service."""
+        service = MagicMock()
+        service.send_email.return_value = True
+        service.send_made_for_you_order_confirmation.return_value = True
+        service.send_made_for_you_admin_notification.return_value = True
+        return service
+
+    @pytest.fixture
+    def mock_user_service(self):
+        """Create mock user service."""
+        service = MagicMock()
+        service._mark_stripe_session_processed.return_value = None
+        return service
+
+    @pytest.fixture
+    def mock_theme_service(self):
+        """Create mock theme service."""
+        service = MagicMock()
+        service.get_default_theme_id.return_value = "nomad"
+        return service
+
+    @pytest.fixture
+    def order_metadata(self):
+        """Standard order metadata from Stripe session."""
+        return {
+            "order_type": "made_for_you",
+            "customer_email": "customer@example.com",
+            "artist": "Avril Lavigne",
+            "title": "Complicated",
+            "source_type": "search",
+            "notes": "Please make sure the lyrics are perfect!",
+        }
+
+    @pytest.mark.asyncio
+    async def test_job_created_with_made_for_you_flag(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        CRITICAL TEST: Job must be created with made_for_you=True.
+
+        This flag is essential for:
+        - Ownership transfer on completion
+        - Email suppression for intermediate states
+        - Identifying made-for-you jobs in admin UI
+        """
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            # Mock audio search to raise NoResultsError so we skip download logic
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # Verify job was created
+            mock_job_manager.create_job.assert_called_once()
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            # CRITICAL ASSERTION: made_for_you must be True
+            assert job_create_arg.made_for_you is True, \
+                "Job must be created with made_for_you=True for made-for-you orders"
+
+    @pytest.mark.asyncio
+    async def test_job_owned_by_admin_during_processing(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        CRITICAL TEST: Job user_email must be admin email, not customer email.
+
+        During processing, admin owns the job to:
+        - See it in their job list
+        - Handle intermediate review steps
+        - Customer only gets access after completion
+        """
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            # CRITICAL ASSERTION: admin owns the job during processing
+            assert job_create_arg.user_email == ADMIN_EMAIL, \
+                f"Job user_email must be {ADMIN_EMAIL}, not customer email"
+            assert job_create_arg.user_email != order_metadata["customer_email"], \
+                "Job user_email must NOT be customer email during processing"
+
+    @pytest.mark.asyncio
+    async def test_customer_email_stored_for_delivery(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        CRITICAL TEST: customer_email must be stored for final delivery.
+
+        The customer_email field is used for:
+        - Ownership transfer on completion
+        - Sending completion email with download links
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            # CRITICAL ASSERTION: customer_email stored for delivery
+            assert job_create_arg.customer_email == order_metadata["customer_email"], \
+                "Job must store customer_email for final delivery"
+
+    @pytest.mark.asyncio
+    async def test_customer_notes_preserved(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        Customer notes from order must be stored on job for admin reference.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            assert job_create_arg.customer_notes == order_metadata["notes"], \
+                "Job must store customer notes from order"
+
+    @pytest.mark.asyncio
+    async def test_auto_download_disabled_for_admin_selection(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        CRITICAL TEST: auto_download must be False to pause for admin selection.
+
+        The made-for-you flow requires admin to select the audio source.
+        Setting auto_download=True would bypass this, selecting automatically.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            # CRITICAL ASSERTION: auto_download must be False
+            assert job_create_arg.auto_download is False, \
+                "auto_download must be False to allow admin audio selection"
+
+    @pytest.mark.asyncio
+    async def test_job_transitions_to_awaiting_audio_selection_with_results(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, mock_audio_search_service, order_metadata
+    ):
+        """
+        When audio search returns results, job should pause at AWAITING_AUDIO_SELECTION.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+        from backend.models.job import JobStatus
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service', return_value=mock_audio_search_service), \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # Check that job transitioned to AWAITING_AUDIO_SELECTION
+            transition_calls = mock_job_manager.transition_to_state.call_args_list
+
+            # Should have at least one transition to AWAITING_AUDIO_SELECTION
+            awaiting_selection_calls = [
+                call for call in transition_calls
+                if call.kwargs.get('new_status') == JobStatus.AWAITING_AUDIO_SELECTION
+                or (len(call.args) > 1 and call.args[1] == JobStatus.AWAITING_AUDIO_SELECTION)
+            ]
+
+            assert len(awaiting_selection_calls) >= 1, \
+                "Job should transition to AWAITING_AUDIO_SELECTION for admin to select audio"
+
+    @pytest.mark.asyncio
+    async def test_audio_search_results_stored_in_state_data(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, mock_audio_search_service, order_metadata
+    ):
+        """
+        Audio search results must be stored so admin can view options.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service', return_value=mock_audio_search_service), \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # Check update_job was called with audio_search_results
+            update_calls = mock_job_manager.update_job.call_args_list
+
+            # Should have stored search results somewhere in the update calls
+            all_call_str = str(update_calls)
+            assert 'audio_search_results' in all_call_str or 'state_data' in all_call_str, \
+                "Audio search results should be stored in job state_data"
+
+    @pytest.mark.asyncio
+    async def test_admin_notification_email_sent(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        Admin must receive email notification about new made-for-you order.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # Check email_service.send_email was called with admin email
+            email_calls = mock_email_service.send_email.call_args_list
+            admin_email_calls = [
+                call for call in email_calls
+                if call.kwargs.get('to_email') == ADMIN_EMAIL
+            ]
+
+            assert len(admin_email_calls) >= 1, \
+                f"Admin at {ADMIN_EMAIL} must receive notification email"
+
+    @pytest.mark.asyncio
+    async def test_customer_confirmation_email_sent(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        Customer must receive order confirmation email.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # Check email_service.send_email was called with customer email
+            email_calls = mock_email_service.send_email.call_args_list
+            customer_email_calls = [
+                call for call in email_calls
+                if call.kwargs.get('to_email') == order_metadata["customer_email"]
+            ]
+
+            assert len(customer_email_calls) >= 1, \
+                "Customer must receive order confirmation email"
+
+    @pytest.mark.asyncio
+    async def test_admin_email_includes_job_link(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        Admin notification email must include link to job for audio selection.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # Find admin email call
+            email_calls = mock_email_service.send_email.call_args_list
+            admin_email_calls = [
+                call for call in email_calls
+                if call.kwargs.get('to_email') == ADMIN_EMAIL
+            ]
+
+            assert len(admin_email_calls) >= 1
+            admin_call = admin_email_calls[0]
+            html_content = admin_call.kwargs.get('html_content', '')
+
+            # Should include job ID for linking
+            assert "test-job-123" in html_content, \
+                "Admin email must include job ID link"
+
+    @pytest.mark.asyncio
+    async def test_youtube_url_order_skips_search(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service
+    ):
+        """
+        Orders with YouTube URL should trigger workers directly, not search.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        youtube_metadata = {
+            "order_type": "made_for_you",
+            "customer_email": "customer@example.com",
+            "artist": "Test Artist",
+            "title": "Test Song",
+            "source_type": "youtube",
+            "youtube_url": "https://youtube.com/watch?v=abc123",
+        }
+
+        mock_worker_service = MagicMock()
+        mock_worker_service.trigger_audio_worker = AsyncMock()
+        mock_worker_service.trigger_lyrics_worker = AsyncMock()
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service', return_value=mock_worker_service), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=youtube_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            # URL should be set
+            assert job_create_arg.url == youtube_metadata["youtube_url"]
+
+            # Workers should be triggered directly
+            mock_worker_service.trigger_audio_worker.assert_called_once()
+            mock_worker_service.trigger_lyrics_worker.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_stripe_session_marked_processed(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        Stripe session must be marked as processed for idempotency.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            mock_user_service._mark_stripe_session_processed.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_default_theme_applied(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """
+        Default theme (nomad) should be applied to made-for-you jobs.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            assert job_create_arg.theme_id == "nomad", \
+                "Default nomad theme should be applied to made-for-you jobs"
+
+
+class TestMadeForYouDistributionSettings:
+    """
+    Tests for distribution settings on made-for-you jobs.
+
+    Made-for-you jobs should have distribution defaults applied:
+    - YouTube upload enabled
+    - Dropbox path set
+    - Google Drive folder ID set
+    - Brand prefix set
+
+    These ensure the finished video is automatically distributed.
+    """
+
+    @pytest.fixture
+    def mock_job_manager(self):
+        """Create mock JobManager."""
+        manager = MagicMock()
+        mock_job = MagicMock()
+        mock_job.job_id = "test-job-123"
+        manager.create_job.return_value = mock_job
+        return manager
+
+    @pytest.fixture
+    def mock_email_service(self):
+        """Create mock email service."""
+        service = MagicMock()
+        service.send_email.return_value = True
+        return service
+
+    @pytest.fixture
+    def mock_user_service(self):
+        """Create mock user service."""
+        service = MagicMock()
+        service._mark_stripe_session_processed.return_value = None
+        return service
+
+    @pytest.fixture
+    def mock_theme_service(self):
+        """Create mock theme service."""
+        service = MagicMock()
+        service.get_default_theme_id.return_value = "nomad"
+        return service
+
+    @pytest.fixture
+    def order_metadata(self):
+        """Standard order metadata."""
+        return {
+            "order_type": "made_for_you",
+            "customer_email": "customer@example.com",
+            "artist": "Test Artist",
+            "title": "Test Song",
+            "source_type": "search",
+        }
+
+    @pytest.fixture
+    def mock_settings(self):
+        """Mock settings with distribution defaults."""
+        settings = MagicMock()
+        settings.default_enable_youtube_upload = True
+        settings.default_dropbox_path = "/Production/Ready To Upload"
+        settings.default_gdrive_folder_id = "1ABC123xyz"
+        settings.default_brand_prefix = "NOMAD"
+        settings.default_discord_webhook_url = None
+        settings.default_youtube_description = None
+        return settings
+
+    @pytest.mark.asyncio
+    async def test_youtube_upload_enabled_by_default(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, mock_settings, order_metadata
+    ):
+        """
+        CRITICAL TEST: Made-for-you jobs should have YouTube upload enabled.
+
+        This ensures the finished video is uploaded to YouTube automatically.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.config.get_settings', return_value=mock_settings):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            assert job_create_arg.enable_youtube_upload is True, \
+                "Made-for-you jobs should have YouTube upload enabled by default"
+
+    @pytest.mark.asyncio
+    async def test_dropbox_path_set_by_default(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, mock_settings, order_metadata
+    ):
+        """
+        CRITICAL TEST: Made-for-you jobs should have Dropbox path set.
+
+        This ensures the finished video is synced to Dropbox automatically.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.config.get_settings', return_value=mock_settings):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            assert job_create_arg.dropbox_path == "/Production/Ready To Upload", \
+                "Made-for-you jobs should have Dropbox path set from defaults"
+
+    @pytest.mark.asyncio
+    async def test_gdrive_folder_id_set_by_default(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, mock_settings, order_metadata
+    ):
+        """
+        CRITICAL TEST: Made-for-you jobs should have Google Drive folder ID set.
+
+        This ensures the finished video is uploaded to Google Drive automatically.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.config.get_settings', return_value=mock_settings):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            assert job_create_arg.gdrive_folder_id == "1ABC123xyz", \
+                "Made-for-you jobs should have Google Drive folder ID set from defaults"
+
+    @pytest.mark.asyncio
+    async def test_brand_prefix_set_by_default(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, mock_settings, order_metadata
+    ):
+        """
+        Brand prefix should be set from server defaults.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.config.get_settings', return_value=mock_settings):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            job_create_arg = mock_job_manager.create_job.call_args[0][0]
+
+            assert job_create_arg.brand_prefix == "NOMAD", \
+                "Made-for-you jobs should have brand prefix set from defaults"
+
+
+class TestMadeForYouJobCreateContract:
+    """
+    Contract tests to ensure JobCreate for made-for-you orders has correct shape.
+
+    These tests document the expected contract between the webhook handler
+    and the job creation system.
+    """
+
+    def test_made_for_you_job_create_has_all_required_fields(self):
+        """
+        A properly configured made-for-you JobCreate must have all these fields.
+        """
+        # This is what the webhook handler SHOULD create
+        job_create = JobCreate(
+            artist="Test Artist",
+            title="Test Song",
+            user_email="admin@nomadkaraoke.com",  # Admin, not customer
+            theme_id="nomad",
+            made_for_you=True,                    # Flag for MFY
+            customer_email="customer@example.com", # For delivery
+            customer_notes="Special request",      # Customer notes
+            auto_download=False,                   # Pause for selection
+            audio_search_artist="Test Artist",
+            audio_search_title="Test Song",
+            non_interactive=False,                 # Admin reviews
+        )
+
+        # Verify all critical fields
+        assert job_create.made_for_you is True
+        assert job_create.user_email == "admin@nomadkaraoke.com"
+        assert job_create.customer_email == "customer@example.com"
+        assert job_create.customer_notes == "Special request"
+        assert job_create.auto_download is False
+        assert job_create.non_interactive is False
+
+    def test_job_create_customer_not_owner(self):
+        """
+        Verify customer_email is distinct from user_email (owner).
+        """
+        job_create = JobCreate(
+            artist="Test",
+            title="Test",
+            user_email="admin@nomadkaraoke.com",
+            customer_email="customer@example.com",
+            made_for_you=True,
+        )
+
+        assert job_create.user_email != job_create.customer_email, \
+            "Customer should not own job during processing"
+
+    def test_made_for_you_with_distribution_defaults(self):
+        """
+        Made-for-you jobs should have distribution defaults from server settings.
+        """
+        job_create = JobCreate(
+            artist="Test",
+            title="Test",
+            user_email="admin@nomadkaraoke.com",
+            made_for_you=True,
+            customer_email="customer@example.com",
+            # Distribution settings that should be applied
+            enable_youtube_upload=True,
+            dropbox_path="/Production/Ready To Upload",
+            gdrive_folder_id="1ABC123xyz",
+            brand_prefix="NOMAD",
+        )
+
+        # These should be configurable for made-for-you orders
+        assert hasattr(job_create, 'enable_youtube_upload')
+        assert hasattr(job_create, 'dropbox_path')
+        assert hasattr(job_create, 'gdrive_folder_id')
+        assert hasattr(job_create, 'brand_prefix')
