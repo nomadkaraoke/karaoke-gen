@@ -498,6 +498,30 @@ Content-Type: application/json
 }
 ```
 
+### Impersonate User (Admin)
+
+Allows admins to view the application as any user by creating a session token for that user.
+
+```http
+POST /api/admin/users/{email}/impersonate
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Response:
+```json
+{
+  "session_token": "impersonation-session-token",
+  "user_email": "user@example.com",
+  "message": "Now impersonating user@example.com"
+}
+```
+
+Notes:
+- Creates a real session for the target user (auditable in Firestore)
+- Admin cannot impersonate themselves
+- Returns 404 if user doesn't exist
+- The frontend stores the original admin token in memory (not localStorage) for security
+
 ### Set User Role (Admin)
 
 ```http
@@ -507,6 +531,8 @@ Content-Type: application/json
 
 {"role": "admin"}
 ```
+
+Note: This endpoint exists but is not exposed in the admin UI. Use database operations for role changes.
 
 ### Enable/Disable User (Admin)
 

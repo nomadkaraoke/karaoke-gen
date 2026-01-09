@@ -666,6 +666,31 @@ await page.getByTestId('search-artist-input').fill(TEST_SONG.artist);
 
 Reserve `getByLabel`/`getByRole` for testing accessibility - they verify the UI is properly labeled - but use `getByTestId` for form interactions in integration tests.
 
+### E2E Testing Stateful Flows with Static Mocks
+
+**Problem**: Testing impersonation flow required the same `/api/users/me` endpoint to return different users at different times (admin first, then impersonated user). Static mock fixtures can't handle this.
+
+**What we tried**:
+1. Two fixtures for same endpoint - second overwrites first
+2. Dynamic route handlers added after `setupApiFixtures` - static fixtures intercept first
+3. Route handlers added before setup - still conflicts with wildcard patterns
+
+**Solution**: Accept limitations of static mocks for stateful flows:
+- Test what CAN be tested statically (button visibility, disabled states, API call is made)
+- Mark stateful flow tests as `test.skip()` with clear TODO comments
+- Rely on backend unit tests for API correctness
+- Manual testing covers full flow
+
+**Lesson**: E2E tests with static mock fixtures work best for:
+- UI state verification (elements visible, enabled/disabled)
+- Single API call scenarios
+- Error handling paths
+
+For stateful flows requiring dynamic responses, either:
+- Use integration tests against real backend
+- Mock at a lower level (zustand store state)
+- Accept the testing gap and document it
+
 ### Emulator Tests Catch Real Bugs
 
 Unit tests with mocks didn't catch the `input_media_gcs_path` bug. Emulator integration tests did because they use real Firestore behavior.
