@@ -119,6 +119,7 @@
 | [PRODUCT-VISION.md](PRODUCT-VISION.md) | Product goals, audience, business model |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System design, data flow, integrations |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Local setup, testing, deployment |
+| [TESTING.md](TESTING.md) | Testing standards, CI requirements, Playwright |
 | [API.md](API.md) | Backend endpoint reference |
 | [BRAND-STYLE-GUIDE.md](BRAND-STYLE-GUIDE.md) | Brand colors, typography, UI patterns |
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | Key insights for future agents |

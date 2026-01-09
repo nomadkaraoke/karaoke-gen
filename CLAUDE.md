@@ -16,6 +16,7 @@
 | Current status | `docs/README.md` |
 | Architecture | `docs/ARCHITECTURE.md` |
 | Dev setup & testing | `docs/DEVELOPMENT.md` |
+| **Testing & code quality** | `docs/TESTING.md` |
 | API reference | `docs/API.md` |
 | Past learnings | `docs/LESSONS-LEARNED.md` |
 | **Product communication** | `docs/PRODUCT-COMMUNICATION-GUIDE.md` |
@@ -36,7 +37,14 @@
 - Create PR with summary, changes, testing info
 - Merge only after CI passes
 
-### Testing (Required Before Commit)
+### Testing (Required)
+**Before planning any implementation work**, read `docs/TESTING.md` and ensure your plan includes a thorough testing strategy that follows the guidance there. This includes:
+- Which test types are needed (unit, integration, E2E)
+- Where tests should be placed
+- What mocking approach to use
+- Coverage expectations
+
+**Before committing**, run all tests:
 ```bash
 # Backend (10 min timeout, limit output)
 make test 2>&1 | tail -n 500
