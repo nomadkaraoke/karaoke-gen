@@ -1698,3 +1698,233 @@ class TestMadeForYouJobCreateContract:
         assert hasattr(job_create, 'dropbox_path')
         assert hasattr(job_create, 'gdrive_folder_id')
         assert hasattr(job_create, 'brand_prefix')
+
+
+# =============================================================================
+# Webhook Handler Email Template Tests
+# =============================================================================
+
+class TestMadeForYouWebhookEmailTemplates:
+    """
+    CRITICAL: Tests that webhook handler uses proper email template methods.
+
+    Bug context (2026-01-09): The webhook handler was using generic send_email()
+    with inline HTML instead of the professional template methods:
+    - send_made_for_you_order_confirmation()
+    - send_made_for_you_admin_notification()
+
+    This resulted in emails not being sent in the expected format and made
+    debugging harder since the inline HTML was different from the templates.
+    """
+
+    @pytest.fixture
+    def mock_job_manager(self):
+        """Create mock JobManager that captures job creation params."""
+        manager = MagicMock()
+        mock_job = MagicMock()
+        mock_job.job_id = "test-job-123"
+        manager.create_job.return_value = mock_job
+        return manager
+
+    @pytest.fixture
+    def mock_user_service(self):
+        """Create mock user service."""
+        service = MagicMock()
+        service._mark_stripe_session_processed.return_value = None
+        return service
+
+    @pytest.fixture
+    def mock_theme_service(self):
+        """Create mock theme service."""
+        service = MagicMock()
+        service.get_default_theme_id.return_value = "nomad"
+        return service
+
+    @pytest.fixture
+    def order_metadata(self):
+        """Standard order metadata from Stripe session."""
+        return {
+            "order_type": "made_for_you",
+            "customer_email": "customer@example.com",
+            "artist": "Avril Lavigne",
+            "title": "Complicated",
+            "source_type": "search",
+            "notes": "Please make sure the lyrics are perfect!",
+        }
+
+    @pytest.mark.asyncio
+    async def test_webhook_uses_order_confirmation_template(
+        self, mock_job_manager, mock_user_service, mock_theme_service, order_metadata
+    ):
+        """
+        CRITICAL: Webhook must use send_made_for_you_order_confirmation() template.
+
+        The template method provides:
+        - Professional formatting
+        - Consistent branding
+        - Proper email structure with header/footer
+
+        Using generic send_email() with inline HTML is error-prone and inconsistent.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        mock_email_service = MagicMock()
+        mock_email_service.send_made_for_you_order_confirmation.return_value = True
+        mock_email_service.send_made_for_you_admin_notification.return_value = True
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # CRITICAL ASSERTION: Must use the template method, not generic send_email
+            mock_email_service.send_made_for_you_order_confirmation.assert_called_once()
+
+            # Verify the template was called with correct parameters
+            call_kwargs = mock_email_service.send_made_for_you_order_confirmation.call_args.kwargs
+            assert call_kwargs['to_email'] == order_metadata["customer_email"]
+            assert call_kwargs['artist'] == order_metadata["artist"]
+            assert call_kwargs['title'] == order_metadata["title"]
+            assert call_kwargs['notes'] == order_metadata["notes"]
+
+    @pytest.mark.asyncio
+    async def test_webhook_uses_admin_notification_template(
+        self, mock_job_manager, mock_user_service, mock_theme_service, order_metadata
+    ):
+        """
+        CRITICAL: Webhook must use send_made_for_you_admin_notification() template.
+
+        The template method provides:
+        - Alert styling for urgency
+        - Link to admin job page
+        - Audio source count
+        - Professional formatting
+        """
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
+
+        mock_email_service = MagicMock()
+        mock_email_service.send_made_for_you_order_confirmation.return_value = True
+        mock_email_service.send_made_for_you_admin_notification.return_value = True
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # CRITICAL ASSERTION: Must use the template method, not generic send_email
+            mock_email_service.send_made_for_you_admin_notification.assert_called_once()
+
+            # Verify the template was called with correct parameters
+            call_kwargs = mock_email_service.send_made_for_you_admin_notification.call_args.kwargs
+            assert call_kwargs['to_email'] == ADMIN_EMAIL
+            assert call_kwargs['customer_email'] == order_metadata["customer_email"]
+            assert call_kwargs['artist'] == order_metadata["artist"]
+            assert call_kwargs['title'] == order_metadata["title"]
+            assert call_kwargs['job_id'] == "test-job-123"
+
+    @pytest.mark.asyncio
+    async def test_webhook_does_not_use_generic_send_email_for_notifications(
+        self, mock_job_manager, mock_user_service, mock_theme_service, order_metadata
+    ):
+        """
+        CRITICAL: Webhook must NOT use generic send_email() for made-for-you notifications.
+
+        The generic send_email() method was being used with inline HTML, which:
+        - Has no consistent styling
+        - Is harder to maintain
+        - May not match the professional templates
+
+        This test ensures send_email is NOT called for the order/admin notifications.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        mock_email_service = MagicMock()
+        mock_email_service.send_made_for_you_order_confirmation.return_value = True
+        mock_email_service.send_made_for_you_admin_notification.return_value = True
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # CRITICAL ASSERTION: generic send_email should NOT be used
+            # for made-for-you order/admin notifications
+            mock_email_service.send_email.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_admin_notification_includes_audio_source_count(
+        self, mock_job_manager, mock_user_service, mock_theme_service, order_metadata
+    ):
+        """
+        Admin notification should include count of audio sources found.
+
+        This helps admin prioritize orders and know what to expect.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        mock_email_service = MagicMock()
+        mock_email_service.send_made_for_you_order_confirmation.return_value = True
+        mock_email_service.send_made_for_you_admin_notification.return_value = True
+
+        # Mock audio search that returns results
+        mock_audio_service = MagicMock()
+        mock_result = MagicMock()
+        mock_result.to_dict.return_value = {'provider': 'RED', 'title': 'Test'}
+        mock_audio_service.search.return_value = [mock_result, mock_result, mock_result]  # 3 results
+        mock_audio_service.last_remote_search_id = "search_123"
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service', return_value=mock_audio_service), \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+            # Verify audio_source_count is passed to admin notification
+            call_kwargs = mock_email_service.send_made_for_you_admin_notification.call_args.kwargs
+            assert call_kwargs['audio_source_count'] == 3

@@ -313,9 +313,154 @@ class TestJobFailure:
         assert call_args[1]['error_message'] == error_message
 
 
+class TestMadeForYouFieldMapping:
+    """
+    CRITICAL: Test that made-for-you fields are properly copied from JobCreate to Job.
+
+    These tests verify that JobManager.create_job() properly maps all fields from
+    JobCreate to the Job object that gets persisted to Firestore.
+
+    Bug context (2026-01-09): Production made-for-you orders were created with
+    made_for_you=False, customer_email=None, customer_notes=None because
+    JobManager.create_job() wasn't copying these fields from JobCreate to Job.
+    """
+
+    def test_create_job_copies_made_for_you_flag(self, job_manager, mock_firestore_service):
+        """
+        CRITICAL: made_for_you flag must be copied from JobCreate to Job.
+
+        This flag is essential for:
+        - Ownership transfer on job completion
+        - Email suppression for intermediate states
+        - Identifying made-for-you jobs in admin UI
+        """
+        job_create = JobCreate(
+            artist="Test Artist",
+            title="Test Song",
+            theme_id="nomad",
+            made_for_you=True,  # This MUST be copied to the Job
+        )
+
+        job = job_manager.create_job(job_create)
+
+        # CRITICAL ASSERTION: made_for_you must be True on the created Job
+        assert job.made_for_you is True, \
+            "made_for_you=True on JobCreate must be copied to Job"
+
+        # Also verify what was saved to Firestore
+        mock_firestore_service.create_job.assert_called_once()
+        saved_job = mock_firestore_service.create_job.call_args[0][0]
+        assert saved_job.made_for_you is True, \
+            "made_for_you=True must be persisted to Firestore"
+
+    def test_create_job_copies_customer_email(self, job_manager, mock_firestore_service):
+        """
+        CRITICAL: customer_email must be copied from JobCreate to Job.
+
+        This field is essential for:
+        - Ownership transfer on job completion (transferring to this email)
+        - Sending completion email with download links to customer
+        """
+        job_create = JobCreate(
+            artist="Test Artist",
+            title="Test Song",
+            theme_id="nomad",
+            made_for_you=True,
+            customer_email="customer@example.com",  # This MUST be copied to the Job
+        )
+
+        job = job_manager.create_job(job_create)
+
+        # CRITICAL ASSERTION: customer_email must be copied
+        assert job.customer_email == "customer@example.com", \
+            "customer_email on JobCreate must be copied to Job"
+
+        # Also verify what was saved to Firestore
+        saved_job = mock_firestore_service.create_job.call_args[0][0]
+        assert saved_job.customer_email == "customer@example.com", \
+            "customer_email must be persisted to Firestore"
+
+    def test_create_job_copies_customer_notes(self, job_manager, mock_firestore_service):
+        """
+        customer_notes must be copied from JobCreate to Job.
+
+        Customer notes contain special requests that admin needs to see.
+        """
+        job_create = JobCreate(
+            artist="Test Artist",
+            title="Test Song",
+            theme_id="nomad",
+            made_for_you=True,
+            customer_notes="Please make this perfect for my wedding!",
+        )
+
+        job = job_manager.create_job(job_create)
+
+        assert job.customer_notes == "Please make this perfect for my wedding!", \
+            "customer_notes on JobCreate must be copied to Job"
+
+        saved_job = mock_firestore_service.create_job.call_args[0][0]
+        assert saved_job.customer_notes == "Please make this perfect for my wedding!", \
+            "customer_notes must be persisted to Firestore"
+
+    def test_create_job_full_made_for_you_config(self, job_manager, mock_firestore_service):
+        """
+        Test complete made-for-you job creation with all fields.
+
+        This is the realistic scenario: a made-for-you order creates a job with:
+        - made_for_you=True
+        - user_email=admin (owner during processing)
+        - customer_email=customer (for final delivery)
+        - customer_notes=notes (customer's special requests)
+        """
+        job_create = JobCreate(
+            artist="Avril Lavigne",
+            title="Complicated",
+            theme_id="nomad",
+            made_for_you=True,
+            user_email="admin@nomadkaraoke.com",
+            customer_email="customer@example.com",
+            customer_notes="Anniversary gift!",
+            # Distribution settings that should also be applied
+            enable_youtube_upload=True,
+            dropbox_path="/Production/Ready",
+            brand_prefix="NOMAD",
+        )
+
+        job = job_manager.create_job(job_create)
+
+        # Verify all made-for-you fields
+        assert job.made_for_you is True
+        assert job.user_email == "admin@nomadkaraoke.com"
+        assert job.customer_email == "customer@example.com"
+        assert job.customer_notes == "Anniversary gift!"
+
+        # Verify distribution settings too
+        assert job.enable_youtube_upload is True
+        assert job.dropbox_path == "/Production/Ready"
+        assert job.brand_prefix == "NOMAD"
+
+    def test_create_job_made_for_you_false_by_default(self, job_manager, mock_firestore_service):
+        """
+        Regular jobs should have made_for_you=False by default.
+        """
+        job_create = JobCreate(
+            artist="Test Artist",
+            title="Test Song",
+            theme_id="nomad",
+            # No made_for_you specified - should default to False
+        )
+
+        job = job_manager.create_job(job_create)
+
+        assert job.made_for_you is False
+        assert job.customer_email is None
+        assert job.customer_notes is None
+
+
 class TestJobDeletion:
     """Test job deletion logic."""
-    
+
     def test_delete_job(self, job_manager, mock_firestore_service):
         """Test deleting a job."""
         existing_job = Job(

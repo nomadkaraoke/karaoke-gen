@@ -87,6 +87,10 @@ class JobManager:
             request_metadata=job_create.request_metadata,
             # Tenant scoping
             tenant_id=job_create.tenant_id,
+            # Made-for-you order fields
+            made_for_you=job_create.made_for_you,
+            customer_email=job_create.customer_email,
+            customer_notes=job_create.customer_notes,
         )
         
         self.firestore.create_job(job)

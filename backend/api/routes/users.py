@@ -564,6 +564,9 @@ async def _handle_made_for_you_order(
             amount=0  # No credits, just tracking the session
         )
 
+        # Initialize search_results for later use in email notification
+        search_results = None
+
         # Handle based on whether we have a YouTube URL or need to search
         if youtube_url:
             # URL provided - trigger workers directly (no audio selection needed)
@@ -642,76 +645,27 @@ async def _handle_made_for_you_order(
                     message=f"Found {len(results_dicts)} audio sources. Awaiting admin selection."
                 )
 
-        # Send confirmation email to customer
-        email_service.send_email(
+        # Get audio source count for admin notification
+        # (search_results may be set from the search flow above, or None for YouTube URL orders)
+        audio_source_count = len(search_results) if search_results else 0
+
+        # Send confirmation email to customer using professional template
+        email_service.send_made_for_you_order_confirmation(
             to_email=customer_email,
-            subject=f"Your Karaoke Video Order: {artist} - {title}",
-            html_content=f"""
-            <h2>Thank you for your order!</h2>
-            <p>We've received your request for a karaoke video:</p>
-            <ul>
-                <li><strong>Artist:</strong> {artist}</li>
-                <li><strong>Title:</strong> {title}</li>
-                {f'<li><strong>Notes:</strong> {notes}</li>' if notes else ''}
-            </ul>
-            <p>Our team will review and create your video within <strong>24 hours</strong>.</p>
-            <p>You'll receive another email with download links when your video is ready.</p>
-            <p>If you have any questions, reply to this email or contact us at support@nomadkaraoke.com</p>
-            <p>Thanks for using Nomad Karaoke!</p>
-            """,
-            text_content=f"""
-Thank you for your order!
-
-We've received your request for a karaoke video:
-- Artist: {artist}
-- Title: {title}
-{f'- Notes: {notes}' if notes else ''}
-
-Our team will review and create your video within 24 hours.
-You'll receive another email with download links when your video is ready.
-
-If you have any questions, reply to this email or contact us at support@nomadkaraoke.com
-
-Thanks for using Nomad Karaoke!
-            """.strip(),
+            artist=artist,
+            title=title,
+            notes=notes,
         )
 
-        # Send notification email to Andrew
-        email_service.send_email(
+        # Send notification email to admin using professional template
+        email_service.send_made_for_you_admin_notification(
             to_email=ADMIN_EMAIL,
-            subject=f"[Made For You Order] {artist} - {title}",
-            html_content=f"""
-            <h2>New Made-For-You Order</h2>
-            <p>A customer has ordered a karaoke video:</p>
-            <ul>
-                <li><strong>Customer:</strong> {customer_email}</li>
-                <li><strong>Artist:</strong> {artist}</li>
-                <li><strong>Title:</strong> {title}</li>
-                <li><strong>Source:</strong> {source_type}</li>
-                {f'<li><strong>YouTube URL:</strong> <a href="{youtube_url}">{youtube_url}</a></li>' if youtube_url else ''}
-                {f'<li><strong>Notes:</strong> {notes}</li>' if notes else ''}
-            </ul>
-            <p><strong>Job ID:</strong> {job_id}</p>
-            <p>View job in admin: <a href="https://gen.nomadkaraoke.com/admin/jobs/{job_id}">Admin Link</a></p>
-            <p>View job as customer: <a href="https://gen.nomadkaraoke.com/jobs/{job_id}">Customer Link</a></p>
-            <p><strong>Deadline:</strong> 24 hours from now</p>
-            """,
-            text_content=f"""
-New Made-For-You Order
-
-Customer: {customer_email}
-Artist: {artist}
-Title: {title}
-Source: {source_type}
-{f'YouTube URL: {youtube_url}' if youtube_url else ''}
-{f'Notes: {notes}' if notes else ''}
-
-Job ID: {job_id}
-Admin: https://gen.nomadkaraoke.com/admin/jobs/{job_id}
-Customer: https://gen.nomadkaraoke.com/jobs/{job_id}
-
-Deadline: 24 hours from now
-            """.strip(),
+            customer_email=customer_email,
+            artist=artist,
+            title=title,
+            job_id=job_id,
+            notes=notes,
+            audio_source_count=audio_source_count,
         )
 
         logger.info(f"Sent made-for-you order notifications for job {job_id}")
