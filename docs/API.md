@@ -328,6 +328,8 @@ GET /api/users/auth/verify?token=TOKEN
 
 Returns session token and user info.
 
+**Admin Login Token**: The same endpoint supports admin login tokens embedded in notification emails. When a made-for-you order is received, the admin notification email includes a link with `?admin_token=TOKEN` that auto-logs the admin into the app. The frontend detects this parameter and calls the verify endpoint to authenticate. Admin tokens expire after 24 hours.
+
 ### Get Current User
 
 ```http
