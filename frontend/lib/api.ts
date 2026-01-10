@@ -712,6 +712,67 @@ export const api = {
     });
     return handleResponse(response);
   },
+
+  // ==========================================================================
+  // Push Notifications API endpoints
+  // ==========================================================================
+
+  /**
+   * Get VAPID public key for push subscription
+   * Returns whether push is enabled and the public key if so
+   */
+  async getVapidPublicKey(): Promise<{ enabled: boolean; vapid_public_key: string | null }> {
+    const response = await fetch(`${API_BASE_URL}/api/push/vapid-public-key`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Subscribe to push notifications
+   */
+  async subscribePush(
+    endpoint: string,
+    keys: { p256dh: string; auth: string },
+    deviceName?: string
+  ): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/push/subscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        endpoint,
+        keys,
+        device_name: deviceName,
+      }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Unsubscribe from push notifications
+   */
+  async unsubscribePush(endpoint: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/push/unsubscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ endpoint }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * List user's push notification subscriptions
+   */
+  async listPushSubscriptions(): Promise<PushSubscriptionsListResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/push/subscriptions`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
 };
 
 // Types for credits/payment
@@ -728,6 +789,19 @@ export interface BetaEnrollResponse {
   message: string;
   credits_granted: number;
   session_token: string | null;
+}
+
+// Types for push notifications
+export interface PushSubscriptionInfo {
+  endpoint: string;
+  device_name: string | null;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface PushSubscriptionsListResponse {
+  subscriptions: PushSubscriptionInfo[];
+  count: number;
 }
 
 // ==========================================================================

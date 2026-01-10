@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "karaoke-gen"
-version = "0.104.0"
+version = "0.105.0"
 description = "Generate karaoke videos with synchronized lyrics. Handles the entire process from downloading audio and lyrics to creating the final video with title screens."
 authors = ["Andrew Beveridge <andrew@beveridge.uk>"]
 license = "MIT"
@@ -99,6 +99,8 @@ pydub = ">=0.25.1"
 stripe = ">=7.0.0"
 sendgrid = ">=6.10.0"
 email-validator = ">=2.0.0"  # For Pydantic EmailStr validation
+# Web Push notifications
+pywebpush = ">=2.0.0"
 # OpenTelemetry for distributed tracing
 opentelemetry-api = ">=1.20.0"
 opentelemetry-sdk = ">=1.20.0"

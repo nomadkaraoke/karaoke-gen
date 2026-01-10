@@ -8,9 +8,9 @@ Supports:
 - Stripe integration for payments
 - Beta tester program with feedback collection
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field
 
 
@@ -37,6 +37,20 @@ class CreditTransaction(BaseModel):
     stripe_session_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: Optional[str] = None  # Admin email if granted by admin
+
+
+class PushSubscription(BaseModel):
+    """
+    Web Push subscription for a user's device.
+
+    Stores the push subscription endpoint and encryption keys needed
+    to send push notifications to the user's browser/device.
+    """
+    endpoint: str  # Push service endpoint URL
+    keys: Dict[str, str]  # p256dh and auth keys for encryption
+    device_name: Optional[str] = None  # e.g., "iPhone", "Chrome on Windows"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used_at: Optional[datetime] = None  # Last time a notification was sent
 
 
 class User(BaseModel):
@@ -85,6 +99,10 @@ class User(BaseModel):
     beta_promise_text: Optional[str] = None  # User's promise statement
     beta_feedback_due_at: Optional[datetime] = None  # 24hr after job completion
     beta_feedback_email_sent: bool = False
+
+    # Push notification subscriptions (Web Push API)
+    # Users can subscribe from multiple devices/browsers
+    push_subscriptions: List[PushSubscription] = Field(default_factory=list)
 
 
 class MagicLinkToken(BaseModel):

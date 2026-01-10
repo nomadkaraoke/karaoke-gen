@@ -123,7 +123,15 @@ class Settings(BaseSettings):
     # These can be overridden per-request via explicit enable_cdg/enable_txt parameters
     default_enable_cdg: bool = os.getenv("DEFAULT_ENABLE_CDG", "true").lower() in ("true", "1", "yes")
     default_enable_txt: bool = os.getenv("DEFAULT_ENABLE_TXT", "true").lower() in ("true", "1", "yes")
-    
+
+    # Push Notifications Configuration
+    # When enabled, users can subscribe to push notifications for job status updates
+    enable_push_notifications: bool = os.getenv("ENABLE_PUSH_NOTIFICATIONS", "false").lower() in ("true", "1", "yes")
+    # Maximum number of push subscriptions per user (oldest removed when exceeded)
+    max_push_subscriptions_per_user: int = int(os.getenv("MAX_PUSH_SUBSCRIPTIONS_PER_USER", "5"))
+    # VAPID subject (email or URL for push service to contact)
+    vapid_subject: str = os.getenv("VAPID_SUBJECT", "mailto:gen@nomadkaraoke.com")
+
     # Secret Manager cache
     _secret_cache: Dict[str, str] = {}
     

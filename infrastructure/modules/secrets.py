@@ -47,6 +47,10 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # Notifications
         "pushbullet-api-key",
 
+        # Web Push (VAPID keys for mobile push notifications)
+        "vapid-public-key",
+        "vapid-private-key",
+
         # GitHub
         "github-runner-pat",
     ]

@@ -15,6 +15,7 @@ import { JobSubmission } from "@/components/job/JobSubmission"
 import { AuthStatus } from "@/components/auth"
 import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
+import { PushNotificationPrompt } from "@/components/push-notification-prompt"
 import { useTheme } from "@/lib/theme"
 import {
   Tooltip,
@@ -200,6 +201,9 @@ function AppPageContent() {
       </header>
 
       <main className="px-4 pt-24 pb-8 space-y-6">
+        {/* Push notification prompt - shows once when appropriate */}
+        <PushNotificationPrompt />
+
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Submit Job Card */}
           <Card className="backdrop-blur" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>

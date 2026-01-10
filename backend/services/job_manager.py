@@ -438,7 +438,7 @@ class JobManager:
 
     def _trigger_state_notifications(self, job_id: str, new_status: JobStatus) -> None:
         """
-        Trigger email notifications based on state transitions.
+        Trigger email and push notifications based on state transitions.
 
         This is fire-and-forget - notification failures don't affect job processing.
 
@@ -458,10 +458,14 @@ class JobManager:
             # Job completion notification
             if new_status == JobStatus.COMPLETE:
                 self._schedule_completion_email(job)
+                self._send_push_notification(job, "complete")
 
             # Idle reminder scheduling for blocking states
             elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION]:
                 self._schedule_idle_reminder(job, new_status)
+                # Send push notification for blocking states
+                action_type = "lyrics" if new_status == JobStatus.AWAITING_REVIEW else "instrumental"
+                self._send_push_notification(job, action_type)
 
         except Exception as e:
             # Never let notification failures affect job processing
@@ -581,7 +585,60 @@ class JobManager:
 
         except Exception as e:
             logger.error(f"Failed to schedule idle reminder for job {job.job_id}: {e}")
-    
+
+    def _send_push_notification(self, job: Job, action_type: str) -> None:
+        """
+        Send a push notification for job state changes.
+
+        Fire-and-forget - failures don't affect job processing.
+
+        Args:
+            job: Job object
+            action_type: Type of notification ("lyrics", "instrumental", or "complete")
+        """
+        import asyncio
+        import threading
+
+        try:
+            from backend.services.push_notification_service import get_push_notification_service
+
+            push_service = get_push_notification_service()
+
+            # Skip if push notifications not enabled
+            if not push_service.is_enabled():
+                logger.debug("Push notifications not enabled, skipping")
+                return
+
+            # Build job dict for notification service
+            job_dict = {
+                "job_id": job.job_id,
+                "user_email": job.user_email,
+                "artist": job.artist,
+                "title": job.title,
+            }
+
+            async def send_notification():
+                if action_type == "complete":
+                    await push_service.send_completion_notification(job_dict)
+                else:
+                    await push_service.send_blocking_notification(job_dict, action_type)
+
+            # Try to get existing event loop, create new one if none exists
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(send_notification())
+            except RuntimeError:
+                # No event loop - we're in a sync context
+                def run_in_thread():
+                    asyncio.run(send_notification())
+                thread = threading.Thread(target=run_in_thread, daemon=True)
+                thread.start()
+
+            logger.debug(f"Scheduled push notification for job {job.job_id} ({action_type})")
+
+        except Exception as e:
+            logger.error(f"Failed to send push notification for job {job.job_id}: {e}")
+
     def update_state_data(self, job_id: str, key: str, value: Any) -> None:
         """
         Update a specific key in the job's state_data field.
