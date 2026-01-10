@@ -338,19 +338,33 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
                 # Search more specifically for karaoke video
                 karaoke_video = find_file(work_dir, "*Karaoke*.mkv", "*Karaoke*.mov", "*vocals*.mkv")
 
-        # Instrumental audio
-        instrumental = find_file(
-            work_dir,
-            "*instrumental_clean*.flac", "*Instrumental Clean*.flac",
-            "*instrumental*.flac", "*Instrumental*.flac",
-            "*instrumental*.wav"
-        )
+        # Instrumental audio - respect user's selection from encoding config
+        instrumental_selection = config.get("instrumental_selection", "clean")
+        logger.info(f"Instrumental selection from config: {instrumental_selection}")
+
+        if instrumental_selection == "with_backing":
+            # User selected instrumental with backing vocals
+            instrumental = find_file(
+                work_dir,
+                "*instrumental_with_backing*.flac", "*Instrumental Backing*.flac",
+                "*with_backing*.flac", "*Backing*.flac",
+                "*instrumental*.flac", "*Instrumental*.flac",
+                "*instrumental*.wav"
+            )
+        else:
+            # Default to clean instrumental
+            instrumental = find_file(
+                work_dir,
+                "*instrumental_clean*.flac", "*Instrumental Clean*.flac",
+                "*instrumental*.flac", "*Instrumental*.flac",
+                "*instrumental*.wav"
+            )
 
         logger.info(f"Found files:")
         logger.info(f"  Title video: {title_video}")
         logger.info(f"  Karaoke video: {karaoke_video}")
         logger.info(f"  End video: {end_video}")
-        logger.info(f"  Instrumental: {instrumental}")
+        logger.info(f"  Instrumental ({instrumental_selection}): {instrumental}")
 
         # Validate required files
         if not title_video:
