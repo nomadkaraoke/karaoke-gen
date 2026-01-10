@@ -25,6 +25,87 @@ make test-frontend  # Frontend only (~3 min)
 
 Dependencies are installed automatically when needed.
 
+## Critical: Automate Manual Testing Steps
+
+**If your plan includes "Manual Testing" steps, convert them to automated Playwright E2E tests.**
+
+When you write a plan with steps like "manually verify the dialog opens" or "test that the button appears for complete jobs", these are perfect candidates for automated E2E tests. Don't leave verification as a manual step that may never happen.
+
+### Why Automate?
+
+1. **Codifies expected behavior** - The test documents exactly what should happen
+2. **Repeatable verification** - Can re-run after future changes to catch regressions
+3. **Actually gets executed** - Manual steps are often skipped; automated tests run reliably
+4. **Proves the feature works** - Passing test = working feature in production
+
+### Production E2E Tests Are Valuable
+
+It's acceptable (and preferred) to write E2E tests that only run against production:
+
+```typescript
+// frontend/e2e/production/admin-delete-outputs.spec.ts
+test('Admin can delete job outputs', async ({ page }) => {
+  // This test runs against real production after deployment
+  // It verifies the feature actually works end-to-end
+  await page.goto(`${PROD_URL}/admin/jobs/${testJobId}`);
+  await page.click('[data-testid="delete-outputs-button"]');
+  await expect(page.getByText('Confirm deletion')).toBeVisible();
+  // ... complete the flow
+});
+```
+
+**Even if the test is only run once** after deployment, it's still valuable because:
+- It codifies the expected behavior completely
+- It proves the deployed code works
+- It can be re-run if issues are suspected
+- It serves as documentation for the feature
+
+### Workflow for Production-Only E2E Tests
+
+1. **Implement the feature** with unit tests and regression E2E tests (mocked API)
+2. **Write production E2E test** that exercises the real flow
+3. **Merge and deploy** to production
+4. **Run the production E2E test** to verify: `npm run test:e2e:prod -- admin-delete-outputs.spec.ts`
+5. **Commit passed** - Feature is verified working in production
+
+### Example: Converting Manual Steps to E2E
+
+**Before (manual testing in plan):**
+```
+Manual testing:
+- Create/complete a test job with YouTube/Dropbox upload
+- Navigate to admin job detail
+- Click "Delete All Outputs" button
+- Verify dialog shows, confirm deletion
+- Verify "Outputs Deleted" badge appears
+```
+
+**After (automated production E2E):**
+```typescript
+test('Delete outputs flow', async ({ page }) => {
+  // Use existing complete job or create one via API
+  const jobId = process.env.E2E_COMPLETE_JOB_ID;
+
+  await page.goto(`${PROD_URL}/admin/jobs/${jobId}`);
+  await page.click('[data-testid="delete-outputs-button"]');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.click('[data-testid="confirm-delete"]');
+  await expect(page.getByText('Outputs Deleted')).toBeVisible();
+});
+```
+
+### When to Use Each Test Type
+
+| Scenario | Test Type | Location |
+|----------|-----------|----------|
+| UI component behavior | Jest unit test | `components/__tests__/` |
+| UI flow with mocked API | Playwright regression | `e2e/regression/` |
+| Full flow against real backend | Playwright production | `e2e/production/` |
+| API endpoint logic | pytest unit test | `backend/tests/` |
+| Database operations | Emulator test | `backend/tests/emulator/` |
+
+**Default to production E2E** for any feature that involves user-facing workflows. The goal is automated verification of deployed code, not checkbox completion of manual steps.
+
 ## Core Principles
 
 ### SOLID Principles
@@ -514,8 +595,11 @@ When adding a new feature:
 2. **Unit tests** for business logic in `karaoke_gen/` or `backend/`
 3. **Backend tests** for new API endpoints
 4. **Frontend unit tests** for new components
-5. **E2E regression tests** for critical UI flows (add to `e2e/regression/`)
-6. **Update this doc** if new patterns emerge
+5. **E2E regression tests** for UI flows with mocked API (add to `e2e/regression/`)
+6. **Production E2E test** for full workflow verification (add to `e2e/production/`)
+7. **Update this doc** if new patterns emerge
+
+**Remember:** If your verification plan includes manual steps, write a production E2E test instead. See [Critical: Automate Manual Testing Steps](#critical-automate-manual-testing-steps).
 
 ## Quick Reference
 
