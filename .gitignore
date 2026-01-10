@@ -58,8 +58,7 @@ frontend/.eslintcache
 # Storybook
 frontend/storybook-static/
 
-# PWA files
-frontend/**/public/sw.js
+# PWA auto-generated files (our sw.js is hand-written and should be tracked)
 frontend/**/public/workbox-*.js
 frontend/**/public/swe-worker-*.js
 
