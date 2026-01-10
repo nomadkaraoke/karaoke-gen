@@ -202,9 +202,9 @@ class StripeService:
             return False, None, "Payment processing is not configured"
 
         try:
-            # Default URLs - redirect to homepage success page
+            # Default URLs - redirect to gen app success page
             if not success_url:
-                success_url = "https://nomadkaraoke.com/order/success/?session_id={CHECKOUT_SESSION_ID}"
+                success_url = f"{self.frontend_url}/order/success?session_id={{CHECKOUT_SESSION_ID}}"
             if not cancel_url:
                 cancel_url = "https://nomadkaraoke.com/#do-it-for-me"
 
