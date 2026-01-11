@@ -105,11 +105,11 @@ EOF
 ### GCE Encoding Worker
 ```bash
 # SSH to restart service (clears in-memory job queue)
-gcloud compute ssh encoding-worker --zone=us-central1-a --project=nomadkaraoke \
+gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
   --command="sudo systemctl restart encoding-worker"
 
 # Check health
-gcloud compute ssh encoding-worker --zone=us-central1-a --project=nomadkaraoke \
+gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
   --command="curl -s http://localhost:8080/health"
 ```
 

@@ -118,7 +118,9 @@ echo "ENCODING_API_KEY=${ENCODING_API_KEY}" > /opt/encoding-worker/env
 # This enables hot code updates without rebuilding the image
 echo "Installing latest karaoke-gen wheel from GCS..."
 gsutil cp "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl" /tmp/ 2>/dev/null || true
-WHEEL_FILE=$(ls -t /tmp/karaoke_gen-*.whl 2>/dev/null | head -1)
+# Use version sort (-V) to get the highest version, not time sort (-t)
+# All wheels download at the same time, so -t picks arbitrarily
+WHEEL_FILE=$(ls /tmp/karaoke_gen-*.whl 2>/dev/null | sort -V | tail -1)
 if [ -n "$WHEEL_FILE" ]; then
     echo "Installing wheel: $WHEEL_FILE"
     /opt/encoding-worker/venv/bin/pip install --upgrade --quiet "$WHEEL_FILE" || echo "WARNING: Failed to install wheel"

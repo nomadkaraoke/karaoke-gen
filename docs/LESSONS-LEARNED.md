@@ -148,6 +148,9 @@ Use `pulumi up --skip-preview --yes` when CI service account can't run preview. 
 ### Docker Disk Management
 Self-hosted runners need aggressive disk cleanup. Use threshold-based (70%) not age-based cleanup.
 
+### Version Sort for Artifact Selection
+When downloading multiple versioned files (wheels, tarballs), use `sort -V | tail -1` not `ls -t | head -1`. Files downloaded simultaneously have the same timestamp, so time-based sorting picks arbitrarily. Version sorting (`sort -V`) correctly identifies the highest semantic version.
+
 ---
 
 ## Performance Patterns

@@ -182,7 +182,7 @@ High-performance VM for video encoding:
 
 **Troubleshooting:**
 ```bash
-gcloud compute ssh encoding-worker --zone=us-central1-a -- \
+gcloud compute ssh encoding-worker --zone=us-central1-c -- \
   "sudo systemctl status encoding-worker"
 ```
 
