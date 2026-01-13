@@ -190,6 +190,86 @@ test.describe('User Impersonation', () => {
     const impersonateButton = adminRow.locator('button[title="Impersonate user"]');
     await expect(impersonateButton).toBeDisabled();
   });
+
+  test('clicking impersonate button makes API call', async ({ page }) => {
+    await setAuthToken(page, 'admin-test-token');
+
+    // Track if impersonate API was called
+    const impersonateCalls: string[] = [];
+
+    await setupApiFixtures(page, {
+      mocks: [
+        {
+          method: 'GET',
+          path: '/api/users/me',
+          response: { body: { user: mockAdminUser } },
+        },
+        {
+          method: 'GET',
+          path: '/api/users/admin/users',
+          response: { body: mockUserList },
+        },
+        {
+          method: 'GET',
+          path: '/api/tenant/config',
+          response: { body: { brand_code: null, is_white_label: false } },
+        },
+        // Mock the impersonate endpoint
+        {
+          method: 'POST',
+          path: '/api/admin/users/:email/impersonate',
+          response: {
+            body: {
+              session_token: 'impersonation-token-123',
+              user_email: 'user@example.com',
+              message: 'Impersonation started',
+            },
+          },
+        },
+      ],
+    });
+
+    // Also add a listener to track the actual impersonate call
+    await page.route('**/api/admin/users/*/impersonate', async (route) => {
+      const url = route.request().url();
+      const match = url.match(/\/api\/admin\/users\/([^/]+)\/impersonate/);
+      if (match) {
+        impersonateCalls.push(decodeURIComponent(match[1]));
+      }
+      // Continue to the mock server
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          session_token: 'impersonation-token-123',
+          user_email: decodeURIComponent(match?.[1] || ''),
+          message: 'Impersonation started',
+        }),
+      });
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+
+    // Find the row for the target user (not admin)
+    const targetUserRow = page.locator('tr').filter({ hasText: 'user@example.com' });
+    await expect(targetUserRow).toBeVisible();
+
+    // Get the impersonate button
+    const impersonateButton = targetUserRow.locator('button[title="Impersonate user"]');
+    await expect(impersonateButton).toBeVisible();
+    await expect(impersonateButton).toBeEnabled();
+
+    // Click the impersonate button
+    await impersonateButton.click();
+
+    // Wait a bit for the API call to be made
+    await page.waitForTimeout(1000);
+
+    // Verify the API was called
+    expect(impersonateCalls.length).toBeGreaterThan(0);
+    expect(impersonateCalls[0]).toBe('user@example.com');
+  });
 });
 
 test.describe('Impersonation Security', () => {

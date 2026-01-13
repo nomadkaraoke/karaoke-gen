@@ -70,6 +70,9 @@ export default function AdminUsersPage() {
   const [creditReason, setCreditReason] = useState("")
   const [addingCredits, setAddingCredits] = useState(false)
 
+  // Impersonation state - tracks which user is being impersonated (for loading indicator)
+  const [impersonatingEmail, setImpersonatingEmail] = useState<string | null>(null)
+
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
@@ -158,6 +161,7 @@ export default function AdminUsersPage() {
       return
     }
 
+    setImpersonatingEmail(user.email)
     try {
       const success = await startImpersonation(user.email)
       if (success) {
@@ -167,6 +171,14 @@ export default function AdminUsersPage() {
         })
         // Redirect to main app to see the user's view
         router.push("/app")
+      } else {
+        // startImpersonation returned false - get the error from auth store
+        const authError = useAuth.getState().error
+        toast({
+          title: "Impersonation Failed",
+          description: authError || "Unable to impersonate user. Please try again.",
+          variant: "destructive",
+        })
       }
     } catch (err: any) {
       toast({
@@ -174,6 +186,8 @@ export default function AdminUsersPage() {
         description: err.message || "Failed to impersonate user",
         variant: "destructive",
       })
+    } finally {
+      setImpersonatingEmail(null)
     }
   }
 
@@ -298,9 +312,13 @@ export default function AdminUsersPage() {
                         size="icon"
                         onClick={() => handleImpersonate(user)}
                         title="Impersonate user"
-                        disabled={user.email === currentUser?.email}
+                        disabled={user.email === currentUser?.email || impersonatingEmail !== null}
                       >
-                        <LogIn className="w-4 h-4" />
+                        {impersonatingEmail === user.email ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <LogIn className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
                   </TableCell>

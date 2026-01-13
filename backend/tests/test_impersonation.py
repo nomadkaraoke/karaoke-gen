@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from backend.api.routes.admin import router
 from backend.api.dependencies import require_admin
 from backend.services.user_service import get_user_service
+from backend.services.auth_service import AuthResult, UserType
 from backend.models.user import User, Session
 
 
@@ -20,15 +21,29 @@ app.include_router(router, prefix="/api")
 
 
 def get_mock_admin():
-    """Override for require_admin dependency - returns admin user."""
-    return ("admin@nomadkaraoke.com", "admin", 1)
+    """Override for require_admin dependency - returns admin AuthResult."""
+    return AuthResult(
+        is_valid=True,
+        user_type=UserType.ADMIN,
+        remaining_uses=-1,
+        message="Admin session valid",
+        user_email="admin@nomadkaraoke.com",
+        is_admin=True,
+    )
 
 
 def get_mock_regular_user():
     """Override for require_admin dependency - returns regular user (should fail)."""
     # This simulates what happens when a non-admin tries to access
     # In reality, require_admin raises 403, but we test the logic
-    return ("user@example.com", "user", 0)
+    return AuthResult(
+        is_valid=True,
+        user_type=UserType.LIMITED,
+        remaining_uses=5,
+        message="User session valid",
+        user_email="user@example.com",
+        is_admin=False,
+    )
 
 
 @pytest.fixture

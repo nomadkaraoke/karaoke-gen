@@ -1509,7 +1509,7 @@ class ImpersonateUserResponse(BaseModel):
 @router.post("/users/{email}/impersonate", response_model=ImpersonateUserResponse)
 async def impersonate_user(
     email: str,
-    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
@@ -1531,7 +1531,7 @@ async def impersonate_user(
         user_email: The impersonated user's email
         message: Success message
     """
-    admin_email = auth_data[0]
+    admin_email = auth_data.user_email or "unknown"
     target_email = email.lower()
 
     # Cannot impersonate yourself
