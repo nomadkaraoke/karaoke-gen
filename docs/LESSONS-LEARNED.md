@@ -48,6 +48,9 @@ HTTP calls to services that can restart (VMs, containers) need retry logic with 
 ### Cross-Domain localStorage
 Auth tokens in localStorage are domain-isolated. Keep auth on a single domain or use cookies with `domain=.example.com`.
 
+### Standalone HTML Pages Need Auth Fallback
+Standalone HTML pages (like instrumental review) that use magic link tokens should also check localStorage for user auth tokens. Priority: full auth token (doesn't expire) > magic link token (expires). This prevents logged-in users from being blocked when their magic link expires.
+
 ### Tab Visibility Refresh
 Use `visibilitychange` event for immediate refresh when user returns to tab, not just polling intervals.
 
