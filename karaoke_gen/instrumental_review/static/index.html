@@ -750,17 +750,35 @@
         const urlParams = new URLSearchParams(window.location.search);
         const encodedBaseApiUrl = urlParams.get('baseApiUrl');
         const instrumentalToken = urlParams.get('instrumentalToken');
-        
+
+        // Check localStorage for full auth token (logged-in users)
+        // This takes priority over instrumentalToken which can expire
+        const fullAuthToken = localStorage.getItem('karaoke_access_token');
+
         // Determine API base URL - cloud mode uses provided URL, local mode uses default
-        const API_BASE = encodedBaseApiUrl 
+        const API_BASE = encodedBaseApiUrl
             ? decodeURIComponent(encodedBaseApiUrl)
             : '/api/jobs/local';
-        
-        // Helper to add token to URL if available
+
+        // Helper to add instrumental token to URL (fallback when no full auth)
         function addTokenToUrl(url) {
             if (!instrumentalToken) return url;
             const separator = url.includes('?') ? '&' : '?';
             return `${url}${separator}instrumental_token=${encodeURIComponent(instrumentalToken)}`;
+        }
+
+        // Auth-aware fetch helper
+        // Priority: fullAuthToken (Bearer header) > instrumentalToken (query param)
+        function authFetch(url, options = {}) {
+            if (fullAuthToken) {
+                // Use Bearer auth for logged-in users
+                const headers = new Headers(options.headers || {});
+                headers.set('Authorization', `Bearer ${fullAuthToken}`);
+                return fetch(url, { ...options, headers });
+            } else {
+                // Fall back to instrumental token in URL
+                return fetch(addTokenToUrl(url), options);
+            }
         }
         
         // HTML escape helper to prevent XSS
@@ -780,8 +798,8 @@
         async function init() {
             try {
                 const [analysisRes, waveformRes] = await Promise.all([
-                    fetch(addTokenToUrl(`${API_BASE}/instrumental-analysis`)),
-                    fetch(addTokenToUrl(`${API_BASE}/waveform-data?num_points=1000`))
+                    authFetch(`${API_BASE}/instrumental-analysis`),
+                    authFetch(`${API_BASE}/waveform-data?num_points=1000`)
                 ]);
                 
                 if (!analysisRes.ok) throw new Error('Failed to load analysis');
@@ -1484,7 +1502,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                const response = await fetch(addTokenToUrl(`${API_BASE}/upload-instrumental`), {
+                const response = await authFetch(`${API_BASE}/upload-instrumental`, {
                     method: 'POST',
                     body: formData
                 });
@@ -1543,7 +1561,7 @@
             }
             
             try {
-                const response = await fetch(addTokenToUrl(`${API_BASE}/create-custom-instrumental`), {
+                const response = await authFetch(`${API_BASE}/create-custom-instrumental`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mute_regions: muteRegions })
@@ -1593,7 +1611,7 @@
             }
             
             try {
-                const response = await fetch(addTokenToUrl(`${API_BASE}/select-instrumental`), {
+                const response = await authFetch(`${API_BASE}/select-instrumental`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ selection: selectedOption })
