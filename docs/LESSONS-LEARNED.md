@@ -246,3 +246,4 @@ When mocking tenant middleware, patch both the middleware import path AND the se
 3. **Design for async human review upfront** - Avoided rearchitecting later
 4. **Keep docs minimal and current** - Less documentation, always accurate
 5. **Check gitignore early for new directories** - Especially frontend `lib/` dirs
+
