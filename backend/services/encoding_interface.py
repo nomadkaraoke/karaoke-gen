@@ -40,6 +40,9 @@ class EncodingInput:
     # Output directory
     output_dir: str = ""
 
+    # Instrumental selection (clean, with_backing, or custom)
+    instrumental_selection: str = "clean"
+
     # Additional options
     options: Dict[str, Any] = field(default_factory=dict)
 
@@ -328,6 +331,7 @@ class GCEEncodingBackend(EncodingBackend):
                 "formats": ["mp4_4k_lossless", "mp4_4k_lossy", "mkv_4k", "mp4_720p"],
                 "artist": input_config.artist,
                 "title": input_config.title,
+                "instrumental_selection": input_config.instrumental_selection,
             }
 
             # Submit and wait for completion

@@ -69,6 +69,9 @@ class OrchestratorConfig:
     # Keep existing brand code (for re-processing)
     keep_brand_code: Optional[str] = None
 
+    # Instrumental selection (clean, with_backing, or custom)
+    instrumental_selection: str = "clean"
+
     # Encoding backend preference
     encoding_backend: str = "auto"  # "auto", "local", "gce"
 
@@ -347,6 +350,7 @@ class VideoWorkerOrchestrator:
             title=self.config.title,
             brand_code=self.config.keep_brand_code,
             output_dir=self.config.output_dir,
+            instrumental_selection=self.config.instrumental_selection,
             options={
                 "job_id": self.config.job_id,
                 "input_gcs_path": input_gcs_path,
@@ -733,6 +737,9 @@ def create_orchestrator_config_from_job(
 
         # Keep existing brand code
         keep_brand_code=getattr(job, 'keep_brand_code', None),
+
+        # Instrumental selection (for GCE encoding)
+        instrumental_selection=instrumental_selection,
 
         # Encoding backend - auto selects GCE if available
         encoding_backend="auto",
