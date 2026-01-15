@@ -1022,9 +1022,34 @@ jobs:
       - name: Restart GCE Encoding Worker
         run: |
           echo "🔄 Restarting encoding worker to pick up new wheel..."
-          gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
-            --command="sudo systemctl restart encoding-worker" || true
-          echo "✅ Encoding worker restart triggered"
+
+          # Use IAP tunneling - works directly with service account credentials
+          # (avoids SSH key propagation delays that cause silent failures)
+          gcloud compute ssh encoding-worker \
+            --zone=us-central1-c \
+            --project=nomadkaraoke \
+            --tunnel-through-iap \
+            --command="sudo systemctl restart encoding-worker"
+
+          echo "⏳ Waiting for service to start..."
+          sleep 15
+
+          # Verify the restart worked by checking the wheel version
+          NEW_VERSION=$(gcloud compute ssh encoding-worker \
+            --zone=us-central1-c \
+            --project=nomadkaraoke \
+            --tunnel-through-iap \
+            --command="curl -s http://localhost:8080/health | grep -o '\"wheel_version\":\"[^\"]*\"' | cut -d'\"' -f4")
+
+          EXPECTED_VERSION=$(cat pyproject.toml | grep 'version = ' | head -1 | cut -d'"' -f2)
+
+          if [ "$NEW_VERSION" = "$EXPECTED_VERSION" ]; then
+            echo "✅ Encoding worker restarted successfully (v$NEW_VERSION)"
+          else
+            echo "⚠️ Version mismatch: encoder has v$NEW_VERSION, expected v$EXPECTED_VERSION"
+            echo "   This may indicate the restart failed or the wheel wasn't downloaded"
+            # Don't fail the build - the encoder will still work, just with old version
+          fi
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
