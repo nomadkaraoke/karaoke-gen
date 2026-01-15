@@ -20,7 +20,7 @@ def create_github_runners(
     Create GitHub Actions self-hosted runner VM instances.
 
     Creates NUM_GITHUB_RUNNERS VMs, each configured as a GitHub Actions
-    self-hosted runner for the karaoke-gen repository.
+    self-hosted runner for the nomadkaraoke organization (available to all repos).
 
     Args:
         service_account: The GitHub runner service account.

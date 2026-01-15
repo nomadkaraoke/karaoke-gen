@@ -124,23 +124,23 @@ if [ -z "$GITHUB_PAT" ]; then
     exit 1
 fi
 
-# Get runner registration token using PAT
+# Get runner registration token using PAT (organization-level)
 echo "Getting runner registration token..."
 REGISTRATION_TOKEN=$(curl -s -X POST \
     -H "Authorization: token $GITHUB_PAT" \
     -H "Accept: application/vnd.github.v3+json" \
-    https://api.github.com/repos/nomadkaraoke/karaoke-gen/actions/runners/registration-token | jq -r .token)
+    https://api.github.com/orgs/nomadkaraoke/actions/runners/registration-token | jq -r .token)
 
 if [ -z "$REGISTRATION_TOKEN" ] || [ "$REGISTRATION_TOKEN" = "null" ]; then
     echo "ERROR: Failed to get registration token"
     exit 1
 fi
 
-# Configure runner (non-interactive)
+# Configure runner (non-interactive) - registered at organization level
 echo "Configuring runner..."
 cd $RUNNER_DIR
 sudo -u runner ./config.sh \
-    --url https://github.com/nomadkaraoke/karaoke-gen \
+    --url https://github.com/nomadkaraoke \
     --token "$REGISTRATION_TOKEN" \
     --name "gcp-runner-$(hostname)" \
     --labels "self-hosted,linux,x64,gcp,large-disk" \
@@ -154,7 +154,7 @@ echo "Installing runner service..."
 ./svc.sh start
 
 echo "GitHub Actions runner setup complete at $(date)"
-echo "Runner registered with labels: self-hosted,linux,x64,gcp,large-disk"
+echo "Runner registered at organization level (nomadkaraoke) with labels: self-hosted,linux,x64,gcp,large-disk"
 
 # ==================== Setup Python in tool cache ====================
 # setup-python action looks for Python in RUNNER_TOOL_CACHE/_tool/Python

@@ -124,7 +124,7 @@ echo -n "key" | gcloud secrets versions add genius-api-key --data-file=-
 echo -n "key" | gcloud secrets versions add red-api-key --data-file=-
 echo -n "url" | gcloud secrets versions add red-api-url --data-file=-
 
-# GitHub runner PAT (repo scope)
+# GitHub runner PAT (admin:org scope for org-level runners)
 echo -n "ghp_xxx" | gcloud secrets versions add github-runner-pat --data-file=-
 ```
 
@@ -146,12 +146,14 @@ Note: `deploy.sh` uploads the source ZIP to GCS. Pulumi creates the function res
 
 ## Self-Hosted GitHub Runners
 
-20 GCP VMs serve as self-hosted runners with:
+20 GCP VMs serve as organization-level self-hosted runners, available to all repos in the `nomadkaraoke` org:
 - 200GB SSD (vs 14GB on GitHub-hosted)
 - Pre-installed: Docker, Python 3.13, Node 20, Java 21, FFmpeg
 - Labels: `self-hosted`, `linux`, `x64`, `gcp`, `large-disk`
 
-**Usage in workflows:**
+**PAT Requirements:** The `github-runner-pat` secret requires `admin:org` scope (specifically `manage_runners:org`) for organization-level runner registration.
+
+**Usage in workflows (any nomadkaraoke repo):**
 ```yaml
 runs-on: [self-hosted, linux, gcp]
 ```
