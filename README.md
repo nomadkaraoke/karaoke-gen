@@ -159,6 +159,9 @@ karaoke-gen --style_params_json="./styles.json" "Artist" "Title"
 # Generate CDG and TXT packages
 karaoke-gen --enable_cdg --enable_txt "Artist" "Title"
 
+# Skip video encoding (CDG/TXT only, faster)
+karaoke-gen --no-video --enable_cdg "Artist" "Title"
+
 # YouTube upload
 karaoke-gen --enable_youtube_upload --youtube_description_file="./desc.txt" "Artist" "Title"
 
