@@ -283,6 +283,11 @@ def create_parser(prog: str = "karaoke-gen") -> argparse.ArgumentParser:
         help="Optional: Enable TXT ZIP generation during finalisation. Example: --enable_txt",
     )
     finalise_group.add_argument(
+        "--no-video",
+        action="store_true",
+        help="Optional: Skip video encoding and distribution, generate only CDG/TXT packages. Example: --no-video --enable_cdg",
+    )
+    finalise_group.add_argument(
         "--brand_prefix",
         help="Optional: Your brand prefix to calculate the next sequential number. Example: --brand_prefix=BRAND",
     )

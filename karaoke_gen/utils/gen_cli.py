@@ -906,7 +906,7 @@ async def async_main():
             non_interactive=args.yes,
             selected_instrumental_file=selected_instrumental_file,
             countdown_padding_seconds=countdown_padding_seconds,
-            no_video=getattr(args, 'no_video', False),
+            no_video=args.no_video,
         )
 
         try:
@@ -919,7 +919,7 @@ async def async_main():
             logger.info(f"Track: {final_track['artist']} - {final_track['title']}")
             logger.info(f"")
 
-            if not getattr(args, 'no_video', False):
+            if not args.no_video:
                 logger.info(f"Working Files:")
                 logger.info(f" Video With Vocals: {final_track['video_with_vocals']}")
                 logger.info(f" Video With Instrumental: {final_track['video_with_instrumental']}")

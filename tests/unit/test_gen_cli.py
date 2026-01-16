@@ -103,6 +103,7 @@ def mock_base_args():
         discord_webhook_url=None,
         email_template_file=None,
         keep_brand_code=False,
+        no_video=False,
         yes=False, # non_interactive
     )
 
