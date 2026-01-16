@@ -1321,20 +1321,21 @@ async def test_full_cli_integration_no_video(tmp_path, mocker):
     style_params_path = data_dir / os.path.basename(source_style_params)
     shutil.copy2(source_style_params, style_params_path)
 
-    # --- Define test variables ---
+    # --- Define test variables used later in assertions ---
     artist, title = 'ABBA', 'Waterloo'
     expected_brand_code = "NOMAD-0001"
     discord_webhook_url = "https://discord.com/api/webhooks/123/abc"
     rclone_destination = "andrewdropboxfull:public_share"
 
-    # --- 2. Track Mock Calls ---
+    # --- Track Mock Calls ---
     youtube_upload_called = False
     discord_called = False
     rclone_sync_called = False
     modal_separation_called = False
     audioshake_transcription_called = False
+    video_encoding_called = False
 
-    # --- 3. Mock External Interactions ---
+    # --- 2. Mock External Interactions ---
     # Mock YouTube upload tracking
     def upload_side_effect_no_video(self, *args, **kwargs):
         nonlocal youtube_upload_called
@@ -1637,7 +1638,15 @@ async def test_full_cli_integration_no_video(tmp_path, mocker):
 
     mocker.patch('builtins.input', side_effect=mock_input_side_effect)
 
-    # --- 4. Construct Args with --no-video Flag and Call async_main ---
+    # Mock video encoding to track if it's called
+    def mock_remux_and_encode(self, *args, **kwargs):
+        nonlocal video_encoding_called
+        video_encoding_called = True
+        print("MOCK remux_and_encode_output_video_files: Video encoding called")
+
+    mocker.patch.object(KaraokeFinalise, 'remux_and_encode_output_video_files', mock_remux_and_encode)
+
+    # --- 3. Construct Args with --no-video Flag and Call async_main ---
     sys.argv = [
         'karaoke-gen',
         str(input_audio),
@@ -1658,7 +1667,7 @@ async def test_full_cli_integration_no_video(tmp_path, mocker):
     finally:
         sys.argv = original_argv
 
-    # --- 5. Assert CDG/TXT Files Were Created ---
+    # --- 4. Assert CDG/TXT Files Were Created ---
     base_name = f"{artist} - {title}"
 
     # Look for CDG/TXT files in current directory (where they're generated)
@@ -1674,15 +1683,16 @@ async def test_full_cli_integration_no_video(tmp_path, mocker):
 
     print(f"SUCCESS: CDG and TXT ZIPs created: {cdg_zip}, {txt_zip}")
 
-    # --- 6. Assert Audio Processing Still Happened ---
+    # --- 5. Assert Audio Processing Still Happened ---
     assert modal_separation_called, "Modal audio separation should have been called even with --no-video"
     assert audioshake_transcription_called, "AudioShake transcription should have been called even with --no-video"
 
     print("SUCCESS: Audio separation and transcription were called as expected")
 
-    # --- 7. Assert Distribution Features Were Skipped ---
+    # --- 6. Assert Video Encoding and Distribution Features Were Skipped ---
+    assert not video_encoding_called, "Video encoding (remux_and_encode_output_video_files) should NOT have been called with --no-video"
     assert not youtube_upload_called, "YouTube upload should NOT have been called with --no-video"
     assert not discord_called, "Discord notification should NOT have been called with --no-video"
     assert not rclone_sync_called, "Rclone sync should NOT have been called with --no-video"
 
-    print("SUCCESS: YouTube upload, Discord, and rclone sync were skipped as expected")
+    print("SUCCESS: Video encoding, YouTube upload, Discord, and rclone sync were skipped as expected")
