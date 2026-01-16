@@ -567,6 +567,7 @@ async def test_argument_passthrough(mock_run_review, mock_kfinalise, mock_kprep_
     mock_base_args.style_params_json = "/path/to/styles.json"
     mock_base_args.instrumental_format = "mp3"
     mock_base_args.yes = True # non_interactive
+    mock_base_args.no_video = True
 
     mock_kprep_instance = MagicMock()
     mock_kprep_class.return_value = mock_kprep_instance
@@ -600,6 +601,7 @@ async def test_argument_passthrough(mock_run_review, mock_kfinalise, mock_kprep_
     finalise_kwargs = mock_kfinalise.call_args.kwargs
     assert finalise_kwargs["instrumental_format"] == "mp3"
     assert finalise_kwargs["non_interactive"] is True
+    assert finalise_kwargs["no_video"] is True
 
 
 @patch("karaoke_gen.utils.gen_cli.KaraokePrep") # Use default MagicMock for class

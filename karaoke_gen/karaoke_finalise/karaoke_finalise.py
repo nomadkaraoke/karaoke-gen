@@ -1834,6 +1834,19 @@ class KaraokeFinalise:
                 "new_brand_code_dir_path": self.new_brand_code_dir_path,
                 "brand_code_dir_sharing_link": self.brand_code_dir_sharing_link,
             })
+        else:
+            result.update({
+                "video_with_vocals": None,
+                "video_with_instrumental": None,
+                "final_video": None,
+                "final_video_mkv": None,
+                "final_video_lossy": None,
+                "final_video_720p": None,
+                "youtube_url": None,
+                "brand_code": None,
+                "new_brand_code_dir_path": None,
+                "brand_code_dir_sharing_link": None,
+            })
 
         if self.enable_cdg:
             result["final_karaoke_cdg_zip"] = output_files["final_karaoke_cdg_zip"]
@@ -1841,7 +1854,7 @@ class KaraokeFinalise:
         if self.enable_txt:
             result["final_karaoke_txt_zip"] = output_files["final_karaoke_txt_zip"]
 
-        if self.email_template_file:
+        if self.email_template_file and not self.no_video:
             self.draft_completion_email(artist, title, result["youtube_url"], result["brand_code_dir_sharing_link"])
 
         return result
