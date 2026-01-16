@@ -236,7 +236,7 @@ function AppPageContent() {
                   <p>No jobs yet. Create one to get started!</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                <div className="space-y-3">
                   {jobs.map((job) => (
                     <JobCard key={job.job_id} job={job} onRefresh={loadJobs} />
                   ))}

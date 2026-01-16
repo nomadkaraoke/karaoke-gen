@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
-import { api, adminApi } from "@/lib/api"
+import { useRef, useCallback, useEffect, useState } from "react"
+import { api, adminApi, Job } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings } from "lucide-react"
@@ -18,14 +18,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 interface OutputLinksProps {
-  jobId: string
+  job: Job
 }
 
-export function OutputLinks({ jobId }: OutputLinksProps) {
-  const [downloadUrls, setDownloadUrls] = useState<Record<string, any> | null>(null)
-  const [youtubeUrl, setYoutubeUrl] = useState<string | null>(null)
-  const [dropboxUrl, setDropboxUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+export function OutputLinks({ job }: OutputLinksProps) {
+  // Use file_urls from job directly - no API call needed
+  const downloadUrls = job.file_urls || null
+  // Use state_data from job directly - no API call needed
+  const youtubeUrl = job.state_data?.youtube_url || null
+  const dropboxUrl = job.state_data?.dropbox_link || null
+
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const [copiedMessage, setCopiedMessage] = useState(false)
   const [isLoadingMessage, setIsLoadingMessage] = useState(false)
@@ -37,6 +39,15 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+      if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current)
+      if (emailTimeoutRef.current) clearTimeout(emailTimeoutRef.current)
+    }
+  }, [])
+
   const { user } = useAuth()
   const { features } = useTenant()
   const isAdmin = user?.role === 'admin'
@@ -44,46 +55,6 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
   // Filter external links based on tenant features
   const showYoutubeLink = features.youtube_upload && youtubeUrl
   const showDropboxLink = features.dropbox_upload && dropboxUrl
-
-  useEffect(() => {
-    loadOutputLinks()
-  }, [jobId])
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current)
-      }
-      if (messageTimeoutRef.current) {
-        clearTimeout(messageTimeoutRef.current)
-      }
-      if (emailTimeoutRef.current) {
-        clearTimeout(emailTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  async function loadOutputLinks() {
-    setIsLoading(true)
-    try {
-      const result = await api.getDownloadUrls(jobId)
-      setDownloadUrls(result.download_urls)
-
-      // Extract YouTube and Dropbox URLs from state_data if available
-      const job = await api.getJob(jobId)
-      if (job.state_data?.youtube_url) {
-        setYoutubeUrl(job.state_data.youtube_url)
-      }
-      if (job.state_data?.dropbox_link) {
-        setDropboxUrl(job.state_data.dropbox_link)
-      }
-    } catch (err) {
-      console.error("Failed to load output links:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const copyToClipboard = useCallback(async (url: string) => {
     // Check if clipboard API is available
@@ -118,7 +89,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
 
     setIsLoadingMessage(true)
     try {
-      const response = await adminApi.getCompletionMessage(jobId)
+      const response = await adminApi.getCompletionMessage(job.job_id)
       await navigator.clipboard.writeText(response.message)
       setCopiedMessage(true)
 
@@ -136,14 +107,14 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
     } finally {
       setIsLoadingMessage(false)
     }
-  }, [jobId])
+  }, [job.job_id])
 
   const handleSendEmail = useCallback(async () => {
     if (!emailInput.trim()) return
 
     setIsSendingEmail(true)
     try {
-      await adminApi.sendCompletionEmail(jobId, emailInput.trim(), true)
+      await adminApi.sendCompletionEmail(job.job_id, emailInput.trim(), true)
       setEmailSent(true)
 
       // Clear any existing timeout
@@ -162,16 +133,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
     } finally {
       setIsSendingEmail(false)
     }
-  }, [jobId, emailInput])
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 className="w-3 h-3 animate-spin" />
-        Loading downloads...
-      </div>
-    )
-  }
+  }, [job.job_id, emailInput])
 
   const hasOutputs = showYoutubeLink || showDropboxLink || (downloadUrls && Object.keys(downloadUrls).length > 0)
 
@@ -249,7 +211,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
             <>
                 {downloadUrls?.finals?.lossy_4k_mp4 && (
                   <a
-                    href={api.getDownloadUrl(jobId, "finals", "lossy_4k_mp4")}
+                    href={api.getDownloadUrl(job.job_id, "finals", "lossy_4k_mp4")}
                     className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -259,7 +221,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
                 )}
                 {downloadUrls?.finals?.lossy_720p_mp4 && (
                   <a
-                    href={api.getDownloadUrl(jobId, "finals", "lossy_720p_mp4")}
+                    href={api.getDownloadUrl(job.job_id, "finals", "lossy_720p_mp4")}
                     className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -269,7 +231,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
                 )}
                 {downloadUrls?.videos?.with_vocals && (
                   <a
-                    href={api.getDownloadUrl(jobId, "videos", "with_vocals")}
+                    href={api.getDownloadUrl(job.job_id, "videos", "with_vocals")}
                     className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -279,7 +241,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
                 )}
                 {downloadUrls?.packages?.cdg_zip && (
                   <a
-                    href={api.getDownloadUrl(jobId, "packages", "cdg_zip")}
+                    href={api.getDownloadUrl(job.job_id, "packages", "cdg_zip")}
                     className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -289,7 +251,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
                 )}
                 {downloadUrls?.packages?.txt_zip && (
                   <a
-                    href={api.getDownloadUrl(jobId, "packages", "txt_zip")}
+                    href={api.getDownloadUrl(job.job_id, "packages", "txt_zip")}
                     className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -330,7 +292,7 @@ export function OutputLinks({ jobId }: OutputLinksProps) {
                   </button>
                 </div>
                 <a
-                  href={`/admin/jobs/?id=${jobId}`}
+                  href={`/admin/jobs/?id=${job.job_id}`}
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                   title="View job details in admin"

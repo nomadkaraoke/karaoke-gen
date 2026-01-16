@@ -210,7 +210,7 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
       {/* Output links for completed jobs */}
       {isComplete && (
         <div className="mt-2">
-          <OutputLinks jobId={job.job_id} />
+          <OutputLinks job={job} />
         </div>
       )}
 
