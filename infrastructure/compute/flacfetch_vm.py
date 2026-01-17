@@ -11,6 +11,26 @@ from pulumi_gcp import compute, storage, serviceaccount
 from config import REGION, ZONE, MachineTypes, DiskSizes
 from .startup_scripts import read_script
 
+# Cloudflare IP ranges for firewall rules
+# Source: https://www.cloudflare.com/ips-v4
+CLOUDFLARE_IP_RANGES = [
+    "173.245.48.0/20",
+    "103.21.244.0/22",
+    "103.22.200.0/22",
+    "103.31.4.0/22",
+    "141.101.64.0/18",
+    "108.162.192.0/18",
+    "190.93.240.0/20",
+    "188.114.96.0/20",
+    "197.234.240.0/22",
+    "198.41.128.0/17",
+    "162.158.0.0/15",
+    "104.16.0.0/13",
+    "104.24.0.0/14",
+    "172.64.0.0/13",
+    "131.0.72.0/22",
+]
+
 
 def create_flacfetch_ip() -> compute.Address:
     """
@@ -79,27 +99,40 @@ def create_flacfetch_vm(
     )
 
 
-def create_flacfetch_firewall() -> compute.Firewall:
+def create_flacfetch_firewall() -> tuple[compute.Firewall, compute.Firewall]:
     """
     Create firewall rules for flacfetch.
 
-    Opens ports for:
-    - 51413 TCP/UDP: BitTorrent peer connections
-    - 8080 TCP: HTTP API
+    Creates two separate rules:
+    - BitTorrent (51413 TCP/UDP): Open to all for peer connections
+    - HTTP API (8080 TCP): Restricted to Cloudflare IPs only
 
     Returns:
-        compute.Firewall: The firewall resource.
+        tuple: (bittorrent_firewall, api_firewall) resources.
     """
-    return compute.Firewall(
-        "flacfetch-firewall",
-        name="flacfetch-firewall",
+    bittorrent_firewall = compute.Firewall(
+        "flacfetch-bittorrent-firewall",
+        name="flacfetch-bittorrent",
         network="default",
         allows=[
             compute.FirewallAllowArgs(protocol="tcp", ports=["51413"]),
             compute.FirewallAllowArgs(protocol="udp", ports=["51413"]),
-            compute.FirewallAllowArgs(protocol="tcp", ports=["8080"]),
         ],
         source_ranges=["0.0.0.0/0"],
         target_tags=["flacfetch-service"],
-        description="Firewall rules for flacfetch torrent/API service",
+        description="BitTorrent peer connections for flacfetch (open to all)",
     )
+
+    api_firewall = compute.Firewall(
+        "flacfetch-api-firewall",
+        name="flacfetch-api",
+        network="default",
+        allows=[
+            compute.FirewallAllowArgs(protocol="tcp", ports=["8080"]),
+        ],
+        source_ranges=CLOUDFLARE_IP_RANGES,
+        target_tags=["flacfetch-service"],
+        description="HTTP API for flacfetch (Cloudflare IPs only)",
+    )
+
+    return bittorrent_firewall, api_firewall

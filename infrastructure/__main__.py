@@ -243,7 +243,7 @@ gdrive_validator_scheduler = cloudscheduler.Job(
 # Flacfetch VM (audio download service)
 flacfetch_ip = flacfetch_vm.create_flacfetch_ip()
 flacfetch_instance = flacfetch_vm.create_flacfetch_vm(flacfetch_ip, flacfetch_sa, bucket)
-flacfetch_firewall = flacfetch_vm.create_flacfetch_firewall()
+flacfetch_bittorrent_fw, flacfetch_api_fw = flacfetch_vm.create_flacfetch_firewall()
 
 # Encoding Worker VM (video encoding service)
 encoding_worker_ip = encoding_worker_vm.create_encoding_worker_ip()
