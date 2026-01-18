@@ -863,11 +863,16 @@ async def enroll_beta_tester(
     e2e_bypass_key = http_request.headers.get("X-E2E-Bypass-Key")
     skip_ip_rate_limit = False
     if e2e_bypass_key and settings.e2e_bypass_key:
-        if e2e_bypass_key == settings.e2e_bypass_key:
+        # Strip whitespace to handle any encoding issues
+        received_key = e2e_bypass_key.strip()
+        expected_key = settings.e2e_bypass_key.strip()
+        if received_key == expected_key:
             logger.info(f"Beta enrollment: E2E bypass key validated for {_mask_email(email)}")
             skip_ip_rate_limit = True
         else:
-            logger.warning(f"Beta enrollment: Invalid E2E bypass key attempted for {_mask_email(email)}")
+            logger.warning(f"Beta enrollment: Invalid E2E bypass key attempted for {_mask_email(email)} "
+                          f"(received len={len(received_key)} prefix={received_key[:8] if len(received_key) >= 8 else received_key}, "
+                          f"expected len={len(expected_key)} prefix={expected_key[:8] if len(expected_key) >= 8 else expected_key})")
 
     # 4. Check IP-based enrollment rate limit (1 per 24h per IP)
     if ip_address and not skip_ip_rate_limit:
