@@ -6,7 +6,8 @@ via gcloud or the Cloud Console after resources are created.
 """
 
 import pulumi
-from pulumi_gcp import secretmanager
+import pulumi_gcp as gcp
+from pulumi_gcp import secretmanager, vpcaccess
 
 
 def create_secrets() -> dict[str, secretmanager.Secret]:
@@ -67,3 +68,34 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         )
 
     return secrets
+
+
+def create_flacfetch_internal_url_version(
+    secret: secretmanager.Secret,
+    flacfetch_instance: gcp.compute.Instance,
+    vpc_connector: vpcaccess.Connector,
+) -> secretmanager.SecretVersion:
+    """
+    Set flacfetch-api-url secret to use internal IP.
+
+    This allows Cloud Run to reach flacfetch via the VPC connector,
+    bypassing the external firewall that restricts access to Cloudflare IPs.
+
+    Args:
+        secret: The flacfetch-api-url secret.
+        flacfetch_instance: The flacfetch VM instance.
+        vpc_connector: The VPC connector (ensures it exists before setting URL).
+
+    Returns:
+        secretmanager.SecretVersion: The new secret version with internal URL.
+    """
+    internal_url = flacfetch_instance.network_interfaces[0].network_ip.apply(
+        lambda ip: f"http://{ip}:8080"
+    )
+
+    return secretmanager.SecretVersion(
+        "flacfetch-api-url-internal",
+        secret=secret.id,
+        secret_data=internal_url,
+        opts=pulumi.ResourceOptions(depends_on=[vpc_connector]),
+    )

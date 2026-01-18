@@ -37,7 +37,7 @@ from config import (
     DiskSizes,
 )
 from modules import database, storage as storage_module, artifact_registry, secrets
-from modules import cloud_tasks, cloud_run, monitoring
+from modules import cloud_tasks, cloud_run, monitoring, networking
 from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, worker_sas
 from compute import flacfetch_vm, encoding_worker_vm, github_runners
 
@@ -57,6 +57,11 @@ all_secrets = secrets.create_secrets()
 
 # Cloud Tasks queues
 queues = cloud_tasks.create_queues()
+
+# ==================== Networking ====================
+# VPC connector for Cloud Run to access internal resources (e.g., flacfetch VM)
+vpc_access_api = networking.enable_vpc_access_api()
+vpc_connector = networking.create_vpc_connector(vpc_access_api)
 
 # ==================== Cloud Build IAM ====================
 # These bindings allow Cloud Build to access Artifact Registry and deploy as the backend SA
@@ -245,6 +250,13 @@ flacfetch_ip = flacfetch_vm.create_flacfetch_ip()
 flacfetch_instance = flacfetch_vm.create_flacfetch_vm(flacfetch_ip, flacfetch_sa, bucket)
 flacfetch_bittorrent_fw, flacfetch_api_fw = flacfetch_vm.create_flacfetch_firewall()
 
+# Set flacfetch-api-url secret to use internal IP (requires VPC connector)
+flacfetch_url_version = secrets.create_flacfetch_internal_url_version(
+    all_secrets["flacfetch-api-url"],
+    flacfetch_instance,
+    vpc_connector,
+)
+
 # Encoding Worker VM (video encoding service)
 encoding_worker_ip = encoding_worker_vm.create_encoding_worker_ip()
 encoding_worker_instance = encoding_worker_vm.create_encoding_worker_vm(
@@ -322,6 +334,10 @@ pulumi.export("gdrive_validator_function_url", gdrive_validator_function.url)
 pulumi.export("gdrive_validator_function_name", gdrive_validator_function.name)
 pulumi.export("gdrive_validator_scheduler_name", gdrive_validator_scheduler.name)
 pulumi.export("gdrive_validator_service_account", gdrive_validator_sa.email)
+
+# VPC networking
+pulumi.export("vpc_connector_name", vpc_connector.name)
+pulumi.export("vpc_connector_self_link", vpc_connector.self_link)
 
 # Flacfetch
 pulumi.export("flacfetch_static_ip", flacfetch_ip.address)
