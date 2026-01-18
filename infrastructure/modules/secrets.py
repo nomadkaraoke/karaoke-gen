@@ -54,6 +54,9 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
 
         # GitHub
         "github-runner-pat",
+
+        # E2E Testing
+        "e2e-bypass-key",
     ]
 
     secrets = {}

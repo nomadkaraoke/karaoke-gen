@@ -305,6 +305,21 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.screenshot({ path: 'test-results/02a-beta-form-filled.png' });
         console.log('  Beta form filled');
 
+        // Intercept the beta enrollment request to add E2E bypass header
+        // This bypasses the IP-based rate limit that blocks repeated enrollments from the same IP
+        const bypassKey = process.env.E2E_BYPASS_KEY;
+        if (bypassKey) {
+          console.log('  Adding E2E bypass header to enrollment request');
+          await page.route('**/api/users/beta/enroll', async (route) => {
+            const request = route.request();
+            const headers = {
+              ...request.headers(),
+              'X-E2E-Bypass-Key': bypassKey,
+            };
+            await route.continue({ headers });
+          });
+        }
+
         // Submit form - look for the submit button
         const submitButton = page.getByRole('button', { name: /get.*free.*credit|submit|enroll/i });
         await expect(submitButton).toBeEnabled({ timeout: TIMEOUTS.action });

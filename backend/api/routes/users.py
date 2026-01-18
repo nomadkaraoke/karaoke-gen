@@ -858,8 +858,19 @@ async def enroll_beta_tester(
             detail="Access denied from this location"
         )
 
-    # 3. Check IP-based enrollment rate limit (1 per 24h per IP)
-    if ip_address:
+    # 3. Check for E2E test bypass (allows automated testing to skip IP rate limit)
+    from backend.config import settings
+    e2e_bypass_key = http_request.headers.get("X-E2E-Bypass-Key")
+    skip_ip_rate_limit = False
+    if e2e_bypass_key and settings.e2e_bypass_key:
+        if e2e_bypass_key == settings.e2e_bypass_key:
+            logger.info(f"Beta enrollment: E2E bypass key validated for {_mask_email(email)}")
+            skip_ip_rate_limit = True
+        else:
+            logger.warning(f"Beta enrollment: Invalid E2E bypass key attempted for {_mask_email(email)}")
+
+    # 4. Check IP-based enrollment rate limit (1 per 24h per IP)
+    if ip_address and not skip_ip_rate_limit:
         allowed, remaining, message = rate_limit_service.check_beta_ip_limit(ip_address)
         if not allowed:
             logger.warning(f"Beta enrollment rejected - IP rate limit: {ip_address} - {message}")
@@ -868,7 +879,7 @@ async def enroll_beta_tester(
                 detail="Too many beta enrollments from your location. Please try again tomorrow."
             )
 
-    # 4. Check for duplicate enrollment via normalized email
+    # 5. Check for duplicate enrollment via normalized email
     normalized_email = email_validation.normalize_email(email)
     if normalized_email != email:
         # Check if normalized version is already enrolled
