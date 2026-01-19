@@ -1192,6 +1192,7 @@ jobs:
             --memory 16Gi \
             --cpu 8 \
             --cpu-boost \
+            --no-cpu-throttling \
             --execution-environment gen2 \
             --timeout 1800 \
             --concurrency 1 \

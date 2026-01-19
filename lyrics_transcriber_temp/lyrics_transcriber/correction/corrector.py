@@ -27,6 +27,7 @@ from lyrics_transcriber.correction.anchor_sequence import AnchorSequenceFinder
 from lyrics_transcriber.correction.handlers.base import GapCorrectionHandler
 from lyrics_transcriber.correction.handlers.extend_anchor import ExtendAnchorHandler
 from lyrics_transcriber.utils.word_utils import WordUtils
+from lyrics_transcriber.utils.tracing import create_span, add_span_attribute, add_span_event
 
 
 class LyricsCorrector:
@@ -126,66 +127,91 @@ class LyricsCorrector:
             wrap this method with an outer timeout (e.g., asyncio.wait_for) as a safety
             net for hung operations.
         """
+        start_time = time.time()
+
         # Optional agentic routing flag from environment; default off for safety
         agentic_enabled = os.getenv("USE_AGENTIC_AI", "").lower() in {"1", "true", "yes"}
-        self.logger.info(f"🤖 AGENTIC MODE: {'ENABLED' if agentic_enabled else 'DISABLED'} (USE_AGENTIC_AI={os.getenv('USE_AGENTIC_AI', 'NOT_SET')})")
-        if not transcription_results:
-            self.logger.error("No transcription results available")
-            raise ValueError("No primary transcription data available")
 
-        # Store reference lyrics for use in word map
-        self.reference_lyrics = lyrics_results
+        with create_span("lyrics_corrector.run", {
+            "agentic_enabled": agentic_enabled,
+            "reference_sources": len(lyrics_results),
+            "transcription_count": len(transcription_results),
+        }) as span:
+            self.logger.info(f"🤖 AGENTIC MODE: {'ENABLED' if agentic_enabled else 'DISABLED'} (USE_AGENTIC_AI={os.getenv('USE_AGENTIC_AI', 'NOT_SET')})")
+            if not transcription_results:
+                self.logger.error("No transcription results available")
+                raise ValueError("No primary transcription data available")
 
-        # Get primary transcription
-        primary_transcription_result = sorted(transcription_results, key=lambda x: x.priority)[0]
-        primary_transcription = primary_transcription_result.result
-        transcribed_text = " ".join(" ".join(w.text for w in segment.words) for segment in primary_transcription.segments)
+            # Store reference lyrics for use in word map
+            self.reference_lyrics = lyrics_results
 
-        # Find anchor sequences and gaps
-        self.logger.debug("Finding anchor sequences and gaps")
-        anchor_sequences = self.anchor_finder.find_anchors(transcribed_text, lyrics_results, primary_transcription_result)
-        gap_sequences = self.anchor_finder.find_gaps(transcribed_text, anchor_sequences, lyrics_results, primary_transcription_result)
+            # Get primary transcription
+            primary_transcription_result = sorted(transcription_results, key=lambda x: x.priority)[0]
+            primary_transcription = primary_transcription_result.result
+            transcribed_text = " ".join(" ".join(w.text for w in segment.words) for segment in primary_transcription.segments)
 
-        # Store anchor sequences for use in correction handlers
-        self._anchor_sequences = anchor_sequences
+            # Find anchor sequences and gaps
+            self.logger.debug("Finding anchor sequences and gaps")
+            with create_span("lyrics_corrector.find_anchors_and_gaps") as anchor_span:
+                anchor_sequences = self.anchor_finder.find_anchors(transcribed_text, lyrics_results, primary_transcription_result)
+                gap_sequences = self.anchor_finder.find_gaps(transcribed_text, anchor_sequences, lyrics_results, primary_transcription_result)
+                if anchor_span:
+                    anchor_span.set_attribute("anchor_count", len(anchor_sequences))
+                    anchor_span.set_attribute("gap_count", len(gap_sequences))
 
-        # Process corrections with metadata and optional deadline for agentic timeout
-        corrections, corrected_segments, correction_steps, word_id_map, segment_id_map = self._process_corrections(
-            primary_transcription.segments, gap_sequences, metadata=metadata, deadline=agentic_deadline
-        )
+            # Store anchor sequences for use in correction handlers
+            self._anchor_sequences = anchor_sequences
 
-        # Calculate correction ratio
-        total_words = sum(len(segment.words) for segment in corrected_segments)
-        corrections_made = len(corrections)
-        correction_ratio = 1 - (corrections_made / total_words if total_words > 0 else 0)
+            # Process corrections with metadata and optional deadline for agentic timeout
+            with create_span("lyrics_corrector.process_corrections", {
+                "gap_count": len(gap_sequences),
+                "agentic_enabled": agentic_enabled,
+            }) as process_span:
+                corrections, corrected_segments, correction_steps, word_id_map, segment_id_map = self._process_corrections(
+                    primary_transcription.segments, gap_sequences, metadata=metadata, deadline=agentic_deadline
+                )
+                if process_span:
+                    process_span.set_attribute("corrections_count", len(corrections))
 
-        # Get the currently enabled handler IDs using the handler's name attribute if available
-        enabled_handlers = [getattr(handler, "name", handler.__class__.__name__) for handler in self.handlers]
+            # Calculate correction ratio
+            total_words = sum(len(segment.words) for segment in corrected_segments)
+            corrections_made = len(corrections)
+            correction_ratio = 1 - (corrections_made / total_words if total_words > 0 else 0)
 
-        result = CorrectionResult(
-            original_segments=primary_transcription.segments,
-            corrected_segments=corrected_segments,
-            corrections=corrections,
-            corrections_made=corrections_made,
-            confidence=correction_ratio,
-            reference_lyrics=lyrics_results,
-            anchor_sequences=anchor_sequences,
-            resized_segments=[],
-            gap_sequences=gap_sequences,
-            metadata={
-                "anchor_sequences_count": len(anchor_sequences),
-                "gap_sequences_count": len(gap_sequences),
-                "total_words": total_words,
-                "correction_ratio": correction_ratio,
-                "available_handlers": self.all_handlers,
-                "enabled_handlers": enabled_handlers,
-                "agentic_routing": "agentic" if agentic_enabled else "rule-based",
-            },
-            correction_steps=correction_steps,
-            word_id_map=word_id_map,
-            segment_id_map=segment_id_map,
-        )
-        return result
+            # Get the currently enabled handler IDs using the handler's name attribute if available
+            enabled_handlers = [getattr(handler, "name", handler.__class__.__name__) for handler in self.handlers]
+
+            # Add final span attributes
+            if span:
+                span.set_attribute("total_words", total_words)
+                span.set_attribute("corrections_made", corrections_made)
+                span.set_attribute("correction_ratio", correction_ratio)
+                span.set_attribute("duration_seconds", time.time() - start_time)
+
+            result = CorrectionResult(
+                original_segments=primary_transcription.segments,
+                corrected_segments=corrected_segments,
+                corrections=corrections,
+                corrections_made=corrections_made,
+                confidence=correction_ratio,
+                reference_lyrics=lyrics_results,
+                anchor_sequences=anchor_sequences,
+                resized_segments=[],
+                gap_sequences=gap_sequences,
+                metadata={
+                    "anchor_sequences_count": len(anchor_sequences),
+                    "gap_sequences_count": len(gap_sequences),
+                    "total_words": total_words,
+                    "correction_ratio": correction_ratio,
+                    "available_handlers": self.all_handlers,
+                    "enabled_handlers": enabled_handlers,
+                    "agentic_routing": "agentic" if agentic_enabled else "rule-based",
+                },
+                correction_steps=correction_steps,
+                word_id_map=word_id_map,
+                segment_id_map=segment_id_map,
+            )
+            return result
 
     def _preserve_formatting(self, original: str, new_word: str) -> str:
         """Preserve original word's formatting when applying correction."""
@@ -465,6 +491,9 @@ class LyricsCorrector:
             # Get parallel processing config
             _config = ProviderConfig.from_env()
             max_workers = _config.max_parallel_gaps
+
+            # Wrap agentic processing in a tracing span
+            add_span_event("agentic_processing_started", {"gap_count": len(gap_sequences), "max_workers": max_workers})
             self.logger.info(f"🤖 Processing {len(gap_sequences)} gaps in parallel (max_workers={max_workers})")
 
             # Pre-compute shared data structures once (not per-gap)
@@ -585,6 +614,11 @@ class LyricsCorrector:
                         self.logger.info(f"🤖 Gap {result['index']}/{len(gap_sequences)} completed ({proposal_count} proposals)")
 
             self.logger.info(f"🤖 Parallel processing complete: {completed_count}/{len(gap_sequences)} gaps processed")
+            add_span_event("agentic_processing_completed", {
+                "gaps_processed": completed_count,
+                "gaps_total": len(gap_sequences),
+                "errors": len(errors),
+            })
 
             # If any errors occurred, fail fast
             if errors:

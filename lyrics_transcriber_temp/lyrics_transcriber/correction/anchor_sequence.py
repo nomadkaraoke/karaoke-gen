@@ -8,6 +8,9 @@ from pathlib import Path
 import json
 import hashlib
 
+# Tracing utilities (optional - gracefully handles missing dependency)
+from lyrics_transcriber.utils.tracing import create_span, add_span_attribute, add_span_event
+
 from lyrics_transcriber.types import LyricsData, PhraseScore, PhraseType, AnchorSequence, GapSequence, ScoredAnchor, TranscriptionResult, Word
 from lyrics_transcriber.correction.phrase_analyzer import PhraseAnalyzer
 from lyrics_transcriber.correction.text_utils import clean_text
@@ -381,7 +384,24 @@ class AnchorSequenceFinder:
     ) -> List[ScoredAnchor]:
         """Find anchor sequences that appear in both transcription and references with timeout protection."""
         start_time = time.time()
-        
+
+        # Wrap entire operation in a tracing span
+        with create_span("anchor_search.find_anchors", {
+            "transcription.text_length": len(transcribed),
+            "reference.source_count": len(references),
+            "timeout_seconds": self.timeout_seconds,
+        }) as span:
+            return self._find_anchors_impl(transcribed, references, transcription_result, start_time, span)
+
+    def _find_anchors_impl(
+        self,
+        transcribed: str,
+        references: Dict[str, LyricsData],
+        transcription_result: TranscriptionResult,
+        start_time: float,
+        span,
+    ) -> List[ScoredAnchor]:
+        """Internal implementation of find_anchors wrapped in tracing span."""
         try:
             self.logger.info(f"🔍 ANCHOR SEARCH: Starting find_anchors with timeout {self.timeout_seconds}s")
             self.logger.info(f"🔍 ANCHOR SEARCH: Transcribed text length: {len(transcribed)}")
@@ -395,6 +415,10 @@ class AnchorSequenceFinder:
             self.logger.info(f"🔍 ANCHOR SEARCH: Checking cache at {cache_path}")
             if cached_data := self._load_from_cache(cache_path):
                 self.logger.info("🔍 ANCHOR SEARCH: ✅ Cache hit! Loading anchors from cache")
+                if span:
+                    span.set_attribute("cache_hit", True)
+                    span.set_attribute("cached_anchors", len(cached_data))
+                    span.set_attribute("duration_seconds", time.time() - start_time)
                 try:
                     # Convert cached_data to dictionary before logging
                     if cached_data:
@@ -504,9 +528,23 @@ class AnchorSequenceFinder:
                     }
 
                     completed = 0
+                    last_progress_log_time = time.time()
+                    progress_log_interval = 30  # Log every 30 seconds
+
                     for future in as_completed(future_to_n):
                         n = future_to_n[future]
                         completed += 1
+
+                        # Time-based progress logging (every 30 seconds)
+                        current_time = time.time()
+                        if current_time - last_progress_log_time >= progress_log_interval:
+                            elapsed = current_time - start_time
+                            progress_pct = (completed / len(n_gram_lengths)) * 100
+                            self.logger.info(
+                                f"🔍 ANCHOR SEARCH: Progress {completed}/{len(n_gram_lengths)} "
+                                f"({progress_pct:.1f}%) - {elapsed:.1f}s elapsed"
+                            )
+                            last_progress_log_time = current_time
 
                         # Check timeout periodically
                         if self.timeout_seconds > 0:
@@ -577,7 +615,14 @@ class AnchorSequenceFinder:
             
             total_time = time.time() - start_time
             self.logger.info(f"🔍 ANCHOR SEARCH: 🎉 Anchor sequence computation completed successfully in {total_time:.1f}s")
-            
+
+            # Add span attributes for metrics
+            if span:
+                span.set_attribute("candidate_anchors", len(candidate_anchors))
+                span.set_attribute("filtered_anchors", len(filtered_anchors))
+                span.set_attribute("duration_seconds", total_time)
+                span.set_attribute("cache_hit", False)
+
             return filtered_anchors
             
         except AnchorSequenceTimeoutError:
@@ -592,7 +637,7 @@ class AnchorSequenceFinder:
             self.logger.error(f"🔍 ANCHOR SEARCH: Traceback: {traceback.format_exc()}")
             raise
         finally:
-            # No cleanup needed for time-based timeout checks
+            # No cleanup needed - span is managed by context manager in find_anchors()
             pass
 
     def _score_sequence(self, words: List[str], context: str) -> PhraseScore:
