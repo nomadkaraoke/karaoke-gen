@@ -322,13 +322,7 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 )
 
             # Upload generated files to GCS
-            job_manager.transition_to_state(
-                job_id=job_id,
-                new_status=JobStatus.PACKAGING,
-                progress=95,
-                message="Uploading final files"
-            )
-
+            # Note: State transition to PACKAGING is handled by the orchestrator in _run_distribution()
             with job_span("upload-results", job_id):
                 await _upload_results(job_id, job_manager, storage, temp_dir, {
                     'final_video': result.final_video,
