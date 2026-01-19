@@ -401,6 +401,7 @@ class LyricsProcessor:
             output_styles_json=self.style_params_json,
             output_dir=lyrics_dir,
             render_video=False,  # Always defer - caller handles video rendering after countdown
+            allow_preview_video=self.render_video,  # Allow preview videos unless --no-video is set
             fetch_lyrics=True,
             run_transcription=not self.skip_transcription,
             run_correction=True,

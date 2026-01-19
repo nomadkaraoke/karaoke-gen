@@ -56,3 +56,7 @@ class OutputConfig:
     
     # Countdown feature for songs that start too quickly
     add_countdown: bool = True
+
+    # Whether to allow preview video generation during review
+    # Separate from render_video which controls final output
+    allow_preview_video: bool = True

@@ -350,8 +350,9 @@ def test_process_dry_run(
 @patch.object(KaraokeFinalise, 'remux_and_encode_output_video_files')
 @patch.object(KaraokeFinalise, 'execute_optional_features')
 @patch.object(KaraokeFinalise, 'draft_completion_email')
+@patch('os.getcwd', return_value=f'/some/path/{BASE_NAME}')
 def test_process_no_video_with_cdg_txt_enabled(
-    mock_draft_email, mock_exec_opt, mock_remux_encode, mock_create_txt, mock_create_cdg,
+    mock_getcwd, mock_draft_email, mock_exec_opt, mock_remux_encode, mock_create_txt, mock_create_cdg,
     mock_prep_out, mock_check_in, mock_choose_instr, mock_get_names, mock_find_vocals,
     mock_validate, finaliser_for_process):
     """Test process method with --no-video flag and CDG/TXT enabled."""
@@ -363,10 +364,12 @@ def test_process_no_video_with_cdg_txt_enabled(
 
     # Check initial steps are called
     mock_validate.assert_called_once()
-    mock_find_vocals.assert_called_once()
-    mock_get_names.assert_called_once_with(WITH_VOCALS_MOV)
+    # With --no-video, artist/title are extracted from directory name, not from video file
+    mock_find_vocals.assert_not_called()
+    mock_get_names.assert_not_called()
     mock_choose_instr.assert_called_once_with(BASE_NAME)
-    mock_check_in.assert_called_once_with(BASE_NAME, WITH_VOCALS_MOV, INSTRUMENTAL_FLAC)
+    # With --no-video, with_vocals_file is None
+    mock_check_in.assert_called_once_with(BASE_NAME, None, INSTRUMENTAL_FLAC)
     mock_prep_out.assert_called_once_with(BASE_NAME)
 
     # CDG and TXT generation should happen
@@ -406,8 +409,9 @@ def test_process_no_video_with_cdg_txt_enabled(
 @patch.object(KaraokeFinalise, 'remux_and_encode_output_video_files')
 @patch.object(KaraokeFinalise, 'execute_optional_features')
 @patch.object(KaraokeFinalise, 'draft_completion_email')
+@patch('os.getcwd', return_value=f'/some/path/{BASE_NAME}')
 def test_process_no_video_nothing_enabled(
-    mock_draft_email, mock_exec_opt, mock_remux_encode, mock_create_txt, mock_create_cdg,
+    mock_getcwd, mock_draft_email, mock_exec_opt, mock_remux_encode, mock_create_txt, mock_create_cdg,
     mock_prep_out, mock_check_in, mock_choose_instr, mock_get_names, mock_find_vocals,
     mock_validate, finaliser_for_process):
     """Test process method with --no-video flag and no output formats enabled."""
@@ -419,10 +423,12 @@ def test_process_no_video_nothing_enabled(
 
     # Check initial steps are called
     mock_validate.assert_called_once()
-    mock_find_vocals.assert_called_once()
-    mock_get_names.assert_called_once_with(WITH_VOCALS_MOV)
+    # With --no-video, artist/title are extracted from directory name, not from video file
+    mock_find_vocals.assert_not_called()
+    mock_get_names.assert_not_called()
     mock_choose_instr.assert_called_once_with(BASE_NAME)
-    mock_check_in.assert_called_once_with(BASE_NAME, WITH_VOCALS_MOV, INSTRUMENTAL_FLAC)
+    # With --no-video, with_vocals_file is None
+    mock_check_in.assert_called_once_with(BASE_NAME, None, INSTRUMENTAL_FLAC)
     mock_prep_out.assert_called_once_with(BASE_NAME)
 
     # CDG and TXT generation should NOT happen (disabled)

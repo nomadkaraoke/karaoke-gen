@@ -594,6 +594,8 @@ async def test_argument_passthrough(mock_run_review, mock_kfinalise, mock_kprep_
     assert prep_kwargs["lyrics_title"] == "Override Title"
     assert prep_kwargs["lyrics_file"] == "/path/to/lyrics.txt"
     assert prep_kwargs["style_params_json"] == "/path/to/styles.json"
+    # Verify --no-video sets render_video=False in KaraokePrep
+    assert prep_kwargs["render_video"] is False
     mock_kprep_instance.process.assert_awaited_once()
 
     # Check KaraokeFinalise args

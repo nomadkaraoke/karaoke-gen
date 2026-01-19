@@ -169,11 +169,14 @@ class KaraokeFinalise:
         self.logger.info(f"Checking required input files exist...")
 
         input_files = {
-            "title_mov": f"{base_name}{self.suffixes['title_mov']}",
-            "title_jpg": f"{base_name}{self.suffixes['title_jpg']}",
             "instrumental_audio": instrumental_audio_file,
-            "with_vocals_mov": with_vocals_file,
         }
+
+        # Video files are only required when not in --no-video mode
+        if not self.no_video:
+            input_files["title_mov"] = f"{base_name}{self.suffixes['title_mov']}"
+            input_files["title_jpg"] = f"{base_name}{self.suffixes['title_jpg']}"
+            input_files["with_vocals_mov"] = with_vocals_file
 
         optional_input_files = {
             "end_mov": f"{base_name}{self.suffixes['end_mov']}",
@@ -192,9 +195,9 @@ class KaraokeFinalise:
         for key, file_path in optional_input_files.items():
             if not os.path.isfile(file_path):
                 self.logger.info(f" Optional input file {key} not found: {file_path}")
-
-            self.logger.info(f" Input file {key} found, adding to input_files: {file_path}")
-            input_files[key] = file_path
+            else:
+                self.logger.info(f" Input file {key} found, adding to input_files: {file_path}")
+                input_files[key] = file_path
 
         return input_files
 
@@ -1778,9 +1781,25 @@ class KaraokeFinalise:
         # Check required input files and parameters exist, get user to confirm features before proceeding
         self.validate_input_parameters_for_features()
 
-        with_vocals_file = self.find_with_vocals_file()
-        base_name, artist, title = self.get_names_from_withvocals(with_vocals_file)
-        
+        # When --no-video is set, we don't have a (With Vocals).mkv file
+        # Extract artist/title from the current directory name instead
+        if self.no_video:
+            with_vocals_file = None
+            # Current directory should be "Artist - Title"
+            dir_name = os.path.basename(os.getcwd())
+            if " - " in dir_name:
+                artist, title = dir_name.split(" - ", 1)
+                base_name = dir_name
+                self.logger.info(f"--no-video mode: extracted artist/title from directory name: {dir_name}")
+            else:
+                raise Exception(
+                    f"Cannot extract artist/title from directory name '{dir_name}'. "
+                    "Expected format: 'Artist - Title'"
+                )
+        else:
+            with_vocals_file = self.find_with_vocals_file()
+            base_name, artist, title = self.get_names_from_withvocals(with_vocals_file)
+
         self.logger.info(f"Processing: {artist} - {title}")
 
         # Use the selected instrumental file if provided, otherwise search for one

@@ -71,14 +71,12 @@ def test_check_input_files_exist_missing_optional(mock_isfile, basic_finaliser):
 
     input_files = basic_finaliser.check_input_files_exist(BASE_NAME, WITH_VOCALS_MOV, INSTRUMENTAL_FLAC)
 
+    # Optional files (end_mov, end_jpg) are NOT included when they don't exist
     expected_files = {
         "title_mov": TITLE_MOV,
         "title_jpg": TITLE_JPG,
         "instrumental_audio": INSTRUMENTAL_FLAC,
         "with_vocals_mov": WITH_VOCALS_MOV,
-        # The code adds optional files even if missing, just logs it. Test reflects this.
-        "end_mov": END_MOV,
-        "end_jpg": END_JPG,
     }
     assert input_files == expected_files
     # Ensure optional files were checked

@@ -574,6 +574,10 @@ class ReviewServer:
 
     async def generate_preview_video(self, updated_data: Dict[str, Any] = Body(...)):
         """Generate a preview video with the current corrections."""
+        # Check if preview video generation is allowed (disabled with --no-video)
+        if not self.output_config.allow_preview_video:
+            raise HTTPException(status_code=400, detail="Preview video generation disabled (--no-video flag set)")
+
         try:
             # Use shared operation for preview generation
             result = CorrectionOperations.generate_preview_video(
