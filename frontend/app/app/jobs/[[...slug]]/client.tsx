@@ -85,6 +85,14 @@ function getExpectedStates(routeType: RouteType): string[] {
 function checkAndRestoreRedirect(): boolean {
   if (typeof window === 'undefined') return false
 
+  // IMPORTANT: Only check for redirect restoration if we're at the redirect target (/app/jobs/)
+  // This prevents a race condition where React on 404.html clears sessionStorage
+  // before the window.location.replace() redirect completes
+  const pathname = window.location.pathname
+  if (pathname !== '/app/jobs/' && pathname !== '/app/jobs') {
+    return false
+  }
+
   const redirectPath = sessionStorage.getItem('spa-redirect-path')
   if (redirectPath) {
     sessionStorage.removeItem('spa-redirect-path')
