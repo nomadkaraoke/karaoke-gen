@@ -24,8 +24,8 @@ const redirectScript = `<script>
   var path = window.location.pathname;
   // Handle /app/jobs/* routes (e.g., /app/jobs/abc123/review/)
   if (path.startsWith('/app/jobs/') && path !== '/app/jobs/') {
-    // Store the full path for restoration after redirect
-    sessionStorage.setItem('spa-redirect-path', path + window.location.search);
+    // Store the full path (including search and hash) for restoration after redirect
+    sessionStorage.setItem('spa-redirect-path', path + window.location.search + window.location.hash);
     // Redirect to the catch-all page
     window.location.replace('/app/jobs/');
   }
