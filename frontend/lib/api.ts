@@ -1699,7 +1699,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      */
     getAudioUrl(hash: string): string {
       const token = getAccessToken()
-      const base = `${API_BASE_URL}/api/audio/${hash}`
+      const base = `${API_BASE_URL}/api/review/${jobId}/audio/${hash}`
       return token ? `${base}?token=${encodeURIComponent(token)}` : base
     },
 
@@ -1711,7 +1711,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       message?: string
       preview_hash?: string
     }> {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/preview-video`, {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/preview-video`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1727,7 +1727,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      */
     getPreviewVideoUrl(hash: string): string {
       const token = getAccessToken()
-      const base = `${API_BASE_URL}/api/preview-video/${hash}`
+      const base = `${API_BASE_URL}/api/review/${jobId}/preview-video/${hash}`
       return token ? `${base}?token=${encodeURIComponent(token)}` : base
     },
   }
@@ -1748,9 +1748,9 @@ export const lyricsReviewApi = {
   /**
    * Get audio URL for a job by hash
    */
-  getAudioUrl(hash: string): string {
+  getAudioUrl(jobId: string, hash: string): string {
     const token = getAccessToken()
-    const base = `${API_BASE_URL}/api/audio/${hash}`
+    const base = `${API_BASE_URL}/api/review/${jobId}/audio/${hash}`
     return token ? `${base}?token=${encodeURIComponent(token)}` : base
   },
 }

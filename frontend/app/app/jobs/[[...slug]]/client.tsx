@@ -74,6 +74,13 @@ function getStoredRedirectPath(): string | null {
   const redirectPath = sessionStorage.getItem('spa-redirect-path')
   if (redirectPath) {
     sessionStorage.removeItem('spa-redirect-path')
+    // Update the URL in the address bar to reflect the actual route
+    // This allows page reload to work (browser will re-trigger the SPA redirect flow)
+    try {
+      window.history.replaceState(null, '', redirectPath)
+    } catch {
+      // Ignore errors (e.g., if the URL is invalid)
+    }
     return redirectPath
   }
   return null
@@ -102,7 +109,7 @@ export function JobRouterClient() {
   const [storedRedirectPath] = useState(() => getStoredRedirectPath())
 
   // Parse route: use stored redirect path if available, otherwise use Next.js params
-  // Note: We don't try to update the URL because Next.js will revert history.replaceState
+  // The URL is updated via history.replaceState in getStoredRedirectPath() to support page reload
   const { jobId, routeType } = storedRedirectPath
     ? parseRouteFromPath(storedRedirectPath)
     : parseRoute(slug)
