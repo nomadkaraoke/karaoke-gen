@@ -1267,4 +1267,432 @@ async def test_full_cli_integration(tmp_path, mocker):
 
     # Pyperclip
     # Check if it was called at least once (exact calls can be tricky with multiple potential copies)
-    assert mock_pyperclip.call_count >= 1 
+    assert mock_pyperclip.call_count >= 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+@pytest.mark.slow
+async def test_full_cli_integration_no_video(tmp_path, mocker):
+    """Tests the full CLI workflow with --no-video flag to ensure CDG/TXT are generated but video encoding is skipped."""
+
+    # --- 1. Setup Temporary Directories and Files (same as full test) ---
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    organised_dir = tmp_path / "organised"
+    organised_dir.mkdir()
+    public_share_dir = tmp_path / "public_share"
+    public_share_dir.mkdir()
+    public_share_mp4_dir = public_share_dir / "MP4"
+    public_share_mp4_dir.mkdir()
+    public_share_720p_dir = public_share_dir / "MP4-720p"
+    public_share_720p_dir.mkdir()
+    public_share_cdg_dir = public_share_dir / "CDG"
+    public_share_cdg_dir.mkdir()
+
+    # Copy input audio
+    source_audio = "tests/data/waterloo10sec.flac"
+    input_audio = data_dir / os.path.basename(source_audio)
+    shutil.copy2(source_audio, input_audio)
+
+    # Copy background images to /tmp directory
+    background_images = [
+        "karaoke-background-image-nomad-4k.png",
+        "karaoke-title-screen-background-nomad-4k.png",
+        "cdg-instrumental-background-nomad-notes.png",
+        "cdg-title-screen-background-nomad-simple.png"
+    ]
+    for image_name in background_images:
+        source_image = f"tests/data/{image_name}"
+        if os.path.exists(source_image):
+            dest_image = f"/tmp/{image_name}"
+            shutil.copy2(source_image, dest_image)
+            print(f"Copied {source_image} to {dest_image}")
+
+    # Copy font file
+    font_source = "karaoke_gen/resources/AvenirNext-Bold.ttf"
+    font_dest = "/tmp/AvenirNext-Bold.ttf"
+    if os.path.exists(font_source):
+        shutil.copy2(font_source, font_dest)
+        print(f"Copied {font_source} to {font_dest}")
+
+    # Copy styles.json
+    source_style_params = "tests/data/styles.json"
+    style_params_path = data_dir / os.path.basename(source_style_params)
+    shutil.copy2(source_style_params, style_params_path)
+
+    # --- Define test variables used later in assertions ---
+    artist, title = 'ABBA', 'Waterloo'
+    expected_brand_code = "NOMAD-0001"
+    discord_webhook_url = "https://discord.com/api/webhooks/123/abc"
+    rclone_destination = "andrewdropboxfull:public_share"
+
+    # --- Track Mock Calls ---
+    youtube_upload_called = False
+    discord_called = False
+    rclone_sync_called = False
+    modal_separation_called = False
+    audioshake_transcription_called = False
+    video_encoding_called = False
+
+    # --- 2. Mock External Interactions ---
+    # Mock YouTube upload tracking
+    def upload_side_effect_no_video(self, *args, **kwargs):
+        nonlocal youtube_upload_called
+        youtube_upload_called = True
+        self.youtube_video_id = 'mock_video_id'
+        self.youtube_url = f"https://www.youtube.com/watch?v=mock_video_id"
+
+    mock_upload = mocker.patch.object(
+        KaraokeFinalise,
+        'upload_final_mp4_to_youtube_with_title_thumbnail',
+        side_effect=upload_side_effect_no_video,
+        autospec=True
+    )
+
+    # Mock Discord notification tracking
+    def discord_side_effect(*args, **kwargs):
+        nonlocal discord_called
+        discord_called = True
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_requests_post = mocker.patch('requests.post', side_effect=discord_side_effect)
+
+    # Store originals for directory operations
+    original_os_chdir = os.chdir
+    original_os_getcwd = os.getcwd
+    original_os_listdir = os.listdir
+
+    # Track current mocked directory
+    mock_cwd_stack = [str(tmp_path)]
+
+    def mock_current_dir_state():
+        return mock_cwd_stack[-1] if mock_cwd_stack else str(tmp_path)
+
+    def chdir_side_effect(path):
+        abs_path = path if os.path.isabs(path) else os.path.abspath(os.path.join(mock_current_dir_state(), path))
+        # Create directory if it doesn't exist
+        if not os.path.exists(abs_path):
+            os.makedirs(abs_path, exist_ok=True)
+            print(f"MOCK os.chdir: Created directory {abs_path}")
+        mock_cwd_stack.append(abs_path)
+        print(f"MOCK os.chdir: Changed to {abs_path}")
+        return original_os_chdir(abs_path)
+
+    def getcwd_side_effect():
+        current = mock_current_dir_state()
+        print(f"MOCK os.getcwd: Returning {current}")
+        return current
+
+    mocker.patch('os.chdir', side_effect=chdir_side_effect)
+    mocker.patch('os.getcwd', side_effect=getcwd_side_effect)
+
+    # Track execute_command calls for rclone sync detection
+    execute_command_calls = []
+
+    def mock_execute_command(command, description=""):
+        nonlocal rclone_sync_called
+        execute_command_calls.append((command, description))
+        if 'rclone copy' in command or 'rclone sync' in command:
+            rclone_sync_called = True
+        print(f"MOCK execute_command: {description} - {command}")
+        return 0
+
+    mocker.patch('karaoke_gen.karaoke_finalise.karaoke_finalise.KaraokeFinalise.execute_command', mock_execute_command)
+
+    # Mock subprocess.run for ffmpeg and rclone
+    original_subprocess_run = subprocess.run
+
+    def subprocess_run_side_effect(*args, **kwargs):
+        cmd_arg = args[0] if args else kwargs.get('args', [])
+        cmd_str = cmd_arg if isinstance(cmd_arg, str) else " ".join(map(str, cmd_arg))
+
+        # Track rclone calls
+        if isinstance(cmd_arg, list) and len(cmd_arg) > 0 and cmd_arg[0] == "rclone":
+            nonlocal rclone_sync_called
+            rclone_sync_called = True
+            print(f"MOCK subprocess.run: Detected rclone command: {cmd_str}")
+            return subprocess.CompletedProcess(args=cmd_arg, returncode=0, stdout="", stderr="")
+
+        # Handle ffmpeg commands - create dummy output files
+        if isinstance(cmd_arg, list) and len(cmd_arg) > 0 and cmd_arg[0] == "ffmpeg":
+            print(f"MOCK subprocess.run: Simulating ffmpeg command: {cmd_str}")
+
+            # Extract output file path
+            output_path = None
+            for i, arg in enumerate(cmd_arg):
+                if arg.endswith((".mp4", ".mkv", ".wav", ".mp3")) and i > 0 and cmd_arg[i-1] != "-i":
+                    output_path = arg
+                    break
+
+            if output_path:
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                with open(output_path, 'w') as f:
+                    f.write('dummy ffmpeg output for testing')
+                print(f"MOCK subprocess.run: Created dummy file at {output_path}")
+
+            return subprocess.CompletedProcess(args=cmd_arg, returncode=0, stdout="", stderr="")
+
+        # Execute ffprobe and uname normally
+        if isinstance(cmd_arg, list) and len(cmd_arg) > 0 and cmd_arg[0] in ["ffprobe", "uname"]:
+            return original_subprocess_run(*args, **kwargs)
+
+        # Default: return success
+        return subprocess.CompletedProcess(args=cmd_arg, returncode=0, stdout="", stderr="")
+
+    mocker.patch('subprocess.run', side_effect=subprocess_run_side_effect)
+
+    # Mock Modal separation tracking
+    def mock_process_audio_separation(audio_file, artist_title, track_output_dir):
+        nonlocal modal_separation_called
+        modal_separation_called = True
+        print(f"MOCK process_audio_separation: Creating instrumental file for {artist_title}")
+
+        model_name = "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
+        instrumental_file = os.path.join(track_output_dir, f"{artist_title} (Instrumental {model_name}).flac")
+
+        with open(instrumental_file, "w") as f:
+            f.write("dummy instrumental audio content")
+
+        return {
+            "instrumental_path": instrumental_file,
+            "clean_instrumental": {"instrumental": instrumental_file},
+        }
+
+    mocker.patch(
+        'karaoke_gen.audio_processor.AudioProcessor.process_audio_separation',
+        side_effect=mock_process_audio_separation
+    )
+
+    # Mock AudioShake transcription tracking
+    def mock_transcribe_lyrics_side_effect(*args, **kwargs):
+        nonlocal audioshake_transcription_called
+        audioshake_transcription_called = True
+        print("MOCK transcribe_lyrics: Creating LRC file")
+
+        track_output_dir = args[3] if len(args) > 3 else kwargs.get('track_output_dir')
+        artist = args[1] if len(args) > 1 else kwargs.get('artist', 'ABBA')
+        title = args[2] if len(args) > 2 else kwargs.get('title', 'Waterloo')
+
+        lrc_path = os.path.join(track_output_dir, f"{artist} - {title} (Karaoke).lrc")
+        video_path = os.path.join(track_output_dir, f"{artist} - {title} (With Vocals).mkv")
+
+        # Create LRC file
+        with open(lrc_path, "w") as f:
+            lrc_content = """[00:01.000]This is a test song
+[00:03.000]With some sample lyrics here
+[00:07.000]For testing purposes only
+[00:09.000]Generic placeholder content
+[00:13.000]Test lyrics continue
+[00:15.000]End of test content"""
+            f.write(lrc_content)
+
+        # Create dummy video file
+        with open(video_path, "w") as f:
+            f.write("dummy mkv content for testing")
+
+        # Create additional required files
+        for suffix in ["(Title).mov", "(Title).jpg", "(End).mov", "(End).jpg"]:
+            filepath = os.path.join(track_output_dir, f"{artist} - {title} {suffix}")
+            with open(filepath, "w") as f:
+                f.write("dummy content")
+
+        return {
+            "lrc_filepath": lrc_path,
+            "corrected_lyrics_text": "Mock corrected lyrics text",
+        }
+
+    mocker.patch(
+        'karaoke_gen.lyrics_processor.LyricsProcessor.transcribe_lyrics',
+        side_effect=mock_transcribe_lyrics_side_effect
+    )
+
+    # Mock WAV conversion
+    def mock_convert_to_wav(input_filename, output_filename_no_extension):
+        output_wav_path = f"{output_filename_no_extension}.wav"
+        print(f"MOCK convert_to_wav: Creating dummy WAV at {output_wav_path}")
+        with open(output_wav_path, "w") as f:
+            f.write("dummy wav content")
+        return output_wav_path
+
+    mocker.patch(
+        'karaoke_gen.file_handler.FileHandler.convert_to_wav',
+        side_effect=mock_convert_to_wav
+    )
+
+    # Mock CDG generation to create actual files
+    def mock_create_cdg_zip_file(self, input_files, output_files, artist, title):
+        import zipfile
+        print("MOCK create_cdg_zip_file: Creating CDG ZIP")
+
+        cdg_file = f"{artist} - {title} (Karaoke).cdg"
+        mp3_file = f"{artist} - {title} (Karaoke).mp3"
+        zip_file = f"{artist} - {title} (Final Karaoke CDG).zip"
+
+        # Create component files
+        with open(cdg_file, "w") as f:
+            f.write("dummy CDG content")
+        with open(mp3_file, "w") as f:
+            f.write("dummy MP3 content")
+
+        # Create ZIP
+        with zipfile.ZipFile(zip_file, 'w') as zf:
+            zf.write(cdg_file, os.path.basename(cdg_file))
+            zf.write(mp3_file, os.path.basename(mp3_file))
+
+        output_files['karaoke_cdg'] = cdg_file
+        output_files['karaoke_mp3'] = mp3_file
+        output_files['final_karaoke_cdg_zip'] = zip_file
+
+        print(f"MOCK create_cdg_zip_file: Created {zip_file}")
+
+    mocker.patch.object(KaraokeFinalise, 'create_cdg_zip_file', mock_create_cdg_zip_file)
+
+    # Mock TXT generation to create actual files
+    def mock_create_txt_zip_file(self, input_files, output_files):
+        import zipfile
+        print("MOCK create_txt_zip_file: Creating TXT ZIP")
+
+        base_name = "ABBA - Waterloo"
+        txt_file = f"{base_name} (Karaoke).txt"
+        zip_file = f"{base_name} (Final Karaoke TXT).zip"
+
+        # Create TXT file
+        with open(txt_file, "w") as f:
+            f.write("This is a test song\nWith some sample lyrics\nFor testing purposes")
+
+        # Create ZIP
+        with zipfile.ZipFile(zip_file, 'w') as zf:
+            zf.write(txt_file, os.path.basename(txt_file))
+
+        output_files['karaoke_txt'] = txt_file
+        output_files['final_karaoke_txt_zip'] = zip_file
+
+        print(f"MOCK create_txt_zip_file: Created {zip_file}")
+
+    mocker.patch.object(KaraokeFinalise, 'create_txt_zip_file', mock_create_txt_zip_file)
+
+    # Mock instrumental file finder
+    def mock_find_with_vocals_file(self):
+        with_vocals_file = "ABBA - Waterloo (With Vocals).mkv"
+        print(f"MOCK find_with_vocals_file: Returning {with_vocals_file}")
+        return with_vocals_file
+
+    mocker.patch.object(KaraokeFinalise, 'find_with_vocals_file', mock_find_with_vocals_file)
+
+    # Mock instrumental chooser
+    def mock_choose_instrumental_audio_file(self, base_name):
+        instrumental_file = "ABBA - Waterloo (Instrumental model_bs_roformer_ep_317_sdr_12.9755.ckpt).flac"
+        print(f"MOCK choose_instrumental_audio_file: Returning {instrumental_file}")
+        return instrumental_file
+
+    mocker.patch.object(KaraokeFinalise, 'choose_instrumental_audio_file', mock_choose_instrumental_audio_file)
+
+    # Mock auto_select_instrumental to return the instrumental file path
+    def mock_auto_select_instrumental(track: dict, track_dir: str, logger):
+        artist = track.get('artist', 'ABBA')
+        title = track.get('title', 'Waterloo')
+        model_name = "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
+        instrumental_file = f"{artist} - {title} (Instrumental {model_name}).flac"
+
+        # Create the instrumental file in the current directory
+        with open(instrumental_file, "w") as f:
+            f.write("dummy instrumental audio content")
+
+        print(f"MOCK auto_select_instrumental: Created and returning {instrumental_file}")
+        return instrumental_file
+
+    mocker.patch('karaoke_gen.utils.gen_cli.auto_select_instrumental', mock_auto_select_instrumental)
+
+    # Mock check_input_files_exist to bypass file existence checks
+    def mock_check_input_files_exist(self, base_name, with_vocals_file, instrumental_audio_file):
+        print(f"MOCK check_input_files_exist: Returning mock input files dict")
+        return {
+            "title_mov": f"{base_name} (Title).mov",
+            "title_jpg": f"{base_name} (Title).jpg",
+            "instrumental_audio": instrumental_audio_file,
+            "with_vocals_mov": with_vocals_file,
+            "karaoke_lrc": f"{base_name} (Karaoke).lrc",
+            "end_mov": f"{base_name} (End).mov",
+            "end_jpg": f"{base_name} (End).jpg",
+        }
+
+    mocker.patch.object(KaraokeFinalise, 'check_input_files_exist', mock_check_input_files_exist)
+
+    # Mock ReviewServer to bypass UI
+    def mock_start_return_self_correction_result(mock_instance):
+        return mock_instance.correction_result
+
+    mocker.patch(
+        'lyrics_transcriber.review.server.ReviewServer.start',
+        side_effect=mock_start_return_self_correction_result,
+        autospec=True
+    )
+
+    # Mock input to handle unexpected prompts
+    def mock_input_side_effect(prompt=""):
+        print(f"MOCK input: Received prompt: '{prompt}'")
+        return "unexpected_input_response"
+
+    mocker.patch('builtins.input', side_effect=mock_input_side_effect)
+
+    # Mock video encoding to track if it's called
+    def mock_remux_and_encode(self, *args, **kwargs):
+        nonlocal video_encoding_called
+        video_encoding_called = True
+        print("MOCK remux_and_encode_output_video_files: Video encoding called")
+
+    mocker.patch.object(KaraokeFinalise, 'remux_and_encode_output_video_files', mock_remux_and_encode)
+
+    # --- 3. Construct Args with --no-video Flag and Call async_main ---
+    sys.argv = [
+        'karaoke-gen',
+        str(input_audio),
+        artist,
+        title,
+        '--style_params_json', str(style_params_path),
+        '--enable_cdg',
+        '--enable_txt',
+        '--no-video',  # KEY FLAG: Skip video encoding and distribution
+        '-y',
+        '--log_level', 'DEBUG',
+        '--skip_instrumental_review',
+    ]
+
+    original_argv = sys.argv
+    try:
+        await async_main()
+    finally:
+        sys.argv = original_argv
+
+    # --- 4. Assert CDG/TXT Files Were Created ---
+    base_name = f"{artist} - {title}"
+
+    # Look for CDG/TXT files in current directory (where they're generated)
+    current_dir = os.getcwd()
+
+    cdg_zip = os.path.join(current_dir, f"{base_name} (Final Karaoke CDG).zip")
+    txt_zip = os.path.join(current_dir, f"{base_name} (Final Karaoke TXT).zip")
+
+    assert os.path.isfile(cdg_zip), f"CDG ZIP not found: {cdg_zip}"
+    assert os.path.getsize(cdg_zip) > 0, f"CDG ZIP is empty: {cdg_zip}"
+    assert os.path.isfile(txt_zip), f"TXT ZIP not found: {txt_zip}"
+    assert os.path.getsize(txt_zip) > 0, f"TXT ZIP is empty: {txt_zip}"
+
+    print(f"SUCCESS: CDG and TXT ZIPs created: {cdg_zip}, {txt_zip}")
+
+    # --- 5. Assert Audio Processing Still Happened ---
+    assert modal_separation_called, "Modal audio separation should have been called even with --no-video"
+    assert audioshake_transcription_called, "AudioShake transcription should have been called even with --no-video"
+
+    print("SUCCESS: Audio separation and transcription were called as expected")
+
+    # --- 6. Assert Video Encoding and Distribution Features Were Skipped ---
+    assert not video_encoding_called, "Video encoding (remux_and_encode_output_video_files) should NOT have been called with --no-video"
+    assert not youtube_upload_called, "YouTube upload should NOT have been called with --no-video"
+    assert not discord_called, "Discord notification should NOT have been called with --no-video"
+    assert not rclone_sync_called, "Rclone sync should NOT have been called with --no-video"
+
+    print("SUCCESS: Video encoding, YouTube upload, Discord, and rclone sync were skipped as expected")

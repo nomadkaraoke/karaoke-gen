@@ -49,6 +49,7 @@ class KaraokeFinalise:
         server_side_mode=False,  # New parameter for server-side deployment
         selected_instrumental_file=None,  # Add support for pre-selected instrumental file
         countdown_padding_seconds=None,  # Padding applied to vocals; instrumental must match
+        no_video=False,  # Skip video encoding and distribution
     ):
         self.log_level = log_level
         self.log_formatter = log_formatter
@@ -111,6 +112,7 @@ class KaraokeFinalise:
         self.server_side_mode = server_side_mode
         self.selected_instrumental_file = selected_instrumental_file
         self.countdown_padding_seconds = countdown_padding_seconds
+        self.no_video = no_video
 
         self.suffixes = {
             "title_mov": " (Title).mov",
@@ -1804,27 +1806,47 @@ class KaraokeFinalise:
             self.create_txt_zip_file(input_files, output_files)
             self.logger.info("TXT package created successfully")
 
-        self.logger.info("Starting video encoding (this is the longest step, ~15-20 minutes)...")
-        self.remux_and_encode_output_video_files(with_vocals_file, input_files, output_files)
-        self.logger.info("Video encoding completed successfully")
+        if not self.no_video:
+            self.logger.info("Starting video encoding (this is the longest step, ~15-20 minutes)...")
+            self.remux_and_encode_output_video_files(with_vocals_file, input_files, output_files)
+            self.logger.info("Video encoding completed successfully")
 
-        self.logger.info("Executing distribution features (YouTube, Dropbox, Discord)...")
-        self.execute_optional_features(artist, title, base_name, input_files, output_files, replace_existing)
+            self.logger.info("Executing distribution features (YouTube, Dropbox, Discord)...")
+            self.execute_optional_features(artist, title, base_name, input_files, output_files, replace_existing)
+        else:
+            self.logger.info("--no-video flag set: Skipping video encoding and distribution")
 
         result = {
             "artist": artist,
             "title": title,
-            "video_with_vocals": output_files["with_vocals_mp4"],
-            "video_with_instrumental": output_files["karaoke_mp4"],
-            "final_video": output_files["final_karaoke_lossless_mp4"],
-            "final_video_mkv": output_files["final_karaoke_lossless_mkv"],
-            "final_video_lossy": output_files["final_karaoke_lossy_mp4"],
-            "final_video_720p": output_files["final_karaoke_lossy_720p_mp4"],
-            "youtube_url": self.youtube_url,
-            "brand_code": self.brand_code,
-            "new_brand_code_dir_path": self.new_brand_code_dir_path,
-            "brand_code_dir_sharing_link": self.brand_code_dir_sharing_link,
         }
+
+        if not self.no_video:
+            result.update({
+                "video_with_vocals": output_files["with_vocals_mp4"],
+                "video_with_instrumental": output_files["karaoke_mp4"],
+                "final_video": output_files["final_karaoke_lossless_mp4"],
+                "final_video_mkv": output_files["final_karaoke_lossless_mkv"],
+                "final_video_lossy": output_files["final_karaoke_lossy_mp4"],
+                "final_video_720p": output_files["final_karaoke_lossy_720p_mp4"],
+                "youtube_url": self.youtube_url,
+                "brand_code": self.brand_code,
+                "new_brand_code_dir_path": self.new_brand_code_dir_path,
+                "brand_code_dir_sharing_link": self.brand_code_dir_sharing_link,
+            })
+        else:
+            result.update({
+                "video_with_vocals": None,
+                "video_with_instrumental": None,
+                "final_video": None,
+                "final_video_mkv": None,
+                "final_video_lossy": None,
+                "final_video_720p": None,
+                "youtube_url": None,
+                "brand_code": None,
+                "new_brand_code_dir_path": None,
+                "brand_code_dir_sharing_link": None,
+            })
 
         if self.enable_cdg:
             result["final_karaoke_cdg_zip"] = output_files["final_karaoke_cdg_zip"]
@@ -1832,7 +1854,7 @@ class KaraokeFinalise:
         if self.enable_txt:
             result["final_karaoke_txt_zip"] = output_files["final_karaoke_txt_zip"]
 
-        if self.email_template_file:
+        if self.email_template_file and not self.no_video:
             self.draft_completion_email(artist, title, result["youtube_url"], result["brand_code_dir_sharing_link"])
 
         return result

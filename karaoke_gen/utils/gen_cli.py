@@ -910,6 +910,7 @@ async def async_main():
             non_interactive=args.yes,
             selected_instrumental_file=selected_instrumental_file,
             countdown_padding_seconds=countdown_padding_seconds,
+            no_video=args.no_video,
         )
 
         try:
@@ -921,15 +922,17 @@ async def async_main():
             logger.info(f"")
             logger.info(f"Track: {final_track['artist']} - {final_track['title']}")
             logger.info(f"")
-            logger.info(f"Working Files:")
-            logger.info(f" Video With Vocals: {final_track['video_with_vocals']}")
-            logger.info(f" Video With Instrumental: {final_track['video_with_instrumental']}")
-            logger.info(f"")
-            logger.info(f"Final Videos:")
-            logger.info(f" Lossless 4K MP4 (PCM): {final_track['final_video']}")
-            logger.info(f" Lossless 4K MKV (FLAC): {final_track['final_video_mkv']}")
-            logger.info(f" Lossy 4K MP4 (AAC): {final_track['final_video_lossy']}")
-            logger.info(f" Lossy 720p MP4 (AAC): {final_track['final_video_720p']}")
+
+            if not args.no_video:
+                logger.info(f"Working Files:")
+                logger.info(f" Video With Vocals: {final_track['video_with_vocals']}")
+                logger.info(f" Video With Instrumental: {final_track['video_with_instrumental']}")
+                logger.info(f"")
+                logger.info(f"Final Videos:")
+                logger.info(f" Lossless 4K MP4 (PCM): {final_track['final_video']}")
+                logger.info(f" Lossless 4K MKV (FLAC): {final_track['final_video_mkv']}")
+                logger.info(f" Lossy 4K MP4 (AAC): {final_track['final_video_lossy']}")
+                logger.info(f" Lossy 720p MP4 (AAC): {final_track['final_video_720p']}")
 
             if "final_karaoke_cdg_zip" in final_track or "final_karaoke_txt_zip" in final_track:
                 logger.info(f"")

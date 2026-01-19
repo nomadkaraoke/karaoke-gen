@@ -337,3 +337,115 @@ def test_process_dry_run(
     mock_remux_encode.assert_called_once()
     mock_exec_opt.assert_called_once()
     mock_draft_email.assert_called_once()
+
+
+@patch.object(KaraokeFinalise, 'validate_input_parameters_for_features')
+@patch.object(KaraokeFinalise, 'find_with_vocals_file', return_value=WITH_VOCALS_MOV)
+@patch.object(KaraokeFinalise, 'get_names_from_withvocals', return_value=(BASE_NAME, ARTIST, TITLE))
+@patch.object(KaraokeFinalise, 'choose_instrumental_audio_file', return_value=INSTRUMENTAL_FLAC)
+@patch.object(KaraokeFinalise, 'check_input_files_exist', return_value=ALL_INPUT_FILES)
+@patch.object(KaraokeFinalise, 'prepare_output_filenames', return_value=ALL_OUTPUT_FILES)
+@patch.object(KaraokeFinalise, 'create_cdg_zip_file')
+@patch.object(KaraokeFinalise, 'create_txt_zip_file')
+@patch.object(KaraokeFinalise, 'remux_and_encode_output_video_files')
+@patch.object(KaraokeFinalise, 'execute_optional_features')
+@patch.object(KaraokeFinalise, 'draft_completion_email')
+def test_process_no_video_with_cdg_txt_enabled(
+    mock_draft_email, mock_exec_opt, mock_remux_encode, mock_create_txt, mock_create_cdg,
+    mock_prep_out, mock_check_in, mock_choose_instr, mock_get_names, mock_find_vocals,
+    mock_validate, finaliser_for_process):
+    """Test process method with --no-video flag and CDG/TXT enabled."""
+    finaliser_for_process.enable_cdg = True
+    finaliser_for_process.enable_txt = True
+    finaliser_for_process.no_video = True
+
+    result = finaliser_for_process.process()
+
+    # Check initial steps are called
+    mock_validate.assert_called_once()
+    mock_find_vocals.assert_called_once()
+    mock_get_names.assert_called_once_with(WITH_VOCALS_MOV)
+    mock_choose_instr.assert_called_once_with(BASE_NAME)
+    mock_check_in.assert_called_once_with(BASE_NAME, WITH_VOCALS_MOV, INSTRUMENTAL_FLAC)
+    mock_prep_out.assert_called_once_with(BASE_NAME)
+
+    # CDG and TXT generation should happen
+    mock_create_cdg.assert_called_once_with(ALL_INPUT_FILES, ALL_OUTPUT_FILES, ARTIST, TITLE)
+    mock_create_txt.assert_called_once_with(ALL_INPUT_FILES, ALL_OUTPUT_FILES)
+
+    # Video encoding and distribution should be skipped
+    mock_remux_encode.assert_not_called()
+    mock_exec_opt.assert_not_called()
+    mock_draft_email.assert_not_called()
+
+    # Check result dictionary includes CDG/TXT and has video keys set to None
+    assert result["artist"] == ARTIST
+    assert result["title"] == TITLE
+    assert result["final_karaoke_cdg_zip"] == ALL_OUTPUT_FILES["final_karaoke_cdg_zip"]
+    assert result["final_karaoke_txt_zip"] == ALL_OUTPUT_FILES["final_karaoke_txt_zip"]
+    assert result["video_with_vocals"] is None
+    assert result["video_with_instrumental"] is None
+    assert result["final_video"] is None
+    assert result["final_video_mkv"] is None
+    assert result["final_video_lossy"] is None
+    assert result["final_video_720p"] is None
+    assert result["youtube_url"] is None
+    assert result["brand_code"] is None
+    assert result["new_brand_code_dir_path"] is None
+    assert result["brand_code_dir_sharing_link"] is None
+
+
+@patch.object(KaraokeFinalise, 'validate_input_parameters_for_features')
+@patch.object(KaraokeFinalise, 'find_with_vocals_file', return_value=WITH_VOCALS_MOV)
+@patch.object(KaraokeFinalise, 'get_names_from_withvocals', return_value=(BASE_NAME, ARTIST, TITLE))
+@patch.object(KaraokeFinalise, 'choose_instrumental_audio_file', return_value=INSTRUMENTAL_FLAC)
+@patch.object(KaraokeFinalise, 'check_input_files_exist', return_value=ALL_INPUT_FILES)
+@patch.object(KaraokeFinalise, 'prepare_output_filenames', return_value=ALL_OUTPUT_FILES)
+@patch.object(KaraokeFinalise, 'create_cdg_zip_file')
+@patch.object(KaraokeFinalise, 'create_txt_zip_file')
+@patch.object(KaraokeFinalise, 'remux_and_encode_output_video_files')
+@patch.object(KaraokeFinalise, 'execute_optional_features')
+@patch.object(KaraokeFinalise, 'draft_completion_email')
+def test_process_no_video_nothing_enabled(
+    mock_draft_email, mock_exec_opt, mock_remux_encode, mock_create_txt, mock_create_cdg,
+    mock_prep_out, mock_check_in, mock_choose_instr, mock_get_names, mock_find_vocals,
+    mock_validate, finaliser_for_process):
+    """Test process method with --no-video flag and no output formats enabled."""
+    finaliser_for_process.enable_cdg = False
+    finaliser_for_process.enable_txt = False
+    finaliser_for_process.no_video = True
+
+    result = finaliser_for_process.process()
+
+    # Check initial steps are called
+    mock_validate.assert_called_once()
+    mock_find_vocals.assert_called_once()
+    mock_get_names.assert_called_once_with(WITH_VOCALS_MOV)
+    mock_choose_instr.assert_called_once_with(BASE_NAME)
+    mock_check_in.assert_called_once_with(BASE_NAME, WITH_VOCALS_MOV, INSTRUMENTAL_FLAC)
+    mock_prep_out.assert_called_once_with(BASE_NAME)
+
+    # CDG and TXT generation should NOT happen (disabled)
+    mock_create_cdg.assert_not_called()
+    mock_create_txt.assert_not_called()
+
+    # Video encoding and distribution should be skipped
+    mock_remux_encode.assert_not_called()
+    mock_exec_opt.assert_not_called()
+    mock_draft_email.assert_not_called()
+
+    # Check result dictionary includes artist/title and video keys set to None
+    assert result["artist"] == ARTIST
+    assert result["title"] == TITLE
+    assert "final_karaoke_cdg_zip" not in result
+    assert "final_karaoke_txt_zip" not in result
+    assert result["video_with_vocals"] is None
+    assert result["video_with_instrumental"] is None
+    assert result["final_video"] is None
+    assert result["final_video_mkv"] is None
+    assert result["final_video_lossy"] is None
+    assert result["final_video_720p"] is None
+    assert result["youtube_url"] is None
+    assert result["brand_code"] is None
+    assert result["new_brand_code_dir_path"] is None
+    assert result["brand_code_dir_sharing_link"] is None
