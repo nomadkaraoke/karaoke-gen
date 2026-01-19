@@ -3,7 +3,7 @@
   "version": "0.84.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build && node scripts/spa-redirect-404.js",
     "dev": "next dev",
     "dev:with-lyrics": "concurrently -n karaoke,lyrics -c blue,green \"npm run dev\" \"npm run dev:lyrics\"",
     "dev:lyrics": "cd ../lyrics_transcriber_temp/lyrics_transcriber/frontend && npm run dev",

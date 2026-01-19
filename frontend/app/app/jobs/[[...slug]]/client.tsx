@@ -63,6 +63,21 @@ export function JobRouterClient() {
   const router = useRouter()
   const slug = params.slug as string[] | undefined
 
+  // SPA redirect restoration for GitHub Pages
+  // If we were redirected from 404.html, restore the original URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const redirectPath = sessionStorage.getItem('spa-redirect-path')
+      if (redirectPath) {
+        sessionStorage.removeItem('spa-redirect-path')
+        // Replace the URL without navigation to restore the original path
+        window.history.replaceState(null, '', redirectPath)
+        // Force a re-render by navigating to the restored path
+        router.replace(redirectPath)
+      }
+    }
+  }, [router])
+
   const { jobId, routeType } = parseRoute(slug)
 
   const { user, isLoading: authLoading } = useAuth()
