@@ -80,27 +80,38 @@ function getExpectedStates(routeType: RouteType): string[] {
   }
 }
 
-// Check for pending SPA redirect synchronously (before first render)
-// This avoids a flash of "invalid route" while the redirect is being processed
-function checkAndRestoreRedirect(): boolean {
-  if (typeof window === 'undefined') return false
+// Check for pending SPA redirect and return the stored path if found
+// This is used on GitHub Pages where dynamic routes aren't pre-rendered
+function getStoredRedirectPath(): string | null {
+  if (typeof window === 'undefined') return null
 
-  // IMPORTANT: Only check for redirect restoration if we're at the redirect target (/app/jobs/)
+  // Only check for redirect restoration if we're at the redirect target (/app/jobs/)
   // This prevents a race condition where React on 404.html clears sessionStorage
   // before the window.location.replace() redirect completes
   const pathname = window.location.pathname
   if (pathname !== '/app/jobs/' && pathname !== '/app/jobs') {
-    return false
+    return null
   }
 
   const redirectPath = sessionStorage.getItem('spa-redirect-path')
   if (redirectPath) {
     sessionStorage.removeItem('spa-redirect-path')
-    // Replace the URL without triggering navigation (just update the address bar)
-    window.history.replaceState(null, '', redirectPath)
-    return true
+    return redirectPath
   }
-  return false
+  return null
+}
+
+// Parse route from a stored redirect path
+function parseRouteFromPath(path: string): { jobId: string | null; routeType: RouteType } {
+  // Remove query string and hash for matching
+  const pathname = path.split('?')[0].split('#')[0]
+  const match = pathname.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental)\/?$/)
+
+  if (match) {
+    const [, jobId, action] = match
+    return { jobId, routeType: action as RouteType }
+  }
+  return { jobId: null, routeType: "unknown" }
 }
 
 export function JobRouterClient() {
@@ -108,14 +119,14 @@ export function JobRouterClient() {
   const router = useRouter()
   const slug = params.slug as string[] | undefined
 
-  // Check for redirect restoration synchronously on first render
+  // Check for stored redirect path from GitHub Pages SPA redirect
   // Using lazy initializer to run only once and avoid SSR issues
-  const [restoredFromRedirect] = useState(() => checkAndRestoreRedirect())
+  const [storedRedirectPath] = useState(() => getStoredRedirectPath())
 
-  // Parse route: use window.location if restored from redirect, otherwise use Next.js params
-  // This is necessary because useParams() won't update after history.replaceState
-  const { jobId, routeType } = restoredFromRedirect
-    ? parseRouteFromPathname()
+  // Parse route: use stored redirect path if available, otherwise use Next.js params
+  // Note: We don't try to update the URL because Next.js will revert history.replaceState
+  const { jobId, routeType } = storedRedirectPath
+    ? parseRouteFromPath(storedRedirectPath)
     : parseRoute(slug)
 
   const { user, isLoading: authLoading } = useAuth()
