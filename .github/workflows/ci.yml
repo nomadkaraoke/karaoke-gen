@@ -866,50 +866,22 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Enable Yarn (for lyrics frontend)
-        run: corepack enable
-
-      # ===== Build Main Frontend (Next.js) =====
-      - name: Install main frontend dependencies
+      # ===== Build Unified Frontend (Next.js) =====
+      # NOTE: Lyrics review and instrumental review UIs were consolidated into
+      # the main Next.js frontend (PR #267, Jan 2025). The unified frontend
+      # serves all three UIs from a single codebase at:
+      # - / (main app)
+      # - /app/jobs/{id}/lyrics (lyrics review)
+      # - /app/jobs/{id}/instrumental (instrumental review)
+      - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci --legacy-peer-deps
 
-      - name: Build main frontend (Next.js static export)
+      - name: Build frontend (Next.js static export)
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: https://api.nomadkaraoke.com
         run: npm run build
-
-      # ===== Build Lyrics Review Frontend (Vite) =====
-      - name: Cache Yarn dependencies (lyrics frontend)
-        uses: actions/cache@v4
-        with:
-          path: lyrics_transcriber_temp/lyrics_transcriber/frontend/node_modules
-          key: yarn-lyrics-${{ runner.os }}-${{ hashFiles('lyrics_transcriber_temp/lyrics_transcriber/frontend/yarn.lock') }}
-          restore-keys: |
-            yarn-lyrics-${{ runner.os }}-
-
-      - name: Install lyrics frontend dependencies
-        working-directory: lyrics_transcriber_temp/lyrics_transcriber/frontend
-        run: yarn install --frozen-lockfile
-
-      - name: Build lyrics frontend (Vite)
-        working-directory: lyrics_transcriber_temp/lyrics_transcriber/frontend
-        env:
-          # Set base path for subpath deployment
-          VITE_BASE_PATH: /lyrics/
-        run: yarn build --base=/lyrics/
-
-      - name: Copy lyrics frontend to main output
-        run: |
-          mkdir -p frontend/out/lyrics
-          cp -r lyrics_transcriber_temp/lyrics_transcriber/frontend/dist/* frontend/out/lyrics/
-
-      # ===== Copy Instrumental Review UI (Static HTML) =====
-      - name: Copy instrumental review UI to main output
-        run: |
-          mkdir -p frontend/out/instrumental
-          cp karaoke_gen/instrumental_review/static/index.html frontend/out/instrumental/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
