@@ -82,8 +82,8 @@ function getStoredRedirectPath(): string | null {
 // Parse route from a stored redirect path
 function parseRouteFromPath(path: string): { jobId: string | null; routeType: RouteType } {
   // Remove query string and hash for matching
-  const pathname = path.split('?')[0].split('#')[0]
-  const match = pathname.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental)\/?$/)
+  const cleanPath = path.split('?')[0].split('#')[0]
+  const match = cleanPath.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental)\/?$/)
 
   if (match) {
     const [, jobId, action] = match
