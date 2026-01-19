@@ -411,7 +411,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
             )}
 {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/static/nomad-karaoke-logo.svg"
+              src="/nomad-karaoke-logo.svg"
               alt="Nomad Karaoke"
               style={{ height: 40 }}
             />
