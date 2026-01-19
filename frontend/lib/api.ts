@@ -1739,7 +1739,7 @@ export const lyricsReviewApi = {
    * Get correction data for a job
    */
   async getCorrectionData(jobId: string): Promise<CorrectionData> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/corrections`, {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/correction-data`, {
       headers: getAuthHeaders()
     })
     return handleResponse<CorrectionData>(response)
