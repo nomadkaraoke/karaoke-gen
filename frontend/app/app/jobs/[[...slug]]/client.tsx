@@ -47,28 +47,6 @@ function parseRoute(slug: string[] | undefined): { jobId: string | null; routeTy
   return { jobId: null, routeType: "unknown" }
 }
 
-// Parse route directly from window.location.pathname
-// Used after SPA redirect restoration since useParams() won't update
-function parseRouteFromPathname(): { jobId: string | null; routeType: RouteType } {
-  if (typeof window === 'undefined') {
-    return { jobId: null, routeType: "unknown" }
-  }
-
-  const pathname = window.location.pathname
-  // Match /app/jobs/{jobId}/{action}/ or /app/jobs/{jobId}/{action}
-  const match = pathname.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental)\/?$/)
-
-  if (match) {
-    const [, jobId, action] = match
-    return {
-      jobId,
-      routeType: action as RouteType
-    }
-  }
-
-  return { jobId: null, routeType: "unknown" }
-}
-
 function getExpectedStates(routeType: RouteType): string[] {
   switch (routeType) {
     case "review":
