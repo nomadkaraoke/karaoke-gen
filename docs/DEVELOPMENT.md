@@ -194,6 +194,93 @@ karaoke-gen/
 └── scripts/              # Dev scripts
 ```
 
+## Observability & Debugging
+
+The backend exports OpenTelemetry traces to Google Cloud Trace. Use these for investigating production issues.
+
+### Accessing Cloud Trace
+
+**Cloud Console (easiest for browsing):**
+```
+https://console.cloud.google.com/traces/list?project=nomadkaraoke
+```
+
+**CLI queries:**
+```bash
+# List recent traces (requires `gcloud alpha` for trace commands)
+# Easier to use the Console UI for trace browsing
+
+# Find traces by job_id in logs, then correlate with Cloud Trace
+gcloud logging read 'resource.type="cloud_run_revision" textPayload=~"JOB_ID"' \
+  --project=nomadkaraoke --limit=50
+```
+
+### Key Traced Spans
+
+| Span Name | What It Measures | Key Attributes |
+|-----------|------------------|----------------|
+| `lyrics_corrector.run` | Full lyrics correction pipeline | `word_count`, `reference_count` |
+| `lyrics_corrector.find_anchors_and_gaps` | Anchor sequence matching | `anchor_count`, `gap_count` |
+| `lyrics_corrector.process_corrections` | Agentic correction processing | `gap_count`, `total_proposals` |
+| `anchor_search.find_anchors` | N-gram parallel processing | `transcription.text_length`, `timeout_seconds` |
+| `agentic.propose_for_gap` | AI gap classification | `gap_id`, `word_count`, `gap_category` |
+| `add-lyrics` | Adding reference lyrics | `job_id`, `source` |
+| `generate-preview-video` | Video preview generation | `job_id`, `use_gce` |
+
+### Investigating Slow Operations
+
+1. **Find the trace**: Go to Cloud Trace console, filter by time range around the failure
+2. **Look at waterfall**: Identify which span took longest
+3. **Check attributes**: Each span has metadata (word counts, durations, etc.)
+4. **Correlate with logs**: Use timestamp and job_id to find related logs
+
+### Example Investigation Workflow
+
+```bash
+# 1. Find job failures in logs
+gcloud logging read 'resource.type="cloud_run_revision" severity>=ERROR' \
+  --project=nomadkaraoke --limit=20 --format="table(timestamp,textPayload)"
+
+# 2. Get timeline for specific job
+./scripts/debug-job.sh <job_id>
+
+# 3. Check anchor search progress (time-based logging every 30s)
+gcloud logging read 'resource.type="cloud_run_revision" "ANCHOR SEARCH: Progress"' \
+  --project=nomadkaraoke --limit=20
+
+# 4. Open Cloud Trace to see detailed timing breakdown
+# Filter traces by time window when the job ran
+```
+
+### Debugging Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `./scripts/debug-job.sh <job_id>` | Show job status, timeline, logs, GCS files |
+| `./scripts/get_job.py <job_id>` | Fetch raw job data from Firestore |
+| `./scripts/fetch_job_logs.py <job_id>` | Download all logs for a job to local file |
+
+### Adding New Traces
+
+When adding new operations that may need investigation:
+
+```python
+from lyrics_transcriber.utils.tracing import create_span, add_span_attribute
+
+with create_span("operation_name", {"initial": "attributes"}) as span:
+    # ... do work ...
+    if span:
+        span.set_attribute("result_count", len(results))
+```
+
+For backend code:
+```python
+from backend.services.tracing import create_span
+
+with create_span("operation_name", {"job_id": job_id}) as span:
+    # ... do work ...
+```
+
 ## Troubleshooting
 
 ### Emulators Won't Start
