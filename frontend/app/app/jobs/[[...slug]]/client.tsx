@@ -47,6 +47,28 @@ function parseRoute(slug: string[] | undefined): { jobId: string | null; routeTy
   return { jobId: null, routeType: "unknown" }
 }
 
+// Parse route directly from window.location.pathname
+// Used after SPA redirect restoration since useParams() won't update
+function parseRouteFromPathname(): { jobId: string | null; routeType: RouteType } {
+  if (typeof window === 'undefined') {
+    return { jobId: null, routeType: "unknown" }
+  }
+
+  const pathname = window.location.pathname
+  // Match /app/jobs/{jobId}/{action}/ or /app/jobs/{jobId}/{action}
+  const match = pathname.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental)\/?$/)
+
+  if (match) {
+    const [, jobId, action] = match
+    return {
+      jobId,
+      routeType: action as RouteType
+    }
+  }
+
+  return { jobId: null, routeType: "unknown" }
+}
+
 function getExpectedStates(routeType: RouteType): string[] {
   switch (routeType) {
     case "review":
@@ -58,27 +80,35 @@ function getExpectedStates(routeType: RouteType): string[] {
   }
 }
 
+// Check for pending SPA redirect synchronously (before first render)
+// This avoids a flash of "invalid route" while the redirect is being processed
+function checkAndRestoreRedirect(): boolean {
+  if (typeof window === 'undefined') return false
+
+  const redirectPath = sessionStorage.getItem('spa-redirect-path')
+  if (redirectPath) {
+    sessionStorage.removeItem('spa-redirect-path')
+    // Replace the URL without triggering navigation (just update the address bar)
+    window.history.replaceState(null, '', redirectPath)
+    return true
+  }
+  return false
+}
+
 export function JobRouterClient() {
   const params = useParams()
   const router = useRouter()
   const slug = params.slug as string[] | undefined
 
-  // SPA redirect restoration for GitHub Pages
-  // If we were redirected from 404.html, restore the original URL
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const redirectPath = sessionStorage.getItem('spa-redirect-path')
-      if (redirectPath) {
-        sessionStorage.removeItem('spa-redirect-path')
-        // Replace the URL without navigation to restore the original path
-        window.history.replaceState(null, '', redirectPath)
-        // Force a re-render by navigating to the restored path
-        router.replace(redirectPath)
-      }
-    }
-  }, [router])
+  // Check for redirect restoration synchronously on first render
+  // Using lazy initializer to run only once and avoid SSR issues
+  const [restoredFromRedirect] = useState(() => checkAndRestoreRedirect())
 
-  const { jobId, routeType } = parseRoute(slug)
+  // Parse route: use window.location if restored from redirect, otherwise use Next.js params
+  // This is necessary because useParams() won't update after history.replaceState
+  const { jobId, routeType } = restoredFromRedirect
+    ? parseRouteFromPathname()
+    : parseRoute(slug)
 
   const { user, isLoading: authLoading } = useAuth()
   const [accessState, setAccessState] = useState<AccessState>({ status: "loading" })
