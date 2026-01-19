@@ -233,8 +233,10 @@ class AgenticCorrector:
                 logger.warning(f"🤖 Classification failed for gap {gap_id}, flagging for review")
                 if span:
                     span.set_attribute("classification_failed", True)
+                # Safely extract word IDs, filtering out any missing/None values
+                word_ids = [w.get('id') for w in gap_words if w.get('id') is not None]
                 return [CorrectionProposal(
-                    word_ids=[w['id'] for w in gap_words],
+                    word_ids=word_ids,
                     action="Flag",
                     confidence=0.0,
                     reason="Classification failed - unable to categorize gap",
@@ -278,15 +280,21 @@ class AgenticCorrector:
                 return proposals
 
             except Exception as e:
-                logger.error(f"🤖 Handler failed for gap {gap_id} (category: {classification.category}): {e}")
+                # Sanitize error message - use exception class name and truncated message
+                error_type = type(e).__name__
+                error_msg_truncated = str(e)[:50] if str(e) else "Unknown error"
+                sanitized_error = f"{error_type}: {error_msg_truncated}"
+                logger.error(f"🤖 Handler failed for gap {gap_id} (category: {classification.category}): {sanitized_error}")
                 if span:
-                    span.set_attribute("handler_error", str(e)[:100])
+                    span.set_attribute("handler_error", sanitized_error)
+                # Safely extract word IDs, filtering out any missing/None values
+                word_ids = [w.get('id') for w in gap_words if w.get('id') is not None]
                 # Handler failed, flag for human review
                 return [CorrectionProposal(
-                    word_ids=[w['id'] for w in gap_words],
+                    word_ids=word_ids,
                     action="Flag",
                     confidence=0.0,
-                    reason=f"Handler error for category {classification.category}: {str(e)}",
+                    reason=f"Handler error for category {classification.category} ({error_type})",
                     gap_category=classification.category,
                     requires_human_review=True,
                     artist=artist,
