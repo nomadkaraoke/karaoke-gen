@@ -195,9 +195,9 @@ def main():
 
     # Import after path setup
     try:
-        from lyrics_transcriber.correction.agentic.agent import AgenticCorrector
-        from lyrics_transcriber.correction.agentic.router import ModelRouter
-        from lyrics_transcriber.correction.agentic.providers.config import ProviderConfig
+        from karaoke_gen.lyrics_transcriber.correction.agentic.agent import AgenticCorrector
+        from karaoke_gen.lyrics_transcriber.correction.agentic.router import ModelRouter
+        from karaoke_gen.lyrics_transcriber.correction.agentic.providers.config import ProviderConfig
     except ImportError as e:
         logger.error(f"Failed to import agentic correction modules: {e}")
         logger.error("Make sure you're running from the karaoke-gen directory")

@@ -655,7 +655,7 @@ async def test_full_cli_integration(tmp_path, mocker):
 
     # Patch the 'start' method where ReviewServer is defined
     mocker.patch(
-        'lyrics_transcriber.review.server.ReviewServer.start',
+        'karaoke_gen.lyrics_transcriber.review.server.ReviewServer.start',
         side_effect=mock_start_return_self_correction_result,
         autospec=True
     )
@@ -805,7 +805,7 @@ async def test_full_cli_integration(tmp_path, mocker):
         
         return cdg_file, mp3_file, zip_file
     
-    mocker.patch('lyrics_transcriber.output.cdg.CDGGenerator.generate_cdg_from_lrc', 
+    mocker.patch('karaoke_gen.lyrics_transcriber.output.cdg.CDGGenerator.generate_cdg_from_lrc', 
                  side_effect=mock_generate_cdg_from_lrc)
 
     # Mock all FFmpeg command execution in finalisation to prevent system dependencies

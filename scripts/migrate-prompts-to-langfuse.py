@@ -119,7 +119,7 @@ Provide ONLY the JSON response, no other text."""
 
 def get_examples():
     """Get the few-shot examples from the hardcoded source."""
-    from lyrics_transcriber.correction.agentic.prompts.classifier import get_hardcoded_examples
+    from karaoke_gen.lyrics_transcriber.correction.agentic.prompts.classifier import get_hardcoded_examples
 
     examples = get_hardcoded_examples()
 

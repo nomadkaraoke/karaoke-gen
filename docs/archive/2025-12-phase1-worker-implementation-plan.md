@@ -175,8 +175,8 @@ config = LyricsTranscriberConfig(
 **Key Insight:** Uses `OutputGenerator` from LyricsTranscriber library:
 
 ```python
-from lyrics_transcriber.output.generator import OutputGenerator
-from lyrics_transcriber.correction.corrector import CorrectionResult
+from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+from karaoke_gen.lyrics_transcriber.correction.corrector import CorrectionResult
 
 # Load corrected data (from human review)
 correction_result = CorrectionResult.from_dict(corrections_data)
@@ -382,9 +382,9 @@ POST /api/jobs/{job_id}/select-instrumental
 ### Example: Using OutputGenerator
 
 ```python
-from lyrics_transcriber.output.generator import OutputGenerator
-from lyrics_transcriber.correction.corrector import CorrectionResult
-from lyrics_transcriber.core.config import OutputConfig
+from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+from karaoke_gen.lyrics_transcriber.correction.corrector import CorrectionResult
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 
 # 1. Load corrected data from GCS (after human review)
 corrections_data = download_json_from_gcs(f"jobs/{job_id}/corrections_updated.json")

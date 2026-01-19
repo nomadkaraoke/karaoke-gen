@@ -201,7 +201,7 @@ class TestPackagingServiceCDGPackage:
             assert result[1] == mp3_file
             assert result[2] == cdg_file
 
-    @patch("lyrics_transcriber.output.cdg.CDGGenerator")
+    @patch("karaoke_gen.lyrics_transcriber.output.cdg.CDGGenerator")
     def test_create_cdg_package_with_generator(self, mock_cdg_generator_class):
         """Test CDG package creation using CDGGenerator."""
         with tempfile.TemporaryDirectory() as tmpdir:

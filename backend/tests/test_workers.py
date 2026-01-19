@@ -560,7 +560,7 @@ class TestRenderVideoWorkerCountdownPadding:
     
     def test_countdown_processor_has_process_method(self):
         """Test that CountdownProcessor has the process method (main API)."""
-        from lyrics_transcriber.output.countdown_processor import CountdownProcessor
+        from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
         
         countdown_processor = CountdownProcessor(cache_dir="/tmp")
         assert hasattr(countdown_processor, 'process')
@@ -568,7 +568,7 @@ class TestRenderVideoWorkerCountdownPadding:
     
     def test_countdown_processor_constants(self):
         """Test that CountdownProcessor has expected constants."""
-        from lyrics_transcriber.output.countdown_processor import CountdownProcessor
+        from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
         
         # Verify the constants exist (these control countdown behavior)
         assert hasattr(CountdownProcessor, 'COUNTDOWN_TEXT')

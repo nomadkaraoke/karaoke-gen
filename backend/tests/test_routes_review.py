@@ -204,7 +204,7 @@ class TestAddLyricsEndpoint:
     
     def test_add_lyrics_uses_correction_operations(self):
         """Verify CorrectionOperations.add_lyrics_source is available."""
-        from lyrics_transcriber.correction.operations import CorrectionOperations
+        from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
         
         # The method should exist
         assert hasattr(CorrectionOperations, 'add_lyrics_source')

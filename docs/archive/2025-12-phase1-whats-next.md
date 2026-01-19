@@ -246,9 +246,9 @@ import logging
 import tempfile
 from typing import Optional
 
-from lyrics_transcriber.output.generator import OutputGenerator
-from lyrics_transcriber.correction.corrector import CorrectionResult
-from lyrics_transcriber.core.config import OutputConfig
+from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+from karaoke_gen.lyrics_transcriber.correction.corrector import CorrectionResult
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 
 from backend.services.job_manager import job_manager
 from backend.services.storage_service import storage

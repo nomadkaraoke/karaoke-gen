@@ -33,9 +33,9 @@ from backend.services.auth_service import UserType
 from backend.config import get_settings
 
 # LyricsTranscriber imports for preview generation
-from lyrics_transcriber.types import CorrectionResult
-from lyrics_transcriber.core.config import OutputConfig
-from lyrics_transcriber.correction.operations import CorrectionOperations
+from karaoke_gen.lyrics_transcriber.types import CorrectionResult
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
+from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
 
 # Import from the unified style loader
 from karaoke_gen.style_loader import load_styles_from_gcs

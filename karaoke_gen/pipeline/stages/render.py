@@ -22,7 +22,7 @@ class RenderStage(PipelineStage):
     Video rendering stage.
     
     Renders the karaoke video with synchronized lyrics overlay.
-    Uses OutputGenerator from lyrics_transcriber.
+    Uses OutputGenerator from karaoke_gen.lyrics_transcriber.
     """
     
     def __init__(
@@ -91,7 +91,7 @@ class RenderStage(PipelineStage):
                 )
             
             # Import OutputGenerator
-            from lyrics_transcriber import OutputGenerator, OutputConfig
+            from karaoke_gen.lyrics_transcriber import OutputGenerator, OutputConfig
             
             # Build output config
             output_config = OutputConfig(

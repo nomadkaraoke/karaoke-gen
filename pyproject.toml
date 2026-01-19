@@ -7,15 +7,14 @@ license = "MIT"
 readme = "README.md"
 packages = [
     { include = "karaoke_gen" },
-    { include = "lyrics_transcriber", from = "libs" },
     { include = "backend" }
 ]
 include = [
     "karaoke_gen/nextjs_frontend/out",
     "karaoke_gen/nextjs_frontend/out/**/*",
-    "libs/lyrics_transcriber/output/fonts/*",
-    "libs/lyrics_transcriber/output/cdgmaker/images/*",
-    "libs/lyrics_transcriber/output/cdgmaker/transitions/*"
+    "karaoke_gen/lyrics_transcriber/output/fonts/*",
+    "karaoke_gen/lyrics_transcriber/output/cdgmaker/images/*",
+    "karaoke_gen/lyrics_transcriber/output/cdgmaker/transitions/*"
 ]
 homepage = "https://github.com/nomadkaraoke/karaoke-gen"
 repository = "https://github.com/nomadkaraoke/karaoke-gen"
@@ -39,7 +38,7 @@ thefuzz = ">=0.22"
 numpy = ">=2"
 audio-separator = { version = ">=0.34.0", extras = ["cpu"] }
 lyrics-converter = ">=0.2.1"
-# lyrics-transcriber is vendored in libs/lyrics_transcriber/ and included via packages
+# lyrics_transcriber is now a subpackage of karaoke_gen (karaoke_gen/lyrics_transcriber/)
 # Dependencies from vendored lyrics_transcriber:
 mutagen = ">=1.47"  # For LRCLIB provider to get track duration for better matching
 python-slugify = ">=8"

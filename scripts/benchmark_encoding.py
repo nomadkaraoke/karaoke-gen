@@ -229,7 +229,7 @@ def run_benchmarks(benchmark_dir: Path, output_dir: Path) -> List[BenchmarkResul
     from backend.services.local_preview_encoding_service import (
         LocalPreviewEncodingService, PreviewEncodingConfig
     )
-    from lyrics_transcriber.output.video import VideoGenerator
+    from karaoke_gen.lyrics_transcriber.output.video import VideoGenerator
 
     results = []
     output_dir.mkdir(parents=True, exist_ok=True)

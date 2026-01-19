@@ -181,7 +181,7 @@ You can also detect from LRC files:
 To disable countdown for a specific transcription:
 
 ```python
-from lyrics_transcriber.core.config import OutputConfig
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 
 output_config = OutputConfig(
     # ... other options

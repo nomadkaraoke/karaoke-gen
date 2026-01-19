@@ -57,7 +57,7 @@ karaoke-gen/
 
 1. **`libs/`** - Clear convention for vendored/embedded libraries, separate from main codebase
 2. **Single level** - `lyrics_transcriber` directly under `libs/`, not nested (no `libs/lyrics_transcriber/lyrics_transcriber/`)
-3. **Clean imports** - `from lyrics_transcriber.core import ...` continues to work with proper Poetry config
+3. **Clean imports** - `from karaoke_gen.lyrics_transcriber.core import ...` continues to work with proper Poetry config
 
 ### pyproject.toml Changes
 
@@ -132,7 +132,7 @@ From current `lyrics_transcriber_temp/`:
 7. [ ] Remove `lyrics_transcriber_temp/` directory (with all its extra files)
 8. [ ] Update `pyproject.toml` packages and include paths
 9. [ ] Update the one script that references `lyrics_transcriber_temp` directly:
-   - `scripts/benchmark_encoding.py` line 232: change `from lyrics_transcriber_temp.lyrics_transcriber.output.video` to `from lyrics_transcriber.output.video`
+   - `scripts/benchmark_encoding.py` line 232: change `from lyrics_transcriber_temp.lyrics_transcriber.output.video` to `from karaoke_gen.lyrics_transcriber.output.video`
 
 ### Phase 3: Verify and Test
 
@@ -140,9 +140,9 @@ From current `lyrics_transcriber_temp/`:
 11. [ ] Run `make test` to ensure all tests pass
 12. [ ] Verify imports work:
     ```python
-    from lyrics_transcriber.core.controller import LyricsControllerResult
-    from lyrics_transcriber.output.generator import OutputGenerator
-    from lyrics_transcriber.types import CorrectionResult
+    from karaoke_gen.lyrics_transcriber.core.controller import LyricsControllerResult
+    from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+    from karaoke_gen.lyrics_transcriber.types import CorrectionResult
     ```
 
 ### Phase 4: Handle Tests from lyrics_transcriber
@@ -199,6 +199,6 @@ If issues arise:
 
 ## Notes
 
-- The import paths like `from lyrics_transcriber.core import ...` will continue to work unchanged
+- The import paths like `from karaoke_gen.lyrics_transcriber.core import ...` will continue to work unchanged
 - Only the internal project structure changes, not the API
 - This is primarily a cleanup/organization task with some external repo admin work

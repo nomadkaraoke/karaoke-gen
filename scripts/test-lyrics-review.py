@@ -24,7 +24,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 sys.path.insert(0, os.path.join(project_root, "lyrics_transcriber_temp"))
 
-from lyrics_transcriber.types import (
+from karaoke_gen.lyrics_transcriber.types import (
     CorrectionResult,
     LyricsData,
     LyricsMetadata,
@@ -32,8 +32,8 @@ from lyrics_transcriber.types import (
     Word,
     WordCorrection,
 )
-from lyrics_transcriber.core.config import OutputConfig
-from lyrics_transcriber.review.server import ReviewServer
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
+from karaoke_gen.lyrics_transcriber.review.server import ReviewServer
 
 logging.basicConfig(
     level=logging.INFO,

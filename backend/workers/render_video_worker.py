@@ -36,10 +36,10 @@ from backend.workers.worker_logging import create_job_logger, setup_job_logging,
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 
 # Import from lyrics_transcriber (submodule)
-from lyrics_transcriber.output.generator import OutputGenerator
-from lyrics_transcriber.output.countdown_processor import CountdownProcessor
-from lyrics_transcriber.types import CorrectionResult
-from lyrics_transcriber.core.config import OutputConfig
+from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
+from karaoke_gen.lyrics_transcriber.types import CorrectionResult
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 
 # Import from the unified style loader
 from karaoke_gen.style_loader import load_styles_from_gcs
@@ -51,10 +51,10 @@ logger = logging.getLogger(__name__)
 
 # Loggers to capture for render video worker
 RENDER_VIDEO_WORKER_LOGGERS = [
-    "lyrics_transcriber.output",
-    "lyrics_transcriber.output.generator",
-    "lyrics_transcriber.output.video",
-    "lyrics_transcriber.output.ass",
+    "karaoke_gen.lyrics_transcriber.output",
+    "karaoke_gen.lyrics_transcriber.output.generator",
+    "karaoke_gen.lyrics_transcriber.output.video",
+    "karaoke_gen.lyrics_transcriber.output.ass",
 ]
 
 

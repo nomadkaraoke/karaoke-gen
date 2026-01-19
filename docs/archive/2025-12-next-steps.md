@@ -285,7 +285,7 @@ async def process_audio_separation_task(job_id: str):
 ```python
 # backend/workers/lyrics_worker.py
 from karaoke_gen.lyrics_processor import LyricsProcessor
-from lyrics_transcriber.transcriber import LyricsTranscriber
+from karaoke_gen.lyrics_transcriber.transcriber import LyricsTranscriber
 import os
 
 async def process_lyrics_transcription_task(job_id: str):
@@ -735,7 +735,7 @@ async def encode_videos_task(job_id: str):
 **Implementation:**
 ```python
 # backend/workers/packaging_worker.py
-from lyrics_transcriber.output.cdg import CDGGenerator
+from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
 from lyrics_converter import convert_lrc_to_txt
 
 async def generate_cdg_package(job_id: str, work_dir: str):

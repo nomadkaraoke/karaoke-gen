@@ -120,7 +120,7 @@ class PackagingService:
             )
 
         self.logger.info("Generating CDG and MP3 files")
-        from lyrics_transcriber.output.cdg import CDGGenerator
+        from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
 
         output_dir = os.path.dirname(output_zip_path) or os.getcwd()
         generator = CDGGenerator(output_dir=output_dir, logger=self.logger)

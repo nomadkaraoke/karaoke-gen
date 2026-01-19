@@ -32,10 +32,10 @@ from .video_background_processor import VideoBackgroundProcessor
 from .audio_fetcher import create_audio_fetcher, AudioFetcherError, NoResultsError, UserCancelledError
 
 # Import lyrics_transcriber components for post-review countdown and video rendering
-from lyrics_transcriber.output.countdown_processor import CountdownProcessor
-from lyrics_transcriber.output.generator import OutputGenerator
-from lyrics_transcriber.types import CorrectionResult
-from lyrics_transcriber.core.config import OutputConfig as LyricsOutputConfig
+from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
+from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+from karaoke_gen.lyrics_transcriber.types import CorrectionResult
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig as LyricsOutputConfig
 
 
 class KaraokePrep:

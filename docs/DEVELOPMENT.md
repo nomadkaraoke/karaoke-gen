@@ -265,7 +265,7 @@ gcloud logging read 'resource.type="cloud_run_revision" "ANCHOR SEARCH: Progress
 When adding new operations that may need investigation:
 
 ```python
-from lyrics_transcriber.utils.tracing import create_span, add_span_attribute
+from karaoke_gen.lyrics_transcriber.utils.tracing import create_span, add_span_attribute
 
 with create_span("operation_name", {"initial": "attributes"}) as span:
     # ... do work ...

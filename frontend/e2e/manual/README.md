@@ -21,7 +21,7 @@ yarn dev  # Starts on port 5173
 
 # Terminal 2: Start LyricsTranscriber backend (for API)
 # This serves the review API on port 8767
-poetry run python -c "from lyrics_transcriber.review.server import ReviewServer; ..."
+poetry run python -c "from karaoke_gen.lyrics_transcriber.review.server import ReviewServer; ..."
 
 # Terminal 3: Run the test
 cd frontend

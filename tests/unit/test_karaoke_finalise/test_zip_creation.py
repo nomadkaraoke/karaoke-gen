@@ -138,7 +138,7 @@ def test_create_cdg_zip_generate_new(mock_prompt, mock_rename, mock_zipfile, bas
 
 @patch('os.path.isfile')
 @patch('zipfile.ZipFile')  # Patch the class
-@patch('lyrics_transcriber.output.cdg.CDGGenerator')
+@patch('karaoke_gen.lyrics_transcriber.output.cdg.CDGGenerator')
 @patch.object(KaraokeFinalise, 'prompt_user_bool', return_value=True)  # Confirm overwrite
 def test_create_cdg_zip_use_existing_mp3_cdg(mock_prompt, mock_cdg_gen_cls, mock_zipfile_cls, mock_isfile, basic_finaliser):
     """Test creating ZIP from existing MP3 and CDG files."""
@@ -193,7 +193,7 @@ def test_create_cdg_zip_use_existing_mp3_cdg(mock_prompt, mock_cdg_gen_cls, mock
 
 @patch('os.path.isfile', return_value=True)  # ZIP exists
 @patch('zipfile.ZipFile')
-@patch('lyrics_transcriber.output.cdg.CDGGenerator')
+@patch('karaoke_gen.lyrics_transcriber.output.cdg.CDGGenerator')
 @patch.object(KaraokeFinalise, 'prompt_user_bool', return_value=False)  # Skip overwrite
 def test_create_cdg_zip_skip_overwrite(mock_prompt, mock_cdg_gen_cls, mock_zipfile, mock_isfile, basic_finaliser):
     """Test skipping CDG ZIP creation if user chooses not to overwrite."""
@@ -212,7 +212,7 @@ def test_create_cdg_zip_missing_styles(basic_finaliser):
 
 @patch('os.path.isfile', return_value=False)  # No existing files
 @patch('zipfile.ZipFile')
-@patch('lyrics_transcriber.output.cdg.CDGGenerator')
+@patch('karaoke_gen.lyrics_transcriber.output.cdg.CDGGenerator')
 @patch.object(KaraokeFinalise, 'prompt_user_bool', return_value=True)
 def test_create_cdg_zip_generation_fails_to_create_zip(mock_prompt, mock_cdg_gen_cls, mock_zipfile, mock_isfile, basic_finaliser):
     """Test error if CDGGenerator runs but zip isn't found afterwards."""

@@ -4,8 +4,8 @@ import logging
 import shutil
 import json
 from typing import Optional
-from lyrics_transcriber import LyricsTranscriber, OutputConfig, TranscriberConfig, LyricsConfig
-from lyrics_transcriber.core.controller import LyricsControllerResult
+from karaoke_gen.lyrics_transcriber import LyricsTranscriber, OutputConfig, TranscriberConfig, LyricsConfig
+from karaoke_gen.lyrics_transcriber.core.controller import LyricsControllerResult
 from dotenv import load_dotenv
 from .utils import sanitize_filename
 

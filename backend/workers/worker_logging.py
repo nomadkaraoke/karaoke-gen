@@ -65,7 +65,7 @@ class JobLogHandler(logging.Handler):
         lyrics_logger.addHandler(handler)
         
         # Also capture logs from lyrics_transcriber package itself
-        lt_logger = logging.getLogger("lyrics_transcriber")
+        lt_logger = logging.getLogger("karaoke_gen.lyrics_transcriber")
         lt_logger.addHandler(handler)
     """
     
@@ -235,7 +235,7 @@ def setup_job_logging(job_id: str, worker_name: str, *logger_names: str) -> JobL
     Args:
         job_id: Job ID
         worker_name: Worker name
-        *logger_names: Names of loggers to capture (e.g., "lyrics_transcriber", "karaoke_gen")
+        *logger_names: Names of loggers to capture (e.g., "karaoke_gen.lyrics_transcriber", "karaoke_gen")
         
     Returns:
         The JobLogHandler (can be removed later if needed)
@@ -246,7 +246,7 @@ def setup_job_logging(job_id: str, worker_name: str, *logger_names: str) -> JobL
             job_id, 
             "lyrics",
             "karaoke_gen.lyrics_processor",
-            "lyrics_transcriber",  # Capture LyricsTranscriber logs
+            "karaoke_gen.lyrics_transcriber",  # Capture LyricsTranscriber logs
         )
         
         # IMPORTANT: Use job_logging_context for proper isolation

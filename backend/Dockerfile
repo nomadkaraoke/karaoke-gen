@@ -22,10 +22,9 @@ WORKDIR /app
 COPY backend /app/backend
 
 # Copy and reinstall karaoke_gen from local source
-# This ensures new modules (like style_loader.py) are included without rebuilding base image
-# Note: lyrics_transcriber is vendored in lyrics_transcriber_temp/ and bundled via pyproject.toml
+# This ensures new modules are included without rebuilding base image
+# Note: lyrics_transcriber is now a subpackage of karaoke_gen
 COPY karaoke_gen /app/karaoke_gen
-COPY lyrics_transcriber_temp /app/lyrics_transcriber_temp
 COPY pyproject.toml README.md LICENSE /app/
 RUN pip install --no-cache-dir -e .
 
