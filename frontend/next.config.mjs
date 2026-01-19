@@ -40,16 +40,25 @@ const nextConfig = {
       return [];
     }
     const backendUrl = process.env.BACKEND_URL || 'https://api.nomadkaraoke.com';
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-      {
-        source: '/backend-info',
-        destination: `${backendUrl}/`,
-      },
-    ];
+    // Use beforeFiles to run rewrites before the trailingSlash redirect
+    // This ensures /api/* requests go to the backend without trailing slash issues
+    return {
+      beforeFiles: [
+        // Strip trailing slash from API requests before proxying
+        {
+          source: '/api/:path*/',
+          destination: `${backendUrl}/api/:path*`,
+        },
+        {
+          source: '/api/:path*',
+          destination: `${backendUrl}/api/:path*`,
+        },
+        {
+          source: '/backend-info',
+          destination: `${backendUrl}/`,
+        },
+      ],
+    };
   },
 }
 

@@ -4,6 +4,7 @@
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse } from './types';
+import type { CorrectionData, CorrectionAnnotation } from './lyrics-review/types';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -94,6 +95,51 @@ export interface InstrumentalOptionsResponse {
   artist?: string;
   title?: string;
 }
+
+// Instrumental Review Types
+export interface MuteRegion {
+  start_seconds: number;
+  end_seconds: number;
+}
+
+export interface AudibleSegment {
+  start_seconds: number;
+  end_seconds: number;
+  confidence?: number;
+}
+
+export interface BackingVocalAnalysis {
+  audible_segments: AudibleSegment[];
+  audible_percentage: number;
+  recommended_selection: 'clean' | 'with_backing';
+}
+
+export interface InstrumentalAnalysis {
+  job_id?: string;
+  artist?: string;
+  title?: string;
+  duration_seconds?: number;
+  analysis: BackingVocalAnalysis;
+  audio_urls: {
+    clean?: string;
+    with_backing?: string;
+    backing_vocals?: string;
+    original?: string;
+    custom?: string;
+    uploaded?: string;
+  };
+  has_uploaded_instrumental?: boolean;
+  has_original?: boolean;
+}
+
+export interface WaveformData {
+  amplitudes: number[];
+  duration_seconds?: number;
+  duration?: number;  // Legacy field name
+  sample_rate?: number;
+}
+
+export type InstrumentalSelectionType = 'clean' | 'with_backing' | 'custom' | 'uploaded' | 'original';
 
 export interface DownloadUrlsResponse {
   job_id: string;
@@ -360,7 +406,7 @@ export const api = {
    */
   async selectInstrumental(
     jobId: string,
-    selection: 'clean' | 'with_backing' | 'custom'
+    selection: InstrumentalSelectionType
   ): Promise<{ status: string; job_status: string; selection: string; message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/select-instrumental`, {
       method: 'POST',
@@ -368,6 +414,63 @@ export const api = {
       body: JSON.stringify({ selection }),
     });
     return handleResponse(response);
+  },
+
+  /**
+   * Get instrumental analysis data for review
+   */
+  async getInstrumentalAnalysis(jobId: string): Promise<InstrumentalAnalysis> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-analysis`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get waveform data for visualization
+   */
+  async getWaveformData(jobId: string, numPoints: number = 1000): Promise<WaveformData> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/jobs/${jobId}/waveform-data?num_points=${numPoints}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Upload a custom instrumental file
+   */
+  async uploadCustomInstrumental(jobId: string, file: File): Promise<{ status: string; duration_seconds: number; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/upload-instrumental`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Create a custom instrumental with mute regions
+   */
+  async createCustomInstrumental(jobId: string, muteRegions: MuteRegion[]): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/create-custom-instrumental`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ mute_regions: muteRegions }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get audio stream URL for a specific stem type
+   */
+  getAudioStreamUrl(jobId: string, stemType: string): string {
+    const token = getAccessToken();
+    const base = `${API_BASE_URL}/api/jobs/${jobId}/audio-stream/${stemType}`;
+    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
   },
   
   /**
@@ -1503,6 +1606,153 @@ export interface JobResetResponse {
   new_status: string;
   message: string;
   cleared_data: string[];
+}
+
+// ==========================================================================
+// Lyrics Review API endpoints
+// ==========================================================================
+
+/**
+ * API client interface for LyricsAnalyzer component
+ */
+export interface LyricsReviewApiClient {
+  submitCorrections: (data: CorrectionData) => Promise<void>
+  submitAnnotations: (annotations: Omit<CorrectionAnnotation, 'annotation_id' | 'timestamp'>[]) => Promise<void>
+  updateHandlers: (handlers: string[]) => Promise<CorrectionData>
+  addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
+  getAudioUrl: (hash: string) => string
+  generatePreviewVideo: (data: CorrectionData) => Promise<{
+    status: string
+    message?: string
+    preview_hash?: string
+  }>
+  getPreviewVideoUrl: (hash: string) => string
+}
+
+/**
+ * Create a lyrics review API client for a specific job
+ */
+export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClient {
+  return {
+    /**
+     * Submit corrected lyrics data
+     */
+    async submitCorrections(data: CorrectionData): Promise<void> {
+      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/corrections`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(data),
+      })
+      await handleResponse<{ status: string }>(response)
+    },
+
+    /**
+     * Submit human annotations/feedback on corrections
+     */
+    async submitAnnotations(annotations: Omit<CorrectionAnnotation, 'annotation_id' | 'timestamp'>[]): Promise<void> {
+      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/annotations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ annotations }),
+      })
+      await handleResponse<{ status: string }>(response)
+    },
+
+    /**
+     * Update enabled correction handlers and get recalculated corrections
+     */
+    async updateHandlers(handlers: string[]): Promise<CorrectionData> {
+      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/handlers`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ enabled_handlers: handlers }),
+      })
+      return handleResponse<CorrectionData>(response)
+    },
+
+    /**
+     * Add lyrics from a new source
+     */
+    async addLyrics(source: string, lyrics: string): Promise<CorrectionData> {
+      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/lyrics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ source, lyrics }),
+      })
+      return handleResponse<CorrectionData>(response)
+    },
+
+    /**
+     * Get audio URL for playback
+     */
+    getAudioUrl(hash: string): string {
+      const token = getAccessToken()
+      const base = `${API_BASE_URL}/api/audio/${hash}`
+      return token ? `${base}?token=${encodeURIComponent(token)}` : base
+    },
+
+    /**
+     * Generate a preview video from the current correction data
+     */
+    async generatePreviewVideo(data: CorrectionData): Promise<{
+      status: string
+      message?: string
+      preview_hash?: string
+    }> {
+      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/preview-video`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(data),
+      })
+      return handleResponse(response)
+    },
+
+    /**
+     * Get preview video URL for playback
+     */
+    getPreviewVideoUrl(hash: string): string {
+      const token = getAccessToken()
+      const base = `${API_BASE_URL}/api/preview-video/${hash}`
+      return token ? `${base}?token=${encodeURIComponent(token)}` : base
+    },
+  }
+}
+
+// Standalone lyrics review API functions (for use without jobId context)
+export const lyricsReviewApi = {
+  /**
+   * Get correction data for a job
+   */
+  async getCorrectionData(jobId: string): Promise<CorrectionData> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/corrections`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse<CorrectionData>(response)
+  },
+
+  /**
+   * Get audio URL for a job by hash
+   */
+  getAudioUrl(hash: string): string {
+    const token = getAccessToken()
+    const base = `${API_BASE_URL}/api/audio/${hash}`
+    return token ? `${base}?token=${encodeURIComponent(token)}` : base
+  },
 }
 
 export interface DeleteOutputsResponse {

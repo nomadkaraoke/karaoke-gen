@@ -13,6 +13,7 @@ from .models.schemas import CorrectionProposal, GapClassification, GapCategory
 from .workflows.correction_graph import build_correction_graph
 from .prompts.classifier import build_classification_prompt
 from .handlers.registry import HandlerRegistry
+from lyrics_transcriber.utils.tracing import create_span, add_span_attribute
 
 logger = logging.getLogger(__name__)
 
@@ -211,72 +212,94 @@ class AgenticCorrector:
         Returns:
             List of CorrectionProposal objects
         """
-        # Step 1: Classify the gap
-        gap_text = ' '.join(w.get('text', '') for w in gap_words)
-        classification = self.classify_gap(
-            gap_id=gap_id,
-            gap_text=gap_text,
-            preceding_words=preceding_words,
-            following_words=following_words,
-            reference_contexts=reference_contexts,
-            artist=artist,
-            title=title
-        )
-        
-        if not classification:
-            # Classification failed, flag for human review
-            logger.warning(f"🤖 Classification failed for gap {gap_id}, flagging for review")
-            return [CorrectionProposal(
-                word_ids=[w['id'] for w in gap_words],
-                action="Flag",
-                confidence=0.0,
-                reason="Classification failed - unable to categorize gap",
-                requires_human_review=True,
-                artist=artist,
-                title=title
-            )]
-        
-        # Step 2: Route to appropriate handler based on category
-        try:
-            handler = HandlerRegistry.get_handler(
-                category=classification.category,
-                artist=artist,
-                title=title
-            )
-            
-            proposals = handler.handle(
+        with create_span("agentic.propose_for_gap", {
+            "gap_id": gap_id,
+            "word_count": len(gap_words),
+        }) as span:
+            # Step 1: Classify the gap
+            gap_text = ' '.join(w.get('text', '') for w in gap_words)
+            classification = self.classify_gap(
                 gap_id=gap_id,
-                gap_words=gap_words,
+                gap_text=gap_text,
                 preceding_words=preceding_words,
                 following_words=following_words,
                 reference_contexts=reference_contexts,
-                classification_reasoning=classification.reasoning
-            )
-            
-            # Add classification metadata to proposals
-            for proposal in proposals:
-                if not proposal.gap_category:
-                    proposal.gap_category = classification.category
-                if not proposal.artist:
-                    proposal.artist = artist
-                if not proposal.title:
-                    proposal.title = title
-            
-            return proposals
-            
-        except Exception as e:
-            logger.error(f"🤖 Handler failed for gap {gap_id} (category: {classification.category}): {e}")
-            # Handler failed, flag for human review
-            return [CorrectionProposal(
-                word_ids=[w['id'] for w in gap_words],
-                action="Flag",
-                confidence=0.0,
-                reason=f"Handler error for category {classification.category}: {str(e)}",
-                gap_category=classification.category,
-                requires_human_review=True,
                 artist=artist,
                 title=title
-            )]
+            )
+
+            if not classification:
+                # Classification failed, flag for human review
+                logger.warning(f"🤖 Classification failed for gap {gap_id}, flagging for review")
+                if span:
+                    span.set_attribute("classification_failed", True)
+                # Safely extract word IDs, filtering out any missing/None values
+                word_ids = [w.get('id') for w in gap_words if w.get('id') is not None]
+                return [CorrectionProposal(
+                    word_ids=word_ids,
+                    action="Flag",
+                    confidence=0.0,
+                    reason="Classification failed - unable to categorize gap",
+                    requires_human_review=True,
+                    artist=artist,
+                    title=title
+                )]
+
+            if span:
+                span.set_attribute("gap_category", classification.category.value if hasattr(classification.category, 'value') else str(classification.category))
+
+            # Step 2: Route to appropriate handler based on category
+            try:
+                handler = HandlerRegistry.get_handler(
+                    category=classification.category,
+                    artist=artist,
+                    title=title
+                )
+
+                proposals = handler.handle(
+                    gap_id=gap_id,
+                    gap_words=gap_words,
+                    preceding_words=preceding_words,
+                    following_words=following_words,
+                    reference_contexts=reference_contexts,
+                    classification_reasoning=classification.reasoning
+                )
+
+                # Add classification metadata to proposals
+                for proposal in proposals:
+                    if not proposal.gap_category:
+                        proposal.gap_category = classification.category
+                    if not proposal.artist:
+                        proposal.artist = artist
+                    if not proposal.title:
+                        proposal.title = title
+
+                if span:
+                    span.set_attribute("proposal_count", len(proposals))
+
+                return proposals
+
+            except Exception as e:
+                # Sanitize error message - use exception class name and truncated message
+                error_type = type(e).__name__
+                error_msg_truncated = str(e)[:50] if str(e) else "Unknown error"
+                sanitized_error = f"{error_type}: {error_msg_truncated}"
+                logger.error(f"🤖 Handler failed for gap {gap_id} (category: {classification.category}): {sanitized_error}")
+                if span:
+                    span.set_attribute("handler_error", sanitized_error)
+                # Safely extract word IDs, filtering out any missing/None values
+                word_ids = [w.get('id') for w in gap_words if w.get('id') is not None]
+                # Handler failed, flag for human review
+                return [CorrectionProposal(
+                    word_ids=word_ids,
+                    action="Flag",
+                    confidence=0.0,
+                    reason=f"Handler error for category {classification.category} ({error_type})",
+                    gap_category=classification.category,
+                    requires_human_review=True,
+                    artist=artist,
+                    title=title
+                )]
 
     def propose(self, prompt: str) -> List[CorrectionProposal]:
         """Generate correction proposals using LangGraph + LangChain.

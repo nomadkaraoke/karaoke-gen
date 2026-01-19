@@ -286,8 +286,10 @@ class TestServerAppCreation:
         middleware_classes = [m.cls.__name__ for m in app.user_middleware]
         assert "CORSMiddleware" in middleware_classes
     
-    def test_get_frontend_html_returns_string(self, mock_analysis, temp_files):
-        """Test _get_frontend_html returns HTML string."""
+    def test_server_serves_nextjs_frontend(self, mock_analysis, temp_files):
+        """Test server serves the unified Next.js frontend."""
+        from fastapi.testclient import TestClient
+
         server = InstrumentalReviewServer(
             output_dir=temp_files["output_dir"],
             base_name="Artist - Title",
@@ -296,15 +298,19 @@ class TestServerAppCreation:
             backing_vocals_path=temp_files["backing_vocals_path"],
             clean_instrumental_path=temp_files["clean_instrumental_path"],
         )
-        
-        html = server._get_frontend_html()
-        
-        assert isinstance(html, str)
-        assert "<!DOCTYPE html>" in html
-        assert "Instrumental Review" in html
-    
-    def test_get_frontend_html_contains_required_elements(self, mock_analysis, temp_files):
-        """Test frontend HTML contains all required UI elements."""
+
+        app = server._create_app()
+        client = TestClient(app)
+
+        # Root should redirect to /app/jobs/local/instrumental
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code in (302, 307)  # Accept either redirect type
+        assert response.headers["location"] == "/app/jobs/local/instrumental"
+
+    def test_nextjs_frontend_route_returns_html(self, mock_analysis, temp_files):
+        """Test the Next.js frontend route serves HTML."""
+        from fastapi.testclient import TestClient
+
         server = InstrumentalReviewServer(
             output_dir=temp_files["output_dir"],
             base_name="Artist - Title",
@@ -313,15 +319,15 @@ class TestServerAppCreation:
             backing_vocals_path=temp_files["backing_vocals_path"],
             clean_instrumental_path=temp_files["clean_instrumental_path"],
         )
-        
-        html = server._get_frontend_html()
-        
-        # Check for key UI components
-        assert "waveform" in html.lower()
-        assert "audio" in html.lower()
-        assert "mute" in html.lower()
-        assert "selection" in html.lower()
-        assert "clean" in html.lower()
+
+        app = server._create_app()
+        client = TestClient(app)
+
+        # The instrumental route should return HTML
+        response = client.get("/app/jobs/local/instrumental")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert "<!DOCTYPE html>" in response.text
 
 
 class TestServerStop:
@@ -522,12 +528,19 @@ class TestServerAPIEndpoints:
         app = server_with_files._create_app()
         return TestClient(app)
     
-    def test_root_returns_html(self, client):
-        """Test root endpoint returns HTML page."""
-        response = client.get("/")
+    def test_root_redirects_to_instrumental(self, client):
+        """Test root endpoint redirects to the instrumental review page."""
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code in (302, 307)  # Accept either redirect type
+        assert response.headers["location"] == "/app/jobs/local/instrumental"
+
+    def test_instrumental_route_returns_html(self, client):
+        """Test instrumental route returns HTML page."""
+        response = client.get("/app/jobs/local/instrumental")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
-        assert "Instrumental Review" in response.text
+        # Next.js pre-renders the page with dynamic content loaded client-side
+        assert "<!DOCTYPE html>" in response.text
     
     def test_get_analysis_returns_data(self, client, mock_analysis):
         """Test analysis endpoint returns correct data."""

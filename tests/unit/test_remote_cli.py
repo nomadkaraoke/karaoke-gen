@@ -914,18 +914,14 @@ class TestJobMonitor:
             monitor.open_browser("https://example.com")
     
     @patch.object(JobMonitor, 'open_browser')
-    @patch.object(RemoteKaraokeClient, 'get_job')
-    def test_open_review_ui(self, mock_get_job, mock_open_browser, monitor):
+    def test_open_review_ui(self, mock_open_browser, monitor):
         """Test opening review UI."""
-        mock_get_job.return_value = {"audio_hash": "abc123"}
-        
         monitor.open_review_ui("job-123")
-        
+
         mock_open_browser.assert_called_once()
         call_url = mock_open_browser.call_args[0][0]
-        assert "review.example.com" in call_url
-        assert "job-123" in call_url
-        assert "audioHash=abc123" in call_url
+        # New consolidated frontend URL format
+        assert call_url == "https://review.example.com/app/jobs/job-123/review"
     
     def test_log_timeline_updates(self, monitor):
         """Test logging timeline events."""
@@ -2780,7 +2776,7 @@ class TestRemoteClientContentType:
         """Provide a valid Config instance."""
         return Config(
             service_url='https://api.nomadkaraoke.com',
-            review_ui_url='https://gen.nomadkaraoke.com/lyrics/',
+            review_ui_url='https://gen.nomadkaraoke.com',
             poll_interval=5,
             output_dir='/tmp/output'
         )
@@ -2834,7 +2830,7 @@ class TestRemoteClientSessionSetup:
         """Provide a Config instance with auth token."""
         return Config(
             service_url='https://api.nomadkaraoke.com',
-            review_ui_url='https://gen.nomadkaraoke.com/lyrics/',
+            review_ui_url='https://gen.nomadkaraoke.com',
             poll_interval=5,
             output_dir='/tmp/output',
             auth_token='test-token-123',

@@ -152,7 +152,7 @@ export function OutputLinks({ job }: OutputLinksProps) {
   return (
     <div className="space-y-2">
       {/* Links, Downloads, and Admin Tools - all in one row */}
-      {(hasDownloads || hasExternalLinks) && (
+      {(hasDownloads || hasExternalLinks || isAdmin) && (
         <div className="flex flex-wrap gap-1.5">
           {/* Links first */}
           {hasExternalLinks && (
@@ -262,9 +262,8 @@ export function OutputLinks({ job }: OutputLinksProps) {
             </>
           )}
 
-          {/* Admin Tools */}
+          {/* Admin Email Tools (only when job has outputs) */}
           {isAdmin && hasOutputs && (
-            <>
                 <div className="flex">
                   <button
                     type="button"
@@ -291,6 +290,10 @@ export function OutputLinks({ job }: OutputLinksProps) {
                     )}
                   </button>
                 </div>
+          )}
+
+          {/* Admin Link (always visible for admins) */}
+          {isAdmin && (
                 <a
                   href={`/admin/jobs/?id=${job.job_id}`}
                   onClick={(e) => e.stopPropagation()}
@@ -300,12 +303,11 @@ export function OutputLinks({ job }: OutputLinksProps) {
                   <Settings className="w-3 h-3" />
                   Admin
                 </a>
-            </>
           )}
         </div>
       )}
 
-      {!hasOutputs && (
+      {!hasOutputs && !isAdmin && (
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No outputs available yet</p>
       )}
 

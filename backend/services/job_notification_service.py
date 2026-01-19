@@ -53,30 +53,13 @@ class JobNotificationService:
 
     def _build_review_url(self, job_id: str, audio_hash: Optional[str] = None, review_token: Optional[str] = None) -> str:
         """Build the lyrics review URL for a job."""
-        import urllib.parse
-
-        review_ui_url = os.getenv("REVIEW_UI_URL", f"{self.frontend_url}/lyrics/")
-        base_api_url = f"{self.backend_url}/api/review/{job_id}"
-        encoded_api_url = urllib.parse.quote(base_api_url, safe='')
-
-        url = f"{review_ui_url}?baseApiUrl={encoded_api_url}"
-        if audio_hash:
-            url += f"&audioHash={urllib.parse.quote(audio_hash, safe='')}"
-        if review_token:
-            url += f"&reviewToken={urllib.parse.quote(review_token, safe='')}"
-        return url
+        # Use consolidated frontend route
+        return f"{self.frontend_url}/app/jobs/{job_id}/review"
 
     def _build_instrumental_url(self, job_id: str, instrumental_token: Optional[str] = None) -> str:
         """Build the instrumental selection URL for a job."""
-        base_api_url = f"{self.backend_url}/api/jobs/{job_id}"
-
-        import urllib.parse
-        encoded_api_url = urllib.parse.quote(base_api_url, safe='')
-
-        url = f"{self.frontend_url}/instrumental/?baseApiUrl={encoded_api_url}"
-        if instrumental_token:
-            url += f"&instrumentalToken={urllib.parse.quote(instrumental_token, safe='')}"
-        return url
+        # Use consolidated frontend route
+        return f"{self.frontend_url}/app/jobs/{job_id}/instrumental"
 
     async def send_job_completion_email(
         self,

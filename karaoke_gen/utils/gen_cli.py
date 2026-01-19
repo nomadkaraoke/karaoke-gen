@@ -318,7 +318,11 @@ async def async_main():
     # This enables local iteration on the frontend without redeploying
     if hasattr(args, 'review_ui_url') and args.review_ui_url:
         # Check if user provided a custom value (not the default hosted URL)
+        # For local karaoke-gen CLI, we want to use the bundled local frontend by default
+        # Only set LYRICS_REVIEW_UI_URL if user explicitly provides a dev server URL
         default_hosted_urls = [
+            'https://gen.nomadkaraoke.com',
+            'https://gen.nomadkaraoke.com/',
             'https://gen.nomadkaraoke.com/lyrics',
             'https://gen.nomadkaraoke.com/lyrics/'
         ]

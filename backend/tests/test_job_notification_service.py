@@ -3,7 +3,6 @@ Unit tests for job notification service.
 """
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
-import urllib.parse
 
 from backend.services.job_notification_service import (
     JobNotificationService,
@@ -20,82 +19,55 @@ class TestURLBuilding:
         """Test basic review URL building."""
         service = JobNotificationService()
         service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
 
         url = service._build_review_url("job-123")
 
-        assert "gen.nomadkaraoke.com/lyrics/" in url
-        assert "baseApiUrl=" in url
-        # The API URL should be URL-encoded
-        assert urllib.parse.quote("https://api.nomadkaraoke.com/api/review/job-123", safe='') in url
+        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/review"
 
-    def test_build_review_url_with_audio_hash(self):
-        """Test review URL with audio hash parameter."""
+    def test_build_review_url_ignores_legacy_params(self):
+        """Test review URL ignores legacy audio_hash and review_token params."""
         service = JobNotificationService()
         service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
 
-        url = service._build_review_url("job-123", audio_hash="abc123")
+        # Legacy params are still accepted but not used in the URL
+        url = service._build_review_url("job-123", audio_hash="abc123", review_token="token456")
 
-        assert "audioHash=abc123" in url
+        # URL should be the simple consolidated route
+        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/review"
+        # No query params
+        assert "?" not in url
 
-    def test_build_review_url_with_review_token(self):
-        """Test review URL with review token parameter."""
+    def test_build_review_url_preserves_job_id_characters(self):
+        """Test that job ID is used directly in URL path."""
         service = JobNotificationService()
         service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
 
-        url = service._build_review_url("job-123", review_token="token456")
+        # Note: job IDs with slashes would be unusual in real usage
+        url = service._build_review_url("abc-def-123")
 
-        assert "reviewToken=token456" in url
-
-    def test_build_review_url_with_all_params(self):
-        """Test review URL with all parameters."""
-        service = JobNotificationService()
-        service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
-
-        url = service._build_review_url(
-            "job-123",
-            audio_hash="hash789",
-            review_token="token456"
-        )
-
-        assert "baseApiUrl=" in url
-        assert "audioHash=hash789" in url
-        assert "reviewToken=token456" in url
-
-    def test_build_review_url_encodes_special_chars(self):
-        """Test that special characters in job ID are encoded."""
-        service = JobNotificationService()
-        service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
-
-        url = service._build_review_url("job/with/slashes")
-
-        # The baseApiUrl parameter should have encoded slashes
-        assert "%2F" in url
+        assert url == "https://gen.nomadkaraoke.com/app/jobs/abc-def-123/review"
 
     def test_build_instrumental_url_basic(self):
         """Test basic instrumental URL building."""
         service = JobNotificationService()
         service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
 
         url = service._build_instrumental_url("job-123")
 
-        assert "gen.nomadkaraoke.com/instrumental/" in url
-        assert "baseApiUrl=" in url
+        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/instrumental"
 
-    def test_build_instrumental_url_with_token(self):
-        """Test instrumental URL with token parameter."""
+    def test_build_instrumental_url_ignores_legacy_params(self):
+        """Test instrumental URL ignores legacy instrumental_token param."""
         service = JobNotificationService()
         service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
 
+        # Legacy param is still accepted but not used in the URL
         url = service._build_instrumental_url("job-123", instrumental_token="inst-token")
 
-        assert "instrumentalToken=inst-token" in url
+        # URL should be the simple consolidated route
+        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/instrumental"
+        # No query params
+        assert "?" not in url
 
 
 class TestCompletionEmail:
@@ -325,7 +297,6 @@ class TestActionReminderEmail:
         """Test that lyrics reminder includes correct review URL."""
         service = JobNotificationService()
         service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
         service.email_service = Mock()
         service.email_service.send_action_reminder.return_value = True
         service.template_service = Mock()
@@ -336,22 +307,18 @@ class TestActionReminderEmail:
                 job_id="job-123",
                 user_email="user@example.com",
                 action_type="lyrics",
-                audio_hash="hash123",
-                review_token="token456",
             )
 
         # Verify the review URL was passed to template
         call_kwargs = service.template_service.render_action_needed_lyrics.call_args.kwargs
         review_url = call_kwargs.get('review_url')
-        assert "audioHash=hash123" in review_url
-        assert "reviewToken=token456" in review_url
+        assert review_url == "https://gen.nomadkaraoke.com/app/jobs/job-123/review"
 
     @pytest.mark.asyncio
     async def test_send_instrumental_reminder_includes_url(self):
         """Test that instrumental reminder includes correct URL."""
         service = JobNotificationService()
         service.frontend_url = "https://gen.nomadkaraoke.com"
-        service.backend_url = "https://api.nomadkaraoke.com"
         service.email_service = Mock()
         service.email_service.send_action_reminder.return_value = True
         service.template_service = Mock()
@@ -362,13 +329,12 @@ class TestActionReminderEmail:
                 job_id="job-123",
                 user_email="user@example.com",
                 action_type="instrumental",
-                instrumental_token="inst-token",
             )
 
         # Verify the instrumental URL was passed to template
         call_kwargs = service.template_service.render_action_needed_instrumental.call_args.kwargs
         instrumental_url = call_kwargs.get('instrumental_url')
-        assert "instrumentalToken=inst-token" in instrumental_url
+        assert instrumental_url == "https://gen.nomadkaraoke.com/app/jobs/job-123/instrumental"
 
 
 class TestGetCompletionMessage:

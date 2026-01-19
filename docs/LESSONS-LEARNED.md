@@ -78,6 +78,12 @@ Sanitize user input (artist/title) to ASCII for HTTP headers. Smart quotes, em d
 ### Fonts in Docker
 Base Docker images have no fonts. Install `fonts-noto-core`, `fonts-noto-cjk` for video rendering.
 
+### Cloud Run CPU Throttling Kills Background Tasks
+Cloud Run throttles CPU to near-zero when the main request handler returns, even if background tasks are running. This caused lyrics processing (running as a FastAPI background task) to slow from 17-52 seconds to 8+ minutes, and instances being terminated mid-processing. **Fix**: Add `--no-cpu-throttling` flag to `gcloud run deploy`. Keep `--cpu-boost` for faster cold starts. **Diagnosis**: Look for "Application shutdown" in logs during long operations, and compare processing times (27x slowdown is a telltale sign).
+
+### Add Progress Logging for Long Operations
+Operations over ~30 seconds should log progress periodically (time-based, not count-based). Count-based logging like "log every 20 items" can miss entirely if items complete slowly. Time-based logging (every 30s) ensures visibility regardless of processing speed.
+
 ---
 
 ### AuthResult Has Tuple Unpacking But Not Subscripting

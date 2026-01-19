@@ -18,11 +18,19 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
+// Configurable port for dev server (default: 3000)
+// Use E2E_PORT env var to change, e.g.: E2E_PORT=3001 npx playwright test
+const PORT = process.env.E2E_PORT || '3000';
+const BASE_URL = `http://localhost:${PORT}`;
+
 /**
  * Playwright configuration for karaoke-gen frontend E2E tests.
  *
  * DEFAULT: Runs regression tests with mocked API (CI-safe, offline).
- * Tests run against the local dev server (localhost:3000) with mocked API responses.
+ * Tests run against the local dev server with mocked API responses.
+ *
+ * Port configuration:
+ *   E2E_PORT=3001 npx playwright test  # Run on custom port
  *
  * For production tests: use playwright.production.config.ts
  * For fixture recording: use playwright.record.config.ts
@@ -50,8 +58,8 @@ export default defineConfig({
 
   // Shared settings for all tests
   use: {
-    // Base URL for the local dev server
-    baseURL: 'http://localhost:3000',
+    // Base URL for the local dev server (configurable via E2E_PORT)
+    baseURL: BASE_URL,
 
     // Collect trace on failure for debugging
     trace: 'on-first-retry',
@@ -91,8 +99,8 @@ export default defineConfig({
 
   // Run local dev server before starting tests
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: `npm run dev -- -p ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

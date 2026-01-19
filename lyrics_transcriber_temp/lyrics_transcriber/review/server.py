@@ -84,6 +84,7 @@ class ReviewServer:
         self._configure_cors()
         self._register_routes()
         self._mount_frontend()
+        self._register_spa_routes()
         # Initialize optional SQLite store for sessions/feedback (legacy)
         try:
             default_db = os.path.join(self.output_config.cache_dir, "agentic_feedback.sqlite3")
@@ -135,18 +136,111 @@ class ReviewServer:
             return JSONResponse(status_code=500, content={"error": "InternalServerError", "message": str(exc), "details": {}})
 
     def _mount_frontend(self) -> None:
-        """Mount the frontend static files."""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        from lyrics_transcriber.frontend import get_frontend_assets_dir
-        frontend_dir = get_frontend_assets_dir()
+        """Mount the unified Next.js frontend static files."""
+        from karaoke_gen.nextjs_frontend import get_nextjs_assets_dir, is_nextjs_frontend_available
 
-        if not os.path.exists(frontend_dir):
-            raise FileNotFoundError(f"Frontend assets not found at {frontend_dir}")
+        if not is_nextjs_frontend_available():
+            raise FileNotFoundError(
+                "Next.js frontend assets not found. Please ensure the frontend is built "
+                "and copied to karaoke_gen/nextjs_frontend/out/"
+            )
 
-        self.app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+        frontend_dir = str(get_nextjs_assets_dir())
+        self.logger.info(f"Using Next.js frontend from {frontend_dir}")
+        self._frontend_dir = frontend_dir  # Store for use in route handlers
+
+        # Mount Next.js static assets directory
+        nextjs_static = os.path.join(frontend_dir, "_next")
+        if os.path.exists(nextjs_static):
+            self.app.mount("/_next", StaticFiles(directory=nextjs_static), name="nextjs_static")
+
+        # Mount the entire frontend directory for static files, but use html=False
+        # so it doesn't serve index.html automatically for directories
+        self.app.mount("/static", StaticFiles(directory=frontend_dir), name="frontend_static")
+
+    def _register_spa_routes(self) -> None:
+        """Register SPA fallback routes for Next.js client-side routing."""
+        frontend_dir = self._frontend_dir
+
+        # Root route - serve index.html
+        @self.app.get("/")
+        async def serve_root():
+            index_html = os.path.join(frontend_dir, "index.html")
+            if os.path.exists(index_html):
+                return FileResponse(index_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Frontend not found")
+
+        # Local review route - serve pre-rendered HTML for local mode
+        @self.app.get("/app/jobs/local/review")
+        async def serve_local_review():
+            """Serve pre-rendered local review page with patched chunk loading."""
+            from fastapi.responses import HTMLResponse
+            local_review_html = os.path.join(frontend_dir, "app", "jobs", "local", "review", "index.html")
+            if os.path.exists(local_review_html):
+                # Read the HTML and inject the missing chunk script
+                # This works around a Turbopack static export issue where the RSC stream
+                # references module chunks that don't contain the actual code
+                with open(local_review_html, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+
+                # Find the missing chunk that contains JobRouterClient (module 78280)
+                # The chunk name is determined at build time, so we need to find it dynamically
+                # We look for ",78280," which is the Turbopack module ID pattern
+                import glob
+                chunks_dir = os.path.join(frontend_dir, "_next", "static", "chunks")
+                for chunk_file in glob.glob(os.path.join(chunks_dir, "*.js")):
+                    chunk_name = os.path.basename(chunk_file)
+                    # Check if this chunk contains module 78280 (JobRouterClient)
+                    with open(chunk_file, 'r', encoding='utf-8') as cf:
+                        chunk_content = cf.read(500)  # Module ID is near the start
+                        if ",78280," in chunk_content:
+                            # Inject this chunk script if not already present
+                            script_tag = f'<script src="/_next/static/chunks/{chunk_name}" async=""></script>'
+                            if chunk_name not in html_content:
+                                # Insert before closing </head>
+                                html_content = html_content.replace('</head>', f'{script_tag}</head>')
+                            break
+
+                return HTMLResponse(content=html_content, media_type="text/html")
+            # Fallback to jobs index
+            jobs_html = os.path.join(frontend_dir, "app", "jobs", "index.html")
+            if os.path.exists(jobs_html):
+                return FileResponse(jobs_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Review page not found")
+
+        # Job routes - serve the jobs page HTML for client-side routing
+        @self.app.get("/app/jobs/{path:path}")
+        async def serve_jobs_routes(path: str):
+            """Serve jobs index.html for all /app/jobs/* routes (SPA routing)."""
+            jobs_html = os.path.join(frontend_dir, "app", "jobs", "index.html")
+            if os.path.exists(jobs_html):
+                return FileResponse(jobs_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Jobs page not found")
+
+        # Other app routes - serve the app index.html
+        @self.app.get("/app/{path:path}")
+        async def serve_app_routes(path: str):
+            """Serve app index.html for other /app/* routes."""
+            app_html = os.path.join(frontend_dir, "app", "index.html")
+            if os.path.exists(app_html):
+                return FileResponse(app_html, media_type="text/html")
+            # Fallback to root index.html
+            index_html = os.path.join(frontend_dir, "index.html")
+            if os.path.exists(index_html):
+                return FileResponse(index_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Frontend not found")
+
+        # Favicon
+        @self.app.get("/favicon.ico")
+        async def serve_favicon():
+            favicon_path = os.path.join(frontend_dir, "favicon.ico")
+            if os.path.exists(favicon_path):
+                return FileResponse(favicon_path)
+            raise HTTPException(status_code=404, detail="Not found")
 
     def _register_routes(self) -> None:
         """Register API routes."""
+        # Legacy routes (for backward compatibility with old frontend)
         self.app.add_api_route("/api/correction-data", self.get_correction_data, methods=["GET"])
         self.app.add_api_route("/api/complete", self.complete_review, methods=["POST"])
         self.app.add_api_route("/api/preview-video", self.generate_preview_video, methods=["POST"])
@@ -156,6 +250,17 @@ class ReviewServer:
         self.app.add_api_route("/api/handlers", self.update_handlers, methods=["POST"])
         self.app.add_api_route("/api/add-lyrics", self.add_lyrics, methods=["POST"])
 
+        # Cloud-compatible routes (for unified Next.js frontend)
+        # These use the same handlers but with cloud-style URL patterns
+        # Job ID is always "local" for local CLI mode
+        self.app.add_api_route("/api/jobs/{job_id}", self.get_local_job, methods=["GET"])
+        self.app.add_api_route("/api/jobs/{job_id}/corrections", self.get_correction_data, methods=["GET"])
+        self.app.add_api_route("/api/jobs/{job_id}/corrections", self.complete_review, methods=["PUT"])
+        self.app.add_api_route("/api/jobs/{job_id}/preview-video", self.generate_preview_video, methods=["POST"])
+        self.app.add_api_route("/api/jobs/{job_id}/handlers", self.update_handlers_cloud, methods=["PATCH"])
+        self.app.add_api_route("/api/jobs/{job_id}/lyrics", self.add_lyrics, methods=["POST"])
+        self.app.add_api_route("/api/jobs/{job_id}/annotations", self.post_annotation, methods=["POST"])
+
         # Agentic AI v1 endpoints (contract-compliant scaffolds)
         self.app.add_api_route("/api/v1/correction/agentic", self.post_correction_agentic, methods=["POST"])
         self.app.add_api_route("/api/v1/correction/session/{session_id}", self.get_correction_session_v1, methods=["GET"])
@@ -163,15 +268,55 @@ class ReviewServer:
         self.app.add_api_route("/api/v1/models", self.get_models_v1, methods=["GET"])
         self.app.add_api_route("/api/v1/models", self.put_models_v1, methods=["PUT"])
         self.app.add_api_route("/api/v1/metrics", self.get_metrics_v1, methods=["GET"])
-        
+
         # Annotation endpoints
         self.app.add_api_route("/api/v1/annotations", self.post_annotation, methods=["POST"])
         self.app.add_api_route("/api/v1/annotations/{audio_hash}", self.get_annotations_by_song, methods=["GET"])
         self.app.add_api_route("/api/v1/annotations/stats", self.get_annotation_stats, methods=["GET"])
 
+        # Tenant config endpoint (returns default config for local mode)
+        self.app.add_api_route("/api/tenant/config", self.get_tenant_config, methods=["GET"])
+
     async def get_correction_data(self):
         """Get the correction data."""
         return self.correction_result.to_dict()
+
+    async def get_tenant_config(self):
+        """Get tenant configuration for local mode.
+
+        Returns a default tenant config that enables all features
+        for local CLI mode.
+        """
+        return {
+            "tenant": None,
+            "is_default": True
+        }
+
+    async def get_local_job(self, job_id: str):
+        """Get mock job data for local mode.
+
+        This endpoint returns job-like data that the unified frontend expects.
+        In local mode, the job_id is always "local".
+        """
+        metadata = self.correction_result.metadata or {}
+        return {
+            "job_id": job_id,
+            "status": "awaiting_review",
+            "progress": 50,
+            "created_at": None,
+            "updated_at": None,
+            "artist": metadata.get("artist", "Local Artist"),
+            "title": metadata.get("title", "Local Title"),
+            "user_email": "local@localhost",
+            "audio_hash": metadata.get("audio_hash", "local"),
+        }
+
+    async def update_handlers_cloud(self, job_id: str, enabled_handlers: List[str] = Body(...)):
+        """Cloud-compatible handler update endpoint (PATCH method).
+
+        This wraps the existing update_handlers method with cloud-style routing.
+        """
+        return await self.update_handlers(enabled_handlers)
 
     # ------------------------------
     # API v1: Agentic AI scaffolds
@@ -588,24 +733,27 @@ class ReviewServer:
         server_thread = None
         sock = None
 
+        # Get port from environment variable (default 8000)
+        port = int(os.environ.get("LYRICS_REVIEW_PORT", "8000"))
+
         try:
             # Check port availability
             while True:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(1)
-                if sock.connect_ex(("127.0.0.1", 8000)) == 0:
+                if sock.connect_ex(("127.0.0.1", port)) == 0:
                     # Port is in use, get process info
                     process_info = ""
                     if os.name != "nt":  # Unix-like systems
                         try:
-                            process_info = os.popen("lsof -i:8000").read().strip()
+                            process_info = os.popen(f"lsof -i:{port}").read().strip()
                         except:
                             pass
 
                     self.logger.warning(
-                        f"Port 8000 is in use. Waiting for it to become available...\n"
-                        f"Process using port 8000:\n{process_info}\n"
-                        f"To manually free the port, you can run: lsof -ti:8000 | xargs kill -9"
+                        f"Port {port} is in use. Waiting for it to become available...\n"
+                        f"Process using port {port}:\n{process_info}\n"
+                        f"To manually free the port, you can run: lsof -ti:{port} | xargs kill -9"
                     )
                     sock.close()
                     time.sleep(30)
@@ -614,31 +762,15 @@ class ReviewServer:
                     break
 
             # Start server
-            config = uvicorn.Config(self.app, host="127.0.0.1", port=8000, log_level="error")
+            config = uvicorn.Config(self.app, host="127.0.0.1", port=port, log_level="error")
             server = uvicorn.Server(config)
             server_thread = Thread(target=server.run, daemon=True)
             server_thread.start()
             time.sleep(0.5)  # Reduced wait time
 
-            # Open browser and wait for completion
-            base_api_url = "http://localhost:8000/api"
-            encoded_api_url = urllib.parse.quote(base_api_url, safe="")
-            audio_hash_param = (
-                f"&audioHash={self.correction_result.metadata.get('audio_hash', '')}"
-                if self.correction_result.metadata and "audio_hash" in self.correction_result.metadata
-                else ""
-            )
-            
-            # Use bundled local frontend by default for local karaoke-gen runs
-            # Can override with LYRICS_REVIEW_UI_URL env var (e.g., http://localhost:5173 for Vite dev)
-            review_ui_url = os.environ.get("LYRICS_REVIEW_UI_URL", "local")
-            if review_ui_url.lower() == "local":
-                # Use the bundled local frontend served by this FastAPI server
-                browser_url = f"http://localhost:8000?baseApiUrl={encoded_api_url}{audio_hash_param}"
-            else:
-                # Use an external review UI (dev server or hosted)
-                browser_url = f"{review_ui_url}?baseApiUrl={encoded_api_url}{audio_hash_param}"
-            
+            # Open browser to the Next.js review UI
+            # The frontend will automatically detect local mode and skip auth
+            browser_url = f"http://localhost:{port}/app/jobs/local/review"
             self.logger.info(f"Opening review UI: {browser_url}")
             webbrowser.open(browser_url)
 

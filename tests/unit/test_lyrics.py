@@ -348,8 +348,18 @@ class TestTranscriptionProviderValidation:
     
     def test_check_transcription_providers_none_configured(self, basic_karaoke_gen):
         """Test provider check when no providers are configured."""
+        # Mock whisper_timestamped import to simulate it not being installed
+        def mock_import(name, *args, **kwargs):
+            if name == 'whisper_timestamped':
+                raise ImportError("No module named 'whisper_timestamped'")
+            return original_import(name, *args, **kwargs)
+
+        import builtins
+        original_import = builtins.__import__
+
         with patch.dict(os.environ, {}, clear=True), \
-             patch('karaoke_gen.lyrics_processor.load_dotenv'):
+             patch('karaoke_gen.lyrics_processor.load_dotenv'), \
+             patch.object(builtins, '__import__', side_effect=mock_import):
             result = basic_karaoke_gen.lyrics_processor._check_transcription_providers()
             assert len(result["configured"]) == 0
             assert len(result["missing"]) > 0
@@ -390,14 +400,24 @@ class TestTranscriptionProviderValidation:
         """Test that transcribe_lyrics raises ValueError when no providers configured."""
         track_output_dir = os.path.join(temp_dir, "track")
         os.makedirs(track_output_dir, exist_ok=True)
-        
+
         # Make sure skip_transcription is False
         basic_karaoke_gen.lyrics_processor.skip_transcription = False
-        
+
+        # Mock whisper_timestamped import to simulate it not being installed
+        def mock_import(name, *args, **kwargs):
+            if name == 'whisper_timestamped':
+                raise ImportError("No module named 'whisper_timestamped'")
+            return original_import(name, *args, **kwargs)
+
+        import builtins
+        original_import = builtins.__import__
+
         with patch.dict(os.environ, {}, clear=True), \
              patch('os.path.exists', return_value=False), \
-             patch('karaoke_gen.lyrics_processor.load_dotenv'):
-            
+             patch('karaoke_gen.lyrics_processor.load_dotenv'), \
+             patch.object(builtins, '__import__', side_effect=mock_import):
+
             with pytest.raises(ValueError, match="No transcription providers configured"):
                 basic_karaoke_gen.lyrics_processor.transcribe_lyrics(
                     "/path/to/audio.wav", "Artist", "Title", track_output_dir

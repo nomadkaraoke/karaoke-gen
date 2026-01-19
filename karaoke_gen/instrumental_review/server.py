@@ -10,7 +10,6 @@ Similar pattern to LyricsTranscriber's ReviewServer.
 
 import logging
 import os
-from pathlib import Path
 import socket
 import threading
 import webbrowser
@@ -18,7 +17,7 @@ from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import shutil
 import tempfile
@@ -104,7 +103,7 @@ class InstrumentalReviewServer:
     def _create_app(self) -> FastAPI:
         """Create and configure the FastAPI application."""
         app = FastAPI(title="Instrumental Review", docs_url=None, redoc_url=None)
-        
+
         # Configure CORS
         app.add_middleware(
             CORSMiddleware,
@@ -113,19 +112,138 @@ class InstrumentalReviewServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        
+
+        # Determine which frontend to use
+        self._use_nextjs_frontend = self._setup_nextjs_frontend(app)
+
         # Register routes
         self._register_routes(app)
-        
+
         return app
+
+    def _setup_nextjs_frontend(self, app: FastAPI) -> bool:
+        """Set up the unified Next.js frontend.
+
+        Returns True if Next.js frontend is set up successfully.
+        Raises FileNotFoundError if Next.js assets are not available.
+        """
+        import os
+        from karaoke_gen.nextjs_frontend import get_nextjs_assets_dir, is_nextjs_frontend_available
+
+        if not is_nextjs_frontend_available():
+            raise FileNotFoundError(
+                "Next.js frontend assets not found. Please ensure the frontend is built "
+                "and copied to karaoke_gen/nextjs_frontend/out/"
+            )
+
+        frontend_dir = str(get_nextjs_assets_dir())
+        logger.info(f"Using Next.js frontend from {frontend_dir}")
+
+        # Mount static files for Next.js assets
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/_next", StaticFiles(directory=os.path.join(frontend_dir, "_next")), name="nextjs_static")
+
+        return True
     
     def _register_routes(self, app: FastAPI) -> None:
         """Register API routes."""
-        
+
         @app.get("/")
         async def serve_frontend():
-            """Serve the frontend HTML."""
-            return HTMLResponse(content=self._get_frontend_html())
+            """Redirect to Next.js instrumental review route."""
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/app/jobs/local/instrumental", status_code=302)
+
+        # Local instrumental route - serve pre-rendered HTML for local mode
+        @app.get("/app/jobs/local/instrumental")
+        async def serve_local_instrumental():
+            """Serve pre-rendered local instrumental page with patched chunk loading."""
+            from karaoke_gen.nextjs_frontend import get_nextjs_assets_dir
+            from fastapi.responses import HTMLResponse
+            import glob
+            frontend_dir = get_nextjs_assets_dir()
+            if frontend_dir:
+                import os
+                local_instrumental_html = os.path.join(str(frontend_dir), "app", "jobs", "local", "instrumental", "index.html")
+                if os.path.exists(local_instrumental_html):
+                    # Read the HTML and inject the missing chunk script
+                    # This works around a Turbopack static export issue
+                    with open(local_instrumental_html, 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+
+                    # Find the chunk containing module 78280 (JobRouterClient)
+                    chunks_dir = os.path.join(str(frontend_dir), "_next", "static", "chunks")
+                    for chunk_file in glob.glob(os.path.join(chunks_dir, "*.js")):
+                        chunk_name = os.path.basename(chunk_file)
+                        with open(chunk_file, 'r', encoding='utf-8') as cf:
+                            chunk_content = cf.read(500)
+                            if ",78280," in chunk_content:
+                                script_tag = f'<script src="/_next/static/chunks/{chunk_name}" async=""></script>'
+                                if chunk_name not in html_content:
+                                    html_content = html_content.replace('</head>', f'{script_tag}</head>')
+                                break
+
+                    return HTMLResponse(content=html_content, media_type="text/html")
+                # Fallback to jobs index
+                jobs_html = os.path.join(str(frontend_dir), "app", "jobs", "index.html")
+                if os.path.exists(jobs_html):
+                    return FileResponse(jobs_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Instrumental page not found")
+
+        # Job routes - serve the jobs page HTML for client-side routing
+        @app.get("/app/jobs/{full_path:path}")
+        async def serve_jobs_routes(full_path: str):
+            """Serve jobs index.html for all /app/jobs/* routes (SPA routing)."""
+            from karaoke_gen.nextjs_frontend import get_nextjs_assets_dir
+            frontend_dir = get_nextjs_assets_dir()
+            if frontend_dir:
+                import os
+                jobs_html = os.path.join(str(frontend_dir), "app", "jobs", "index.html")
+                if os.path.exists(jobs_html):
+                    return FileResponse(jobs_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Jobs page not found")
+
+        # Other app routes - serve the app index.html
+        @app.get("/app/{full_path:path}")
+        async def serve_app_routes(full_path: str):
+            """Serve app index.html for other /app/* routes."""
+            from karaoke_gen.nextjs_frontend import get_nextjs_assets_dir
+            frontend_dir = get_nextjs_assets_dir()
+            if frontend_dir:
+                import os
+                app_html = os.path.join(str(frontend_dir), "app", "index.html")
+                if os.path.exists(app_html):
+                    return FileResponse(app_html, media_type="text/html")
+                # Fallback to root index.html
+                index_html = os.path.join(str(frontend_dir), "index.html")
+                if os.path.exists(index_html):
+                    return FileResponse(index_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Frontend not found")
+
+        # Tenant config endpoint (returns default config for local mode)
+        @app.get("/api/tenant/config")
+        async def get_tenant_config():
+            """Get tenant configuration for local mode."""
+            return {
+                "tenant": None,
+                "is_default": True
+            }
+
+        # Mock job endpoint for local mode (required by unified frontend)
+        @app.get("/api/jobs/local")
+        async def get_local_job():
+            """Get mock job data for local mode."""
+            return {
+                "job_id": "local",
+                "status": "awaiting_instrumental_selection",
+                "progress": 50,
+                "created_at": None,
+                "updated_at": None,
+                "artist": self.base_name.split(" - ")[0] if " - " in self.base_name else "",
+                "title": self.base_name.split(" - ")[1] if " - " in self.base_name else self.base_name,
+                "user_email": "local@localhost",
+                "audio_hash": "local",
+            }
         
         @app.get("/api/jobs/local/instrumental-analysis")
         async def get_analysis():
@@ -188,9 +306,8 @@ class InstrumentalReviewServer:
                 logger.exception(f"Error generating waveform data: {e}")
                 raise HTTPException(status_code=500, detail=str(e)) from e
         
-        @app.get("/api/audio/{stem_type}")
-        async def stream_audio(stem_type: str):
-            """Stream audio file."""
+        def _get_audio_path(stem_type: str) -> Optional[str]:
+            """Get the path for a given stem type."""
             path_map = {
                 "clean_instrumental": self.clean_instrumental_path,
                 "backing_vocals": self.backing_vocals_path,
@@ -199,11 +316,14 @@ class InstrumentalReviewServer:
                 "uploaded_instrumental": self.uploaded_instrumental_path,
                 "original": self.original_audio_path,
             }
-            
-            audio_path = path_map.get(stem_type)
+            return path_map.get(stem_type)
+
+        def _stream_audio_file(stem_type: str):
+            """Stream an audio file by stem type."""
+            audio_path = _get_audio_path(stem_type)
             if not audio_path or not os.path.exists(audio_path):
                 raise HTTPException(status_code=404, detail=f"Audio file not found: {stem_type}")
-            
+
             # Determine content type
             ext = os.path.splitext(audio_path)[1].lower()
             content_types = {
@@ -212,8 +332,18 @@ class InstrumentalReviewServer:
                 ".wav": "audio/wav",
             }
             content_type = content_types.get(ext, "application/octet-stream")
-            
+
             return FileResponse(audio_path, media_type=content_type)
+
+        @app.get("/api/audio/{stem_type}")
+        async def stream_audio(stem_type: str):
+            """Stream audio file (legacy route)."""
+            return _stream_audio_file(stem_type)
+
+        @app.get("/api/jobs/{job_id}/audio-stream/{stem_type}")
+        async def stream_audio_cloud(job_id: str, stem_type: str):
+            """Stream audio file (cloud-compatible route)."""
+            return _stream_audio_file(stem_type)
         
         @app.get("/api/waveform")
         async def get_waveform_image():
@@ -338,26 +468,6 @@ class InstrumentalReviewServer:
             
             return {"status": "success", "selection": request.selection}
     
-    @staticmethod
-    def _get_static_dir() -> Path:
-        """Get the path to the static assets directory."""
-        return Path(__file__).parent / "static"
-    
-    def _get_frontend_html(self) -> str:
-        """Return the frontend HTML by reading from the static file."""
-        static_file = self._get_static_dir() / "index.html"
-        if static_file.exists():
-            return static_file.read_text(encoding="utf-8")
-        else:
-            # Fallback error message if file is missing
-            return """<!DOCTYPE html>
-<html>
-<head><title>Error</title></head>
-<body style="background:#1a1a1a;color:#fff;font-family:sans-serif;padding:2rem;">
-<h1>Frontend assets not found</h1>
-<p>The static/index.html file is missing from the instrumental_review module.</p>
-</body>
-</html>"""
     
     @staticmethod
     def _is_port_available(host: str, port: int) -> bool:

@@ -12,6 +12,7 @@ from . import cloud_tasks
 from . import cloud_run
 from . import monitoring
 from . import iam
+from . import networking
 
 __all__ = [
     "database",
@@ -22,4 +23,5 @@ __all__ = [
     "cloud_run",
     "monitoring",
     "iam",
+    "networking",
 ]

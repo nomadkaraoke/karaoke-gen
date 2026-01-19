@@ -111,6 +111,9 @@ class Settings(BaseSettings):
     rate_limit_youtube_uploads_per_day: int = int(os.getenv("RATE_LIMIT_YOUTUBE_UPLOADS_PER_DAY", "10"))
     # Maximum beta enrollments from same IP per day (0 = unlimited)
     rate_limit_beta_ip_per_day: int = int(os.getenv("RATE_LIMIT_BETA_IP_PER_DAY", "1"))
+
+    # E2E test bypass key for rate limiting (set via secret in production)
+    e2e_bypass_key: str = os.getenv("E2E_BYPASS_KEY", "")
     default_youtube_description: str = os.getenv(
         "DEFAULT_YOUTUBE_DESCRIPTION",
         "Karaoke video created with Nomad Karaoke (https://nomadkaraoke.com)\n\n"

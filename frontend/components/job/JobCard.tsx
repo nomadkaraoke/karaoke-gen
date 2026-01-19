@@ -1,13 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Job } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { ExternalLink, Zap } from "lucide-react"
+import { Zap } from "lucide-react"
 import { JobActions } from "./JobActions"
 import { OutputLinks } from "./OutputLinks"
 import { AudioSearchDialog } from "../audio-search/AudioSearchDialog"
 import { getJobStep, formatStepIndicator, getJobProgressPercent } from "@/lib/job-status"
+import { useAuth } from "@/lib/auth"
 
 /**
  * StatusIndicator component - Shows step-based progress with visual indicator
@@ -74,6 +76,8 @@ interface JobCardProps {
 
 export function JobCard({ job, onRefresh }: JobCardProps) {
   const [showAudioSearch, setShowAudioSearch] = useState(false)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
 
   const createdAt = new Date(job.created_at).toLocaleString()
   const isInteractive = job.status === "awaiting_review" ||
@@ -82,34 +86,6 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
                         job.status === "awaiting_audio_selection"
   const isComplete = job.status === "complete"
   const isFailed = job.status === "failed"
-
-  // Build review URL for awaiting_review status
-  const getReviewUrl = () => {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.nomadkaraoke.com'
-    const reviewUiUrl = process.env.NEXT_PUBLIC_REVIEW_UI_URL || 'https://gen.nomadkaraoke.com/lyrics/'
-    const baseApiUrl = `${backendUrl}/api/review/${job.job_id}`
-    const encodedApiUrl = encodeURIComponent(baseApiUrl)
-    let url = `${reviewUiUrl}/?baseApiUrl=${encodedApiUrl}`
-    if (job.audio_hash) {
-      url += `&audioHash=${encodeURIComponent(job.audio_hash)}`
-    }
-    if (job.review_token) {
-      url += `&reviewToken=${encodeURIComponent(job.review_token)}`
-    }
-    return url
-  }
-
-  // Build instrumental review URL for awaiting_instrumental_selection status
-  const getInstrumentalUrl = () => {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.nomadkaraoke.com'
-    const baseApiUrl = `${backendUrl}/api/jobs/${job.job_id}`
-    const encodedApiUrl = encodeURIComponent(baseApiUrl)
-    let url = `/instrumental/?baseApiUrl=${encodedApiUrl}`
-    if (job.instrumental_token) {
-      url += `&instrumentalToken=${encodeURIComponent(job.instrumental_token)}`
-    }
-    return url
-  }
 
   // Render primary action button based on status
   const renderPrimaryAction = () => {
@@ -127,15 +103,12 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
 
     if (job.status === "awaiting_review" || job.status === "in_review") {
       return (
-        <a
-          href={getReviewUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href={`/app/jobs/${job.job_id}/review`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
-          <ExternalLink className="w-3 h-3" />
           Review Lyrics
-        </a>
+        </Link>
       )
     }
 
@@ -153,15 +126,12 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
 
     if (job.status === "awaiting_instrumental_selection") {
       return (
-        <a
-          href={getInstrumentalUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href={`/app/jobs/${job.job_id}/instrumental`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
-          <ExternalLink className="w-3 h-3" />
           Select Instrumental
-        </a>
+        </Link>
       )
     }
 
@@ -207,8 +177,8 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
         </div>
       )}
 
-      {/* Output links for completed jobs */}
-      {isComplete && (
+      {/* Output links for completed jobs, or admin link for admins on any job */}
+      {(isComplete || isAdmin) && (
         <div className="mt-2">
           <OutputLinks job={job} />
         </div>

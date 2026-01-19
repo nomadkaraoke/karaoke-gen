@@ -99,9 +99,8 @@ describe('JobCard', () => {
       const reviewLink = screen.getByText('Review Lyrics')
       expect(reviewLink).toBeInTheDocument()
       const href = reviewLink.closest('a')?.getAttribute('href') || ''
-      expect(href).toContain('gen.nomadkaraoke.com/lyrics')
-      expect(href).toContain('baseApiUrl=')
-      expect(href).toContain('reviewToken=test-token-123')
+      // Now uses internal routes instead of external URLs
+      expect(href).toBe('/app/jobs/123/review')
     })
 
     it('shows audio search button for awaiting_audio_selection status', () => {
@@ -122,9 +121,8 @@ describe('JobCard', () => {
       const instrumentalLink = screen.getByText('Select Instrumental')
       expect(instrumentalLink).toBeInTheDocument()
       const href = instrumentalLink.closest('a')?.getAttribute('href') || ''
-      expect(href).toContain('/instrumental/')
-      expect(href).toContain('baseApiUrl=')
-      expect(href).toContain('instrumentalToken=test-instrumental-token')
+      // Now uses internal routes instead of external URLs
+      expect(href).toBe('/app/jobs/123/instrumental')
     })
 
     it('does not show Auto badge for regular jobs', () => {
