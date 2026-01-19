@@ -1626,7 +1626,7 @@ async def test_full_cli_integration_no_video(tmp_path, mocker):
         return mock_instance.correction_result
 
     mocker.patch(
-        'lyrics_transcriber.review.server.ReviewServer.start',
+        'karaoke_gen.lyrics_transcriber.review.server.ReviewServer.start',
         side_effect=mock_start_return_self_correction_result,
         autospec=True
     )

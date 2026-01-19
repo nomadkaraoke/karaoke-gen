@@ -159,3 +159,10 @@ filterwarnings = [
     "ignore::RuntimeWarning",
     "ignore::UserWarning",
 ]
+
+[tool.coverage.run]
+# Exclude lyrics_transcriber subpackage from coverage since it was a separate vendored package
+# with its own test suite - including it in karaoke_gen coverage would unfairly lower the percentage
+omit = [
+    "karaoke_gen/lyrics_transcriber/*",
+]
