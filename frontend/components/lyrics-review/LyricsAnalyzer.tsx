@@ -588,6 +588,9 @@ export default function LyricsAnalyzer({
         }
       }
 
+      // Complete review and trigger video rendering
+      await apiClient.completeReview()
+
       setIsReviewComplete(true)
       setIsReviewModalOpen(false)
       window.close()
