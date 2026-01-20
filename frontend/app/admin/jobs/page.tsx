@@ -40,6 +40,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import {
   Search,
   RefreshCw,
   Loader2,
@@ -59,8 +74,14 @@ import {
   X,
   Settings,
   RotateCcw,
-  Wrench,
   CloudOff,
+  Terminal,
+  Music,
+  Mic,
+  Sliders,
+  AlertTriangle,
+  ChevronRight,
+  Copy,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -86,6 +107,28 @@ const statusOptions = [
   { value: "cancelled", label: "Cancelled" },
 ]
 
+// Consistent status label mapping (Title Case, clear naming)
+const statusLabels: Record<string, string> = {
+  pending: "Pending",
+  downloading: "Downloading",
+  searching_audio: "Searching",
+  awaiting_audio_selection: "Awaiting Audio",
+  separating_stage1: "Separating 1",
+  separating_stage2: "Separating 2",
+  transcribing: "Transcribing",
+  correcting: "Correcting",
+  awaiting_review: "Awaiting Review",
+  in_review: "In Review",
+  rendering_video: "Rendering",
+  awaiting_instrumental_selection: "Awaiting Inst.",
+  generating_video: "Generating",
+  encoding: "Encoding",
+  complete: "Complete",
+  prep_complete: "Prep Complete",
+  failed: "Failed",
+  cancelled: "Cancelled",
+}
+
 // Inner component that uses useSearchParams
 function AdminJobsPageContent() {
   const router = useRouter()
@@ -109,6 +152,11 @@ function AdminJobsPageContent() {
   const [logsLoading, setLogsLoading] = useState(false)
   const [files, setFiles] = useState<FileInfo[]>([])
   const [filesLoading, setFilesLoading] = useState(false)
+
+  // Logs modal state
+  const [logsModalOpen, setLogsModalOpen] = useState(false)
+  const [logFilter, setLogFilter] = useState<string>("all")
+  const [logSearch, setLogSearch] = useState("")
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -376,25 +424,29 @@ function AdminJobsPageContent() {
 
   // Get reset target display info
   const getResetTargetInfo = (targetState: string) => {
-    const info: Record<string, { label: string; description: string }> = {
+    const info: Record<string, { label: string; description: string; icon: any }> = {
       pending: {
         label: "Pending",
         description: "Restart from the beginning. Clears all processing data.",
+        icon: RotateCcw,
       },
       awaiting_audio_selection: {
         label: "Audio Selection",
         description: "Re-select audio source. Preserves search results.",
+        icon: Music,
       },
       awaiting_review: {
         label: "Lyrics Review",
         description: "Re-review lyrics. Preserves audio stems.",
+        icon: Mic,
       },
       awaiting_instrumental_selection: {
-        label: "Instrumental Selection",
+        label: "Instrumental",
         description: "Re-select instrumental. Preserves lyrics review.",
+        icon: Sliders,
       },
     }
-    return info[targetState] || { label: targetState, description: "" }
+    return info[targetState] || { label: targetState, description: "", icon: Settings }
   }
 
   const getStatusVariant = (status: string) => {
@@ -409,6 +461,27 @@ function AdminJobsPageContent() {
     if (!dateStr) return "—"
     return new Date(dateStr).toLocaleString()
   }
+
+  const formatDateCompact = (dateStr?: string) => {
+    if (!dateStr) return "—"
+    const d = new Date(dateStr)
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  }
+
+  const formatTimeOnly = (dateStr?: string) => {
+    if (!dateStr) return ""
+    const d = new Date(dateStr)
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
+  // Filter logs based on level and search
+  const filteredLogs = logs.filter(log => {
+    const matchesLevel = logFilter === "all" || log.level?.toUpperCase() === logFilter
+    const matchesSearch = !logSearch ||
+      log.message?.toLowerCase().includes(logSearch.toLowerCase()) ||
+      log.worker?.toLowerCase().includes(logSearch.toLowerCase())
+    return matchesLevel && matchesSearch
+  })
 
   const getLogLevelColor = (level: string) => {
     switch (level?.toUpperCase()) {
@@ -427,9 +500,9 @@ function AdminJobsPageContent() {
 
   // Determine job source
   const getJobSource = (job: Job) => {
-    if (job?.url) return { type: "url", icon: Globe, label: "YouTube URL" }
-    if (job?.audio_search_artist || job?.audio_search_title) return { type: "search", icon: Search, label: "Audio Search" }
-    if (job?.filename) return { type: "upload", icon: Upload, label: "File Upload" }
+    if (job?.url) return { type: "url", icon: Globe, label: "YouTube" }
+    if (job?.audio_search_artist || job?.audio_search_title) return { type: "search", icon: Search, label: "Search" }
+    if (job?.filename) return { type: "upload", icon: Upload, label: "Upload" }
     return { type: "unknown", icon: FileText, label: "Unknown" }
   }
 
@@ -437,7 +510,7 @@ function AdminJobsPageContent() {
   const getStageDurations = (job: Job) => {
     if (!job?.timeline || job.timeline.length < 2) return []
 
-    const durations: { status: string; duration: number; startTime: string }[] = []
+    const durations: { status: string; duration: number; startTime: string; message?: string }[] = []
     for (let i = 0; i < job.timeline.length - 1; i++) {
       const current = job.timeline[i]
       const next = job.timeline[i + 1]
@@ -448,6 +521,7 @@ function AdminJobsPageContent() {
         status: current.status,
         duration: durationMs,
         startTime: current.timestamp,
+        message: current.message,
       })
     }
     // Add current/final state
@@ -457,53 +531,46 @@ function AdminJobsPageContent() {
         status: last.status,
         duration: 0,
         startTime: last.timestamp,
+        message: last.message,
       })
     }
     return durations
   }
 
   const formatDuration = (ms: number) => {
-    if (ms === 0) return "—"
+    if (ms === 0) return ""
     if (ms < 1000) return `${ms}ms`
     if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
     const mins = Math.floor(ms / 60000)
     const secs = Math.floor((ms % 60000) / 1000)
-    return `${mins}m ${secs}s`
+    return `${mins}m${secs}s`
   }
 
   // Get timeline stage color based on status
-  const getTimelineStageColor = (status: string) => {
+  const getTimelineStageColor = (status: string, isCurrent: boolean) => {
     if (status === "complete" || status === "prep_complete") {
-      return "bg-green-500"
+      return "bg-emerald-500"
     }
     if (status === "failed") {
       return "bg-red-500"
     }
     if (status === "cancelled") {
-      return "bg-gray-400"
+      return "bg-zinc-400"
     }
     if (status.includes("awaiting") || status === "in_review") {
-      return "bg-orange-500"
+      return isCurrent ? "bg-amber-500 animate-pulse" : "bg-amber-500"
     }
     // Processing stages
-    return "bg-blue-500"
+    return isCurrent ? "bg-blue-500 animate-pulse" : "bg-blue-500"
   }
 
-  // Get timeline border color
-  const getTimelineBorderColor = (status: string) => {
-    if (status === "complete" || status === "prep_complete") {
-      return "border-green-500"
-    }
-    if (status === "failed") {
-      return "border-red-500"
-    }
-    if (status === "cancelled") {
-      return "border-gray-400"
-    }
-    if (status.includes("awaiting") || status === "in_review") {
-      return "border-orange-500"
-    }
-    return "border-blue-500"
+  // Get timeline text color
+  const getTimelineTextColor = (status: string) => {
+    if (status === "complete" || status === "prep_complete") return "text-emerald-600 dark:text-emerald-400"
+    if (status === "failed") return "text-red-600 dark:text-red-400"
+    if (status === "cancelled") return "text-zinc-500"
+    if (status.includes("awaiting") || status === "in_review") return "text-amber-600 dark:text-amber-400"
+    return "text-blue-600 dark:text-blue-400"
   }
 
   // Group files by category for display
@@ -547,6 +614,14 @@ function AdminJobsPageContent() {
     return labels[category] || category.charAt(0).toUpperCase() + category.slice(1)
   }
 
+  // Copy job ID to clipboard
+  const copyJobId = () => {
+    if (selectedJob?.job_id) {
+      navigator.clipboard.writeText(selectedJob.job_id)
+      toast({ title: "Copied", description: "Job ID copied to clipboard" })
+    }
+  }
+
   // If a job is selected, show detail view
   if (selectedJobId) {
     if (detailLoading) {
@@ -572,36 +647,44 @@ function AdminJobsPageContent() {
     const jobSource = getJobSource(selectedJob)
     const stageDurations = getStageDurations(selectedJob)
     const SourceIcon = jobSource.icon
+    const canDeleteOutputs = ["complete", "prep_complete", "failed", "cancelled"].includes(selectedJob.status)
 
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push("/admin/jobs")}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-                Job {selectedJob.job_id}
-                <Badge variant={getStatusVariant(selectedJob.status)}>
-                  {selectedJob.status.replace(/_/g, " ")}
-                </Badge>
-                {selectedJob.outputs_deleted_at && (
-                  <Badge variant="outline" className="text-orange-600 border-orange-600">
-                    <CloudOff className="w-3 h-3 mr-1" />
-                    Outputs Deleted
+      <TooltipProvider>
+        <div className="space-y-4">
+          {/* ===== HEADER ===== */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <Button variant="ghost" size="icon" className="shrink-0 mt-0.5" onClick={() => router.push("/admin/jobs")}>
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-semibold tracking-tight font-mono">
+                    {selectedJob.job_id}
+                  </h1>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyJobId}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                  <Badge variant={getStatusVariant(selectedJob.status)} className="text-xs">
+                    {selectedJob.status.replace(/_/g, " ")}
                   </Badge>
+                  {selectedJob.outputs_deleted_at && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
+                      <CloudOff className="w-3 h-3 mr-1" />
+                      Outputs Deleted
+                    </Badge>
+                  )}
+                </div>
+                {selectedJob.artist && selectedJob.title && (
+                  <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                    {selectedJob.artist} - {selectedJob.title}
+                  </p>
                 )}
-              </h1>
-              {selectedJob.artist && selectedJob.title && (
-                <p className="text-muted-foreground">{selectedJob.artist} - {selectedJob.title}</p>
-              )}
+              </div>
             </div>
-          </div>
-          <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => {
                 loadJobDetail(selectedJobId)
@@ -609,87 +692,206 @@ function AdminJobsPageContent() {
                 loadFiles(selectedJobId)
               }}
               disabled={detailLoading}
+              className="shrink-0"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${detailLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                setJobToDelete(selectedJob)
-                setDeleteDialogOpen(true)
-              }}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
+              <RefreshCw className={`w-4 h-4 ${detailLoading ? "animate-spin" : ""}`} />
             </Button>
           </div>
-        </div>
 
-        {/* Overview Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <User className="w-4 h-4" />
-                User
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm truncate">{selectedJob.user_email || "Unknown"}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <SourceIcon className="w-4 h-4" />
-                Source
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">{jobSource.label}</p>
-              {selectedJob.url && (
-                <p className="text-xs text-muted-foreground truncate">{selectedJob.url}</p>
-              )}
-              {selectedJob.audio_search_artist && (
-                <p className="text-xs text-muted-foreground truncate">
-                  {selectedJob.audio_search_artist} - {selectedJob.audio_search_title}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Created
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">{formatDate(selectedJob.created_at)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Updated
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">{formatDate(selectedJob.updated_at)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          {/* ===== STICKY ACTION TOOLBAR ===== */}
+          <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-background/95 backdrop-blur border-b">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mr-1">Reset to:</span>
+              {[
+                { state: "pending", icon: RotateCcw, label: "Start" },
+                { state: "awaiting_audio_selection", icon: Music, label: "Audio" },
+                { state: "awaiting_review", icon: Mic, label: "Lyrics" },
+                { state: "awaiting_instrumental_selection", icon: Sliders, label: "Inst." },
+              ].map(({ state, icon: Icon, label }) => (
+                <Tooltip key={state}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openResetDialog(state)}
+                      disabled={resetting}
+                    >
+                      <Icon className="w-3 h-3 mr-1" />
+                      {label}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="font-medium">{getResetTargetInfo(state).label}</p>
+                    <p className="text-xs text-muted-foreground">{getResetTargetInfo(state).description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+
+              <Separator orientation="vertical" className="h-5 mx-1" />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-7 px-2 text-xs ${canDeleteOutputs && !selectedJob.outputs_deleted_at ? "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950" : ""}`}
+                    onClick={() => setDeleteOutputsDialogOpen(true)}
+                    disabled={deletingOutputs || !canDeleteOutputs || !!selectedJob.outputs_deleted_at}
+                  >
+                    <CloudOff className="w-3 h-3 mr-1" />
+                    Del Outputs
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {selectedJob.outputs_deleted_at
+                    ? `Deleted ${formatDateCompact(selectedJob.outputs_deleted_at)}`
+                    : !canDeleteOutputs
+                      ? "Only for terminal states"
+                      : "Delete YouTube, Dropbox, GDrive files"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-destructive border-destructive/50 hover:bg-destructive/10"
+                    onClick={() => {
+                      setJobToDelete(selectedJob)
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Delete Job
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Permanently delete job and all files</TooltipContent>
+              </Tooltip>
+
+              <div className="flex-1" />
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setLogsModalOpen(true)}
+              >
+                <Terminal className="w-3 h-3 mr-1" />
+                Logs ({logs.length})
+              </Button>
+            </div>
+          </div>
+
+          {/* ===== ERROR MESSAGE (if any) ===== */}
+          {selectedJob.error_message && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900">
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-red-800 dark:text-red-200">{selectedJob.error_message}</p>
+                {selectedJob.error_details && (
+                  <pre className="mt-2 text-xs bg-red-100 dark:bg-red-900/50 p-2 rounded overflow-x-auto text-red-700 dark:text-red-300">
+                    {JSON.stringify(selectedJob.error_details, null, 2)}
+                  </pre>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ===== HORIZONTAL TIMELINE ===== */}
+          <div className="py-3 border-b">
+            <div className="flex items-start gap-0 overflow-x-auto pb-2">
+              {stageDurations.map((stage, i) => {
+                const isLast = i === stageDurations.length - 1
+                const isCurrent = isLast
+                const bgColor = getTimelineStageColor(stage.status, isCurrent)
+                const textColor = getTimelineTextColor(stage.status)
+                const label = statusLabels[stage.status] || stage.status.replace(/_/g, " ")
+                const duration = formatDuration(stage.duration)
+                const time = formatTimeOnly(stage.startTime)
+
+                return (
+                  <div key={i} className="flex items-start shrink-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={`flex flex-col items-center px-2 py-1 rounded-md cursor-default ${
+                            isCurrent ? 'bg-muted/50 ring-1 ring-inset' : ''
+                          } ${
+                            isCurrent ? (
+                              stage.status.includes("awaiting") || stage.status === "in_review" ? 'ring-amber-500/50' :
+                              stage.status === "complete" || stage.status === "prep_complete" ? 'ring-emerald-500/50' :
+                              stage.status === "failed" ? 'ring-red-500/50' : 'ring-blue-500/50'
+                            ) : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-2 h-2 rounded-full ${bgColor}`} />
+                            <span className={`text-xs font-medium whitespace-nowrap ${textColor}`}>
+                              {label}
+                            </span>
+                            {duration && (
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                {duration}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                            {time}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p className="font-medium">{stage.status.replace(/_/g, " ")}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(stage.startTime).toLocaleString()}
+                        </p>
+                        {stage.message && (
+                          <p className="text-xs mt-1 max-w-xs">{stage.message}</p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                    {!isLast && (
+                      <ChevronRight className="w-3 h-3 text-muted-foreground/30 mx-0.5 mt-2 shrink-0" />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ===== JOB INFO GRID ===== */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 py-3">
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">User</p>
+              <p className="text-sm truncate" title={selectedJob.user_email || "Unknown"}>
+                {selectedJob.user_email || "Unknown"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Source</p>
+              <p className="text-sm flex items-center gap-1.5">
+                <SourceIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                {jobSource.label}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Created</p>
+              <p className="text-sm" title={formatDate(selectedJob.created_at)}>
+                {formatDateCompact(selectedJob.created_at)}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Updated</p>
+              <p className="text-sm" title={formatDate(selectedJob.updated_at)}>
+                {formatDateCompact(selectedJob.updated_at)}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[60px]">
                   <div
                     className="h-full bg-primary transition-all"
                     style={{ width: `${selectedJob.progress}%` }}
@@ -697,606 +899,399 @@ function AdminJobsPageContent() {
                 </div>
                 <span className="text-sm font-medium">{selectedJob.progress}%</span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Theme</p>
+              <p className="text-sm truncate">{selectedJob.theme_id || "default"}</p>
+            </div>
+          </div>
 
-        {/* Error Message */}
-        {selectedJob.error_message && (
-          <Card className="border-destructive">
-            <CardHeader>
-              <CardTitle className="text-destructive flex items-center gap-2">
-                <XCircle className="w-5 h-5" />
-                Error
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">{selectedJob.error_message}</p>
-              {selectedJob.error_details && (
-                <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
-                  {JSON.stringify(selectedJob.error_details, null, 2)}
-                </pre>
-              )}
-            </CardContent>
-          </Card>
-        )}
+          {/* ===== TABBED CONTENT SECTIONS ===== */}
+          <Tabs defaultValue="files" className="w-full">
+            <TabsList className="w-full justify-start h-9 bg-muted/50">
+              <TabsTrigger value="files" className="text-xs">
+                <Download className="w-3 h-3 mr-1" />
+                Files ({files.length})
+              </TabsTrigger>
+              <TabsTrigger value="config" className="text-xs">
+                <Settings className="w-3 h-3 mr-1" />
+                Config
+              </TabsTrigger>
+              <TabsTrigger value="metadata" className="text-xs">
+                <FileText className="w-3 h-3 mr-1" />
+                Metadata
+              </TabsTrigger>
+              <TabsTrigger value="debug" className="text-xs">
+                <Terminal className="w-3 h-3 mr-1" />
+                Debug
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Accordion Sections */}
-        <Accordion type="multiple" className="w-full" defaultValue={["timeline", "logs"]}>
-          {/* Stage Timeline */}
-          <AccordionItem value="timeline">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Timeline ({selectedJob.timeline?.length || 0} events)
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="max-h-[400px] overflow-y-auto pr-2">
-                {stageDurations.length > 0 ? (
-                  <div className="relative">
-                    {stageDurations.map((stage, i) => {
-                      const isLast = i === stageDurations.length - 1
-                      const stageColor = getTimelineStageColor(stage.status)
-                      const borderColor = getTimelineBorderColor(stage.status)
-
-                      return (
-                        <div key={i} className="relative pl-6 pb-4">
-                          {/* Vertical line */}
-                          {!isLast && (
-                            <div
-                              className={`absolute left-[9px] top-4 bottom-0 w-0.5 ${
-                                stage.duration > 0 ? "bg-muted" : "bg-muted/50"
-                              }`}
-                            />
-                          )}
-                          {/* Dot */}
-                          <div
-                            className={`absolute left-0 top-1 w-5 h-5 rounded-full border-2 ${stageColor} ${borderColor} flex items-center justify-center`}
+            {/* Files Tab */}
+            <TabsContent value="files" className="mt-3">
+              {filesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : files.length === 0 ? (
+                <p className="text-muted-foreground text-sm py-4">No files available</p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {Object.entries(groupFilesByCategory(files)).map(([category, categoryFiles]) => (
+                    <Card key={category} className="overflow-hidden">
+                      <CardHeader className="py-2 px-3 bg-muted/30">
+                        <CardTitle className="text-xs font-medium flex items-center gap-2">
+                          <FolderOpen className="w-3 h-3" />
+                          {getCategoryLabel(category)}
+                          <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                            {categoryFiles.length}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-2 space-y-1">
+                        {categoryFiles.map((file, idx) => (
+                          <a
+                            key={`${file.path}-${idx}`}
+                            href={file.download_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={file.name}
+                            className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 transition-colors group"
                           >
-                            {isLast && (
-                              <div className="w-2 h-2 rounded-full bg-white" />
-                            )}
-                          </div>
-                          {/* Content */}
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${borderColor} border-current`}
-                                >
-                                  {stage.status.replace(/_/g, " ")}
-                                </Badge>
-                                {stage.duration > 0 && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatDuration(stage.duration)}
-                                  </span>
-                                )}
-                              </div>
-                              {selectedJob.timeline?.[i]?.message && (
-                                <p className="text-xs text-muted-foreground mt-1 truncate">
-                                  {selectedJob.timeline[i].message}
-                                </p>
-                              )}
-                            </div>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                              {new Date(stage.startTime).toLocaleTimeString()}
+                            <Download className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                            <span className="text-xs truncate flex-1" title={file.name}>
+                              {file.name}
                             </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No timeline events</p>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Worker Logs */}
-          <AccordionItem value="logs">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Worker Logs ({logs.length} entries)
-                {logsLoading && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-1 max-h-[500px] overflow-y-auto font-mono text-xs">
-                {logs.length > 0 ? (
-                  logs.map((log, i) => (
-                    <div key={i} className="flex gap-2 py-0.5 border-b border-muted/50">
-                      <span className="text-muted-foreground whitespace-nowrap">
-                        {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "—"}
-                      </span>
-                      <span className={`w-16 ${getLogLevelColor(log.level)}`}>
-                        [{log.level}]
-                      </span>
-                      <span className="text-muted-foreground w-20">
-                        {log.worker || "—"}
-                      </span>
-                      <span className="flex-1 break-all">{log.message}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">No logs available</p>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Request Metadata */}
-          {selectedJob.request_metadata && Object.keys(selectedJob.request_metadata).length > 0 && (
-            <AccordionItem value="metadata">
-              <AccordionTrigger>
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Request Metadata
+                          </a>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {selectedJob.request_metadata.environment && (
-                    <>
-                      <span className="text-muted-foreground">Environment:</span>
-                      <span>{selectedJob.request_metadata.environment}</span>
-                    </>
-                  )}
-                  {selectedJob.request_metadata.client_ip && (
-                    <>
-                      <span className="text-muted-foreground">Client IP:</span>
-                      <span>{selectedJob.request_metadata.client_ip}</span>
-                    </>
-                  )}
-                  {selectedJob.request_metadata.user_agent && (
-                    <>
-                      <span className="text-muted-foreground">User Agent:</span>
-                      <span className="truncate">{selectedJob.request_metadata.user_agent}</span>
-                    </>
-                  )}
-                  {selectedJob.request_metadata.server_version && (
-                    <>
-                      <span className="text-muted-foreground">Server Version:</span>
-                      <span>{selectedJob.request_metadata.server_version}</span>
-                    </>
-                  )}
-                  {selectedJob.request_metadata.created_from && (
-                    <>
-                      <span className="text-muted-foreground">Created From:</span>
-                      <span>{selectedJob.request_metadata.created_from}</span>
-                    </>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          )}
+              )}
+            </TabsContent>
 
-          {/* Admin Actions (Reset) */}
-          <AccordionItem value="actions">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <Wrench className="w-4 h-4" />
-                Admin Actions
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Reset Job State</h4>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Reset the job to a previous checkpoint for re-processing. State data will be
-                    cleared based on the selected target state.
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {[
-                      { state: "pending", icon: RotateCcw },
-                      { state: "awaiting_audio_selection", icon: Search },
-                      { state: "awaiting_review", icon: FileText },
-                      { state: "awaiting_instrumental_selection", icon: Settings },
-                    ].map(({ state, icon: Icon }) => {
-                      const info = getResetTargetInfo(state)
-                      return (
-                        <Button
-                          key={state}
-                          variant="outline"
-                          className="justify-start h-auto py-2 px-3"
-                          onClick={() => openResetDialog(state)}
-                          disabled={resetting}
-                        >
-                          <Icon className="w-4 h-4 mr-2 shrink-0" />
-                          <div className="text-left">
-                            <div className="font-medium">{info.label}</div>
-                            <div className="text-xs text-muted-foreground font-normal">
-                              {info.description}
-                            </div>
-                          </div>
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Delete Outputs Section */}
-                <div className="mt-6 pt-4 border-t">
-                  <h4 className="text-sm font-medium mb-2">Delete Distributed Outputs</h4>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Delete YouTube video, Dropbox folder, and Google Drive files.
-                    The job record is preserved. Use this to fix quality issues before re-processing.
-                  </p>
-
-                  {selectedJob.outputs_deleted_at ? (
-                    <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-md">
-                      <p className="text-sm text-orange-700 dark:text-orange-300">
-                        Outputs were deleted at {formatDate(selectedJob.outputs_deleted_at)}
-                        {selectedJob.outputs_deleted_by && ` by ${selectedJob.outputs_deleted_by}`}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
-                        onClick={() => setDeleteOutputsDialogOpen(true)}
-                        disabled={
-                          deletingOutputs ||
-                          !["complete", "prep_complete", "failed", "cancelled"].includes(selectedJob.status)
-                        }
-                      >
-                        <CloudOff className="w-4 h-4 mr-2" />
-                        Delete All Outputs
-                      </Button>
-                      {!["complete", "prep_complete", "failed", "cancelled"].includes(selectedJob.status) && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Only available for jobs in terminal states (complete, prep_complete, failed, cancelled)
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Configuration (Editable Fields) */}
-          <AccordionItem value="config">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Configuration
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-4">
-                {/* Editable Text Fields */}
-                {[
-                  { key: "artist", label: "Artist", value: selectedJob.artist },
-                  { key: "title", label: "Title", value: selectedJob.title },
-                  { key: "user_email", label: "User Email", value: selectedJob.user_email },
-                ].map(({ key, label, value }) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="text-sm font-medium w-28">{label}:</span>
-                    {editingField === key ? (
-                      <div className="flex items-center gap-2 flex-1">
-                        <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={(e) => handleEditKeyPress(e, key)}
-                          className="h-8 text-sm"
-                          autoFocus
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => saveField(key)}
-                          disabled={saving}
-                        >
-                          {saving ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Check className="w-4 h-4 text-green-600" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={cancelEditing}
-                          disabled={saving}
-                        >
-                          <X className="w-4 h-4 text-red-600" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-sm text-muted-foreground truncate flex-1">
-                          {value || "—"}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => startEditing(key, value || "")}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Theme and Options - Read-only display with edit hint */}
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Additional settings (click pencil to edit)
-                  </p>
+            {/* Config Tab */}
+            <TabsContent value="config" className="mt-3">
+              <Card>
+                <CardContent className="pt-4 space-y-3">
                   {[
+                    { key: "artist", label: "Artist", value: selectedJob.artist },
+                    { key: "title", label: "Title", value: selectedJob.title },
+                    { key: "user_email", label: "User Email", value: selectedJob.user_email },
                     { key: "theme_id", label: "Theme", value: selectedJob.theme_id || "default" },
                     { key: "brand_prefix", label: "Brand Prefix", value: selectedJob.brand_prefix },
                     { key: "customer_email", label: "Customer Email", value: selectedJob.customer_email },
                   ].map(({ key, label, value }) => (
-                    <div key={key} className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-medium w-28">{label}:</span>
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-muted-foreground w-24 shrink-0">{label}</span>
                       {editingField === key ? (
                         <div className="flex items-center gap-2 flex-1">
                           <Input
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             onKeyDown={(e) => handleEditKeyPress(e, key)}
-                            className="h-8 text-sm"
+                            className="h-7 text-sm"
                             autoFocus
                           />
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={() => saveField(key)}
                             disabled={saving}
                           >
                             {saving ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <Check className="w-4 h-4 text-green-600" />
+                              <Check className="w-3 h-3 text-green-600" />
                             )}
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={cancelEditing}
                             disabled={saving}
                           >
-                            <X className="w-4 h-4 text-red-600" />
+                            <X className="w-3 h-3 text-red-600" />
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-sm text-muted-foreground truncate flex-1">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-sm truncate flex-1">
                             {value || "—"}
                           </span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
                             onClick={() => startEditing(key, value || "")}
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-3 h-3" />
                           </Button>
                         </div>
                       )}
                     </div>
                   ))}
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* State Data */}
-          <AccordionItem value="state">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                State Data
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto max-h-[400px]">
-                {JSON.stringify(selectedJob.state_data || {}, null, 2)}
-              </pre>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Files with Download Links */}
-          <AccordionItem value="files">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Files ({files.length} downloadable)
-                {filesLoading && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              {filesLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : files.length === 0 ? (
-                <p className="text-muted-foreground text-sm py-2">No files available</p>
-              ) : (
-                <div className="space-y-4">
-                  {Object.entries(groupFilesByCategory(files)).map(([category, categoryFiles]) => (
-                    <div key={category} className="space-y-2">
-                      <h4 className="text-sm font-medium flex items-center gap-2">
-                        <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                        {getCategoryLabel(category)}
-                        <Badge variant="outline" className="text-xs">
-                          {categoryFiles.length}
-                        </Badge>
-                      </h4>
-                      <div className="grid gap-2 pl-6">
-                        {categoryFiles.map((file, idx) => (
-                          <div
-                            key={`${file.path}-${idx}`}
-                            className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded-md"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate" title={file.name}>
-                                {file.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate" title={file.file_key}>
-                                {file.file_key}
-                              </p>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              asChild
-                              className="shrink-0"
-                            >
-                              <a
-                                href={file.download_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                download={file.name}
-                              >
-                                <Download className="w-4 h-4 mr-1" />
-                                Download
-                              </a>
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+            {/* Metadata Tab */}
+            <TabsContent value="metadata" className="mt-3">
+              <Card>
+                <CardContent className="pt-4">
+                  {selectedJob.request_metadata && Object.keys(selectedJob.request_metadata).length > 0 ? (
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      {selectedJob.request_metadata.environment && (
+                        <>
+                          <span className="text-muted-foreground text-xs">Environment</span>
+                          <span className="text-xs">{selectedJob.request_metadata.environment}</span>
+                        </>
+                      )}
+                      {selectedJob.request_metadata.client_ip && (
+                        <>
+                          <span className="text-muted-foreground text-xs">Client IP</span>
+                          <span className="text-xs font-mono">{selectedJob.request_metadata.client_ip}</span>
+                        </>
+                      )}
+                      {selectedJob.request_metadata.user_agent && (
+                        <>
+                          <span className="text-muted-foreground text-xs">User Agent</span>
+                          <span className="text-xs truncate" title={selectedJob.request_metadata.user_agent}>
+                            {selectedJob.request_metadata.user_agent}
+                          </span>
+                        </>
+                      )}
+                      {selectedJob.request_metadata.server_version && (
+                        <>
+                          <span className="text-muted-foreground text-xs">Server Version</span>
+                          <span className="text-xs font-mono">{selectedJob.request_metadata.server_version}</span>
+                        </>
+                      )}
+                      {selectedJob.request_metadata.created_from && (
+                        <>
+                          <span className="text-muted-foreground text-xs">Created From</span>
+                          <span className="text-xs">{selectedJob.request_metadata.created_from}</span>
+                        </>
+                      )}
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No metadata available</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Debug Tab */}
+            <TabsContent value="debug" className="mt-3">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="state">
+                  <AccordionTrigger className="text-sm">State Data</AccordionTrigger>
+                  <AccordionContent>
+                    <ScrollArea className="h-[300px]">
+                      <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                        {JSON.stringify(selectedJob.state_data || {}, null, 2)}
+                      </pre>
+                    </ScrollArea>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="file-urls">
+                  <AccordionTrigger className="text-sm">File URLs (Raw)</AccordionTrigger>
+                  <AccordionContent>
+                    <ScrollArea className="h-[300px]">
+                      <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                        {JSON.stringify(selectedJob.file_urls || {}, null, 2)}
+                      </pre>
+                    </ScrollArea>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="raw">
+                  <AccordionTrigger className="text-sm">Raw Job Data</AccordionTrigger>
+                  <AccordionContent>
+                    <ScrollArea className="h-[400px]">
+                      <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                        {JSON.stringify(selectedJob, null, 2)}
+                      </pre>
+                    </ScrollArea>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </TabsContent>
+          </Tabs>
+
+          {/* ===== LOGS MODAL ===== */}
+          <Dialog open={logsModalOpen} onOpenChange={setLogsModalOpen}>
+            <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4" />
+                  Worker Logs
+                  <Badge variant="secondary" className="text-xs">
+                    {filteredLogs.length}{filteredLogs.length !== logs.length ? ` / ${logs.length}` : ""} entries
+                  </Badge>
+                  {logsLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                </DialogTitle>
+              </DialogHeader>
+
+              {/* Filter Controls */}
+              <div className="flex items-center gap-3 py-2 border-y bg-muted/30 -mx-6 px-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Level:</span>
+                  <Select value={logFilter} onValueChange={setLogFilter}>
+                    <SelectTrigger className="h-7 w-[100px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="ERROR">Error</SelectItem>
+                      <SelectItem value="WARNING">Warning</SelectItem>
+                      <SelectItem value="INFO">Info</SelectItem>
+                      <SelectItem value="DEBUG">Debug</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Raw File URLs (for debugging) */}
-          <AccordionItem value="file-urls-raw">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                File URLs (Raw)
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto max-h-[400px]">
-                {JSON.stringify(selectedJob.file_urls || {}, null, 2)}
-              </pre>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Raw Job Data */}
-          <AccordionItem value="raw">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Raw Job Data
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto max-h-[500px]">
-                {JSON.stringify(selectedJob, null, 2)}
-              </pre>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Job</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete job {jobToDelete?.job_id}? This action
-                cannot be undone and will also delete all associated files.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={deleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Reset Confirmation Dialog */}
-        <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset Job</AlertDialogTitle>
-              <AlertDialogDescription>
-                {resetTarget && (
-                  <>
-                    Reset job <span className="font-mono">{selectedJobId}</span> to{" "}
-                    <span className="font-semibold">{getResetTargetInfo(resetTarget).label}</span>?
-                    <br /><br />
-                    {getResetTargetInfo(resetTarget).description}
-                    <br /><br />
-                    This will update the job status and clear relevant state data.
-                  </>
+                <div className="flex-1 max-w-xs">
+                  <Input
+                    placeholder="Search logs..."
+                    value={logSearch}
+                    onChange={(e) => setLogSearch(e.target.value)}
+                    className="h-7 text-xs"
+                  />
+                </div>
+                {(logFilter !== "all" || logSearch) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => { setLogFilter("all"); setLogSearch(""); }}
+                  >
+                    Clear filters
+                  </Button>
                 )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleReset}
-                disabled={resetting}
-              >
-                {resetting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Reset
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </div>
 
-        {/* Delete Outputs Confirmation Dialog */}
-        <AlertDialog open={deleteOutputsDialogOpen} onOpenChange={setDeleteOutputsDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <CloudOff className="w-5 h-5 text-orange-500" />
-                Delete Job Outputs
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete:
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>YouTube video (if uploaded)</li>
-                  <li>Dropbox folder (frees brand code for reuse)</li>
-                  <li>Google Drive files (if uploaded)</li>
-                </ul>
-                <br />
-                The job record will be preserved with a timestamp marking when outputs were deleted.
-                <br /><br />
-                <strong>This action cannot be undone.</strong>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteOutputs}
-                disabled={deletingOutputs}
-                className="bg-orange-500 hover:bg-orange-600"
-              >
-                {deletingOutputs && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Delete Outputs
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+              {/* Log entries - fixed height container for scrolling */}
+              <div className="h-[60vh] -mx-6 overflow-auto">
+                <div className="font-mono text-xs px-6">
+                  {filteredLogs.length > 0 ? (
+                    filteredLogs.map((log, i) => (
+                      <div key={i} className="flex gap-2 py-1.5 border-b border-muted/20 hover:bg-muted/30">
+                        <span className="text-muted-foreground whitespace-nowrap w-20 shrink-0">
+                          {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "—"}
+                        </span>
+                        <span className={`w-16 shrink-0 ${getLogLevelColor(log.level)}`}>
+                          [{log.level}]
+                        </span>
+                        <span className="text-muted-foreground w-16 shrink-0 truncate">
+                          {log.worker || "—"}
+                        </span>
+                        <span className="flex-1 break-all whitespace-pre-wrap">{log.message}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground py-8 text-center">
+                      {logs.length > 0 ? "No logs match the current filters" : "No logs available"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* ===== DIALOGS ===== */}
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Job</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete job {jobToDelete?.job_id}? This action
+                  cannot be undone and will also delete all associated files.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Reset Confirmation Dialog */}
+          <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset Job</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {resetTarget && (
+                    <>
+                      Reset job <span className="font-mono">{selectedJobId}</span> to{" "}
+                      <span className="font-semibold">{getResetTargetInfo(resetTarget).label}</span>?
+                      <br /><br />
+                      {getResetTargetInfo(resetTarget).description}
+                      <br /><br />
+                      This will update the job status and clear relevant state data.
+                    </>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleReset}
+                  disabled={resetting}
+                >
+                  {resetting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Reset
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Delete Outputs Confirmation Dialog */}
+          <AlertDialog open={deleteOutputsDialogOpen} onOpenChange={setDeleteOutputsDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <CloudOff className="w-5 h-5 text-orange-500" />
+                  Delete Job Outputs
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>YouTube video (if uploaded)</li>
+                    <li>Dropbox folder (frees brand code for reuse)</li>
+                    <li>Google Drive files (if uploaded)</li>
+                  </ul>
+                  <br />
+                  The job record will be preserved with a timestamp marking when outputs were deleted.
+                  <br /><br />
+                  <strong>This action cannot be undone.</strong>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteOutputs}
+                  disabled={deletingOutputs}
+                  className="bg-orange-500 hover:bg-orange-600"
+                >
+                  {deletingOutputs && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Delete Outputs
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </TooltipProvider>
     )
   }
 
