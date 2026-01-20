@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { api, Job, createLyricsReviewApiClient, lyricsReviewApi } from "@/lib/api"
 import { Spinner } from "@/components/ui/spinner"
@@ -12,7 +12,7 @@ import { InstrumentalSelector } from "@/components/instrumental-review"
 import { LyricsAnalyzer } from "@/components/lyrics-review"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import type { CorrectionData } from "@/lib/lyrics-review/types"
-import { isLocalMode, createLocalModeJob, getLocalJobId } from "@/lib/local-mode"
+import { isLocalMode, createLocalModeJob } from "@/lib/local-mode"
 
 type RouteType = "review" | "instrumental" | "unknown"
 
@@ -26,7 +26,8 @@ type AccessState =
   | { status: "authorized"; job: Job; routeType: RouteType }
   | { status: "local_mode"; job: Job; routeType: RouteType }
 
-function parseRoute(slug: string[] | undefined): { jobId: string | null; routeType: RouteType } {
+// Parse route from Next.js slug params (used for local mode with path-based routing)
+function parseRouteFromSlug(slug: string[] | undefined): { jobId: string | null; routeType: RouteType } {
   if (!slug || slug.length === 0) {
     return { jobId: null, routeType: "unknown" }
   }
@@ -47,6 +48,24 @@ function parseRoute(slug: string[] | undefined): { jobId: string | null; routeTy
   return { jobId: null, routeType: "unknown" }
 }
 
+// Parse route from URL hash (used for cloud mode)
+// Expected format: #/{jobId}/review or #/{jobId}/instrumental
+function parseRouteFromHash(hash: string): { jobId: string | null; routeType: RouteType } {
+  if (!hash || hash.length <= 1) {
+    return { jobId: null, routeType: "unknown" }
+  }
+
+  // Remove the leading '#' and parse
+  const hashPath = hash.substring(1)
+  const match = hashPath.match(/^\/?([^/]+)\/(review|instrumental)\/?$/)
+
+  if (match) {
+    const [, jobId, action] = match
+    return { jobId, routeType: action as RouteType }
+  }
+  return { jobId: null, routeType: "unknown" }
+}
+
 function getExpectedStates(routeType: RouteType): string[] {
   switch (routeType) {
     case "review":
@@ -58,87 +77,40 @@ function getExpectedStates(routeType: RouteType): string[] {
   }
 }
 
-// Check for pending SPA redirect and return the stored path if found
-// This is used on GitHub Pages where dynamic routes aren't pre-rendered
-function getStoredRedirectPath(): string | null {
-  if (typeof window === 'undefined') return null
-
-  // Only check for redirect restoration if we're at the redirect target (/app/jobs/)
-  // This prevents a race condition where React on 404.html clears sessionStorage
-  // before the window.location.replace() redirect completes
-  const pathname = window.location.pathname
-  if (pathname !== '/app/jobs/' && pathname !== '/app/jobs') {
-    return null
-  }
-
-  const redirectPath = sessionStorage.getItem('spa-redirect-path')
-  if (redirectPath) {
-    // DON'T remove sessionStorage here - we need it to survive page reload
-    // Next.js will revert any history.replaceState changes, so the URL stays at /app/jobs/
-    // On reload, the browser requests /app/jobs/, 404.html redirects back here, and we re-read the path
-    // The sessionStorage is cleared when user navigates to a different job or page
-    return redirectPath
-  }
-  return null
-}
-
-// Clear the stored redirect path - called when we're done with it
-function clearStoredRedirectPath(): void {
-  if (typeof window !== 'undefined') {
-    sessionStorage.removeItem('spa-redirect-path')
-  }
-}
-
-// Parse route from a stored redirect path
-function parseRouteFromPath(path: string): { jobId: string | null; routeType: RouteType } {
-  // Remove query string and hash for matching
-  const cleanPath = path.split('?')[0].split('#')[0]
-  const match = cleanPath.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental)\/?$/)
-
-  if (match) {
-    const [, jobId, action] = match
-    return { jobId, routeType: action as RouteType }
-  }
-  return { jobId: null, routeType: "unknown" }
-}
-
 export function JobRouterClient() {
   const params = useParams()
-  const router = useRouter()
   const slug = params.slug as string[] | undefined
 
-  // Check for stored redirect path from GitHub Pages SPA redirect
-  // Using lazy initializer to run only once and avoid SSR issues
-  const [storedRedirectPath] = useState(() => getStoredRedirectPath())
+  // Track hash for re-renders when hash changes
+  const [hash, setHash] = useState(() =>
+    typeof window !== 'undefined' ? window.location.hash : ''
+  )
 
-  // Parse route: use stored redirect path if available, otherwise use Next.js params
-  // Note: sessionStorage persists across reloads to support page refresh
-  const { jobId, routeType } = storedRedirectPath
-    ? parseRouteFromPath(storedRedirectPath)
-    : parseRoute(slug)
-
-  // Clear stored redirect path when navigating to a different job
-  // This prevents stale redirects when clicking "Review Lyrics" on a different job
+  // Listen for hash changes
   useEffect(() => {
-    if (storedRedirectPath && jobId) {
-      const storedJobId = parseRouteFromPath(storedRedirectPath).jobId
-      // If the stored job ID doesn't match the current job ID, clear it
-      // This handles the case where user navigates to a different job
-      if (storedJobId && storedJobId !== jobId) {
-        clearStoredRedirectPath()
-      }
+    const handleHashChange = () => {
+      setHash(window.location.hash)
     }
-  }, [storedRedirectPath, jobId])
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  // Determine routing mode and parse route
+  // - Local mode: Use path-based routing from Next.js slug params
+  // - Cloud mode: Use hash-based routing (e.g., /app/jobs/#/{jobId}/review)
+  const inLocalMode = isLocalMode()
+  const { jobId, routeType } = inLocalMode
+    ? parseRouteFromSlug(slug)
+    : parseRouteFromHash(hash)
 
   const { user, isLoading: authLoading, hasHydrated } = useAuth()
   const [accessState, setAccessState] = useState<AccessState>({ status: "loading" })
 
   useEffect(() => {
     async function checkAccess() {
-      // Check for local mode first (skip all auth checks)
-      if (isLocalMode()) {
+      // Handle local mode (skip all auth checks)
+      if (inLocalMode) {
         // In local mode, determine route type from URL or default to review
-        // The local server will redirect to /app/jobs/local/review or /app/jobs/local/instrumental
         let localRouteType: RouteType = routeType
 
         // If route is unknown but we're in local mode, try to determine from path
@@ -157,7 +129,7 @@ export function JobRouterClient() {
         return
       }
 
-      // Invalid route (cloud mode)
+      // Cloud mode: Check hash-based route
       if (!jobId || routeType === "unknown") {
         setAccessState({ status: "invalid_route" })
         return
@@ -216,7 +188,7 @@ export function JobRouterClient() {
     }
 
     checkAccess()
-  }, [jobId, routeType, user, authLoading, hasHydrated])
+  }, [inLocalMode, jobId, routeType, user, authLoading, hasHydrated])
 
   // Loading state
   if (accessState.status === "loading") {
@@ -333,7 +305,6 @@ export function JobRouterClient() {
 
   // Authorized or local mode - render the appropriate UI
   const { job, routeType: authorizedRouteType } = accessState
-  const inLocalMode = accessState.status === "local_mode"
 
   if (authorizedRouteType === "review") {
     return <LyricsReviewWrapper job={job} isLocalMode={inLocalMode} />

@@ -53,13 +53,13 @@ class JobNotificationService:
 
     def _build_review_url(self, job_id: str, audio_hash: Optional[str] = None, review_token: Optional[str] = None) -> str:
         """Build the lyrics review URL for a job."""
-        # Use consolidated frontend route
-        return f"{self.frontend_url}/app/jobs/{job_id}/review"
+        # Use hash-based routing for static hosting compatibility
+        return f"{self.frontend_url}/app/jobs#/{job_id}/review"
 
     def _build_instrumental_url(self, job_id: str, instrumental_token: Optional[str] = None) -> str:
         """Build the instrumental selection URL for a job."""
-        # Use consolidated frontend route
-        return f"{self.frontend_url}/app/jobs/{job_id}/instrumental"
+        # Use hash-based routing for static hosting compatibility
+        return f"{self.frontend_url}/app/jobs#/{job_id}/instrumental"
 
     async def send_job_completion_email(
         self,

@@ -1,9 +1,7 @@
 # Cloudflare Pages redirects/rewrites
 # https://developers.cloudflare.com/pages/configuration/redirects/
 
-# SPA fallback for dynamic job routes
-# The [[...slug]] catch-all page is pre-rendered at /app/jobs/
-# but dynamic job IDs (e.g., /app/jobs/abc123/review/) are not pre-rendered.
-# This rewrite serves the catch-all page for all /app/jobs/* URLs,
-# allowing client-side routing to handle the dynamic segments.
-/app/jobs/*  /app/jobs/  200
+# Note: With hash-based routing (e.g., /app/jobs/#/{jobId}/review),
+# no server-side redirects are needed. The hash portion is never sent
+# to the server, so all requests go to /app/jobs/ and routing is
+# handled client-side.

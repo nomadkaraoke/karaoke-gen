@@ -22,7 +22,7 @@ class TestURLBuilding:
 
         url = service._build_review_url("job-123")
 
-        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/review"
+        assert url == "https://gen.nomadkaraoke.com/app/jobs#/job-123/review"
 
     def test_build_review_url_ignores_legacy_params(self):
         """Test review URL ignores legacy audio_hash and review_token params."""
@@ -33,7 +33,7 @@ class TestURLBuilding:
         url = service._build_review_url("job-123", audio_hash="abc123", review_token="token456")
 
         # URL should be the simple consolidated route
-        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/review"
+        assert url == "https://gen.nomadkaraoke.com/app/jobs#/job-123/review"
         # No query params
         assert "?" not in url
 
@@ -45,7 +45,7 @@ class TestURLBuilding:
         # Note: job IDs with slashes would be unusual in real usage
         url = service._build_review_url("abc-def-123")
 
-        assert url == "https://gen.nomadkaraoke.com/app/jobs/abc-def-123/review"
+        assert url == "https://gen.nomadkaraoke.com/app/jobs#/abc-def-123/review"
 
     def test_build_instrumental_url_basic(self):
         """Test basic instrumental URL building."""
@@ -54,7 +54,7 @@ class TestURLBuilding:
 
         url = service._build_instrumental_url("job-123")
 
-        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/instrumental"
+        assert url == "https://gen.nomadkaraoke.com/app/jobs#/job-123/instrumental"
 
     def test_build_instrumental_url_ignores_legacy_params(self):
         """Test instrumental URL ignores legacy instrumental_token param."""
@@ -65,7 +65,7 @@ class TestURLBuilding:
         url = service._build_instrumental_url("job-123", instrumental_token="inst-token")
 
         # URL should be the simple consolidated route
-        assert url == "https://gen.nomadkaraoke.com/app/jobs/job-123/instrumental"
+        assert url == "https://gen.nomadkaraoke.com/app/jobs#/job-123/instrumental"
         # No query params
         assert "?" not in url
 
@@ -312,7 +312,7 @@ class TestActionReminderEmail:
         # Verify the review URL was passed to template
         call_kwargs = service.template_service.render_action_needed_lyrics.call_args.kwargs
         review_url = call_kwargs.get('review_url')
-        assert review_url == "https://gen.nomadkaraoke.com/app/jobs/job-123/review"
+        assert review_url == "https://gen.nomadkaraoke.com/app/jobs#/job-123/review"
 
     @pytest.mark.asyncio
     async def test_send_instrumental_reminder_includes_url(self):
@@ -334,7 +334,7 @@ class TestActionReminderEmail:
         # Verify the instrumental URL was passed to template
         call_kwargs = service.template_service.render_action_needed_instrumental.call_args.kwargs
         instrumental_url = call_kwargs.get('instrumental_url')
-        assert instrumental_url == "https://gen.nomadkaraoke.com/app/jobs/job-123/instrumental"
+        assert instrumental_url == "https://gen.nomadkaraoke.com/app/jobs#/job-123/instrumental"
 
 
 class TestGetCompletionMessage:

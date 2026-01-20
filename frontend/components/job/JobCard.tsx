@@ -104,7 +104,7 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
     if (job.status === "awaiting_review" || job.status === "in_review") {
       return (
         <Link
-          href={`/app/jobs/${job.job_id}/review`}
+          href={`/app/jobs#/${job.job_id}/review`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
           Review Lyrics
@@ -127,7 +127,7 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
     if (job.status === "awaiting_instrumental_selection") {
       return (
         <Link
-          href={`/app/jobs/${job.job_id}/instrumental`}
+          href={`/app/jobs#/${job.job_id}/instrumental`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
           Select Instrumental

@@ -99,8 +99,9 @@ describe('JobCard', () => {
       const reviewLink = screen.getByText('Review Lyrics')
       expect(reviewLink).toBeInTheDocument()
       const href = reviewLink.closest('a')?.getAttribute('href') || ''
-      // Now uses internal routes instead of external URLs
-      expect(href).toBe('/app/jobs/123/review')
+      // Uses hash-based routing for static hosting
+      // Note: Next.js Link normalizes the URL, removing trailing slash before hash
+      expect(href).toBe('/app/jobs#/123/review')
     })
 
     it('shows audio search button for awaiting_audio_selection status', () => {
@@ -121,8 +122,9 @@ describe('JobCard', () => {
       const instrumentalLink = screen.getByText('Select Instrumental')
       expect(instrumentalLink).toBeInTheDocument()
       const href = instrumentalLink.closest('a')?.getAttribute('href') || ''
-      // Now uses internal routes instead of external URLs
-      expect(href).toBe('/app/jobs/123/instrumental')
+      // Uses hash-based routing for static hosting
+      // Note: Next.js Link normalizes the URL, removing trailing slash before hash
+      expect(href).toBe('/app/jobs#/123/instrumental')
     })
 
     it('does not show Auto badge for regular jobs', () => {
