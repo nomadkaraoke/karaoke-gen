@@ -10,6 +10,9 @@ interface AuthStore {
   isLoading: boolean
   error: string | null
 
+  // Hydration state - true once zustand has loaded persisted data
+  hasHydrated: boolean
+
   // Impersonation state (not persisted)
   isImpersonating: boolean
   originalAdminToken: string | null
@@ -22,6 +25,7 @@ interface AuthStore {
   logout: () => Promise<void>
   updateCredits: (credits: number) => void
   clearError: () => void
+  setHasHydrated: (state: boolean) => void
 
   // For legacy token-based auth (admin tokens)
   loginWithToken: (token: string) => Promise<boolean>
@@ -37,11 +41,14 @@ export const useAuth = create<AuthStore>()(
       user: null,
       isLoading: false,
       error: null,
+      hasHydrated: false,
 
       // Impersonation state
       isImpersonating: false,
       originalAdminToken: null,
       impersonatedUserEmail: null,
+
+      setHasHydrated: (state: boolean) => set({ hasHydrated: state }),
 
       sendMagicLink: async (email: string) => {
         set({ isLoading: true, error: null })
@@ -259,6 +266,10 @@ export const useAuth = create<AuthStore>()(
       name: "nomad-karaoke-auth",
       // Only persist user, not impersonation state (impersonation should not survive page refresh)
       partialize: (state) => ({ user: state.user }),
+      onRehydrateStorage: () => (state) => {
+        // Called when hydration is complete
+        state?.setHasHydrated(true)
+      },
     },
   ),
 )

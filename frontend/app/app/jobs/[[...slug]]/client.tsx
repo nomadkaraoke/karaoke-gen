@@ -130,7 +130,7 @@ export function JobRouterClient() {
     }
   }, [storedRedirectPath, jobId])
 
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, hasHydrated } = useAuth()
   const [accessState, setAccessState] = useState<AccessState>({ status: "loading" })
 
   useEffect(() => {
@@ -163,8 +163,9 @@ export function JobRouterClient() {
         return
       }
 
-      // Wait for auth to finish loading
-      if (authLoading) return
+      // Wait for auth to finish loading and hydration to complete
+      // This prevents a flash of "Sign in required" before auth state is restored from localStorage
+      if (authLoading || !hasHydrated) return
 
       // Must be authenticated
       if (!user) {
@@ -215,7 +216,7 @@ export function JobRouterClient() {
     }
 
     checkAccess()
-  }, [jobId, routeType, user, authLoading])
+  }, [jobId, routeType, user, authLoading, hasHydrated])
 
   // Loading state
   if (accessState.status === "loading") {
