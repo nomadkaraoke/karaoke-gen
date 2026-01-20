@@ -15,6 +15,7 @@ from backend.services.nltk_preloader import preload_all_nltk_resources
 from backend.services.langfuse_preloader import preload_langfuse_handler
 from backend.middleware.audit_logging import AuditLoggingMiddleware
 from backend.middleware.tenant import TenantMiddleware
+from backend.workers.registry import worker_registry
 
 
 from backend.version import VERSION
@@ -100,8 +101,23 @@ async def lifespan(app: FastAPI):
         logger.error(f"Credential validation failed: {e}")
     
     yield
-    
-    # Shutdown
+
+    # Shutdown - wait for any active workers to complete before terminating
+    # This prevents Cloud Run from killing workers mid-processing
+    logger.info("Shutdown requested, checking for active workers...")
+    if worker_registry.has_active_workers():
+        active = worker_registry.get_active_workers()
+        logger.info(f"Active workers found: {active}")
+        logger.info("Waiting for workers to complete (timeout: 600s)...")
+        completed = await worker_registry.wait_for_completion(timeout=600)  # 10 min max
+        if not completed:
+            logger.error(
+                "Shutdown timeout - some workers may not have completed cleanly. "
+                f"Remaining workers: {worker_registry.get_active_workers()}"
+            )
+    else:
+        logger.info("No active workers, proceeding with shutdown")
+
     logger.info("Shutting down karaoke generation backend")
 
 

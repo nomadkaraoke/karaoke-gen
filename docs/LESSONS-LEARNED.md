@@ -81,6 +81,9 @@ Base Docker images have no fonts. Install `fonts-noto-core`, `fonts-noto-cjk` fo
 ### Cloud Run CPU Throttling Kills Background Tasks
 Cloud Run throttles CPU to near-zero when the main request handler returns, even if background tasks are running. This caused lyrics processing (running as a FastAPI background task) to slow from 17-52 seconds to 8+ minutes, and instances being terminated mid-processing. **Fix**: Add `--no-cpu-throttling` flag to `gcloud run deploy`. Keep `--cpu-boost` for faster cold starts. **Diagnosis**: Look for "Application shutdown" in logs during long operations, and compare processing times (27x slowdown is a telltale sign).
 
+### Cloud Run Premature Shutdown with Parallel Workers
+When multiple workers run in parallel via BackgroundTasks, Cloud Run can shut down when one worker completes, killing others mid-processing. This happens because each worker endpoint returns quickly after spawning its BackgroundTask - when the audio worker's task completes, Cloud Run sees the container as idle. **Fix**: Implement a `WorkerRegistry` that tracks active workers per job. Register at worker start, unregister in finally block. Add shutdown handler in FastAPI lifespan that calls `worker_registry.wait_for_completion(timeout=600)` before allowing shutdown. **Pattern**: `backend/workers/registry.py` provides the global registry; workers import and call `await worker_registry.register(job_id, "audio")` / `unregister()`.
+
 ### Add Progress Logging for Long Operations
 Operations over ~30 seconds should log progress periodically (time-based, not count-based). Count-based logging like "log every 20 items" can miss entirely if items complete slowly. Time-based logging (every 30s) ensures visibility regardless of processing speed.
 

@@ -45,11 +45,13 @@
    • Create job in Firestore
    • Trigger parallel workers
 
-2. PARALLEL PROCESSING
+2. PARALLEL PROCESSING (with Worker Registry coordination)
    ┌─────────────────┐    ┌─────────────────┐
    │  Audio Worker   │    │  Lyrics Worker  │
    │  Modal API      │    │  AudioShake     │
    │  2-stage sep    │    │  Auto-correct   │
+   │  ↓ register()   │    │  ↓ register()   │
+   │  ↓ unregister() │    │  ↓ unregister() │
    └────────┬────────┘    └────────┬────────┘
             └──────────┬───────────┘
                        ▼
@@ -216,6 +218,34 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `email_service.py` | SendGrid email delivery with CC support |
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
+
+## Worker Coordination
+
+Workers run in parallel via FastAPI BackgroundTasks. To prevent Cloud Run from terminating the container when one worker completes while another is still running, workers register with a global `WorkerRegistry`.
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                       WorkerRegistry                             │
+│                                                                 │
+│  register(job_id, "audio")     unregister(job_id, "audio")     │
+│  register(job_id, "lyrics")    unregister(job_id, "lyrics")    │
+│                                                                 │
+│  has_active_workers() → bool                                    │
+│  wait_for_completion(timeout) → bool                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Flow**:
+1. Worker starts → `await worker_registry.register(job_id, "audio")`
+2. Worker does work in try block
+3. Worker completes → `await worker_registry.unregister(job_id, "audio")` in finally block
+
+**Shutdown Handler** (in `main.py` lifespan):
+- On shutdown signal, checks `worker_registry.has_active_workers()`
+- If workers active, calls `wait_for_completion(timeout=600)` (10 min max)
+- Logs which workers are still running for debugging
+
+**Why needed**: Without this, when the audio worker's BackgroundTask completes, Cloud Run sees the container as idle (no active requests) and may terminate it, killing the still-running lyrics worker.
 
 ## Multitenancy
 

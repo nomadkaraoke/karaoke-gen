@@ -26,6 +26,7 @@ from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.config import get_settings
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
+from backend.workers.registry import worker_registry
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 from backend.services.metrics import metrics
 
@@ -264,7 +265,11 @@ async def process_audio_separation(job_id: str) -> bool:
     logger.info(f"[job:{job_id}] WORKER_START worker=audio")
     job_log.info("=== AUDIO WORKER STARTED ===")
     job_log.info(f"Job ID: {job_id}")
-    
+
+    # Register with worker registry to prevent premature container shutdown
+    # This ensures Cloud Run waits for this worker to complete before terminating
+    await worker_registry.register(job_id, "audio")
+
     # Set up log capture for AudioProcessor
     log_handler = setup_job_logging(job_id, "audio", *AUDIO_WORKER_LOGGERS)
     job_log.info(f"Log handler attached for {len(AUDIO_WORKER_LOGGERS)} loggers")
@@ -411,13 +416,16 @@ async def process_audio_separation(job_id: str) -> bool:
         return False
         
     finally:
+        # Unregister from worker registry to signal completion
+        await worker_registry.unregister(job_id, "audio")
+
         # Remove log handler to avoid duplicate logging on future runs
         for logger_name in AUDIO_WORKER_LOGGERS:
             try:
                 logging.getLogger(logger_name).removeHandler(log_handler)
             except Exception:
                 pass
-        
+
         # Cleanup temporary directory
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)

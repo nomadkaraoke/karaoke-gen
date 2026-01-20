@@ -35,6 +35,7 @@ from backend.services.storage_service import StorageService
 from backend.services.lyrics_cache_service import LyricsCacheService
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.workers.style_helper import load_style_config
+from backend.workers.registry import worker_registry
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 from backend.services.metrics import metrics
 
@@ -164,7 +165,11 @@ async def process_lyrics_transcription(job_id: str) -> bool:
     logger.info(f"[job:{job_id}] WORKER_START worker=lyrics")
     job_log.info("=== LYRICS WORKER STARTED ===")
     job_log.info(f"Job ID: {job_id}")
-    
+
+    # Register with worker registry to prevent premature container shutdown
+    # This ensures Cloud Run waits for this worker to complete before terminating
+    await worker_registry.register(job_id, "lyrics")
+
     # Set up log capture for LyricsTranscriber and its dependencies
     # This ensures logs from the lyrics_transcriber library are also captured
     log_handler = setup_job_logging(job_id, "lyrics", *LYRICS_WORKER_LOGGERS)
@@ -460,13 +465,16 @@ async def process_lyrics_transcription(job_id: str) -> bool:
         return False
         
     finally:
+        # Unregister from worker registry to signal completion
+        await worker_registry.unregister(job_id, "lyrics")
+
         # Remove log handler to avoid duplicate logging on future runs
         for logger_name in LYRICS_WORKER_LOGGERS:
             try:
                 logging.getLogger(logger_name).removeHandler(log_handler)
             except Exception:
                 pass
-        
+
         # Cleanup temporary directory (only if it was created)
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
