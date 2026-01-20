@@ -77,9 +77,10 @@ export function SelectionOptions({
           <button
             key={option.value}
             type="button"
+            data-testid={`selection-option-${option.value}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex items-center gap-3 p-3 rounded-lg transition-all text-left",
+              "selection-option flex items-center gap-3 p-3 rounded-lg transition-all text-left",
               "bg-secondary hover:bg-secondary/80",
               "border-2 border-transparent",
               value === option.value && "border-primary bg-primary/10"

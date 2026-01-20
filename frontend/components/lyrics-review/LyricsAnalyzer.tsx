@@ -68,6 +68,7 @@ interface ApiClient {
     preview_hash?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
+  completeReview: () => Promise<{ status: string; job_status: string; message: string }>
 }
 
 export interface LyricsAnalyzerProps {
