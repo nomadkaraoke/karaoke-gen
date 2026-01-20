@@ -1638,6 +1638,7 @@ export interface LyricsReviewApiClient {
     preview_hash?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
+  completeReview: () => Promise<{ status: string; job_status: string; message: string }>
 }
 
 /**
@@ -1650,7 +1651,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      */
     async submitCorrections(data: CorrectionData): Promise<void> {
       const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/corrections`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
@@ -1740,6 +1741,17 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       const token = getAccessToken()
       const base = `${API_BASE_URL}/api/review/${jobId}/preview-video/${hash}`
       return token ? `${base}?token=${encodeURIComponent(token)}` : base
+    },
+
+    /**
+     * Complete the review and trigger video rendering
+     */
+    async completeReview(): Promise<{ status: string; job_status: string; message: string }> {
+      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      })
+      return handleResponse(response)
     },
   }
 }

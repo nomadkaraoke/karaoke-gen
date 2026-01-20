@@ -692,26 +692,13 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         const statusText = await jobCard.textContent() || '';
         console.log(`  Status: ${statusText.substring(0, 80)}...`);
 
+        // Look for instrumental selection UI availability
+        // Users ALWAYS have to go through the instrumental review UI - there's no skip
         if (statusText.toLowerCase().includes('select instrumental') ||
             statusText.toLowerCase().includes('awaiting_instrumental') ||
             (statusText.toLowerCase().includes('action needed') && statusText.toLowerCase().includes('instrumental'))) {
           foundInstrumentalStatus = true;
           console.log('  Job ready for instrumental selection');
-          break;
-        }
-
-        // Check if already complete (auto-mode might have run)
-        if (statusText.toLowerCase().includes('complete') && !statusText.toLowerCase().includes('prep')) {
-          console.log('  Job already complete - skipping instrumental selection');
-          break;
-        }
-
-        // Check if encoding is in progress (past instrumental stage)
-        // NOTE: "rendering" status is BEFORE instrumental selection, not after!
-        // The flow is: rendering_video -> awaiting_instrumental_selection -> encoding -> complete
-        // So only skip if job is at encoding (not rendering)
-        if (statusText.toLowerCase().includes('encoding') && !statusText.toLowerCase().includes('awaiting')) {
-          console.log('  Job is encoding - instrumental selection was handled');
           break;
         }
 
@@ -722,7 +709,11 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.waitForTimeout(10000);
       }
 
-      if (foundInstrumentalStatus) {
+      if (!foundInstrumentalStatus) {
+        throw new Error('Timeout waiting for instrumental selection - users must always complete this step');
+      }
+
+      {
         // Click the Select Instrumental button/link
         const instrumentalLink = jobCard.getByRole('link', { name: /select instrumental/i });
         await expect(instrumentalLink).toBeVisible({ timeout: TIMEOUTS.action });

@@ -645,6 +645,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
             backingVocalAnalysis={analysisData?.analysis}
           />
           <Button
+            id="submit-btn"
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="mt-auto w-full"

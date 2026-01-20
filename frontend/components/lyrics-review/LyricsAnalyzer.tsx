@@ -68,6 +68,7 @@ interface ApiClient {
     preview_hash?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
+  completeReview: () => Promise<{ status: string; job_status: string; message: string }>
 }
 
 export interface LyricsAnalyzerProps {
@@ -587,6 +588,9 @@ export default function LyricsAnalyzer({
           console.error('Failed to submit annotations:', error)
         }
       }
+
+      // Complete review and trigger video rendering
+      await apiClient.completeReview()
 
       setIsReviewComplete(true)
       setIsReviewModalOpen(false)
