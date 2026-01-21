@@ -236,7 +236,7 @@ Audio can come from file upload or remote search (YouTube, torrents). All YouTub
 │  1. File Upload (/api/jobs/upload)                                   │
 │     └─ Direct to GCS → triggers workers                              │
 │                                                                      │
-│  2. YouTube URL (/api/jobs/url)                                      │
+│  2. YouTube URL (/api/jobs/create-from-url)                          │
 │     └─ YouTubeDownloadService → GCS → triggers workers               │
 │                                                                      │
 │  3. Audio Search + Select (/api/audio-search/...)                    │

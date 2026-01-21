@@ -361,5 +361,17 @@ class TestYouTubeDownloadServiceIntegration:
 
             # Check that download_by_id was called with output_filename
             call_args = mock_client.download_by_id.call_args
-            # output_filename should be sanitized (no special chars)
             assert call_args is not None
+
+            # Verify output_filename was passed and is sanitized
+            call_kwargs = call_args.kwargs
+            assert 'output_filename' in call_kwargs
+            output_filename = call_kwargs['output_filename']
+
+            # The filename should NOT contain special chars that break filenames
+            # (apostrophe, colon, slash are typically sanitized)
+            assert ':' not in output_filename
+            assert '/' not in output_filename
+            # Should contain artist and title parts
+            assert 'Artist' in output_filename
+            assert 'Title' in output_filename
