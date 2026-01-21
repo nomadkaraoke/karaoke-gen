@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Video } from 'lucide-react'
+import { Video, Check } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   AnchorSequence,
   CorrectionData,
@@ -78,6 +80,7 @@ export interface LyricsAnalyzerProps {
   apiClient: ApiClient | null
   isReadOnly: boolean
   audioHash: string
+  isLocalMode?: boolean
 }
 
 export default function LyricsAnalyzer({
@@ -86,7 +89,9 @@ export default function LyricsAnalyzer({
   apiClient,
   isReadOnly,
   audioHash,
+  isLocalMode = false,
 }: LyricsAnalyzerProps) {
+  const router = useRouter()
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
   // Modal state
@@ -120,6 +125,10 @@ export default function LyricsAnalyzer({
   const [isTimingOffsetModalOpen, setIsTimingOffsetModalOpen] = useState(false)
   const [timingOffsetMs, setTimingOffsetMs] = useState(0)
   const [reviewMode, setReviewMode] = useState(false)
+
+  // Success screen state (for auto-close after submission)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [countdown, setCountdown] = useState(2)
 
   // Annotation state
   const [annotations, setAnnotations] = useState<Omit<CorrectionAnnotation, 'annotation_id' | 'timestamp'>[]>([])
@@ -234,6 +243,24 @@ export default function LyricsAnalyzer({
     isReplaceAllLyricsModalOpen,
     isTimingOffsetModalOpen,
   ])
+
+  // Countdown effect for success screen (local mode auto-close)
+  useEffect(() => {
+    if (!showSuccess) return
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          window.close()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [showSuccess])
 
   // Calculate effective mode based on modifier key states
   const effectiveMode = isCtrlPressed ? 'delete_word' : isShiftPressed ? 'highlight' : interactionMode
@@ -594,12 +621,23 @@ export default function LyricsAnalyzer({
 
       setIsReviewComplete(true)
       setIsReviewModalOpen(false)
-      window.close()
+
+      if (isLocalMode) {
+        // In local mode, show success screen with countdown then close
+        setShowSuccess(true)
+        setCountdown(2)
+      } else {
+        // Redirect to dashboard after short delay (cloud mode)
+        toast.success('Review submitted successfully! Video generation started.')
+        setTimeout(() => {
+          router.push('/app')
+        }, 1500)
+      }
     } catch (error) {
       console.error('Failed to submit corrections:', error)
-      alert('Failed to submit corrections. Please try again.')
+      toast.error('Failed to submit corrections. Please try again.')
     }
-  }, [apiClient, data, timingOffsetMs, annotations])
+  }, [apiClient, data, timingOffsetMs, annotations, isLocalMode, router])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
@@ -805,6 +843,28 @@ export default function LyricsAnalyzer({
   const handleApplyTimingOffset = useCallback((offsetMs: number) => {
     setTimingOffsetMs(offsetMs)
   }, [])
+
+  // Success screen (local mode) - shown after review submission
+  if (showSuccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-green-500 mb-4">
+            <Check className="w-8 h-8 inline-block mr-2" />
+            Review Submitted
+          </h2>
+          <p className="mb-2">
+            Your lyrics corrections have been saved and video generation has started.
+          </p>
+          <p className="text-muted-foreground">
+            {countdown > 0
+              ? `Closing in ${countdown}s...`
+              : 'You can close this window now.'}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-full overflow-x-hidden">

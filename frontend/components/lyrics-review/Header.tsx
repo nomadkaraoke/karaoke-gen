@@ -191,7 +191,7 @@ export default function Header({
               <TooltipTrigger asChild>
                 <Badge
                   variant={reviewMode ? 'default' : 'outline'}
-                  className="cursor-pointer"
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => onReviewModeToggle(!reviewMode)}
                 >
                   <Eye className="h-3 w-3 mr-1" />
@@ -231,7 +231,7 @@ export default function Header({
                           className="scale-75"
                         />
                         <Label
-                          className="text-xs cursor-pointer"
+                          className="text-xs cursor-pointer hover:text-foreground hover:underline transition-colors"
                           onClick={() => onHandlerClick?.(handler.id)}
                         >
                           {handler.name} ({handlerCounts[handler.id] || 0})

@@ -424,6 +424,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
           apiClient={apiClient}
           isReadOnly={false}
           audioHash={correctionData.metadata?.audio_hash || job.audio_hash || job.job_id}
+          isLocalMode={isLocalMode}
         />
       </main>
     </div>
