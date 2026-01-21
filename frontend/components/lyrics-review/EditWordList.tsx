@@ -358,6 +358,13 @@ export default function EditWordList({
         <Input
           value={replacementText}
           onChange={(e) => setReplacementText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && replacementText.trim()) {
+              e.preventDefault()
+              e.stopPropagation()
+              handleReplaceAllWords()
+            }
+          }}
           placeholder="Replace all words"
           className="flex-grow"
         />

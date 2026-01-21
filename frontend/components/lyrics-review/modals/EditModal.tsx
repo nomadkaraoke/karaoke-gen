@@ -299,9 +299,6 @@ export default function EditModal({
     if (e.key !== 'Enter') return
     // Don't save during manual sync mode
     if (isManualSyncing) return
-    // Don't intercept Enter in text inputs (let them handle it normally for form submission)
-    const target = e.target as HTMLElement
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
     // Don't save if no valid segment
     if (!editedSegment || editedSegment.words.length === 0) return
 
