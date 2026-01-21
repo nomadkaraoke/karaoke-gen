@@ -140,12 +140,19 @@ class TestUserEmailExtraction:
 
         with patch('backend.api.routes.file_upload.job_manager') as mock_jm, \
              patch('backend.api.routes.file_upload.worker_service') as mock_worker, \
-             patch('backend.api.routes.file_upload.get_credential_manager') as mock_cred:
+             patch('backend.api.routes.file_upload.get_credential_manager') as mock_cred, \
+             patch('backend.api.routes.file_upload.get_youtube_download_service') as mock_yt:
 
             mock_job = Mock()
             mock_job.job_id = "test-job-456"
             mock_jm.create_job.return_value = mock_job
             mock_cred.return_value.check_youtube_credentials.return_value = Mock(status=Mock(value="valid"))
+
+            # Mock YouTube download service to return a GCS path
+            from unittest.mock import AsyncMock
+            mock_yt_service = Mock()
+            mock_yt_service.download = AsyncMock(return_value="uploads/test-job-456/audio/test.webm")
+            mock_yt.return_value = mock_yt_service
 
             await create_job_from_url(
                 request=mock_request,
