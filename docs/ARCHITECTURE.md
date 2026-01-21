@@ -157,9 +157,12 @@ LyricsTranscriber                 LyricsTranscriber
 | AudioShake | Lyrics transcription | Yes |
 | Vertex AI | Agentic AI correction (Gemini 3 Flash) | Default on |
 | Genius | Reference lyrics | Yes |
+| Flacfetch | Audio downloads (YouTube, torrents) | Recommended* |
 | YouTube API | Video upload | Optional |
 | SendGrid | Email notifications | Optional |
 | Cloud Tasks | Delayed task scheduling (idle reminders) | Optional |
+
+*Flacfetch runs on a dedicated GCE VM with YouTube cookies and tracker access. Without it, YouTube downloads will fail due to bot detection on Cloud Run IPs.
 
 ## Firestore Collections
 
@@ -209,6 +212,9 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 **Service Modules**:
 | Module | Purpose |
 |--------|---------|
+| `youtube_download_service.py` | YouTube audio downloads (via remote flacfetch) |
+| `flacfetch_client.py` | Client for remote flacfetch HTTP API |
+| `audio_search_service.py` | Audio source search (YouTube, RED, OPS, Spotify) |
 | `youtube_upload_service.py` | YouTube OAuth flow and upload |
 | `discord_service.py` | Discord webhook notifications |
 | `packaging_service.py` | CDG/TXT package generation |
@@ -218,6 +224,51 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `email_service.py` | SendGrid email delivery with CC support |
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
+
+## Audio Source Download Flow
+
+Audio can come from file upload or remote search (YouTube, torrents). All YouTube downloads route through `YouTubeDownloadService` to ensure consistent handling:
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                     Audio Source Entry Points                         │
+│                                                                      │
+│  1. File Upload (/api/jobs/upload)                                   │
+│     └─ Direct to GCS → triggers workers                              │
+│                                                                      │
+│  2. YouTube URL (/api/jobs/url)                                      │
+│     └─ YouTubeDownloadService → GCS → triggers workers               │
+│                                                                      │
+│  3. Audio Search + Select (/api/audio-search/...)                    │
+│     ├─ YouTube  → YouTubeDownloadService → GCS → triggers workers    │
+│     ├─ RED/OPS  → FlacfetchClient (torrent) → GCS → triggers workers │
+│     └─ Spotify  → FlacfetchClient (spotify) → GCS → triggers workers │
+└──────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    YouTubeDownloadService                             │
+│                                                                      │
+│  • Single entry point for ALL YouTube downloads in cloud             │
+│  • Uses remote flacfetch when FLACFETCH_API_URL is set (recommended) │
+│  • Falls back to local yt_dlp with warning (usually fails on CR)     │
+│  • Handles all URL formats (watch, youtu.be, shorts, embed)          │
+└──────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                      Flacfetch VM (GCE)                               │
+│                                                                      │
+│  • Has YouTube cookies (avoids bot detection)                        │
+│  • Has tracker credentials (RED, OPS private trackers)               │
+│  • Runs BitTorrent client for seeding                                │
+│  • Uploads directly to GCS (no data transfer through Cloud Run)      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Key environment variables**:
+- `FLACFETCH_API_URL` - URL of flacfetch VM (e.g., `http://10.x.x.x:8080`)
+- `FLACFETCH_API_KEY` - API key for authentication
 
 ## Worker Coordination
 
