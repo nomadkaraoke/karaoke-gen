@@ -15,6 +15,7 @@ import asyncio
 import logging
 import mimetypes
 import os
+import shutil
 import tempfile
 from typing import Optional, List, Dict, Any
 
@@ -33,6 +34,10 @@ from backend.services.audio_search_service import (
     AudioSearchError,
     NoResultsError,
     DownloadError,
+)
+from backend.services.youtube_download_service import (
+    get_youtube_download_service,
+    YouTubeDownloadError,
 )
 from backend.services.theme_service import get_theme_service
 from backend.services.job_defaults_service import resolve_cdg_txt_defaults
@@ -239,6 +244,24 @@ async def _trigger_workers_parallel(job_id: str) -> None:
     )
 
 
+def _extract_gcs_path(filepath: str) -> str:
+    """
+    Extract the path portion from a GCS path or gs:// URL.
+
+    Args:
+        filepath: Either a gs:// URL or a plain path
+
+    Returns:
+        The path portion (e.g., "uploads/job123/audio/file.flac")
+    """
+    if filepath.startswith("gs://"):
+        # Format: gs://bucket/path/to/file
+        parts = filepath.replace("gs://", "").split("/", 1)
+        if len(parts) == 2:
+            return parts[1]
+    return filepath
+
+
 async def _download_and_start_processing(
     job_id: str,
     selection_index: int,
@@ -289,157 +312,127 @@ async def _download_and_start_processing(
     )
     
     try:
-        # Determine if this is a remote torrent download
-        is_torrent_source = selected.get('provider') in ['RED', 'OPS']
-        is_remote_enabled = audio_search_service.is_remote_enabled()
-
-        # Check if we can use download_by_id (preferred - avoids re-searching)
-        source_id = selected.get('source_id')
+        # Get source info from selected result
         source_name = selected.get('provider')
+        source_id = selected.get('source_id')
         target_file = selected.get('target_file')
         download_url = selected.get('url')
 
-        # For remote torrent downloads, have flacfetch VM upload directly to GCS
-        if is_torrent_source and is_remote_enabled:
-            # Generate GCS path for remote upload
+        # Route to appropriate download handler based on source type
+        if source_name == 'YouTube':
+            # Use YouTubeDownloadService for all YouTube downloads
+            # This ensures consistent handling whether remote is configured or not
+            youtube_service = get_youtube_download_service()
+
+            if not source_id and download_url:
+                # Extract video ID from URL if not in source_id
+                source_id = youtube_service._extract_video_id(download_url)
+
+            if not source_id:
+                raise DownloadError(f"No video ID available for YouTube download")
+
+            logger.info(f"YouTube download via YouTubeDownloadService: video_id={source_id}")
+
+            try:
+                audio_gcs_path = await youtube_service.download_by_id(
+                    video_id=source_id,
+                    job_id=job_id,
+                    artist=selected.get('artist'),
+                    title=selected.get('title'),
+                )
+                filename = os.path.basename(audio_gcs_path)
+            except YouTubeDownloadError as e:
+                raise DownloadError(f"YouTube download failed: {e}")
+
+        elif source_name in ['RED', 'OPS']:
+            # Torrent sources - must use remote flacfetch
+            if not audio_search_service.is_remote_enabled():
+                raise DownloadError(
+                    f"Cannot download from {source_name} without remote flacfetch service. "
+                    "Configure FLACFETCH_API_URL."
+                )
+
             gcs_destination = f"uploads/{job_id}/audio/"
 
-            # Use download_by_id if we have source_id (preferred - no re-search needed)
-            if source_id and source_name:
-                logger.info(f"Using download_by_id for {source_name} ID={source_id} with GCS upload to: {gcs_destination}")
-
+            if source_id:
+                logger.info(f"Torrent download via download_by_id: {source_name} ID={source_id}")
                 result = audio_search_service.download_by_id(
                     source_name=source_name,
                     source_id=source_id,
-                    output_dir="",  # Not used for remote
+                    output_dir="",
                     target_file=target_file,
                     download_url=download_url,
                     gcs_path=gcs_destination,
                 )
             else:
-                # Fallback to search-based download (requires re-search)
-                logger.info(f"No source_id available, falling back to search-based download to: {gcs_destination}")
-
+                logger.info(f"Torrent download via search-based download")
                 result = audio_search_service.download(
                     result_index=selection_index,
-                    output_dir="",  # Not used for remote
+                    output_dir="",
                     gcs_path=gcs_destination,
                     remote_search_id=remote_search_id,
                 )
 
-            # For remote downloads, filepath is already the GCS path
-            if result.filepath.startswith("gs://"):
-                # Extract the path portion after the bucket name
-                # Format: gs://bucket/uploads/job_id/audio/filename.flac
-                parts = result.filepath.replace("gs://", "").split("/", 1)
-                if len(parts) == 2:
-                    audio_gcs_path = parts[1]
-                else:
-                    audio_gcs_path = result.filepath
-                filename = os.path.basename(result.filepath)
-            else:
-                # Fallback: treat as local path (shouldn't happen for remote)
-                filename = os.path.basename(result.filepath)
-                audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
+            # Extract GCS path from result
+            audio_gcs_path = _extract_gcs_path(result.filepath)
+            filename = os.path.basename(result.filepath)
+            logger.info(f"Torrent download complete: {audio_gcs_path}")
 
-                logger.warning(f"Remote download returned local path: {result.filepath}, uploading manually")
-                content_type, _ = mimetypes.guess_type(result.filepath)
-                with open(result.filepath, 'rb') as f:
-                    storage_service.upload_fileobj(f, audio_gcs_path, content_type=content_type or 'application/octet-stream')
+        elif source_name == 'Spotify':
+            # Spotify downloads - use audio_search_service
+            if not audio_search_service.is_remote_enabled():
+                raise DownloadError(
+                    f"Cannot download from Spotify without remote flacfetch service. "
+                    "Configure FLACFETCH_API_URL."
+                )
 
-            logger.info(f"Remote download complete, GCS path: {audio_gcs_path}")
-        elif is_remote_enabled and source_id and source_name:
-            # Non-torrent remote download (e.g., YouTube via flacfetch VM)
-            # Must pass gcs_path so flacfetch uploads directly to GCS
             gcs_destination = f"uploads/{job_id}/audio/"
-            logger.info(f"Using remote download_by_id for {source_name} ID={source_id} with GCS upload to: {gcs_destination}")
+            logger.info(f"Spotify download: source_id={source_id}")
 
             result = audio_search_service.download_by_id(
                 source_name=source_name,
                 source_id=source_id,
-                output_dir="",  # Not used for remote
-                target_file=target_file,
+                output_dir="",
                 download_url=download_url,
                 gcs_path=gcs_destination,
             )
 
-            # Handle GCS path response (same logic as torrent branch)
-            if result.filepath.startswith("gs://"):
-                # Extract the path portion after the bucket name
-                # Format: gs://bucket/uploads/job_id/audio/filename.flac
-                parts = result.filepath.replace("gs://", "").split("/", 1)
-                if len(parts) == 2:
-                    audio_gcs_path = parts[1]
-                else:
-                    audio_gcs_path = result.filepath
-                filename = os.path.basename(result.filepath)
-            else:
-                # Fallback: treat as local path (shouldn't happen for remote)
-                filename = os.path.basename(result.filepath)
-                audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
+            audio_gcs_path = _extract_gcs_path(result.filepath)
+            filename = os.path.basename(result.filepath)
+            logger.info(f"Spotify download complete: {audio_gcs_path}")
 
-                logger.warning(f"Remote download returned local path: {result.filepath}, uploading manually")
-                content_type, _ = mimetypes.guess_type(result.filepath)
-                with open(result.filepath, 'rb') as f:
-                    storage_service.upload_fileobj(f, audio_gcs_path, content_type=content_type or 'application/octet-stream')
-
-            logger.info(f"Remote download complete, GCS path: {audio_gcs_path}")
         else:
-            # Local download (remote disabled or no source_id)
+            # Unknown source - try generic download
+            logger.warning(f"Unknown source type: {source_name}, attempting generic download")
             temp_dir = tempfile.mkdtemp(prefix=f"audio_download_{job_id}_")
 
-            if source_name == 'YouTube' and download_url:
-                # For YouTube without remote, download directly using URL from state_data
-                # This avoids relying on in-memory cache which doesn't persist across instances
-                logger.info(f"Downloading YouTube audio directly from URL: {download_url}")
-                from backend.workers.audio_worker import download_from_url
-
-                local_path = await download_from_url(
-                    download_url,
-                    temp_dir,
-                    selected.get('artist'),
-                    selected.get('title')
-                )
-
-                if not local_path or not os.path.exists(local_path):
-                    raise DownloadError(f"Failed to download from YouTube: {download_url}")
-
-                # Create a result-like object
-                class DownloadResult:
-                    def __init__(self, filepath):
-                        self.filepath = filepath
-
-                result = DownloadResult(local_path)
-            else:
-                # Fallback to search-based download (may fail if cache is empty)
-                logger.warning(f"Falling back to cache-based download for {source_name} - this may fail on multi-instance deployments")
+            try:
                 result = audio_search_service.download(
                     result_index=selection_index,
                     output_dir=temp_dir,
-                    remote_search_id=remote_search_id,  # Pass for potential fallback scenarios
+                    remote_search_id=remote_search_id,
                 )
 
-            # Upload to GCS
-            filename = os.path.basename(result.filepath)
-            audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
+                filename = os.path.basename(result.filepath)
+                audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
 
-            # Detect content type from file extension (YouTube downloads are typically .webm/.opus, torrent downloads are .flac)
-            content_type, _ = mimetypes.guess_type(result.filepath)
-            with open(result.filepath, 'rb') as f:
-                storage_service.upload_fileobj(
-                    f,
-                    audio_gcs_path,
-                    content_type=content_type or 'application/octet-stream'
-                )
+                content_type, _ = mimetypes.guess_type(result.filepath)
+                with open(result.filepath, 'rb') as f:
+                    storage_service.upload_fileobj(
+                        f,
+                        audio_gcs_path,
+                        content_type=content_type or 'application/octet-stream'
+                    )
 
-            logger.info(f"Uploaded audio to GCS: {audio_gcs_path}")
-
-            # Clean up temp file
-            try:
-                os.remove(result.filepath)
-                os.rmdir(temp_dir)
-            except Exception as e:
-                logger.warning(f"Failed to clean up temp files: {e}")
+                logger.info(f"Generic download uploaded to GCS: {audio_gcs_path}")
+            finally:
+                # Clean up temp files
+                try:
+                    if os.path.exists(temp_dir):
+                        import shutil
+                        shutil.rmtree(temp_dir)
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temp files: {e}")
         
         # Update job with GCS path and transition to DOWNLOADING
         job_manager.update_job(job_id, {

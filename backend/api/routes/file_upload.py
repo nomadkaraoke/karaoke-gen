@@ -39,8 +39,19 @@ from backend.services.metrics import metrics
 from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.middleware.tenant import get_tenant_config_from_request
+from backend.services.youtube_download_service import (
+    get_youtube_download_service,
+    YouTubeDownloadError,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _is_youtube_url(url: str) -> bool:
+    """Check if a URL is a YouTube URL."""
+    return any(domain in url.lower() for domain in [
+        'youtube.com', 'youtu.be', 'youtube-nocookie.com'
+    ])
 router = APIRouter(tags=["jobs"])
 
 
@@ -1576,7 +1587,7 @@ async def create_job_from_url(
             logger.info(f"  Artist: {artist}")
         if title:
             logger.info(f"  Title: {title}")
-        
+
         # Transition job to DOWNLOADING state
         job_manager.transition_to_state(
             job_id=job_id,
@@ -1585,11 +1596,48 @@ async def create_job_from_url(
             message="Starting audio download from URL"
         )
 
-        # For URL jobs, trigger ONLY audio worker first
-        # The audio worker will trigger lyrics worker after download completes
-        # This prevents race condition where lyrics worker times out waiting for audio
-        background_tasks.add_task(_trigger_audio_worker_only, job_id)
-        
+        # For YouTube URLs, download audio NOW using YouTubeDownloadService
+        # This uses remote flacfetch (if configured) to avoid bot detection on Cloud Run
+        if _is_youtube_url(body.url):
+            logger.info(f"YouTube URL detected, downloading via YouTubeDownloadService")
+            try:
+                youtube_service = get_youtube_download_service()
+                audio_gcs_path = await youtube_service.download(
+                    url=body.url,
+                    job_id=job_id,
+                    artist=artist,
+                    title=title,
+                )
+
+                # Update job with the downloaded audio path
+                job_manager.update_job(job_id, {
+                    'input_media_gcs_path': audio_gcs_path,
+                    'filename': os.path.basename(audio_gcs_path),
+                })
+
+                logger.info(f"YouTube audio downloaded to GCS: {audio_gcs_path}")
+
+                # Now trigger both workers in parallel (audio already downloaded)
+                job_manager.transition_to_state(
+                    job_id=job_id,
+                    new_status=JobStatus.DOWNLOADING,
+                    progress=10,
+                    message="Audio downloaded, starting processing"
+                )
+                background_tasks.add_task(_trigger_workers_parallel, job_id)
+
+            except YouTubeDownloadError as e:
+                logger.error(f"YouTube download failed: {e}")
+                job_manager.fail_job(job_id, f"YouTube download failed: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"YouTube download failed: {e}"
+                )
+        else:
+            # For non-YouTube URLs, trigger ONLY audio worker first
+            # The audio worker will download the URL and trigger lyrics worker after
+            background_tasks.add_task(_trigger_audio_worker_only, job_id)
+
         return CreateJobFromUrlResponse(
             status="success",
             job_id=job_id,

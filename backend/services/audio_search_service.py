@@ -204,7 +204,9 @@ class AudioSearchService:
                     provider=item.get("provider", "Unknown"),
                     duration=item.get("duration_seconds"),
                     quality=item.get("quality", ""),
-                    source_id=item.get("info_hash"),
+                    # source_id: use explicit source_id field first (YouTube video ID, Spotify track ID),
+                    # fall back to info_hash for torrent sources (RED/OPS)
+                    source_id=item.get("source_id") or item.get("info_hash"),
                     index=item.get("index", 0),
                     seeders=item.get("seeders"),
                     target_file=item.get("target_file"),

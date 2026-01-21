@@ -74,24 +74,33 @@ AUDIO_WORKER_LOGGERS = [
 
 async def download_from_url(url: str, temp_dir: str, artist: str, title: str, job_manager: JobManager = None, job_id: str = None) -> Optional[str]:
     """
-    Download audio from a URL (YouTube, etc.) using karaoke_gen.FileHandler.
-    
-    Uses the battle-tested FileHandler from karaoke_gen which includes:
+    Download audio from a URL using local yt_dlp.
+
+    IMPORTANT: This is a LEGACY FALLBACK for non-YouTube URLs only!
+
+    For YouTube URLs, use YouTubeDownloadService instead, which:
+    - Uses remote flacfetch when configured (avoids Cloud Run bot detection)
+    - Has proper error handling and GCS upload
+
+    This function uses local yt_dlp and will likely FAIL for YouTube URLs
+    on Cloud Run due to bot detection (YouTube blocks Cloud Run IP ranges).
+
+    Uses the FileHandler from karaoke_gen which includes:
     - Anti-detection options (user agent, headers, delays)
     - Cookie support for authenticated downloads
     - Retry logic
-    
-    If artist and/or title are not provided, attempts to extract them from 
+
+    If artist and/or title are not provided, attempts to extract them from
     the URL metadata.
-    
+
     Args:
-        url: URL to download from
+        url: URL to download from (NOT recommended for YouTube - use YouTubeDownloadService)
         temp_dir: Temporary directory to save to
         artist: Artist name for filename (can be None for auto-detection)
         title: Song title for filename (can be None for auto-detection)
         job_manager: Optional JobManager to update job with detected metadata
         job_id: Optional job ID to update
-        
+
     Returns:
         Path to downloaded audio file, or None if failed
     """
@@ -478,8 +487,20 @@ async def download_audio(
             logger.info(f"Job {job_id}: Downloaded audio from GCS: {input_url}")
             return local_path
         
-        # Case 3: Fresh URL that needs downloading
+        # Case 3: Fresh URL that needs downloading (legacy fallback)
+        # NOTE: YouTube URLs should be downloaded by YouTubeDownloadService in file_upload.py
+        # BEFORE triggering this worker. If we reach here with a YouTube URL, it means
+        # the download was not done upfront, which will likely fail due to bot detection.
         if job.url:
+            # Check if this is a YouTube URL that should have been handled earlier
+            is_youtube = any(domain in job.url.lower() for domain in ['youtube.com', 'youtu.be'])
+            if is_youtube:
+                logger.warning(
+                    f"Job {job_id}: YouTube URL reached download_audio() fallback. "
+                    "This may fail due to bot detection. YouTube URLs should be "
+                    "downloaded via YouTubeDownloadService before triggering workers."
+                )
+
             logger.info(f"Job {job_id}: Downloading from URL: {job.url}")
 
             # Use provided job_manager or create new one

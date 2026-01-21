@@ -370,12 +370,13 @@ class TestAudioSearchCacheIndependence:
         assert 'state_data' in source, \
             "search_audio must use state_data for persistence"
 
-    def test_download_code_has_youtube_direct_download_branch(self):
+    def test_download_code_uses_youtube_download_service(self):
         """
-        Verify that _download_and_start_processing has the YouTube direct download path.
+        Verify that _download_and_start_processing uses YouTubeDownloadService.
 
-        This checks that the code path exists for downloading YouTube audio directly
-        using the URL from state_data, avoiding the in-memory cache dependency.
+        After the consolidation refactor (2025-01), all YouTube downloads go through
+        YouTubeDownloadService instead of using download_from_url directly. This
+        ensures consistent handling with remote flacfetch support.
         """
         from backend.api.routes import audio_search
         import inspect
@@ -383,33 +384,28 @@ class TestAudioSearchCacheIndependence:
         # Get the source of _download_and_start_processing
         source = inspect.getsource(audio_search._download_and_start_processing)
 
-        # Verify the YouTube direct download branch exists
+        # Verify YouTubeDownloadService is used for YouTube
         assert "source_name == 'YouTube'" in source, \
             "_download_and_start_processing must check for YouTube source"
-        assert 'download_url' in source, \
-            "_download_and_start_processing must use download_url from state_data"
-        assert 'download_from_url' in source, \
-            "_download_and_start_processing must call download_from_url for YouTube"
+        assert 'youtube_service' in source or 'get_youtube_download_service' in source, \
+            "_download_and_start_processing must use YouTubeDownloadService for YouTube"
 
-    def test_youtube_download_branch_avoids_cache_dependency(self):
+    def test_youtube_download_service_import_exists(self):
         """
-        Verify that the YouTube download path uses URL from state_data,
-        not the in-memory cache that doesn't persist across Cloud Run instances.
+        Verify that audio_search imports YouTubeDownloadService.
+
+        This ensures the consolidated YouTube download path is properly wired.
         """
         from backend.api.routes import audio_search
         import inspect
 
-        source = inspect.getsource(audio_search._download_and_start_processing)
+        source = inspect.getsource(audio_search)
 
-        # The fix specifically uses selected.get('url') which comes from state_data
-        # rather than audio_search_service cache
-        assert "selected.get('url')" in source or "download_url" in source, \
-            "YouTube download must use URL from selected result (state_data)"
-
-        # Verify it doesn't rely on cache for YouTube
-        # The branch is: elif source_name == 'YouTube' and download_url:
-        assert "YouTube" in source and "download_url" in source, \
-            "YouTube branch must check for download_url availability"
+        # Verify YouTubeDownloadService is imported
+        assert 'get_youtube_download_service' in source, \
+            "audio_search must import get_youtube_download_service"
+        assert 'YouTubeDownloadError' in source, \
+            "audio_search must import YouTubeDownloadError"
 
 
 class TestTranscriptionTimeout:
