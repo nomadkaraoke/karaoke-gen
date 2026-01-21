@@ -398,6 +398,11 @@ class LyricsTranscriber:
             self.correct_lyrics(agentic_deadline=agentic_deadline)
         elif self.output_config.run_correction:
             self.logger.info("Skipping lyrics correction - no transcription results available")
+        elif self.results.transcription_results:
+            # Correction disabled but we have transcription - create uncorrected CorrectionResult
+            # This allows the review UI to work with raw transcription
+            self.logger.info("Auto-correction disabled - using raw transcription for review")
+            self._create_uncorrected_result()
 
         # Step 4: Generate outputs based on what we have
         if self.results.transcription_corrected or self.results.lyrics_results:
@@ -498,6 +503,52 @@ class LyricsTranscriber:
                 self.logger.debug("  - LocalWhisper: ENABLED but whisper-timestamped not installed")
         else:
             self.logger.debug("  - LocalWhisper: DISABLED (enable_local_whisper=False)")
+
+    def _create_uncorrected_result(self) -> None:
+        """Create a CorrectionResult from raw transcription without any corrections.
+
+        Used when auto-correction is disabled (SKIP_CORRECTION=true) to allow
+        the review UI to work with raw transcription data.
+        """
+        if not self.results.transcription_results:
+            self.logger.warning("No transcription results available for uncorrected result")
+            return
+
+        # Use the highest priority transcription result
+        sorted_results = sorted(self.results.transcription_results, key=lambda x: x.priority)
+        best_transcription = sorted_results[0]
+
+        # Count total words in the transcription
+        total_words = sum(len(segment.words) for segment in best_transcription.result.segments)
+
+        # Create a CorrectionResult with no corrections applied
+        self.results.transcription_corrected = CorrectionResult(
+            original_segments=best_transcription.result.segments,
+            corrected_segments=best_transcription.result.segments,
+            corrections=[],
+            corrections_made=0,
+            confidence=1.0,  # Full confidence since we're using original
+            reference_lyrics=self.results.lyrics_results,  # Include fetched lyrics for review UI
+            anchor_sequences=[],
+            gap_sequences=[],
+            resized_segments=[],
+            correction_steps=[],
+            word_id_map={},
+            segment_id_map={},
+            metadata={
+                "correction_type": "none",
+                "reason": "correction_disabled",
+                "audio_filepath": self.audio_filepath,
+                "anchor_sequences_count": 0,
+                "gap_sequences_count": 0,
+                "total_words": total_words,
+                "correction_ratio": 0.0,
+                "available_handlers": [],
+                "enabled_handlers": [],
+                "agentic_routing": "disabled",
+            },
+        )
+        self.logger.info(f"Created uncorrected result with {total_words} words from {best_transcription.name}")
 
     def correct_lyrics(self, agentic_deadline: Optional[float] = None) -> None:
         """Run lyrics correction using transcription and internet lyrics.

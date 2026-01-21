@@ -17,7 +17,7 @@
 |-----------|--------|
 | Audio upload & separation | Working |
 | Lyrics transcription | Working |
-| Agentic AI correction | Working (Gemini 2 Flash via Vertex AI) |
+| Auto-correction (agentic + heuristic) | Disabled (raw transcription goes to human review) |
 | Human lyrics review | Working |
 | Preview video generation | Working |
 | Instrumental selection | Working |
@@ -41,6 +41,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Auto-Correction Disabled** (2026-01-20): Disabled all auto-correction during lyrics transcription (both agentic AI via Gemini and heuristic rule-based handlers). Raw transcription now goes directly to human review without automatic fixes. This change was made because auto-correction was creating more work for reviewers by introducing errors that needed manual correction. The feature can be re-enabled by setting `SKIP_CORRECTION=false` environment variable. See `backend/config.py` for configuration.
 
 - **Worker Coordination Fix** (2026-01-20): Fixed bug where Cloud Run could shut down prematurely when one parallel worker completed while another was still running. Added `WorkerRegistry` to track active workers per job. Workers register at start and unregister in finally block. FastAPI lifespan shutdown handler now waits up to 10 minutes for active workers to complete before allowing container termination. Fixes job failures where lyrics worker was killed mid-processing after audio worker completed. See [ARCHITECTURE.md](ARCHITECTURE.md#worker-coordination) and [LESSONS-LEARNED.md](LESSONS-LEARNED.md#cloud-run-premature-shutdown-with-parallel-workers).
 

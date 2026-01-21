@@ -397,6 +397,13 @@ class LyricsProcessor:
         # and the review UI always shows accurate, unshifted timestamps.
         self.logger.info("Deferring countdown and video rendering to post-review phase")
 
+        # Check if auto-correction should be skipped
+        # This is controlled by SKIP_CORRECTION env var, defaulting to True
+        # When True, raw transcription goes directly to human review without automatic fixes
+        skip_correction = os.getenv("SKIP_CORRECTION", "true").lower() in ("true", "1", "yes")
+        if skip_correction:
+            self.logger.info("Auto-correction disabled (SKIP_CORRECTION=true) - raw transcription will go to human review")
+
         output_config = OutputConfig(
             output_styles_json=self.style_params_json,
             output_dir=lyrics_dir,
@@ -404,7 +411,7 @@ class LyricsProcessor:
             allow_preview_video=self.render_video,  # Allow preview videos unless --no-video is set
             fetch_lyrics=True,
             run_transcription=not self.skip_transcription,
-            run_correction=True,
+            run_correction=not skip_correction,  # Disabled when SKIP_CORRECTION=true
             generate_plain_text=True,
             generate_lrc=True,
             generate_cdg=False,  # CDG generation disabled (not currently supported)

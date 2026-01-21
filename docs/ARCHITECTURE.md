@@ -155,7 +155,7 @@ LyricsTranscriber                 LyricsTranscriber
 |---------|---------|----------|
 | Modal | GPU audio separation | Yes |
 | AudioShake | Lyrics transcription | Yes |
-| Vertex AI | Agentic AI correction (Gemini 3 Flash) | Default on |
+| Vertex AI | Agentic AI correction (Gemini 3 Flash) | Default off (SKIP_CORRECTION=false to enable) |
 | Genius | Reference lyrics | Yes |
 | YouTube API | Video upload | Optional |
 | SendGrid | Email notifications | Optional |

@@ -41,7 +41,15 @@ class Settings(BaseSettings):
     max_concurrent_jobs: int = int(os.getenv("MAX_CONCURRENT_JOBS", "5"))
     job_timeout_seconds: int = int(os.getenv("JOB_TIMEOUT_SECONDS", "3600"))
 
+    # Lyrics Correction Settings
+    # Skip all auto-correction (both agentic AI and heuristic handlers).
+    # When true, raw transcription goes directly to human review without any automatic fixes.
+    # This is the default because auto-correction currently creates more work for reviewers.
+    # Set SKIP_CORRECTION=false to re-enable auto-correction if quality improves.
+    skip_correction: bool = os.getenv("SKIP_CORRECTION", "true").lower() in ("true", "1", "yes")
+
     # Agentic AI Correction (for lyrics correction via LLM)
+    # Only used when skip_correction=false
     # When enabled, uses Gemini via Vertex AI for intelligent lyrics correction
     use_agentic_ai: bool = os.getenv("USE_AGENTIC_AI", "true").lower() in ("true", "1", "yes")
     agentic_ai_model: str = os.getenv("AGENTIC_AI_MODEL", "vertexai/gemini-3-flash-preview")
