@@ -13,6 +13,7 @@ The flow is:
 """
 import asyncio
 import logging
+import mimetypes
 import os
 import tempfile
 from typing import Optional, List, Dict, Any
@@ -342,8 +343,9 @@ async def _download_and_start_processing(
                 audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
 
                 logger.warning(f"Remote download returned local path: {result.filepath}, uploading manually")
+                content_type, _ = mimetypes.guess_type(result.filepath)
                 with open(result.filepath, 'rb') as f:
-                    storage_service.upload_fileobj(f, audio_gcs_path, content_type='audio/flac')
+                    storage_service.upload_fileobj(f, audio_gcs_path, content_type=content_type or 'application/octet-stream')
 
             logger.info(f"Remote download complete, GCS path: {audio_gcs_path}")
         elif is_remote_enabled and source_id and source_name:
@@ -377,8 +379,9 @@ async def _download_and_start_processing(
                 audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
 
                 logger.warning(f"Remote download returned local path: {result.filepath}, uploading manually")
+                content_type, _ = mimetypes.guess_type(result.filepath)
                 with open(result.filepath, 'rb') as f:
-                    storage_service.upload_fileobj(f, audio_gcs_path, content_type='audio/flac')
+                    storage_service.upload_fileobj(f, audio_gcs_path, content_type=content_type or 'application/octet-stream')
 
             logger.info(f"Remote download complete, GCS path: {audio_gcs_path}")
         else:
@@ -420,11 +423,13 @@ async def _download_and_start_processing(
             filename = os.path.basename(result.filepath)
             audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
 
+            # Detect content type from file extension (YouTube downloads are typically .webm/.opus, torrent downloads are .flac)
+            content_type, _ = mimetypes.guess_type(result.filepath)
             with open(result.filepath, 'rb') as f:
                 storage_service.upload_fileobj(
                     f,
                     audio_gcs_path,
-                    content_type='audio/flac'  # flacfetch typically returns FLAC
+                    content_type=content_type or 'application/octet-stream'
                 )
 
             logger.info(f"Uploaded audio to GCS: {audio_gcs_path}")
