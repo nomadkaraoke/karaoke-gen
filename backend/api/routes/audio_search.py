@@ -346,22 +346,46 @@ async def _download_and_start_processing(
                     storage_service.upload_fileobj(f, audio_gcs_path, content_type='audio/flac')
 
             logger.info(f"Remote download complete, GCS path: {audio_gcs_path}")
+        elif is_remote_enabled and source_id and source_name:
+            # Non-torrent remote download (e.g., YouTube via flacfetch VM)
+            # Must pass gcs_path so flacfetch uploads directly to GCS
+            gcs_destination = f"uploads/{job_id}/audio/"
+            logger.info(f"Using remote download_by_id for {source_name} ID={source_id} with GCS upload to: {gcs_destination}")
+
+            result = audio_search_service.download_by_id(
+                source_name=source_name,
+                source_id=source_id,
+                output_dir="",  # Not used for remote
+                target_file=target_file,
+                download_url=download_url,
+                gcs_path=gcs_destination,
+            )
+
+            # Handle GCS path response (same logic as torrent branch)
+            if result.filepath.startswith("gs://"):
+                # Extract the path portion after the bucket name
+                # Format: gs://bucket/uploads/job_id/audio/filename.flac
+                parts = result.filepath.replace("gs://", "").split("/", 1)
+                if len(parts) == 2:
+                    audio_gcs_path = parts[1]
+                else:
+                    audio_gcs_path = result.filepath
+                filename = os.path.basename(result.filepath)
+            else:
+                # Fallback: treat as local path (shouldn't happen for remote)
+                filename = os.path.basename(result.filepath)
+                audio_gcs_path = f"uploads/{job_id}/audio/{filename}"
+
+                logger.warning(f"Remote download returned local path: {result.filepath}, uploading manually")
+                with open(result.filepath, 'rb') as f:
+                    storage_service.upload_fileobj(f, audio_gcs_path, content_type='audio/flac')
+
+            logger.info(f"Remote download complete, GCS path: {audio_gcs_path}")
         else:
-            # Local download (YouTube or fallback)
+            # Local download (remote disabled or no source_id)
             temp_dir = tempfile.mkdtemp(prefix=f"audio_download_{job_id}_")
 
-            # Use download_by_id if we have source_id and remote is enabled
-            if source_id and source_name and is_remote_enabled:
-                logger.info(f"Using download_by_id for local download: {source_name} ID={source_id}")
-
-                result = audio_search_service.download_by_id(
-                    source_name=source_name,
-                    source_id=source_id,
-                    output_dir=temp_dir,
-                    target_file=target_file,
-                    download_url=download_url,
-                )
-            elif source_name == 'YouTube' and download_url:
+            if source_name == 'YouTube' and download_url:
                 # For YouTube without remote, download directly using URL from state_data
                 # This avoids relying on in-memory cache which doesn't persist across instances
                 logger.info(f"Downloading YouTube audio directly from URL: {download_url}")
