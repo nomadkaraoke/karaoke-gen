@@ -39,7 +39,7 @@ from config import (
 from modules import database, storage as storage_module, artifact_registry, secrets
 from modules import cloud_tasks, cloud_run, monitoring, networking
 from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, worker_sas
-from compute import flacfetch_vm, encoding_worker_vm, github_runners
+from compute import encoding_worker_vm, github_runners
 
 # ==================== Core Infrastructure ====================
 
@@ -124,9 +124,6 @@ claude_impersonation = claude_automation_sa.grant_impersonation_permission(
 )
 
 # Worker service accounts (VMs)
-flacfetch_sa = worker_sas.create_flacfetch_service_account()
-flacfetch_iam_bindings = worker_sas.grant_flacfetch_permissions(flacfetch_sa, bucket)
-
 encoding_worker_sa = worker_sas.create_encoding_worker_service_account()
 encoding_worker_iam_bindings = worker_sas.grant_encoding_worker_permissions(
     encoding_worker_sa, bucket
@@ -245,18 +242,6 @@ gdrive_validator_scheduler = cloudscheduler.Job(
 
 # ==================== Compute VMs ====================
 
-# Flacfetch VM (audio download service)
-flacfetch_ip = flacfetch_vm.create_flacfetch_ip()
-flacfetch_instance = flacfetch_vm.create_flacfetch_vm(flacfetch_ip, flacfetch_sa, bucket)
-flacfetch_bittorrent_fw, flacfetch_api_fw = flacfetch_vm.create_flacfetch_firewall()
-
-# Set flacfetch-api-url secret to use internal IP (requires VPC connector)
-flacfetch_url_version = secrets.create_flacfetch_internal_url_version(
-    all_secrets["flacfetch-api-url"],
-    flacfetch_instance,
-    vpc_connector,
-)
-
 # Encoding Worker VM (video encoding service)
 encoding_worker_ip = encoding_worker_vm.create_encoding_worker_ip()
 encoding_worker_instance = encoding_worker_vm.create_encoding_worker_vm(
@@ -338,11 +323,6 @@ pulumi.export("gdrive_validator_service_account", gdrive_validator_sa.email)
 # VPC networking
 pulumi.export("vpc_connector_name", vpc_connector.name)
 pulumi.export("vpc_connector_self_link", vpc_connector.self_link)
-
-# Flacfetch
-pulumi.export("flacfetch_static_ip", flacfetch_ip.address)
-pulumi.export("flacfetch_service_url", flacfetch_ip.address.apply(lambda ip: f"http://{ip}:8080"))
-pulumi.export("flacfetch_service_account", flacfetch_sa.email)
 
 # Encoding worker
 pulumi.export("encoding_worker_external_ip", encoding_worker_ip.address)

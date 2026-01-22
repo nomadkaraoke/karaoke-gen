@@ -2,7 +2,6 @@
 Worker service accounts for VM-based services.
 
 Manages service accounts for:
-- Flacfetch torrent/download VM
 - Encoding worker VM
 - GDrive validator Cloud Function
 - GitHub Actions self-hosted runners
@@ -13,52 +12,6 @@ import pulumi_gcp as gcp
 from pulumi_gcp import serviceaccount, storage
 
 from config import PROJECT_ID
-
-
-# ==================== Flacfetch Service Account ====================
-
-def create_flacfetch_service_account() -> serviceaccount.Account:
-    """Create the flacfetch service account for torrent downloads."""
-    return serviceaccount.Account(
-        "flacfetch-sa",
-        account_id="flacfetch-service",
-        display_name="Flacfetch Service Account",
-        description="Service account for flacfetch torrent/audio download VM",
-    )
-
-
-def grant_flacfetch_permissions(
-    service_account: serviceaccount.Account,
-    bucket: storage.Bucket,
-) -> dict:
-    """Grant permissions to the flacfetch service account."""
-    bindings = {}
-
-    # Storage Object Creator - write downloaded files to GCS
-    bindings["storage_writer"] = storage.BucketIAMMember(
-        "flacfetch-storage-writer",
-        bucket=bucket.name,
-        role="roles/storage.objectCreator",
-        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
-    )
-
-    # Storage Object Viewer - read uploads folder
-    bindings["storage_reader"] = storage.BucketIAMMember(
-        "flacfetch-storage-reader",
-        bucket=bucket.name,
-        role="roles/storage.objectViewer",
-        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
-    )
-
-    # Secret Manager Accessor - read API keys
-    bindings["secrets_access"] = gcp.projects.IAMMember(
-        "flacfetch-secrets-access",
-        project=PROJECT_ID,
-        role="roles/secretmanager.secretAccessor",
-        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
-    )
-
-    return bindings
 
 
 # ==================== Encoding Worker Service Account ====================
