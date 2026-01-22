@@ -508,7 +508,8 @@ class LyricsTranscriber:
         """Create a CorrectionResult from raw transcription without any corrections.
 
         Used when auto-correction is disabled (SKIP_CORRECTION=true) to allow
-        the review UI to work with raw transcription data.
+        the review UI to work with raw transcription data. Still calculates
+        anchor sequences and gaps to help reviewers identify uncertain areas.
         """
         if not self.results.transcription_results:
             self.logger.warning("No transcription results available for uncorrected result")
@@ -521,6 +522,25 @@ class LyricsTranscriber:
         # Count total words in the transcription
         total_words = sum(len(segment.words) for segment in best_transcription.result.segments)
 
+        # Calculate anchor sequences and gaps if we have reference lyrics
+        anchor_sequences = []
+        gap_sequences = []
+        if self.results.lyrics_results:
+            self.logger.info("Calculating anchor sequences for uncorrected result")
+            transcribed_text = " ".join(
+                " ".join(w.text for w in segment.words)
+                for segment in best_transcription.result.segments
+            )
+            anchor_sequences = self.corrector.anchor_finder.find_anchors(
+                transcribed_text, self.results.lyrics_results, best_transcription
+            )
+            gap_sequences = self.corrector.anchor_finder.find_gaps(
+                transcribed_text, anchor_sequences, self.results.lyrics_results, best_transcription
+            )
+            self.logger.info(
+                f"Found {len(anchor_sequences)} anchor sequences and {len(gap_sequences)} gaps"
+            )
+
         # Create a CorrectionResult with no corrections applied
         self.results.transcription_corrected = CorrectionResult(
             original_segments=best_transcription.result.segments,
@@ -529,8 +549,8 @@ class LyricsTranscriber:
             corrections_made=0,
             confidence=1.0,  # Full confidence since we're using original
             reference_lyrics=self.results.lyrics_results,  # Include fetched lyrics for review UI
-            anchor_sequences=[],
-            gap_sequences=[],
+            anchor_sequences=anchor_sequences,
+            gap_sequences=gap_sequences,
             resized_segments=[],
             correction_steps=[],
             word_id_map={},
@@ -539,8 +559,8 @@ class LyricsTranscriber:
                 "correction_type": "none",
                 "reason": "correction_disabled",
                 "audio_filepath": self.audio_filepath,
-                "anchor_sequences_count": 0,
-                "gap_sequences_count": 0,
+                "anchor_sequences_count": len(anchor_sequences),
+                "gap_sequences_count": len(gap_sequences),
                 "total_words": total_words,
                 "correction_ratio": 0.0,
                 "available_handlers": [],
@@ -548,7 +568,10 @@ class LyricsTranscriber:
                 "agentic_routing": "disabled",
             },
         )
-        self.logger.info(f"Created uncorrected result with {total_words} words from {best_transcription.name}")
+        self.logger.info(
+            f"Created uncorrected result with {total_words} words, "
+            f"{len(anchor_sequences)} anchors, {len(gap_sequences)} gaps from {best_transcription.name}"
+        )
 
     def correct_lyrics(self, agentic_deadline: Optional[float] = None) -> None:
         """Run lyrics correction using transcription and internet lyrics.
