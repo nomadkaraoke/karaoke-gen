@@ -997,6 +997,7 @@ ALLOWED_RESET_STATES = {
     "awaiting_audio_selection",
     "awaiting_review",
     "awaiting_instrumental_selection",
+    "instrumental_selected",  # Re-run video generation with same settings
 }
 
 # State data keys to clear for each reset target
@@ -1036,6 +1037,20 @@ STATE_DATA_CLEAR_KEYS = {
         "video_progress",
         "render_progress",
         "screens_progress",
+    ],
+    "instrumental_selected": [
+        # Clear video/encoding/distribution state to allow re-processing
+        # Preserves: instrumental_selection, lyrics_metadata, review data
+        "video_progress",
+        "render_progress",
+        "screens_progress",
+        "encoding_progress",
+        "distribution",
+        "brand_code",
+        "youtube_url",
+        "youtube_video_id",
+        "dropbox_link",
+        "gdrive_files",
     ],
 }
 
@@ -1145,12 +1160,28 @@ async def reset_job(
         f"Cleared state_data keys: {cleared_keys}"
     )
 
+    # Trigger video worker for states that should auto-continue
+    # instrumental_selected: Re-run video generation with same instrumental selection
+    worker_triggered = False
+    if target_state == "instrumental_selected":
+        from backend.services.worker_service import get_worker_service
+        worker_service = get_worker_service()
+        worker_triggered = await worker_service.trigger_video_worker(job_id)
+        if worker_triggered:
+            logger.info(f"Admin reset: Triggered video worker for job {job_id}")
+        else:
+            logger.warning(f"Admin reset: Failed to trigger video worker for job {job_id}")
+
+    message = f"Job reset from {previous_status} to {target_state}"
+    if worker_triggered:
+        message += " (video worker triggered)"
+
     return JobResetResponse(
         status="success",
         job_id=job_id,
         previous_status=previous_status,
         new_status=target_state,
-        message=f"Job reset from {previous_status} to {target_state}",
+        message=message,
         cleared_data=cleared_keys,
     )
 

@@ -445,6 +445,11 @@ function AdminJobsPageContent() {
         description: "Re-select instrumental. Preserves lyrics review.",
         icon: Sliders,
       },
+      instrumental_selected: {
+        label: "Reprocess Video",
+        description: "Re-encode and re-distribute with current settings. Triggers video worker automatically.",
+        icon: RefreshCw,
+      },
     }
     return info[targetState] || { label: targetState, description: "", icon: Settings }
   }
@@ -744,6 +749,7 @@ function AdminJobsPageContent() {
                 { state: "awaiting_audio_selection", icon: Music, label: "Audio" },
                 { state: "awaiting_review", icon: Mic, label: "Lyrics" },
                 { state: "awaiting_instrumental_selection", icon: Sliders, label: "Inst." },
+                { state: "instrumental_selected", icon: RefreshCw, label: "Reprocess" },
               ].map(({ state, icon: Icon, label }) => (
                 <Tooltip key={state}>
                   <TooltipTrigger asChild>
