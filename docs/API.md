@@ -856,6 +856,12 @@ Allowed target states:
 - `awaiting_audio_selection` - Re-select audio source
 - `awaiting_review` - Re-review lyrics (preserves audio stems)
 - `awaiting_instrumental_selection` - Re-select instrumental (preserves review)
+- `instrumental_selected` - **Reprocess video** (preserves all settings, triggers video worker automatically)
+
+The `instrumental_selected` state is useful for re-encoding and re-distributing a job after using "Delete Outputs":
+1. Delete outputs → Removes YouTube/Dropbox/GDrive files, frees brand code
+2. Reset to `instrumental_selected` → Clears video state, keeps settings, auto-triggers video worker
+3. Job re-processes with same instrumental, lyrics, and distribution settings
 
 Response:
 ```json
