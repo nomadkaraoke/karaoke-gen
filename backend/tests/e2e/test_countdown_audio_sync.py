@@ -80,12 +80,14 @@ class TestCountdownAudioPadding:
 
         # Create a 5-second audio file with a tone at the start
         # This simulates audio content that starts immediately
-        subprocess.run([
+        result = subprocess.run([
             'ffmpeg', '-y', '-f', 'lavfi',
             '-i', 'sine=frequency=440:duration=5',
             '-c:a', 'flac',
             str(audio_path)
         ], capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed to create source audio: {result.stderr.decode()}")
 
         return audio_path
 
