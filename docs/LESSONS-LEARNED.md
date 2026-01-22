@@ -80,6 +80,9 @@ Sanitize user input (artist/title) to ASCII for HTTP headers. Smart quotes, em d
 ### Fonts in Docker
 Base Docker images have no fonts. Install `fonts-noto-core`, `fonts-noto-cjk` for video rendering.
 
+### Validate External API Format Support
+Don't assume external APIs support all common formats. AudioShake only supports `.wav`, `.mp3`, `.aac`, `.flac`, `.aiff`, `.mp4`, `.mov` - NOT `.webm`, `.ogg`, `.m4a`, `.opus`. When remote flacfetch downloads YouTube audio as `.webm`, the lyrics worker must convert to FLAC before uploading. **Pattern**: Use a whitelist of known-supported formats and convert everything else, rather than trying to upload directly and hoping it works. Always check the API's supported format documentation.
+
 ### Cloud Run CPU Throttling Kills Background Tasks
 Cloud Run throttles CPU to near-zero when the main request handler returns, even if background tasks are running. This caused lyrics processing (running as a FastAPI background task) to slow from 17-52 seconds to 8+ minutes, and instances being terminated mid-processing. **Fix**: Add `--no-cpu-throttling` flag to `gcloud run deploy`. Keep `--cpu-boost` for faster cold starts. **Diagnosis**: Look for "Application shutdown" in logs during long operations, and compare processing times (27x slowdown is a telltale sign).
 

@@ -10,11 +10,13 @@ from karaoke_gen.lyrics_transcriber.types import TranscriptionData, LyricsSegmen
 from karaoke_gen.lyrics_transcriber.transcribers.base_transcriber import BaseTranscriber, TranscriptionError
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
 
-# Lossy formats that should be uploaded directly (transcoding would cause quality loss)
-LOSSY_FORMATS = {'.mp3', '.aac', '.ogg', '.m4a', '.wma', '.opus'}
-# Lossless formats that are already compressed and can be uploaded directly
-LOSSLESS_COMPRESSED_FORMATS = {'.flac', '.alac'}
-# Uncompressed formats that should be converted to FLAC for efficient upload
+# Formats natively supported by AudioShake (upload directly)
+# Source: https://developer.audioshake.ai/supported-format
+AUDIOSHAKE_SUPPORTED_AUDIO = {'.wav', '.mp3', '.aac', '.flac', '.aiff', '.aif', '.mp4a'}
+AUDIOSHAKE_SUPPORTED_VIDEO = {'.mp4', '.mov'}  # AudioShake extracts audio from these
+AUDIOSHAKE_SUPPORTED = AUDIOSHAKE_SUPPORTED_AUDIO | AUDIOSHAKE_SUPPORTED_VIDEO
+
+# Uncompressed formats that benefit from FLAC conversion (smaller upload)
 UNCOMPRESSED_FORMATS = {'.wav', '.aiff', '.aif', '.pcm'}
 
 
@@ -26,57 +28,63 @@ class AudioUploadOptimizer:
 
     def prepare_for_upload(self, filepath: str) -> Tuple[str, Optional[str]]:
         """
-        Prepare audio file for optimal upload.
-        
+        Prepare audio file for optimal upload to AudioShake.
+
         Returns:
             Tuple of (filepath_to_upload, temp_file_to_cleanup)
             - If no conversion needed, returns (original_filepath, None)
             - If converted, returns (temp_flac_filepath, temp_flac_filepath)
         """
         ext = os.path.splitext(filepath)[1].lower()
-        
-        # Lossy formats: upload directly (transcoding would lose quality)
-        if ext in LOSSY_FORMATS:
-            self.logger.info(f"Uploading lossy format ({ext}) directly to preserve quality")
-            return filepath, None
-        
-        # Already compressed lossless: upload directly
-        if ext in LOSSLESS_COMPRESSED_FORMATS:
-            self.logger.info(f"Uploading lossless compressed format ({ext}) directly")
-            return filepath, None
-        
+
         # Uncompressed formats: convert to FLAC for smaller upload
         if ext in UNCOMPRESSED_FORMATS:
             self.logger.info(f"Converting uncompressed format ({ext}) to FLAC for efficient upload")
             return self._convert_to_flac(filepath)
-        
-        # Unknown format: try to upload directly
-        self.logger.warning(f"Unknown audio format ({ext}), uploading directly")
-        return filepath, None
+
+        # AudioShake-supported formats: upload directly
+        if ext in AUDIOSHAKE_SUPPORTED:
+            self.logger.info(f"Uploading AudioShake-supported format ({ext}) directly")
+            return filepath, None
+
+        # Unsupported formats: convert to FLAC for compatibility
+        self.logger.info(f"Converting unsupported format ({ext}) to FLAC for AudioShake compatibility")
+        return self._convert_to_flac(filepath)
 
     def _convert_to_flac(self, filepath: str) -> Tuple[str, str]:
         """Convert audio file to FLAC format."""
         ext = os.path.splitext(filepath)[1].lower()
-        
-        # Load audio based on format
+
+        # Load audio based on format (pydub uses ffmpeg under the hood)
         if ext == '.wav':
             audio = AudioSegment.from_wav(filepath)
         elif ext in {'.aiff', '.aif'}:
             audio = AudioSegment.from_file(filepath, format='aiff')
+        elif ext == '.mp3':
+            audio = AudioSegment.from_mp3(filepath)
+        elif ext in {'.ogg', '.oga'}:
+            audio = AudioSegment.from_ogg(filepath)
+        elif ext == '.flac':
+            audio = AudioSegment.from_file(filepath, format='flac')
         else:
+            # Generic loading for container formats (webm, mkv, m4a, etc.)
+            # pydub/ffmpeg will extract audio automatically
             audio = AudioSegment.from_file(filepath)
-        
+
         # Create temp file for FLAC output
         with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as temp_flac:
             flac_path = temp_flac.name
             audio.export(flac_path, format="flac")
-        
-        # Log size reduction
+
+        # Log size info
         original_size = os.path.getsize(filepath)
         flac_size = os.path.getsize(flac_path)
-        reduction_pct = (1 - flac_size / original_size) * 100
-        self.logger.info(f"Converted to FLAC: {original_size / 1024 / 1024:.1f}MB → {flac_size / 1024 / 1024:.1f}MB ({reduction_pct:.0f}% smaller)")
-        
+        if flac_size < original_size:
+            reduction_pct = (1 - flac_size / original_size) * 100
+            self.logger.info(f"Converted to FLAC: {original_size / 1024 / 1024:.1f}MB → {flac_size / 1024 / 1024:.1f}MB ({reduction_pct:.0f}% smaller)")
+        else:
+            self.logger.info(f"Converted to FLAC: {original_size / 1024 / 1024:.1f}MB → {flac_size / 1024 / 1024:.1f}MB")
+
         return flac_path, flac_path
 
     def cleanup(self, temp_filepath: Optional[str]) -> None:
