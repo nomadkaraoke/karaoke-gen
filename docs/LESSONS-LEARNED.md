@@ -44,6 +44,9 @@ When fixing a bug in a system with multiple code paths (e.g., legacy vs orchestr
 
 **Example:** The `gcs_path` parameter bug for remote flacfetch downloads was fixed for RED/OPS torrent sources in December 2025, but the same bug existed for YouTube sources. The fix only addressed one branch of the conditional, leaving YouTube downloads broken when remote was enabled. Always search for ALL code paths that might need the same fix.
 
+### Worker Idempotency Must Complete the Lifecycle
+When implementing idempotency checks that set `stage='running'` at start, workers MUST also set `stage='complete'` on success. Without the completion update, retries or reprocessing attempts will be blocked because the stage is permanently stuck at `'running'`. The fix in v0.108.14 added completion markers to render_video, video, and screens workers.
+
 ### Defense in Depth
 Enforce critical requirements at multiple layers (e.g., reject at creation in JobManager + safety net at processing time).
 

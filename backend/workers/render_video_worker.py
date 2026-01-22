@@ -357,6 +357,10 @@ async def process_render_video(job_id: str) -> bool:
                         duration = time.time() - start_time
                         root_span.set_attribute("duration_seconds", duration)
                         logger.info(f"[job:{job_id}] WORKER_END worker=render-video status=success duration={duration:.1f}s")
+
+                    # Mark render progress as complete for idempotency
+                    # This allows the worker to be re-triggered after admin reset
+                    job_manager.update_state_data(job_id, 'render_progress', {'stage': 'complete'})
                     return True
             
     except Exception as e:

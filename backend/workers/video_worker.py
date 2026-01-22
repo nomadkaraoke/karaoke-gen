@@ -358,6 +358,10 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             root_span.set_attribute("duration_seconds", duration)
             root_span.set_attribute("brand_code", result.brand_code or '')
             logger.info(f"[job:{job_id}] WORKER_END worker=video orchestrator=true status=success duration={duration:.1f}s")
+
+            # Mark video progress as complete for idempotency
+            # This allows the worker to be re-triggered after admin reset
+            job_manager.update_state_data(job_id, 'video_progress', {'stage': 'complete'})
             return True
 
     except Exception as e:
@@ -695,8 +699,12 @@ async def generate_video_legacy(job_id: str) -> bool:
             root_span.set_attribute("duration_seconds", duration)
             root_span.set_attribute("brand_code", result.get('brand_code', ''))
             logger.info(f"[job:{job_id}] WORKER_END worker=video status=success duration={duration:.1f}s")
+
+            # Mark video progress as complete for idempotency
+            # This allows the worker to be re-triggered after admin reset
+            job_manager.update_state_data(job_id, 'video_progress', {'stage': 'complete'})
             return True
-        
+
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=video status=error duration={duration:.1f}s error={e}")

@@ -189,8 +189,12 @@ async def generate_screens(job_id: str) -> bool:
                 duration = time.time() - start_time
                 root_span.set_attribute("duration_seconds", duration)
                 logger.info(f"[job:{job_id}] WORKER_END worker=screens status=success duration={duration:.1f}s")
+
+                # Mark screens progress as complete for idempotency
+                # This allows the worker to be re-triggered after admin reset
+                job_manager.update_state_data(job_id, 'screens_progress', {'stage': 'complete'})
                 return True
-        
+
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=screens status=error duration={duration:.1f}s error={e}")
