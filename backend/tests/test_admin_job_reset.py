@@ -382,3 +382,127 @@ class TestResetJobClearsStateData:
             )
 
             assert response.status_code == 200
+
+
+class TestResetJobToInstrumentalSelected:
+    """Tests for resetting job to INSTRUMENTAL_SELECTED state (reprocess video)."""
+
+    def test_reset_to_instrumental_selected_success(self, client, mock_job):
+        """Test resetting a job to INSTRUMENTAL_SELECTED state."""
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            # Mock worker service with async method
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=True)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "instrumental_selected"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["new_status"] == "instrumental_selected"
+
+    def test_reset_to_instrumental_selected_triggers_video_worker(self, client, mock_job):
+        """Test that resetting to INSTRUMENTAL_SELECTED triggers video worker."""
+        from unittest.mock import AsyncMock
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            # Mock worker service
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=True)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "instrumental_selected"},
+            )
+
+            assert response.status_code == 200
+            # Verify worker was triggered
+            mock_worker_service.trigger_video_worker.assert_called_once_with("test-job-123")
+            # Verify message indicates worker was triggered
+            data = response.json()
+            assert "video worker triggered" in data["message"]
+
+    def test_reset_to_instrumental_selected_message_on_worker_failure(self, client, mock_job):
+        """Test message when video worker trigger fails."""
+        from unittest.mock import AsyncMock
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            # Mock worker service failure
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=False)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "instrumental_selected"},
+            )
+
+            assert response.status_code == 200
+            # Reset still succeeds even if worker trigger fails
+            data = response.json()
+            assert data["new_status"] == "instrumental_selected"
+            # Message should NOT say worker was triggered
+            assert "video worker triggered" not in data["message"]
+
+    def test_reset_to_instrumental_selected_clears_video_state(self, client, mock_job):
+        """Test that INSTRUMENTAL_SELECTED reset clears video/encoding/distribution state."""
+        from unittest.mock import AsyncMock
+
+        mock_job.state_data = {
+            "instrumental_selection": "clean",
+            "lyrics_metadata": {"has_countdown_padding": True},
+            "video_progress": {"stage": "running"},
+            "brand_code": "NOMAD-1234",
+            "youtube_url": "https://youtube.com/watch?v=xxx",
+            "dropbox_link": "https://dropbox.com/xxx",
+        }
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=True)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "instrumental_selected"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # These keys should be marked as cleared
+            cleared = data.get("cleared_data", [])
+            # At minimum, video_progress and brand_code should be cleared
+            # (they exist in the mock job's state_data)
+            assert any(key in ["video_progress", "brand_code", "youtube_url", "dropbox_link"]
+                      for key in cleared)
