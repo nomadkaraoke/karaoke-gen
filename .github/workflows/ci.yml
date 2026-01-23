@@ -1395,6 +1395,16 @@ jobs:
         run: |
           pulumi login
 
+      - name: Refresh Infrastructure State
+        working-directory: infrastructure
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+        run: |
+          echo "🔄 Refreshing Pulumi state to sync with actual cloud resources..."
+          # Refresh detects resources deleted outside of Pulumi (e.g., via gcloud CLI)
+          # This ensures Pulumi recreates missing resources
+          pulumi refresh --yes --skip-preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod || true
+
       - name: Deploy Infrastructure
         working-directory: infrastructure
         env:
