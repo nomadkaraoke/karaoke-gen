@@ -57,7 +57,16 @@ fi
 
 # 3. Download current wheel (FIXED PATH - no sorting!)
 echo "[3/5] Downloading current wheel..."
-WHEEL_PATH="${TMP_DIR}/karaoke_gen-current.whl"
+
+# pip requires properly named wheel files (PEP 427)
+# We need to rename the wheel to a valid name based on the version
+if [ -n "$EXPECTED_VERSION" ]; then
+    WHEEL_NAME="karaoke_gen-${EXPECTED_VERSION}-py3-none-any.whl"
+else
+    # Fallback name if no version.txt
+    WHEEL_NAME="karaoke_gen-0.0.0-py3-none-any.whl"
+fi
+WHEEL_PATH="${TMP_DIR}/${WHEEL_NAME}"
 
 if ! gsutil cp "${BUCKET}/wheels/karaoke_gen-current.whl" "${WHEEL_PATH}" 2>&1; then
     echo "ERROR: Failed to download karaoke_gen-current.whl"
@@ -74,6 +83,8 @@ if ! gsutil cp "${BUCKET}/wheels/karaoke_gen-current.whl" "${WHEEL_PATH}" 2>&1; 
         exit 1
     fi
 fi
+
+echo "Downloaded wheel as: ${WHEEL_NAME}"
 
 # 4. Install the wheel
 echo "[4/5] Installing wheel..."
