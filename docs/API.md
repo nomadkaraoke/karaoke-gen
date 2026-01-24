@@ -885,7 +885,7 @@ When resetting to `instrumental_selected`, the response includes worker trigger 
   "previous_status": "complete",
   "new_status": "instrumental_selected",
   "message": "Job reset from complete to instrumental_selected",
-  "cleared_data": ["video_preview", "screens_ready", "encoding_complete", "distribution_complete"],
+  "cleared_data": ["video_progress", "render_progress", "screens_progress", "encoding_progress", "distribution", "brand_code", "youtube_url", "youtube_video_id", "dropbox_link", "gdrive_files"],
   "worker_triggered": true,
   "worker_trigger_error": null
 }
