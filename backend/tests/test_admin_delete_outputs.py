@@ -350,3 +350,123 @@ class TestDeleteOutputsAuthorization:
                 app.dependency_overrides[require_admin] = original_override
             else:
                 app.dependency_overrides[require_admin] = get_mock_admin
+
+
+class TestDeleteOutputsGCSFinals:
+    """Tests for GCS finals folder deletion."""
+
+    def test_delete_outputs_deletes_gcs_finals(self, client, mock_complete_job):
+        """Test that GCS finals folder is deleted when outputs are deleted."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.storage_service.StorageService') as mock_storage_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+
+            # Mock storage service
+            mock_storage = Mock()
+            mock_storage.delete_folder.return_value = 4  # 4 files deleted
+            mock_storage_class.return_value = mock_storage
+
+            # Mock Firestore
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Verify GCS finals was deleted
+            mock_storage.delete_folder.assert_called_once_with("jobs/test-job-123/finals/")
+            assert "gcs_finals" in data["deleted_services"]
+            assert data["deleted_services"]["gcs_finals"]["status"] == "success"
+            assert data["deleted_services"]["gcs_finals"]["deleted_count"] == 4
+            assert data["deleted_services"]["gcs_finals"]["path"] == "jobs/test-job-123/finals/"
+
+    def test_delete_outputs_gcs_success_with_zero_files(self, client, mock_complete_job):
+        """Test that GCS deletion reports success even when no files exist."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.storage_service.StorageService') as mock_storage_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+
+            # Mock storage service - no files to delete
+            mock_storage = Mock()
+            mock_storage.delete_folder.return_value = 0
+            mock_storage_class.return_value = mock_storage
+
+            # Mock Firestore
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Still success even with zero files deleted
+            assert data["deleted_services"]["gcs_finals"]["status"] == "success"
+            assert data["deleted_services"]["gcs_finals"]["deleted_count"] == 0
+
+    def test_delete_outputs_continues_if_gcs_fails(self, client, mock_complete_job):
+        """Test that other deletions continue even if GCS deletion fails."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.storage_service.StorageService') as mock_storage_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+
+            # Mock storage service to fail
+            mock_storage = Mock()
+            mock_storage.delete_folder.side_effect = Exception("GCS error")
+            mock_storage_class.return_value = mock_storage
+
+            # Mock Firestore
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            # Should still succeed (partial success) with error for GCS
+            assert response.status_code == 200
+            data = response.json()
+            assert "gcs_finals" in data["deleted_services"]
+            assert data["deleted_services"]["gcs_finals"]["status"] == "error"
+            assert "GCS error" in data["deleted_services"]["gcs_finals"]["error"]
+
+    def test_delete_outputs_gcs_uses_correct_path(self, client, mock_complete_job):
+        """Test that GCS deletion uses the correct path format."""
+        mock_complete_job.job_id = "abc-123-xyz"
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.storage_service.StorageService') as mock_storage_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_storage = Mock()
+            mock_storage.delete_folder.return_value = 2
+            mock_storage_class.return_value = mock_storage
+
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            response = client.post("/api/admin/jobs/abc-123-xyz/delete-outputs")
+
+            assert response.status_code == 200
+            # Verify path format is jobs/{job_id}/finals/
+            mock_storage.delete_folder.assert_called_once_with("jobs/abc-123-xyz/finals/")

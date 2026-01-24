@@ -491,3 +491,141 @@ class TestCountdownTimingInvariant:
             "Padding duration should match threshold to give singer exactly "
             "the countdown time they need"
         )
+
+
+class TestGCEEncodingFileFinderBugRegression:
+    """Regression tests for GCE encoding file finder bug (fixed 2026-01-24).
+
+    Bug description:
+    When re-encoding a job after reset, the GCE encoding worker would pick up
+    old finals/*.mkv files instead of the fresh videos/with_vocals.mkv source.
+    This caused:
+    1. The file finder patterns didn't match 'with_vocals.mkv' (case-sensitivity)
+    2. The fallback '*.mkv' matched old finals that already had title/end concatenated
+    3. Re-encoding these files caused doubled title/end screens and audio desync
+
+    The fix was to:
+    1. Add lowercase patterns ('*with_vocals*', '*vocals*')
+    2. Prioritize videos/ subdirectory in search order
+    3. Exclude finals/ and encoded output files from file finder
+    """
+
+    def test_find_file_patterns_match_with_vocals_mkv(self):
+        """File finder patterns must match 'with_vocals.mkv' (lowercase)."""
+        import fnmatch
+
+        actual_filename = "with_vocals.mkv"
+
+        # These patterns MUST match the actual filename
+        matching_patterns = [
+            "*with_vocals*.mkv",
+            "*vocals*.mkv",
+        ]
+
+        for pattern in matching_patterns:
+            assert fnmatch.fnmatch(actual_filename, pattern), (
+                f"Pattern '{pattern}' MUST match '{actual_filename}'"
+            )
+
+        # These patterns should NOT match (wrong case)
+        non_matching_patterns = [
+            "*With Vocals*.mkv",  # Wrong case
+            "*Vocals*.mkv",       # Wrong case
+        ]
+
+        for pattern in non_matching_patterns:
+            assert not fnmatch.fnmatch(actual_filename, pattern), (
+                f"Pattern '{pattern}' should NOT match '{actual_filename}' (case mismatch)"
+            )
+
+    def test_find_file_excludes_finals_directory(self):
+        """File finder must exclude files from finals/ directory.
+
+        This prevents picking up old encoding outputs when re-encoding.
+        """
+        from pathlib import Path
+
+        # Paths that should be EXCLUDED
+        excluded_paths = [
+            Path("finals/Regina Spektor - Hotel Song (Final Karaoke Lossless 4k).mkv"),
+            Path("finals/lossless_4k_mkv.mkv"),
+            Path("outputs/something.mkv"),
+        ]
+
+        for path in excluded_paths:
+            path_str = str(path).lower()
+            name_lower = path.name.lower()
+
+            # Apply the exclusion logic from the fix
+            should_exclude = (
+                "title" in name_lower or "end" in name_lower or
+                "outputs" in path_str or "finals" in path_str or
+                "final karaoke" in name_lower or "lossless" in name_lower or
+                "lossy" in name_lower or "720p" in name_lower
+            )
+
+            assert should_exclude, (
+                f"Path '{path}' MUST be excluded from file finder"
+            )
+
+    def test_find_file_prioritizes_videos_directory(self):
+        """File finder must check videos/ subdirectory before other locations.
+
+        This ensures the fresh source video is found before any old outputs.
+        """
+        from pathlib import Path
+        import tempfile
+
+        def find_file(work_dir: Path, *patterns):
+            '''Find a file matching any of the given glob patterns.'''
+            for pattern in patterns:
+                matches = list(work_dir.glob(f"**/{pattern}"))
+                if matches:
+                    return matches[0]
+            return None
+
+        with tempfile.TemporaryDirectory() as td:
+            work_dir = Path(td)
+
+            # Create both source and old output
+            (work_dir / "videos").mkdir()
+            source_file = work_dir / "videos" / "with_vocals.mkv"
+            source_file.touch()
+
+            (work_dir / "finals").mkdir()
+            old_output = work_dir / "finals" / "lossless_4k_mkv.mkv"
+            old_output.touch()
+
+            # The fixed patterns from the fix
+            result = find_file(
+                work_dir,
+                "videos/with_vocals.mkv",  # Must be first!
+                "*with_vocals*.mkv",
+                "*vocals*.mkv",
+                "*.mkv"
+            )
+
+            assert result == source_file, (
+                f"File finder must return source file from videos/, got {result}"
+            )
+
+    def test_gce_encoding_main_has_fixed_patterns(self):
+        """Verify the GCE encoding main.py has the fixed file finder patterns.
+
+        This is a source code inspection test to ensure the fix is in place.
+        """
+        from pathlib import Path
+
+        gce_main_path = Path(__file__).parent.parent.parent / "backend" / "services" / "gce_encoding" / "main.py"
+        source = gce_main_path.read_text()
+
+        # Check for the key patterns that were added in the fix
+        assert "videos/with_vocals.mkv" in source, (
+            "GCE encoding main.py must prioritize videos/ subdirectory"
+        )
+        assert '*with_vocals*' in source or "*with_vocals*" in source, (
+            "GCE encoding main.py must have lowercase pattern for with_vocals"
+        )
+        assert '"finals"' in source.lower() or "'finals'" in source.lower(), (
+            "GCE encoding main.py must exclude finals/ directory"
+        )

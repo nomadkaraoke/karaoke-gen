@@ -989,6 +989,23 @@ class JobResetResponse(BaseModel):
     new_status: str
     message: str
     cleared_data: List[str]
+    worker_triggered: Optional[bool] = None  # Was worker auto-triggered? (only for instrumental_selected)
+    worker_trigger_error: Optional[str] = None  # Error message if trigger failed
+
+
+class TriggerWorkerRequest(BaseModel):
+    """Request to trigger a worker for a job."""
+    worker_type: str = "video"  # Currently only video supported
+
+
+class TriggerWorkerResponse(BaseModel):
+    """Response from trigger worker endpoint."""
+    status: str
+    job_id: str
+    worker_type: str
+    triggered: bool
+    message: str
+    error: Optional[str] = None
 
 
 # States that are allowed as reset targets
@@ -1183,19 +1200,28 @@ async def reset_job(
 
     # Trigger video worker for states that should auto-continue
     # instrumental_selected: Re-run video generation with same instrumental selection
-    worker_triggered = False
+    worker_triggered: Optional[bool] = None
+    worker_trigger_error: Optional[str] = None
     if target_state == "instrumental_selected":
-        from backend.services.worker_service import get_worker_service
-        worker_service = get_worker_service()
-        worker_triggered = await worker_service.trigger_video_worker(job_id)
-        if worker_triggered:
-            logger.info(f"Admin reset: Triggered video worker for job {job_id}")
-        else:
-            logger.warning(f"Admin reset: Failed to trigger video worker for job {job_id}")
+        try:
+            from backend.services.worker_service import get_worker_service
+            worker_service = get_worker_service()
+            worker_triggered = await worker_service.trigger_video_worker(job_id)
+            if worker_triggered:
+                logger.info(f"Admin reset: Triggered video worker for job {job_id}")
+            else:
+                worker_trigger_error = "Worker trigger returned False - check worker service logs"
+                logger.warning(f"Admin reset: Failed to trigger video worker for job {job_id}")
+        except Exception as e:
+            worker_triggered = False
+            worker_trigger_error = str(e)
+            logger.error(f"Admin reset: Exception triggering video worker for job {job_id}: {e}", exc_info=True)
 
     message = f"Job reset from {previous_status} to {target_state}"
     if worker_triggered:
         message += " (video worker triggered)"
+    elif target_state == "instrumental_selected" and not worker_triggered:
+        message += " (WARNING: video worker NOT triggered - use manual trigger)"
 
     return JobResetResponse(
         status="success",
@@ -1204,6 +1230,107 @@ async def reset_job(
         new_status=target_state,
         message=message,
         cleared_data=cleared_keys,
+        worker_triggered=worker_triggered,
+        worker_trigger_error=worker_trigger_error,
+    )
+
+
+# =============================================================================
+# Trigger Worker Endpoint
+# =============================================================================
+
+@router.post("/jobs/{job_id}/trigger-worker", response_model=TriggerWorkerResponse)
+async def trigger_worker(
+    job_id: str,
+    request: TriggerWorkerRequest,
+    auth_data: AuthResult = Depends(require_admin),
+):
+    """
+    Manually trigger a worker for a job (admin only).
+
+    Use this when:
+    - Auto-trigger fails after a reset to instrumental_selected
+    - Need to re-run processing without resetting state
+    - Debugging worker trigger issues
+
+    Currently supports:
+    - video: Triggers the video generation worker
+
+    The job should be in an appropriate state for the worker type:
+    - video: Job should be in 'instrumental_selected' status
+
+    Args:
+        job_id: Job ID to trigger worker for
+        request: Contains worker_type (default: "video")
+
+    Returns:
+        Trigger result with success/failure and error details
+    """
+    admin_email = auth_data.user_email or "unknown"
+    worker_type = request.worker_type.lower()
+
+    # Validate worker type
+    if worker_type not in ["video"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported worker type '{worker_type}'. Supported: video"
+        )
+
+    # Get job to validate it exists
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Warn if job is not in the expected state (but don't block)
+    expected_status = "instrumental_selected"
+    if job.status != expected_status:
+        logger.warning(
+            f"Admin {admin_email} triggering {worker_type} worker for job {job_id} "
+            f"in unexpected status '{job.status}' (expected '{expected_status}')"
+        )
+
+    # Trigger the worker
+    triggered = False
+    error_msg = None
+
+    try:
+        from backend.services.worker_service import get_worker_service
+        worker_service = get_worker_service()
+
+        if worker_type == "video":
+            triggered = await worker_service.trigger_video_worker(job_id)
+
+        if triggered:
+            logger.info(
+                f"Admin {admin_email} manually triggered {worker_type} worker for job {job_id}"
+            )
+            message = f"Successfully triggered {worker_type} worker"
+        else:
+            error_msg = "Worker service returned False - check service logs"
+            logger.warning(
+                f"Admin {admin_email} failed to trigger {worker_type} worker for job {job_id}: "
+                f"service returned False"
+            )
+            message = f"Failed to trigger {worker_type} worker"
+
+    except Exception as e:
+        triggered = False
+        error_msg = str(e)
+        logger.error(
+            f"Admin {admin_email} exception triggering {worker_type} worker for job {job_id}: {e}",
+            exc_info=True
+        )
+        message = f"Error triggering {worker_type} worker"
+
+    return TriggerWorkerResponse(
+        status="success" if triggered else "error",
+        job_id=job_id,
+        worker_type=worker_type,
+        triggered=triggered,
+        message=message,
+        error=error_msg,
     )
 
 
@@ -1448,6 +1575,23 @@ async def delete_job_outputs(
             logger.error(f"Error deleting Google Drive files for job {job_id}: {e}", exc_info=True)
             results["gdrive"] = {"status": "error", "error": str(e)}
 
+    # Clean up GCS finals folder - prevents stale files from being picked up during re-encoding
+    try:
+        from backend.services.storage_service import StorageService
+        storage = StorageService()
+        finals_prefix = f"jobs/{job_id}/finals/"
+        deleted_count = storage.delete_folder(finals_prefix)
+        if deleted_count > 0:
+            logger.info(f"Deleted {deleted_count} files from GCS finals folder for job {job_id}")
+        results["gcs_finals"] = {
+            "status": "success",
+            "deleted_count": deleted_count,
+            "path": finals_prefix,
+        }
+    except Exception as e:
+        logger.error(f"Error deleting GCS finals folder for job {job_id}: {e}", exc_info=True)
+        results["gcs_finals"] = {"status": "error", "error": str(e)}
+
     # Update job record
     deletion_timestamp = datetime.now(timezone.utc)
     user_service = get_user_service()
@@ -1499,7 +1643,8 @@ async def delete_job_outputs(
         f"Admin {admin_email} deleted outputs for job {job_id}. "
         f"YouTube: {results['youtube']['status']}, "
         f"Dropbox: {results['dropbox']['status']}, "
-        f"GDrive: {results['gdrive']['status']}. "
+        f"GDrive: {results['gdrive']['status']}, "
+        f"GCS Finals: {results['gcs_finals']['status']}. "
         f"Cleared state_data keys: {cleared_keys}"
     )
 

@@ -52,9 +52,12 @@ export function OutputLinks({ job }: OutputLinksProps) {
   const { features } = useTenant()
   const isAdmin = user?.role === 'admin'
 
-  // Filter external links based on tenant features
-  const showYoutubeLink = features.youtube_upload && youtubeUrl
-  const showDropboxLink = features.dropbox_upload && dropboxUrl
+  // Check if outputs have been deleted by admin
+  const outputsDeleted = !!job.outputs_deleted_at
+
+  // Filter external links based on tenant features (and outputs not deleted)
+  const showYoutubeLink = features.youtube_upload && youtubeUrl && !outputsDeleted
+  const showDropboxLink = features.dropbox_upload && dropboxUrl && !outputsDeleted
 
   const copyToClipboard = useCallback(async (url: string) => {
     // Check if clipboard API is available
@@ -137,8 +140,8 @@ export function OutputLinks({ job }: OutputLinksProps) {
 
   const hasOutputs = showYoutubeLink || showDropboxLink || (downloadUrls && Object.keys(downloadUrls).length > 0)
 
-  // Check if we have any downloads
-  const hasDownloads = downloadUrls && (
+  // Check if we have any downloads (and outputs haven't been deleted)
+  const hasDownloads = !outputsDeleted && downloadUrls && (
     downloadUrls?.finals?.lossy_720p_mp4 ||
     downloadUrls?.finals?.lossy_4k_mp4 ||
     downloadUrls?.videos?.with_vocals ||
