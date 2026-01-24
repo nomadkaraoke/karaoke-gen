@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { adminApi, api, Job, FileInfo, JobFilesResponse, JobUpdateRequest, JobResetResponse, DeleteOutputsResponse, ClearWorkersResponse } from "@/lib/api"
+import { adminApi, api, Job, FileInfo, JobFilesResponse, JobUpdateRequest, JobResetResponse, DeleteOutputsResponse, ClearWorkersResponse, TriggerWorkerResponse } from "@/lib/api"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -82,6 +82,7 @@ import {
   AlertTriangle,
   ChevronRight,
   Copy,
+  Play,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -172,6 +173,8 @@ function AdminJobsPageContent() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<string | null>(null)
   const [resetting, setResetting] = useState(false)
+  const [resetResult, setResetResult] = useState<JobResetResponse | null>(null)
+  const [resetResultOpen, setResetResultOpen] = useState(false)
 
   // Delete outputs state
   const [deleteOutputsDialogOpen, setDeleteOutputsDialogOpen] = useState(false)
@@ -181,6 +184,9 @@ function AdminJobsPageContent() {
 
   // Clear workers state
   const [clearingWorkers, setClearingWorkers] = useState(false)
+
+  // Trigger worker state
+  const [triggeringWorker, setTriggeringWorker] = useState(false)
 
   const loadJobs = useCallback(async () => {
     try {
@@ -365,12 +371,12 @@ function AdminJobsPageContent() {
     try {
       setResetting(true)
       const result = await adminApi.resetJob(selectedJobId, resetTarget)
-      toast({
-        title: "Job Reset",
-        description: result.message,
-      })
+
+      // Store result and show detailed result dialog
+      setResetResult(result)
       setResetDialogOpen(false)
-      setResetTarget(null)
+      setResetResultOpen(true)
+
       // Refresh job details
       loadJobDetail(selectedJobId)
       loadLogs(selectedJobId)
@@ -380,8 +386,10 @@ function AdminJobsPageContent() {
         description: err.message || "Failed to reset job",
         variant: "destructive",
       })
+      setResetDialogOpen(false)
     } finally {
       setResetting(false)
+      setResetTarget(null)
     }
   }
 
@@ -443,6 +451,43 @@ function AdminJobsPageContent() {
       })
     } finally {
       setClearingWorkers(false)
+    }
+  }
+
+  // Handle trigger worker - manually triggers a worker for processing
+  const handleTriggerWorker = async (workerType: string = "video") => {
+    if (!selectedJobId) return
+
+    try {
+      setTriggeringWorker(true)
+      const result = await adminApi.triggerWorker(selectedJobId, workerType)
+
+      if (result.triggered) {
+        toast({
+          title: `${workerType.charAt(0).toUpperCase() + workerType.slice(1)} Worker Triggered`,
+          description: `Job ${selectedJobId} is now processing. The ${workerType} worker will begin generating the video.`,
+        })
+      } else {
+        toast({
+          title: "Trigger Failed",
+          description: result.error
+            ? `${result.message}: ${result.error}`
+            : result.message,
+          variant: "destructive",
+        })
+      }
+
+      // Refresh job details
+      loadJobDetail(selectedJobId)
+      loadLogs(selectedJobId)
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to trigger worker",
+        variant: "destructive",
+      })
+    } finally {
+      setTriggeringWorker(false)
     }
   }
 
@@ -834,6 +879,28 @@ function AdminJobsPageContent() {
                 </TooltipTrigger>
                 <TooltipContent>
                   Clear worker progress markers to allow re-execution
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-7 px-2 text-xs ${selectedJob.status === "instrumental_selected" ? "border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950" : ""}`}
+                    onClick={() => handleTriggerWorker("video")}
+                    disabled={triggeringWorker}
+                  >
+                    {triggeringWorker ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <Play className="w-3 h-3 mr-1" />
+                    )}
+                    Trigger
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Manually trigger video worker processing
                 </TooltipContent>
               </Tooltip>
 
@@ -1489,6 +1556,112 @@ function AdminJobsPageContent() {
               )}
               <div className="flex justify-end">
                 <Button onClick={() => setDeleteOutputsResultOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Reset Result Dialog */}
+          <Dialog open={resetResultOpen} onOpenChange={setResetResultOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {resetResult?.worker_triggered === false && resetResult?.new_status === "instrumental_selected" ? (
+                    <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  ) : (
+                    <Check className="w-5 h-5 text-green-500" />
+                  )}
+                  Job Reset Complete
+                </DialogTitle>
+              </DialogHeader>
+              {resetResult && (
+                <div className="space-y-4">
+                  {/* Status Change */}
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <RotateCcw className="w-4 h-4 text-blue-500 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">Status Changed</div>
+                      <div className="text-xs text-muted-foreground">
+                        <code className="bg-muted px-1 rounded">{resetResult.previous_status}</code>
+                        {" → "}
+                        <code className="bg-muted px-1 rounded">{resetResult.new_status}</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cleared Data */}
+                  {resetResult.cleared_data.length > 0 && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <Trash2 className="w-4 h-4 text-orange-500 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">State Data Cleared</div>
+                        <div className="text-xs text-muted-foreground flex flex-wrap gap-1 mt-1">
+                          {resetResult.cleared_data.map((key) => (
+                            <code key={key} className="bg-muted px-1 rounded">{key}</code>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Worker Trigger Status (only for instrumental_selected) */}
+                  {resetResult.new_status === "instrumental_selected" && (
+                    <div className={`flex items-start gap-3 p-3 rounded-lg ${
+                      resetResult.worker_triggered
+                        ? "bg-green-50 dark:bg-green-950/30"
+                        : "bg-yellow-50 dark:bg-yellow-950/30"
+                    }`}>
+                      {resetResult.worker_triggered ? (
+                        <Play className="w-4 h-4 text-green-600 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-medium text-sm ${
+                          resetResult.worker_triggered ? "text-green-700 dark:text-green-400" : "text-yellow-700 dark:text-yellow-400"
+                        }`}>
+                          {resetResult.worker_triggered ? "Video Worker Triggered" : "Video Worker NOT Triggered"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {resetResult.worker_triggered
+                            ? "Processing will begin automatically"
+                            : resetResult.worker_trigger_error || "Use the Trigger button to start processing manually"
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* What Happens Next */}
+                  <div className="text-xs text-muted-foreground border-t pt-3">
+                    <span className="font-medium">What happens next:</span>{" "}
+                    {resetResult.new_status === "pending" && "Job will need to go through audio search, download, and all processing steps."}
+                    {resetResult.new_status === "awaiting_audio_selection" && "User can select from the cached audio search results."}
+                    {resetResult.new_status === "awaiting_review" && "User can review and correct the lyrics."}
+                    {resetResult.new_status === "awaiting_instrumental_selection" && "User can select the instrumental track."}
+                    {resetResult.new_status === "instrumental_selected" && (
+                      resetResult.worker_triggered
+                        ? "Video generation is now in progress."
+                        : "Click the Trigger button to start video generation."
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                {resetResult?.new_status === "instrumental_selected" && !resetResult?.worker_triggered && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setResetResultOpen(false)
+                      handleTriggerWorker("video")
+                    }}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Trigger Now
+                  </Button>
+                )}
+                <Button onClick={() => setResetResultOpen(false)}>
                   Close
                 </Button>
               </div>

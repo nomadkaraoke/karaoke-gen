@@ -637,3 +637,299 @@ class TestResetIncludesEncodingProgress:
             data = response.json()
             # encoding_progress should be in cleared_data
             assert "encoding_progress" in data.get("cleared_data", [])
+
+
+class TestResetWorkerTriggerResponseFields:
+    """Tests that reset response includes worker_triggered and worker_trigger_error fields."""
+
+    def test_reset_to_instrumental_selected_includes_worker_triggered_true(self, client, mock_job):
+        """Test response includes worker_triggered=True when trigger succeeds."""
+        from unittest.mock import AsyncMock
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=True)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "instrumental_selected"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["worker_triggered"] is True
+            assert data.get("worker_trigger_error") is None
+
+    def test_reset_to_instrumental_selected_includes_worker_triggered_false_on_failure(self, client, mock_job):
+        """Test response includes worker_triggered=False and error when trigger fails."""
+        from unittest.mock import AsyncMock
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=False)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "instrumental_selected"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["worker_triggered"] is False
+            assert data["worker_trigger_error"] is not None
+            assert "manual trigger" in data["message"].lower()
+
+    def test_reset_to_instrumental_selected_includes_error_on_exception(self, client, mock_job):
+        """Test response includes worker_trigger_error when exception occurs."""
+        from unittest.mock import AsyncMock
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(
+                side_effect=Exception("Connection timeout")
+            )
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "instrumental_selected"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["worker_triggered"] is False
+            assert "Connection timeout" in data["worker_trigger_error"]
+
+    def test_reset_to_pending_has_null_worker_fields(self, client, mock_job):
+        """Test response has null worker fields for non-instrumental_selected resets."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "pending"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data.get("worker_triggered") is None
+            assert data.get("worker_trigger_error") is None
+
+
+class TestTriggerWorkerEndpoint:
+    """Tests for POST /api/admin/jobs/{job_id}/trigger-worker endpoint."""
+
+    def test_trigger_video_worker_success(self, client, mock_job):
+        """Test successfully triggering video worker."""
+        from unittest.mock import AsyncMock
+
+        mock_job.status = "instrumental_selected"
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=True)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/trigger-worker",
+                json={"worker_type": "video"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "success"
+            assert data["job_id"] == "test-job-123"
+            assert data["worker_type"] == "video"
+            assert data["triggered"] is True
+            assert data.get("error") is None
+            mock_worker_service.trigger_video_worker.assert_called_once_with("test-job-123")
+
+    def test_trigger_worker_default_type_is_video(self, client, mock_job):
+        """Test that default worker_type is video."""
+        from unittest.mock import AsyncMock
+
+        mock_job.status = "instrumental_selected"
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=True)
+            mock_ws.return_value = mock_worker_service
+
+            # Send empty body - should default to video
+            response = client.post(
+                "/api/admin/jobs/test-job-123/trigger-worker",
+                json={},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["worker_type"] == "video"
+
+    def test_trigger_worker_failure_returns_error(self, client, mock_job):
+        """Test response when worker trigger returns False."""
+        from unittest.mock import AsyncMock
+
+        mock_job.status = "instrumental_selected"
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=False)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/trigger-worker",
+                json={"worker_type": "video"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "error"
+            assert data["triggered"] is False
+            assert data["error"] is not None
+
+    def test_trigger_worker_exception_returns_error(self, client, mock_job):
+        """Test response when worker trigger throws exception."""
+        from unittest.mock import AsyncMock
+
+        mock_job.status = "instrumental_selected"
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(
+                side_effect=Exception("Network error")
+            )
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/trigger-worker",
+                json={"worker_type": "video"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "error"
+            assert data["triggered"] is False
+            assert "Network error" in data["error"]
+
+    def test_trigger_worker_invalid_type_rejected(self, client, mock_job):
+        """Test that invalid worker_type is rejected."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/trigger-worker",
+                json={"worker_type": "invalid"},
+            )
+
+            assert response.status_code == 400
+            assert "unsupported" in response.json()["detail"].lower()
+
+    def test_trigger_worker_job_not_found(self, client):
+        """Test 404 when job doesn't exist."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = None
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post(
+                "/api/admin/jobs/nonexistent/trigger-worker",
+                json={"worker_type": "video"},
+            )
+
+            assert response.status_code == 404
+
+    def test_trigger_worker_logs_warning_for_unexpected_status(self, client, mock_job):
+        """Test that warning is logged when job is not in expected status."""
+        from unittest.mock import AsyncMock
+
+        mock_job.status = "complete"  # Not instrumental_selected
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.services.worker_service.get_worker_service') as mock_ws, \
+             patch('backend.api.routes.admin.logger') as mock_logger:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_worker_service = Mock()
+            mock_worker_service.trigger_video_worker = AsyncMock(return_value=True)
+            mock_ws.return_value = mock_worker_service
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/trigger-worker",
+                json={"worker_type": "video"},
+            )
+
+            # Should still succeed - we don't block based on status
+            assert response.status_code == 200
+            # But should log a warning
+            mock_logger.warning.assert_called()
+            warning_msg = mock_logger.warning.call_args[0][0]
+            assert "unexpected status" in warning_msg.lower()
+
+    def test_trigger_worker_requires_admin(self, client, mock_job):
+        """Test that endpoint requires admin access."""
+        original_override = app.dependency_overrides.get(require_admin)
+
+        def get_non_admin():
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        app.dependency_overrides[require_admin] = get_non_admin
+
+        try:
+            response = client.post(
+                "/api/admin/jobs/test-job-123/trigger-worker",
+                json={"worker_type": "video"},
+            )
+            assert response.status_code == 403
+        finally:
+            if original_override:
+                app.dependency_overrides[require_admin] = original_override
+            else:
+                app.dependency_overrides[require_admin] = get_mock_admin
