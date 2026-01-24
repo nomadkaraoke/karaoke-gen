@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { adminApi, api, Job, FileInfo, JobFilesResponse, JobUpdateRequest, JobResetResponse, DeleteOutputsResponse } from "@/lib/api"
+import { adminApi, api, Job, FileInfo, JobFilesResponse, JobUpdateRequest, JobResetResponse, DeleteOutputsResponse, ClearWorkersResponse } from "@/lib/api"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -176,6 +176,9 @@ function AdminJobsPageContent() {
   // Delete outputs state
   const [deleteOutputsDialogOpen, setDeleteOutputsDialogOpen] = useState(false)
   const [deletingOutputs, setDeletingOutputs] = useState(false)
+
+  // Clear workers state
+  const [clearingWorkers, setClearingWorkers] = useState(false)
 
   const loadJobs = useCallback(async () => {
     try {
@@ -419,6 +422,40 @@ function AdminJobsPageContent() {
       })
     } finally {
       setDeletingOutputs(false)
+    }
+  }
+
+  // Handle clear workers - clears worker progress to allow re-execution
+  const handleClearWorkers = async () => {
+    if (!selectedJobId) return
+
+    try {
+      setClearingWorkers(true)
+      const result = await adminApi.clearWorkers(selectedJobId)
+
+      if (result.cleared_keys.length > 0) {
+        toast({
+          title: "Workers Cleared",
+          description: `${result.message}: ${result.cleared_keys.join(", ")}`,
+        })
+      } else {
+        toast({
+          title: "No Progress Keys",
+          description: result.message,
+        })
+      }
+
+      // Refresh job details
+      loadJobDetail(selectedJobId)
+      loadLogs(selectedJobId)
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to clear workers",
+        variant: "destructive",
+      })
+    } finally {
+      setClearingWorkers(false)
     }
   }
 
@@ -792,6 +829,24 @@ function AdminJobsPageContent() {
                     : !canDeleteOutputs
                       ? "Only for terminal states"
                       : "Delete YouTube, Dropbox, GDrive files"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={handleClearWorkers}
+                    disabled={clearingWorkers}
+                  >
+                    <RefreshCw className={`w-3 h-3 mr-1 ${clearingWorkers ? "animate-spin" : ""}`} />
+                    Clear Workers
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Clear worker progress markers to allow re-execution
                 </TooltipContent>
               </Tooltip>
 

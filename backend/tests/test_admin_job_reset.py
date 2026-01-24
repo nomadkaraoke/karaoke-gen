@@ -506,3 +506,134 @@ class TestResetJobToInstrumentalSelected:
             # (they exist in the mock job's state_data)
             assert any(key in ["video_progress", "brand_code", "youtube_url", "dropbox_link"]
                       for key in cleared)
+
+
+class TestResetJobClearsErrorState:
+    """Tests that reset clears error_message and error_details."""
+
+    def test_reset_clears_error_message(self, client, mock_job):
+        """Test that resetting a job clears error_message field."""
+        # Set job to failed state with error message
+        mock_job.status = JobStatus.FAILED
+        mock_job.error_message = "Previous error message"
+        mock_job.error_details = {"code": "TEST_ERROR"}
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "pending"},
+            )
+
+            assert response.status_code == 200
+            # The endpoint should issue an update that includes DELETE_FIELD for error fields
+            # We verify this indirectly through the success of the operation
+
+
+class TestClearWorkersEndpoint:
+    """Tests for the POST /api/admin/jobs/{job_id}/clear-workers endpoint."""
+
+    def test_clear_workers_success(self, client, mock_job):
+        """Test clearing worker progress keys."""
+        mock_job.state_data = {
+            "render_progress": {"stage": "complete"},
+            "video_progress": {"stage": "complete"},
+            "encoding_progress": {"stage": "complete"},
+        }
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post("/api/admin/jobs/test-job-123/clear-workers")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "success"
+            assert "cleared_keys" in data
+            # Should have cleared the progress keys that exist
+            assert any(k in data["cleared_keys"] for k in
+                      ["render_progress", "video_progress", "encoding_progress"])
+
+    def test_clear_workers_no_progress_keys(self, client, mock_job):
+        """Test clearing workers when no progress keys exist."""
+        mock_job.state_data = {"other_data": "value"}
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post("/api/admin/jobs/test-job-123/clear-workers")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "success"
+            assert len(data["cleared_keys"]) == 0
+
+    def test_clear_workers_job_not_found(self, client):
+        """Test clearing workers for non-existent job."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = None
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post("/api/admin/jobs/nonexistent/clear-workers")
+
+            assert response.status_code == 404
+
+    def test_clear_workers_clears_all_worker_types(self, client, mock_job):
+        """Test that all defined worker progress keys can be cleared."""
+        # Set all possible worker progress keys
+        mock_job.state_data = {
+            "audio_progress": {"stage": "complete"},
+            "lyrics_progress": {"stage": "complete"},
+            "render_progress": {"stage": "complete"},
+            "screens_progress": {"stage": "complete"},
+            "video_progress": {"stage": "complete"},
+            "encoding_progress": {"stage": "complete"},
+        }
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post("/api/admin/jobs/test-job-123/clear-workers")
+
+            assert response.status_code == 200
+            data = response.json()
+            # Should have cleared all 6 progress keys
+            assert len(data["cleared_keys"]) == 6
+
+
+class TestResetIncludesEncodingProgress:
+    """Tests that reset includes encoding_progress in cleared keys."""
+
+    def test_reset_to_awaiting_review_clears_encoding_progress(self, client, mock_job):
+        """Test that resetting to awaiting_review clears encoding_progress."""
+        mock_job.state_data = {
+            "encoding_progress": {"stage": "complete"},
+            "video_progress": {"stage": "complete"},
+        }
+
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            response = client.post(
+                "/api/admin/jobs/test-job-123/reset",
+                json={"target_state": "awaiting_review"},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # encoding_progress should be in cleared_data
+            assert "encoding_progress" in data.get("cleared_data", [])

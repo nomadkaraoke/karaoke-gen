@@ -232,9 +232,18 @@ async def complete_review(
         corrections_gcs_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
         storage.upload_json(corrections_gcs_path, updated_data)
         job_manager.update_file_url(job_id, 'lyrics', 'corrections_updated', corrections_gcs_path)
-        
+
         logger.info(f"Job {job_id}: Saved updated corrections")
-        
+
+        # Clear worker progress keys to ensure workers will run fresh (not skip due to idempotency)
+        # This handles cases where a job is re-reviewed after completion or where state was inconsistent.
+        # The idempotency check in workers looks at {worker}_progress.stage == 'complete' to skip,
+        # so we must clear these before triggering the render-video worker.
+        progress_keys = ['render_progress', 'screens_progress', 'video_progress', 'encoding_progress']
+        cleared = job_manager.delete_state_data_keys(job_id, progress_keys)
+        if cleared:
+            logger.info(f"Job {job_id}: Cleared worker progress keys for re-processing: {cleared}")
+
         # Transition to REVIEW_COMPLETE
         job_manager.transition_to_state(
             job_id=job_id,
@@ -242,18 +251,18 @@ async def complete_review(
             progress=70,
             message="Review complete, rendering video with corrected lyrics"
         )
-        
+
         # Trigger render video worker
         from backend.services.worker_service import get_worker_service
         worker_service = get_worker_service()
-        
+
         # Run in background, keep reference to prevent garbage collection
         task = asyncio.create_task(worker_service.trigger_render_video_worker(job_id))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
-        
+
         logger.info(f"Job {job_id}: Review complete, triggered render video worker")
-        
+
         return {"status": "success"}
         
     except Exception as e:

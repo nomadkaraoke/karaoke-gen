@@ -1399,6 +1399,22 @@ export const adminApi = {
     return handleResponse(response);
   },
 
+  /**
+   * Clear all worker progress markers for a job (admin only).
+   * This allows workers to re-execute without skipping due to idempotency checks.
+   * Does NOT change job status - use resetJob for that.
+   */
+  async clearWorkers(jobId: string): Promise<ClearWorkersResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/jobs/${jobId}/clear-workers`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders()
+      }
+    );
+    return handleResponse(response);
+  },
+
   // =========================================================================
   // Rate Limits API
   // =========================================================================
@@ -1617,6 +1633,13 @@ export interface JobResetResponse {
   new_status: string;
   message: string;
   cleared_data: string[];
+}
+
+export interface ClearWorkersResponse {
+  status: string;
+  job_id: string;
+  message: string;
+  cleared_keys: string[];
 }
 
 // ==========================================================================

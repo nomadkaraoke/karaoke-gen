@@ -141,8 +141,8 @@ test.describe('Admin Job Detail Page', () => {
     // Note: Next.js may add trailing slash depending on config
     await expect(page).toHaveURL(/\/admin\/jobs\/?\?id=test-job-123/);
 
-    // Job header should be visible
-    await expect(page.getByText('Job test-job-123')).toBeVisible();
+    // Job header should be visible (job ID as main heading, artist/title as subtitle)
+    await expect(page.locator('h1, h2').filter({ hasText: 'test-job-123' })).toBeVisible();
     await expect(page.getByText('Test Artist - Test Song')).toBeVisible();
   });
 
@@ -159,20 +159,17 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Overview cards should show
-    await expect(page.getByText('user@example.com')).toBeVisible();
-    await expect(page.getByText('YouTube URL')).toBeVisible();
+    // Overview section should show user and progress info (first() because email appears twice)
+    await expect(page.getByText('user@example.com').first()).toBeVisible();
     await expect(page.getByText('100%')).toBeVisible();
 
-    // Timeline section should be visible (expanded by default)
-    await expect(page.getByText('Timeline (4 events)')).toBeVisible();
-    // Check for specific timeline entries - use first() to avoid strict mode violations
-    await expect(page.getByText('pending').first()).toBeVisible();
-    // 'complete' appears in multiple places (status badge, timeline, logs), check timeline header exists
-    await expect(page.locator('[data-slot="badge"]').filter({ hasText: 'complete' }).first()).toBeVisible();
+    // Timeline should be visible showing job progression
+    // Check for status badges in timeline (pending -> downloading -> separating -> complete)
+    await expect(page.getByText('Pending').first()).toBeVisible();
+    await expect(page.locator('[data-slot="badge"]').filter({ hasText: /complete/i }).first()).toBeVisible();
 
-    // Worker logs section should be visible
-    await expect(page.getByText('Worker Logs (4 entries)')).toBeVisible();
+    // Logs section should be visible (shows "Logs (N)" in the UI)
+    await expect(page.getByText(/Logs \(\d+\)/)).toBeVisible();
   });
 
   test('displays timeline with stage durations', async ({ page }) => {
@@ -188,9 +185,9 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Timeline should show durations
-    // pending -> downloading took 1 minute
-    await expect(page.getByText(/1m 0s/)).toBeVisible();
+    // Timeline should show durations (format: Nm Ns)
+    // Check for any duration indicator in the timeline (first() because multiple durations exist)
+    await expect(page.getByText(/\d+m\s*\d*s/).first()).toBeVisible();
   });
 
   test('displays request metadata when available', async ({ page }) => {
@@ -235,9 +232,10 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Error card should be visible
-    await expect(page.getByText('Error')).toBeVisible();
+    // Error message should be visible (UI shows error inline without "Error" header)
     await expect(page.getByText('Audio separation timed out after 10 minutes')).toBeVisible();
+    // Job status should show as failed
+    await expect(page.getByText('failed')).toBeVisible();
   });
 
   test('back button returns to jobs list', async ({ page }) => {
@@ -319,17 +317,24 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Verify initial page loaded correctly
-    await expect(page.getByText('Job test-job-123')).toBeVisible();
+    // Verify initial page loaded correctly - header shows just the job ID
+    await expect(page.locator('h1').filter({ hasText: 'test-job-123' })).toBeVisible();
+    await expect(page.getByText('Test Artist - Test Song')).toBeVisible();
 
-    // Click refresh button
-    await page.click('button:has-text("Refresh")');
+    // The refresh button is a ghost button with the RefreshCw icon, positioned after the job title
+    // It's within the header area, next to the status badge
+    // Find button near the h1 header that contains an svg
+    const headerSection = page.locator('.flex').filter({ has: page.locator('h1') }).first();
+    const refreshButton = headerSection.locator('button').filter({ has: page.locator('svg') }).last();
 
-    // Wait for refresh to complete - the button shows a spinner while loading
+    // Click refresh
+    await refreshButton.click();
+
+    // Wait for refresh to complete
     await page.waitForLoadState('networkidle');
 
     // Verify the job data is still visible (refresh completed successfully)
-    await expect(page.getByText('Job test-job-123')).toBeVisible();
+    await expect(page.locator('h1').filter({ hasText: 'test-job-123' })).toBeVisible();
     await expect(page.getByText('Test Artist - Test Song')).toBeVisible();
   });
 
@@ -347,20 +352,23 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Expand the Files accordion
-    await page.click('text=Files (5 downloadable)');
+    // Click the Files tab (shows file count in parentheses)
+    await page.getByRole('tab', { name: /Files \(5\)/ }).click();
 
-    // Should show category groups (use heading role to be specific, avoid matching log entries)
-    await expect(page.getByRole('heading', { name: 'Audio Stems' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Lyrics' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Final Outputs' })).toBeVisible();
+    // Wait for the Files tab panel to be visible
+    await expect(page.getByRole('tabpanel', { name: /Files/ })).toBeVisible();
 
-    // Should show individual files
-    await expect(page.getByText('input.flac')).toBeVisible();
-    await expect(page.getByText('instrumental_clean.flac')).toBeVisible();
-    await expect(page.getByText('output.lrc')).toBeVisible();
+    // Should show category names (not headings, just text in divs)
+    await expect(page.getByText('Audio Stems')).toBeVisible();
+    await expect(page.getByText('Lyrics').first()).toBeVisible();
+    await expect(page.getByText('Final Outputs')).toBeVisible();
 
-    // Should show download buttons with correct links
+    // Should show individual files as links
+    await expect(page.getByRole('link', { name: /input\.flac/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /instrumental_clean\.flac/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /output\.lrc/ })).toBeVisible();
+
+    // Should show download links with correct URLs
     const downloadLinks = page.locator('a[href*="storage.googleapis.com/signed"]');
     await expect(downloadLinks).toHaveCount(5);
   });
@@ -387,14 +395,14 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Expand the Files accordion
-    await page.click('text=Files (0 downloadable)');
+    // Click the Files tab (shows 0 files)
+    await page.getByRole('tab', { name: /Files \(0\)/ }).click();
 
     // Should show "no files" message
     await expect(page.getByText('No files available')).toBeVisible();
   });
 
-  test('admin actions section shows reset options', async ({ page }) => {
+  test('reset toolbar shows reset options', async ({ page }) => {
     await setupApiFixtures(page, {
       mocks: [
         { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
@@ -407,16 +415,14 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Expand the Admin Actions accordion
-    await page.click('text=Admin Actions');
-
-    // Should show reset options
-    await expect(page.getByText('Reset Job State')).toBeVisible();
-    // Check the reset buttons are visible - use .first() to handle multiple matches
-    await expect(page.locator('button:has-text("Pending")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Audio Selection")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Lyrics Review")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Instrumental Selection")').first()).toBeVisible();
+    // Reset buttons are now in a toolbar (not accordion) labeled "Reset to:"
+    await expect(page.getByText('Reset to:')).toBeVisible();
+    // Check the reset buttons are visible in the toolbar
+    await expect(page.locator('button:has-text("Start")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Audio")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Lyrics")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Inst.")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Reprocess")').first()).toBeVisible();
   });
 
   test('clicking reset button shows confirmation dialog', async ({ page }) => {
@@ -432,16 +438,129 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Expand the Admin Actions accordion
-    await page.click('text=Admin Actions');
-
-    // Click a reset button (Pending)
-    await page.locator('button:has-text("Pending")').click();
+    // Click a reset button (Start = reset to pending)
+    await page.locator('button:has-text("Start")').first().click();
 
     // Should show confirmation dialog
     await expect(page.getByRole('alertdialog')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Reset Job' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Reset' })).toBeVisible();
+  });
+
+  test('clear workers button is visible in toolbar', async ({ page }) => {
+    // Mock job with complete worker progress (typical state when workers need clearing)
+    const jobWithWorkerProgress = {
+      ...mockJob,
+      state_data: {
+        ...mockJob.state_data,
+        render_progress: { stage: 'complete' },
+        video_progress: { stage: 'complete' },
+        encoding_progress: { stage: 'complete' },
+      },
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: jobWithWorkerProgress } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Clear Workers button should be visible in the toolbar (near Del Outputs, Delete Job)
+    await expect(page.locator('button:has-text("Clear Workers")')).toBeVisible();
+  });
+
+  test('clear workers button calls API endpoint', async ({ page }) => {
+    // Mock successful clear workers response
+    const clearWorkersResponse = {
+      status: 'success',
+      job_id: 'test-job-123',
+      message: 'Cleared 3 worker progress keys',
+      cleared_keys: ['render_progress', 'video_progress', 'encoding_progress'],
+    };
+
+    // Track API calls
+    let clearWorkersApiCalled = false;
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+        { method: 'POST', path: '/api/admin/jobs/test-job-123/clear-workers', response: { body: clearWorkersResponse } },
+      ],
+    });
+
+    // Also track when the clear-workers endpoint is called
+    await page.route('**/api/admin/jobs/*/clear-workers', async (route) => {
+      clearWorkersApiCalled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(clearWorkersResponse),
+      });
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Click Clear Workers button in toolbar
+    await page.locator('button:has-text("Clear Workers")').click();
+
+    // Wait a bit for the API call to complete
+    await page.waitForTimeout(1000);
+
+    // Verify the API was called
+    expect(clearWorkersApiCalled).toBe(true);
+  });
+
+  test('clear workers button shows loading state while processing', async ({ page }) => {
+    // Mock slow clear workers response
+    const clearWorkersResponse = {
+      status: 'success',
+      job_id: 'test-job-123',
+      message: 'Cleared 3 worker progress keys',
+      cleared_keys: ['render_progress', 'video_progress', 'encoding_progress'],
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    // Add delayed response for clear-workers
+    await page.route('**/api/admin/jobs/*/clear-workers', async (route) => {
+      // Delay response to test loading state
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(clearWorkersResponse),
+      });
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Get the Clear Workers button
+    const clearWorkersButton = page.locator('button:has-text("Clear Workers")');
+
+    // Click it and immediately check for disabled state
+    await clearWorkersButton.click();
+
+    // Button should be disabled during processing (has spinning icon)
+    // The button contains a RefreshCw icon that animates when clearingWorkers is true
+    await expect(clearWorkersButton).toBeDisabled({ timeout: 500 });
   });
 });

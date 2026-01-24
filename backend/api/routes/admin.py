@@ -1002,6 +1002,8 @@ ALLOWED_RESET_STATES = {
 
 # State data keys to clear for each reset target
 # Keys not in this mapping are preserved
+# Note: encoding_progress is included in all states because workers check {worker}_progress.stage
+# to determine if they should skip (idempotency). Stale 'complete' markers cause workers to skip.
 STATE_DATA_CLEAR_KEYS = {
     "pending": [
         "audio_search_results",
@@ -1014,6 +1016,7 @@ STATE_DATA_CLEAR_KEYS = {
         "video_progress",
         "render_progress",
         "screens_progress",
+        "encoding_progress",
     ],
     "awaiting_audio_selection": [
         "audio_selection",
@@ -1023,6 +1026,7 @@ STATE_DATA_CLEAR_KEYS = {
         "video_progress",
         "render_progress",
         "screens_progress",
+        "encoding_progress",
     ],
     "awaiting_review": [
         "review_complete",
@@ -1031,12 +1035,14 @@ STATE_DATA_CLEAR_KEYS = {
         "video_progress",
         "render_progress",
         "screens_progress",
+        "encoding_progress",
     ],
     "awaiting_instrumental_selection": [
         "instrumental_selection",
         "video_progress",
         "render_progress",
         "screens_progress",
+        "encoding_progress",
     ],
     "instrumental_selected": [
         # Clear video/encoding/distribution state to allow re-processing
@@ -1134,31 +1140,46 @@ async def reset_job(
             detail="Failed to reset job. Please try again."
         )
 
-    # Clear the state data keys separately using direct Firestore update
+    # Clear the state data keys and error state using direct Firestore update
     from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
 
     job_ref = user_service.db.collection("jobs").document(job_id)
 
+    # Build the update payload
+    clear_updates = {}
+
+    # Clear state_data keys
     if cleared_keys:
-        clear_updates = {}
         for key in cleared_keys:
             clear_updates[f"state_data.{key}"] = DELETE_FIELD
 
-        # Add timeline event
-        clear_updates["timeline"] = ArrayUnion([timeline_event])
+    # Always clear error state on reset (confusing to have old errors after reset)
+    clear_updates["error_message"] = DELETE_FIELD
+    clear_updates["error_details"] = DELETE_FIELD
 
-        job_ref.update(clear_updates)
-    else:
-        # Just add timeline event
-        job_ref.update({
-            "timeline": ArrayUnion([timeline_event])
-        })
+    # Add timeline event
+    clear_updates["timeline"] = ArrayUnion([timeline_event])
 
-    # Log the admin action
+    # Execute the update
+    job_ref.update(clear_updates)
+
+    # Debug logging to verify keys were actually cleared
     logger.info(
         f"Admin {admin_email} reset job {job_id} from {previous_status} to {target_state}. "
-        f"Cleared state_data keys: {cleared_keys}"
+        f"Attempted to clear state_data keys: {cleared_keys}"
     )
+
+    # Verify the keys were actually deleted (debug check)
+    job_after = job_manager.get_job(job_id)
+    if job_after and cleared_keys:
+        remaining_keys = [k for k in cleared_keys if k in (job_after.state_data or {})]
+        if remaining_keys:
+            logger.error(
+                f"Admin reset job {job_id}: Some keys were NOT cleared: {remaining_keys}. "
+                f"Current state_data keys: {list((job_after.state_data or {}).keys())}"
+            )
+        else:
+            logger.debug(f"Admin reset job {job_id}: Verified all keys were cleared successfully")
 
     # Trigger video worker for states that should auto-continue
     # instrumental_selected: Re-run video generation with same instrumental selection
@@ -1183,6 +1204,89 @@ async def reset_job(
         new_status=target_state,
         message=message,
         cleared_data=cleared_keys,
+    )
+
+
+# =============================================================================
+# Clear Worker State Endpoint
+# =============================================================================
+
+class ClearWorkersResponse(BaseModel):
+    """Response from clear workers endpoint."""
+    status: str
+    job_id: str
+    message: str
+    cleared_keys: List[str]
+
+
+# All worker progress keys that can be cleared
+ALL_WORKER_PROGRESS_KEYS = [
+    "audio_progress",
+    "lyrics_progress",
+    "render_progress",
+    "screens_progress",
+    "video_progress",
+    "encoding_progress",
+]
+
+
+@router.post("/jobs/{job_id}/clear-workers", response_model=ClearWorkersResponse)
+async def clear_worker_state(
+    job_id: str,
+    auth_data: AuthResult = Depends(require_admin),
+):
+    """
+    Clear all worker completion markers to allow re-execution (admin only).
+
+    This is an escape hatch for edge cases where you need workers to run again
+    without doing a full status reset. It clears all *_progress keys from state_data.
+
+    Use cases:
+    - Worker was interrupted and left stale "running" progress
+    - Worker completed but needs to run again (e.g., after code fix)
+    - Debugging worker idempotency issues
+
+    Note: This does NOT change the job status. If the job is in a terminal state
+    (complete, failed, cancelled), workers may not be triggered automatically.
+    Use the reset endpoint to also change status if needed.
+    """
+    from google.cloud.firestore_v1 import DELETE_FIELD
+
+    admin_email = auth_data.user_email or "unknown"
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Check which keys actually exist in state_data
+    state_data = job.state_data or {}
+    keys_to_clear = [k for k in ALL_WORKER_PROGRESS_KEYS if k in state_data]
+
+    if not keys_to_clear:
+        return ClearWorkersResponse(
+            status="success",
+            job_id=job_id,
+            message="No worker progress keys found in state_data",
+            cleared_keys=[],
+        )
+
+    # Clear the worker progress keys
+    db = JobManager().firestore.db
+    job_ref = db.collection("jobs").document(job_id)
+    update_payload = {f"state_data.{key}": DELETE_FIELD for key in keys_to_clear}
+    job_ref.update(update_payload)
+
+    logger.info(
+        f"Admin {admin_email} cleared worker state for job {job_id}. "
+        f"Cleared keys: {keys_to_clear}"
+    )
+
+    return ClearWorkersResponse(
+        status="success",
+        job_id=job_id,
+        message=f"Cleared {len(keys_to_clear)} worker progress key(s)",
+        cleared_keys=keys_to_clear,
     )
 
 

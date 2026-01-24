@@ -52,6 +52,9 @@ When fixing a bug in a system with multiple code paths (e.g., legacy vs orchestr
 ### Worker Idempotency Must Complete the Lifecycle
 When implementing idempotency checks that set `stage='running'` at start, workers MUST also set `stage='complete'` on success. Without the completion update, retries or reprocessing attempts will be blocked because the stage is permanently stuck at `'running'`. The fix in v0.108.14 added completion markers to render_video, video, and screens workers.
 
+### Clear Worker Progress Keys When Reprocessing
+When resetting a job or re-reviewing a completed job, all worker progress keys (`*_progress`) must be cleared from `state_data`. Workers check `state_data.{worker}_progress.stage == 'complete'` for idempotency - if stale keys exist from a previous run, workers will skip execution even though the job needs reprocessing. **Pattern**: Any operation that intends to re-run workers (admin reset, review resubmission) must explicitly clear progress keys using `job_manager.delete_state_data_keys()`. See `backend/api/routes/review.py:complete_review()` and `backend/api/routes/admin.py:clear_worker_state()`.
+
 ### Defense in Depth
 Enforce critical requirements at multiple layers (e.g., reject at creation in JobManager + safety net at processing time).
 

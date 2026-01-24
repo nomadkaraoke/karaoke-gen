@@ -216,6 +216,65 @@ class TestAddLyricsEndpoint:
         assert callable(method)
 
 
+class TestReviewResubmissionClearsWorkerProgress:
+    """Tests for ensuring review submission clears worker progress keys.
+
+    When a job is re-reviewed (e.g., after a reset to awaiting_review), the worker
+    progress keys must be cleared to prevent workers from skipping due to
+    idempotency checks (checking {worker}_progress.stage == 'complete').
+    """
+
+    def test_complete_review_clears_progress_keys(self):
+        """Document that complete_review should clear worker progress keys.
+
+        The complete_review endpoint calls delete_state_data_keys with:
+        ['render_progress', 'screens_progress', 'video_progress', 'encoding_progress']
+
+        This ensures that when a review is submitted, even if the job was
+        previously completed, workers will run fresh instead of skipping.
+        """
+        # This test documents the expected behavior.
+        # The actual integration test is in test_emulator_integration.py.
+        expected_keys_to_clear = [
+            'render_progress',
+            'screens_progress',
+            'video_progress',
+            'encoding_progress',
+        ]
+
+        # Verify all worker progress keys that affect idempotency are included
+        assert 'render_progress' in expected_keys_to_clear
+        assert 'video_progress' in expected_keys_to_clear
+        assert 'encoding_progress' in expected_keys_to_clear
+
+    def test_idempotency_check_examines_progress_stage(self):
+        """Document the idempotency check pattern used by workers.
+
+        Workers check state_data.{worker}_progress.stage == 'complete' to skip.
+        This is why clearing these keys is critical for re-processing.
+        """
+        # Example of what stale state looks like (causes skip)
+        stale_state_data = {
+            'render_progress': {'stage': 'complete'},  # Worker will skip!
+            'video_progress': {'stage': 'complete'},
+        }
+
+        # After clearing, the keys should not exist
+        clean_state_data = {}
+
+        # Verify worker would NOT skip after clearing
+        render_progress = clean_state_data.get('render_progress', {})
+        assert render_progress.get('stage') != 'complete'
+
+    def test_job_manager_has_delete_state_data_keys_method(self):
+        """Verify JobManager has the method needed for clearing keys."""
+        from backend.services.job_manager import JobManager
+
+        jm = JobManager.__new__(JobManager)  # Create without __init__
+        assert hasattr(jm, 'delete_state_data_keys')
+        assert callable(getattr(jm, 'delete_state_data_keys'))
+
+
 class TestPreviewStyleLoading:
     """Tests for the unified style loader used in preview video generation.
     

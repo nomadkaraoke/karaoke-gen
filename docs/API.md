@@ -908,6 +908,35 @@ Service statuses: `success`, `failed`, `skipped` (not configured or no data), `p
 
 The brand code is freed for reuse when the Dropbox folder is deleted. When the job is re-processed and outputs are re-uploaded, the `outputs_deleted_at` flag is automatically cleared.
 
+#### Clear Worker Progress
+
+```http
+POST /api/admin/jobs/{job_id}/clear-workers
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Clears all worker completion markers from `state_data` to allow re-execution. Use when a job has stale progress keys that prevent workers from running (e.g., after a reset that didn't fully clear state).
+
+Worker progress keys cleared:
+- `audio_progress`
+- `lyrics_progress`
+- `render_progress`
+- `screens_progress`
+- `video_progress`
+- `encoding_progress`
+
+Response:
+```json
+{
+  "status": "success",
+  "job_id": "abc123",
+  "message": "Cleared 3 worker progress keys",
+  "cleared_keys": ["render_progress", "video_progress", "encoding_progress"]
+}
+```
+
+**Why this is needed**: Workers check `state_data.{worker}_progress.stage == 'complete'` for idempotency - if this key exists from a previous run, the worker will skip execution. When re-reviewing or resetting jobs, these keys must be cleared.
+
 ### Internal Email Endpoints
 
 These endpoints are used by Cloud Tasks for automated notifications.

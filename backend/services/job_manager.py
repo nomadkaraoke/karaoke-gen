@@ -642,19 +642,73 @@ class JobManager:
     def update_state_data(self, job_id: str, key: str, value: Any) -> None:
         """
         Update a specific key in the job's state_data field.
-        
+
         This is used by workers to store stage-specific metadata.
         """
         job = self.get_job(job_id)
         if not job:
             logger.error(f"Job {job_id} not found")
             return
-        
+
         state_data = job.state_data.copy()
         state_data[key] = value
-        
+
         self.update_job(job_id, {'state_data': state_data})
         logger.debug(f"Job {job_id} state_data updated: {key} = {value}")
+
+    def delete_state_data_key(self, job_id: str, key: str) -> bool:
+        """
+        Delete a specific key from the job's state_data field.
+
+        Uses Firestore DELETE_FIELD to atomically remove the key.
+        This is used to clear worker progress markers, allowing workers
+        to re-run without skipping due to idempotency checks.
+
+        Args:
+            job_id: Job ID
+            key: The state_data key to delete (e.g., "render_progress")
+
+        Returns:
+            True if successful, False otherwise
+        """
+        from google.cloud.firestore_v1 import DELETE_FIELD
+
+        try:
+            job_ref = self.firestore.db.collection("jobs").document(job_id)
+            job_ref.update({f"state_data.{key}": DELETE_FIELD})
+            logger.debug(f"Job {job_id}: Deleted state_data key '{key}'")
+            return True
+        except Exception as e:
+            logger.error(f"Job {job_id}: Failed to delete state_data key '{key}': {e}")
+            return False
+
+    def delete_state_data_keys(self, job_id: str, keys: List[str]) -> List[str]:
+        """
+        Delete multiple keys from the job's state_data field in a single operation.
+
+        Uses Firestore DELETE_FIELD to atomically remove the keys.
+
+        Args:
+            job_id: Job ID
+            keys: List of state_data keys to delete
+
+        Returns:
+            List of keys that were successfully deleted
+        """
+        from google.cloud.firestore_v1 import DELETE_FIELD
+
+        if not keys:
+            return []
+
+        try:
+            job_ref = self.firestore.db.collection("jobs").document(job_id)
+            update_payload = {f"state_data.{key}": DELETE_FIELD for key in keys}
+            job_ref.update(update_payload)
+            logger.info(f"Job {job_id}: Deleted state_data keys: {keys}")
+            return keys
+        except Exception as e:
+            logger.error(f"Job {job_id}: Failed to delete state_data keys {keys}: {e}")
+            return []
     
     def fail_job(self, job_id: str, error_message: str, error_details: Optional[Dict[str, Any]] = None) -> bool:
         """

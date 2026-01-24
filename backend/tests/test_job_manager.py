@@ -496,6 +496,78 @@ class TestJobDeletion:
         mock_firestore_service.delete_job.assert_called_once_with("test123")
 
 
+class TestDeleteStateDataKeys:
+    """Tests for delete_state_data_key and delete_state_data_keys methods.
+
+    These methods are used to clear worker progress keys from state_data,
+    which is critical for allowing workers to re-run after admin resets.
+    """
+
+    def test_delete_state_data_key_success(self, job_manager, mock_firestore_service):
+        """Test deleting a single key from state_data."""
+        # Setup mock to return success
+        mock_firestore_service.db = Mock()
+        mock_job_ref = Mock()
+        mock_firestore_service.db.collection.return_value.document.return_value = mock_job_ref
+
+        result = job_manager.delete_state_data_key("test123", "render_progress")
+
+        assert result is True
+        # Verify update was called with DELETE_FIELD for the key
+        mock_job_ref.update.assert_called_once()
+        call_args = mock_job_ref.update.call_args[0][0]
+        assert "state_data.render_progress" in call_args
+
+    def test_delete_state_data_key_handles_exception(self, job_manager, mock_firestore_service):
+        """Test that delete_state_data_key handles exceptions gracefully."""
+        mock_firestore_service.db = Mock()
+        mock_job_ref = Mock()
+        mock_job_ref.update.side_effect = Exception("Firestore error")
+        mock_firestore_service.db.collection.return_value.document.return_value = mock_job_ref
+
+        result = job_manager.delete_state_data_key("test123", "render_progress")
+
+        assert result is False
+
+    def test_delete_state_data_keys_success(self, job_manager, mock_firestore_service):
+        """Test deleting multiple keys from state_data in one operation."""
+        mock_firestore_service.db = Mock()
+        mock_job_ref = Mock()
+        mock_firestore_service.db.collection.return_value.document.return_value = mock_job_ref
+
+        keys_to_delete = ["render_progress", "video_progress", "encoding_progress"]
+        result = job_manager.delete_state_data_keys("test123", keys_to_delete)
+
+        assert result == keys_to_delete
+        # Verify single update was called with all keys
+        mock_job_ref.update.assert_called_once()
+        call_args = mock_job_ref.update.call_args[0][0]
+        assert "state_data.render_progress" in call_args
+        assert "state_data.video_progress" in call_args
+        assert "state_data.encoding_progress" in call_args
+
+    def test_delete_state_data_keys_empty_list(self, job_manager, mock_firestore_service):
+        """Test that empty list returns empty without calling Firestore."""
+        mock_firestore_service.db = Mock()
+
+        result = job_manager.delete_state_data_keys("test123", [])
+
+        assert result == []
+        # Should NOT call Firestore for empty list
+        mock_firestore_service.db.collection.assert_not_called()
+
+    def test_delete_state_data_keys_handles_exception(self, job_manager, mock_firestore_service):
+        """Test that delete_state_data_keys handles exceptions gracefully."""
+        mock_firestore_service.db = Mock()
+        mock_job_ref = Mock()
+        mock_job_ref.update.side_effect = Exception("Firestore error")
+        mock_firestore_service.db.collection.return_value.document.return_value = mock_job_ref
+
+        result = job_manager.delete_state_data_keys("test123", ["render_progress"])
+
+        assert result == []
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
