@@ -109,30 +109,42 @@ class DropboxService:
 
     def get_next_brand_code(self, path: str, brand_prefix: str) -> str:
         """
-        Calculate next brand code from existing folders.
+        Calculate next brand code from existing folders, filling gaps in the sequence.
 
         Scans the folder for existing brand codes like "NOMAD-0001" and
-        returns the next sequential code.
+        returns the first available code, filling any gaps left by deleted outputs.
 
         Args:
             path: Dropbox path containing organized folders
             brand_prefix: Brand prefix (e.g., "NOMAD")
 
         Returns:
-            Next brand code (e.g., "NOMAD-1164")
+            Next brand code (e.g., "NOMAD-0003" if 0003 is the first gap)
         """
         folders = self.list_folders(path)
         pattern = re.compile(rf"^{re.escape(brand_prefix)}-(\d{{4}})")
 
-        max_num = 0
+        existing_nums: set[int] = set()
         for folder in folders:
             match = pattern.match(folder)
             if match:
-                num = int(match.group(1))
-                max_num = max(max_num, num)
+                existing_nums.add(int(match.group(1)))
 
-        next_code = f"{brand_prefix}-{max_num + 1:04d}"
-        logger.info(f"Next brand code for {brand_prefix}: {next_code} (max existing: {max_num})")
+        max_existing = max(existing_nums) if existing_nums else 0
+
+        # Only fill gaps for numbers >= 1001 (preserve legacy gaps below 1000)
+        if max_existing >= 1000:
+            next_num = 1001
+            while next_num in existing_nums:
+                next_num += 1
+        else:
+            next_num = max_existing + 1
+
+        next_code = f"{brand_prefix}-{next_num:04d}"
+        if max_existing >= 1000 and next_num <= max_existing:
+            logger.info(f"Next brand code for {brand_prefix}: {next_code} (filling gap, max existing: {max_existing})")
+        else:
+            logger.info(f"Next brand code for {brand_prefix}: {next_code} (max existing: {max_existing})")
         return next_code
 
     def upload_file(self, local_path: str, remote_path: str) -> None:

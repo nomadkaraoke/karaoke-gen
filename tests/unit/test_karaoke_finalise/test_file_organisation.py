@@ -58,15 +58,44 @@ def test_get_next_brand_code_first(mock_isdir, mock_listdir, finaliser_for_org):
 @patch('os.listdir')
 @patch('os.path.isdir', return_value=True)
 def test_get_next_brand_code_existing(mock_isdir, mock_listdir, finaliser_for_org):
-    """Test getting the next brand code when others exist."""
+    """Test getting the next brand code when others exist (legacy range, gaps preserved)."""
     mock_listdir.return_value = [
         f"{BRAND_PREFIX}-0001 - Some Artist - Title",
-        f"{BRAND_PREFIX}-0005 - Another Artist - Song",
+        f"{BRAND_PREFIX}-0005 - Another Artist - Song",  # Gap at 0002-0004 preserved
         f"{BRAND_PREFIX}-0003 - Test - Track",
         "OTHER-0001 - Ignored",
     ]
     next_code = finaliser_for_org.get_next_brand_code()
-    assert next_code == f"{BRAND_PREFIX}-0006" # Max was 5, next is 6
+    assert next_code == f"{BRAND_PREFIX}-0006"  # Max was 5, next is 6 (legacy gaps preserved)
+    mock_isdir.assert_called_once_with(ORGANISED_DIR)
+
+
+@patch('os.listdir')
+@patch('os.path.isdir', return_value=True)
+def test_get_next_brand_code_fills_gap_above_1000(mock_isdir, mock_listdir, finaliser_for_org):
+    """Test that gaps at 1001+ ARE filled."""
+    mock_listdir.return_value = [
+        f"{BRAND_PREFIX}-1001 - Artist1 - Song1",
+        f"{BRAND_PREFIX}-1002 - Artist2 - Song2",
+        f"{BRAND_PREFIX}-1005 - Artist3 - Song3",  # Gap at 1003, 1004
+    ]
+    next_code = finaliser_for_org.get_next_brand_code()
+    assert next_code == f"{BRAND_PREFIX}-1003"  # Fills gap at 1003
+    mock_isdir.assert_called_once_with(ORGANISED_DIR)
+
+
+@patch('os.listdir')
+@patch('os.path.isdir', return_value=True)
+def test_get_next_brand_code_mixed_legacy_and_new(mock_isdir, mock_listdir, finaliser_for_org):
+    """Test with both legacy (<1000) and new (>=1000) codes."""
+    mock_listdir.return_value = [
+        f"{BRAND_PREFIX}-0001 - Artist1 - Song1",
+        f"{BRAND_PREFIX}-0005 - Artist2 - Song2",  # Legacy gap - preserved
+        f"{BRAND_PREFIX}-1001 - Artist3 - Song3",
+        f"{BRAND_PREFIX}-1003 - Artist4 - Song4",  # Gap at 1002 - should be filled
+    ]
+    next_code = finaliser_for_org.get_next_brand_code()
+    assert next_code == f"{BRAND_PREFIX}-1002"  # Fills gap at 1002, ignores legacy gap
     mock_isdir.assert_called_once_with(ORGANISED_DIR)
 
 @patch('os.path.isdir', return_value=False)

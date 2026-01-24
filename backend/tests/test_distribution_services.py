@@ -65,39 +65,87 @@ class TestDropboxService:
     def test_get_next_brand_code_first_track(self):
         """Test brand code calculation when no existing tracks."""
         from backend.services.dropbox_service import DropboxService
-        
+
         service = DropboxService()
         with patch.object(service, 'list_folders', return_value=[]):
             brand_code = service.get_next_brand_code("/test/path", "NOMAD")
             assert brand_code == "NOMAD-0001"
 
-    def test_get_next_brand_code_sequential(self):
-        """Test brand code calculation with existing tracks."""
+    def test_get_next_brand_code_legacy_gaps_preserved(self):
+        """Test that gaps below 1000 are NOT filled (legacy behavior)."""
         from backend.services.dropbox_service import DropboxService
-        
+
         service = DropboxService()
         existing_folders = [
             "NOMAD-0001 - Artist1 - Song1",
             "NOMAD-0002 - Artist2 - Song2",
-            "NOMAD-0005 - Artist3 - Song3",  # Gap in sequence
-            "OTHER-0001 - Different Brand",  # Different brand
+            "NOMAD-0005 - Artist3 - Song3",  # Gap at 0003, 0004 - should be preserved
         ]
         with patch.object(service, 'list_folders', return_value=existing_folders):
             brand_code = service.get_next_brand_code("/test/path", "NOMAD")
-            assert brand_code == "NOMAD-0006"
+            assert brand_code == "NOMAD-0006"  # Does NOT fill legacy gap
+
+    def test_get_next_brand_code_fills_gap_above_1000(self):
+        """Test that gaps at 1001+ ARE filled."""
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        existing_folders = [
+            "NOMAD-1001 - Artist1 - Song1",
+            "NOMAD-1002 - Artist2 - Song2",
+            "NOMAD-1005 - Artist3 - Song3",  # Gap at 1003, 1004
+        ]
+        with patch.object(service, 'list_folders', return_value=existing_folders):
+            brand_code = service.get_next_brand_code("/test/path", "NOMAD")
+            assert brand_code == "NOMAD-1003"  # Fills gap at 1003
+
+    def test_get_next_brand_code_no_gaps_above_1000(self):
+        """Test brand code calculation with no gaps above 1000 returns max+1."""
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        existing_folders = [
+            "NOMAD-1001 - Artist1 - Song1",
+            "NOMAD-1002 - Artist2 - Song2",
+            "NOMAD-1003 - Artist3 - Song3",
+        ]
+        with patch.object(service, 'list_folders', return_value=existing_folders):
+            brand_code = service.get_next_brand_code("/test/path", "NOMAD")
+            assert brand_code == "NOMAD-1004"
+
+    def test_get_next_brand_code_mixed_legacy_and_new(self):
+        """Test with both legacy (<1000) and new (>=1000) codes."""
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        existing_folders = [
+            "NOMAD-0001 - Artist1 - Song1",
+            "NOMAD-0005 - Artist2 - Song2",  # Legacy gap - preserved
+            "NOMAD-1001 - Artist3 - Song3",
+            "NOMAD-1003 - Artist4 - Song4",  # Gap at 1002 - should be filled
+        ]
+        with patch.object(service, 'list_folders', return_value=existing_folders):
+            brand_code = service.get_next_brand_code("/test/path", "NOMAD")
+            assert brand_code == "NOMAD-1002"  # Fills gap at 1002, ignores legacy gap
 
     def test_get_next_brand_code_different_prefix(self):
         """Test brand code calculation with different brand prefix."""
         from backend.services.dropbox_service import DropboxService
-        
+
         service = DropboxService()
         existing_folders = [
             "NOMAD-0001 - Artist1 - Song1",
-            "TEST-0010 - Artist2 - Song2",
+            "NOMAD-0002 - Artist2 - Song2",
+            "TEST-0001 - Artist3 - Song3",
+            "TEST-0002 - Artist4 - Song4",
         ]
         with patch.object(service, 'list_folders', return_value=existing_folders):
+            # NOMAD sequence: 1,2 (below 1000) -> next is 3
+            brand_code = service.get_next_brand_code("/test/path", "NOMAD")
+            assert brand_code == "NOMAD-0003"
+            # TEST sequence: 1,2 (below 1000) -> next is 3
             brand_code = service.get_next_brand_code("/test/path", "TEST")
-            assert brand_code == "TEST-0011"
+            assert brand_code == "TEST-0003"
 
     def test_factory_function_returns_instance(self):
         """Test that get_dropbox_service returns a service instance."""

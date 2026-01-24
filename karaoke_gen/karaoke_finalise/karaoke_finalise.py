@@ -589,22 +589,34 @@ class KaraokeFinalise:
     def get_next_brand_code(self):
         """
         Calculate the next sequence number based on existing directories in the organised_dir.
+        Fills gaps in the sequence for numbers >= 1001 (preserves legacy gaps below 1000).
         Assumes directories are named with the format: BRAND-XXXX Artist - Title
         """
-        max_num = 0
         pattern = re.compile(rf"^{re.escape(self.brand_prefix)}-(\d{{4}})")
 
         if not os.path.isdir(self.organised_dir):
             raise Exception(f"Target directory does not exist: {self.organised_dir}")
 
+        existing_nums: set[int] = set()
         for dir_name in os.listdir(self.organised_dir):
             match = pattern.match(dir_name)
             if match:
-                num = int(match.group(1))
-                max_num = max(max_num, num)
+                existing_nums.add(int(match.group(1)))
 
-        self.logger.info(f"Next sequence number for brand {self.brand_prefix} calculated as: {max_num + 1}")
-        next_seq_number = max_num + 1
+        max_existing = max(existing_nums) if existing_nums else 0
+
+        # Only fill gaps for numbers >= 1001 (preserve legacy gaps below 1000)
+        if max_existing >= 1000:
+            next_seq_number = 1001
+            while next_seq_number in existing_nums:
+                next_seq_number += 1
+        else:
+            next_seq_number = max_existing + 1
+
+        if max_existing >= 1000 and next_seq_number <= max_existing:
+            self.logger.info(f"Next sequence number for brand {self.brand_prefix}: {next_seq_number} (filling gap, max existing: {max_existing})")
+        else:
+            self.logger.info(f"Next sequence number for brand {self.brand_prefix}: {next_seq_number} (max existing: {max_existing})")
 
         return f"{self.brand_prefix}-{next_seq_number:04d}"
 
@@ -1255,19 +1267,19 @@ class KaraokeFinalise:
     def get_next_brand_code_server_side(self):
         """
         Calculate the next sequence number based on existing directories in the remote organised_dir using rclone.
+        Fills gaps in the sequence left by deleted outputs.
         Assumes directories are named with the format: BRAND-XXXX Artist - Title
         """
         if not self.organised_dir_rclone_root:
             raise Exception("organised_dir_rclone_root not configured for server-side brand code generation")
 
         self.logger.info(f"Getting next brand code from remote organized directory: {self.organised_dir_rclone_root}")
-        
-        max_num = 0
+
         pattern = re.compile(rf"^{re.escape(self.brand_prefix)}-(\d{{4}})")
 
         # Use rclone lsf --dirs-only for clean, machine-readable directory listing
         rclone_list_cmd = f"rclone lsf --dirs-only {shlex.quote(self.organised_dir_rclone_root)}"
-        
+
         if self.dry_run:
             self.logger.info(f"DRY RUN: Would run: {rclone_list_cmd}")
             return f"{self.brand_prefix}-0001"
@@ -1275,35 +1287,45 @@ class KaraokeFinalise:
         try:
             self.logger.info(f"Running command: {rclone_list_cmd}")
             result = subprocess.run(rclone_list_cmd, shell=True, check=True, capture_output=True, text=True)
-            
+
             # Log command output for debugging
             if result.stdout and result.stdout.strip():
                 self.logger.debug(f"Command STDOUT: {result.stdout.strip()}")
             if result.stderr and result.stderr.strip():
                 self.logger.debug(f"Command STDERR: {result.stderr.strip()}")
-            
+
             # Parse the output to find matching directories
-            matching_dirs = []
-            for line_num, line in enumerate(result.stdout.strip().split('\n')):
+            existing_nums: set[int] = set()
+            for line in result.stdout.strip().split('\n'):
                 if line.strip():
                     # Remove trailing slash and whitespace
                     dir_name = line.strip().rstrip('/')
-                    
+
                     # Check if directory matches our brand pattern
                     match = pattern.match(dir_name)
                     if match:
-                        num = int(match.group(1))
-                        max_num = max(max_num, num)
-                        matching_dirs.append((dir_name, num))
+                        existing_nums.add(int(match.group(1)))
 
-            self.logger.info(f"Found {len(matching_dirs)} matching directories with pattern {self.brand_prefix}-XXXX")
+            self.logger.info(f"Found {len(existing_nums)} matching directories with pattern {self.brand_prefix}-XXXX")
 
-            next_seq_number = max_num + 1
+            max_existing = max(existing_nums) if existing_nums else 0
+
+            # Only fill gaps for numbers >= 1001 (preserve legacy gaps below 1000)
+            if max_existing >= 1000:
+                next_seq_number = 1001
+                while next_seq_number in existing_nums:
+                    next_seq_number += 1
+            else:
+                next_seq_number = max_existing + 1
+
             brand_code = f"{self.brand_prefix}-{next_seq_number:04d}"
-            
-            self.logger.info(f"Highest existing number: {max_num}, next sequence number for brand {self.brand_prefix} calculated as: {next_seq_number}")
+
+            if max_existing >= 1000 and next_seq_number <= max_existing:
+                self.logger.info(f"Next sequence number for brand {self.brand_prefix}: {next_seq_number} (filling gap, max existing: {max_existing})")
+            else:
+                self.logger.info(f"Next sequence number for brand {self.brand_prefix}: {next_seq_number} (max existing: {max_existing})")
             return brand_code
-            
+
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Failed to list remote organized directory. Exit code: {e.returncode}")
             self.logger.error(f"Command output (stdout): {e.stdout}")

@@ -222,30 +222,31 @@ class TestGetNextBrandCode:
     
     @patch("backend.services.dropbox_service.secretmanager.SecretManagerServiceClient")
     def test_get_next_brand_code(self, mock_sm_client_class):
-        """Test calculating next brand code from existing folders."""
+        """Test calculating next brand code - fills gaps only above 1000."""
         from backend.services.dropbox_service import DropboxService
-        
+
         mock_sm_client = Mock()
         mock_response = Mock()
         mock_response.payload.data = json.dumps({"access_token": "token"}).encode()
         mock_sm_client.access_secret_version.return_value = mock_response
         mock_sm_client_class.return_value = mock_sm_client
-        
+
         service = DropboxService()
-        
-        # Mock list_folders to return existing codes
+
+        # Mock list_folders to return existing codes with a gap at 1003
         with patch.object(service, "list_folders") as mock_list:
             mock_list.return_value = [
-                "NOMAD-1161",
-                "NOMAD-1162",
-                "NOMAD-1163",
+                "NOMAD-1001",
+                "NOMAD-1002",
+                "NOMAD-1004",  # Gap at 1003 - should be filled
+                "NOMAD-1005",
                 "Other Folder",
-                "NOMAD-0001",
             ]
-            
+
             next_code = service.get_next_brand_code("/path", "NOMAD")
-            
-            assert next_code == "NOMAD-1164"
+
+            # Should fill the gap at 1003 (gaps >= 1001 are filled)
+            assert next_code == "NOMAD-1003"
     
     @patch("backend.services.dropbox_service.secretmanager.SecretManagerServiceClient")
     def test_get_next_brand_code_empty_folder(self, mock_sm_client_class):
