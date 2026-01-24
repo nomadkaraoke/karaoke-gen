@@ -125,6 +125,7 @@ export default function LyricsAnalyzer({
   const [isTimingOffsetModalOpen, setIsTimingOffsetModalOpen] = useState(false)
   const [timingOffsetMs, setTimingOffsetMs] = useState(0)
   const [reviewMode, setReviewMode] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Success screen state (for auto-close after submission)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -244,7 +245,7 @@ export default function LyricsAnalyzer({
     isTimingOffsetModalOpen,
   ])
 
-  // Countdown effect for success screen (local mode auto-close)
+  // Countdown effect for success screen (auto-close/redirect after submission)
   useEffect(() => {
     if (!showSuccess) return
 
@@ -252,7 +253,11 @@ export default function LyricsAnalyzer({
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval)
-          window.close()
+          if (isLocalMode) {
+            window.close()
+          } else {
+            router.push('/app')
+          }
           return 0
         }
         return prev - 1
@@ -260,7 +265,7 @@ export default function LyricsAnalyzer({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [showSuccess])
+  }, [showSuccess, isLocalMode, router])
 
   // Calculate effective mode based on modifier key states
   const effectiveMode = isCtrlPressed ? 'delete_word' : isShiftPressed ? 'highlight' : interactionMode
@@ -593,8 +598,12 @@ export default function LyricsAnalyzer({
     updateDataWithHistory(newData, 'revert all corrections')
   }, [data, updateDataWithHistory])
 
-  // Finish review
+  // Finish review - opens preview modal
   const handleFinishReview = useCallback(() => {
+    // Pause audio if playing to avoid clash with preview video
+    if (typeof window !== 'undefined' && window.isAudioPlaying && window.toggleAudioPlayback) {
+      window.toggleAudioPlayback()
+    }
     setIsReviewModalOpen(true)
   }, [])
 
@@ -602,6 +611,7 @@ export default function LyricsAnalyzer({
   const handleSubmitToServer = useCallback(async () => {
     if (!apiClient) return
 
+    setIsSubmitting(true)
     try {
       const dataToSubmit =
         timingOffsetMs !== 0 ? applyOffsetToCorrectionData(data, timingOffsetMs) : data
@@ -627,17 +637,17 @@ export default function LyricsAnalyzer({
         setShowSuccess(true)
         setCountdown(2)
       } else {
-        // Redirect to dashboard after short delay (cloud mode)
-        toast.success('Review submitted successfully! Video generation started.')
-        setTimeout(() => {
-          router.push('/app')
-        }, 1500)
+        // Cloud mode: show success screen with countdown, then redirect
+        setShowSuccess(true)
+        setCountdown(3)
       }
+      // Note: Don't reset isSubmitting on success - we transition to success screen
     } catch (error) {
       console.error('Failed to submit corrections:', error)
       toast.error('Failed to submit corrections. Please try again.')
+      setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, annotations, isLocalMode, router])
+  }, [apiClient, data, timingOffsetMs, annotations, isLocalMode])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
@@ -844,22 +854,29 @@ export default function LyricsAnalyzer({
     setTimingOffsetMs(offsetMs)
   }, [])
 
-  // Success screen (local mode) - shown after review submission
+  // Success screen - shown after review submission
   if (showSuccess) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center max-w-md p-6">
+          <div className="mb-4">
+            <Check className="w-12 h-12 mx-auto text-green-500" />
+          </div>
           <h2 className="text-2xl font-semibold text-green-500 mb-4">
-            <Check className="w-8 h-8 inline-block mr-2" />
             Review Submitted
           </h2>
-          <p className="mb-2">
-            Your lyrics corrections have been saved and video generation has started.
+          <p className="text-lg mb-2">
+            Your lyrics corrections have been saved.
+          </p>
+          <p className="text-muted-foreground mb-4">
+            Video generation has started and you&apos;ll receive a notification when it&apos;s ready.
           </p>
           <p className="text-muted-foreground">
             {countdown > 0
-              ? `Closing in ${countdown}s...`
-              : 'You can close this window now.'}
+              ? `${isLocalMode ? 'Closing' : 'Redirecting'} in ${countdown}s...`
+              : isLocalMode
+                ? 'You can close this window now.'
+                : 'Redirecting...'}
           </p>
         </div>
       </div>
@@ -1003,6 +1020,7 @@ export default function LyricsAnalyzer({
         onClose={() => setIsReviewModalOpen(false)}
         data={data}
         onSubmit={handleSubmitToServer}
+        isSubmitting={isSubmitting}
         apiClient={apiClient}
         timingOffsetMs={timingOffsetMs}
       />

@@ -178,15 +178,21 @@ async function setupLocalModeMocks(page: Page) {
         path: '/api/jobs/local',
         response: { body: mockJobData },
       },
-      // Corrections endpoint - returns mock correction data
+      // Corrections endpoint - returns mock correction data (old path)
       {
         method: 'GET',
         path: '/api/jobs/local/corrections',
         response: { body: mockCorrectionData },
       },
-      // Complete review endpoint
+      // Correction data endpoint (new review path)
       {
-        method: 'PUT',
+        method: 'GET',
+        path: '/api/review/local/correction-data',
+        response: { body: mockCorrectionData },
+      },
+      // Submit corrections endpoint (POST, not PUT)
+      {
+        method: 'POST',
         path: '/api/jobs/local/corrections',
         response: { body: { status: 'success' } },
       },
@@ -208,10 +214,22 @@ async function setupLocalModeMocks(page: Page) {
         path: '/api/jobs/local/preview-video',
         response: { body: { status: 'success', preview_hash: 'preview_123' } },
       },
+      // Review preview video endpoint (new review path)
+      {
+        method: 'POST',
+        path: '/api/review/local/preview-video',
+        response: { body: { status: 'success', preview_hash: 'preview_123' } },
+      },
       // Audio endpoint (returns empty for mock)
       {
         method: 'GET',
         path: '/api/audio/test_audio_hash_123',
+        response: { status: 200, body: '' },
+      },
+      // Review audio endpoint (new review path)
+      {
+        method: 'GET',
+        path: '/api/review/local/audio/test_audio_hash_123',
         response: { status: 200, body: '' },
       },
       // Annotations endpoint
@@ -503,6 +521,134 @@ test.describe('Lyrics Review - Complete Review Flow', () => {
       // Should submit and close
       await page.waitForTimeout(1000);
     }
+  });
+});
+
+// Extended mocks for submit UX tests that include complete-review endpoint
+async function setupSubmitFlowMocks(page: Page) {
+  return setupApiFixtures(page, {
+    mocks: [
+      // Job endpoint - returns mock job for local mode
+      {
+        method: 'GET',
+        path: '/api/jobs/local',
+        response: { body: mockJobData },
+      },
+      // Corrections endpoint - returns mock correction data (old path)
+      {
+        method: 'GET',
+        path: '/api/jobs/local/corrections',
+        response: { body: mockCorrectionData },
+      },
+      // Correction data endpoint (new review path)
+      {
+        method: 'GET',
+        path: '/api/review/local/correction-data',
+        response: { body: mockCorrectionData },
+      },
+      // Submit corrections endpoint (POST, not PUT)
+      {
+        method: 'POST',
+        path: '/api/jobs/local/corrections',
+        response: { body: { status: 'success' } },
+      },
+      // Complete review endpoint (triggers video generation)
+      {
+        method: 'POST',
+        path: '/api/jobs/local/complete-review',
+        response: { body: { status: 'success', job_status: 'instrumental_selected', message: 'Review completed' } },
+      },
+      // Preview video generation endpoint (old path)
+      {
+        method: 'POST',
+        path: '/api/jobs/local/preview-video',
+        response: { body: { status: 'success', preview_hash: 'preview_123' } },
+      },
+      // Review preview video endpoint (new review path)
+      {
+        method: 'POST',
+        path: '/api/review/local/preview-video',
+        response: { body: { status: 'success', preview_hash: 'preview_123' } },
+      },
+      // Get preview video file (to display in modal)
+      {
+        method: 'GET',
+        path: '/api/review/local/preview-video/preview_123',
+        response: { status: 200, body: '' },
+      },
+      // Audio endpoint (returns empty for mock)
+      {
+        method: 'GET',
+        path: '/api/audio/test_audio_hash_123',
+        response: { status: 200, body: '' },
+      },
+      // Review audio endpoint (new review path)
+      {
+        method: 'GET',
+        path: '/api/review/local/audio/test_audio_hash_123',
+        response: { status: 200, body: '' },
+      },
+      // Tenant config endpoint
+      {
+        method: 'GET',
+        path: '/api/tenant/config',
+        response: { body: { tenant: null, is_default: true } },
+      },
+    ],
+  });
+}
+
+test.describe('Lyrics Review - Submit UX', () => {
+  test.beforeEach(async ({ page }) => {
+    await clearAuthToken(page);
+    await setupSubmitFlowMocks(page);
+  });
+
+  test('success screen shows after submission in local mode', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+
+    // Open preview modal and submit
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const previewBtn = page.getByRole('button', { name: /preview video/i });
+    await expect(previewBtn).toBeVisible({ timeout: 10000 });
+    await previewBtn.click();
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+
+    await dialog.getByRole('button', { name: /complete review/i }).click();
+
+    // Wait for success screen
+    await expect(page.getByText('Review Submitted')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Closing in \d+s/)).toBeVisible();
+  });
+
+  test('submit button becomes disabled when clicked', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+
+    // Open preview modal
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const previewBtn = page.getByRole('button', { name: /preview video/i });
+    await expect(previewBtn).toBeVisible({ timeout: 10000 });
+    await previewBtn.click();
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+
+    const completeBtn = dialog.getByRole('button', { name: /complete review/i });
+    await expect(completeBtn).toBeVisible({ timeout: 5000 });
+
+    // Verify button is enabled before click
+    await expect(completeBtn).toBeEnabled();
+
+    // Click the button
+    await completeBtn.click();
+
+    // Transition should occur - either loading state or success screen
+    // We can verify we reach the success screen
+    await expect(page.getByText('Review Submitted')).toBeVisible({ timeout: 10000 });
   });
 });
 

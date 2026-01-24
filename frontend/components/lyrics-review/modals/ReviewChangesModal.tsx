@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { CorrectionData } from '@/lib/lyrics-review/types'
-import { ArrowLeft, Upload } from 'lucide-react'
+import { ArrowLeft, Upload, Loader2 } from 'lucide-react'
 import PreviewVideoSection from '../PreviewVideoSection'
 
 interface ApiClient {
@@ -66,7 +66,7 @@ export default function ReviewChangesModal({
         </div>
 
         <DialogFooter className="border-t pt-4">
-          <Button variant="ghost" onClick={onClose} className="text-primary">
+          <Button variant="ghost" onClick={onClose} disabled={isSubmitting} className="text-primary">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Cancel
           </Button>
@@ -75,8 +75,17 @@ export default function ReviewChangesModal({
             disabled={isSubmitting}
             className="bg-green-600 hover:bg-green-700"
           >
-            Complete Review
-            <Upload className="h-4 w-4 ml-2" />
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                Complete Review
+                <Upload className="h-4 w-4 ml-2" />
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
