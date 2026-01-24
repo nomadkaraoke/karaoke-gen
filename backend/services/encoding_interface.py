@@ -334,6 +334,12 @@ class GCEEncodingBackend(EncodingBackend):
                 "instrumental_selection": input_config.instrumental_selection,
             }
 
+            # Add countdown padding if present (for audio sync with countdown-padded vocals)
+            countdown_padding = input_config.options.get("countdown_padding_seconds")
+            if countdown_padding:
+                encoding_config["countdown_padding_seconds"] = countdown_padding
+                self.logger.info(f"GCE encoding with countdown_padding_seconds={countdown_padding}")
+
             # Submit and wait for completion
             result = await service.encode_videos(
                 job_id=job_id,
