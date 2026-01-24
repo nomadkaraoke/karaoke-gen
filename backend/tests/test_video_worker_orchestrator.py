@@ -1034,3 +1034,196 @@ class TestInstrumentalSelectionEndToEnd:
         assert captured_input is not None, "encode() should have been called"
         assert captured_input.instrumental_selection == "with_backing", \
             "Orchestrator must pass instrumental_selection to EncodingInput"
+
+
+class TestOrchestratorCountdownPadding:
+    """Tests for countdown padding flow through orchestrator.
+
+    These tests verify that countdown_padding_seconds flows correctly from:
+    job.state_data.lyrics_metadata -> OrchestratorConfig -> EncodingInput.options
+
+    This test class was added after discovering that the orchestrator path
+    did not propagate countdown_padding_seconds to the GCE encoding backend,
+    causing instrumental audio to not be padded for songs with countdown intros.
+    """
+
+    def test_orchestrator_config_has_countdown_field(self):
+        """Test that OrchestratorConfig dataclass includes countdown_padding_seconds."""
+        config = OrchestratorConfig(
+            job_id="test-job",
+            artist="Test Artist",
+            title="Test Title",
+            title_video_path="/path/title.mov",
+            karaoke_video_path="/path/karaoke.mov",
+            instrumental_audio_path="/path/audio.flac",
+            countdown_padding_seconds=3.0,
+        )
+        assert config.countdown_padding_seconds == 3.0
+
+    def test_orchestrator_config_countdown_defaults_to_none(self):
+        """Test that countdown_padding_seconds defaults to None."""
+        config = OrchestratorConfig(
+            job_id="test-job",
+            artist="Test Artist",
+            title="Test Title",
+            title_video_path="/path/title.mov",
+            karaoke_video_path="/path/karaoke.mov",
+            instrumental_audio_path="/path/audio.flac",
+        )
+        assert config.countdown_padding_seconds is None
+
+    def test_create_orchestrator_config_reads_countdown_from_lyrics_metadata(self):
+        """Test that create_orchestrator_config_from_job reads countdown from lyrics_metadata.
+
+        This is the CRITICAL test that would have caught the bug where the orchestrator
+        path didn't read countdown state from lyrics_metadata.
+        """
+        job = MagicMock()
+        job.job_id = "test-job"
+        job.artist = "Test Artist"
+        job.title = "Test Title"
+        job.state_data = {
+            'instrumental_selection': 'clean',
+            'lyrics_metadata': {
+                'has_countdown_padding': True,
+                'countdown_padding_seconds': 3.0,
+            }
+        }
+        job.enable_cdg = False
+        job.enable_txt = False
+        job.enable_youtube_upload = False
+        job.brand_prefix = None
+        job.discord_webhook_url = None
+        job.youtube_description_template = None
+        job.dropbox_path = None
+        job.gdrive_folder_id = None
+        job.keep_brand_code = None
+        job.existing_instrumental_gcs_path = None
+
+        config = create_orchestrator_config_from_job(
+            job=job,
+            temp_dir="/tmp/test",
+        )
+
+        # CRITICAL: countdown_padding_seconds must be passed to OrchestratorConfig
+        # If this fails, the GCE worker will not pad the instrumental audio
+        assert config.countdown_padding_seconds == 3.0, \
+            "countdown_padding_seconds must be read from job.state_data.lyrics_metadata"
+
+    def test_create_orchestrator_config_handles_missing_countdown(self):
+        """Test graceful handling when lyrics_metadata has no countdown fields."""
+        job = MagicMock()
+        job.job_id = "test-job"
+        job.artist = "Test Artist"
+        job.title = "Test Title"
+        job.state_data = {
+            'instrumental_selection': 'clean',
+            'lyrics_metadata': {
+                'has_corrections': True,  # No countdown fields
+            }
+        }
+        job.enable_cdg = False
+        job.enable_txt = False
+        job.enable_youtube_upload = False
+        job.brand_prefix = None
+        job.discord_webhook_url = None
+        job.youtube_description_template = None
+        job.dropbox_path = None
+        job.gdrive_folder_id = None
+        job.keep_brand_code = None
+        job.existing_instrumental_gcs_path = None
+
+        config = create_orchestrator_config_from_job(
+            job=job,
+            temp_dir="/tmp/test",
+        )
+
+        # Should default to None when not present
+        assert config.countdown_padding_seconds is None
+
+    def test_create_orchestrator_config_handles_false_countdown(self):
+        """Test that countdown is None when has_countdown_padding is False."""
+        job = MagicMock()
+        job.job_id = "test-job"
+        job.artist = "Test Artist"
+        job.title = "Test Title"
+        job.state_data = {
+            'instrumental_selection': 'clean',
+            'lyrics_metadata': {
+                'has_countdown_padding': False,  # Explicitly False
+                'countdown_padding_seconds': 0.0,
+            }
+        }
+        job.enable_cdg = False
+        job.enable_txt = False
+        job.enable_youtube_upload = False
+        job.brand_prefix = None
+        job.discord_webhook_url = None
+        job.youtube_description_template = None
+        job.dropbox_path = None
+        job.gdrive_folder_id = None
+        job.keep_brand_code = None
+        job.existing_instrumental_gcs_path = None
+
+        config = create_orchestrator_config_from_job(
+            job=job,
+            temp_dir="/tmp/test",
+        )
+
+        # Should be None because has_countdown_padding is False
+        assert config.countdown_padding_seconds is None
+
+    @pytest.mark.asyncio
+    async def test_orchestrator_passes_countdown_to_encoding_options(self):
+        """Test full flow: orchestrator passes countdown_padding_seconds through EncodingInput.options.
+
+        This verifies the complete flow from OrchestratorConfig to the encoding backend.
+        """
+        config = OrchestratorConfig(
+            job_id="test-job",
+            artist="Test Artist",
+            title="Test Title",
+            title_video_path="/path/title.mov",
+            karaoke_video_path="/path/karaoke.mov",
+            instrumental_audio_path="/path/audio.flac",
+            output_dir="/output",
+            countdown_padding_seconds=3.0,  # Countdown padding enabled
+        )
+
+        job_manager = MagicMock()
+        storage = MagicMock()
+        job_logger = MagicMock()
+
+        orchestrator = VideoWorkerOrchestrator(
+            config=config,
+            job_manager=job_manager,
+            storage=storage,
+            job_logger=job_logger,
+        )
+
+        # Capture the EncodingInput that gets passed to the backend
+        captured_input = None
+
+        async def capture_encode(encoding_input):
+            nonlocal captured_input
+            captured_input = encoding_input
+            from backend.services.encoding_interface import EncodingOutput
+            return EncodingOutput(
+                success=True,
+                lossless_4k_mp4_path="/output/lossless.mp4",
+                encoding_time_seconds=1.0,
+                encoding_backend="mock",
+            )
+
+        with patch.object(orchestrator, "_get_encoding_backend") as mock_get:
+            mock_backend = MagicMock()
+            mock_backend.name = "mock"
+            mock_backend.encode = capture_encode
+            mock_get.return_value = mock_backend
+
+            await orchestrator._run_encoding()
+
+        # CRITICAL ASSERTION: countdown_padding_seconds must be passed through options
+        assert captured_input is not None, "encode() should have been called"
+        assert captured_input.options.get("countdown_padding_seconds") == 3.0, \
+            "Orchestrator must pass countdown_padding_seconds in EncodingInput.options"

@@ -366,6 +366,11 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         logger.info(f"  End video: {end_video}")
         logger.info(f"  Instrumental ({instrumental_selection}): {instrumental}")
 
+        # Check for countdown padding - if vocals were padded, instrumental must match
+        countdown_padding_seconds = config.get("countdown_padding_seconds")
+        if countdown_padding_seconds:
+            logger.info(f"  Countdown padding: {countdown_padding_seconds}s - will be handled by LocalEncodingService")
+
         # Validate required files
         if not title_video:
             raise ValueError(f"No title video found in {work_dir}. Check screens/ subdirectory.")
@@ -380,6 +385,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         jobs[job_id]["progress"] = 20
 
         # Build encoding config with proper file names
+        # Note: countdown_padding_seconds is passed to LocalEncodingService which handles padding
         encoding_config = EncodingConfig(
             title_video=str(title_video),
             karaoke_video=str(karaoke_video),
@@ -391,6 +397,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
             output_lossy_4k_mp4=str(output_dir / f"{base_name} (Final Karaoke Lossy 4k).mp4"),
             output_lossless_mkv=str(output_dir / f"{base_name} (Final Karaoke Lossless 4k).mkv"),
             output_720p_mp4=str(output_dir / f"{base_name} (Final Karaoke Lossy 720p).mp4"),
+            countdown_padding_seconds=countdown_padding_seconds,
         )
 
         # Create service and run encoding

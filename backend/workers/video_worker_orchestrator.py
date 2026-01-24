@@ -72,6 +72,9 @@ class OrchestratorConfig:
     # Instrumental selection (clean, with_backing, or custom)
     instrumental_selection: str = "clean"
 
+    # Audio synchronization - pad instrumental to match countdown-padded vocals
+    countdown_padding_seconds: Optional[float] = None
+
     # Encoding backend preference
     encoding_backend: str = "auto"  # "auto", "local", "gce"
 
@@ -355,8 +358,13 @@ class VideoWorkerOrchestrator:
                 "job_id": self.config.job_id,
                 "input_gcs_path": input_gcs_path,
                 "output_gcs_path": output_gcs_path,
+                "countdown_padding_seconds": self.config.countdown_padding_seconds,
             },
         )
+
+        # Log countdown info for debugging
+        if self.config.countdown_padding_seconds:
+            self.job_log.info(f"Countdown padding: {self.config.countdown_padding_seconds}s - instrumental will be padded")
 
         # Run encoding
         with job_span("encoding", self.config.job_id) as span:
@@ -696,6 +704,13 @@ def create_orchestrator_config_from_job(
     instrumental_selection = job.state_data.get('instrumental_selection', 'clean')
     existing_instrumental = getattr(job, 'existing_instrumental_gcs_path', None)
 
+    # Get countdown padding info from lyrics metadata
+    # This ensures instrumental is padded to match vocals if countdown was added
+    lyrics_metadata = job.state_data.get('lyrics_metadata', {})
+    countdown_padding_seconds = None
+    if lyrics_metadata.get('has_countdown_padding'):
+        countdown_padding_seconds = lyrics_metadata.get('countdown_padding_seconds', 3.0)
+
     if existing_instrumental:
         ext = Path(existing_instrumental).suffix.lower()
         instrumental_path = os.path.join(temp_dir, f"{base_name} (Instrumental User){ext}")
@@ -740,6 +755,9 @@ def create_orchestrator_config_from_job(
 
         # Instrumental selection (for GCE encoding)
         instrumental_selection=instrumental_selection,
+
+        # Audio synchronization - pad instrumental to match countdown-padded vocals
+        countdown_padding_seconds=countdown_padding_seconds,
 
         # Encoding backend - auto selects GCE if available
         encoding_backend="auto",
