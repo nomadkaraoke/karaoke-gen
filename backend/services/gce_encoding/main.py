@@ -294,33 +294,6 @@ def find_file(work_dir: Path, *patterns):
     return None
 
 
-def pad_audio_file(input_path: Path, output_path: Path, padding_seconds: float):
-    '''Pad an audio file by prepending silence at the beginning.
-
-    Uses FFmpeg adelay filter to match the behavior of KaraokeFinalise._pad_audio_file().
-    This ensures the instrumental audio is synchronized with countdown-padded vocals.
-
-    Args:
-        input_path: Path to input audio file
-        output_path: Path for the padded output file
-        padding_seconds: Amount of silence to prepend (in seconds)
-    '''
-    delay_ms = int(padding_seconds * 1000)
-
-    cmd = [
-        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-        "-i", str(input_path),
-        "-af", f"adelay={delay_ms}|{delay_ms}",
-        str(output_path)
-    ]
-
-    logger.info(f"Padding audio with {padding_seconds}s silence: {input_path.name} -> {output_path.name}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
-    if result.returncode != 0:
-        raise RuntimeError(f"FFmpeg padding failed: {result.stderr}")
-
-
 def run_encoding(job_id: str, work_dir: Path, config: dict):
     '''Run encoding using LocalEncodingService (single source of truth).
 
@@ -396,7 +369,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         # Check for countdown padding - if vocals were padded, instrumental must match
         countdown_padding_seconds = config.get("countdown_padding_seconds")
         if countdown_padding_seconds:
-            logger.info(f"  Countdown padding: {countdown_padding_seconds}s - will pad instrumental")
+            logger.info(f"  Countdown padding: {countdown_padding_seconds}s - will be handled by LocalEncodingService")
 
         # Validate required files
         if not title_video:
@@ -406,24 +379,17 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         if not instrumental:
             raise ValueError(f"No instrumental audio found in {work_dir}")
 
-        # If countdown padding was applied to vocals, pad the instrumental to match
-        actual_instrumental = instrumental
-        if countdown_padding_seconds and countdown_padding_seconds > 0:
-            padded_instrumental = instrumental.parent / f"{instrumental.stem} (Padded){instrumental.suffix}"
-            pad_audio_file(instrumental, padded_instrumental, countdown_padding_seconds)
-            actual_instrumental = padded_instrumental
-            logger.info(f"Using padded instrumental: {actual_instrumental}")
-
         output_dir = work_dir / "outputs"
         output_dir.mkdir(exist_ok=True)
 
         jobs[job_id]["progress"] = 20
 
         # Build encoding config with proper file names
+        # Note: countdown_padding_seconds is passed to LocalEncodingService which handles padding
         encoding_config = EncodingConfig(
             title_video=str(title_video),
             karaoke_video=str(karaoke_video),
-            instrumental_audio=str(actual_instrumental),
+            instrumental_audio=str(instrumental),
             end_video=str(end_video) if end_video else None,
             output_karaoke_mp4=str(output_dir / f"{base_name} (Karaoke).mp4"),
             output_with_vocals_mp4=str(output_dir / f"{base_name} (With Vocals).mp4"),
@@ -431,6 +397,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
             output_lossy_4k_mp4=str(output_dir / f"{base_name} (Final Karaoke Lossy 4k).mp4"),
             output_lossless_mkv=str(output_dir / f"{base_name} (Final Karaoke Lossless 4k).mkv"),
             output_720p_mp4=str(output_dir / f"{base_name} (Final Karaoke Lossy 720p).mp4"),
+            countdown_padding_seconds=countdown_padding_seconds,
         )
 
         # Create service and run encoding

@@ -200,6 +200,7 @@ class LocalEncodingBackend(EncodingBackend):
             output_lossy_4k_mp4=os.path.join(output_dir, f"{base_name} (Final Karaoke Lossy 4k).mp4"),
             output_lossless_mkv=os.path.join(output_dir, f"{base_name} (Final Karaoke Lossless 4k).mkv"),
             output_720p_mp4=os.path.join(output_dir, f"{base_name} (Final Karaoke Lossy 720p).mp4"),
+            countdown_padding_seconds=input_config.options.get("countdown_padding_seconds"),
         )
 
         # Run encoding in thread pool to avoid blocking

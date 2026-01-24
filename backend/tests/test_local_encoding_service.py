@@ -421,3 +421,199 @@ class TestGetLocalEncodingService:
         service = get_local_encoding_service(dry_run=True)
 
         assert service.dry_run is True
+
+
+class TestLocalEncodingServiceCountdownPadding:
+    """Tests for countdown padding in LocalEncodingService."""
+
+    def test_encoding_config_accepts_countdown_padding(self):
+        """EncodingConfig dataclass accepts countdown_padding_seconds."""
+        config = EncodingConfig(
+            title_video="/path/title.mov",
+            karaoke_video="/path/karaoke.mov",
+            instrumental_audio="/path/audio.flac",
+            countdown_padding_seconds=3.0,
+        )
+        assert config.countdown_padding_seconds == 3.0
+
+    def test_encoding_config_countdown_padding_default_none(self):
+        """EncodingConfig countdown_padding_seconds defaults to None."""
+        config = EncodingConfig(
+            title_video="/path/title.mov",
+            karaoke_video="/path/karaoke.mov",
+            instrumental_audio="/path/audio.flac",
+        )
+        assert config.countdown_padding_seconds is None
+
+    def test_pad_audio_file_method_exists(self):
+        """LocalEncodingService has _pad_audio_file method."""
+        service = LocalEncodingService()
+        assert hasattr(service, "_pad_audio_file")
+        assert callable(service._pad_audio_file)
+
+    @patch("subprocess.run")
+    def test_pad_audio_file_calls_ffmpeg_with_adelay(self, mock_run):
+        """_pad_audio_file uses ffmpeg adelay filter."""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        service = LocalEncodingService()
+        result = service._pad_audio_file(
+            "/input/audio.flac",
+            "/output/audio_padded.flac",
+            3.0
+        )
+
+        assert result == "/output/audio_padded.flac"
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        cmd = call_args[0][0]
+        assert "ffmpeg" in cmd
+        assert "-af" in cmd
+        # adelay should be 3000ms (3.0 * 1000) for both channels
+        af_index = cmd.index("-af")
+        assert "adelay=3000|3000" in cmd[af_index + 1]
+
+    def test_pad_audio_file_dry_run_skips_execution(self):
+        """_pad_audio_file in dry run mode doesn't execute ffmpeg."""
+        service = LocalEncodingService(dry_run=True)
+        result = service._pad_audio_file(
+            "/input/audio.flac",
+            "/output/audio_padded.flac",
+            3.0
+        )
+        # Should return output path without error (no subprocess called)
+        assert result == "/output/audio_padded.flac"
+
+    @patch("subprocess.run")
+    def test_pad_audio_file_raises_on_ffmpeg_error(self, mock_run):
+        """_pad_audio_file raises RuntimeError on FFmpeg failure."""
+        mock_run.return_value = MagicMock(returncode=1, stderr="ffmpeg: error processing audio")
+
+        service = LocalEncodingService()
+        with pytest.raises(RuntimeError, match="FFmpeg padding failed"):
+            service._pad_audio_file("/input/audio.flac", "/output/audio_padded.flac", 3.0)
+
+    @patch.object(LocalEncodingService, "_pad_audio_file")
+    @patch.object(LocalEncodingService, "remux_with_instrumental")
+    @patch.object(LocalEncodingService, "encode_lossless_mp4")
+    @patch("os.path.exists")
+    def test_encode_all_formats_pads_when_countdown_set(
+        self, mock_exists, mock_lossless, mock_remux, mock_pad
+    ):
+        """encode_all_formats pads instrumental when countdown_padding_seconds > 0."""
+        mock_exists.return_value = False  # Padded file doesn't exist
+        mock_pad.return_value = "/output/instrumental (Padded).flac"
+        mock_remux.return_value = True
+        mock_lossless.return_value = True
+
+        service = LocalEncodingService()
+        config = EncodingConfig(
+            title_video="/input/title.mov",
+            karaoke_video="/input/karaoke.mov",
+            instrumental_audio="/input/instrumental.flac",
+            output_karaoke_mp4="/output/karaoke.mp4",
+            output_lossless_4k_mp4="/output/lossless_4k.mp4",
+            countdown_padding_seconds=3.0,
+        )
+
+        result = service.encode_all_formats(config)
+
+        assert result.success is True
+        # Should have called _pad_audio_file with 3.0 seconds
+        mock_pad.assert_called_once()
+        call_args = mock_pad.call_args
+        assert call_args[0][0] == "/input/instrumental.flac"
+        assert call_args[0][2] == 3.0
+
+        # remux should use the padded path
+        mock_remux.assert_called_once()
+        remux_args = mock_remux.call_args
+        assert "(Padded)" in remux_args[0][1]
+
+    @patch.object(LocalEncodingService, "_pad_audio_file")
+    @patch.object(LocalEncodingService, "remux_with_instrumental")
+    @patch.object(LocalEncodingService, "encode_lossless_mp4")
+    def test_encode_all_formats_skips_padding_when_no_countdown(
+        self, mock_lossless, mock_remux, mock_pad
+    ):
+        """encode_all_formats skips padding when countdown_padding_seconds is None."""
+        mock_remux.return_value = True
+        mock_lossless.return_value = True
+
+        service = LocalEncodingService()
+        config = EncodingConfig(
+            title_video="/input/title.mov",
+            karaoke_video="/input/karaoke.mov",
+            instrumental_audio="/input/instrumental.flac",
+            output_karaoke_mp4="/output/karaoke.mp4",
+            output_lossless_4k_mp4="/output/lossless_4k.mp4",
+            # No countdown_padding_seconds
+        )
+
+        result = service.encode_all_formats(config)
+
+        assert result.success is True
+        # Should NOT have called _pad_audio_file
+        mock_pad.assert_not_called()
+
+        # remux should use the original path
+        mock_remux.assert_called_once()
+        remux_args = mock_remux.call_args
+        assert remux_args[0][1] == "/input/instrumental.flac"
+
+    @patch.object(LocalEncodingService, "_pad_audio_file")
+    @patch.object(LocalEncodingService, "remux_with_instrumental")
+    @patch.object(LocalEncodingService, "encode_lossless_mp4")
+    def test_encode_all_formats_skips_already_padded(
+        self, mock_lossless, mock_remux, mock_pad
+    ):
+        """encode_all_formats skips padding if file has (Padded) in name."""
+        mock_remux.return_value = True
+        mock_lossless.return_value = True
+
+        service = LocalEncodingService()
+        config = EncodingConfig(
+            title_video="/input/title.mov",
+            karaoke_video="/input/karaoke.mov",
+            instrumental_audio="/input/instrumental (Padded).flac",  # Already padded
+            output_karaoke_mp4="/output/karaoke.mp4",
+            output_lossless_4k_mp4="/output/lossless_4k.mp4",
+            countdown_padding_seconds=3.0,
+        )
+
+        result = service.encode_all_formats(config)
+
+        assert result.success is True
+        # Should NOT have called _pad_audio_file (already padded)
+        mock_pad.assert_not_called()
+
+        # remux should use the original path (which is already padded)
+        mock_remux.assert_called_once()
+        remux_args = mock_remux.call_args
+        assert remux_args[0][1] == "/input/instrumental (Padded).flac"
+
+    @patch.object(LocalEncodingService, "_pad_audio_file")
+    @patch.object(LocalEncodingService, "remux_with_instrumental")
+    @patch.object(LocalEncodingService, "encode_lossless_mp4")
+    def test_encode_all_formats_skips_padding_when_zero(
+        self, mock_lossless, mock_remux, mock_pad
+    ):
+        """encode_all_formats skips padding when countdown_padding_seconds is 0."""
+        mock_remux.return_value = True
+        mock_lossless.return_value = True
+
+        service = LocalEncodingService()
+        config = EncodingConfig(
+            title_video="/input/title.mov",
+            karaoke_video="/input/karaoke.mov",
+            instrumental_audio="/input/instrumental.flac",
+            output_karaoke_mp4="/output/karaoke.mp4",
+            output_lossless_4k_mp4="/output/lossless_4k.mp4",
+            countdown_padding_seconds=0,  # Zero, should skip padding
+        )
+
+        result = service.encode_all_formats(config)
+
+        assert result.success is True
+        # Should NOT have called _pad_audio_file (zero padding)
+        mock_pad.assert_not_called()

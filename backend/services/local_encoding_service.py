@@ -38,6 +38,9 @@ class EncodingConfig:
     output_lossless_mkv: Optional[str] = None
     output_720p_mp4: Optional[str] = None
 
+    # Audio synchronization
+    countdown_padding_seconds: Optional[float] = None  # Pad instrumental to match countdown-padded vocals
+
 
 @dataclass
 class EncodingResult:
@@ -260,6 +263,38 @@ class LocalEncodingService:
 
         return self._execute_command(cpu_command, description)
 
+    def _pad_audio_file(self, input_audio: str, output_audio: str, padding_seconds: float) -> str:
+        """Pad an audio file by prepending silence at the beginning.
+
+        Uses FFmpeg adelay filter - same approach as KaraokeFinalise._pad_audio_file().
+        This ensures the instrumental audio is synchronized with countdown-padded vocals.
+
+        Args:
+            input_audio: Path to input audio file
+            output_audio: Path for the padded output file
+            padding_seconds: Amount of silence to prepend (in seconds)
+
+        Returns:
+            Path to the output audio file
+        """
+        delay_ms = int(padding_seconds * 1000)
+        cmd = [
+            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            "-i", input_audio,
+            "-af", f"adelay={delay_ms}|{delay_ms}",
+            output_audio
+        ]
+        self.logger.info(f"Padding audio with {padding_seconds}s silence: {os.path.basename(input_audio)}")
+
+        if self.dry_run:
+            self.logger.info(f"DRY RUN: Would pad audio file")
+            return output_audio
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg padding failed: {result.stderr}")
+        return output_audio
+
     def remux_with_instrumental(
         self,
         input_video: str,
@@ -465,12 +500,27 @@ class LocalEncodingService:
         output_files = {}
 
         try:
+            # Pad instrumental if countdown padding was applied to vocals
+            actual_instrumental = config.instrumental_audio
+            if config.countdown_padding_seconds and config.countdown_padding_seconds > 0:
+                if "(Padded)" not in config.instrumental_audio:
+                    base, ext = os.path.splitext(config.instrumental_audio)
+                    padded_path = f"{base} (Padded){ext}"
+                    if not os.path.exists(padded_path) or self.dry_run:
+                        self._pad_audio_file(config.instrumental_audio, padded_path, config.countdown_padding_seconds)
+                        self.logger.info(f"Created padded instrumental: {padded_path}")
+                    else:
+                        self.logger.info(f"Using existing padded instrumental: {padded_path}")
+                    actual_instrumental = padded_path
+                else:
+                    self.logger.info(f"Instrumental already padded: {config.instrumental_audio}")
+
             # Step 1: Remux with instrumental audio
             if config.output_karaoke_mp4:
                 self.logger.info("[Step 1/6] Remuxing video with instrumental audio...")
                 if not self.remux_with_instrumental(
                     config.karaoke_video,
-                    config.instrumental_audio,
+                    actual_instrumental,
                     config.output_karaoke_mp4
                 ):
                     return EncodingResult(
