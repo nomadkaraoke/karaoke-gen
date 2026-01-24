@@ -176,6 +176,8 @@ function AdminJobsPageContent() {
   // Delete outputs state
   const [deleteOutputsDialogOpen, setDeleteOutputsDialogOpen] = useState(false)
   const [deletingOutputs, setDeletingOutputs] = useState(false)
+  const [deleteOutputsResult, setDeleteOutputsResult] = useState<DeleteOutputsResponse | null>(null)
+  const [deleteOutputsResultOpen, setDeleteOutputsResultOpen] = useState(false)
 
   // Clear workers state
   const [clearingWorkers, setClearingWorkers] = useState(false)
@@ -391,26 +393,11 @@ function AdminJobsPageContent() {
       setDeletingOutputs(true)
       const result = await adminApi.deleteJobOutputs(selectedJobId)
 
-      // Check for errors in individual services
-      const hasErrors = result.status === "error" || result.status === "partial_success"
-      const serviceResults = Object.entries(result.deleted_services)
-        .map(([service, r]: [string, any]) => `${service}: ${r.status}${r.error ? ` (${r.error})` : ''}`)
-        .join(", ")
-
-      if (hasErrors) {
-        toast({
-          title: result.status === "error" ? "Delete Failed" : "Partial Success",
-          description: `${result.message}. Services: ${serviceResults}`,
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Outputs Deleted",
-          description: `${result.message}. Cleared: ${result.cleared_state_data.join(", ") || "none"}`,
-        })
-      }
-
+      // Store result and show detailed result dialog
+      setDeleteOutputsResult(result)
       setDeleteOutputsDialogOpen(false)
+      setDeleteOutputsResultOpen(true)
+
       // Refresh job details
       loadJobDetail(selectedJobId)
       loadLogs(selectedJobId)
@@ -1389,6 +1376,124 @@ function AdminJobsPageContent() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Delete Outputs Result Dialog */}
+          <Dialog open={deleteOutputsResultOpen} onOpenChange={setDeleteOutputsResultOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {deleteOutputsResult?.status === "success" ? (
+                    <Check className="w-5 h-5 text-green-500" />
+                  ) : deleteOutputsResult?.status === "partial_success" ? (
+                    <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  )}
+                  {deleteOutputsResult?.status === "success"
+                    ? "Outputs Deleted Successfully"
+                    : deleteOutputsResult?.status === "partial_success"
+                      ? "Partial Success"
+                      : "Delete Failed"}
+                </DialogTitle>
+              </DialogHeader>
+              {deleteOutputsResult && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    {/* YouTube */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                        deleteOutputsResult.deleted_services.youtube.status === "deleted"
+                          ? "bg-green-500"
+                          : deleteOutputsResult.deleted_services.youtube.status === "skipped"
+                            ? "bg-gray-400"
+                            : "bg-red-500"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">YouTube</div>
+                        <div className="text-xs text-muted-foreground">
+                          {deleteOutputsResult.deleted_services.youtube.status === "deleted" && (
+                            <>Deleted video: <code className="text-xs bg-muted px-1 rounded">{deleteOutputsResult.deleted_services.youtube.video_id}</code></>
+                          )}
+                          {deleteOutputsResult.deleted_services.youtube.status === "skipped" && (
+                            <>{deleteOutputsResult.deleted_services.youtube.reason}</>
+                          )}
+                          {deleteOutputsResult.deleted_services.youtube.status === "error" && (
+                            <span className="text-red-500">{deleteOutputsResult.deleted_services.youtube.error}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dropbox */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                        deleteOutputsResult.deleted_services.dropbox.status === "deleted"
+                          ? "bg-green-500"
+                          : deleteOutputsResult.deleted_services.dropbox.status === "skipped"
+                            ? "bg-gray-400"
+                            : "bg-red-500"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">Dropbox</div>
+                        <div className="text-xs text-muted-foreground">
+                          {deleteOutputsResult.deleted_services.dropbox.status === "deleted" && (
+                            <>Deleted folder: <code className="text-xs bg-muted px-1 rounded break-all">{deleteOutputsResult.deleted_services.dropbox.path}</code></>
+                          )}
+                          {deleteOutputsResult.deleted_services.dropbox.status === "skipped" && (
+                            <>{deleteOutputsResult.deleted_services.dropbox.reason}</>
+                          )}
+                          {deleteOutputsResult.deleted_services.dropbox.status === "error" && (
+                            <span className="text-red-500">{deleteOutputsResult.deleted_services.dropbox.error}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Google Drive */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                        deleteOutputsResult.deleted_services.gdrive.status === "deleted"
+                          ? "bg-green-500"
+                          : deleteOutputsResult.deleted_services.gdrive.status === "skipped"
+                            ? "bg-gray-400"
+                            : "bg-red-500"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">Google Drive</div>
+                        <div className="text-xs text-muted-foreground">
+                          {deleteOutputsResult.deleted_services.gdrive.status === "deleted" && deleteOutputsResult.deleted_services.gdrive.files && (
+                            <>Deleted {Object.keys(deleteOutputsResult.deleted_services.gdrive.files).length} file(s)</>
+                          )}
+                          {deleteOutputsResult.deleted_services.gdrive.status === "skipped" && (
+                            <>{deleteOutputsResult.deleted_services.gdrive.reason}</>
+                          )}
+                          {deleteOutputsResult.deleted_services.gdrive.status === "error" && (
+                            <span className="text-red-500">{deleteOutputsResult.deleted_services.gdrive.error}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {deleteOutputsResult.cleared_state_data.length > 0 && (
+                    <div className="text-xs text-muted-foreground border-t pt-3">
+                      <span className="font-medium">Cleared from job:</span>{" "}
+                      {deleteOutputsResult.cleared_state_data.join(", ")}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-muted-foreground">
+                    Deleted at: {new Date(deleteOutputsResult.outputs_deleted_at).toLocaleString()}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end">
+                <Button onClick={() => setDeleteOutputsResultOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </TooltipProvider>
     )
