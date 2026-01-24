@@ -254,6 +254,8 @@ export default function LyricsAnalyzer({
         if (prev <= 1) {
           clearInterval(interval)
           if (isLocalMode) {
+            // Note: window.close() may be blocked by browsers if the window wasn't opened
+            // by script. The success screen shows "You can close this window now" as fallback.
             window.close()
           } else {
             router.push('/app')
