@@ -1,0 +1,176 @@
+{
+  "job_id": "b7fb1bad",
+  "artist": "Ayesha Erotica",
+  "title": "Emo Boy",
+  "created_at": "2026-01-16T03:26:01.860054",
+  "state_data": {
+    "audio_progress": {
+      "progress": 45,
+      "stage": "audio_complete",
+      "message": "Audio separation complete, uploading stems"
+    },
+    "gdrive_files": {
+      "mp4": "1zcI5Ez10crEtIMqgKpxwB4-NOkVqdi-j",
+      "cdg": "1fEhsEc6Dz784AkidlAniZXKC0nOgnt62",
+      "mp4_720p": "1PHbt7lqKVbI0fFM55KIrR5DXSIgC_gfT"
+    },
+    "blocking_action_type": "instrumental",
+    "video_progress": {
+      "stage": "running"
+    },
+    "reminder_sent": false,
+    "audio_complete": true,
+    "model_names": {
+      "clean_instrumental_model": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+      "other_stems_models": [
+        "htdemucs_6s.yaml"
+      ],
+      "backing_vocals_models": [
+        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+      ]
+    },
+    "screens_progress": {
+      "stage": "running"
+    },
+    "dropbox_link": "https://www.dropbox.com/scl/fo/ajfnjag6arhs943cwl5qp/AH6uJWq3mzUt6GE7z3-NKMw?rlkey=g274c7s638iic0vzcs8mdgq0c&dl=0",
+    "lyrics_complete": true,
+    "render_progress": {
+      "stage": "running"
+    },
+    "blocking_state_entered_at": "2026-01-16T03:49:53.835877",
+    "brand_code": "NOMAD-1200",
+    "youtube_url": "https://www.youtube.com/watch?v=BahEMhqbYuM",
+    "instrumental_options": {
+      "clean": "jobs/b7fb1bad/stems/instrumental_clean.flac",
+      "with_backing": "jobs/b7fb1bad/stems/instrumental_with_backing.flac"
+    },
+    "backing_vocals_analysis": {
+      "silence_threshold_db": -40.0,
+      "has_audible_content": true,
+      "total_duration_seconds": 154.096,
+      "total_audible_duration_seconds": 127.20000000000002,
+      "audible_percentage": 82.54594538469526,
+      "recommended_selection": "review_needed",
+      "audible_segments": [
+        {
+          "peak_amplitude_db": -18.34194450180868,
+          "duration_seconds": 14.899999999999999,
+          "start_seconds": 4.25,
+          "avg_amplitude_db": -27.566400615582605,
+          "end_seconds": 19.15
+        },
+        {
+          "peak_amplitude_db": -31.64938226073039,
+          "duration_seconds": 1.0999999999999979,
+          "start_seconds": 20.05,
+          "avg_amplitude_db": -36.15288332029338,
+          "end_seconds": 21.15
+        },
+        {
+          "peak_amplitude_db": -30.62745802113774,
+          "duration_seconds": 0.8500000000000014,
+          "start_seconds": 22.15,
+          "avg_amplitude_db": -37.0568794035573,
+          "end_seconds": 23.0
+        },
+        {
+          "peak_amplitude_db": -28.596052933257226,
+          "duration_seconds": 0.6500000000000021,
+          "start_seconds": 25.2,
+          "avg_amplitude_db": -32.65659559124204,
+          "end_seconds": 25.85
+        },
+        {
+          "peak_amplitude_db": -29.496951896912897,
+          "duration_seconds": 3.099999999999998,
+          "start_seconds": 27.55,
+          "avg_amplitude_db": -35.172290396381975,
+          "end_seconds": 30.65
+        },
+        {
+          "peak_amplitude_db": -16.44501579612001,
+          "duration_seconds": 30.950000000000003,
+          "start_seconds": 31.4,
+          "avg_amplitude_db": -26.51717024636331,
+          "end_seconds": 62.35
+        },
+        {
+          "peak_amplitude_db": -30.967404016304414,
+          "duration_seconds": 2.8500000000000085,
+          "start_seconds": 63.55,
+          "avg_amplitude_db": -36.18863305081222,
+          "end_seconds": 66.4
+        },
+        {
+          "peak_amplitude_db": -27.244900697508672,
+          "duration_seconds": 1.0999999999999943,
+          "start_seconds": 67.2,
+          "avg_amplitude_db": -33.202321962655155,
+          "end_seconds": 68.3
+        },
+        {
+          "peak_amplitude_db": -30.645497258438095,
+          "duration_seconds": 0.5999999999999943,
+          "start_seconds": 68.9,
+          "avg_amplitude_db": -35.88960413312907,
+          "end_seconds": 69.5
+        },
+        {
+          "peak_amplitude_db": -15.686897674875947,
+          "duration_seconds": 34.5,
+          "start_seconds": 70.25,
+          "avg_amplitude_db": -27.63418905205534,
+          "end_seconds": 104.75
+        },
+        {
+          "peak_amplitude_db": -22.147592981450646,
+          "duration_seconds": 2.3499999999999943,
+          "start_seconds": 105.7,
+          "avg_amplitude_db": -32.180359302295486,
+          "end_seconds": 108.05
+        },
+        {
+          "peak_amplitude_db": -22.928394263011292,
+          "duration_seconds": 2.3500000000000085,
+          "start_seconds": 109.3,
+          "avg_amplitude_db": -33.06258044979072,
+          "end_seconds": 111.65
+        },
+        {
+          "peak_amplitude_db": -21.54448254710377,
+          "duration_seconds": 0.9,
+          "start_seconds": 113.75,
+          "avg_amplitude_db": -30.641749924537535,
+          "end_seconds": 114.65
+        },
+        {
+          "peak_amplitude_db": -16.26728427047786,
+          "duration_seconds": 31.0,
+          "start_seconds": 116.75,
+          "avg_amplitude_db": -26.497988267548976,
+          "end_seconds": 147.75
+        }
+      ]
+    },
+    "lyrics_progress": {
+      "progress": 45,
+      "stage": "lyrics_complete",
+      "message": "Lyrics transcription complete"
+    },
+    "instrumental_selection": "with_backing",
+    "lyrics_metadata": {
+      "segment_count": 60,
+      "has_corrections": true,
+      "ready_for_review": true,
+      "has_countdown_padding": false,
+      "countdown_padding_seconds": 0.0
+    }
+  },
+  "files_downloaded": {
+    "corrections": "b7fb1bad_Ayesha_Erotica_Emo_Boy/corrections.json",
+    "reference_lrclib": "b7fb1bad_Ayesha_Erotica_Emo_Boy/reference_lrclib.txt",
+    "reference_genius": "b7fb1bad_Ayesha_Erotica_Emo_Boy/reference_genius.txt",
+    "reference_spotify": "b7fb1bad_Ayesha_Erotica_Emo_Boy/reference_spotify.txt",
+    "uncorrected": "b7fb1bad_Ayesha_Erotica_Emo_Boy/uncorrected.txt"
+  }
+}

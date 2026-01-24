@@ -1,0 +1,306 @@
+{
+  "job_id": "b19a183e",
+  "artist": "Footloose (Broadway Cast)",
+  "title": "I Can't Stand Still",
+  "created_at": "2026-01-07T03:41:12.164157",
+  "state_data": {
+    "audio_search_count": 7,
+    "instrumental_selection": "clean",
+    "audio_progress": {
+      "progress": 45,
+      "stage": "audio_complete",
+      "message": "Audio separation complete, uploading stems"
+    },
+    "selected_audio_provider": "RED",
+    "gdrive_files": {
+      "mp4": "1SpPrn7qGH4Ka1lkW23UEMWV3poDq35G6",
+      "cdg": "1jdO5NI5VeCf7vguP58GgM_yqJlJmbsPC",
+      "mp4_720p": "16tZ-vlpyEy_pZYJCwKwqJ8xFAXweB_PT"
+    },
+    "blocking_action_type": "instrumental",
+    "video_progress": {
+      "stage": "running"
+    },
+    "reminder_sent": false,
+    "render_progress": {
+      "stage": "running"
+    },
+    "model_names": {
+      "clean_instrumental_model": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+      "other_stems_models": [
+        "htdemucs_6s.yaml"
+      ],
+      "backing_vocals_models": [
+        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+      ]
+    },
+    "screens_progress": {
+      "stage": "running"
+    },
+    "audio_complete": true,
+    "selected_audio_index": 0,
+    "lyrics_complete": true,
+    "blocking_state_entered_at": "2026-01-07T04:11:44.680133",
+    "brand_code": "NOMAD-1194",
+    "youtube_url": "https://www.youtube.com/watch?v=Rx_LJ1NbykQ",
+    "instrumental_options": {
+      "clean": "jobs/b19a183e/stems/instrumental_clean.flac",
+      "with_backing": "jobs/b19a183e/stems/instrumental_with_backing.flac"
+    },
+    "dropbox_link": "https://www.dropbox.com/scl/fo/fes81wvm010fspfa5f59j/AGMs-6t6K7MG58eoVLmW4eI?rlkey=10wcat1joac3yzbn2kilnx7x3&dl=0",
+    "lyrics_progress": {
+      "progress": 45,
+      "stage": "lyrics_complete",
+      "message": "Lyrics transcription complete"
+    },
+    "backing_vocals_analysis": {
+      "audible_segments": [
+        {
+          "peak_amplitude_db": -38.898139901556405,
+          "end_seconds": 79.5,
+          "start_seconds": 79.35,
+          "avg_amplitude_db": -39.288780129952826,
+          "duration_seconds": 0.15
+        }
+      ],
+      "has_audible_content": true,
+      "total_duration_seconds": 132.307,
+      "total_audible_duration_seconds": 0.15,
+      "recommended_selection": "clean",
+      "audible_percentage": 0.11337268625242808,
+      "silence_threshold_db": -40.0
+    },
+    "lyrics_metadata": {
+      "segment_count": 40,
+      "has_corrections": true,
+      "ready_for_review": true,
+      "has_countdown_padding": false,
+      "countdown_padding_seconds": 0.0
+    },
+    "audio_search_results": [
+      {
+        "edition_info": "1999",
+        "source_id": null,
+        "index": 0,
+        "quality_data": {
+          "sample_rate": null,
+          "format": "FLAC",
+          "bitrate": null,
+          "media": "CD",
+          "bit_depth": 16
+        },
+        "provider": "RED",
+        "seeders": 5,
+        "target_file": "03 I Can\u2019t Stand Still.flac",
+        "match_score": 0.9473684210526315,
+        "formatted_size": "14.6 MB",
+        "channel": null,
+        "release_type": "Soundtrack",
+        "target_file_size": 15278534,
+        "is_lossless": true,
+        "title": "Footloose: Original Broadway Cast",
+        "quality": "FLAC 16bit CD",
+        "size_bytes": 355543695,
+        "artist": "Artie Harris",
+        "label": "Q Records",
+        "duration": null,
+        "url": null,
+        "formatted_duration": null,
+        "year": 1999,
+        "view_count": null
+      },
+      {
+        "source_id": null,
+        "edition_info": "1999",
+        "index": 1,
+        "quality_data": {
+          "media": "CD",
+          "format": "FLAC",
+          "bitrate": null,
+          "sample_rate": null,
+          "bit_depth": 16
+        },
+        "provider": "OPS",
+        "seeders": 3,
+        "target_file": "03 I Can\u2019t Stand Still.flac",
+        "match_score": 0.9473684210526315,
+        "formatted_size": "14.6 MB",
+        "channel": null,
+        "duration": null,
+        "release_type": "Soundtrack",
+        "is_lossless": true,
+        "title": "Footloose: Original Broadway Cast",
+        "quality": "FLAC 16bit CD",
+        "size_bytes": 355543695,
+        "artist": "Artie Harris",
+        "target_file_size": 15278534,
+        "label": "Q Records",
+        "url": null,
+        "formatted_duration": null,
+        "year": 1999,
+        "view_count": null
+      },
+      {
+        "source_id": null,
+        "edition_info": null,
+        "index": 2,
+        "target_file": null,
+        "provider": "YouTube",
+        "seeders": null,
+        "quality_data": {
+          "sample_rate": null,
+          "format": "OPUS",
+          "bitrate": 131,
+          "media": "WEB",
+          "bit_depth": null
+        },
+        "match_score": 0.0,
+        "formatted_size": "2.0 MB",
+        "target_file_size": null,
+        "release_type": null,
+        "channel": "Jeremy Kushnier",
+        "is_lossless": false,
+        "title": "I Can't Stand Still",
+        "quality": "OPUS 131kbps WEB",
+        "label": null,
+        "artist": "Jeremy Kushnier",
+        "duration": 131,
+        "size_bytes": 2149201,
+        "url": null,
+        "formatted_duration": "2:11",
+        "year": 2017,
+        "view_count": 243710
+      },
+      {
+        "source_id": null,
+        "edition_info": null,
+        "index": 3,
+        "quality_data": {
+          "sample_rate": null,
+          "format": "OPUS",
+          "bitrate": 136,
+          "media": "WEB",
+          "bit_depth": null
+        },
+        "provider": "YouTube",
+        "seeders": null,
+        "target_file": null,
+        "match_score": 0.0,
+        "formatted_size": "2.1 MB",
+        "target_file_size": null,
+        "release_type": null,
+        "duration": 132,
+        "is_lossless": false,
+        "title": "I Can't Stand Still (Karaoke Version)",
+        "quality": "OPUS 136kbps WEB",
+        "label": null,
+        "artist": "Jeremy Kushnier",
+        "size_bytes": 2253313,
+        "channel": "Ameritz Karaoke - Topic",
+        "url": null,
+        "formatted_duration": "2:12",
+        "year": 2014,
+        "view_count": 51811
+      },
+      {
+        "source_id": null,
+        "edition_info": null,
+        "index": 4,
+        "target_file": null,
+        "provider": "YouTube",
+        "seeders": null,
+        "quality_data": {
+          "sample_rate": null,
+          "format": "OPUS",
+          "bitrate": 135,
+          "media": "WEB",
+          "bit_depth": null
+        },
+        "match_score": 0.0,
+        "formatted_size": "3.8 MB",
+        "channel": "Jeremy Kushnier",
+        "duration": 233,
+        "target_file_size": null,
+        "is_lossless": false,
+        "title": "Why",
+        "quality": "OPUS 135kbps WEB",
+        "label": null,
+        "artist": "Jeremy Kushnier",
+        "size_bytes": 3942849,
+        "release_type": null,
+        "url": null,
+        "formatted_duration": "3:53",
+        "year": 2015,
+        "view_count": 349
+      },
+      {
+        "edition_info": null,
+        "source_id": null,
+        "index": 5,
+        "target_file": null,
+        "provider": "YouTube",
+        "seeders": null,
+        "quality_data": {
+          "sample_rate": null,
+          "format": "OPUS",
+          "bitrate": 135,
+          "media": "WEB",
+          "bit_depth": null
+        },
+        "match_score": 0.0,
+        "formatted_size": "4.6 MB",
+        "channel": "Jeremy Kushnier",
+        "duration": 286,
+        "target_file_size": null,
+        "is_lossless": false,
+        "title": "in time",
+        "quality": "OPUS 135kbps WEB",
+        "label": null,
+        "artist": "Jeremy Kushnier",
+        "size_bytes": 4843691,
+        "release_type": null,
+        "url": null,
+        "formatted_duration": "4:46",
+        "year": 2015,
+        "view_count": 40
+      },
+      {
+        "source_id": null,
+        "edition_info": null,
+        "index": 6,
+        "quality_data": {
+          "media": "WEB",
+          "format": "AAC",
+          "bitrate": 129,
+          "sample_rate": null,
+          "bit_depth": null
+        },
+        "provider": "YouTube",
+        "seeders": null,
+        "target_file": null,
+        "match_score": 0.0,
+        "formatted_size": "4.0 MB",
+        "channel": "Jeremy Kushnier",
+        "duration": 262,
+        "release_type": null,
+        "is_lossless": false,
+        "title": "angel light",
+        "quality": "AAC 129kbps WEB",
+        "label": null,
+        "artist": "Jeremy Kushnier",
+        "size_bytes": 4243481,
+        "target_file_size": null,
+        "url": null,
+        "formatted_duration": "4:22",
+        "year": 2015,
+        "view_count": 642
+      }
+    ],
+    "remote_search_id": "search_78be34cad85c"
+  },
+  "files_downloaded": {
+    "corrections": "b19a183e_Footloose_(Broadway_Cast)_I_Can't_Stand_Still/corrections.json",
+    "reference_spotify": "b19a183e_Footloose_(Broadway_Cast)_I_Can't_Stand_Still/reference_spotify.txt",
+    "uncorrected": "b19a183e_Footloose_(Broadway_Cast)_I_Can't_Stand_Still/uncorrected.txt"
+  }
+}

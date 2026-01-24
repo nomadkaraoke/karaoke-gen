@@ -1,0 +1,125 @@
+{
+  "job_id": "47dce1cc",
+  "artist": "Dale Hawkins",
+  "title": "Everglades",
+  "created_at": "2026-01-16T02:47:02.767189",
+  "state_data": {
+    "audio_progress": {
+      "progress": 45,
+      "stage": "audio_complete",
+      "message": "Audio separation complete, uploading stems"
+    },
+    "gdrive_files": {
+      "mp4": "1wFsfIgGueCffe5OSRjU3wrt74hBBxbd5",
+      "cdg": "1g101UGnmfGMOs0-QPOddWrNRypiK47EK",
+      "mp4_720p": "1VSawYdS7qlaPiunPSkK5YI51SNgYXuF_"
+    },
+    "blocking_action_type": "instrumental",
+    "video_progress": {
+      "stage": "running"
+    },
+    "reminder_sent": false,
+    "render_progress": {
+      "stage": "running"
+    },
+    "backing_vocals_analysis": {
+      "audible_segments": [
+        {
+          "peak_amplitude_db": -27.04577119965399,
+          "duration_seconds": 2.25,
+          "start_seconds": 1.55,
+          "avg_amplitude_db": -31.670107170209466,
+          "end_seconds": 3.8
+        },
+        {
+          "peak_amplitude_db": -31.11863115973439,
+          "duration_seconds": 0.3,
+          "start_seconds": 5.15,
+          "avg_amplitude_db": -34.419805526715265,
+          "end_seconds": 5.45
+        },
+        {
+          "peak_amplitude_db": -24.297089021395088,
+          "duration_seconds": 4.15,
+          "start_seconds": 6.5,
+          "avg_amplitude_db": -28.834978310057707,
+          "end_seconds": 10.65
+        },
+        {
+          "peak_amplitude_db": -21.811365966573018,
+          "duration_seconds": 8.0,
+          "start_seconds": 32.0,
+          "avg_amplitude_db": -25.08105616443135,
+          "end_seconds": 40.0
+        },
+        {
+          "peak_amplitude_db": -20.29329524084524,
+          "duration_seconds": 6.599999999999994,
+          "start_seconds": 64.0,
+          "avg_amplitude_db": -24.526172348253343,
+          "end_seconds": 70.6
+        },
+        {
+          "peak_amplitude_db": -21.519186891400683,
+          "duration_seconds": 13.349999999999994,
+          "start_seconds": 112.0,
+          "avg_amplitude_db": -28.095278870308146,
+          "end_seconds": 125.35
+        },
+        {
+          "peak_amplitude_db": -38.96847137601314,
+          "duration_seconds": 0.6500000000000057,
+          "start_seconds": 126.3,
+          "avg_amplitude_db": -39.28344591911453,
+          "end_seconds": 126.95
+        }
+      ],
+      "has_audible_content": true,
+      "total_duration_seconds": 132.867,
+      "total_audible_duration_seconds": 35.29999999999999,
+      "audible_percentage": 26.567921304763402,
+      "recommended_selection": "review_needed",
+      "silence_threshold_db": -40.0
+    },
+    "screens_progress": {
+      "stage": "running"
+    },
+    "dropbox_link": "https://www.dropbox.com/scl/fo/ao72w33igngom4yqtg6z5/AG_etxGFN8hqguc5W3thMpE?rlkey=lha1f9ueaoezvb3mfysyn1ae1&dl=0",
+    "lyrics_complete": true,
+    "model_names": {
+      "clean_instrumental_model": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+      "other_stems_models": [
+        "htdemucs_6s.yaml"
+      ],
+      "backing_vocals_models": [
+        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+      ]
+    },
+    "blocking_state_entered_at": "2026-01-16T03:08:18.853303",
+    "youtube_url": "https://www.youtube.com/watch?v=GKQ1kzvpjUc",
+    "audio_complete": true,
+    "instrumental_options": {
+      "with_backing": "jobs/47dce1cc/stems/instrumental_with_backing.flac",
+      "clean": "jobs/47dce1cc/stems/instrumental_clean.flac"
+    },
+    "brand_code": "NOMAD-1199",
+    "lyrics_progress": {
+      "progress": 45,
+      "stage": "lyrics_complete",
+      "message": "Lyrics transcription complete"
+    },
+    "instrumental_selection": "with_backing",
+    "lyrics_metadata": {
+      "has_corrections": true,
+      "countdown_padding_seconds": 0.0,
+      "ready_for_review": true,
+      "has_countdown_padding": false,
+      "segment_count": 22
+    }
+  },
+  "files_downloaded": {
+    "corrections": "47dce1cc_Dale_Hawkins_Everglades/corrections.json",
+    "reference_genius": "47dce1cc_Dale_Hawkins_Everglades/reference_genius.txt",
+    "uncorrected": "47dce1cc_Dale_Hawkins_Everglades/uncorrected.txt"
+  }
+}
