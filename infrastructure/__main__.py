@@ -97,10 +97,9 @@ backend_service_account = backend_sa.create_backend_service_account()
 backend_iam_bindings = backend_sa.grant_backend_permissions(backend_service_account)
 cloud_tasks_invoker = backend_sa.grant_cloud_tasks_invoker_permission()
 
-# NOTE: Cloud Build IAM binding removed - CI uses GitHub Actions, not Cloud Build.
-# The cloudbuild.yaml files are legacy (for manual use only). If Cloud Build is needed
-# in the future, manually grant roles/iam.serviceAccountUser to {project_number}-compute@
-# on the karaoke-backend service account.
+# NOTE: CI uses GitHub Actions for deployments, not Cloud Build.
+# If Cloud Build is ever needed, grant roles/iam.serviceAccountUser to
+# {project_number}-compute@ on the karaoke-backend service account.
 
 # GitHub Actions service account with Workload Identity Federation
 github_actions_service_account = github_actions_sa.create_github_actions_service_account()

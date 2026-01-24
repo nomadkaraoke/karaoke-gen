@@ -406,26 +406,8 @@ gcloud secrets versions add gdrive-service-account --data-file=./gdrive-sa.json
 
 ### Deploy Cloud Run
 
-```bash
-# Build and deploy
-gcloud builds submit --config=cloudbuild.yaml
-
-# Get outputs from Pulumi
-SA_EMAIL=$(pulumi stack output service_account_email)
-BUCKET_NAME=$(pulumi stack output bucket_name)
-
-# Deploy Cloud Run service
-gcloud run deploy karaoke-backend \
-  --image us-central1-docker.pkg.dev/YOUR-PROJECT/karaoke-repo/karaoke-backend:latest \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --service-account $SA_EMAIL \
-  --memory 2Gi \
-  --cpu 2 \
-  --timeout 600 \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=YOUR-PROJECT,GCS_BUCKET_NAME=$BUCKET_NAME"
-```
+Deployments happen automatically via GitHub Actions CI when pushing to `main`.
+See `.github/workflows/ci.yml` for the full deployment workflow.
 
 ### Point CLI to Your Backend
 
