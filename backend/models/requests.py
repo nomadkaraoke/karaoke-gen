@@ -57,19 +57,39 @@ class CorrectionsSubmission(BaseModel):
 class InstrumentalSelection(BaseModel):
     """
     Request to select instrumental audio option.
-    
+
     This is the second critical human-in-the-loop interaction point.
     User chooses between clean instrumental, instrumental with backing vocals,
     or a custom instrumental (created via create-custom-instrumental endpoint).
     """
     selection: str  # "clean", "with_backing", or "custom"
-    
+
     @validator('selection')
     def validate_selection(cls, v):
         """Validate selection is a valid option."""
         valid_options = ['clean', 'with_backing', 'custom']
         if v not in valid_options:
             raise ValueError(f"Selection must be one of: {valid_options}")
+        return v
+
+
+class CompleteReviewRequest(BaseModel):
+    """
+    Request to complete the review with optional instrumental selection.
+
+    For the combined review flow, this includes the instrumental selection.
+    For legacy flows, the instrumental_selection can be omitted.
+    """
+    instrumental_selection: Optional[str] = None  # "clean", "with_backing", or "custom"
+
+    @validator('instrumental_selection')
+    def validate_instrumental_selection(cls, v):
+        """Validate instrumental selection if provided."""
+        if v is None:
+            return v
+        valid_options = ['clean', 'with_backing', 'custom']
+        if v not in valid_options:
+            raise ValueError(f"instrumental_selection must be one of: {valid_options}")
         return v
 
 

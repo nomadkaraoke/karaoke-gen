@@ -19,6 +19,7 @@ from backend.models.requests import (
     StartReviewRequest,
     CancelJobRequest,
     InstrumentalSelection,
+    CompleteReviewRequest,
 )
 from backend.services.job_manager import JobManager
 from backend.services.worker_service import get_worker_service
@@ -573,13 +574,14 @@ async def submit_corrections(
 async def complete_review(
     job_id: str,
     background_tasks: BackgroundTasks,
-    auth_result: AuthResult = Depends(require_auth)
+    auth_result: AuthResult = Depends(require_auth),
+    body: Optional[CompleteReviewRequest] = None
 ) -> dict:
     """
     Complete the human review and trigger video rendering.
 
-    NOTE: This endpoint is for legacy/simple flows. The combined review flow
-    uses POST /api/review/{job_id}/complete which requires instrumental selection.
+    Supports both legacy flows (no body) and combined review flow (with instrumental_selection).
+    When instrumental_selection is provided, it's stored in state_data for the render worker.
 
     After this:
     1. Job transitions to REVIEW_COMPLETE
@@ -600,27 +602,34 @@ async def complete_review(
             status_code=400,
             detail=f"Job not in review state (current status: {job.status})"
         )
-    
+
     try:
+        # Store instrumental selection if provided (combined review flow)
+        instrumental_selection = body.instrumental_selection if body else None
+        if instrumental_selection:
+            job_manager.update_state_data(job_id, 'instrumental_selection', instrumental_selection)
+            logger.info(f"Job {job_id}: Stored instrumental selection: {instrumental_selection}")
+
         # Transition to REVIEW_COMPLETE
+        message = f"Review complete (instrumental: {instrumental_selection})" if instrumental_selection else "Review complete"
         job_manager.transition_to_state(
             job_id=job_id,
             new_status=JobStatus.REVIEW_COMPLETE,
             progress=70,
-            message="Review complete, rendering video with corrected lyrics"
+            message=f"{message}, rendering video with corrected lyrics"
         )
-        
+
         # Trigger render video worker
         background_tasks.add_task(worker_service.trigger_render_video_worker, job_id)
-        
+
         logger.info(f"Job {job_id}: Review complete, triggering render video worker")
-        
+
         return {
             "status": "success",
             "job_status": "review_complete",
             "message": "Review complete. Video rendering started."
         }
-        
+
     except Exception as e:
         logger.error(f"Error completing review for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
