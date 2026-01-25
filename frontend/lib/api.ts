@@ -8,8 +8,11 @@ import type { CorrectionData, CorrectionAnnotation } from './lyrics-review/types
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
-export const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? ''  // Relative URL - goes through Next.js proxy
+// For local mode (localhost or 127.0.0.1), use relative URLs
+const isLocalHostname = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+export const API_BASE_URL = isLocalHostname
+  ? ''  // Relative URL - goes to the local server
   : (process.env.NEXT_PUBLIC_API_URL || 'https://api.nomadkaraoke.com');
 
 // Token management - stored in localStorage (client-side only)
@@ -392,22 +395,30 @@ export const api = {
   },
   
   /**
-   * Complete the lyrics review with instrumental selection
+   * Complete the lyrics review with optional instrumental selection (combined flow)
    */
-  async completeReview(jobId: string, instrumentalSelection: InstrumentalSelectionType): Promise<{ status: string; job_status: string; message: string }> {
+  async completeReview(jobId: string, instrumentalSelection?: InstrumentalSelectionType): Promise<{ status: string; job_status: string; message: string }> {
+    const body = instrumentalSelection ? { instrumental_selection: instrumentalSelection } : undefined;
     const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify({ instrumental_selection: instrumentalSelection })
+      headers: body ? { 'Content-Type': 'application/json', ...getAuthHeaders() } : getAuthHeaders(),
+      body: body ? JSON.stringify(body) : undefined
     });
     return handleResponse(response);
   },
-
+  
   /**
-   * Select an instrumental (for finalise-only jobs that use the separate selection flow)
+   * Get instrumental options
+   */
+  async getInstrumentalOptions(jobId: string): Promise<InstrumentalOptionsResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-options`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+  
+  /**
+   * Select an instrumental
    */
   async selectInstrumental(
     jobId: string,
@@ -421,6 +432,63 @@ export const api = {
     return handleResponse(response);
   },
 
+  /**
+   * Get instrumental analysis data for review
+   */
+  async getInstrumentalAnalysis(jobId: string): Promise<InstrumentalAnalysis> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-analysis`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get waveform data for visualization
+   */
+  async getWaveformData(jobId: string, numPoints: number = 1000): Promise<WaveformData> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/jobs/${jobId}/waveform-data?num_points=${numPoints}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Upload a custom instrumental file
+   */
+  async uploadCustomInstrumental(jobId: string, file: File): Promise<{ status: string; duration_seconds: number; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/upload-instrumental`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Create a custom instrumental with mute regions
+   */
+  async createCustomInstrumental(jobId: string, muteRegions: MuteRegion[]): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/create-custom-instrumental`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ mute_regions: muteRegions }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get audio stream URL for a specific stem type
+   */
+  getAudioStreamUrl(jobId: string, stemType: string): string {
+    const token = getAccessToken();
+    const base = `${API_BASE_URL}/api/jobs/${jobId}/audio-stream/${stemType}`;
+    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+  },
+  
   /**
    * Get download URLs for completed job
    */
@@ -1628,7 +1696,7 @@ export interface LyricsReviewApiClient {
     preview_hash?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
-  completeReview: (instrumentalSelection: InstrumentalSelectionType) => Promise<{ status: string; job_status: string; message: string }>
+  completeReview: () => Promise<{ status: string; job_status: string; message: string }>
 }
 
 /**
@@ -1749,16 +1817,12 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     },
 
     /**
-     * Complete the review with instrumental selection and trigger video rendering
+     * Complete the review and trigger video rendering
      */
-    async completeReview(instrumentalSelection: InstrumentalSelectionType): Promise<{ status: string; job_status: string; message: string }> {
+    async completeReview(): Promise<{ status: string; job_status: string; message: string }> {
       const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({ instrumental_selection: instrumentalSelection })
+        headers: getAuthHeaders()
       })
       return handleResponse(response)
     },

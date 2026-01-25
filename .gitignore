@@ -3,6 +3,7 @@
 .vscode
 *.csv
 *.mp3
+ABBA*
 
 # Andrew functional adds
 /audio/

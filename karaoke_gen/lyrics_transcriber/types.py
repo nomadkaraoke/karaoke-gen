@@ -615,19 +615,19 @@ class CorrectionResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert the correction result to a JSON-serializable dictionary."""
         return {
-            "original_segments": [s.to_dict() for s in self.original_segments],
-            "reference_lyrics": {source: lyrics.to_dict() for source, lyrics in self.reference_lyrics.items()},
-            "anchor_sequences": [a.to_dict() for a in self.anchor_sequences],
-            "gap_sequences": [g.to_dict() for g in self.gap_sequences],
-            "resized_segments": [s.to_dict() for s in self.resized_segments],
+            "original_segments": [s.to_dict() for s in self.original_segments] if self.original_segments else [],
+            "reference_lyrics": {source: lyrics.to_dict() for source, lyrics in self.reference_lyrics.items()} if self.reference_lyrics else {},
+            "anchor_sequences": [a.to_dict() for a in self.anchor_sequences] if self.anchor_sequences else [],
+            "gap_sequences": [g.to_dict() for g in self.gap_sequences] if self.gap_sequences else [],
+            "resized_segments": [s.to_dict() for s in self.resized_segments] if self.resized_segments else [],
             "corrections_made": self.corrections_made,
             "confidence": self.confidence,
-            "corrections": [c.to_dict() for c in self.corrections],
-            "corrected_segments": [s.to_dict() for s in self.corrected_segments],
-            "metadata": self.metadata,
-            "correction_steps": [step.to_dict() for step in self.correction_steps],
-            "word_id_map": self.word_id_map,
-            "segment_id_map": self.segment_id_map,
+            "corrections": [c.to_dict() for c in self.corrections] if self.corrections else [],
+            "corrected_segments": [s.to_dict() for s in self.corrected_segments] if self.corrected_segments else [],
+            "metadata": self.metadata or {},
+            "correction_steps": [step.to_dict() for step in self.correction_steps] if self.correction_steps else [],
+            "word_id_map": self.word_id_map or {},
+            "segment_id_map": self.segment_id_map or {},
         }
 
     @classmethod

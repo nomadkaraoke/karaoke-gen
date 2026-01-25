@@ -15,6 +15,7 @@ import json
 import asyncio
 import time
 import glob
+import shutil
 import pyperclip
 from karaoke_gen import KaraokePrep
 from karaoke_gen.karaoke_finalise import KaraokeFinalise
@@ -23,6 +24,9 @@ from karaoke_gen.instrumental_review import AudioAnalyzer
 from karaoke_gen.lyrics_transcriber.types import CorrectionResult
 from karaoke_gen.lyrics_transcriber.review.server import ReviewServer
 from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
+from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
+from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+from karaoke_gen.utils import sanitize_filename
 from .cli_args import create_parser, process_style_overrides, is_url, is_file
 
 
@@ -152,11 +156,14 @@ def run_combined_review(
     logger: logging.Logger,
 ) -> tuple[str | None, CorrectionResult | None]:
     """
-    Run the combined lyrics + instrumental review UI.
+    Run the sequential review UI (lyrics review → instrumental review).
 
-    This unified review shows both the lyrics editor and instrumental selector
-    in the same UI, allowing the user to review and edit lyrics while also
-    selecting the best instrumental track.
+    This starts the ReviewServer which serves a two-step review flow:
+    1. Lyrics Review: User edits lyrics and previews video with vocals
+    2. Instrumental Review: User selects the best instrumental track
+
+    The user proceeds from step 1 to step 2, then submits both corrections
+    and instrumental selection together.
 
     Args:
         track: The track dictionary from KaraokePrep containing separated audio info
@@ -283,9 +290,9 @@ def run_combined_review(
     if not resolved_audio:
         logger.warning("No audio file found for review")
 
-    logger.info("=== Starting Combined Review ===")
+    logger.info("=== Starting Interactive Review (Lyrics → Instrumental) ===")
     if instrumental_options:
-        logger.info(f"Including {len(instrumental_options)} instrumental options")
+        logger.info(f"Prepared {len(instrumental_options)} instrumental options for selection")
     else:
         logger.info("No instrumental options available (lyrics-only review)")
 
@@ -305,7 +312,7 @@ def run_combined_review(
         )
         reviewed_result = review_server.start()
 
-        logger.info("Combined review completed")
+        logger.info("Interactive review completed")
 
         # Get instrumental selection
         instrumental_selection = review_server.instrumental_selection
@@ -326,7 +333,7 @@ def run_combined_review(
         logger.info("Combined review cancelled by user")
         return None, None
     except Exception as e:
-        logger.error(f"Error during combined review: {e}")
+        logger.error(f"Error during interactive review: {e}")
         return None, None
 
 
@@ -792,14 +799,18 @@ async def async_main():
         logger.info("Lyrics-only mode enabled: skipping audio separation and title/end screen generation")
 
     # Step 1: Run KaraokePrep
-    # NOTE: For combined review flow, we ALWAYS skip transcription review during KaraokePrep.
-    # This is because transcription and separation run in parallel, and we want the combined
+    # NOTE: For interactive review flow, we ALWAYS skip transcription review during KaraokePrep.
+    # This is because transcription and separation run in parallel, and we want the interactive
     # review UI to have access to both lyrics data AND instrumental options.
-    # The combined review runs AFTER KaraokePrep completes (in the finalisation loop).
+    # The interactive review runs AFTER KaraokePrep completes (in the finalisation loop).
     # If user explicitly wants no review (either flag), we respect that.
     skip_transcription_review = args.skip_transcription_review
     skip_instrumental_review = getattr(args, 'skip_instrumental_review', False)
-    user_wants_combined_review = not skip_transcription_review and not skip_instrumental_review
+    review_enabled = not skip_transcription_review and not skip_instrumental_review
+
+    # When review is enabled, defer video rendering until AFTER review
+    # (only render in KaraokePrep if review is skipped for non-interactive mode)
+    render_video_in_prep = (not args.no_video) and not review_enabled
 
     kprep_coroutine = KaraokePrep(
         input_media=input_media,
@@ -826,14 +837,14 @@ async def async_main():
         lyrics_file=args.lyrics_file,
         skip_lyrics=args.skip_lyrics,
         skip_transcription=args.skip_transcription,
-        skip_transcription_review=True,  # Always defer review to combined review
+        skip_transcription_review=True,  # Always defer review to interactive review flow
         subtitle_offset_ms=args.subtitle_offset_ms,
         style_params_json=args.style_params_json,
         style_overrides=style_overrides,
         background_video=args.background_video,
         background_video_darkness=args.background_video_darkness,
         auto_download=getattr(args, 'auto_download', False),
-        render_video=not args.no_video,
+        render_video=render_video_in_prep,  # Only render if review is skipped
     )
     # No await needed for constructor
     kprep = kprep_coroutine
@@ -873,7 +884,7 @@ async def async_main():
         logger.info(f"Changing to directory: {track_dir}")
         os.chdir(track_dir)
 
-        # Select instrumental file - either via combined review, auto-selection, or custom
+        # Select instrumental file - either via interactive review, auto-selection, or custom
         # Combined review shows both lyrics editor AND instrumental selector in same UI
         selected_instrumental_file = None
         skip_all_review = getattr(args, 'skip_instrumental_review', False)
@@ -908,8 +919,8 @@ async def async_main():
                 logger.error("Check that audio separation completed successfully.")
                 sys.exit(1)
                 return  # Explicit return for testing
-        elif user_wants_combined_review:
-            # Run combined review UI (lyrics + instrumental in one)
+        elif review_enabled:
+            # Run interactive review UI (lyrics review → instrumental review)
             # Find the corrections JSON file
             artist_name = track.get("artist", "Unknown")
             title_name = track.get("title", "Unknown")
@@ -933,7 +944,7 @@ async def async_main():
             # Get audio file path
             audio_filepath = track.get("input_audio_wav", "")
 
-            logger.info("Running combined review (lyrics + instrumental)...")
+            logger.info("Running interactive review (lyrics → instrumental)...")
             instrumental_selection, reviewed_result = run_combined_review(
                 track=track,
                 track_dir=track_dir,
@@ -943,6 +954,86 @@ async def async_main():
                 render_video=not args.no_video,
                 logger=logger,
             )
+
+            # After review, render the video (was deferred during KaraokePrep)
+            if not args.no_video and reviewed_result:
+                logger.info("=== Rendering Video After Review ===")
+
+                # Set up paths (we're already in track_dir due to os.chdir above)
+                sanitized_artist = sanitize_filename(artist_name)
+                sanitized_title = sanitize_filename(title_name)
+                lyrics_dir = "lyrics"  # Relative to current dir (track_dir)
+                cache_dir = "cache"    # Relative to current dir (track_dir)
+                os.makedirs(cache_dir, exist_ok=True)
+
+                # Process countdown (pad audio, shift timestamps)
+                logger.info("Processing countdown intro (if needed)...")
+                countdown_processor = CountdownProcessor(
+                    cache_dir=cache_dir,
+                    logger=logger,
+                )
+
+                # Resolve audio path for current working directory (we've os.chdir'd into track_dir)
+                resolved_audio_filepath = _resolve_path_for_cwd(audio_filepath, track_dir)
+
+                reviewed_result, padded_audio_path, padding_added, padding_seconds = countdown_processor.process(
+                    correction_result=reviewed_result,
+                    audio_filepath=resolved_audio_filepath,
+                )
+
+                # Update track with countdown info
+                if padding_added:
+                    track["countdown_padding_added"] = True
+                    track["countdown_padding_seconds"] = padding_seconds
+                    track["padded_vocals_audio"] = padded_audio_path
+                    logger.info(
+                        f"Added {padding_seconds}s countdown padding to audio and shifted timestamps."
+                    )
+                else:
+                    logger.info("No countdown needed - song starts after 3 seconds")
+
+                # Save the updated corrections with countdown timestamps
+                with open(corrections_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(reviewed_result.to_dict(), f, indent=2)
+                logger.info(f"Saved countdown-adjusted corrections to: {corrections_json_path}")
+
+                # Render video with the reviewed lyrics
+                logger.info("Rendering karaoke video with synchronized lyrics...")
+
+                output_config = OutputConfig(
+                    output_dir=lyrics_dir,
+                    cache_dir=cache_dir,
+                    output_styles_json=args.style_params_json,
+                    render_video=True,
+                    generate_cdg=False,
+                    generate_plain_text=False,
+                    generate_lrc=False,
+                    video_resolution="4k",
+                )
+
+                output_generator = OutputGenerator(output_config, logger)
+                output_prefix = f"{sanitized_artist} - {sanitized_title}"
+
+                outputs = output_generator.generate_outputs(
+                    transcription_corrected=reviewed_result,
+                    lyrics_results={},
+                    audio_filepath=padded_audio_path,
+                    output_prefix=output_prefix,
+                )
+
+                # Copy video to expected location in track directory (we're in track_dir)
+                if outputs and outputs.video:
+                    source_video = outputs.video
+                    artist_title = f"{sanitized_artist} - {sanitized_title}"
+                    dest_video = f"{artist_title} (With Vocals).mkv"  # Current dir is track_dir
+                    shutil.copy2(source_video, dest_video)
+                    logger.info(f"Video rendered successfully: {dest_video}")
+                    track["with_vocals_video"] = dest_video
+
+                    if outputs.ass:
+                        track["ass_filepath"] = outputs.ass
+                else:
+                    logger.warning("Video rendering did not produce expected output")
 
             # Map instrumental selection to file path
             if instrumental_selection:

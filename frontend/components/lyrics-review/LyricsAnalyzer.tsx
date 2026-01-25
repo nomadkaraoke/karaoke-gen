@@ -71,7 +71,7 @@ interface ApiClient {
     preview_hash?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
-  completeReview: (instrumentalSelection: InstrumentalSelectionType) => Promise<{ status: string; job_status: string; message: string }>
+  completeReview: () => Promise<{ status: string; job_status: string; message: string }>
 }
 
 export interface LyricsAnalyzerProps {
@@ -131,6 +131,7 @@ export default function LyricsAnalyzer({
   // Success screen state (for auto-close after submission)
   const [showSuccess, setShowSuccess] = useState(false)
   const [countdown, setCountdown] = useState(2)
+  const [showInstrumentalReview, setShowInstrumentalReview] = useState(false)
 
   // Annotation state
   const [annotations, setAnnotations] = useState<Omit<CorrectionAnnotation, 'annotation_id' | 'timestamp'>[]>([])
@@ -245,6 +246,14 @@ export default function LyricsAnalyzer({
     isReplaceAllLyricsModalOpen,
     isTimingOffsetModalOpen,
   ])
+
+  // Effect to handle local mode navigation to instrumental review
+  useEffect(() => {
+    if (showInstrumentalReview && isLocalMode) {
+      // In local mode, redirect to instrumental page served by ReviewServer
+      window.location.href = `/app/jobs/local/instrumental`
+    }
+  }, [showInstrumentalReview, isLocalMode])
 
   // Countdown effect for success screen (auto-close/redirect after submission)
   useEffect(() => {
@@ -610,8 +619,8 @@ export default function LyricsAnalyzer({
     setIsReviewModalOpen(true)
   }, [])
 
-  // Submit to server
-  const handleSubmitToServer = useCallback(async (instrumentalSelection: InstrumentalSelectionType) => {
+  // Submit to server (save corrections, don't complete review yet)
+  const handleSubmitToServer = useCallback(async () => {
     if (!apiClient) return
 
     setIsSubmitting(true)
@@ -619,8 +628,10 @@ export default function LyricsAnalyzer({
       const dataToSubmit =
         timingOffsetMs !== 0 ? applyOffsetToCorrectionData(data, timingOffsetMs) : data
 
+      // 1. Save corrections (not final submission yet)
       await apiClient.submitCorrections(dataToSubmit)
 
+      // 2. Save annotations
       if (annotations.length > 0) {
         try {
           await apiClient.submitAnnotations(annotations)
@@ -629,28 +640,26 @@ export default function LyricsAnalyzer({
         }
       }
 
-      // Complete review with instrumental selection and trigger video rendering
-      await apiClient.completeReview(instrumentalSelection)
-
-      setIsReviewComplete(true)
+      // 3. Close modal
       setIsReviewModalOpen(false)
+      setIsSubmitting(false)
 
+      // 4. Navigate to instrumental review
       if (isLocalMode) {
-        // In local mode, show success screen with countdown then close
-        setShowSuccess(true)
-        setCountdown(2)
+        // Local mode: Show transition message, navigation handled by browser/server
+        toast.success('Lyrics saved! Loading instrumental review...')
+        setShowInstrumentalReview(true)
       } else {
-        // Cloud mode: show success screen with countdown, then redirect
-        setShowSuccess(true)
-        setCountdown(3)
+        // Cloud mode: Navigate to instrumental review page
+        toast.success('Lyrics saved! Proceeding to instrumental review...')
+        router.push(`/app/jobs/local/instrumental`)
       }
-      // Note: Don't reset isSubmitting on success - we transition to success screen
     } catch (error) {
       console.error('Failed to submit corrections:', error)
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, annotations, isLocalMode])
+  }, [apiClient, data, timingOffsetMs, annotations, isLocalMode, router])
 
   // Play segment handler
   const handlePlaySegment = useCallback(

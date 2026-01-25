@@ -291,12 +291,13 @@ class VideoGenerator:
             font_path = karaoke_styles.get("font_path")
 
             # Build config for LocalPreviewEncodingService
+            # Force black background for preview videos (ignore background_image from styles)
             config = PreviewEncodingConfig(
                 ass_path=temp_ass_path,
                 audio_path=audio_path,
                 output_path=output_path,
-                background_image_path=self.background_image,
-                background_color=self.background_color,
+                background_image_path=None,  # Always use solid color for previews
+                background_color="black",  # Always use black background for previews
                 font_path=font_path if font_path and os.path.isfile(font_path) else None,
             )
 
