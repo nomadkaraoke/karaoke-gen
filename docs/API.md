@@ -871,7 +871,66 @@ Response:
   "previous_status": "complete",
   "new_status": "awaiting_review",
   "message": "Job reset from complete to awaiting_review",
-  "cleared_data": ["review_complete", "corrected_lyrics", "instrumental_selection"]
+  "cleared_data": ["review_complete", "corrected_lyrics", "instrumental_selection"],
+  "worker_triggered": null,
+  "worker_trigger_error": null
+}
+```
+
+When resetting to `instrumental_selected`, the response includes worker trigger status:
+```json
+{
+  "status": "success",
+  "job_id": "abc123",
+  "previous_status": "complete",
+  "new_status": "instrumental_selected",
+  "message": "Job reset from complete to instrumental_selected",
+  "cleared_data": ["video_progress", "render_progress", "screens_progress", "encoding_progress", "distribution", "brand_code", "youtube_url", "youtube_video_id", "dropbox_link", "gdrive_files"],
+  "worker_triggered": true,
+  "worker_trigger_error": null
+}
+```
+
+If the worker trigger fails, `worker_triggered` will be `false` and `worker_trigger_error` will contain an error message. The job reset still succeeds, but you'll need to manually trigger the worker using the endpoint below.
+
+#### Trigger Worker (Manual)
+
+```http
+POST /api/admin/jobs/{job_id}/trigger-worker
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{
+  "worker_type": "video"
+}
+```
+
+Manually triggers a worker for a job. Use this when the auto-trigger fails after a reset, or to re-run processing without resetting state.
+
+Supported worker types:
+- `video` - Video processing worker (for jobs in `instrumental_selected` state)
+
+Response:
+```json
+{
+  "status": "success",
+  "job_id": "abc123",
+  "worker_type": "video",
+  "triggered": true,
+  "message": "Video worker triggered successfully for job abc123",
+  "error": null
+}
+```
+
+If triggering fails:
+```json
+{
+  "status": "error",
+  "job_id": "abc123",
+  "worker_type": "video",
+  "triggered": false,
+  "message": "Failed to trigger video worker for job abc123",
+  "error": "Job is in wrong state for video processing"
 }
 ```
 

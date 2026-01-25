@@ -1415,6 +1415,25 @@ export const adminApi = {
     return handleResponse(response);
   },
 
+  /**
+   * Manually trigger a worker for a job (admin only).
+   * Use when auto-trigger fails after reset, or to re-run processing.
+   */
+  async triggerWorker(jobId: string, workerType: string = "video"): Promise<TriggerWorkerResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/jobs/${jobId}/trigger-worker`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ worker_type: workerType }),
+      }
+    );
+    return handleResponse(response);
+  },
+
   // =========================================================================
   // Rate Limits API
   // =========================================================================
@@ -1633,6 +1652,17 @@ export interface JobResetResponse {
   new_status: string;
   message: string;
   cleared_data: string[];
+  worker_triggered?: boolean;  // Was worker auto-triggered? (only for instrumental_selected)
+  worker_trigger_error?: string;  // Error message if trigger failed
+}
+
+export interface TriggerWorkerResponse {
+  status: string;
+  job_id: string;
+  worker_type: string;
+  triggered: boolean;
+  message: string;
+  error?: string;
 }
 
 export interface ClearWorkersResponse {

@@ -1,0 +1,494 @@
+{
+  "job_id": "d19a7826",
+  "artist": "Ayesha Erotica",
+  "title": "Make U Cum",
+  "created_at": "2026-01-16T05:08:51.109679",
+  "state_data": {
+    "audio_progress": {
+      "progress": 45,
+      "stage": "audio_complete",
+      "message": "Audio separation complete, uploading stems"
+    },
+    "gdrive_files": {},
+    "blocking_action_type": "instrumental",
+    "video_progress": {
+      "stage": "running"
+    },
+    "reminder_sent": false,
+    "audio_complete": true,
+    "model_names": {
+      "clean_instrumental_model": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+      "other_stems_models": [
+        "htdemucs_6s.yaml"
+      ],
+      "backing_vocals_models": [
+        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+      ]
+    },
+    "screens_progress": {
+      "stage": "running"
+    },
+    "dropbox_link": "https://www.dropbox.com/scl/fo/v7hcdwqcpqn5brcjxga9p/ACOv2Umuwf_suSqP-7NGqyQ?rlkey=cfphqizthbj2y6obfgivm5w6b&dl=0",
+    "lyrics_complete": true,
+    "render_progress": {
+      "stage": "running"
+    },
+    "blocking_state_entered_at": "2026-01-16T05:37:41.150150",
+    "brand_code": "NOMAD-1201",
+    "youtube_url": "https://www.youtube.com/watch?v=LviYC5ZNVnk",
+    "instrumental_options": {
+      "clean": "jobs/d19a7826/stems/instrumental_clean.flac",
+      "with_backing": "jobs/d19a7826/stems/instrumental_with_backing.flac"
+    },
+    "backing_vocals_analysis": {
+      "silence_threshold_db": -40.0,
+      "has_audible_content": true,
+      "total_duration_seconds": 201.231,
+      "total_audible_duration_seconds": 100.84999999999995,
+      "audible_percentage": 50.116532740979245,
+      "recommended_selection": "review_needed",
+      "audible_segments": [
+        {
+          "peak_amplitude_db": -33.64605646093865,
+          "duration_seconds": 1.4500000000000002,
+          "start_seconds": 0.65,
+          "avg_amplitude_db": -36.947912240222315,
+          "end_seconds": 2.1
+        },
+        {
+          "peak_amplitude_db": -34.33598579028897,
+          "duration_seconds": 0.2,
+          "start_seconds": 16.05,
+          "avg_amplitude_db": -36.3825072587903,
+          "end_seconds": 16.25
+        },
+        {
+          "peak_amplitude_db": -33.198615585838354,
+          "duration_seconds": 0.9000000000000021,
+          "start_seconds": 17.15,
+          "avg_amplitude_db": -35.98958773131671,
+          "end_seconds": 18.05
+        },
+        {
+          "peak_amplitude_db": -31.927436851672873,
+          "duration_seconds": 1.0,
+          "start_seconds": 19.0,
+          "avg_amplitude_db": -36.06169710264749,
+          "end_seconds": 20.0
+        },
+        {
+          "peak_amplitude_db": -31.41934525619098,
+          "duration_seconds": 0.8000000000000007,
+          "start_seconds": 20.95,
+          "avg_amplitude_db": -35.56707402511592,
+          "end_seconds": 21.75
+        },
+        {
+          "peak_amplitude_db": -33.054448132834864,
+          "duration_seconds": 1.0500000000000007,
+          "start_seconds": 22.7,
+          "avg_amplitude_db": -35.948241670929015,
+          "end_seconds": 23.75
+        },
+        {
+          "peak_amplitude_db": -31.03324215228325,
+          "duration_seconds": 0.7,
+          "start_seconds": 24.7,
+          "avg_amplitude_db": -35.95175080044296,
+          "end_seconds": 25.4
+        },
+        {
+          "peak_amplitude_db": -34.01073507369288,
+          "duration_seconds": 0.4499999999999993,
+          "start_seconds": 26.8,
+          "avg_amplitude_db": -36.26402153848263,
+          "end_seconds": 27.25
+        },
+        {
+          "peak_amplitude_db": -27.306155462223188,
+          "duration_seconds": 0.9499999999999993,
+          "start_seconds": 28.2,
+          "avg_amplitude_db": -35.779450396982,
+          "end_seconds": 29.15
+        },
+        {
+          "peak_amplitude_db": -33.01877707802652,
+          "duration_seconds": 0.8999999999999986,
+          "start_seconds": 30.25,
+          "avg_amplitude_db": -36.0480548321739,
+          "end_seconds": 31.15
+        },
+        {
+          "peak_amplitude_db": -31.56867654989807,
+          "duration_seconds": 0.9500000000000028,
+          "start_seconds": 32.05,
+          "avg_amplitude_db": -35.08082301395363,
+          "end_seconds": 33.0
+        },
+        {
+          "peak_amplitude_db": -29.77833340872842,
+          "duration_seconds": 0.8000000000000043,
+          "start_seconds": 34.15,
+          "avg_amplitude_db": -36.35187931724411,
+          "end_seconds": 34.95
+        },
+        {
+          "peak_amplitude_db": -33.77454829581452,
+          "duration_seconds": 0.8999999999999986,
+          "start_seconds": 35.9,
+          "avg_amplitude_db": -36.25201620844128,
+          "end_seconds": 36.8
+        },
+        {
+          "peak_amplitude_db": -32.81936234520502,
+          "duration_seconds": 0.75,
+          "start_seconds": 37.6,
+          "avg_amplitude_db": -36.867971702917295,
+          "end_seconds": 38.35
+        },
+        {
+          "peak_amplitude_db": -31.03324215228325,
+          "duration_seconds": 0.9500000000000028,
+          "start_seconds": 39.4,
+          "avg_amplitude_db": -35.44425888479047,
+          "end_seconds": 40.35
+        },
+        {
+          "peak_amplitude_db": -33.0783104820136,
+          "duration_seconds": 0.9499999999999957,
+          "start_seconds": 41.35,
+          "avg_amplitude_db": -35.3244036681986,
+          "end_seconds": 42.3
+        },
+        {
+          "peak_amplitude_db": -17.545205895377617,
+          "duration_seconds": 3.8499999999999943,
+          "start_seconds": 43.45,
+          "avg_amplitude_db": -28.434809413086235,
+          "end_seconds": 47.3
+        },
+        {
+          "peak_amplitude_db": -18.31788687947475,
+          "duration_seconds": 2.4499999999999957,
+          "start_seconds": 47.85,
+          "avg_amplitude_db": -24.83161286624392,
+          "end_seconds": 50.3
+        },
+        {
+          "peak_amplitude_db": -17.96270003322848,
+          "duration_seconds": 2.5500000000000043,
+          "start_seconds": 51.65,
+          "avg_amplitude_db": -26.552927286413848,
+          "end_seconds": 54.2
+        },
+        {
+          "peak_amplitude_db": -18.049085578547405,
+          "duration_seconds": 2.3,
+          "start_seconds": 55.25,
+          "avg_amplitude_db": -25.125022261609384,
+          "end_seconds": 57.55
+        },
+        {
+          "peak_amplitude_db": -17.545205895377617,
+          "duration_seconds": 2.6000000000000014,
+          "start_seconds": 59.0,
+          "avg_amplitude_db": -26.786475651730903,
+          "end_seconds": 61.6
+        },
+        {
+          "peak_amplitude_db": -17.84815001426672,
+          "duration_seconds": 2.4499999999999957,
+          "start_seconds": 62.6,
+          "avg_amplitude_db": -24.908382269882953,
+          "end_seconds": 65.05
+        },
+        {
+          "peak_amplitude_db": -17.273749751592142,
+          "duration_seconds": 2.5999999999999943,
+          "start_seconds": 66.4,
+          "avg_amplitude_db": -26.03396393905193,
+          "end_seconds": 69.0
+        },
+        {
+          "peak_amplitude_db": -18.320071184688842,
+          "duration_seconds": 2.0,
+          "start_seconds": 70.0,
+          "avg_amplitude_db": -22.774501637063963,
+          "end_seconds": 72.0
+        },
+        {
+          "peak_amplitude_db": -34.46116490922928,
+          "duration_seconds": 0.15,
+          "start_seconds": 75.25,
+          "avg_amplitude_db": -36.23818517462056,
+          "end_seconds": 75.4
+        },
+        {
+          "peak_amplitude_db": -35.54925217252573,
+          "duration_seconds": 0.25,
+          "start_seconds": 76.8,
+          "avg_amplitude_db": -37.47332999585643,
+          "end_seconds": 77.05
+        },
+        {
+          "peak_amplitude_db": -32.54540882082786,
+          "duration_seconds": 0.9500000000000028,
+          "start_seconds": 78.2,
+          "avg_amplitude_db": -36.38778268261687,
+          "end_seconds": 79.15
+        },
+        {
+          "peak_amplitude_db": -29.520716315671613,
+          "duration_seconds": 0.8499999999999943,
+          "start_seconds": 80.15,
+          "avg_amplitude_db": -34.740304880000316,
+          "end_seconds": 81.0
+        },
+        {
+          "peak_amplitude_db": -30.986164044413698,
+          "duration_seconds": 0.8,
+          "start_seconds": 82.1,
+          "avg_amplitude_db": -35.535138586892906,
+          "end_seconds": 82.9
+        },
+        {
+          "peak_amplitude_db": -31.340739383622335,
+          "duration_seconds": 1.0,
+          "start_seconds": 83.8,
+          "avg_amplitude_db": -36.14932816663324,
+          "end_seconds": 84.8
+        },
+        {
+          "peak_amplitude_db": -29.672753272586945,
+          "duration_seconds": 1.1500000000000057,
+          "start_seconds": 85.55,
+          "avg_amplitude_db": -35.034476494916646,
+          "end_seconds": 86.7
+        },
+        {
+          "peak_amplitude_db": -32.12858161497124,
+          "duration_seconds": 1.0499999999999972,
+          "start_seconds": 87.45,
+          "avg_amplitude_db": -37.036431144219364,
+          "end_seconds": 88.5
+        },
+        {
+          "peak_amplitude_db": -29.02732997992244,
+          "duration_seconds": 0.8999999999999915,
+          "start_seconds": 91.2,
+          "avg_amplitude_db": -34.52210624491978,
+          "end_seconds": 92.1
+        },
+        {
+          "peak_amplitude_db": -28.596052933257226,
+          "duration_seconds": 1.0999999999999943,
+          "start_seconds": 92.9,
+          "avg_amplitude_db": -33.36755314364761,
+          "end_seconds": 94.0
+        },
+        {
+          "peak_amplitude_db": -30.727140686427823,
+          "duration_seconds": 0.8,
+          "start_seconds": 94.85,
+          "avg_amplitude_db": -36.456903768877524,
+          "end_seconds": 95.65
+        },
+        {
+          "peak_amplitude_db": -29.608413055146997,
+          "duration_seconds": 1.3999999999999915,
+          "start_seconds": 96.2,
+          "avg_amplitude_db": -35.370369224209746,
+          "end_seconds": 97.6
+        },
+        {
+          "peak_amplitude_db": -35.741923058769785,
+          "duration_seconds": 0.75,
+          "start_seconds": 98.7,
+          "avg_amplitude_db": -37.28371979570888,
+          "end_seconds": 99.45
+        },
+        {
+          "peak_amplitude_db": -32.37847434940325,
+          "duration_seconds": 0.9,
+          "start_seconds": 100.35,
+          "avg_amplitude_db": -36.43466691338779,
+          "end_seconds": 101.25
+        },
+        {
+          "peak_amplitude_db": -16.578060717934232,
+          "duration_seconds": 4.199999999999989,
+          "start_seconds": 102.15,
+          "avg_amplitude_db": -28.84505018786643,
+          "end_seconds": 106.35
+        },
+        {
+          "peak_amplitude_db": -18.656369909401626,
+          "duration_seconds": 2.25,
+          "start_seconds": 106.9,
+          "avg_amplitude_db": -24.74160761153236,
+          "end_seconds": 109.15
+        },
+        {
+          "peak_amplitude_db": -17.782191351693513,
+          "duration_seconds": 2.5999999999999943,
+          "start_seconds": 110.7,
+          "avg_amplitude_db": -26.478596705657687,
+          "end_seconds": 113.3
+        },
+        {
+          "peak_amplitude_db": -18.263457013190504,
+          "duration_seconds": 2.450000000000003,
+          "start_seconds": 114.3,
+          "avg_amplitude_db": -25.161886171419795,
+          "end_seconds": 116.75
+        },
+        {
+          "peak_amplitude_db": -18.642755659532803,
+          "duration_seconds": 2.6000000000000085,
+          "start_seconds": 118.1,
+          "avg_amplitude_db": -26.3351615657324,
+          "end_seconds": 120.7
+        },
+        {
+          "peak_amplitude_db": -18.923862032622154,
+          "duration_seconds": 2.549999999999997,
+          "start_seconds": 121.7,
+          "avg_amplitude_db": -25.64653570572565,
+          "end_seconds": 124.25
+        },
+        {
+          "peak_amplitude_db": -19.015677414152567,
+          "duration_seconds": 2.5,
+          "start_seconds": 125.5,
+          "avg_amplitude_db": -25.458857094649147,
+          "end_seconds": 128.0
+        },
+        {
+          "peak_amplitude_db": -18.518942773919083,
+          "duration_seconds": 2.3,
+          "start_seconds": 129.1,
+          "avg_amplitude_db": -25.3220321973381,
+          "end_seconds": 131.4
+        },
+        {
+          "peak_amplitude_db": -22.898736907222506,
+          "duration_seconds": 0.6000000000000227,
+          "start_seconds": 132.2,
+          "avg_amplitude_db": -27.3964966680215,
+          "end_seconds": 132.8
+        },
+        {
+          "peak_amplitude_db": -35.533387529506975,
+          "duration_seconds": 0.30000000000001137,
+          "start_seconds": 135.75,
+          "avg_amplitude_db": -36.50464498603924,
+          "end_seconds": 136.05
+        },
+        {
+          "peak_amplitude_db": -27.43621399370349,
+          "duration_seconds": 6.449999999999989,
+          "start_seconds": 136.65,
+          "avg_amplitude_db": -35.811288245114376,
+          "end_seconds": 143.1
+        },
+        {
+          "peak_amplitude_db": -23.46844493744492,
+          "duration_seconds": 0.75,
+          "start_seconds": 143.95,
+          "avg_amplitude_db": -33.621466919599726,
+          "end_seconds": 144.7
+        },
+        {
+          "peak_amplitude_db": -24.6113644060853,
+          "duration_seconds": 1.5,
+          "start_seconds": 145.35,
+          "avg_amplitude_db": -33.97201035151618,
+          "end_seconds": 146.85
+        },
+        {
+          "peak_amplitude_db": -17.332044531736486,
+          "duration_seconds": 3.0,
+          "start_seconds": 162.45,
+          "avg_amplitude_db": -26.7826094478568,
+          "end_seconds": 165.45
+        },
+        {
+          "peak_amplitude_db": -18.114976651606366,
+          "duration_seconds": 2.1,
+          "start_seconds": 166.0,
+          "avg_amplitude_db": -23.49193348685981,
+          "end_seconds": 168.1
+        },
+        {
+          "peak_amplitude_db": -18.07878095666123,
+          "duration_seconds": 2.5999999999999943,
+          "start_seconds": 169.8,
+          "avg_amplitude_db": -26.014161904684002,
+          "end_seconds": 172.4
+        },
+        {
+          "peak_amplitude_db": -18.842281897873004,
+          "duration_seconds": 2.4499999999999886,
+          "start_seconds": 173.4,
+          "avg_amplitude_db": -25.455510109742438,
+          "end_seconds": 175.85
+        },
+        {
+          "peak_amplitude_db": -17.289256811525455,
+          "duration_seconds": 3.049999999999983,
+          "start_seconds": 177.15,
+          "avg_amplitude_db": -26.567305418146393,
+          "end_seconds": 180.2
+        },
+        {
+          "peak_amplitude_db": -18.33537672105109,
+          "duration_seconds": 2.5,
+          "start_seconds": 180.75,
+          "avg_amplitude_db": -25.31369959398889,
+          "end_seconds": 183.25
+        },
+        {
+          "peak_amplitude_db": -18.22663857535366,
+          "duration_seconds": 2.5999999999999943,
+          "start_seconds": 184.55,
+          "avg_amplitude_db": -26.884075065382234,
+          "end_seconds": 187.15
+        },
+        {
+          "peak_amplitude_db": -18.454363371315115,
+          "duration_seconds": 2.45,
+          "start_seconds": 188.15,
+          "avg_amplitude_db": -25.770215749683896,
+          "end_seconds": 190.6
+        },
+        {
+          "peak_amplitude_db": -31.109101932626032,
+          "duration_seconds": 2.5,
+          "start_seconds": 192.0,
+          "avg_amplitude_db": -35.53390177412266,
+          "end_seconds": 194.5
+        }
+      ]
+    },
+    "lyrics_progress": {
+      "progress": 45,
+      "stage": "lyrics_complete",
+      "message": "Lyrics transcription complete"
+    },
+    "instrumental_selection": "with_backing",
+    "lyrics_metadata": {
+      "segment_count": 98,
+      "has_corrections": true,
+      "ready_for_review": true,
+      "has_countdown_padding": false,
+      "countdown_padding_seconds": 0.0
+    }
+  },
+  "files_downloaded": {
+    "corrections": "d19a7826_Ayesha_Erotica_Make_U_Cum/corrections.json",
+    "reference_lrclib": "d19a7826_Ayesha_Erotica_Make_U_Cum/reference_lrclib.txt",
+    "reference_genius": "d19a7826_Ayesha_Erotica_Make_U_Cum/reference_genius.txt",
+    "reference_spotify": "d19a7826_Ayesha_Erotica_Make_U_Cum/reference_spotify.txt",
+    "uncorrected": "d19a7826_Ayesha_Erotica_Make_U_Cum/uncorrected.txt"
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "job_id": "5fb8581c",
+  "artist": "Richard Harris",
+  "title": "Requiem",
+  "created_at": "2026-01-11T04:19:45.055958",
+  "state_data": {
+    "audio_progress": {
+      "progress": 45,
+      "stage": "audio_complete",
+      "message": "Audio separation complete, uploading stems"
+    },
+    "gdrive_files": {
+      "mp4": "1dL9mPw3snEvdu5gsUAy-q3ajdwx_wZea",
+      "cdg": "1_aczytVSfQfSYFb6xzsB9s_5MmBib2Ob",
+      "mp4_720p": "11JoL3elKE0jNTRjmBaMG_F6htogitgel"
+    },
+    "blocking_action_type": "instrumental",
+    "video_progress": {
+      "stage": "running"
+    },
+    "reminder_sent": false,
+    "dropbox_link": "https://www.dropbox.com/scl/fo/expvwy5379sqw307k5x7q/AK5P6j93efaUyi7Ju5PiEUc?rlkey=u9l3y4p4ufrfykncq1g1tmp8l&dl=0",
+    "model_names": {
+      "clean_instrumental_model": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+      "other_stems_models": [
+        "htdemucs_6s.yaml"
+      ],
+      "backing_vocals_models": [
+        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+      ]
+    },
+    "screens_progress": {
+      "stage": "running"
+    },
+    "audio_complete": true,
+    "lyrics_complete": true,
+    "backing_vocals_analysis": {
+      "audible_segments": [
+        {
+          "peak_amplitude_db": -31.782149766681258,
+          "duration_seconds": 0.3499999999999943,
+          "start_seconds": 216.55,
+          "avg_amplitude_db": -33.863618233527795,
+          "end_seconds": 216.9
+        },
+        {
+          "peak_amplitude_db": -32.422677445505585,
+          "duration_seconds": 0.6500000000000057,
+          "start_seconds": 220.15,
+          "avg_amplitude_db": -35.44187281208877,
+          "end_seconds": 220.8
+        },
+        {
+          "peak_amplitude_db": -20.490174592058622,
+          "duration_seconds": 2.4499999999999886,
+          "start_seconds": 221.5,
+          "avg_amplitude_db": -29.78699184824224,
+          "end_seconds": 223.95
+        },
+        {
+          "peak_amplitude_db": -25.74612654723952,
+          "duration_seconds": 0.25,
+          "start_seconds": 241.1,
+          "avg_amplitude_db": -31.40993993432188,
+          "end_seconds": 241.35
+        },
+        {
+          "peak_amplitude_db": -32.52296464906815,
+          "duration_seconds": 0.1,
+          "start_seconds": 244.95,
+          "avg_amplitude_db": -36.00018923466544,
+          "end_seconds": 245.05
+        }
+      ],
+      "has_audible_content": true,
+      "total_duration_seconds": 306.24,
+      "total_audible_duration_seconds": 3.7999999999999887,
+      "audible_percentage": 1.2408568443051164,
+      "recommended_selection": "clean",
+      "silence_threshold_db": -40.0
+    },
+    "blocking_state_entered_at": "2026-01-12T05:28:16.268129",
+    "brand_code": "NOMAD-1195",
+    "youtube_url": "https://www.youtube.com/watch?v=hHw4Fnvv2_M",
+    "instrumental_options": {
+      "with_backing": "jobs/5fb8581c/stems/instrumental_with_backing.flac",
+      "clean": "jobs/5fb8581c/stems/instrumental_clean.flac"
+    },
+    "render_progress": {
+      "stage": "running"
+    },
+    "lyrics_progress": {
+      "progress": 45,
+      "stage": "lyrics_complete",
+      "message": "Lyrics transcription complete"
+    },
+    "lyrics_metadata": {
+      "has_corrections": true,
+      "countdown_padding_seconds": 0.0,
+      "ready_for_review": true,
+      "has_countdown_padding": false,
+      "segment_count": 30
+    },
+    "instrumental_selection": "clean"
+  },
+  "files_downloaded": {
+    "corrections": "5fb8581c_Richard_Harris_Requiem/corrections.json",
+    "reference_genius": "5fb8581c_Richard_Harris_Requiem/reference_genius.txt",
+    "uncorrected": "5fb8581c_Richard_Harris_Requiem/uncorrected.txt"
+  }
+}

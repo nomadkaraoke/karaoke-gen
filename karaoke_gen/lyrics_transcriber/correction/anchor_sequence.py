@@ -452,7 +452,7 @@ class AnchorSequenceFinder:
 
             # Clean and split texts
             self.logger.info(f"🔍 ANCHOR SEARCH: Cleaning transcription words...")
-            trans_words = [w.text.lower().strip('.,?!"\n') for w in all_words]
+            trans_words = [self._clean_text(w.text) for w in all_words]
             self.logger.info(f"🔍 ANCHOR SEARCH: ✅ Cleaned {len(trans_words)} transcription words")
             
             self.logger.info(f"🔍 ANCHOR SEARCH: Processing reference sources...")
@@ -607,7 +607,16 @@ class AnchorSequenceFinder:
             self.logger.info(f"🔍 ANCHOR SEARCH: 🔄 Starting overlap filtering...")
             
             filtered_anchors = self._remove_overlapping_sequences(candidate_anchors, transcribed, transcription_result)
-            self.logger.info(f"🔍 ANCHOR SEARCH: ✅ Filtering completed - {len(filtered_anchors)} final anchors")
+            self.logger.info(f"🔍 ANCHOR SEARCH: ✅ Filtering completed - {len(filtered_anchors)} anchors before gap extension")
+
+            # Extend anchors into single-word gaps
+            filtered_anchors = self._extend_anchors_into_single_word_gaps(
+                filtered_scored=filtered_anchors,
+                all_words=all_words,
+                ref_texts_clean=ref_texts_clean,
+                ref_words=ref_words,
+            )
+            self.logger.info(f"🔍 ANCHOR SEARCH: ✅ Gap extension completed - {len(filtered_anchors)} final anchors")
 
             # Save to cache
             self.logger.info(f"🔍 ANCHOR SEARCH: 💾 Saving results to cache...")
@@ -974,7 +983,7 @@ class AnchorSequenceFinder:
         The gap includes all reference words from the start of each reference
         up to the position where the following anchor starts in that reference.
         """
-        if transcription_position > 0:
+        if transcribed_word_ids:  # If there are words in the gap
             # Get reference word IDs for the gap
             reference_word_ids = {}
             for source, words in ref_words.items():
@@ -1076,3 +1085,458 @@ class AnchorSequenceFinder:
             following_anchor_id=None,
             reference_word_ids=reference_word_ids,
         )
+
+    def _extend_anchors_into_single_word_gaps(
+        self,
+        filtered_scored: List[ScoredAnchor],
+        all_words: List[Word],
+        ref_texts_clean: Dict[str, List[str]],
+        ref_words: Dict[str, List[Word]],
+    ) -> List[ScoredAnchor]:
+        """
+        Extend anchors to absorb single-word gaps when validated against references.
+
+        This post-processing step reduces unnecessary gaps by extending adjacent
+        anchors to cover single-word gaps that exist in all reference sources.
+
+        Args:
+            filtered_scored: List of scored anchors after overlap filtering
+            all_words: List of Word objects from the transcription
+            ref_texts_clean: Dict mapping source names to lists of cleaned words (strings)
+            ref_words: Dict mapping source names to lists of Word objects
+
+        Returns:
+            List of scored anchors with some extended to absorb single-word gaps
+        """
+        if len(filtered_scored) < 2:
+            return filtered_scored
+
+        # Sort anchors by transcription position
+        sorted_anchors = sorted(filtered_scored, key=lambda x: x.anchor.transcription_position)
+
+        # Track which anchors have been extended (by index in sorted list)
+        extended_anchors: Dict[int, ScoredAnchor] = {}
+        absorbed_gaps: Set[int] = set()  # Gap positions that have been absorbed
+
+        # Process each pair of adjacent anchors
+        for i in range(len(sorted_anchors) - 1):
+            current_anchor = sorted_anchors[i]
+            next_anchor = sorted_anchors[i + 1]
+
+            # Calculate gap
+            current_end = current_anchor.anchor.transcription_position + current_anchor.anchor.length
+            next_start = next_anchor.anchor.transcription_position
+            gap_size = next_start - current_end
+
+            # Only process single-word gaps
+            if gap_size != 1:
+                continue
+
+            gap_position = current_end
+
+            # Skip if this gap was already absorbed by a previous extension
+            if gap_position in absorbed_gaps:
+                continue
+
+            # Use clean_text for consistent normalization with reference words
+            gap_word = clean_text(all_words[gap_position].text)
+
+            # First try: direct position validation
+            forward_valid = self._validate_extension(
+                anchor=current_anchor.anchor,
+                gap_word=gap_word,
+                direction="forward",
+                ref_texts_clean=ref_texts_clean,
+            )
+
+            backward_valid = self._validate_extension(
+                anchor=next_anchor.anchor,
+                gap_word=gap_word,
+                direction="backward",
+                ref_texts_clean=ref_texts_clean,
+            )
+
+            # Second try: validate gap content holistically
+            # (handles cases where reference gap has different structure)
+            if not forward_valid and not backward_valid:
+                gap_content_valid = self._validate_gap_content(
+                    gap_words=[gap_word],
+                    preceding_anchor=current_anchor.anchor,
+                    following_anchor=next_anchor.anchor,
+                    ref_texts_clean=ref_texts_clean,
+                )
+                if gap_content_valid:
+                    # Prefer forward extension when gap content matches
+                    forward_valid = True
+
+            if forward_valid and backward_valid:
+                # Both valid - prefer the longer anchor (or forward as tiebreaker)
+                if self._prefer_forward_extension(current_anchor, next_anchor):
+                    new_anchor = self._apply_forward_extension(
+                        current_anchor, gap_position, all_words, ref_words
+                    )
+                    extended_anchors[i] = new_anchor
+                else:
+                    new_anchor = self._apply_backward_extension(
+                        next_anchor, gap_position, all_words, ref_words
+                    )
+                    extended_anchors[i + 1] = new_anchor
+                absorbed_gaps.add(gap_position)
+            elif forward_valid:
+                new_anchor = self._apply_forward_extension(
+                    current_anchor, gap_position, all_words, ref_words
+                )
+                extended_anchors[i] = new_anchor
+                absorbed_gaps.add(gap_position)
+            elif backward_valid:
+                new_anchor = self._apply_backward_extension(
+                    next_anchor, gap_position, all_words, ref_words
+                )
+                extended_anchors[i + 1] = new_anchor
+                absorbed_gaps.add(gap_position)
+            # If neither valid, leave gap as-is
+
+        # Build result list with extended anchors
+        result = []
+        for i, scored_anchor in enumerate(sorted_anchors):
+            if i in extended_anchors:
+                result.append(extended_anchors[i])
+            else:
+                result.append(scored_anchor)
+
+        if absorbed_gaps:
+            self.logger.info(f"🔍 GAP EXTENSION: Extended {len(absorbed_gaps)} single-word gaps into adjacent anchors")
+
+        return result
+
+    def _validate_gap_content(
+        self,
+        gap_words: List[str],
+        preceding_anchor: AnchorSequence,
+        following_anchor: AnchorSequence,
+        ref_texts_clean: Dict[str, List[str]],
+    ) -> bool:
+        """
+        Validate gap content by checking if it matches what's between anchors in references.
+
+        This is a more flexible validation than _validate_extension - it checks if the
+        gap content matches the reference gap content even if sizes differ slightly
+        (e.g., "I'm" vs "i am", or contraction differences).
+
+        Args:
+            gap_words: List of cleaned gap words from transcription
+            preceding_anchor: The anchor before the gap
+            following_anchor: The anchor after the gap
+            ref_texts_clean: Dict mapping source names to lists of cleaned words
+
+        Returns:
+            True if gap content matches in at least min_sources references
+        """
+        valid_sources = 0
+        gap_content = " ".join(gap_words)
+
+        for source, ref_words_list in ref_texts_clean.items():
+            # Both anchors must exist in this source
+            if source not in preceding_anchor.reference_positions:
+                continue
+            if source not in following_anchor.reference_positions:
+                continue
+
+            # Calculate reference gap bounds
+            ref_gap_start = (
+                preceding_anchor.reference_positions[source]
+                + len(preceding_anchor.reference_word_ids.get(source, []))
+            )
+            ref_gap_end = following_anchor.reference_positions[source]
+
+            # Get reference gap content
+            if ref_gap_start >= ref_gap_end:
+                # No gap or invalid bounds in reference
+                continue
+
+            ref_gap_words = ref_words_list[ref_gap_start:ref_gap_end]
+            ref_gap_content = " ".join(ref_gap_words)
+
+            # Compare gap contents
+            if self._gap_content_matches(gap_content, ref_gap_content):
+                valid_sources += 1
+
+        return valid_sources >= self.min_sources
+
+    def _gap_content_matches(self, trans_gap: str, ref_gap: str) -> bool:
+        """
+        Check if transcription gap content matches reference gap content.
+
+        Handles common variations like contractions expanding to multiple words.
+
+        Args:
+            trans_gap: Cleaned gap content from transcription (e.g., "im")
+            ref_gap: Cleaned gap content from reference (e.g., "i am")
+
+        Returns:
+            True if contents are equivalent
+        """
+        # Direct match
+        if trans_gap == ref_gap:
+            return True
+
+        # Normalize common contractions for comparison
+        trans_normalized = self._normalize_contractions(trans_gap)
+        ref_normalized = self._normalize_contractions(ref_gap)
+
+        return trans_normalized == ref_normalized
+
+    def _normalize_contractions(self, text: str) -> str:
+        """
+        Normalize common contractions to a canonical form.
+
+        Args:
+            text: Cleaned text (already lowercase, no apostrophes)
+
+        Returns:
+            Text with contractions normalized
+        """
+        # Map contracted forms to expanded forms
+        # Note: text is already cleaned (apostrophes removed), so "don't" -> "dont"
+        contractions = {
+            "im": "i am",
+            "ive": "i have",
+            "id": "i would",
+            "ill": "i will",
+            "youre": "you are",
+            "youve": "you have",
+            "youd": "you would",
+            "youll": "you will",
+            "hes": "he is",
+            "shes": "she is",
+            "its": "it is",
+            "were": "we are",
+            "weve": "we have",
+            "wed": "we would",
+            "well": "we will",
+            "theyre": "they are",
+            "theyve": "they have",
+            "theyd": "they would",
+            "theyll": "they will",
+            "dont": "do not",
+            "doesnt": "does not",
+            "didnt": "did not",
+            "cant": "can not",
+            "couldnt": "could not",
+            "wouldnt": "would not",
+            "shouldnt": "should not",
+            "wont": "will not",
+            "isnt": "is not",
+            "arent": "are not",
+            "wasnt": "was not",
+            "werent": "were not",
+            "hasnt": "has not",
+            "havent": "have not",
+            "hadnt": "had not",
+            "thats": "that is",
+            "whats": "what is",
+            "whos": "who is",
+            "heres": "here is",
+            "theres": "there is",
+            "wheres": "where is",
+            "lets": "let us",
+            "cause": "because",
+        }
+
+        # Try to match and expand the text
+        if text in contractions:
+            return contractions[text]
+
+        return text
+
+    def _validate_extension(
+        self,
+        anchor: AnchorSequence,
+        gap_word: str,
+        direction: str,
+        ref_texts_clean: Dict[str, List[str]],
+    ) -> bool:
+        """
+        Validate whether a gap word can extend an anchor in the given direction.
+
+        For forward extension: check if ref_word[anchor_end_position] matches gap_word
+        For backward extension: check if ref_word[anchor_start_position - 1] matches gap_word
+
+        Args:
+            anchor: The anchor to potentially extend
+            gap_word: The word in the gap (cleaned with clean_text)
+            direction: "forward" or "backward"
+            ref_texts_clean: Dict mapping source names to lists of cleaned words
+
+        Returns:
+            True if the extension is valid in at least min_sources references
+        """
+        valid_sources = 0
+        gap_word_normalized = self._normalize_contractions(gap_word)
+
+        for source, ref_words in ref_texts_clean.items():
+            if source not in anchor.reference_positions:
+                continue
+
+            ref_start = anchor.reference_positions[source]
+            ref_length = len(anchor.reference_word_ids.get(source, []))
+
+            if direction == "forward":
+                # Check the word after the anchor in this reference
+                check_pos = ref_start + ref_length
+                if check_pos >= len(ref_words):
+                    continue
+                ref_word = ref_words[check_pos]
+            else:  # backward
+                # Check the word before the anchor in this reference
+                check_pos = ref_start - 1
+                if check_pos < 0:
+                    continue
+                ref_word = ref_words[check_pos]
+
+            # Compare with normalization for contractions
+            ref_word_normalized = self._normalize_contractions(ref_word)
+            if ref_word == gap_word or ref_word_normalized == gap_word_normalized:
+                valid_sources += 1
+
+        return valid_sources >= self.min_sources
+
+    def _prefer_forward_extension(
+        self,
+        current_anchor: ScoredAnchor,
+        next_anchor: ScoredAnchor,
+    ) -> bool:
+        """
+        Decide whether to prefer forward extension when both directions are valid.
+
+        Prefers extending the longer anchor, with forward as tiebreaker.
+
+        Args:
+            current_anchor: The anchor before the gap
+            next_anchor: The anchor after the gap
+
+        Returns:
+            True to extend current (forward), False to extend next (backward)
+        """
+        current_length = current_anchor.anchor.length
+        next_length = next_anchor.anchor.length
+
+        # Prefer longer anchor
+        if current_length > next_length:
+            return True
+        elif next_length > current_length:
+            return False
+        else:
+            # Same length - prefer forward (arbitrary but consistent)
+            return True
+
+    def _apply_forward_extension(
+        self,
+        scored_anchor: ScoredAnchor,
+        gap_position: int,
+        all_words: List[Word],
+        ref_words: Dict[str, List[Word]],
+    ) -> ScoredAnchor:
+        """
+        Extend an anchor forward to include the gap word.
+
+        Creates a new ScoredAnchor with the gap word added to the end.
+
+        Args:
+            scored_anchor: The anchor to extend
+            gap_position: Position of the gap word in transcription
+            all_words: List of Word objects from the transcription
+            ref_words: Dict mapping source names to lists of Word objects
+
+        Returns:
+            New ScoredAnchor with extended anchor
+        """
+        anchor = scored_anchor.anchor
+        gap_word = all_words[gap_position]
+
+        # Create new word ID lists
+        new_transcribed_word_ids = list(anchor.transcribed_word_ids) + [gap_word.id]
+        new_words = list(anchor._words or anchor.words) + [gap_word.text]
+
+        # Extend reference word IDs
+        new_reference_word_ids = {}
+        for source, word_ids in anchor.reference_word_ids.items():
+            ref_start = anchor.reference_positions[source]
+            ref_end = ref_start + len(word_ids)
+
+            if source in ref_words and ref_end < len(ref_words[source]):
+                new_ref_word = ref_words[source][ref_end]
+                new_reference_word_ids[source] = list(word_ids) + [new_ref_word.id]
+            else:
+                # Can't extend in this source - keep original
+                new_reference_word_ids[source] = list(word_ids)
+
+        # Create new anchor
+        new_anchor = AnchorSequence(
+            id=anchor.id,  # Keep same ID
+            transcribed_word_ids=new_transcribed_word_ids,
+            transcription_position=anchor.transcription_position,
+            reference_positions=dict(anchor.reference_positions),
+            reference_word_ids=new_reference_word_ids,
+            confidence=anchor.confidence,
+            _words=new_words,
+        )
+
+        return ScoredAnchor(anchor=new_anchor, phrase_score=scored_anchor.phrase_score)
+
+    def _apply_backward_extension(
+        self,
+        scored_anchor: ScoredAnchor,
+        gap_position: int,
+        all_words: List[Word],
+        ref_words: Dict[str, List[Word]],
+    ) -> ScoredAnchor:
+        """
+        Extend an anchor backward to include the gap word.
+
+        Creates a new ScoredAnchor with the gap word added to the beginning.
+
+        Args:
+            scored_anchor: The anchor to extend
+            gap_position: Position of the gap word in transcription
+            all_words: List of Word objects from the transcription
+            ref_words: Dict mapping source names to lists of Word objects
+
+        Returns:
+            New ScoredAnchor with extended anchor
+        """
+        anchor = scored_anchor.anchor
+        gap_word = all_words[gap_position]
+
+        # Create new word ID lists (prepend gap word)
+        new_transcribed_word_ids = [gap_word.id] + list(anchor.transcribed_word_ids)
+        new_words = [gap_word.text] + list(anchor._words or anchor.words)
+
+        # Extend reference word IDs and update positions
+        new_reference_word_ids = {}
+        new_reference_positions = {}
+        for source, word_ids in anchor.reference_word_ids.items():
+            ref_start = anchor.reference_positions[source]
+            new_ref_start = ref_start - 1
+
+            if source in ref_words and new_ref_start >= 0:
+                new_ref_word = ref_words[source][new_ref_start]
+                new_reference_word_ids[source] = [new_ref_word.id] + list(word_ids)
+                new_reference_positions[source] = new_ref_start
+            else:
+                # Can't extend in this source - keep original
+                new_reference_word_ids[source] = list(word_ids)
+                new_reference_positions[source] = ref_start
+
+        # Create new anchor with updated position
+        new_anchor = AnchorSequence(
+            id=anchor.id,  # Keep same ID
+            transcribed_word_ids=new_transcribed_word_ids,
+            transcription_position=gap_position,  # New position is the gap position
+            reference_positions=new_reference_positions,
+            reference_word_ids=new_reference_word_ids,
+            confidence=anchor.confidence,
+            _words=new_words,
+        )
+
+        return ScoredAnchor(anchor=new_anchor, phrase_score=scored_anchor.phrase_score)

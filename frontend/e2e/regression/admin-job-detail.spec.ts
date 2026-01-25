@@ -563,4 +563,179 @@ test.describe('Admin Job Detail Page', () => {
     // The button contains a RefreshCw icon that animates when clearingWorkers is true
     await expect(clearWorkersButton).toBeDisabled({ timeout: 500 });
   });
+
+  test('delete outputs button shows confirmation dialog', async ({ page }) => {
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Click Del Outputs button
+    await page.locator('button:has-text("Del Outputs")').click();
+
+    // Should show confirmation dialog
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Delete Job Outputs' })).toBeVisible();
+    await expect(page.getByText('YouTube video (if uploaded)')).toBeVisible();
+    await expect(page.getByText('Dropbox folder')).toBeVisible();
+    await expect(page.getByText('Google Drive files')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Delete Outputs' })).toBeVisible();
+  });
+
+  test('delete outputs shows detailed result dialog on success', async ({ page }) => {
+    // Mock successful delete outputs response
+    const deleteOutputsResponse = {
+      status: 'success',
+      job_id: 'test-job-123',
+      message: 'All outputs deleted successfully',
+      deleted_services: {
+        youtube: { status: 'deleted', video_id: 'xyz789' },
+        dropbox: { status: 'deleted', path: '/Karaoke/NK001 - Test Artist - Test Song' },
+        gdrive: { status: 'skipped', reason: 'No Google Drive files found' },
+      },
+      cleared_state_data: ['youtube_url', 'youtube_video_id', 'dropbox_link', 'brand_code'],
+      outputs_deleted_at: '2026-01-15T10:00:00Z',
+    };
+
+    // Set up basic fixtures first (user, jobs list, logs)
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+        { method: 'POST', path: '/api/admin/jobs/test-job-123/delete-outputs', response: { body: deleteOutputsResponse } },
+      ],
+    });
+
+    // Track job fetch calls to return different responses
+    let jobFetchCount = 0;
+    await page.route('**/api/jobs/test-job-123', async (route) => {
+      jobFetchCount++;
+      // Return base job on all fetches (before and after deletion)
+      // The UI will show the result dialog from the delete response
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockJob),
+      });
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for the Del Outputs button to be enabled
+    const delOutputsButton = page.locator('button:has-text("Del Outputs")');
+    await expect(delOutputsButton).toBeEnabled({ timeout: 10000 });
+
+    // Click Del Outputs button
+    await delOutputsButton.click();
+
+    // Confirm deletion in the alert dialog
+    await page.locator('[role="alertdialog"] button:has-text("Delete Outputs")').click();
+
+    // Should show result dialog with detailed information
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Outputs Deleted Successfully')).toBeVisible();
+
+    // Should show service names
+    await expect(page.getByText('YouTube').first()).toBeVisible();
+    await expect(page.getByText('Dropbox').first()).toBeVisible();
+    await expect(page.getByText('Google Drive').first()).toBeVisible();
+
+    // Should show YouTube video ID
+    await expect(page.getByText('xyz789')).toBeVisible();
+
+    // Should show Google Drive skipped reason
+    await expect(page.getByText('No Google Drive files found')).toBeVisible();
+
+    // Close button should work (use first() since there's also an X close button)
+    await page.getByRole('button', { name: 'Close' }).first().click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+  });
+
+  test('delete outputs shows partial success result dialog', async ({ page }) => {
+    // Mock partial success response (e.g., YouTube failed)
+    const deleteOutputsResponse = {
+      status: 'partial_success',
+      job_id: 'test-job-123',
+      message: 'Some outputs could not be deleted',
+      deleted_services: {
+        youtube: { status: 'error', error: 'Video not found or already deleted' },
+        dropbox: { status: 'deleted', path: '/Karaoke/NK001 - Test Artist - Test Song' },
+        gdrive: { status: 'skipped', reason: 'No Google Drive files found' },
+      },
+      cleared_state_data: ['dropbox_link', 'brand_code'],
+      outputs_deleted_at: '2026-01-15T10:00:00Z',
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.route('**/api/admin/jobs/*/delete-outputs', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(deleteOutputsResponse),
+      });
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Click Del Outputs and confirm
+    await page.locator('button:has-text("Del Outputs")').click();
+    await page.getByRole('button', { name: 'Delete Outputs' }).click();
+
+    // Should show partial success dialog
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText('Partial Success')).toBeVisible();
+
+    // Should show YouTube error
+    await expect(page.getByText('Video not found or already deleted')).toBeVisible();
+
+    // Should show Dropbox success
+    await expect(page.getByText(/NK001.*Test Artist.*Test Song/)).toBeVisible();
+  });
+
+  test('delete outputs button is disabled when outputs already deleted', async ({ page }) => {
+    // Job with outputs already deleted
+    const jobWithDeletedOutputs = {
+      ...mockJob,
+      outputs_deleted_at: '2026-01-15T10:00:00Z',
+      outputs_deleted_by: 'admin@nomadkaraoke.com',
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: jobWithDeletedOutputs } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Del Outputs button should be disabled
+    const delOutputsButton = page.locator('button:has-text("Del Outputs")');
+    await expect(delOutputsButton).toBeDisabled();
+
+    // Button should have disabled styling (opacity-50 class applied by shadcn)
+    await expect(delOutputsButton).toHaveClass(/disabled:opacity-50/);
+  });
 });
