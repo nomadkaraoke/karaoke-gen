@@ -1769,7 +1769,9 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
         },
         body: JSON.stringify({ source, lyrics }),
       })
-      return handleResponse<CorrectionData>(response)
+      // Backend returns { status: "success", data: CorrectionData }
+      const result = await handleResponse<{ status: string; data: CorrectionData }>(response)
+      return result.data
     },
 
     /**

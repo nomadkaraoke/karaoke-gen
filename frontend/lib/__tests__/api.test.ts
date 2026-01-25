@@ -258,13 +258,14 @@ describe("createLyricsReviewApiClient", () => {
         reference_lyrics: { genius: { segments: [] } },
       }
 
+      // Backend returns { status: "success", data: CorrectionData }
       ;(global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: async () => mockCorrectionData,
+        json: async () => ({ status: "success", data: mockCorrectionData }),
       })
 
       const client = createLyricsReviewApiClient("job123")
-      await client.addLyrics("genius", "Some lyrics text")
+      const result = await client.addLyrics("genius", "Some lyrics text")
 
       // Verify the EXACT endpoint path - this was the bug: was calling /api/jobs/{id}/lyrics
       expect(global.fetch).toHaveBeenCalledWith(
@@ -279,6 +280,9 @@ describe("createLyricsReviewApiClient", () => {
       const call = (global.fetch as jest.Mock).mock.calls[0]
       const body = JSON.parse(call[1].body)
       expect(body).toEqual({ source: "genius", lyrics: "Some lyrics text" })
+
+      // Verify the client extracts the data field from the response
+      expect(result).toEqual(mockCorrectionData)
     })
   })
 
