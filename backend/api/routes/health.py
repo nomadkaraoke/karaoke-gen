@@ -274,6 +274,37 @@ async def encoding_worker_health() -> Dict[str, Any]:
     }
 
 
+@router.get("/health/flacfetch")
+async def flacfetch_health() -> Dict[str, Any]:
+    """
+    Lightweight endpoint to check flacfetch service status.
+
+    Returns minimal info for frontend footer display.
+    No authentication required.
+    """
+    status = await check_flacfetch_service_status()
+
+    # Return simplified response for frontend
+    if not status.get("configured"):
+        return {
+            "available": False,
+            "status": "not_configured",
+        }
+
+    if not status.get("available"):
+        return {
+            "available": False,
+            "status": "offline",
+            "error": status.get("error"),
+        }
+
+    return {
+        "available": True,
+        "status": "ok",
+        "version": status.get("version"),
+    }
+
+
 @router.get("/health/detailed")
 async def detailed_health_check() -> Dict[str, Any]:
     """

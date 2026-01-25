@@ -209,6 +209,13 @@ export interface EncodingWorkerHealth {
   error?: string;
 }
 
+export interface FlacfetchHealth {
+  available: boolean;
+  status: string;  // 'ok' | 'offline' | 'not_configured'
+  version?: string | null;
+  error?: string;
+}
+
 class ApiError extends Error {
   status: number;
   data?: any;
@@ -740,6 +747,14 @@ export const api = {
    */
   async getEncodingWorkerHealth(): Promise<EncodingWorkerHealth> {
     const response = await fetch(`${API_BASE_URL}/api/health/encoding-worker`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get flacfetch service health status
+   */
+  async getFlacfetchHealth(): Promise<FlacfetchHealth> {
+    const response = await fetch(`${API_BASE_URL}/api/health/flacfetch`);
     return handleResponse(response);
   },
 
