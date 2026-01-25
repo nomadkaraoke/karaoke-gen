@@ -44,6 +44,28 @@ Status values:
 - `offline` - Worker is unavailable (includes `error` field)
 - `not_configured` - Encoding worker not configured on backend
 
+#### Flacfetch Service Health
+
+```http
+GET /health/flacfetch
+```
+
+No auth required. Returns flacfetch service status for frontend display.
+
+Response:
+```json
+{
+  "available": true,
+  "status": "ok",
+  "version": "1.2.3"
+}
+```
+
+Status values:
+- `ok` - Flacfetch service is healthy and available
+- `offline` - Service is unavailable (includes `error` field)
+- `not_configured` - Flacfetch service not configured on backend
+
 ### Jobs
 
 #### Create Job with Upload
