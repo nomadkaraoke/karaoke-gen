@@ -10,6 +10,7 @@ import EditWordList from '../EditWordList'
 import EditTimelineSection from '../EditTimelineSection'
 import useManualSync from '@/hooks/useManualSync'
 import { setModalHandler } from '@/lib/lyrics-review/utils/keyboardHandlers'
+import { splitWordWithTiming } from '@/lib/lyrics-review/utils/wordUtils'
 
 interface EditModalProps {
   open: boolean
@@ -196,19 +197,15 @@ export default function EditModal({
     (index: number) => {
       if (!editedSegment) return
       const word = editedSegment.words[index]
-      const words = word.text.split(/\s+/).filter((w) => w.length > 0)
 
-      if (words.length <= 1) {
-        const half = Math.ceil(word.text.length / 2)
-        words[0] = word.text.slice(0, half)
-        words[1] = word.text.slice(half)
-      }
+      // Use utility function to split text and distribute timing
+      const splitParts = splitWordWithTiming(word.text, word.start_time, word.end_time)
 
-      const newWords = words.map((text) => ({
+      const newWords = splitParts.map((part) => ({
         id: nanoid(),
-        text,
-        start_time: null,
-        end_time: null,
+        text: part.text,
+        start_time: part.start_time,
+        end_time: part.end_time,
         confidence: 1.0,
       }))
 

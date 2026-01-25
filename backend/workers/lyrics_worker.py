@@ -689,3 +689,65 @@ async def upload_lyrics_results(
     
     logger.info(f"Job {job_id}: All lyrics results uploaded successfully")
 
+
+# ==================== CLI Entry Point for Cloud Run Jobs ====================
+# This allows the lyrics worker to be run as a standalone Cloud Run Job.
+# Usage: python -m backend.workers.lyrics_worker --job-id <job_id>
+
+def main():
+    """
+    CLI entry point for running lyrics worker as a Cloud Run Job.
+
+    Cloud Run Jobs run to completion without HTTP request lifecycle concerns,
+    avoiding the instance termination issue where Cloud Run would shut down
+    instances mid-processing when using BackgroundTasks.
+
+    Usage:
+        python -m backend.workers.lyrics_worker --job-id abc123
+
+    Environment Variables:
+        GOOGLE_CLOUD_PROJECT: GCP project ID (required)
+        GCS_BUCKET_NAME: Storage bucket name (required)
+        AUDIOSHAKE_API_TOKEN: AudioShake API key (required)
+    """
+    import argparse
+    import sys
+
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description="Lyrics transcription worker for karaoke generation"
+    )
+    parser.add_argument(
+        "--job-id",
+        required=True,
+        help="Job ID to process"
+    )
+
+    args = parser.parse_args()
+    job_id = args.job_id
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    logger.info(f"Starting lyrics worker CLI for job {job_id}")
+
+    # Run the async worker function
+    try:
+        success = asyncio.run(process_lyrics_transcription(job_id))
+        if success:
+            logger.info(f"Lyrics transcription completed successfully for job {job_id}")
+            sys.exit(0)
+        else:
+            logger.error(f"Lyrics transcription failed for job {job_id}")
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f"Lyrics worker crashed: {e}", exc_info=True)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+

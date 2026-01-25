@@ -645,3 +645,66 @@ async def upload_separation_results(
         job_manager.update_state_data(job_id, 'instrumental_options', instrumental_options)
         logger.info(f"Job {job_id}: Stored instrumental options: {list(instrumental_options.keys())}")
 
+
+# ==================== CLI Entry Point for Cloud Run Jobs ====================
+# This allows the audio worker to be run as a standalone Cloud Run Job.
+# Usage: python -m backend.workers.audio_worker --job-id <job_id>
+
+def main():
+    """
+    CLI entry point for running audio worker as a Cloud Run Job.
+
+    Cloud Run Jobs run to completion without HTTP request lifecycle concerns,
+    avoiding the instance termination issue where Cloud Run would shut down
+    instances mid-processing when using BackgroundTasks.
+
+    Usage:
+        python -m backend.workers.audio_worker --job-id abc123
+
+    Environment Variables:
+        GOOGLE_CLOUD_PROJECT: GCP project ID (required)
+        GCS_BUCKET_NAME: Storage bucket name (required)
+        AUDIO_SEPARATOR_API_URL: Modal API URL (required)
+    """
+    import argparse
+    import asyncio
+    import sys
+
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description="Audio separation worker for karaoke generation"
+    )
+    parser.add_argument(
+        "--job-id",
+        required=True,
+        help="Job ID to process"
+    )
+
+    args = parser.parse_args()
+    job_id = args.job_id
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    logger.info(f"Starting audio worker CLI for job {job_id}")
+
+    # Run the async worker function
+    try:
+        success = asyncio.run(process_audio_separation(job_id))
+        if success:
+            logger.info(f"Audio separation completed successfully for job {job_id}")
+            sys.exit(0)
+        else:
+            logger.error(f"Audio separation failed for job {job_id}")
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f"Audio worker crashed: {e}", exc_info=True)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+

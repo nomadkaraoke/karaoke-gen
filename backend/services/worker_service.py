@@ -357,12 +357,33 @@ class WorkerService:
     # These provide a cleaner API and better IDE autocomplete
     
     async def trigger_audio_worker(self, job_id: str) -> bool:
-        """Trigger audio separation worker."""
-        return await self.trigger_worker("audio", job_id)
-    
+        """
+        Trigger audio separation worker.
+
+        Always uses Cloud Run Jobs to avoid instance termination during long-running
+        Modal API calls. The BackgroundTasks approach caused Cloud Run to terminate
+        instances mid-processing when no HTTP requests were active.
+        """
+        return await self._trigger_worker_cloud_run_job(
+            job_id=job_id,
+            cloud_run_job_name="audio-separation-job",
+            worker_module="audio_worker",
+        )
+
     async def trigger_lyrics_worker(self, job_id: str) -> bool:
-        """Trigger lyrics transcription worker."""
-        return await self.trigger_worker("lyrics", job_id)
+        """
+        Trigger lyrics transcription worker.
+
+        Always uses Cloud Run Jobs to avoid instance termination during long-running
+        AudioShake transcription. The BackgroundTasks approach caused Cloud Run to
+        terminate instances mid-processing (e.g., job c94cc9d6) when no HTTP requests
+        were active, even though the worker was still processing.
+        """
+        return await self._trigger_worker_cloud_run_job(
+            job_id=job_id,
+            cloud_run_job_name="lyrics-transcription-job",
+            worker_module="lyrics_worker",
+        )
     
     async def trigger_screens_worker(self, job_id: str) -> bool:
         """Trigger screen generation worker."""
@@ -383,50 +404,83 @@ class WorkerService:
     async def _trigger_cloud_run_job(self, job_id: str) -> bool:
         """
         Trigger video encoding as a Cloud Run Job.
-        
+
         Cloud Run Jobs support up to 24 hours of execution time,
         making them suitable for very long video encoding tasks.
-        
+
         Args:
             job_id: Job ID to process
-            
+
+        Returns:
+            True if job was triggered successfully, False otherwise
+        """
+        return await self._trigger_worker_cloud_run_job(
+            job_id=job_id,
+            cloud_run_job_name="video-encoding-job",
+            worker_module="video_worker",
+        )
+
+    async def _trigger_worker_cloud_run_job(
+        self,
+        job_id: str,
+        cloud_run_job_name: str,
+        worker_module: str,
+    ) -> bool:
+        """
+        Trigger a worker as a Cloud Run Job.
+
+        Cloud Run Jobs run to completion without HTTP request lifecycle concerns,
+        avoiding the instance termination issue where Cloud Run would shut down
+        instances mid-processing when using BackgroundTasks.
+
+        Args:
+            job_id: Job ID to process
+            cloud_run_job_name: Name of the Cloud Run Job (e.g., "lyrics-transcription-job")
+            worker_module: Worker module name (e.g., "lyrics_worker")
+
         Returns:
             True if job was triggered successfully, False otherwise
         """
         try:
             from google.cloud import run_v2
-            
+
             project = self.settings.google_cloud_project
             if not project:
                 logger.error("GOOGLE_CLOUD_PROJECT not set, cannot trigger Cloud Run Job")
                 return False
-            
+
             location = self.settings.gcp_region
-            job_name = f"projects/{project}/locations/{location}/jobs/video-encoding-job"
-            
+            job_name = f"projects/{project}/locations/{location}/jobs/{cloud_run_job_name}"
+
             # Create Cloud Run Jobs client
             client = run_v2.JobsClient()
-            
+
             # Run the job with overrides for the specific job_id
             request = run_v2.RunJobRequest(
                 name=job_name,
                 overrides=run_v2.RunJobRequest.Overrides(
                     container_overrides=[
                         run_v2.RunJobRequest.Overrides.ContainerOverride(
-                            args=["python", "-m", "backend.workers.video_worker", "--job-id", job_id],
+                            args=[
+                                "python", "-m", f"backend.workers.{worker_module}",
+                                "--job-id", job_id,
+                            ],
                         )
                     ]
                 )
             )
-            
+
             # Run the job (async operation)
             operation = client.run_job(request=request)
-            logger.info(f"Started Cloud Run Job for video encoding, job {job_id}: {operation.metadata}")
+            logger.info(
+                f"[job:{job_id}] Started Cloud Run Job {cloud_run_job_name}: "
+                f"{operation.metadata}"
+            )
             return True
-            
+
         except Exception as e:
             logger.error(
-                f"Failed to trigger Cloud Run Job for video/{job_id}: {e}",
+                f"[job:{job_id}] Failed to trigger Cloud Run Job {cloud_run_job_name}: {e}",
                 exc_info=True
             )
             return False

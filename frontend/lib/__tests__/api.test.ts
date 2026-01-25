@@ -249,6 +249,75 @@ describe("createLyricsReviewApiClient", () => {
     jest.clearAllMocks()
   })
 
+  describe("addLyrics", () => {
+    it("should call correct endpoint: /api/review/{jobId}/add-lyrics", async () => {
+      const mockCorrectionData = {
+        corrected_segments: [],
+        metadata: {},
+        corrections: [],
+        reference_lyrics: { genius: { segments: [] } },
+      }
+
+      // Backend returns { status: "success", data: CorrectionData }
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: "success", data: mockCorrectionData }),
+      })
+
+      const client = createLyricsReviewApiClient("job123")
+      const result = await client.addLyrics("genius", "Some lyrics text")
+
+      // Verify the EXACT endpoint path - this was the bug: was calling /api/jobs/{id}/lyrics
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/review/job123/add-lyrics"),
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
+        })
+      )
+
+      // Verify request body
+      const call = (global.fetch as jest.Mock).mock.calls[0]
+      const body = JSON.parse(call[1].body)
+      expect(body).toEqual({ source: "genius", lyrics: "Some lyrics text" })
+
+      // Verify the client extracts the data field from the response
+      expect(result).toEqual(mockCorrectionData)
+    })
+  })
+
+  describe("updateHandlers", () => {
+    it("should call correct endpoint: /api/review/{jobId}/handlers with POST", async () => {
+      const mockCorrectionData = {
+        corrected_segments: [],
+        metadata: { enabled_handlers: ["handler1"] },
+        corrections: [],
+      }
+
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockCorrectionData,
+      })
+
+      const client = createLyricsReviewApiClient("job123")
+      await client.updateHandlers(["handler1", "handler2"])
+
+      // Verify the EXACT endpoint path and method - was calling PATCH /api/jobs/{id}/handlers
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/review/job123/handlers"),
+        expect.objectContaining({
+          method: "POST", // Backend expects POST, not PATCH
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
+        })
+      )
+
+      // Verify request body
+      const call = (global.fetch as jest.Mock).mock.calls[0]
+      const body = JSON.parse(call[1].body)
+      expect(body).toEqual({ enabled_handlers: ["handler1", "handler2"] })
+    })
+  })
+
   describe("submitCorrections", () => {
     it("should wrap CorrectionData with lines alias for backend validation", async () => {
       ;(global.fetch as jest.Mock).mockResolvedValueOnce({

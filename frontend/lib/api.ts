@@ -1683,8 +1683,8 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * Update enabled correction handlers and get recalculated corrections
      */
     async updateHandlers(handlers: string[]): Promise<CorrectionData> {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/handlers`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/handlers`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
@@ -1698,7 +1698,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * Add lyrics from a new source
      */
     async addLyrics(source: string, lyrics: string): Promise<CorrectionData> {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/lyrics`, {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/add-lyrics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1706,7 +1706,9 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
         },
         body: JSON.stringify({ source, lyrics }),
       })
-      return handleResponse<CorrectionData>(response)
+      // Backend returns { status: "success", data: CorrectionData }
+      const result = await handleResponse<{ status: string; data: CorrectionData }>(response)
+      return result.data
     },
 
     /**

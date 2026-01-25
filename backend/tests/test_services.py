@@ -157,47 +157,83 @@ class TestStorageService:
 
 
 class TestWorkerService:
-    """Test WorkerService internal HTTP calls."""
-    
+    """Test WorkerService worker triggering."""
+
     @pytest.mark.asyncio
     async def test_trigger_audio_worker(self):
-        """Test triggering audio worker via internal HTTP."""
-        with patch('backend.services.worker_service.httpx.AsyncClient') as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client_cls.return_value.__aenter__.return_value = mock_client
-            
-            mock_response = Mock()
-            mock_response.status_code = 200
-            mock_client.post.return_value = mock_response
-            
-            worker_service = get_worker_service()
-            
-            await worker_service.trigger_audio_worker("test123")
-            
-            # Verify HTTP POST was made
-            mock_client.post.assert_called_once()
-            call_args = mock_client.post.call_args
-            assert "/api/internal/workers/audio" in str(call_args)
-    
+        """Test triggering audio worker via Cloud Run Jobs."""
+        from backend.services.worker_service import WorkerService, reset_worker_service
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings:
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = False
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_video = False
+
+            # Mock Cloud Run v2 Jobs client
+            mock_jobs_client = MagicMock()
+            mock_operation = MagicMock()
+            mock_operation.metadata = "test-metadata"
+            mock_jobs_client.run_job.return_value = mock_operation
+
+            mock_run_v2 = MagicMock()
+            mock_run_v2.JobsClient.return_value = mock_jobs_client
+            mock_run_v2.RunJobRequest = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides.ContainerOverride = MagicMock()
+
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}):
+                service = WorkerService()
+                result = await service.trigger_audio_worker("test123")
+
+                # Verify Cloud Run Job was triggered
+                assert result is True
+                mock_jobs_client.run_job.assert_called_once()
+
+                # Verify correct job name was used
+                call_args = mock_run_v2.RunJobRequest.call_args
+                assert call_args is not None
+                assert "audio-separation-job" in str(call_args)
+
     @pytest.mark.asyncio
     async def test_trigger_lyrics_worker(self):
-        """Test triggering lyrics worker via internal HTTP."""
-        with patch('backend.services.worker_service.httpx.AsyncClient') as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client_cls.return_value.__aenter__.return_value = mock_client
-            
-            mock_response = Mock()
-            mock_response.status_code = 200
-            mock_client.post.return_value = mock_response
-            
-            worker_service = get_worker_service()
-            
-            await worker_service.trigger_lyrics_worker("test123")
-            
-            # Verify HTTP POST was made
-            mock_client.post.assert_called_once()
-            call_args = mock_client.post.call_args
-            assert "/api/internal/workers/lyrics" in str(call_args)
+        """Test triggering lyrics worker via Cloud Run Jobs."""
+        from backend.services.worker_service import WorkerService, reset_worker_service
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings:
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = False
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_video = False
+
+            # Mock Cloud Run v2 Jobs client
+            mock_jobs_client = MagicMock()
+            mock_operation = MagicMock()
+            mock_operation.metadata = "test-metadata"
+            mock_jobs_client.run_job.return_value = mock_operation
+
+            mock_run_v2 = MagicMock()
+            mock_run_v2.JobsClient.return_value = mock_jobs_client
+            mock_run_v2.RunJobRequest = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides.ContainerOverride = MagicMock()
+
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}):
+                service = WorkerService()
+                result = await service.trigger_lyrics_worker("test123")
+
+                # Verify Cloud Run Job was triggered
+                assert result is True
+                mock_jobs_client.run_job.assert_called_once()
+
+                # Verify correct job name was used
+                call_args = mock_run_v2.RunJobRequest.call_args
+                assert call_args is not None
+                assert "lyrics-transcription-job" in str(call_args)
     
     @pytest.mark.asyncio
     async def test_trigger_screens_worker(self):

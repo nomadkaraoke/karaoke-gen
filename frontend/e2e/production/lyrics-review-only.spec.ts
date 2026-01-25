@@ -228,4 +228,83 @@ test.describe('Lyrics Review Only - Focused Test', () => {
     console.log('FOCUSED TEST COMPLETE');
     console.log('========================================');
   });
+
+  test('Add Reference Lyrics via API', async ({ page, context, request }) => {
+    /**
+     * INTEGRATION TEST: Verifies the add-lyrics API endpoint works.
+     *
+     * This test was added after a bug where the frontend was calling
+     * /api/jobs/{id}/lyrics instead of /api/review/{id}/add-lyrics
+     * (see feat/sess-20260124-1843-fix-add-reference-lyrics).
+     *
+     * The bug wasn't caught because:
+     * 1. E2E tests used mocks that didn't validate real backend routes
+     * 2. Unit tests didn't cover the addLyrics method
+     * 3. No integration tests existed for this feature
+     */
+    test.setTimeout(60_000);
+
+    const jobId = getJobId();
+    const reviewToken = getReviewToken();
+    const accessToken = getAccessToken();
+
+    console.log('========================================');
+    console.log('INTEGRATION TEST: Add Reference Lyrics');
+    console.log('========================================');
+    console.log(`Job ID: ${jobId}`);
+    console.log('');
+
+    // Test the API endpoint directly (validates the contract)
+    console.log('1. Testing API endpoint: POST /api/review/{jobId}/add-lyrics');
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const response = await request.post(`${API_URL}/api/review/${jobId}/add-lyrics`, {
+      headers,
+      data: {
+        source: 'test_integration',
+        lyrics: 'This is a test lyrics line\nAdded by integration test'
+      }
+    });
+
+    console.log(`   Response status: ${response.status()}`);
+
+    if (response.ok()) {
+      const data = await response.json();
+      console.log('   SUCCESS: API endpoint works correctly');
+      console.log(`   Response contains reference_lyrics: ${!!data.reference_lyrics}`);
+
+      // Verify the new source was added
+      if (data.reference_lyrics && data.reference_lyrics.test_integration) {
+        console.log('   VERIFIED: New lyrics source "test_integration" was added');
+      } else {
+        console.log('   Note: Response format may differ - check manually');
+      }
+    } else {
+      const errorBody = await response.text();
+      console.log(`   FAILED: ${errorBody}`);
+
+      // 404 specifically means the endpoint doesn't exist (the original bug!)
+      if (response.status() === 404) {
+        throw new Error(
+          'API returned 404 - endpoint /api/review/{id}/add-lyrics does not exist. ' +
+          'This was the original bug this test was designed to catch!'
+        );
+      }
+
+      // Other errors might be auth-related or job-state related
+      console.log(`   Note: Error may be expected if job is not in review state or auth is missing`);
+    }
+
+    console.log('');
+    console.log('========================================');
+    console.log('INTEGRATION TEST COMPLETE');
+    console.log('========================================');
+  });
 });

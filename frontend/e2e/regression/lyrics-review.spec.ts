@@ -208,14 +208,14 @@ async function setupLocalModeMocks(page: Page) {
       },
       // Update handlers endpoint
       {
-        method: 'PATCH',
-        path: '/api/jobs/local/handlers',
+        method: 'POST',
+        path: '/api/review/local/handlers',
         response: { body: { status: 'success', data: mockCorrectionData } },
       },
       // Add lyrics endpoint
       {
         method: 'POST',
-        path: '/api/jobs/local/lyrics',
+        path: '/api/review/local/add-lyrics',
         response: { body: { status: 'success', data: mockCorrectionData } },
       },
       // Preview video generation endpoint
