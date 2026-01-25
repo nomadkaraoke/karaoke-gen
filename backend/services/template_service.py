@@ -6,8 +6,8 @@ This allows updating email content without code deployment.
 
 Template locations:
 - gs://{bucket}/templates/job-completion.txt - Job completion email (plain text)
-- gs://{bucket}/templates/action-needed-lyrics.txt - Lyrics review reminder
-- gs://{bucket}/templates/action-needed-instrumental.txt - Instrumental selection reminder
+- gs://{bucket}/templates/action-needed-lyrics.txt - Combined review reminder (lyrics + instrumental)
+- gs://{bucket}/templates/action-needed-instrumental.txt - Instrumental selection reminder (finalise-only jobs)
 """
 import logging
 import re
@@ -52,11 +52,11 @@ Thanks again and have a great day!
 
 DEFAULT_ACTION_NEEDED_LYRICS_TEMPLATE = """Hi {name},
 
-Your karaoke video for "{artist} - {title}" is ready for lyrics review!
+Your karaoke video for "{artist} - {title}" is ready for review!
 
-Our system has transcribed and synchronized the lyrics, but they may need some corrections. Please review and make any corrections necessary so we can finish generating your video.
+Our system has transcribed and synchronized the lyrics, but they may need some corrections. You'll also be able to select your preferred instrumental track (with or without backing vocals).
 
-Review your lyrics here:
+Please review your lyrics and select an instrumental:
 {review_url}
 
 This usually takes just a few minutes.
@@ -248,13 +248,16 @@ class TemplateService:
         review_url: str = "",
     ) -> str:
         """
-        Render the lyrics review reminder template.
+        Render the combined review reminder template.
+
+        This is used for the combined lyrics + instrumental review flow.
+        Users review lyrics and select their instrumental in a single session.
 
         Args:
             name: User's display name
             artist: Artist name
             title: Song title
-            review_url: Lyrics review URL
+            review_url: Combined review URL
 
         Returns:
             Rendered email content
@@ -277,6 +280,10 @@ class TemplateService:
     ) -> str:
         """
         Render the instrumental selection reminder template.
+
+        This is only used for finalise-only jobs where users upload pre-rendered
+        video and only need to select the instrumental track. For normal jobs,
+        instrumental selection is combined with lyrics review (see render_action_needed_lyrics).
 
         Args:
             name: User's display name

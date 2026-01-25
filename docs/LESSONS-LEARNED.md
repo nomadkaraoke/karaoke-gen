@@ -23,6 +23,9 @@ Audio separation and lyrics transcription run in parallel. Both can fail indepen
 ### GCE Instance Selection for FFmpeg
 AMD EPYC (C4D series) significantly outperforms Intel Xeon (C4 series) for CPU-bound FFmpeg encoding with libass. C4D-highcpu-32 is ~5x faster than C4-standard-8. C4D requires `hyperdisk-balanced` disk type.
 
+### Combined Review Flow (Jan 2026)
+When two sequential human review steps can be combined into one, do it. We originally had separate steps: (1) lyrics review, (2) instrumental selection. This doubled user friction and email notifications. By the time users enter lyrics review, audio separation is already complete - the instrumental stems are ready. We combined both into a single "Combined Review" session: users review lyrics AND select instrumental track on the same page, submit once. **Benefits**: Better UX (one interaction vs two), faster turnaround, reduced drop-off, simpler email notifications, cleaner codebase. **Implementation pattern**: Move analysis that was done after review (backing vocals analysis) to before review (in screens_worker). Include instrumental options in the correction-data endpoint. Require instrumental selection in the review completion request body. Remove the separate `AWAITING_INSTRUMENTAL_SELECTION` state from normal flow (keep for edge cases like finalise-only jobs for DB compatibility).
+
 ---
 
 ## Common Gotchas

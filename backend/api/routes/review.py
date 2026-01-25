@@ -1,12 +1,15 @@
 """
-Review API routes - Compatible with LyricsTranscriber frontend.
+Review API routes - Combined lyrics + instrumental review.
 
-These endpoints match the API that the LyricsTranscriber review frontend expects,
-allowing us to use the existing React review UI with our cloud backend.
+These endpoints support the combined review flow where users review lyrics
+AND select their instrumental in a single session.
+
+The correction-data endpoint now includes instrumental options and backing
+vocals analysis, and the complete endpoint requires instrumental selection.
 
 Usage:
   Frontend URL: http://localhost:5173/?baseApiUrl=http://localhost:8000/api/review/{job_id}
-  
+
 The baseApiUrl includes the job_id, and all endpoints are relative to that.
 """
 import asyncio
@@ -72,24 +75,29 @@ async def get_correction_data(
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """
-    Get correction data for the review interface.
-    
-    Returns the CorrectionResult data that the frontend needs to render
-    the lyrics review UI.
+    Get correction data for the combined review interface.
+
+    Returns the CorrectionResult data plus instrumental options and analysis
+    for the combined lyrics + instrumental review UI.
+
+    Response includes:
+    - All lyrics correction data (segments, reference lyrics, anchors, etc.)
+    - instrumental_options: List of available instrumental tracks with audio URLs
+    - backing_vocals_analysis: Analysis data to help users choose instrumental
     """
     job_manager = JobManager()
     storage = StorageService()
-    
+
     job = job_manager.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
             detail=f"Job not ready for review (current status: {job.status})"
         )
-    
+
     # Get corrections URL from file_urls
     corrections_gcs = job.file_urls.get('lyrics', {}).get('corrections')
     if not corrections_gcs:
@@ -100,11 +108,11 @@ async def get_correction_data(
                 status_code=404,
                 detail="Corrections data not found. Lyrics processing may not be complete."
             )
-    
+
     # Download and return corrections data
     try:
         corrections_data = storage.download_json(corrections_gcs)
-        
+
         # Add audio hash for the frontend
         audio_hash = _get_audio_hash(job_id)
         if 'metadata' not in corrections_data:
@@ -112,24 +120,62 @@ async def get_correction_data(
         corrections_data['metadata']['audio_hash'] = audio_hash
         corrections_data['metadata']['artist'] = job.artist
         corrections_data['metadata']['title'] = job.title
-        
+
         # Store context for audio serving
         _job_contexts[job_id] = {
             'audio_hash': audio_hash,
             'audio_gcs_path': job.input_media_gcs_path
         }
-        
+
+        # === Add instrumental data for combined review ===
+
+        # Get instrumental stem URLs
+        stems = job.file_urls.get('stems', {})
+        clean_url = stems.get('instrumental_clean')
+        backing_url = stems.get('instrumental_with_backing')
+
+        # Build instrumental options with signed URLs
+        instrumental_options = []
+        if clean_url:
+            instrumental_options.append({
+                "id": "clean",
+                "label": "Clean Instrumental",
+                "description": "No backing vocals - just the music",
+                "audio_url": storage.generate_signed_url(clean_url, expiration_minutes=120),
+            })
+        if backing_url:
+            instrumental_options.append({
+                "id": "with_backing",
+                "label": "Instrumental with Backing Vocals",
+                "description": "Includes harmonies and background vocals",
+                "audio_url": storage.generate_signed_url(backing_url, expiration_minutes=120),
+            })
+
+        corrections_data['instrumental_options'] = instrumental_options
+
+        # Get backing vocals analysis from state_data (populated by screens_worker)
+        backing_vocals_analysis = job.state_data.get('backing_vocals_analysis', {})
+        corrections_data['backing_vocals_analysis'] = backing_vocals_analysis
+
+        # Get waveform URL if available
+        analysis_files = job.file_urls.get('analysis', {})
+        waveform_url = analysis_files.get('backing_vocals_waveform')
+        if waveform_url:
+            corrections_data['backing_vocals_waveform_url'] = storage.generate_signed_url(
+                waveform_url, expiration_minutes=120
+            )
+
         # Transition to IN_REVIEW if not already
         if job.status == JobStatus.AWAITING_REVIEW:
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.IN_REVIEW,
-                message="User opened review interface"
+                message="User opened combined review interface"
             )
-        
-        logger.info(f"Job {job_id}: Serving correction data for review")
+
+        logger.info(f"Job {job_id}: Serving correction data with instrumental options for combined review")
         return corrections_data
-        
+
     except Exception as e:
         logger.error(f"Job {job_id}: Error loading corrections: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error loading corrections: {str(e)}")
@@ -209,31 +255,63 @@ async def complete_review(
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """
-    Complete the review and save corrected lyrics.
-    
-    This endpoint receives the updated correction data from the frontend
-    and saves it, then triggers the render video worker.
+    Complete the combined review - save corrected lyrics AND instrumental selection.
+
+    This endpoint receives:
+    - Updated correction data (lyrics corrections)
+    - instrumental_selection: "clean" or "with_backing" (REQUIRED)
+
+    After saving, triggers the render video worker which will use the
+    pre-selected instrumental (no separate instrumental selection step).
     """
     job_manager = JobManager()
     storage = StorageService()
-    
+
     job = job_manager.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
             detail=f"Job not in review state (current status: {job.status})"
         )
-    
+
+    # === Require instrumental selection ===
+    instrumental_selection = updated_data.get("instrumental_selection")
+    if not instrumental_selection:
+        raise HTTPException(
+            status_code=400,
+            detail="instrumental_selection is required. Must be 'clean' or 'with_backing'."
+        )
+
+    valid_selections = ["clean", "with_backing"]
+    # Also allow "custom" for user-provided instrumentals
+    if job.existing_instrumental_gcs_path:
+        valid_selections.append("custom")
+
+    if instrumental_selection not in valid_selections:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid instrumental_selection. Must be one of: {valid_selections}"
+        )
+
     try:
+        # Remove instrumental_selection from updated_data before saving to corrections
+        # (it's stored separately in state_data)
+        corrections_to_save = {k: v for k, v in updated_data.items() if k != "instrumental_selection"}
+
         # Save updated corrections to GCS
         corrections_gcs_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
-        storage.upload_json(corrections_gcs_path, updated_data)
+        storage.upload_json(corrections_gcs_path, corrections_to_save)
         job_manager.update_file_url(job_id, 'lyrics', 'corrections_updated', corrections_gcs_path)
 
         logger.info(f"Job {job_id}: Saved updated corrections")
+
+        # === Store instrumental selection in state_data ===
+        # This will be used by render_video_worker to skip AWAITING_INSTRUMENTAL_SELECTION
+        job_manager.update_state_data(job_id, 'instrumental_selection', instrumental_selection)
+        logger.info(f"Job {job_id}: Stored instrumental selection: {instrumental_selection}")
 
         # Clear worker progress keys to ensure workers will run fresh (not skip due to idempotency)
         # This handles cases where a job is re-reviewed after completion or where state was inconsistent.
@@ -249,7 +327,7 @@ async def complete_review(
             job_id=job_id,
             new_status=JobStatus.REVIEW_COMPLETE,
             progress=70,
-            message="Review complete, rendering video with corrected lyrics"
+            message=f"Review complete (instrumental: {instrumental_selection}), rendering video"
         )
 
         # Trigger render video worker
@@ -261,10 +339,15 @@ async def complete_review(
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
 
-        logger.info(f"Job {job_id}: Review complete, triggered render video worker")
+        logger.info(f"Job {job_id}: Combined review complete, triggered render video worker")
 
-        return {"status": "success"}
-        
+        return {
+            "status": "success",
+            "instrumental_selection": instrumental_selection,
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Job {job_id}: Error completing review: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error completing review: {str(e)}")

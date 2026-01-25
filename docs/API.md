@@ -93,13 +93,20 @@ DELETE /api/jobs/{job_id}
 
 ### Review
 
+The combined review flow allows users to review lyrics AND select instrumental track in a single session.
+
 #### Get Correction Data
 
 ```http
 GET /api/review/{job_id}/correction-data
 ```
 
-Returns lyrics correction data for the review UI.
+Returns lyrics correction data plus instrumental options for the review UI.
+
+Response includes:
+- `correction_data` - Lyrics and segments for editing
+- `instrumental_options` - Available instrumental tracks (`clean`, `with_backing`)
+- `backing_vocals_analysis` - Analysis data to help with selection
 
 #### Complete Review
 
@@ -109,11 +116,12 @@ Content-Type: application/json
 
 {
   "corrections": [...],
-  "corrected_segments": [...]
+  "corrected_segments": [...],
+  "instrumental_selection": "clean"  // Required: "clean" or "with_backing"
 }
 ```
 
-Saves corrections and triggers video rendering.
+Saves corrections, stores instrumental selection, and triggers video rendering. The instrumental selection is now required as part of the combined review flow.
 
 #### Generate Preview
 
@@ -138,7 +146,9 @@ GET /api/review/{job_id}/audio/{stem_type}
 
 Streams audio for review playback.
 
-### Instrumental Selection
+### Instrumental Selection (Finalise-Only Jobs)
+
+For finalise-only jobs (where audio prep was done externally), instrumental selection is handled separately:
 
 ```http
 POST /api/jobs/{job_id}/select-instrumental
@@ -148,6 +158,8 @@ Content-Type: application/json
   "selection": "clean"  // or "with_backing"
 }
 ```
+
+**Note**: For normal jobs, instrumental selection is now part of the combined review flow (see `/api/review/{job_id}/complete` above).
 
 ### Audio Search
 
@@ -291,16 +303,17 @@ POST /api/internal/jobs/{job_id}/trigger-video
 | `separating_stage1` | Audio separation (1/2) |
 | `separating_stage2` | Audio separation (2/2) |
 | `transcribing` | Lyrics transcription |
-| `generating_screens` | Title/end screens |
-| `awaiting_review` | Waiting for human review |
+| `generating_screens` | Title/end screens + backing vocals analysis |
+| `awaiting_review` | Waiting for combined human review (lyrics + instrumental) |
 | `in_review` | Human reviewing |
-| `review_complete` | Review submitted |
+| `review_complete` | Review submitted with instrumental selection |
 | `rendering_video` | Generating karaoke video |
-| `awaiting_instrumental_selection` | Waiting for selection |
-| `instrumental_selected` | Selection made |
+| `instrumental_selected` | Instrumental selection confirmed, ready for video |
 | `generating_video` | Final encoding |
 | `complete` | Done |
 | `failed` | Error |
+
+**Note**: `awaiting_instrumental_selection` exists for backwards compatibility with historical jobs but is no longer used for new jobs. Instrumental selection is now part of the combined review flow.
 
 ## Error Responses
 
@@ -854,9 +867,10 @@ Resets a job to a specific workflow checkpoint for re-processing.
 Allowed target states:
 - `pending` - Restart from beginning (clears all processing data)
 - `awaiting_audio_selection` - Re-select audio source
-- `awaiting_review` - Re-review lyrics (preserves audio stems)
-- `awaiting_instrumental_selection` - Re-select instrumental (preserves review)
+- `awaiting_review` - Re-do combined review (lyrics + instrumental selection)
 - `instrumental_selected` - **Reprocess video** (preserves all settings, triggers video worker automatically)
+
+**Note**: With the combined review flow, `awaiting_instrumental_selection` is no longer a valid reset target for new jobs. Use `awaiting_review` instead to re-select the instrumental.
 
 The `instrumental_selected` state is useful for re-encoding and re-distributing a job after using "Delete Outputs":
 1. Delete outputs → Removes YouTube/Dropbox/GDrive files, frees brand code
@@ -1007,7 +1021,9 @@ POST /api/internal/jobs/{job_id}/check-idle-reminder
 Authorization: Bearer ADMIN_TOKEN
 ```
 
-Called by Cloud Tasks 5 minutes after a job enters a blocking state (awaiting_review or awaiting_instrumental_selection). Sends a reminder email if the user is still idle and no reminder has been sent yet.
+Called by Cloud Tasks 5 minutes after a job enters a blocking state (primarily `awaiting_review` for combined review). Sends a reminder email if the user is still idle and no reminder has been sent yet.
+
+**Note**: With the combined review flow, users complete both lyrics review and instrumental selection in one session. The `awaiting_instrumental_selection` state is only used for finalise-only jobs.
 
 ## Rate Limits
 

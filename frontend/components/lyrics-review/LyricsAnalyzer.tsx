@@ -19,6 +19,7 @@ import {
   WordClickInfo,
   ModalContent,
 } from '@/lib/lyrics-review/types'
+import type { InstrumentalSelectionType } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import ReferenceView from './ReferenceView'
 import TranscriptionView from './TranscriptionView'
@@ -70,7 +71,7 @@ interface ApiClient {
     preview_hash?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
-  completeReview: () => Promise<{ status: string; job_status: string; message: string }>
+  completeReview: (instrumentalSelection: InstrumentalSelectionType) => Promise<{ status: string; job_status: string; message: string }>
 }
 
 export interface LyricsAnalyzerProps {
@@ -610,7 +611,7 @@ export default function LyricsAnalyzer({
   }, [])
 
   // Submit to server
-  const handleSubmitToServer = useCallback(async () => {
+  const handleSubmitToServer = useCallback(async (instrumentalSelection: InstrumentalSelectionType) => {
     if (!apiClient) return
 
     setIsSubmitting(true)
@@ -628,8 +629,8 @@ export default function LyricsAnalyzer({
         }
       }
 
-      // Complete review and trigger video rendering
-      await apiClient.completeReview()
+      // Complete review with instrumental selection and trigger video rendering
+      await apiClient.completeReview(instrumentalSelection)
 
       setIsReviewComplete(true)
       setIsReviewModalOpen(false)

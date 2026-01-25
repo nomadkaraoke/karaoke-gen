@@ -1927,9 +1927,13 @@ async def mark_finalise_uploads_complete(
 ):
     """
     Mark finalise-only file uploads as complete and start video generation.
-    
+
     This is called after uploading prep outputs for a finalise-only job.
     The job will transition directly to AWAITING_INSTRUMENTAL_SELECTION.
+
+    Note: Finalise-only jobs are a special case where users upload pre-rendered
+    video and only need to select instrumental. For normal jobs, instrumental
+    selection is combined with lyrics review in a single step.
     """
     try:
         # Get job and verify it exists

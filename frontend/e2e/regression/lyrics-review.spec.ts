@@ -154,6 +154,16 @@ const mockCorrectionData = {
   word_id_map: {},
   segment_id_map: {},
   resized_segments: [],
+  // Combined review flow: instrumental options
+  instrumental_options: [
+    { id: 'clean', label: 'Clean Instrumental', audio_url: '/api/audio/instrumental_clean' },
+    { id: 'with_backing', label: 'With Backing Vocals', audio_url: '/api/audio/instrumental_with_backing' },
+  ],
+  backing_vocals_analysis: {
+    has_backing_vocals: true,
+    confidence: 0.85,
+    recommendation: 'with_backing',
+  },
 };
 
 const mockJobData = {

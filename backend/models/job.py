@@ -15,54 +15,58 @@ from karaoke_gen.utils import normalize_text
 class JobStatus(str, Enum):
     """
     Job status enumeration - Complete state machine.
-    
-    The workflow has 8 main stages with 3 human interaction points:
+
+    The workflow has 7 main stages with 2 human interaction points:
     1. Input & Setup (may include audio source selection)
     2. Parallel Processing (audio + lyrics)
-    3. Title/End Screen Generation
+    3. Title/End Screen Generation + Backing Vocals Analysis
     4. Countdown Padding Synchronization
-    5. Human Review (BLOCKING)
-    6. Instrumental Selection (BLOCKING)
-    7. Video Finalization
-    8. Distribution
+    5. Combined Human Review (BLOCKING) - lyrics review + instrumental selection
+    6. Video Finalization
+    7. Distribution
+
+    Note: As of 2026-01, lyrics review and instrumental selection are combined
+    into a single human review step. The user selects their instrumental
+    during the lyrics review phase, before the video is rendered.
     """
     # Initial states
     PENDING = "pending"                           # Job created, queued for processing
-    
+
     # Audio search states (for artist+title search mode)
     SEARCHING_AUDIO = "searching_audio"           # Searching for audio sources via flacfetch
     AWAITING_AUDIO_SELECTION = "awaiting_audio_selection"  # ⚠️ WAITING FOR USER - select audio source
     DOWNLOADING_AUDIO = "downloading_audio"       # Downloading selected audio from source
-    
+
     DOWNLOADING = "downloading"                   # Downloading from URL or processing upload
-    
+
     # Stage 2a: Audio separation (parallel track 1)
     SEPARATING_STAGE1 = "separating_stage1"      # Clean instrumental separation (Modal API)
     SEPARATING_STAGE2 = "separating_stage2"      # Backing vocals separation (Modal API)
     AUDIO_COMPLETE = "audio_complete"            # All audio stems ready
-    
+
     # Stage 2b: Lyrics processing (parallel track 2)
     TRANSCRIBING = "transcribing"                # AudioShake API transcription
     CORRECTING = "correcting"                     # Automatic lyrics correction
     LYRICS_COMPLETE = "lyrics_complete"           # Corrections JSON ready
-    
-    # Stage 3: Title/End screens
+
+    # Stage 3: Title/End screens + Backing Vocals Analysis
     GENERATING_SCREENS = "generating_screens"     # Creating title and end screen videos
-    
+
     # Stage 4: Countdown padding (automatic)
     APPLYING_PADDING = "applying_padding"         # Synchronizing countdown padding
-    
-    # Stage 5: Human review (BLOCKING)
-    AWAITING_REVIEW = "awaiting_review"          # ⚠️ WAITING FOR USER - lyrics review needed
-    IN_REVIEW = "in_review"                      # User is actively reviewing lyrics
-    REVIEW_COMPLETE = "review_complete"          # User submitted corrected lyrics
-    
+
+    # Stage 5: Combined Human Review (BLOCKING) - lyrics + instrumental selection
+    AWAITING_REVIEW = "awaiting_review"          # ⚠️ WAITING FOR USER - combined review needed
+    IN_REVIEW = "in_review"                      # User is actively reviewing
+    REVIEW_COMPLETE = "review_complete"          # User submitted lyrics + instrumental selection
+
     # Stage 5.5: Render video with corrected lyrics (post-review)
     RENDERING_VIDEO = "rendering_video"          # Using OutputGenerator to create with_vocals.mkv
-    
-    # Stage 6: Instrumental selection (BLOCKING)
-    AWAITING_INSTRUMENTAL_SELECTION = "awaiting_instrumental_selection"  # ⚠️ WAITING FOR USER
-    INSTRUMENTAL_SELECTED = "instrumental_selected"  # User made selection
+
+    # Stage 6: Instrumental already selected (during combined review)
+    # Note: AWAITING_INSTRUMENTAL_SELECTION kept for DB compatibility with historical jobs only
+    AWAITING_INSTRUMENTAL_SELECTION = "awaiting_instrumental_selection"  # LEGACY - no longer used
+    INSTRUMENTAL_SELECTED = "instrumental_selected"  # Instrumental was selected during combined review
     
     # Stage 7: Video generation and finalization
     GENERATING_VIDEO = "generating_video"        # Creating initial karaoke video
@@ -89,71 +93,74 @@ class JobStatus(str, Enum):
 
 # Valid state transitions
 STATE_TRANSITIONS = {
-    # PENDING can go to DOWNLOADING (file upload), SEARCHING_AUDIO (artist+title search), or AWAITING_INSTRUMENTAL_SELECTION (finalise-only)
-    JobStatus.PENDING: [JobStatus.DOWNLOADING, JobStatus.SEARCHING_AUDIO, JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.FAILED, JobStatus.CANCELLED],
-    
+    # PENDING can go to DOWNLOADING (file upload) or SEARCHING_AUDIO (artist+title search)
+    JobStatus.PENDING: [JobStatus.DOWNLOADING, JobStatus.SEARCHING_AUDIO, JobStatus.FAILED, JobStatus.CANCELLED],
+
     # Audio search flow (for artist+title search mode)
     JobStatus.SEARCHING_AUDIO: [JobStatus.AWAITING_AUDIO_SELECTION, JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED],
     JobStatus.AWAITING_AUDIO_SELECTION: [JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED, JobStatus.CANCELLED],
     JobStatus.DOWNLOADING_AUDIO: [JobStatus.DOWNLOADING, JobStatus.FAILED],
-    
+
     # DOWNLOADING allows parallel processing (audio + lyrics) and then screens when both complete
     JobStatus.DOWNLOADING: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.FAILED],
-    
+
     # Audio separation flow
     JobStatus.SEPARATING_STAGE1: [JobStatus.SEPARATING_STAGE2, JobStatus.FAILED],
     JobStatus.SEPARATING_STAGE2: [JobStatus.AUDIO_COMPLETE, JobStatus.FAILED],
     JobStatus.AUDIO_COMPLETE: [JobStatus.GENERATING_SCREENS, JobStatus.FAILED],
-    
+
     # Lyrics flow
     JobStatus.TRANSCRIBING: [JobStatus.CORRECTING, JobStatus.FAILED],
     JobStatus.CORRECTING: [JobStatus.LYRICS_COMPLETE, JobStatus.FAILED],
     JobStatus.LYRICS_COMPLETE: [JobStatus.GENERATING_SCREENS, JobStatus.FAILED],
-    
-    # Post-parallel processing
-    JobStatus.GENERATING_SCREENS: [JobStatus.APPLYING_PADDING, JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.FAILED],
+
+    # Post-parallel processing (screens + backing vocals analysis)
+    JobStatus.GENERATING_SCREENS: [JobStatus.APPLYING_PADDING, JobStatus.AWAITING_REVIEW, JobStatus.FAILED],
     JobStatus.APPLYING_PADDING: [JobStatus.AWAITING_REVIEW, JobStatus.FAILED],
-    
-    # Human review flow
+
+    # Combined human review flow (lyrics + instrumental selection)
     # AWAITING_REVIEW can go directly to REVIEW_COMPLETE (quick review) or to IN_REVIEW (editing)
     JobStatus.AWAITING_REVIEW: [JobStatus.IN_REVIEW, JobStatus.REVIEW_COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED],
     JobStatus.IN_REVIEW: [JobStatus.REVIEW_COMPLETE, JobStatus.AWAITING_REVIEW, JobStatus.FAILED],
     JobStatus.REVIEW_COMPLETE: [JobStatus.RENDERING_VIDEO, JobStatus.PREP_COMPLETE, JobStatus.FAILED],  # PREP_COMPLETE for prep-only jobs
-    
-    # Video rendering (post-review)
-    JobStatus.RENDERING_VIDEO: [JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.PREP_COMPLETE, JobStatus.FAILED],
-    
-    # Instrumental selection flow
+
+    # Video rendering (post-review) - instrumental was already selected during combined review
+    JobStatus.RENDERING_VIDEO: [JobStatus.INSTRUMENTAL_SELECTED, JobStatus.PREP_COMPLETE, JobStatus.FAILED],
+
+    # AWAITING_INSTRUMENTAL_SELECTION is LEGACY - kept for historical jobs in DB
+    # New jobs never enter this state; they go directly to INSTRUMENTAL_SELECTED after render
     JobStatus.AWAITING_INSTRUMENTAL_SELECTION: [JobStatus.INSTRUMENTAL_SELECTED, JobStatus.FAILED, JobStatus.CANCELLED],
     JobStatus.INSTRUMENTAL_SELECTED: [JobStatus.GENERATING_VIDEO, JobStatus.FAILED],
-    
+
     # Video generation flow
     JobStatus.GENERATING_VIDEO: [JobStatus.ENCODING, JobStatus.FAILED],
     JobStatus.ENCODING: [JobStatus.PACKAGING, JobStatus.COMPLETE, JobStatus.FAILED],
     JobStatus.PACKAGING: [JobStatus.UPLOADING, JobStatus.COMPLETE, JobStatus.FAILED],
-    
+
     # Distribution flow
     JobStatus.UPLOADING: [JobStatus.NOTIFYING, JobStatus.COMPLETE, JobStatus.FAILED],
     JobStatus.NOTIFYING: [JobStatus.COMPLETE, JobStatus.FAILED],
-    
+
     # Terminal states - COMPLETE, PREP_COMPLETE have no transitions
     # FAILED and CANCELLED allow retry transitions to resume from checkpoints
-    # PREP_COMPLETE allows finalise-only continuation
+    # PREP_COMPLETE allows continuation from combined review
     JobStatus.COMPLETE: [],
-    JobStatus.PREP_COMPLETE: [JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.FAILED],  # Finalise-only continues from here
+    JobStatus.PREP_COMPLETE: [JobStatus.AWAITING_REVIEW, JobStatus.FAILED],  # Continue from combined review
     JobStatus.FAILED: [
         JobStatus.DOWNLOADING,            # Retry from beginning (if input audio exists)
         JobStatus.INSTRUMENTAL_SELECTED,  # Retry from video generation
         JobStatus.REVIEW_COMPLETE,        # Retry from render stage
         JobStatus.LYRICS_COMPLETE,        # Retry from screens generation
+        JobStatus.AWAITING_REVIEW,        # Retry from combined review
     ],
     JobStatus.CANCELLED: [
         JobStatus.DOWNLOADING,            # Retry from beginning (if input audio exists)
         JobStatus.INSTRUMENTAL_SELECTED,  # Retry from video generation
         JobStatus.REVIEW_COMPLETE,        # Retry from render stage
         JobStatus.LYRICS_COMPLETE,        # Retry from screens generation
+        JobStatus.AWAITING_REVIEW,        # Retry from combined review
     ],
-    
+
     # Legacy states (for backward compatibility)
     JobStatus.QUEUED: [JobStatus.PENDING],
     JobStatus.PROCESSING: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING],

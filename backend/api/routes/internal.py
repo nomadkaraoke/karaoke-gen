@@ -288,7 +288,7 @@ async def trigger_render_video_worker(
     Idempotency: If worker is already running or complete, returns early.
     
     Output: with_vocals.mkv in GCS
-    Next state: AWAITING_INSTRUMENTAL_SELECTION
+    Next state: INSTRUMENTAL_SELECTED (instrumental is now selected during review)
     """
     job_id = request.job_id
     
@@ -326,7 +326,7 @@ async def check_idle_reminder(
     Check if a job needs an idle reminder email.
 
     This endpoint is called by a Cloud Tasks scheduled task 5 minutes after
-    a job enters a blocking state (AWAITING_REVIEW or AWAITING_INSTRUMENTAL_SELECTION).
+    a job enters AWAITING_REVIEW state.
 
     If the job is still in the blocking state and no reminder has been sent yet,
     sends a reminder email to the user.
@@ -352,6 +352,7 @@ async def check_idle_reminder(
         return {"status": "not_found", "job_id": job_id, "message": "Job not found"}
 
     # Check if job is still in a blocking state
+    # Note: AWAITING_INSTRUMENTAL_SELECTION is LEGACY - kept for historical jobs only
     blocking_states = [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION]
     if job.status not in [s.value for s in blocking_states]:
         logger.info(f"[job:{job_id}] Job no longer in blocking state ({job.status}), skipping reminder")

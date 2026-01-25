@@ -392,28 +392,22 @@ export const api = {
   },
   
   /**
-   * Complete the lyrics review
+   * Complete the lyrics review with instrumental selection
    */
-  async completeReview(jobId: string): Promise<{ status: string; job_status: string; message: string }> {
+  async completeReview(jobId: string, instrumentalSelection: InstrumentalSelectionType): Promise<{ status: string; job_status: string; message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
       method: 'POST',
-      headers: getAuthHeaders()
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ instrumental_selection: instrumentalSelection })
     });
     return handleResponse(response);
   },
-  
+
   /**
-   * Get instrumental options
-   */
-  async getInstrumentalOptions(jobId: string): Promise<InstrumentalOptionsResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-options`, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
-  },
-  
-  /**
-   * Select an instrumental
+   * Select an instrumental (for finalise-only jobs that use the separate selection flow)
    */
   async selectInstrumental(
     jobId: string,
@@ -427,63 +421,6 @@ export const api = {
     return handleResponse(response);
   },
 
-  /**
-   * Get instrumental analysis data for review
-   */
-  async getInstrumentalAnalysis(jobId: string): Promise<InstrumentalAnalysis> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-analysis`, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
-  },
-
-  /**
-   * Get waveform data for visualization
-   */
-  async getWaveformData(jobId: string, numPoints: number = 1000): Promise<WaveformData> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/jobs/${jobId}/waveform-data?num_points=${numPoints}`,
-      { headers: getAuthHeaders() }
-    );
-    return handleResponse(response);
-  },
-
-  /**
-   * Upload a custom instrumental file
-   */
-  async uploadCustomInstrumental(jobId: string, file: File): Promise<{ status: string; duration_seconds: number; message: string }> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/upload-instrumental`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: formData,
-    });
-    return handleResponse(response);
-  },
-
-  /**
-   * Create a custom instrumental with mute regions
-   */
-  async createCustomInstrumental(jobId: string, muteRegions: MuteRegion[]): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/create-custom-instrumental`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ mute_regions: muteRegions }),
-    });
-    return handleResponse(response);
-  },
-
-  /**
-   * Get audio stream URL for a specific stem type
-   */
-  getAudioStreamUrl(jobId: string, stemType: string): string {
-    const token = getAccessToken();
-    const base = `${API_BASE_URL}/api/jobs/${jobId}/audio-stream/${stemType}`;
-    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
-  },
-  
   /**
    * Get download URLs for completed job
    */
@@ -1691,7 +1628,7 @@ export interface LyricsReviewApiClient {
     preview_hash?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
-  completeReview: () => Promise<{ status: string; job_status: string; message: string }>
+  completeReview: (instrumentalSelection: InstrumentalSelectionType) => Promise<{ status: string; job_status: string; message: string }>
 }
 
 /**
@@ -1810,12 +1747,16 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     },
 
     /**
-     * Complete the review and trigger video rendering
+     * Complete the review with instrumental selection and trigger video rendering
      */
-    async completeReview(): Promise<{ status: string; job_status: string; message: string }> {
+    async completeReview(instrumentalSelection: InstrumentalSelectionType): Promise<{ status: string; job_status: string; message: string }> {
       const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
         method: 'POST',
-        headers: getAuthHeaders()
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ instrumental_selection: instrumentalSelection })
       })
       return handleResponse(response)
     },

@@ -18,9 +18,8 @@
 | Audio upload & separation | Working |
 | Lyrics transcription | Working |
 | Auto-correction (agentic + heuristic) | Disabled (raw transcription goes to human review) |
-| Human lyrics review | Working |
+| Combined review (lyrics + instrumental) | Working |
 | Preview video generation | Working |
-| Instrumental selection | Working |
 | Multi-format encoding | Working |
 | Token-based auth | Working |
 | Magic link auth | Working |
@@ -41,6 +40,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Combined Lyrics + Instrumental Review** (2026-01-24): Merged the two-step human review process (lyrics review, then instrumental selection) into a single unified flow. Users now review lyrics AND select instrumental track in one session, submitting both with a single click. **Benefits**: Better UX (one interaction vs two), reduced drop-off, single email notification instead of two. **Technical changes**: Backing vocals analysis moved to screens_worker (runs before review), instrumental options included in `/api/review/{job_id}/correction-data` response, `POST /api/review/{job_id}/complete` now requires `instrumental_selection` field. The `AWAITING_INSTRUMENTAL_SELECTION` state is retained for finalise-only jobs but no longer used in the normal flow. See [ARCHITECTURE.md](ARCHITECTURE.md#processing-pipeline) and [LESSONS-LEARNED.md](LESSONS-LEARNED.md#combined-review-flow-jan-2026).
 
 - **Encoding Worker Immutable Deployment** (2026-01-22): Implemented robust deployment pattern for GCE encoding worker to eliminate version mismatch issues. Changes: (1) Fixed wheel path `karaoke_gen-current.whl` eliminates version sorting bugs, (2) Self-updating startup script downloaded from GCS on every service start (no Packer rebuild needed for logic changes), (3) Version manifest with strict CI verification (deployment fails on mismatch). Root cause: startup.sh was baked into Packer image, requiring image rebuild + VM recreation for fixes. New pattern allows CI to update deployment logic without infrastructure changes. See [infrastructure/encoding-worker/README.md](../infrastructure/encoding-worker/README.md) and [LESSONS-LEARNED.md](LESSONS-LEARNED.md#immutable-deployment-pattern-for-gce-workers).
 

@@ -126,6 +126,31 @@ export interface CorrectionData {
   correction_steps: CorrectionStep[]
   word_id_map: Record<string, string>
   segment_id_map: Record<string, string>
+  // Instrumental selection data (added for combined review flow)
+  instrumental_options?: InstrumentalOption[]
+  backing_vocals_analysis?: BackingVocalsAnalysis | null
+}
+
+/** Instrumental option from the combined review endpoint */
+export interface InstrumentalOption {
+  id: string // "clean" | "with_backing"
+  label: string
+  audio_url: string | null
+}
+
+/** Backing vocals analysis data */
+export interface BackingVocalsAnalysis {
+  has_audible_content: boolean
+  total_duration_seconds: number
+  audible_segments: Array<{
+    start_seconds: number
+    end_seconds: number
+    duration_seconds: number
+  }>
+  recommended_selection: string // "clean" | "with_backing" | "review_needed"
+  total_audible_duration_seconds: number
+  audible_percentage: number
+  silence_threshold_db: number
 }
 
 export interface HighlightInfo {

@@ -55,30 +55,31 @@
    └────────┬────────┘    └────────┬────────┘
             └──────────┬───────────┘
                        ▼
-3. SCREENS GENERATION
+3. SCREENS GENERATION + BACKING VOCALS ANALYSIS
    • Title screen (5s video)
    • End screen (5s video)
+   • Analyze backing vocals track (for instrumental selection)
                        ▼
-4. HUMAN REVIEW (AWAITING_REVIEW)
+4. COMBINED HUMAN REVIEW (AWAITING_REVIEW)
    • React UI for lyrics correction
    • Preview video generation (optionally via GCE for speed)
-   • Submit corrections
+   • Instrumental track selection (clean vs with_backing)
+   • Single submit saves both lyrics + instrumental choice
                        ▼
 5. VIDEO RENDERING
    • Merge corrections with original data
    • Generate karaoke video with lyrics
                        ▼
-6. INSTRUMENTAL SELECTION
-   • User chooses: clean or with_backing
-                       ▼
-7. FINAL VIDEO
+6. FINAL VIDEO (INSTRUMENTAL_SELECTED)
    • Remux with selected instrumental
    • Concatenate: title + karaoke + end
    • Encode to 4 formats
                        ▼
-8. COMPLETE
+7. COMPLETE
    • User downloads via signed URLs
 ```
+
+**Note**: As of 2026-01, instrumental selection is combined with lyrics review. Users complete both in a single session rather than in separate steps.
 
 ## Job States
 
@@ -89,16 +90,17 @@
 | `separating_stage1` | Audio separation stage 1 | - |
 | `separating_stage2` | Audio separation stage 2 | - |
 | `transcribing` | Lyrics transcription | - |
-| `generating_screens` | Creating title/end screens | - |
-| `awaiting_review` | **Waiting for human** | Review lyrics |
-| `in_review` | Human actively reviewing | Edit lyrics |
-| `review_complete` | Review submitted | - |
+| `generating_screens` | Creating title/end screens + backing vocals analysis | - |
+| `awaiting_review` | **Waiting for human** | Review lyrics + select instrumental |
+| `in_review` | Human actively reviewing | Edit lyrics + select instrumental |
+| `review_complete` | Review submitted with instrumental selection | - |
 | `rendering_video` | Generating karaoke video | - |
-| `awaiting_instrumental_selection` | **Waiting for human** | Choose audio |
-| `instrumental_selected` | Selection made | - |
+| `instrumental_selected` | Instrumental confirmed, ready for final video | - |
 | `generating_video` | Final encoding | - |
 | `complete` | All done | Download files |
 | `failed` | Error occurred | - |
+
+**Note**: `awaiting_instrumental_selection` exists for backwards compatibility with historical jobs but is no longer used. Instrumental selection is now part of the combined review (`awaiting_review` → `in_review` → `review_complete`).
 
 ## GCS File Structure
 

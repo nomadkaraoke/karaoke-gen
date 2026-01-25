@@ -39,14 +39,20 @@ export function AutoProcessor({ jobs, onJobsChanged }: AutoProcessorProps) {
 
     try {
       switch (action) {
-        case 'review':
-          // Auto-complete lyrics review
-          await api.completeReview(job.job_id)
-          console.log(`[AutoProcessor] Auto-completed review for job ${job.job_id}`)
+        case 'review': {
+          // Auto-complete lyrics review with instrumental selection
+          // Use backing vocals analyzer recommendation (default to clean if review needed or missing)
+          const analysis = job.state_data?.backing_vocals_analysis
+          const recommendation = analysis?.recommended_selection
+          // Only use 'with_backing' if explicitly recommended by analyzer, otherwise clean (safe default)
+          const selection = recommendation === 'with_backing' ? 'with_backing' : 'clean'
+          await api.completeReview(job.job_id, selection)
+          console.log(`[AutoProcessor] Auto-completed review for job ${job.job_id} with ${selection} instrumental (recommendation: ${recommendation || 'none'})`)
           break
+        }
 
         case 'instrumental': {
-          // Use backing vocals analyzer recommendation (default to clean if review needed or missing)
+          // For finalise-only jobs that still use the separate instrumental selection flow
           const analysis = job.state_data?.backing_vocals_analysis
           const recommendation = analysis?.recommended_selection
           // Only use 'with_backing' if explicitly recommended by analyzer, otherwise clean (safe default)

@@ -5,11 +5,12 @@ Handles screen generation after parallel processing completes:
 1. Generate title screen with artist/song info
 2. Generate end screen ("Thank you for singing!")
 3. Upload both screens to GCS
-4. Transition to AWAITING_REVIEW (human must review lyrics)
+4. Analyze backing vocals for instrumental selection
+5. Transition to AWAITING_REVIEW (combined lyrics + instrumental review)
 
 After review:
-5. Render video worker generates with_vocals.mkv
-6. Then AWAITING_INSTRUMENTAL_SELECTION
+6. Render video worker generates with_vocals.mkv
+7. Then INSTRUMENTAL_SELECTED (user selected during review)
 
 This worker is triggered automatically when both audio and lyrics
 processing complete (via mark_audio_complete/mark_lyrics_complete coordination).
@@ -175,15 +176,21 @@ async def generate_screens(job_id: str) -> bool:
                 
                 # Apply countdown padding if needed
                 await _apply_countdown_padding_if_needed(job_id, job_manager, job)
-                
-                # Transition to AWAITING_REVIEW
-                # Human must review lyrics before video can be rendered
-                logger.info(f"[job:{job_id}] Screens generated, awaiting lyrics review")
+
+                # Analyze backing vocals for combined review
+                # This runs BEFORE review so user can select instrumental during lyrics review
+                with job_span("analyze-backing-vocals", job_id):
+                    job_log.info("Analyzing backing vocals for instrumental selection...")
+                    await _analyze_backing_vocals(job_id, job_manager, storage, job_log)
+
+                # Transition to AWAITING_REVIEW (combined lyrics + instrumental review)
+                # Human must review lyrics AND select instrumental before video can be rendered
+                logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
                 job_manager.transition_to_state(
                     job_id=job_id,
                     new_status=JobStatus.AWAITING_REVIEW,
                     progress=55,
-                    message="Ready for lyrics review. Please review and correct lyrics."
+                    message="Ready for review. Please review lyrics and select your instrumental."
                 )
                 
                 duration = time.time() - start_time
@@ -490,6 +497,113 @@ async def _upload_screens(
             url = storage.upload_file(image_path, gcs_path)
             job_manager.update_file_url(job_id, 'screens', key, url)
             logger.info(f"Job {job_id}: Uploaded end screen image ({ext})")
+
+
+async def _analyze_backing_vocals(
+    job_id: str,
+    job_manager: JobManager,
+    storage: StorageService,
+    job_log: logging.Logger,
+) -> None:
+    """
+    Analyze backing vocals to help with intelligent instrumental selection.
+
+    This function:
+    1. Downloads the backing vocals stem from GCS
+    2. Runs audio analysis to detect audible content
+    3. Generates a waveform visualization image
+    4. Stores analysis results and waveform URL in job state
+
+    The analysis data is used by the combined review UI to help users
+    make an informed instrumental selection.
+
+    Note: This runs BEFORE the review phase so data is available when
+    the user opens the combined lyrics + instrumental review page.
+    """
+    from backend.services.audio_analysis_service import AudioAnalysisService
+
+    try:
+        # Get the job to access file URLs
+        job = job_manager.get_job(job_id)
+        if not job:
+            job_log.warning(f"Could not get job {job_id} for backing vocals analysis")
+            return
+
+        # Get backing vocals path
+        backing_vocals_path = job.file_urls.get('stems', {}).get('backing_vocals')
+        if not backing_vocals_path:
+            job_log.warning("No backing vocals file found - skipping analysis")
+            return
+
+        job_log.info(f"Analyzing backing vocals: {backing_vocals_path}")
+
+        # Create analysis service and run analysis
+        analysis_service = AudioAnalysisService()
+
+        # Define output path for waveform
+        waveform_gcs_path = f"jobs/{job_id}/analysis/backing_vocals_waveform.png"
+
+        # Run analysis and generate waveform
+        result, waveform_path = analysis_service.analyze_and_generate_waveform(
+            gcs_audio_path=backing_vocals_path,
+            job_id=job_id,
+            gcs_waveform_destination=waveform_gcs_path,
+        )
+
+        # Store analysis results in job state_data
+        analysis_data = {
+            'has_audible_content': result.has_audible_content,
+            'total_duration_seconds': result.total_duration_seconds,
+            'audible_segments': [
+                {
+                    'start_seconds': seg.start_seconds,
+                    'end_seconds': seg.end_seconds,
+                    'duration_seconds': seg.duration_seconds,
+                    'avg_amplitude_db': seg.avg_amplitude_db,
+                    'peak_amplitude_db': seg.peak_amplitude_db,
+                }
+                for seg in result.audible_segments
+            ],
+            'recommended_selection': result.recommended_selection.value,
+            'total_audible_duration_seconds': result.total_audible_duration_seconds,
+            'audible_percentage': result.audible_percentage,
+            'silence_threshold_db': result.silence_threshold_db,
+        }
+
+        job_manager.update_state_data(job_id, 'backing_vocals_analysis', analysis_data)
+
+        # Store waveform URL
+        job_manager.update_file_url(job_id, 'analysis', 'backing_vocals_waveform', waveform_path)
+
+        job_log.info(
+            f"Backing vocals analysis complete: "
+            f"has_audible={result.has_audible_content}, "
+            f"segments={result.segment_count}, "
+            f"recommendation={result.recommended_selection.value}"
+        )
+
+        # Log segment details if there are any
+        if result.audible_segments:
+            job_log.info(f"Audible segments ({len(result.audible_segments)}):")
+            for i, seg in enumerate(result.audible_segments[:5]):  # Log first 5
+                job_log.info(
+                    f"  [{i+1}] {seg.start_seconds:.1f}s - {seg.end_seconds:.1f}s "
+                    f"({seg.duration_seconds:.1f}s, avg: {seg.avg_amplitude_db:.1f}dB)"
+                )
+            if len(result.audible_segments) > 5:
+                job_log.info(f"  ... and {len(result.audible_segments) - 5} more")
+
+    except Exception as e:
+        # Log the error but don't fail the job - analysis is a nice-to-have
+        job_log.warning(f"Backing vocals analysis failed (non-fatal): {e}")
+        logger.warning(f"Job {job_id}: Backing vocals analysis failed: {e}")
+
+        # Store empty analysis so the frontend knows analysis was attempted
+        job_manager.update_state_data(job_id, 'backing_vocals_analysis', {
+            'has_audible_content': None,
+            'analysis_error': str(e),
+            'recommended_selection': 'review_needed',
+        })
 
 
 async def _apply_countdown_padding_if_needed(

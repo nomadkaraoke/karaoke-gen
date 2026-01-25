@@ -44,11 +44,13 @@ class TestJobStatusTransitionsForReview:
         assert hasattr(JobStatus, 'RENDERING_VIDEO')
         assert JobStatus.RENDERING_VIDEO.value == "rendering_video"
     
-    def test_rendering_video_transitions_to_instrumental(self):
-        """Test RENDERING_VIDEO -> AWAITING_INSTRUMENTAL_SELECTION is valid."""
+    def test_rendering_video_transitions_to_instrumental_selected(self):
+        """Test RENDERING_VIDEO -> INSTRUMENTAL_SELECTED is valid (combined review flow)."""
         from backend.models.job import STATE_TRANSITIONS, JobStatus
         valid_transitions = STATE_TRANSITIONS.get(JobStatus.RENDERING_VIDEO, [])
-        assert JobStatus.AWAITING_INSTRUMENTAL_SELECTION in valid_transitions
+        assert JobStatus.INSTRUMENTAL_SELECTED in valid_transitions
+        # AWAITING_INSTRUMENTAL_SELECTION is no longer a valid transition from RENDERING_VIDEO
+        assert JobStatus.AWAITING_INSTRUMENTAL_SELECTION not in valid_transitions
 
 
 class TestStylesConfigRequirements:

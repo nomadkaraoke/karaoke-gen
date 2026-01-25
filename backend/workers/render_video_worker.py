@@ -9,7 +9,12 @@ This worker:
 3. Downloads style assets from GCS
 4. Uses LyricsTranscriber's OutputGenerator to render video
 5. Uploads the with_vocals.mkv to GCS
-6. Transitions to AWAITING_INSTRUMENTAL_SELECTION
+6. Transitions to INSTRUMENTAL_SELECTED (user already selected during combined review)
+7. Triggers video worker for final encoding
+
+Note: Instrumental selection now happens during the combined lyrics + instrumental
+review phase (before this worker runs). The selection is stored in
+state_data['instrumental_selection'] by the review completion endpoint.
 
 Key insight: We use OutputGenerator from lyrics_transcriber library
 WITHOUT using its blocking ReviewServer. This allows async operation
@@ -304,12 +309,10 @@ async def process_render_video(job_id: str) -> bool:
                         job_manager.update_file_url(job_id, 'lyrics', 'corrected_txt', txt_url)
                         job_log.info("Uploaded corrected.txt")
                         logger.info(f"Job {job_id}: Uploaded corrected.txt")
-                    
-                    # 13. Analyze backing vocals for intelligent instrumental selection
-                    job_log.info("Analyzing backing vocals for instrumental selection...")
-                    await _analyze_backing_vocals(job_id, job_manager, storage, job_log)
-                    
-                    # 14. Transition based on prep_only flag and existing instrumental
+
+                    # 13. Transition based on prep_only flag
+                    # Note: Instrumental selection was already made during combined review
+                    # (stored in state_data['instrumental_selection'])
                     if getattr(job, 'prep_only', False):
                         # Prep-only mode: stop here and mark as prep complete
                         job_manager.transition_to_state(
@@ -323,40 +326,24 @@ async def process_render_video(job_id: str) -> bool:
                         root_span.set_attribute("duration_seconds", duration)
                         root_span.set_attribute("prep_only", True)
                         logger.info(f"[job:{job_id}] WORKER_END worker=render-video status=success duration={duration:.1f}s prep_only=true")
-                    elif getattr(job, 'existing_instrumental_gcs_path', None):
-                        # Existing instrumental provided - skip selection, auto-use it
-                        # Store selection as 'custom' to indicate user-provided instrumental
-                        job_manager.update_state_data(job_id, 'instrumental_selection', 'custom')
-                        job_log.info("Existing instrumental provided - skipping selection, using user-provided file")
-                        
+                    else:
+                        # Normal mode: instrumental was selected during combined review
+                        # Transition directly to INSTRUMENTAL_SELECTED and trigger video worker
                         job_manager.transition_to_state(
                             job_id=job_id,
                             new_status=JobStatus.INSTRUMENTAL_SELECTED,
                             progress=82,
-                            message="Using user-provided instrumental"
-                        )
-                        job_log.info("=== RENDER VIDEO WORKER COMPLETE (EXISTING INSTRUMENTAL) ===")
-                        duration = time.time() - start_time
-                        root_span.set_attribute("duration_seconds", duration)
-                        root_span.set_attribute("existing_instrumental", True)
-                        logger.info(f"[job:{job_id}] WORKER_END worker=render-video status=success duration={duration:.1f}s existing_instrumental=true")
-                        
-                        # Trigger video worker directly since no user selection needed
-                        from backend.workers.video_worker import run_video_worker
-                        job_log.info("Triggering video worker for final encoding...")
-                        await run_video_worker(job_id, job_manager, storage)
-                    else:
-                        # Normal mode: proceed to instrumental selection
-                        job_manager.transition_to_state(
-                            job_id=job_id,
-                            new_status=JobStatus.AWAITING_INSTRUMENTAL_SELECTION,
-                            progress=80,
-                            message="Video rendered - select your instrumental"
+                            message="Video rendered, starting final encoding"
                         )
                         job_log.info("=== RENDER VIDEO WORKER COMPLETE ===")
                         duration = time.time() - start_time
                         root_span.set_attribute("duration_seconds", duration)
                         logger.info(f"[job:{job_id}] WORKER_END worker=render-video status=success duration={duration:.1f}s")
+
+                        # Trigger video worker for final encoding
+                        from backend.workers.video_worker import run_video_worker
+                        job_log.info("Triggering video worker for final encoding...")
+                        await run_video_worker(job_id, job_manager, storage)
 
                     # Mark render progress as complete for idempotency
                     # This allows the worker to be re-triggered after admin reset
@@ -386,110 +373,6 @@ def _extract_gcs_path(url: str) -> str:
         parts = path.split('/', 1)
         return parts[1] if len(parts) > 1 else path
     return url
-
-
-async def _analyze_backing_vocals(
-    job_id: str,
-    job_manager: JobManager,
-    storage: StorageService,
-    job_log: logging.Logger,
-) -> None:
-    """
-    Analyze backing vocals to help with intelligent instrumental selection.
-    
-    This function:
-    1. Downloads the backing vocals stem from GCS
-    2. Runs audio analysis to detect audible content
-    3. Generates a waveform visualization image
-    4. Stores analysis results and waveform URL in job state
-    
-    The analysis data is then used by the frontend to provide an
-    intelligent instrumental selection experience.
-    """
-    from backend.services.audio_analysis_service import AudioAnalysisService
-    
-    try:
-        # Get the job to access file URLs
-        job = job_manager.get_job(job_id)
-        if not job:
-            job_log.warning(f"Could not get job {job_id} for backing vocals analysis")
-            return
-        
-        # Get backing vocals path
-        backing_vocals_path = job.file_urls.get('stems', {}).get('backing_vocals')
-        if not backing_vocals_path:
-            job_log.warning("No backing vocals file found - skipping analysis")
-            return
-        
-        job_log.info(f"Analyzing backing vocals: {backing_vocals_path}")
-        
-        # Create analysis service and run analysis
-        analysis_service = AudioAnalysisService()
-        
-        # Define output path for waveform
-        waveform_gcs_path = f"jobs/{job_id}/analysis/backing_vocals_waveform.png"
-        
-        # Run analysis and generate waveform
-        result, waveform_path = analysis_service.analyze_and_generate_waveform(
-            gcs_audio_path=backing_vocals_path,
-            job_id=job_id,
-            gcs_waveform_destination=waveform_gcs_path,
-        )
-        
-        # Store analysis results in job state_data
-        analysis_data = {
-            'has_audible_content': result.has_audible_content,
-            'total_duration_seconds': result.total_duration_seconds,
-            'audible_segments': [
-                {
-                    'start_seconds': seg.start_seconds,
-                    'end_seconds': seg.end_seconds,
-                    'duration_seconds': seg.duration_seconds,
-                    'avg_amplitude_db': seg.avg_amplitude_db,
-                    'peak_amplitude_db': seg.peak_amplitude_db,
-                }
-                for seg in result.audible_segments
-            ],
-            'recommended_selection': result.recommended_selection.value,
-            'total_audible_duration_seconds': result.total_audible_duration_seconds,
-            'audible_percentage': result.audible_percentage,
-            'silence_threshold_db': result.silence_threshold_db,
-        }
-        
-        job_manager.update_state_data(job_id, 'backing_vocals_analysis', analysis_data)
-        
-        # Store waveform URL
-        job_manager.update_file_url(job_id, 'analysis', 'backing_vocals_waveform', waveform_path)
-        
-        job_log.info(
-            f"Backing vocals analysis complete: "
-            f"has_audible={result.has_audible_content}, "
-            f"segments={result.segment_count}, "
-            f"recommendation={result.recommended_selection.value}"
-        )
-        
-        # Log segment details if there are any
-        if result.audible_segments:
-            job_log.info(f"Audible segments ({len(result.audible_segments)}):")
-            for i, seg in enumerate(result.audible_segments[:5]):  # Log first 5
-                job_log.info(
-                    f"  [{i+1}] {seg.start_seconds:.1f}s - {seg.end_seconds:.1f}s "
-                    f"({seg.duration_seconds:.1f}s, avg: {seg.avg_amplitude_db:.1f}dB)"
-                )
-            if len(result.audible_segments) > 5:
-                job_log.info(f"  ... and {len(result.audible_segments) - 5} more")
-        
-    except Exception as e:
-        # Log the error but don't fail the job - analysis is a nice-to-have
-        job_log.warning(f"Backing vocals analysis failed (non-fatal): {e}")
-        logger.warning(f"Job {job_id}: Backing vocals analysis failed: {e}")
-        
-        # Store empty analysis so the frontend knows analysis was attempted
-        job_manager.update_state_data(job_id, 'backing_vocals_analysis', {
-            'has_audible_content': None,
-            'analysis_error': str(e),
-            'recommended_selection': 'review_needed',
-        })
 
 
 # For compatibility with worker service

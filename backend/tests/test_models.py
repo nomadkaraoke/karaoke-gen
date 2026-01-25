@@ -812,19 +812,21 @@ class TestPrepCompleteStatus:
         valid_transitions = STATE_TRANSITIONS.get(JobStatus.REVIEW_COMPLETE, [])
         assert JobStatus.PREP_COMPLETE in valid_transitions
     
-    def test_state_transitions_prep_complete_to_awaiting_instrumental(self):
-        """Test that PREP_COMPLETE can transition to AWAITING_INSTRUMENTAL_SELECTION."""
+    def test_state_transitions_prep_complete_to_awaiting_review(self):
+        """Test that PREP_COMPLETE can transition to AWAITING_REVIEW (to continue combined review)."""
         from backend.models.job import STATE_TRANSITIONS
-        
+
         valid_transitions = STATE_TRANSITIONS.get(JobStatus.PREP_COMPLETE, [])
-        assert JobStatus.AWAITING_INSTRUMENTAL_SELECTION in valid_transitions
-    
-    def test_state_transitions_pending_to_awaiting_instrumental(self):
-        """Test that PENDING can transition to AWAITING_INSTRUMENTAL_SELECTION (for finalise-only)."""
+        assert JobStatus.AWAITING_REVIEW in valid_transitions
+
+    def test_state_transitions_rendering_video_to_instrumental_selected(self):
+        """Test that RENDERING_VIDEO transitions directly to INSTRUMENTAL_SELECTED (combined review flow)."""
         from backend.models.job import STATE_TRANSITIONS
-        
-        valid_transitions = STATE_TRANSITIONS.get(JobStatus.PENDING, [])
-        assert JobStatus.AWAITING_INSTRUMENTAL_SELECTION in valid_transitions
+
+        valid_transitions = STATE_TRANSITIONS.get(JobStatus.RENDERING_VIDEO, [])
+        assert JobStatus.INSTRUMENTAL_SELECTED in valid_transitions
+        # AWAITING_INSTRUMENTAL_SELECTION is no longer a valid destination
+        assert JobStatus.AWAITING_INSTRUMENTAL_SELECTION not in valid_transitions
     
     def test_critical_statuses_include_prep_complete(self):
         """Test that PREP_COMPLETE is in the list of job statuses."""

@@ -8,13 +8,12 @@ import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { InstrumentalSelector } from "@/components/instrumental-review"
 import { LyricsAnalyzer } from "@/components/lyrics-review"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import type { CorrectionData } from "@/lib/lyrics-review/types"
 import { isLocalMode, createLocalModeJob } from "@/lib/local-mode"
 
-type RouteType = "review" | "instrumental" | "unknown"
+type RouteType = "review" | "unknown"
 
 type AccessState =
   | { status: "loading" }
@@ -32,16 +31,12 @@ function parseRouteFromSlug(slug: string[] | undefined): { jobId: string | null;
     return { jobId: null, routeType: "unknown" }
   }
 
-  // Expected formats:
+  // Expected format:
   // [jobId, "review"] -> /app/jobs/{jobId}/review
-  // [jobId, "instrumental"] -> /app/jobs/{jobId}/instrumental
   if (slug.length === 2) {
     const [jobId, action] = slug
     if (action === "review") {
       return { jobId, routeType: "review" }
-    }
-    if (action === "instrumental") {
-      return { jobId, routeType: "instrumental" }
     }
   }
 
@@ -49,7 +44,7 @@ function parseRouteFromSlug(slug: string[] | undefined): { jobId: string | null;
 }
 
 // Parse route from URL hash (used for cloud mode)
-// Expected format: #/{jobId}/review or #/{jobId}/instrumental
+// Expected format: #/{jobId}/review
 function parseRouteFromHash(hash: string): { jobId: string | null; routeType: RouteType } {
   if (!hash || hash.length <= 1) {
     return { jobId: null, routeType: "unknown" }
@@ -57,11 +52,11 @@ function parseRouteFromHash(hash: string): { jobId: string | null; routeType: Ro
 
   // Remove the leading '#' and parse
   const hashPath = hash.substring(1)
-  const match = hashPath.match(/^\/?([^/]+)\/(review|instrumental)\/?$/)
+  const match = hashPath.match(/^\/?([^/]+)\/review\/?$/)
 
   if (match) {
-    const [, jobId, action] = match
-    return { jobId, routeType: action as RouteType }
+    const [, jobId] = match
+    return { jobId, routeType: "review" }
   }
   return { jobId: null, routeType: "unknown" }
 }
@@ -70,8 +65,6 @@ function getExpectedStates(routeType: RouteType): string[] {
   switch (routeType) {
     case "review":
       return ["awaiting_review", "in_review"]
-    case "instrumental":
-      return ["awaiting_instrumental_selection"]
     default:
       return []
   }
@@ -110,18 +103,8 @@ export function JobRouterClient() {
     async function checkAccess() {
       // Handle local mode (skip all auth checks)
       if (inLocalMode) {
-        // In local mode, determine route type from URL or default to review
-        let localRouteType: RouteType = routeType
-
-        // If route is unknown but we're in local mode, try to determine from path
-        if (localRouteType === "unknown") {
-          const path = typeof window !== 'undefined' ? window.location.pathname : ''
-          if (path.includes('instrumental')) {
-            localRouteType = "instrumental"
-          } else {
-            localRouteType = "review" // Default to review in local mode
-          }
-        }
+        // In local mode, always use review (combined lyrics + instrumental)
+        const localRouteType: RouteType = routeType === "unknown" ? "review" : routeType
 
         // Create mock job for local mode
         const localJob = createLocalModeJob({ routeType: localRouteType }) as Job
@@ -283,14 +266,13 @@ export function JobRouterClient() {
 
   // Wrong state
   if (accessState.status === "wrong_state") {
-    const actionName = routeType === "review" ? "lyrics review" : "instrumental selection"
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md p-6">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
           <h1 className="text-xl font-semibold mb-2">Not available</h1>
           <p className="text-muted-foreground mb-4">
-            This job is currently in &quot;{accessState.currentState}&quot; state and is not ready for {actionName}.
+            This job is currently in &quot;{accessState.currentState}&quot; state and is not ready for review.
           </p>
           <Button variant="outline" asChild>
             <Link href="/app">
@@ -303,18 +285,9 @@ export function JobRouterClient() {
     )
   }
 
-  // Authorized or local mode - render the appropriate UI
-  const { job, routeType: authorizedRouteType } = accessState
-
-  if (authorizedRouteType === "review") {
-    return <LyricsReviewWrapper job={job} isLocalMode={inLocalMode} />
-  }
-
-  if (authorizedRouteType === "instrumental") {
-    return <InstrumentalSelector job={job} isLocalMode={inLocalMode} />
-  }
-
-  return null
+  // Authorized or local mode - render the review UI
+  const { job } = accessState
+  return <LyricsReviewWrapper job={job} isLocalMode={inLocalMode} />
 }
 
 // Lyrics Review Component Wrapper

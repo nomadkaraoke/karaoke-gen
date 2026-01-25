@@ -147,13 +147,15 @@ class JobNotificationService:
         Args:
             job_id: Job ID
             user_email: User's email address
-            action_type: Type of action needed ("lyrics" or "instrumental")
+            action_type: Type of action needed:
+                - "lyrics": Combined review (lyrics + instrumental selection) for normal jobs
+                - "instrumental": Instrumental-only selection for finalise-only jobs
             user_name: User's display name
             artist: Artist name
             title: Song title
-            audio_hash: Audio hash for review URL
-            review_token: Review token for URL
-            instrumental_token: Instrumental token for URL
+            audio_hash: Audio hash for review URL (unused, kept for compatibility)
+            review_token: Review token for URL (unused, kept for compatibility)
+            instrumental_token: Instrumental token for URL (unused, kept for compatibility)
 
         Returns:
             True if email was sent successfully
