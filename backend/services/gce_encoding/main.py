@@ -325,18 +325,35 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         end_video = find_file(work_dir, "screens/end.mov", "*End*.mov", "*end*.mov")
 
         # Karaoke video - search for With Vocals or main karaoke video
+        # IMPORTANT: Search order matters! Search specific paths first to avoid picking up
+        # old encoding outputs from finals/ directory when re-encoding after reset
         karaoke_video = find_file(
             work_dir,
+            # First: Look in videos/ subdirectory (where render_video_worker puts output)
+            "videos/with_vocals.mkv", "videos/with_vocals.mov",
+            "videos/*With Vocals*.mkv", "videos/*With Vocals*.mov",
+            # Second: Look for specific filename patterns (case-insensitive variants)
+            "*with_vocals*.mkv", "*with_vocals*.mov",
             "*With Vocals*.mov", "*With Vocals*.mkv",
+            "*vocals*.mkv", "*vocals*.mov",
             "*Vocals*.mov", "*Vocals*.mkv",
+            # Last resort: any video file (but excluding finals/outputs)
             "*.mkv", "*.mov"
         )
-        # Exclude title/end/output videos
+        # Exclude title/end/output/finals videos to avoid re-encoding old outputs
         if karaoke_video:
+            path_str = str(karaoke_video).lower()
             name_lower = karaoke_video.name.lower()
-            if "title" in name_lower or "end" in name_lower or "outputs" in str(karaoke_video):
-                # Search more specifically for karaoke video
-                karaoke_video = find_file(work_dir, "*Karaoke*.mkv", "*Karaoke*.mov", "*vocals*.mkv")
+            if ("title" in name_lower or "end" in name_lower or
+                "outputs" in path_str or "finals" in path_str or
+                "final karaoke" in name_lower or "lossless" in name_lower or
+                "lossy" in name_lower or "720p" in name_lower):
+                # Search more specifically for karaoke video in videos/ directory only
+                karaoke_video = find_file(
+                    work_dir,
+                    "videos/with_vocals.mkv", "videos/with_vocals.mov",
+                    "videos/*vocals*.mkv", "videos/*vocals*.mov"
+                )
 
         # Instrumental audio - respect user's selection from encoding config
         instrumental_selection = config.get("instrumental_selection", "clean")
