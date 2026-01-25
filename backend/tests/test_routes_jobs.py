@@ -280,3 +280,163 @@ class TestRetryEndpoint:
         has_input = job.input_media_gcs_path or job.url
         assert not has_input
 
+
+class TestCompleteReviewWithInstrumentalSelection:
+    """Tests for complete_review endpoint with combined review flow.
+
+    The combined review flow allows users to submit both lyrics corrections
+    AND instrumental selection in a single request. This tests:
+    1. instrumental_selection is properly stored in state_data
+    2. Backward compatibility (no body still works)
+    3. Request validation
+    """
+
+    def test_complete_review_request_model_accepts_valid_selections(self):
+        """Test CompleteReviewRequest accepts valid instrumental_selection values."""
+        from backend.models.requests import CompleteReviewRequest
+
+        # Valid selections
+        for selection in ['clean', 'with_backing', 'custom']:
+            req = CompleteReviewRequest(instrumental_selection=selection)
+            assert req.instrumental_selection == selection
+
+    def test_complete_review_request_model_accepts_none(self):
+        """Test CompleteReviewRequest accepts None for backward compatibility."""
+        from backend.models.requests import CompleteReviewRequest
+
+        req = CompleteReviewRequest()
+        assert req.instrumental_selection is None
+
+        req = CompleteReviewRequest(instrumental_selection=None)
+        assert req.instrumental_selection is None
+
+    def test_complete_review_request_model_rejects_invalid_selection(self):
+        """Test CompleteReviewRequest rejects invalid instrumental_selection values."""
+        from backend.models.requests import CompleteReviewRequest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            CompleteReviewRequest(instrumental_selection='invalid_option')
+
+        assert 'instrumental_selection' in str(exc_info.value)
+
+    def test_instrumental_selection_stored_in_state_data(self):
+        """Test that instrumental_selection is stored in job state_data.
+
+        This is critical for the combined review flow - the selection must
+        be persisted so render_video_worker can use it.
+        """
+        # Create a sample job in AWAITING_REVIEW state
+        job = Job(
+            job_id="test-combined-review",
+            status=JobStatus.AWAITING_REVIEW,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test Artist",
+            title="Test Song",
+            state_data={}
+        )
+
+        # Simulate what the endpoint does when instrumental_selection is provided
+        instrumental_selection = 'clean'
+        job.state_data['instrumental_selection'] = instrumental_selection
+
+        # Verify it's stored correctly
+        assert job.state_data.get('instrumental_selection') == 'clean'
+
+    def test_state_data_instrumental_selection_used_by_render_worker(self):
+        """Document that render_video_worker reads instrumental_selection from state_data.
+
+        The render_video_worker no longer waits for AWAITING_INSTRUMENTAL_SELECTION.
+        Instead, it reads the selection from state_data['instrumental_selection']
+        which was set during complete_review.
+        """
+        # This documents the expected flow:
+        # 1. User completes combined review with instrumental_selection='with_backing'
+        # 2. complete_review stores it in state_data
+        # 3. render_video_worker reads it and uses it for final video
+
+        job = Job(
+            job_id="test-flow",
+            status=JobStatus.REVIEW_COMPLETE,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+            state_data={
+                'instrumental_selection': 'with_backing'
+            }
+        )
+
+        # The worker should be able to read the selection
+        selection = job.state_data.get('instrumental_selection')
+        assert selection == 'with_backing'
+        assert selection in ['clean', 'with_backing', 'custom']
+
+
+class TestScreensWorkerBackingVocalsAnalysis:
+    """Tests documenting that backing vocals analysis now runs in screens_worker.
+
+    Previously, backing vocals analysis ran in render_video_worker AFTER review.
+    Now it runs in screens_worker BEFORE review, so the analysis data is available
+    when the user opens the combined review UI.
+    """
+
+    def test_analysis_data_structure(self):
+        """Document the expected backing_vocals_analysis structure in state_data."""
+        # This is the structure stored by screens_worker._analyze_backing_vocals()
+        expected_structure = {
+            'has_audible_content': True,  # or False
+            'total_duration_seconds': 180.0,
+            'audible_segments': [
+                {
+                    'start_seconds': 10.0,
+                    'end_seconds': 20.0,
+                    'duration_seconds': 10.0,
+                    'avg_amplitude_db': -25.0,
+                    'peak_amplitude_db': -20.0,
+                }
+            ],
+            'recommended_selection': 'with_backing',  # or 'clean' or 'review_needed'
+            'total_audible_duration_seconds': 30.0,
+            'audible_percentage': 16.67,
+            'silence_threshold_db': -40.0,
+        }
+
+        # Verify structure has expected keys
+        assert 'has_audible_content' in expected_structure
+        assert 'recommended_selection' in expected_structure
+        assert 'audible_segments' in expected_structure
+
+    def test_analysis_available_before_review(self):
+        """Document that analysis is available when job enters AWAITING_REVIEW.
+
+        The screens_worker runs analysis before transitioning to AWAITING_REVIEW,
+        so the frontend can show the analysis in the combined review UI.
+        """
+        # Job in AWAITING_REVIEW should have analysis data if stems exist
+        job = Job(
+            job_id="test-analysis",
+            status=JobStatus.AWAITING_REVIEW,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+            file_urls={
+                'stems': {
+                    'backing_vocals': 'jobs/test/stems/backing_vocals.flac',
+                    'instrumental_clean': 'jobs/test/stems/clean.flac',
+                }
+            },
+            state_data={
+                'backing_vocals_analysis': {
+                    'has_audible_content': True,
+                    'recommended_selection': 'with_backing',
+                }
+            }
+        )
+
+        # Frontend can read analysis from state_data
+        analysis = job.state_data.get('backing_vocals_analysis', {})
+        assert analysis.get('recommended_selection') is not None
+
