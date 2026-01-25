@@ -137,8 +137,12 @@ github_runner_iam_bindings = worker_sas.grant_github_runner_permissions(github_r
 # Domain mapping for api.nomadkaraoke.com
 domain_mapping = cloud_run.create_domain_mapping()
 
-# Cloud Run Job for video encoding
+# Cloud Run Jobs for batch processing
+# These use Cloud Run Jobs instead of Cloud Tasks to avoid instance termination
+# during long-running processing (the BackgroundTasks issue)
 video_encoding_job = cloud_run.create_video_encoding_job(bucket, backend_service_account)
+lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
+audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
 
 # ==================== Monitoring ====================
 
@@ -287,8 +291,10 @@ pulumi.export("screens_worker_queue", queues["screens-worker-queue"].name)
 pulumi.export("render_worker_queue", queues["render-worker-queue"].name)
 pulumi.export("video_worker_queue", queues["video-worker-queue"].name)
 
-# Cloud Run
+# Cloud Run Jobs
 pulumi.export("video_encoding_job", video_encoding_job.name)
+pulumi.export("lyrics_transcription_job", lyrics_transcription_job.name)
+pulumi.export("audio_separation_job", audio_separation_job.name)
 pulumi.export("backend_url", "https://api.nomadkaraoke.com")
 pulumi.export("backend_default_url", "https://karaoke-backend-ipzqd2k4yq-uc.a.run.app")
 

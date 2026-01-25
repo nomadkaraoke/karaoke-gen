@@ -270,33 +270,54 @@ Audio can come from file upload or remote search (YouTube, torrents). All YouTub
 - `FLACFETCH_API_URL` - URL of flacfetch VM (e.g., `http://10.x.x.x:8080`)
 - `FLACFETCH_API_KEY` - API key for authentication
 
-## Worker Coordination
+## Worker Execution
 
-Workers run in parallel via FastAPI BackgroundTasks. To prevent Cloud Run from terminating the container when one worker completes while another is still running, workers register with a global `WorkerRegistry`.
+Workers run via two mechanisms depending on their processing duration:
+
+### Cloud Run Jobs (Long-Running Workers)
+
+Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers that run to completion without HTTP request lifecycle concerns. This eliminates the instance termination issue where Cloud Run would shut down instances mid-processing.
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  Cloud Run Jobs (via WorkerService)                             │
+│                                                                 │
+│  lyrics-transcription-job    - 5-15 min (AudioShake + correction)│
+│  audio-separation-job        - 10-20 min (Modal API)            │
+│  video-encoding-job          - up to 60 min (optional)          │
+│                                                                 │
+│  Triggered via: google.cloud.run_v2.JobsClient.run_job()        │
+│  Job ID passed as: --job-id argument                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why Cloud Run Jobs**: When using FastAPI BackgroundTasks, Cloud Run would terminate instances when HTTP requests completed, even if background work was still running. Job c94cc9d6 failed because the lyrics worker was killed mid-processing after AudioShake completed. Cloud Run Jobs solve this by running workers as standalone processes that complete naturally.
+
+**CLI Entry Points**: Each worker has a `main()` function for Cloud Run Job execution:
+- `python -m backend.workers.lyrics_worker --job-id abc123`
+- `python -m backend.workers.audio_worker --job-id abc123`
+- `python -m backend.workers.video_worker --job-id abc123`
+
+### HTTP Workers (Fast Workers)
+
+Screens and render workers run via internal HTTP endpoints with BackgroundTasks, as they complete quickly (~30 seconds). They still use the WorkerRegistry for coordination:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                       WorkerRegistry                             │
 │                                                                 │
-│  register(job_id, "audio")     unregister(job_id, "audio")     │
-│  register(job_id, "lyrics")    unregister(job_id, "lyrics")    │
+│  register(job_id, "screens")   unregister(job_id, "screens")   │
+│  register(job_id, "render")    unregister(job_id, "render")    │
 │                                                                 │
 │  has_active_workers() → bool                                    │
 │  wait_for_completion(timeout) → bool                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Flow**:
-1. Worker starts → `await worker_registry.register(job_id, "audio")`
-2. Worker does work in try block
-3. Worker completes → `await worker_registry.unregister(job_id, "audio")` in finally block
-
 **Shutdown Handler** (in `main.py` lifespan):
 - On shutdown signal, checks `worker_registry.has_active_workers()`
 - If workers active, calls `wait_for_completion(timeout=600)` (10 min max)
 - Logs which workers are still running for debugging
-
-**Why needed**: Without this, when the audio worker's BackgroundTask completes, Cloud Run sees the container as idle (no active requests) and may terminate it, killing the still-running lyrics worker.
 
 ## Multitenancy
 
