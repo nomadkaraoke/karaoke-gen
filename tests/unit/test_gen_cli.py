@@ -287,7 +287,7 @@ async def test_workflow_prep_only(mock_kfinalise, mock_kprep_class, mock_base_ar
 @patch("karaoke_gen.utils.gen_cli.KaraokePrep") # Should not be called
 @patch("karaoke_gen.utils.gen_cli.KaraokeFinalise")
 @patch("builtins.open", new_callable=mock_open) # Mock open for style JSON if CDG enabled
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_workflow_finalise_only(mock_run_review, mock_open, mock_kfinalise, mock_kprep, mock_base_args, mock_logger):
     """Test --finalise-only workflow."""
     mock_base_args.finalise_only = True
@@ -311,7 +311,7 @@ async def test_workflow_finalise_only(mock_run_review, mock_open, mock_kfinalise
 @patch("karaoke_gen.utils.gen_cli.os.path.basename", return_value="Edit Artist - Edit Title")
 @patch("karaoke_gen.utils.gen_cli.os.getcwd", return_value="/fake/path/Edit Artist - Edit Title")
 @patch("builtins.open", new_callable=mock_open) # Mock open for style JSON if CDG enabled
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_workflow_edit_lyrics(mock_run_review, mock_open, mock_getcwd, mock_basename, mock_kfinalise, mock_kprep_class, mock_base_args, mock_logger):
     """Test --edit-lyrics workflow."""
     mock_base_args.edit_lyrics = True
@@ -378,7 +378,7 @@ async def test_workflow_test_email_template(mock_kfinalise, mock_base_args, mock
 
 @patch("karaoke_gen.utils.gen_cli.KaraokePrep") # Use default MagicMock for class
 @patch("karaoke_gen.utils.gen_cli.KaraokeFinalise")
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_workflow_lyrics_only(mock_run_review, mock_kfinalise, mock_kprep_class, mock_base_args, mock_logger):
     """Test --lyrics-only workflow sets environment variables and skips."""
     mock_base_args.args = ["Artist", "Title"]
@@ -413,7 +413,7 @@ async def test_workflow_lyrics_only(mock_run_review, mock_kfinalise, mock_kprep_
 @patch("builtins.open", new_callable=mock_open, read_data=SAMPLE_STYLE_JSON)
 @patch("karaoke_gen.utils.gen_cli.os.chdir") # Mock chdir
 @patch("karaoke_gen.utils.gen_cli.os.path.exists", return_value=True) # Assume track dir exists
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_finalise_cdg_style_loading(mock_run_review, mock_exists, mock_chdir, mock_open, mock_kfinalise, mock_kprep_class, mock_base_args):
     """Test that CDG styles are loaded correctly when --enable_cdg is used."""
     mock_base_args.args = ["Artist", "Title"]
@@ -447,7 +447,7 @@ async def test_finalise_cdg_style_loading(mock_run_review, mock_exists, mock_chd
 @patch("karaoke_gen.utils.gen_cli.os.chdir")
 @patch("karaoke_gen.utils.gen_cli.os.path.exists", return_value=True)
 @patch("karaoke_gen.utils.gen_cli.sys.exit")
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_finalise_cdg_style_file_not_found(mock_run_review, mock_exit, mock_exists, mock_chdir, mock_open, mock_kfinalise, mock_kprep_class, mock_base_args, mock_logger):
     """Test exit if CDG enabled but style file not found."""
     mock_base_args.args = ["Artist", "Title"]
@@ -476,7 +476,7 @@ async def test_finalise_cdg_style_file_not_found(mock_run_review, mock_exit, moc
 @patch("karaoke_gen.utils.gen_cli.os.chdir")
 @patch("karaoke_gen.utils.gen_cli.os.path.exists", return_value=True)
 @patch("karaoke_gen.utils.gen_cli.sys.exit")
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_finalise_cdg_style_invalid_json(mock_run_review, mock_exit, mock_exists, mock_chdir, mock_open, mock_kfinalise, mock_kprep_class, mock_base_args, mock_logger):
     """Test exit if CDG enabled but style file has invalid JSON."""
     mock_base_args.args = ["Artist", "Title"]
@@ -524,7 +524,7 @@ async def test_error_handling_kprep_failure(mock_kfinalise, mock_kprep_class, mo
 @patch("karaoke_gen.utils.gen_cli.KaraokeFinalise")
 @patch("karaoke_gen.utils.gen_cli.os.chdir")
 @patch("karaoke_gen.utils.gen_cli.os.path.exists", return_value=True)
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_error_handling_kfinalise_failure(mock_run_review, mock_exists, mock_chdir, mock_kfinalise, mock_kprep_class, mock_base_args, mock_logger, capsys):
     """Test error handling if KaraokeFinalise.process fails."""
     mock_base_args.args = ["Artist", "Title"]
@@ -553,7 +553,7 @@ async def test_error_handling_kfinalise_failure(mock_run_review, mock_exists, mo
 
 @patch("karaoke_gen.utils.gen_cli.KaraokePrep") # Use default MagicMock for class
 @patch("karaoke_gen.utils.gen_cli.KaraokeFinalise")
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_argument_passthrough(mock_run_review, mock_kfinalise, mock_kprep_class, mock_base_args):
     """Test that various arguments are passed correctly to KaraokePrep/Finalise."""
     mock_base_args.args = ["Artist", "Title"]
@@ -614,7 +614,7 @@ async def test_argument_passthrough(mock_run_review, mock_kfinalise, mock_kprep_
 @patch("karaoke_gen.utils.gen_cli.os.chdir")
 @patch("karaoke_gen.utils.gen_cli.os.path.exists", return_value=True)
 @patch("karaoke_gen.utils.gen_cli.pyperclip.copy")
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_clipboard_copy_success(mock_run_review, mock_copy, mock_exists, mock_chdir, mock_kfinalise, mock_kprep_class, mock_base_args, mock_logger, capsys):
     """Test logging when clipboard copy succeeds."""
     mock_base_args.args = ["Artist", "Title"]
@@ -651,7 +651,7 @@ async def test_clipboard_copy_success(mock_run_review, mock_copy, mock_exists, m
 @patch("karaoke_gen.utils.gen_cli.os.chdir")
 @patch("karaoke_gen.utils.gen_cli.os.path.exists", return_value=True)
 @patch("karaoke_gen.utils.gen_cli.pyperclip.copy", side_effect=Exception("Clipboard Error"))
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_clipboard_copy_failure(mock_run_review, mock_copy, mock_exists, mock_chdir, mock_kfinalise, mock_kprep_class, mock_base_args, mock_logger, capsys):
     """Test logging when clipboard copy fails."""
     mock_base_args.args = ["Artist", "Title"]
@@ -685,7 +685,7 @@ async def test_clipboard_copy_failure(mock_run_review, mock_copy, mock_exists, m
 
 
 @patch("karaoke_gen.utils.gen_cli.KaraokePrep")
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="selected_instrumental.flac")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("selected_instrumental.flac", None))
 async def test_style_override_parsing(mock_run_review, mock_kprep_class, mock_base_args):
     """Test that --style_override arguments are parsed correctly."""
     mock_base_args.args = ["Artist", "Title"]
@@ -713,7 +713,7 @@ async def test_style_override_parsing(mock_run_review, mock_kprep_class, mock_ba
 
 # --- Test review_ui_url environment variable handling ---
 
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="clean")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("clean", None))
 @patch("karaoke_gen.utils.gen_cli.is_url", return_value=False)
 @patch("karaoke_gen.utils.gen_cli.is_file", return_value=False)
 @patch("karaoke_gen.utils.gen_cli.KaraokePrep")
@@ -753,7 +753,7 @@ async def test_review_ui_url_default_hosted_not_set_env_var(mock_kprep_class, mo
             del os.environ['LYRICS_REVIEW_UI_URL']
 
 
-@patch("karaoke_gen.utils.gen_cli.run_instrumental_review", return_value="clean")
+@patch("karaoke_gen.utils.gen_cli.run_combined_review", return_value=("clean", None))
 @patch("karaoke_gen.utils.gen_cli.is_url", return_value=False)
 @patch("karaoke_gen.utils.gen_cli.is_file", return_value=False)
 @patch("karaoke_gen.utils.gen_cli.KaraokePrep")
@@ -1043,7 +1043,7 @@ async def test_custom_instrumental_skips_review(mock_kprep_class, mock_isfile, m
     with patch("karaoke_gen.utils.gen_cli.argparse.ArgumentParser") as mock_parser, \
          patch("karaoke_gen.utils.gen_cli.os.chdir"), \
          patch("karaoke_gen.utils.gen_cli.os.path.exists", return_value=True), \
-         patch("karaoke_gen.utils.gen_cli.run_instrumental_review") as mock_review, \
+         patch("karaoke_gen.utils.gen_cli.run_combined_review") as mock_review, \
          patch("karaoke_gen.utils.gen_cli.KaraokeFinalise") as mock_finalise:
         
         mock_parser.return_value.parse_args.return_value = mock_base_args

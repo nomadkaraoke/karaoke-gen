@@ -19,11 +19,10 @@ import pyperclip
 from karaoke_gen import KaraokePrep
 from karaoke_gen.karaoke_finalise import KaraokeFinalise
 from karaoke_gen.audio_fetcher import UserCancelledError
-from karaoke_gen.instrumental_review import (
-    AudioAnalyzer,
-    WaveformGenerator,
-    InstrumentalReviewServer,
-)
+from karaoke_gen.instrumental_review import AudioAnalyzer
+from karaoke_gen.lyrics_transcriber.types import CorrectionResult
+from karaoke_gen.lyrics_transcriber.review.server import ReviewServer
+from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 from .cli_args import create_parser, process_style_overrides, is_url, is_file
 
 
@@ -143,159 +142,193 @@ def auto_select_instrumental(track: dict, track_dir: str, logger: logging.Logger
     )
 
 
-def run_instrumental_review(track: dict, logger: logging.Logger) -> str | None:
+def run_combined_review(
+    track: dict,
+    track_dir: str,
+    corrections_json_path: str,
+    audio_filepath: str,
+    style_params_json: str,
+    render_video: bool,
+    logger: logging.Logger,
+) -> tuple[str | None, CorrectionResult | None]:
     """
-    Run the instrumental review UI to let user select the best instrumental track.
-    
-    This analyzes the backing vocals, generates a waveform, and opens a browser
-    with an interactive UI for reviewing and selecting the instrumental.
-    
+    Run the combined lyrics + instrumental review UI.
+
+    This unified review shows both the lyrics editor and instrumental selector
+    in the same UI, allowing the user to review and edit lyrics while also
+    selecting the best instrumental track.
+
     Args:
         track: The track dictionary from KaraokePrep containing separated audio info
+        track_dir: The track output directory (for resolving relative paths)
+        corrections_json_path: Path to the lyrics corrections JSON file
+        audio_filepath: Path to the main audio file (vocals)
+        style_params_json: Path to style parameters JSON for output config
+        render_video: Whether video rendering is enabled (affects preview video)
         logger: Logger instance
-        
+
     Returns:
-        Path to the selected instrumental file, or None to use the old numeric selection
+        Tuple of (instrumental_selection, reviewed_correction_result)
+        - instrumental_selection: "clean", "with_backing", etc. or None if not selected
+        - reviewed_correction_result: Updated CorrectionResult after review, or None if failed
     """
-    track_dir = track.get("track_output_dir", ".")
-    artist = track.get("artist", "")
-    title = track.get("title", "")
-    base_name = f"{artist} - {title}"
-    
+    import json as json_module
+
+    # Load existing correction result from JSON
+    if not corrections_json_path or not os.path.exists(corrections_json_path):
+        logger.warning(f"Corrections JSON not found: {corrections_json_path}")
+        return None, None
+
+    try:
+        with open(corrections_json_path, "r", encoding="utf-8") as f:
+            corrections_data = json_module.load(f)
+        correction_result = CorrectionResult.from_dict(corrections_data)
+        logger.info(f"Loaded correction result from {corrections_json_path}")
+    except Exception as e:
+        logger.error(f"Failed to load corrections JSON: {e}")
+        return None, None
+
     # Get separation results
     separated = track.get("separated_audio", {})
     if not separated:
-        logger.info("No separated audio found, skipping instrumental review UI")
-        return None
-    
-    # Find the backing vocals file
-    # Note: Paths in separated_audio may be relative to the original working directory,
-    # but we've already chdir'd into track_dir. Use _resolve_path_for_cwd to fix paths.
+        logger.info("No separated audio found, running lyrics-only review")
+        # Still run review for lyrics editing, just without instrumental options
+
+    # Find audio paths
     backing_vocals_path = None
     backing_vocals_result = separated.get("backing_vocals", {})
     for model, paths in backing_vocals_result.items():
-        if paths.get("backing_vocals"):
+        if isinstance(paths, dict) and paths.get("backing_vocals"):
             backing_vocals_path = _resolve_path_for_cwd(paths["backing_vocals"], track_dir)
-            break
-    
-    if not backing_vocals_path or not os.path.exists(backing_vocals_path):
-        logger.info("No backing vocals file found, skipping instrumental review UI")
-        return None
-    
-    # Find the clean instrumental file
+            if os.path.exists(backing_vocals_path):
+                break
+            backing_vocals_path = None
+
+    clean_instrumental_path = None
     clean_result = separated.get("clean_instrumental", {})
-    raw_clean_path = clean_result.get("instrumental")
-    clean_instrumental_path = _resolve_path_for_cwd(raw_clean_path, track_dir) if raw_clean_path else None
-    
-    if not clean_instrumental_path or not os.path.exists(clean_instrumental_path):
-        logger.info("No clean instrumental file found, skipping instrumental review UI")
-        return None
-    
-    # Find the combined instrumental (with backing vocals) file - these have "(Padded)" suffix if padded
-    combined_result = separated.get("combined_instrumentals", {})
+    if isinstance(clean_result, dict) and clean_result.get("instrumental"):
+        clean_instrumental_path = _resolve_path_for_cwd(clean_result["instrumental"], track_dir)
+        if not os.path.exists(clean_instrumental_path):
+            clean_instrumental_path = None
+
     with_backing_path = None
+    combined_result = separated.get("combined_instrumentals", {})
     for model, path in combined_result.items():
-        resolved_path = _resolve_path_for_cwd(path, track_dir) if path else None
-        if resolved_path and os.path.exists(resolved_path):
-            with_backing_path = resolved_path
-            break
-    
-    # Find the original audio file (with vocals)
-    original_audio_path = None
-    raw_original_path = track.get("input_audio_wav")
-    if raw_original_path:
-        original_audio_path = _resolve_path_for_cwd(raw_original_path, track_dir)
-        if not os.path.exists(original_audio_path):
-            logger.warning(f"Original audio file not found: {original_audio_path}")
-            original_audio_path = None
-    
+        if path:
+            resolved = _resolve_path_for_cwd(path, track_dir)
+            if os.path.exists(resolved):
+                with_backing_path = resolved
+                break
+
+    # Build instrumental options
+    instrumental_options = []
+    if clean_instrumental_path:
+        instrumental_options.append({
+            "id": "clean",
+            "label": "Clean Instrumental",
+            "audio_path": clean_instrumental_path,
+        })
+    if with_backing_path:
+        instrumental_options.append({
+            "id": "with_backing",
+            "label": "With Backing Vocals",
+            "audio_path": with_backing_path,
+        })
+
+    # Run backing vocals analysis
+    backing_vocals_analysis = None
+    if backing_vocals_path and os.path.exists(backing_vocals_path):
+        try:
+            analyzer = AudioAnalyzer()
+            analysis = analyzer.analyze(backing_vocals_path)
+            backing_vocals_analysis = {
+                "has_audible_content": analysis.has_audible_content,
+                "total_duration_seconds": analysis.total_duration_seconds,
+                "audible_segments": [
+                    {
+                        "start_seconds": seg.start_seconds,
+                        "end_seconds": seg.end_seconds,
+                        "duration_seconds": seg.duration_seconds,
+                        "avg_amplitude_db": seg.avg_amplitude_db,
+                        "peak_amplitude_db": seg.peak_amplitude_db,
+                    }
+                    for seg in analysis.audible_segments
+                ],
+                "recommended_selection": analysis.recommended_selection.value,
+                "total_audible_duration_seconds": analysis.total_audible_duration_seconds,
+                "audible_percentage": analysis.audible_percentage,
+            }
+            logger.info(
+                f"Backing vocals analysis: has_audible_content={analysis.has_audible_content}, "
+                f"recommendation={analysis.recommended_selection.value}"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to analyze backing vocals: {e}")
+
+    # Create output config for ReviewServer
+    output_config = OutputConfig(
+        output_styles_json=style_params_json,
+        output_dir=track_dir,
+        render_video=False,
+        allow_preview_video=render_video,
+        cache_dir=os.path.join(track_dir, ".cache"),
+    )
+
+    # Resolve audio_filepath for review
+    resolved_audio = _resolve_path_for_cwd(audio_filepath, track_dir) if audio_filepath else None
+    if resolved_audio and not os.path.exists(resolved_audio):
+        # Try without resolution
+        resolved_audio = audio_filepath if os.path.exists(audio_filepath) else None
+
+    if not resolved_audio:
+        logger.warning("No audio file found for review")
+
+    logger.info("=== Starting Combined Review ===")
+    if instrumental_options:
+        logger.info(f"Including {len(instrumental_options)} instrumental options")
+    else:
+        logger.info("No instrumental options available (lyrics-only review)")
+
     try:
-        logger.info("=== Starting Instrumental Review ===")
-        logger.info(f"Analyzing backing vocals: {backing_vocals_path}")
-        
-        # Analyze backing vocals
-        analyzer = AudioAnalyzer()
-        analysis = analyzer.analyze(backing_vocals_path)
-        
-        logger.info(f"Analysis complete:")
-        logger.info(f"  Has audible content: {analysis.has_audible_content}")
-        logger.info(f"  Total duration: {analysis.total_duration_seconds:.1f}s")
-        logger.info(f"  Audible segments: {len(analysis.audible_segments)}")
-        logger.info(f"  Recommendation: {analysis.recommended_selection.value}")
-        
-        # Generate waveform
-        # Note: We're already in track_dir after chdir, so use current directory
-        logger.info("Generating waveform visualization...")
-        waveform_generator = WaveformGenerator()
-        waveform_path = f"{base_name} (Backing Vocals Waveform).png"
-        waveform_generator.generate(
-            audio_path=backing_vocals_path,
-            output_path=waveform_path,
-            segments=analysis.audible_segments,
-        )
-        
-        # Start the review server
-        # Note: We're already in track_dir after chdir, so output_dir is "."
-        logger.info("Starting instrumental review UI...")
-        server = InstrumentalReviewServer(
-            output_dir=".",
-            base_name=base_name,
-            analysis=analysis,
-            waveform_path=waveform_path,
-            backing_vocals_path=backing_vocals_path,
+        # Create and start review server with combined data
+        review_server = ReviewServer(
+            correction_result=correction_result,
+            output_config=output_config,
+            audio_filepath=resolved_audio or "",
+            logger=logger,
+            # Instrumental review data
+            instrumental_options=instrumental_options,
+            backing_vocals_analysis=backing_vocals_analysis,
             clean_instrumental_path=clean_instrumental_path,
             with_backing_path=with_backing_path,
-            original_audio_path=original_audio_path,
+            backing_vocals_path=backing_vocals_path,
         )
-        
-        # Start server and open browser, wait for selection
-        server.start_and_open_browser()
-        
-        logger.info("Waiting for instrumental selection in browser...")
-        logger.info("(Close the browser tab or press Ctrl+C to cancel)")
-        
+        reviewed_result = review_server.start()
+
+        logger.info("Combined review completed")
+
+        # Get instrumental selection
+        instrumental_selection = review_server.instrumental_selection
+        if instrumental_selection:
+            logger.info(f"User selected instrumental: {instrumental_selection}")
+
+        # Save reviewed result back to JSON
         try:
-            # Wait for user selection (blocking)
-            server._selection_event.wait()
-            selection = server.get_selection()
-            
-            logger.info(f"User selected: {selection}")
-            
-            # Stop the server
-            server.stop()
-            
-            # Return the selected instrumental path
-            if selection == "clean":
-                return clean_instrumental_path
-            elif selection == "with_backing":
-                return with_backing_path
-            elif selection == "custom":
-                custom_path = server.get_custom_instrumental_path()
-                if custom_path and os.path.exists(custom_path):
-                    return custom_path
-                else:
-                    logger.warning("Custom instrumental not found, falling back to clean")
-                    return clean_instrumental_path
-            elif selection == "uploaded":
-                uploaded_path = server.get_uploaded_instrumental_path()
-                if uploaded_path and os.path.exists(uploaded_path):
-                    return uploaded_path
-                else:
-                    logger.warning("Uploaded instrumental not found, falling back to clean")
-                    return clean_instrumental_path
-            else:
-                logger.warning(f"Unknown selection: {selection}, falling back to numeric selection")
-                return None
-                
-        except KeyboardInterrupt:
-            logger.info("Instrumental review cancelled by user")
-            server.stop()
-            return None
-            
+            with open(corrections_json_path, "w", encoding="utf-8") as f:
+                json_module.dump(reviewed_result.to_dict(), f, indent=2)
+            logger.info(f"Saved reviewed corrections to {corrections_json_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save reviewed corrections: {e}")
+
+        return instrumental_selection, reviewed_result
+
+    except KeyboardInterrupt:
+        logger.info("Combined review cancelled by user")
+        return None, None
     except Exception as e:
-        logger.error(f"Error during instrumental review: {e}")
-        logger.info("Falling back to numeric selection")
-        return None
+        logger.error(f"Error during combined review: {e}")
+        return None, None
+
 
 
 async def async_main():
@@ -759,6 +792,15 @@ async def async_main():
         logger.info("Lyrics-only mode enabled: skipping audio separation and title/end screen generation")
 
     # Step 1: Run KaraokePrep
+    # NOTE: For combined review flow, we ALWAYS skip transcription review during KaraokePrep.
+    # This is because transcription and separation run in parallel, and we want the combined
+    # review UI to have access to both lyrics data AND instrumental options.
+    # The combined review runs AFTER KaraokePrep completes (in the finalisation loop).
+    # If user explicitly wants no review (either flag), we respect that.
+    skip_transcription_review = args.skip_transcription_review
+    skip_instrumental_review = getattr(args, 'skip_instrumental_review', False)
+    user_wants_combined_review = not skip_transcription_review and not skip_instrumental_review
+
     kprep_coroutine = KaraokePrep(
         input_media=input_media,
         artist=artist,
@@ -784,7 +826,7 @@ async def async_main():
         lyrics_file=args.lyrics_file,
         skip_lyrics=args.skip_lyrics,
         skip_transcription=args.skip_transcription,
-        skip_transcription_review=args.skip_transcription_review,
+        skip_transcription_review=True,  # Always defer review to combined review
         subtitle_offset_ms=args.subtitle_offset_ms,
         style_params_json=args.style_params_json,
         style_overrides=style_overrides,
@@ -831,16 +873,16 @@ async def async_main():
         logger.info(f"Changing to directory: {track_dir}")
         os.chdir(track_dir)
 
-        # Select instrumental file - either via web UI, auto-selection, or custom instrumental
-        # This ALWAYS produces a selected file - no silent fallback to legacy code
+        # Select instrumental file - either via combined review, auto-selection, or custom
+        # Combined review shows both lyrics editor AND instrumental selector in same UI
         selected_instrumental_file = None
-        skip_review = getattr(args, 'skip_instrumental_review', False)
-        
+        skip_all_review = getattr(args, 'skip_instrumental_review', False)
+
         # Check if a custom instrumental was provided (via --existing_instrumental)
         # In this case, the instrumental is already chosen - skip review entirely
         separated_audio = track.get("separated_audio", {})
         custom_instrumental = separated_audio.get("Custom", {}).get("instrumental")
-        
+
         if custom_instrumental:
             # Custom instrumental was provided - use it directly, no review needed
             resolved_path = _resolve_path_for_cwd(custom_instrumental, track_dir)
@@ -852,9 +894,9 @@ async def async_main():
                 logger.error("The file may have been moved or deleted after preparation.")
                 sys.exit(1)
                 return  # Explicit return for testing
-        elif skip_review:
-            # Auto-select instrumental when review is skipped (non-interactive mode)
-            logger.info("Instrumental review skipped (--skip_instrumental_review), auto-selecting instrumental file...")
+        elif skip_all_review:
+            # Auto-select instrumental when all review is skipped (non-interactive mode)
+            logger.info("All review skipped (--skip_instrumental_review), auto-selecting instrumental file...")
             try:
                 selected_instrumental_file = auto_select_instrumental(
                     track=track,
@@ -866,40 +908,87 @@ async def async_main():
                 logger.error("Check that audio separation completed successfully.")
                 sys.exit(1)
                 return  # Explicit return for testing
-        else:
-            # Run instrumental review web UI
-            selected_instrumental_file = run_instrumental_review(
+        elif user_wants_combined_review:
+            # Run combined review UI (lyrics + instrumental in one)
+            # Find the corrections JSON file
+            artist_name = track.get("artist", "Unknown")
+            title_name = track.get("title", "Unknown")
+            # Sanitize for filename matching
+            def sanitize(s):
+                for char in ["\\", "/", ":", "*", "?", '"', "<", ">", "|"]:
+                    s = s.replace(char, "_")
+                return s.rstrip(" ")
+
+            sanitized_artist = sanitize(artist_name)
+            sanitized_title = sanitize(title_name)
+            corrections_filename = f"{sanitized_artist} - {sanitized_title} (Lyrics Corrections).json"
+
+            # Check lyrics directory first, then track directory
+            lyrics_dir = os.path.join(track_dir, "lyrics")
+            corrections_json_path = os.path.join(lyrics_dir, corrections_filename)
+            if not os.path.exists(corrections_json_path):
+                corrections_json_path = os.path.join(track_dir, corrections_filename)
+
+            # Get audio file path
+            audio_filepath = track.get("input_audio_wav", "")
+
+            logger.info("Running combined review (lyrics + instrumental)...")
+            instrumental_selection, reviewed_result = run_combined_review(
                 track=track,
+                track_dir=track_dir,
+                corrections_json_path=corrections_json_path,
+                audio_filepath=audio_filepath,
+                style_params_json=args.style_params_json,
+                render_video=not args.no_video,
                 logger=logger,
             )
-            
-            # If instrumental review failed/returned None, show error and exit
-            # NO SILENT FALLBACK - we want to know if the new flow has issues
-            if selected_instrumental_file is None:
-                logger.error("")
-                logger.error("=" * 70)
-                logger.error("INSTRUMENTAL SELECTION FAILED")
-                logger.error("=" * 70)
-                logger.error("")
-                logger.error("The instrumental review UI could not find the required files.")
-                logger.error("")
-                logger.error("Common causes:")
-                logger.error("  - No backing vocals file was found (check stems/ directory)")
-                logger.error("  - No clean instrumental was found (audio separation may have failed)")
-                logger.error("  - Path resolution failed after directory change")
-                logger.error("")
-                logger.error("To investigate:")
-                logger.error("  - Check the stems/ directory for: *Backing Vocals*.flac and *Instrumental*.flac")
-                logger.error("  - Look for separation errors earlier in the log")
-                logger.error("  - Verify audio separation completed without errors")
-                logger.error("")
-                logger.error("Workarounds:")
-                logger.error("  - Re-run with --skip_instrumental_review to auto-select an instrumental")
-                logger.error("  - Re-run the full pipeline to regenerate stems")
-                logger.error("")
+
+            # Map instrumental selection to file path
+            if instrumental_selection:
+                if instrumental_selection == "clean":
+                    clean_result = separated_audio.get("clean_instrumental", {})
+                    if clean_result.get("instrumental"):
+                        selected_instrumental_file = _resolve_path_for_cwd(
+                            clean_result["instrumental"], track_dir
+                        )
+                elif instrumental_selection == "with_backing":
+                    combined_result = separated_audio.get("combined_instrumentals", {})
+                    for model, path in combined_result.items():
+                        if path:
+                            resolved = _resolve_path_for_cwd(path, track_dir)
+                            if os.path.exists(resolved):
+                                selected_instrumental_file = resolved
+                                break
+                else:
+                    logger.warning(f"Unknown instrumental selection: {instrumental_selection}")
+
+            # If no selection made in review, fall back to auto-select
+            if not selected_instrumental_file:
+                logger.info("No instrumental selected in review, auto-selecting...")
+                try:
+                    selected_instrumental_file = auto_select_instrumental(
+                        track=track,
+                        track_dir=track_dir,
+                        logger=logger,
+                    )
+                except FileNotFoundError as e:
+                    logger.error(f"Failed to auto-select instrumental: {e}")
+                    sys.exit(1)
+                    return  # Explicit return for testing
+        else:
+            # No review, no skip flag - shouldn't happen, but auto-select as fallback
+            logger.info("Auto-selecting instrumental file...")
+            try:
+                selected_instrumental_file = auto_select_instrumental(
+                    track=track,
+                    track_dir=track_dir,
+                    logger=logger,
+                )
+            except FileNotFoundError as e:
+                logger.error(f"Failed to auto-select instrumental: {e}")
                 sys.exit(1)
                 return  # Explicit return for testing
-        
+
         logger.info(f"Selected instrumental file: {selected_instrumental_file}")
         
         # Get countdown padding info from track (if vocals were padded, instrumental must match)

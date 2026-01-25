@@ -1,5 +1,5 @@
 """
-Instrumental Review Module - Shared core for both local and remote CLI.
+Instrumental Review Module - Audio analysis and editing for karaoke generation.
 
 This module provides audio analysis and editing functionality for instrumental
 selection in karaoke generation. It's designed to be:
@@ -11,13 +11,16 @@ Classes:
     AudioAnalyzer: Analyzes backing vocals audio for audible content
     AudioEditor: Creates custom instrumentals by muting regions
     WaveformGenerator: Generates waveform visualization images
-    InstrumentalReviewServer: Local HTTP server for browser-based review
 
 Models:
     AnalysisResult: Result of audio analysis
     AudibleSegment: A detected segment of audible content
     MuteRegion: A region to mute in the backing vocals
     RecommendedSelection: Enum of selection recommendations
+
+Note: The standalone InstrumentalReviewServer has been removed. Instrumental
+review is now integrated into the combined review flow via ReviewServer
+(karaoke_gen.lyrics_transcriber.review.server.ReviewServer).
 """
 
 from .models import (
@@ -29,7 +32,6 @@ from .models import (
 from .analyzer import AudioAnalyzer
 from .editor import AudioEditor
 from .waveform import WaveformGenerator
-from .server import InstrumentalReviewServer
 
 __all__ = [
     # Models
@@ -41,5 +43,4 @@ __all__ = [
     "AudioAnalyzer",
     "AudioEditor",
     "WaveformGenerator",
-    "InstrumentalReviewServer",
 ]

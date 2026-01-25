@@ -40,11 +40,14 @@ class LyricsControllerResult:
     original_txt: Optional[str] = None
     corrected_txt: Optional[str] = None
     corrections_json: Optional[str] = None
-    
+
     # Countdown padding info (for applying same padding to other audio files)
     countdown_padding_added: bool = False
     countdown_padding_seconds: float = 0.0
     padded_audio_filepath: Optional[str] = None
+
+    # Instrumental selection from combined review (for gen_cli.py to use)
+    instrumental_selection: Optional[str] = None
 
 
 class LyricsTranscriber:
@@ -289,13 +292,26 @@ class LyricsTranscriber:
         """Initialize output generation service."""
         return OutputGenerator(config=self.output_config, logger=self.logger)
 
-    def process(self, agentic_deadline: Optional[float] = None) -> LyricsControllerResult:
+    def process(
+        self,
+        agentic_deadline: Optional[float] = None,
+        separated_audio_paths: Optional[Dict[str, any]] = None,
+    ) -> LyricsControllerResult:
         """Main processing method that orchestrates the entire workflow.
 
         Args:
             agentic_deadline: Optional Unix timestamp. If agentic correction is still
                 running after this time, it will abort and return uncorrected results.
+            separated_audio_paths: Optional dict containing paths to separated audio files.
+                Used for combined review flow. Format matches KaraokePrep's separated_audio:
+                {
+                    "backing_vocals": {"model": {"backing_vocals": "path/to/backing.flac", ...}},
+                    "clean_instrumental": {"instrumental": "path/to/clean.flac"},
+                    "combined_instrumentals": {"model": "path/to/combined.flac"},
+                }
         """
+        # Store separated audio paths for use in review
+        self.separated_audio_paths = separated_audio_paths
 
         self.logger.info(f"LyricsTranscriber controller beginning processing for {self.artist} - {self.title}")
 
@@ -404,7 +420,13 @@ class LyricsTranscriber:
             self.logger.info("Auto-correction disabled - using raw transcription for review")
             self._create_uncorrected_result()
 
-        # Step 4: Generate outputs based on what we have
+        # Step 4: Run review UI if we have corrected/uncorrected transcription data
+        # This is called AFTER both correct_lyrics() and _create_uncorrected_result() paths
+        # to ensure review always happens when enabled, regardless of SKIP_CORRECTION setting
+        if self.results.transcription_corrected:
+            self._run_review()
+
+        # Step 5: Generate outputs based on what we have
         if self.results.transcription_corrected or self.results.lyrics_results:
             self.generate_outputs()
         else:
@@ -644,11 +666,126 @@ class LyricsTranscriber:
             self.results.transcription_corrected = corrected_data
             self.logger.info("Lyrics correction completed")
 
-        # Add human review step (moved outside the else block)
+    def _prepare_instrumental_options(self) -> tuple:
+        """Prepare instrumental options and analysis for the combined review UI.
+
+        Returns:
+            Tuple of (instrumental_options, backing_vocals_analysis, clean_path, with_backing_path, backing_vocals_path)
+            Returns ([], None, None, None, None) if no separated audio is available.
+        """
+        if not getattr(self, 'separated_audio_paths', None):
+            return [], None, None, None, None
+
+        separated = self.separated_audio_paths
+        instrumental_options = []
+        backing_vocals_analysis = None
+
+        # Find backing vocals path
+        backing_vocals_path = None
+        backing_vocals_result = separated.get("backing_vocals", {})
+        for model, paths in backing_vocals_result.items():
+            if isinstance(paths, dict) and paths.get("backing_vocals"):
+                backing_vocals_path = paths["backing_vocals"]
+                break
+
+        # Find clean instrumental path
+        clean_instrumental_path = None
+        clean_result = separated.get("clean_instrumental", {})
+        if isinstance(clean_result, dict):
+            clean_instrumental_path = clean_result.get("instrumental")
+
+        # Find combined instrumental (with backing vocals) path
+        with_backing_path = None
+        combined_result = separated.get("combined_instrumentals", {})
+        for model, path in combined_result.items():
+            if path and os.path.exists(path):
+                with_backing_path = path
+                break
+
+        # Build instrumental options for UI
+        if clean_instrumental_path and os.path.exists(clean_instrumental_path):
+            instrumental_options.append({
+                "id": "clean",
+                "label": "Clean Instrumental",
+                "audio_path": clean_instrumental_path,
+            })
+
+        if with_backing_path and os.path.exists(with_backing_path):
+            instrumental_options.append({
+                "id": "with_backing",
+                "label": "With Backing Vocals",
+                "audio_path": with_backing_path,
+            })
+
+        # Run backing vocals analysis if we have the file
+        if backing_vocals_path and os.path.exists(backing_vocals_path):
+            try:
+                from karaoke_gen.instrumental_review import AudioAnalyzer
+
+                self.logger.info(f"Analyzing backing vocals: {backing_vocals_path}")
+                analyzer = AudioAnalyzer()
+                analysis = analyzer.analyze(backing_vocals_path)
+
+                backing_vocals_analysis = {
+                    "has_audible_content": analysis.has_audible_content,
+                    "total_duration_seconds": analysis.total_duration_seconds,
+                    "audible_segments": [
+                        {
+                            "start_seconds": seg.start_seconds,
+                            "end_seconds": seg.end_seconds,
+                            "duration_seconds": seg.duration_seconds,
+                            "avg_amplitude_db": seg.avg_amplitude_db,
+                            "peak_amplitude_db": seg.peak_amplitude_db,
+                        }
+                        for seg in analysis.audible_segments
+                    ],
+                    "recommended_selection": analysis.recommended_selection.value,
+                    "total_audible_duration_seconds": analysis.total_audible_duration_seconds,
+                    "audible_percentage": analysis.audible_percentage,
+                }
+
+                self.logger.info(
+                    f"Backing vocals analysis: has_audible_content={analysis.has_audible_content}, "
+                    f"recommendation={analysis.recommended_selection.value}"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to analyze backing vocals: {e}")
+
+        return (
+            instrumental_options,
+            backing_vocals_analysis,
+            clean_instrumental_path,
+            with_backing_path,
+            backing_vocals_path,
+        )
+
+    def _run_review(self) -> None:
+        """Run the combined review UI for lyrics and instrumental selection.
+
+        This method is called after either correct_lyrics() or _create_uncorrected_result()
+        to ensure review always happens when enabled, regardless of the correction path taken.
+        """
+        if not self.results.transcription_corrected:
+            self.logger.warning("No transcription data available for review")
+            return
+
+        # Add human review step
         if self.output_config.enable_review:
             from karaoke_gen.lyrics_transcriber.review.server import ReviewServer
 
             self.logger.info("Starting human review process")
+
+            # Prepare instrumental options if separated audio is available
+            (
+                instrumental_options,
+                backing_vocals_analysis,
+                clean_instrumental_path,
+                with_backing_path,
+                backing_vocals_path,
+            ) = self._prepare_instrumental_options()
+
+            if instrumental_options:
+                self.logger.info(f"Including {len(instrumental_options)} instrumental options in combined review")
 
             # Create and start review server
             review_server = ReviewServer(
@@ -656,11 +793,22 @@ class LyricsTranscriber:
                 output_config=self.output_config,
                 audio_filepath=self.audio_filepath,
                 logger=self.logger,
+                # Instrumental review data
+                instrumental_options=instrumental_options,
+                backing_vocals_analysis=backing_vocals_analysis,
+                clean_instrumental_path=clean_instrumental_path,
+                with_backing_path=with_backing_path,
+                backing_vocals_path=backing_vocals_path,
             )
             reviewed_data = review_server.start()
 
             self.logger.info("Human review completed, updated transcription_corrected with reviewed_data")
             self.results.transcription_corrected = reviewed_data
+
+            # Store instrumental selection in results if it was made
+            if review_server.instrumental_selection:
+                self.results.instrumental_selection = review_server.instrumental_selection
+                self.logger.info(f"Instrumental selection stored: {review_server.instrumental_selection}")
 
         # Add countdown intro if enabled and needed (after review, before output generation)
         if self.output_config.add_countdown and self.results.transcription_corrected:
@@ -682,7 +830,7 @@ class LyricsTranscriber:
                 correction_result=self.results.transcription_corrected,
                 audio_filepath=self.audio_filepath,
             )
-            
+
             # Store padding information in results for parent code to use
             self.results.countdown_padding_added = padding_added
             self.results.countdown_padding_seconds = padding_seconds
