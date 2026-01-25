@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Trash2, Split, Wand2 } from 'lucide-react'
 import { Word } from '@/lib/lyrics-review/types'
 import WordDivider from './WordDivider'
+import TimeInput from './TimeInput'
 
 interface EditWordListProps {
   words: Word[]
@@ -97,26 +98,18 @@ const WordRow = memo(function WordRow({
       <div
         className={`flex gap-2 items-end ${isMobile ? 'justify-start' : 'justify-end'}`}
       >
-        <div className={`${isMobile ? 'w-20' : 'w-24'}`}>
-          <Label className="text-xs text-muted-foreground mb-1">Start</Label>
-          <Input
-            type="number"
-            value={word.start_time?.toFixed(2) ?? ''}
-            onChange={(e) => onWordUpdate(index, { start_time: parseFloat(e.target.value) })}
-            step={0.01}
-            className="h-8"
-          />
-        </div>
-        <div className={`${isMobile ? 'w-20' : 'w-24'}`}>
-          <Label className="text-xs text-muted-foreground mb-1">End</Label>
-          <Input
-            type="number"
-            value={word.end_time?.toFixed(2) ?? ''}
-            onChange={(e) => onWordUpdate(index, { end_time: parseFloat(e.target.value) })}
-            step={0.01}
-            className="h-8"
-          />
-        </div>
+        <TimeInput
+          value={word.start_time ?? null}
+          onChange={(val) => onWordUpdate(index, { start_time: val ?? undefined })}
+          label="Start"
+          widthClass={isMobile ? 'w-20' : 'w-24'}
+        />
+        <TimeInput
+          value={word.end_time ?? null}
+          onChange={(val) => onWordUpdate(index, { end_time: val ?? undefined })}
+          label="End"
+          widthClass={isMobile ? 'w-20' : 'w-24'}
+        />
         {/* Action buttons on desktop only */}
         {!isMobile && (
           <>
