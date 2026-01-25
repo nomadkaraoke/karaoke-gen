@@ -923,11 +923,12 @@ async def async_main():
             sanitized_title = sanitize(title_name)
             corrections_filename = f"{sanitized_artist} - {sanitized_title} (Lyrics Corrections).json"
 
-            # Check lyrics directory first, then track directory
-            lyrics_dir = os.path.join(track_dir, "lyrics")
+            # After os.chdir(track_dir), use paths relative to current directory
+            # Check lyrics directory first, then track directory root
+            lyrics_dir = "lyrics"
             corrections_json_path = os.path.join(lyrics_dir, corrections_filename)
             if not os.path.exists(corrections_json_path):
-                corrections_json_path = os.path.join(track_dir, corrections_filename)
+                corrections_json_path = corrections_filename
 
             # Get audio file path
             audio_filepath = track.get("input_audio_wav", "")
