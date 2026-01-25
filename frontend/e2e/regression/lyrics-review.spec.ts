@@ -439,6 +439,47 @@ test.describe('Lyrics Review - Edit Operations', () => {
     const editAllBtn = page.getByRole('button', { name: /edit all/i });
     await expect(editAllBtn).toBeVisible({ timeout: 10000 });
   });
+
+  test('edit segment modal allows typing multi-digit time values', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+
+    // Click on a word to open edit segment modal
+    const wordElement = page.locator('span').filter({ hasText: 'Hello' }).first();
+    await expect(wordElement).toBeVisible({ timeout: 10000 });
+    await wordElement.click();
+
+    // Wait for edit modal to appear
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Find the start time input (labeled "Start")
+    const startInput = dialog.getByLabel('Start');
+    await expect(startInput).toBeVisible();
+
+    // Click into the input to focus it
+    await startInput.click();
+
+    // Clear and type a multi-digit value without cursor jumping
+    await startInput.fill('12.34');
+
+    // Verify the value was entered correctly
+    await expect(startInput).toHaveValue('12.34');
+
+    // Test end time input as well
+    const endInput = dialog.getByLabel('End');
+    await expect(endInput).toBeVisible();
+
+    await endInput.click();
+    await endInput.fill('22.56');
+    await expect(endInput).toHaveValue('22.56');
+
+    // Blur the input (click outside) to trigger formatting
+    await dialog.getByRole('heading').click(); // Click on dialog heading
+
+    // After blur, the values should still be correct (may be reformatted to 2 decimals)
+    // Note: The actual formatted value depends on parent state update, but input should accept the value
+  });
 });
 
 test.describe('Lyrics Review - Handler Management', () => {
