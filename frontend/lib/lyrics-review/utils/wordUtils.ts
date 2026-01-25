@@ -27,10 +27,16 @@ export function splitWordWithTiming(
   // Split by whitespace, filter empty strings
   let words = text.split(/\s+/).filter((w) => w.length > 0)
 
-  // If single word or empty, split in half
-  if (words.length <= 1) {
-    const half = Math.ceil(text.length / 2)
-    words = [text.slice(0, half), text.slice(half)]
+  // If single word, split in half (but not if empty after whitespace filtering)
+  if (words.length === 1) {
+    const word = words[0]
+    const half = Math.ceil(word.length / 2)
+    words = [word.slice(0, half), word.slice(half)].filter((w) => w.length > 0)
+  }
+
+  // Handle empty input - return empty array
+  if (words.length === 0) {
+    return []
   }
 
   // Calculate timing distribution

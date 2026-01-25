@@ -134,10 +134,10 @@ describe('splitWordWithTiming', () => {
     it('handles single character word', () => {
       const result = splitWordWithTiming('x', 0, 1)
 
-      // Single char splits to '' and 'x', but Math.ceil(1/2) = 1, so 'x' and ''
-      expect(result).toHaveLength(2)
+      // Single char 'x': Math.ceil(1/2) = 1, so slice(0,1)='x' and slice(1)=''
+      // Then filter removes empty strings, leaving just ['x']
+      expect(result).toHaveLength(1)
       expect(result[0].text).toBe('x')
-      expect(result[1].text).toBe('')
     })
 
     it('handles two character word', () => {
@@ -146,6 +146,18 @@ describe('splitWordWithTiming', () => {
       expect(result).toHaveLength(2)
       expect(result[0].text).toBe('h')
       expect(result[1].text).toBe('i')
+    })
+
+    it('handles empty string input', () => {
+      const result = splitWordWithTiming('', 0, 1)
+
+      expect(result).toHaveLength(0)
+    })
+
+    it('handles whitespace-only input', () => {
+      const result = splitWordWithTiming('   ', 0, 1)
+
+      expect(result).toHaveLength(0)
     })
   })
 })
