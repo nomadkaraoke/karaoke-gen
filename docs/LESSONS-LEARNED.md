@@ -148,6 +148,57 @@ When E2E tests use mocked API endpoints, the mocks define what you *think* the A
 ### Use data-testid for E2E
 Prefer `data-testid` over label/text selectors. They're immune to label changes and won't break when similar fields are added.
 
+### Debounced Inputs for Formatted Controlled Components
+
+**Problem**: Controlled number inputs with immediate formatting (e.g., `.toFixed(2)`) on every keystroke cause cursor jumping. When user types "2", the value updates to "2.00", and the cursor jumps to the end. User can't type multi-digit numbers like "12.34" smoothly.
+
+**Root cause**: React's controlled input pattern updates `value` prop on every `onChange`, triggering re-render. When the value changes from "2" to "2.00", React resets the cursor position to the end.
+
+**Solution**: Create a debounced input component with local state:
+1. Maintain local string state while input is focused
+2. Debounce updates to parent (e.g., 300ms) for live preview updates
+3. Format and sync immediately on blur
+4. Ignore parent updates while focused (user has control)
+
+**Implementation pattern**:
+```tsx
+const [localValue, setLocalValue] = useState('')
+const [isFocused, setIsFocused] = useState(false)
+
+// Only sync from parent when not focused
+useEffect(() => {
+  if (!isFocused) {
+    setLocalValue(value?.toFixed(2) ?? '')
+  }
+}, [value, isFocused])
+
+// Debounce updates to parent
+const debouncedUpdate = useCallback((val: string) => {
+  if (debounceRef.current) clearTimeout(debounceRef.current)
+  debounceRef.current = setTimeout(() => {
+    onChange(parseFloat(val) || null)
+  }, 300)
+}, [onChange])
+
+// Show local value when focused, formatted parent value when not
+<Input
+  value={isFocused ? localValue : (value?.toFixed(2) ?? '')}
+  onFocus={(e) => { setIsFocused(true); e.target.select() }}
+  onChange={(e) => { setLocalValue(e.target.value); debouncedUpdate(e.target.value) }}
+  onBlur={() => { setIsFocused(false); onChange(parseFloat(localValue) || null) }}
+/>
+```
+
+**Benefits**:
+- Smooth typing experience (no cursor jumping)
+- Live preview updates after debounce delay
+- Formatted display when not editing
+- Immediate sync on blur (no lost edits)
+
+**When to use**: Any controlled input that needs formatting but must accept intermediate invalid states (partial numbers, decimals being typed, etc.). Common for number inputs with decimal formatting, currency inputs, percentage inputs.
+
+**Testing**: Verify (1) typing multi-digit values doesn't jump cursor, (2) debounce fires after delay, (3) blur syncs immediately, (4) external updates respected when not focused. See `frontend/components/lyrics-review/__tests__/TimeInput.test.tsx` for comprehensive test suite.
+
 ### Emulator Tests Catch Real Bugs
 Firestore emulator tests catch issues (like missing indexes) that unit tests with mocks miss.
 
