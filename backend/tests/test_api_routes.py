@@ -44,6 +44,92 @@ class TestHealthRoutes:
         response = client.get("/", )
         assert response.status_code == 200
 
+    @patch('backend.api.routes.health.check_flacfetch_service_status')
+    def test_flacfetch_health_not_configured(self, mock_check, client):
+        """Test /api/health/flacfetch when service is not configured."""
+        mock_check.return_value = {"configured": False}
+        response = client.get("/api/health/flacfetch")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["available"] is False
+        assert data["status"] == "not_configured"
+
+    @patch('backend.api.routes.health.check_flacfetch_service_status')
+    def test_flacfetch_health_offline(self, mock_check, client):
+        """Test /api/health/flacfetch when service is offline."""
+        mock_check.return_value = {
+            "configured": True,
+            "available": False,
+            "error": "Connection timeout"
+        }
+        response = client.get("/api/health/flacfetch")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["available"] is False
+        assert data["status"] == "offline"
+        assert data["error"] == "Connection timeout"
+
+    @patch('backend.api.routes.health.check_flacfetch_service_status')
+    def test_flacfetch_health_ok(self, mock_check, client):
+        """Test /api/health/flacfetch when service is healthy."""
+        mock_check.return_value = {
+            "configured": True,
+            "available": True,
+            "status": "healthy",
+            "version": "1.2.3"
+        }
+        response = client.get("/api/health/flacfetch")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["available"] is True
+        assert data["status"] == "ok"
+        assert data["version"] == "1.2.3"
+
+    @patch('backend.api.routes.health.check_encoding_worker_status')
+    def test_encoding_worker_health_not_configured(self, mock_check, client):
+        """Test /api/health/encoding-worker when not configured."""
+        mock_check.return_value = {"configured": False}
+        response = client.get("/api/health/encoding-worker")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["available"] is False
+        assert data["status"] == "not_configured"
+
+    @patch('backend.api.routes.health.check_encoding_worker_status')
+    def test_encoding_worker_health_offline(self, mock_check, client):
+        """Test /api/health/encoding-worker when offline."""
+        mock_check.return_value = {
+            "configured": True,
+            "available": False,
+            "error": "Worker unreachable"
+        }
+        response = client.get("/api/health/encoding-worker")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["available"] is False
+        assert data["status"] == "offline"
+        assert data["error"] == "Worker unreachable"
+
+    @patch('backend.api.routes.health.check_encoding_worker_status')
+    def test_encoding_worker_health_ok(self, mock_check, client):
+        """Test /api/health/encoding-worker when healthy."""
+        mock_check.return_value = {
+            "configured": True,
+            "available": True,
+            "status": "ok",
+            "wheel_version": "0.123.0",
+            "active_jobs": 2,
+            "queue_length": 5
+        }
+        response = client.get("/api/health/encoding-worker")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["available"] is True
+        assert data["status"] == "ok"
+        assert data["version"] == "0.123.0"
+        assert data["active_jobs"] == 2
+        assert data["queue_length"] == 5
+
 
 class TestJobRoutes:
     """Tests for jobs.py routes.
