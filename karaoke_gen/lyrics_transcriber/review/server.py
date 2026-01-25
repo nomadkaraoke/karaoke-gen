@@ -291,6 +291,10 @@ class ReviewServer:
         self.app.add_api_route("/api/jobs/{job_id}/lyrics", self.add_lyrics, methods=["POST"])
         self.app.add_api_route("/api/jobs/{job_id}/annotations", self.post_annotation, methods=["POST"])
 
+        # Review-specific routes (used by combined review UI)
+        self.app.add_api_route("/api/review/{job_id}/correction-data", self.get_correction_data, methods=["GET"])
+        self.app.add_api_route("/api/review/{job_id}/complete", self.complete_review, methods=["POST"])
+
         # Agentic AI v1 endpoints (contract-compliant scaffolds)
         self.app.add_api_route("/api/v1/correction/agentic", self.post_correction_agentic, methods=["POST"])
         self.app.add_api_route("/api/v1/correction/session/{session_id}", self.get_correction_session_v1, methods=["GET"])
