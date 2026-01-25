@@ -199,10 +199,12 @@ describe('TimeInput', () => {
 
       fireEvent.blur(input)
 
-      // The display value should now use the parent value (formatted)
-      // Since onChange was called with 12.3456, but component is unfocused,
-      // it will show the formatted parent value (still 1.5 until parent updates)
-      // In real usage, parent would update and show 12.35
+      // Verify onChange was called with the typed numeric value
+      expect(mockOnChange).toHaveBeenCalledWith(12.3456)
+
+      // After blur, component shows the formatted parent value (still 1.5 until parent updates)
+      // In real usage, parent would update to 12.35, but in this test it remains 1.5
+      expect(input).toHaveValue(1.5) // Displays parent's value formatted as 1.50
     })
 
     it('returns null for invalid input on blur', async () => {
