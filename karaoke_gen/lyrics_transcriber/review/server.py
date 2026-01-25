@@ -311,18 +311,21 @@ class ReviewServer:
         """Get the correction data including instrumental options."""
         data = self.correction_result.to_dict()
 
-        # Include instrumental review data if available
-        if self.instrumental_options or self.backing_vocals_analysis:
-            data["instrumental_review"] = {
-                "options": self.instrumental_options,
-                "analysis": self.backing_vocals_analysis,
-                "audio_urls": {
-                    "clean_instrumental": "/api/audio/instrumental/clean" if self.clean_instrumental_path else None,
-                    "with_backing": "/api/audio/instrumental/with_backing" if self.with_backing_path else None,
-                    "backing_vocals": "/api/audio/instrumental/backing_vocals" if self.backing_vocals_path else None,
-                },
-                "has_instrumental_data": bool(self.instrumental_options),
-            }
+        # Include instrumental review data as top-level fields (frontend expects these)
+        if self.instrumental_options:
+            # Add audio_url to each option for frontend streaming
+            options_with_urls = []
+            for opt in self.instrumental_options:
+                opt_with_url = dict(opt)
+                if opt.get("id") == "clean":
+                    opt_with_url["audio_url"] = "/api/audio/instrumental/clean"
+                elif opt.get("id") == "with_backing":
+                    opt_with_url["audio_url"] = "/api/audio/instrumental/with_backing"
+                options_with_urls.append(opt_with_url)
+            data["instrumental_options"] = options_with_urls
+
+        if self.backing_vocals_analysis:
+            data["backing_vocals_analysis"] = self.backing_vocals_analysis
 
         return data
 
