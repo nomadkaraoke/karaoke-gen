@@ -8,7 +8,15 @@ import { useAdminSettings } from "@/lib/admin-settings"
 import { useJobNotifications, useVisibilityRefresh } from "@/hooks/use-notifications"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Music2, RefreshCw, Loader2, Moon, Sun } from "lucide-react"
+import { sortJobsByPriority } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { JobSubmission } from "@/components/job/JobSubmission"
@@ -36,6 +44,7 @@ function AppPageContent() {
   const { isDarkMode, toggleTheme, mounted } = useTheme()
   const { user, fetchUser, verifyMagicLink } = useAuth()
   const { showTestData } = useAdminSettings()
+  const [jobLimit, setJobLimit] = useState<number>(5)
 
   // Check if user is admin (for exclude_test parameter)
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
@@ -50,10 +59,11 @@ function AppPageContent() {
     try {
       // Only admins can filter test jobs, and by default we hide them
       const data = await api.listJobs({
-        limit: 20,
+        limit: jobLimit === -1 ? 100 : jobLimit,
         exclude_test: isAdmin ? !showTestData : undefined
       })
-      setJobs(data)
+      // Sort: blocking jobs first, then processing, then completed
+      setJobs(sortJobsByPriority(data))
     } catch (err: any) {
       // Don't log auth errors - user just needs to authenticate
       if (err?.status !== 401) {
@@ -63,7 +73,7 @@ function AppPageContent() {
       setIsLoadingJobs(false)
       setIsInitialLoad(false)
     }
-  }, [isAdmin, showTestData])
+  }, [isAdmin, showTestData, jobLimit])
 
   // Enable notifications for job status changes (sound + title animation)
   useJobNotifications(jobs)
@@ -220,16 +230,29 @@ function AppPageContent() {
 
           {/* Jobs List Card */}
           <Card className="backdrop-blur" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between" style={{ color: 'var(--text)' }}>
-                Recent Jobs
-                {isLoadingJobs && <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />}
-              </CardTitle>
+            <CardHeader className="px-3 sm:px-6">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle style={{ color: 'var(--text)' }}>Recent Jobs</CardTitle>
+                <div className="flex items-center gap-2">
+                  {isLoadingJobs && <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />}
+                  <Select value={String(jobLimit)} onValueChange={(v) => setJobLimit(Number(v))}>
+                    <SelectTrigger className="h-7 w-[80px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="-1">All</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
-                {jobs.length} job{jobs.length !== 1 ? 's' : ''} found
+                {jobs.length} job{jobs.length !== 1 ? 's' : ''} shown
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-6">
               {jobs.length === 0 ? (
                 <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
                   <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />

@@ -264,3 +264,31 @@ export function getJobProgressPercent(job: Job): number {
   if (step === 0 || total === 0) return 0;
   return Math.round((step / total) * 100);
 }
+
+/**
+ * Get priority score for sorting. Lower = higher priority.
+ * - 0: Blocking (user action needed)
+ * - 1: Active (processing)
+ * - 2: Completed successfully
+ * - 3: Failed/Cancelled
+ */
+export function getJobPriority(job: Job): number {
+  const status = job.status?.toLowerCase() || "";
+  const config = STATUS_CONFIG[status];
+
+  if (config?.isBlocking) return 0;
+  if (status === "complete" || status === "prep_complete") return 2;
+  if (status === "failed" || status === "cancelled") return 3;
+  return 1;
+}
+
+/**
+ * Sort jobs by priority (blocking first), then by created_at (newest first).
+ */
+export function sortJobsByPriority(jobs: Job[]): Job[] {
+  return [...jobs].sort((a, b) => {
+    const priorityDiff = getJobPriority(a) - getJobPriority(b);
+    if (priorityDiff !== 0) return priorityDiff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}

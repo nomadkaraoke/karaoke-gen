@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, getJobProgressPercent, JobStep } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, getJobProgressPercent, getJobPriority, sortJobsByPriority, JobStep } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -455,5 +455,143 @@ describe('getJobProgressPercent', () => {
   it('returns 0 for unknown status', () => {
     const job = createJob('unknown_status_xyz');
     expect(getJobProgressPercent(job)).toBe(0);
+  });
+});
+
+describe('getJobPriority', () => {
+  it('returns 0 for blocking statuses (user action needed)', () => {
+    expect(getJobPriority(createJob('awaiting_review'))).toBe(0);
+    expect(getJobPriority(createJob('awaiting_audio_selection'))).toBe(0);
+    expect(getJobPriority(createJob('awaiting_instrumental_selection'))).toBe(0);
+    expect(getJobPriority(createJob('in_review'))).toBe(0);
+  });
+
+  it('returns 1 for active/processing statuses', () => {
+    expect(getJobPriority(createJob('pending'))).toBe(1);
+    expect(getJobPriority(createJob('downloading'))).toBe(1);
+    expect(getJobPriority(createJob('rendering_video'))).toBe(1);
+    expect(getJobPriority(createJob('separating_stage1'))).toBe(1);
+  });
+
+  it('returns 2 for completed statuses', () => {
+    expect(getJobPriority(createJob('complete'))).toBe(2);
+    expect(getJobPriority(createJob('prep_complete'))).toBe(2);
+  });
+
+  it('returns 3 for failed/cancelled statuses', () => {
+    expect(getJobPriority(createJob('failed'))).toBe(3);
+    expect(getJobPriority(createJob('cancelled'))).toBe(3);
+  });
+
+  it('handles case insensitivity', () => {
+    expect(getJobPriority(createJob('AWAITING_REVIEW'))).toBe(0);
+    expect(getJobPriority(createJob('COMPLETE'))).toBe(2);
+  });
+});
+
+describe('sortJobsByPriority', () => {
+  // Helper to create job with specific date
+  function createJobWithDate(status: string, createdAt: string): Job {
+    return {
+      job_id: `job-${status}-${createdAt}`,
+      status,
+      progress: 0,
+      created_at: createdAt,
+      updated_at: createdAt,
+    };
+  }
+
+  it('sorts blocking jobs before completed jobs', () => {
+    const jobs = [
+      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
+      createJobWithDate('awaiting_review', '2024-01-01T12:00:00Z'),
+    ];
+    const sorted = sortJobsByPriority(jobs);
+    expect(sorted[0].status).toBe('awaiting_review');
+    expect(sorted[1].status).toBe('complete');
+  });
+
+  it('sorts blocking jobs before processing jobs', () => {
+    const jobs = [
+      createJobWithDate('rendering_video', '2024-01-01T12:00:00Z'),
+      createJobWithDate('awaiting_review', '2024-01-01T12:00:00Z'),
+    ];
+    const sorted = sortJobsByPriority(jobs);
+    expect(sorted[0].status).toBe('awaiting_review');
+    expect(sorted[1].status).toBe('rendering_video');
+  });
+
+  it('sorts processing jobs before completed jobs', () => {
+    const jobs = [
+      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
+      createJobWithDate('rendering_video', '2024-01-01T12:00:00Z'),
+    ];
+    const sorted = sortJobsByPriority(jobs);
+    expect(sorted[0].status).toBe('rendering_video');
+    expect(sorted[1].status).toBe('complete');
+  });
+
+  it('sorts completed jobs before failed jobs', () => {
+    const jobs = [
+      createJobWithDate('failed', '2024-01-01T12:00:00Z'),
+      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
+    ];
+    const sorted = sortJobsByPriority(jobs);
+    expect(sorted[0].status).toBe('complete');
+    expect(sorted[1].status).toBe('failed');
+  });
+
+  it('sorts by created_at (newest first) within same priority', () => {
+    const jobs = [
+      createJobWithDate('complete', '2024-01-01T10:00:00Z'),
+      createJobWithDate('complete', '2024-01-01T14:00:00Z'),
+      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
+    ];
+    const sorted = sortJobsByPriority(jobs);
+    expect(sorted[0].created_at).toBe('2024-01-01T14:00:00Z');
+    expect(sorted[1].created_at).toBe('2024-01-01T12:00:00Z');
+    expect(sorted[2].created_at).toBe('2024-01-01T10:00:00Z');
+  });
+
+  it('does not mutate the original array', () => {
+    const jobs = [
+      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
+      createJobWithDate('awaiting_review', '2024-01-01T12:00:00Z'),
+    ];
+    const originalOrder = [...jobs];
+    sortJobsByPriority(jobs);
+    expect(jobs[0].status).toBe(originalOrder[0].status);
+    expect(jobs[1].status).toBe(originalOrder[1].status);
+  });
+
+  it('handles empty array', () => {
+    const sorted = sortJobsByPriority([]);
+    expect(sorted).toEqual([]);
+  });
+
+  it('handles single job', () => {
+    const jobs = [createJobWithDate('complete', '2024-01-01T12:00:00Z')];
+    const sorted = sortJobsByPriority(jobs);
+    expect(sorted.length).toBe(1);
+    expect(sorted[0].status).toBe('complete');
+  });
+
+  it('correctly orders a realistic job list', () => {
+    const jobs = [
+      createJobWithDate('complete', '2024-01-01T10:00:00Z'),
+      createJobWithDate('failed', '2024-01-01T11:00:00Z'),
+      createJobWithDate('awaiting_review', '2024-01-01T09:00:00Z'),
+      createJobWithDate('rendering_video', '2024-01-01T12:00:00Z'),
+      createJobWithDate('complete', '2024-01-01T14:00:00Z'),
+    ];
+    const sorted = sortJobsByPriority(jobs);
+    // Priority order: blocking (0), processing (1), complete (2), failed (3)
+    expect(sorted[0].status).toBe('awaiting_review'); // blocking
+    expect(sorted[1].status).toBe('rendering_video'); // processing
+    expect(sorted[2].status).toBe('complete'); // complete, newer
+    expect(sorted[2].created_at).toBe('2024-01-01T14:00:00Z');
+    expect(sorted[3].status).toBe('complete'); // complete, older
+    expect(sorted[3].created_at).toBe('2024-01-01T10:00:00Z');
+    expect(sorted[4].status).toBe('failed'); // failed
   });
 });
