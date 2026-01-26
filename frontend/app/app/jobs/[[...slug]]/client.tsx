@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
-import { api, Job, createLyricsReviewApiClient, lyricsReviewApi } from "@/lib/api"
+import { api, Job, createLyricsReviewApiClient, lyricsReviewApi, type InstrumentalSelectionType } from "@/lib/api"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { LyricsAnalyzer } from "@/components/lyrics-review"
-import { InstrumentalSelector } from "@/components/instrumental-review"
+import { InstrumentalSelector, InstrumentalSelectorEmbedded } from "@/components/instrumental-review"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import type { CorrectionData } from "@/lib/lyrics-review/types"
 import { isLocalMode, createLocalModeJob } from "@/lib/local-mode"
@@ -429,6 +429,93 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
 
 // Instrumental Review Component Wrapper
 function InstrumentalReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMode?: boolean }) {
+  const [correctionData, setCorrectionData] = useState<CorrectionData | null>(null)
+  const [selectedInstrumental, setSelectedInstrumental] = useState<InstrumentalSelectionType | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch correction data on mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const data = await lyricsReviewApi.getCorrectionData(job.job_id)
+        setCorrectionData(data)
+
+        // Set default selection based on recommendation
+        const analysis = data.backing_vocals_analysis
+        if (analysis?.recommended_selection) {
+          setSelectedInstrumental(analysis.recommended_selection as InstrumentalSelectionType)
+        } else if (data.instrumental_options && data.instrumental_options.length > 0) {
+          setSelectedInstrumental(data.instrumental_options[0].id as InstrumentalSelectionType)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchData()
+  }, [job.job_id])
+
+  // Handle submission
+  const handleSubmit = useCallback(async () => {
+    if (!correctionData || !selectedInstrumental) return
+
+    setIsSubmitting(true)
+    try {
+      await lyricsReviewApi.completeReview(job.job_id, correctionData, selectedInstrumental)
+
+      if (isLocalMode) {
+        // Local mode: close window
+        window.close()
+      } else {
+        // Cloud mode: redirect to dashboard
+        window.location.href = "/app"
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to complete review")
+      setIsSubmitting(false)
+    }
+  }, [job.job_id, correctionData, selectedInstrumental, isLocalMode])
+
+  // Transform instrumental options to the expected format
+  const instrumentalOptions = (correctionData?.instrumental_options || []).map((opt) => ({
+    id: opt.id as InstrumentalSelectionType,
+    label: opt.label,
+    audio_url: opt.audio_url,
+  }))
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Spinner className="w-8 h-8 mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading instrumental options...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+          <p className="text-destructive mb-4">{error}</p>
+          {!isLocalMode && (
+            <Button variant="outline" asChild>
+              <Link href="/app">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to dashboard
+              </Link>
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* App Header */}
@@ -455,8 +542,42 @@ function InstrumentalReviewWrapper({ job, isLocalMode = false }: { job: Job; isL
         </div>
       </header>
 
-      <main className="px-4 py-2">
-        <InstrumentalSelector job={job} isLocalMode={isLocalMode} />
+      <main className="max-w-2xl mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-2">
+            {job.artist} - {job.title}
+          </h2>
+          <p className="text-muted-foreground">
+            Choose which instrumental track to use for your karaoke video.
+          </p>
+        </div>
+
+        {isLocalMode ? (
+          // Local mode: Use full InstrumentalSelector with waveform viewer
+          <InstrumentalSelector job={job} isLocalMode={isLocalMode} />
+        ) : (
+          // Cloud mode: Use embedded selector (simpler, works with correction-data API)
+          <>
+            <InstrumentalSelectorEmbedded
+              options={instrumentalOptions}
+              analysis={correctionData?.backing_vocals_analysis}
+              value={selectedInstrumental}
+              onChange={setSelectedInstrumental}
+              disabled={isSubmitting}
+            />
+
+            <div className="mt-6">
+              <Button
+                onClick={handleSubmit}
+                disabled={!selectedInstrumental || isSubmitting}
+                className="w-full"
+                size="lg"
+              >
+                {isSubmitting ? "Submitting..." : "Confirm Selection & Render Video"}
+              </Button>
+            </div>
+          </>
+        )}
       </main>
     </div>
   )

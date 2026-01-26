@@ -1864,6 +1864,29 @@ export const lyricsReviewApi = {
     const base = `${API_BASE_URL}/api/review/${jobId}/audio/${hash}`
     return token ? `${base}?token=${encodeURIComponent(token)}` : base
   },
+
+  /**
+   * Complete the review with corrections and instrumental selection
+   * This is the final submission endpoint for the combined review flow
+   */
+  async completeReview(
+    jobId: string,
+    correctionData: CorrectionData,
+    instrumentalSelection: InstrumentalSelectionType
+  ): Promise<{ status: string; instrumental_selection: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        ...correctionData,
+        instrumental_selection: instrumentalSelection
+      })
+    })
+    return handleResponse(response)
+  },
 }
 
 export interface DeleteOutputsResponse {
