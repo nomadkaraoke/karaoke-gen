@@ -45,7 +45,7 @@ function parseRouteFromPathname(pathname: string): { jobId: string | null; route
 }
 
 // Parse route from URL hash (used for cloud mode)
-// Expected format: #/{jobId}/review
+// Expected format: #/{jobId}/review or #/{jobId}/instrumental
 function parseRouteFromHash(hash: string): { jobId: string | null; routeType: RouteType } {
   if (!hash || hash.length <= 1) {
     return { jobId: null, routeType: "unknown" }
@@ -53,11 +53,12 @@ function parseRouteFromHash(hash: string): { jobId: string | null; routeType: Ro
 
   // Remove the leading '#' and parse
   const hashPath = hash.substring(1)
-  const match = hashPath.match(/^\/?([^/]+)\/review\/?$/)
+  // Support BOTH review and instrumental routes
+  const match = hashPath.match(/^\/?([^/]+)\/(review|instrumental)\/?$/)
 
   if (match) {
-    const [, jobId] = match
-    return { jobId, routeType: "review" }
+    const [, jobId, action] = match
+    return { jobId, routeType: action as RouteType }
   }
   return { jobId: null, routeType: "unknown" }
 }
@@ -419,6 +420,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
           isReadOnly={false}
           audioHash={correctionData.metadata?.audio_hash || job.audio_hash || job.job_id}
           isLocalMode={isLocalMode}
+          jobId={job.job_id}
         />
       </main>
     </div>

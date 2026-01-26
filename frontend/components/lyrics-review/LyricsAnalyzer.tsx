@@ -82,6 +82,7 @@ export interface LyricsAnalyzerProps {
   isReadOnly: boolean
   audioHash: string
   isLocalMode?: boolean
+  jobId?: string
 }
 
 export default function LyricsAnalyzer({
@@ -91,6 +92,7 @@ export default function LyricsAnalyzer({
   isReadOnly,
   audioHash,
   isLocalMode = false,
+  jobId,
 }: LyricsAnalyzerProps) {
   const router = useRouter()
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
@@ -650,16 +652,21 @@ export default function LyricsAnalyzer({
         toast.success('Lyrics saved! Loading instrumental review...')
         setShowInstrumentalReview(true)
       } else {
-        // Cloud mode: Navigate to instrumental review page
+        // Cloud mode: Use hash-based navigation with jobId
+        if (!jobId) {
+          console.error('No jobId available for cloud mode navigation')
+          toast.error('Navigation error - please return to dashboard')
+          return
+        }
         toast.success('Lyrics saved! Proceeding to instrumental review...')
-        router.push(`/app/jobs/local/instrumental`)
+        window.location.hash = `/${jobId}/instrumental`
       }
     } catch (error) {
       console.error('Failed to submit corrections:', error)
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, annotations, isLocalMode, router])
+  }, [apiClient, data, timingOffsetMs, annotations, isLocalMode, jobId])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
