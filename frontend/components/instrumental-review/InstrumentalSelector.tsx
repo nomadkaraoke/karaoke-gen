@@ -9,6 +9,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import {
   api,
+  lyricsReviewApi,
   type Job,
   type InstrumentalAnalysis,
   type WaveformData,
@@ -99,9 +100,16 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
   useEffect(() => {
     async function fetchData() {
       try {
+        // Use different API based on mode:
+        // - Local mode: uses /api/jobs/{id}/... endpoints
+        // - Cloud mode: uses /api/review/{id}/... endpoints
         const [analysis, waveform] = await Promise.all([
-          api.getInstrumentalAnalysis(job.job_id),
-          api.getWaveformData(job.job_id),
+          isLocalMode
+            ? api.getInstrumentalAnalysis(job.job_id)
+            : lyricsReviewApi.getInstrumentalAnalysis(job.job_id),
+          isLocalMode
+            ? api.getWaveformData(job.job_id)
+            : lyricsReviewApi.getWaveformData(job.job_id),
         ])
 
         setAnalysisData(analysis)
@@ -127,7 +135,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
     }
 
     fetchData()
-  }, [job.job_id])
+  }, [job.job_id, isLocalMode])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -213,9 +221,22 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
 
   // Get audio URL for current selection
   const getAudioUrl = useCallback(() => {
+    // For cloud mode, use signed URLs from analysis data
+    // For local mode, use the API stream endpoint
+    if (!isLocalMode && analysisData?.audio_urls) {
+      const urls = analysisData.audio_urls
+      switch (activeAudio) {
+        case "clean": return urls.clean || ""
+        case "with_backing": return urls.with_backing || ""
+        case "original": return urls.original || ""
+        case "backing": return urls.backing_vocals || ""
+        default: return urls.with_backing || urls.clean || ""
+      }
+    }
+    // Local mode: use API stream endpoint
     const stemType = STEM_TYPE_MAP[activeAudio]
     return api.getAudioStreamUrl(job.job_id, stemType)
-  }, [job.job_id, activeAudio])
+  }, [job.job_id, activeAudio, isLocalMode, analysisData])
 
   // Handle audio type change
   const handleAudioChange = useCallback(
@@ -230,8 +251,22 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
       setActiveAudio(type)
 
       // Update audio source
-      const stemType = STEM_TYPE_MAP[type]
-      audio.src = api.getAudioStreamUrl(job.job_id, stemType)
+      // For cloud mode, use signed URLs from analysis data
+      let audioUrl: string
+      if (!isLocalMode && analysisData?.audio_urls) {
+        const urls = analysisData.audio_urls
+        switch (type) {
+          case "clean": audioUrl = urls.clean || ""; break
+          case "with_backing": audioUrl = urls.with_backing || ""; break
+          case "original": audioUrl = urls.original || ""; break
+          case "backing": audioUrl = urls.backing_vocals || ""; break
+          default: audioUrl = urls.with_backing || urls.clean || ""
+        }
+      } else {
+        const stemType = STEM_TYPE_MAP[type]
+        audioUrl = api.getAudioStreamUrl(job.job_id, stemType)
+      }
+      audio.src = audioUrl
 
       audio.addEventListener(
         "loadeddata",
@@ -244,7 +279,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
         { once: true }
       )
     },
-    [job.job_id]
+    [job.job_id, isLocalMode, analysisData]
   )
 
   // Seek to time
@@ -380,8 +415,10 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true)
     try {
-      // Submit BOTH corrections + instrumental selection (final submission)
-      await api.completeReview(job.job_id, selectedOption)
+      // Fetch current correction data and submit with instrumental selection
+      // Using the same review API for both local and cloud mode
+      const correctionData = await lyricsReviewApi.getCorrectionData(job.job_id)
+      await lyricsReviewApi.completeReview(job.job_id, correctionData, selectedOption)
 
       if (isLocalMode) {
         // In local mode, show success screen with countdown then close

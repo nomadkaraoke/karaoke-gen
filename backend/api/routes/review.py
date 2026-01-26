@@ -749,3 +749,115 @@ async def get_annotation_stats(
         "by_type": {},
         "message": "Annotation stats not yet implemented"
     }
+
+
+@router.get("/{job_id}/instrumental-analysis")
+async def get_instrumental_analysis(
+    job_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """
+    Get instrumental analysis data for the review interface.
+
+    Returns analysis data in the format expected by InstrumentalSelector component:
+    - analysis: backing vocals analysis with audible segments
+    - audio_urls: signed URLs for instrumental stems
+    - has_original: whether original audio is available
+    """
+    job_manager = JobManager()
+    storage = StorageService()
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Get backing vocals analysis from state_data
+    backing_analysis = job.state_data.get('backing_vocals_analysis', {})
+
+    # Get stem URLs
+    stems = job.file_urls.get('stems', {})
+    clean_url = stems.get('instrumental_clean')
+    backing_url = stems.get('instrumental_with_backing')
+
+    # Build audio URLs with signed access
+    audio_urls = {}
+    if clean_url:
+        audio_urls['clean'] = storage.generate_signed_url(clean_url, expiration_minutes=120)
+    if backing_url:
+        audio_urls['with_backing'] = storage.generate_signed_url(backing_url, expiration_minutes=120)
+    if job.input_media_gcs_path:
+        audio_urls['original'] = storage.generate_signed_url(job.input_media_gcs_path, expiration_minutes=120)
+
+    # Check for backing vocals stem for playback
+    backing_vocals_path = stems.get('backing_vocals')
+    if backing_vocals_path:
+        audio_urls['backing'] = storage.generate_signed_url(backing_vocals_path, expiration_minutes=120)
+
+    # Format response to match InstrumentalAnalysis type
+    return {
+        "job_id": job_id,
+        "artist": job.artist,
+        "title": job.title,
+        "duration_seconds": backing_analysis.get('total_duration_seconds'),
+        "analysis": {
+            "has_audible_content": backing_analysis.get('has_audible_content', False),
+            "total_duration_seconds": backing_analysis.get('total_duration_seconds', 0),
+            "audible_segments": backing_analysis.get('audible_segments', []),
+            "recommended_selection": backing_analysis.get('recommended_selection', 'with_backing'),
+            "total_audible_duration_seconds": backing_analysis.get('total_audible_duration_seconds', 0),
+            "audible_percentage": backing_analysis.get('audible_percentage', 0),
+            "silence_threshold_db": backing_analysis.get('silence_threshold_db', -40),
+        },
+        "audio_urls": audio_urls,
+        "has_original": bool(job.input_media_gcs_path),
+        "has_uploaded_instrumental": bool(job.existing_instrumental_gcs_path),
+    }
+
+
+@router.get("/{job_id}/waveform-data")
+async def get_waveform_data(
+    job_id: str,
+    num_points: int = 1000,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """
+    Get waveform amplitude data for client-side rendering.
+
+    Returns amplitude values for drawing the waveform in the frontend.
+    """
+    from backend.services.audio_analysis_service import AudioAnalysisService
+
+    job_manager = JobManager()
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Get backing vocals path
+    stems = job.file_urls.get('stems', {})
+    backing_vocals_path = stems.get('backing_vocals')
+
+    if not backing_vocals_path:
+        # Fallback to input audio if no backing vocals
+        backing_vocals_path = job.input_media_gcs_path
+
+    if not backing_vocals_path:
+        raise HTTPException(status_code=404, detail="No audio available for waveform")
+
+    try:
+        analysis_service = AudioAnalysisService()
+        amplitudes, duration = analysis_service.get_waveform_data(
+            gcs_audio_path=backing_vocals_path,
+            job_id=job_id,
+            num_points=num_points,
+        )
+
+        return {
+            "amplitudes": amplitudes,
+            "duration_seconds": duration,
+            "duration": duration,  # Legacy field name
+            "sample_rate": num_points,
+        }
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error generating waveform data: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error generating waveform: {str(e)}")

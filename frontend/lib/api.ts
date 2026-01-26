@@ -1887,6 +1887,39 @@ export const lyricsReviewApi = {
     })
     return handleResponse(response)
   },
+
+  /**
+   * Get instrumental analysis data for review
+   * Uses the review API endpoint (for cloud mode)
+   */
+  async getInstrumentalAnalysis(jobId: string): Promise<InstrumentalAnalysis> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/instrumental-analysis`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  /**
+   * Get waveform data for visualization
+   * Uses the review API endpoint (for cloud mode)
+   */
+  async getWaveformData(jobId: string, numPoints: number = 1000): Promise<WaveformData> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/review/${jobId}/waveform-data?num_points=${numPoints}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  /**
+   * Get audio stream URL for stem playback
+   * Uses signed URLs from instrumental-analysis response
+   */
+  getAudioStreamUrl(jobId: string, stemType: string): string {
+    const token = getAccessToken()
+    const base = `${API_BASE_URL}/api/review/${jobId}/audio/${stemType}`
+    return token ? `${base}?token=${encodeURIComponent(token)}` : base
+  },
 }
 
 export interface DeleteOutputsResponse {
