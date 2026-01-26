@@ -1,6 +1,6 @@
 {
   "name": "karaoke-gen-frontend",
-  "version": "0.85.3",
+  "version": "0.85.4",
   "private": true,
   "scripts": {
     "build": "next build && node scripts/spa-redirect-404.js",
