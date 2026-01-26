@@ -141,7 +141,7 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
 
   return (
     <div
-      className={`rounded-lg border p-3 transition-colors
+      className={`rounded-lg border p-3 transition-colors overflow-hidden
         ${isComplete ? "border-green-500/30" : ""}
         ${isFailed ? "border-red-500/30" : ""}`}
       style={{
@@ -151,7 +151,7 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
     >
       {/* Header row with title and non-interactive badge */}
       <div className="flex items-start justify-between gap-2">
-        <p className="font-medium truncate" style={{ color: 'var(--text)' }}>
+        <p className="font-medium truncate min-w-0" style={{ color: 'var(--text)' }}>
           {job.state_data?.brand_code && `${job.state_data.brand_code}: `}
           {job.artist || "Unknown"} - {job.title || "Unknown"}
         </p>
@@ -163,9 +163,13 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
         )}
       </div>
 
-      {/* Meta row: ID, date, status */}
-      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-        <span style={{ opacity: 0.7 }}>ID:</span> {job.job_id} <span style={{ opacity: 0.7 }}>•</span> {createdAt} <span style={{ opacity: 0.7 }}>•</span> <StatusIndicator job={job} />
+      {/* Meta row: ID, date, status - wraps on mobile */}
+      <p className="text-xs mt-1 flex flex-wrap gap-x-1.5 gap-y-0.5" style={{ color: 'var(--text-muted)' }}>
+        <span><span style={{ opacity: 0.7 }}>ID:</span> {job.job_id.slice(0, 8)}</span>
+        <span style={{ opacity: 0.7 }}>•</span>
+        <span>{createdAt}</span>
+        <span style={{ opacity: 0.7 }}>•</span>
+        <StatusIndicator job={job} />
       </p>
 
       {/* Progress bar for active jobs */}

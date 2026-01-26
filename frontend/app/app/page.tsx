@@ -216,7 +216,7 @@ function AppPageContent() {
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Submit Job Card */}
-          <Card className="backdrop-blur" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
+          <Card className="backdrop-blur min-w-0" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
             <CardHeader>
               <CardTitle style={{ color: 'var(--text)' }}>Create Karaoke Video</CardTitle>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
@@ -229,7 +229,7 @@ function AppPageContent() {
           </Card>
 
           {/* Jobs List Card */}
-          <Card className="backdrop-blur" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
+          <Card className="backdrop-blur min-w-0" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
             <CardHeader className="px-3 sm:px-6">
               <div className="flex items-center justify-between gap-2">
                 <CardTitle style={{ color: 'var(--text)' }}>Recent Jobs</CardTitle>

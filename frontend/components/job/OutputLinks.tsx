@@ -156,7 +156,7 @@ export function OutputLinks({ job }: OutputLinksProps) {
     <div className="space-y-2">
       {/* Links, Downloads, and Admin Tools - all in one row */}
       {(hasDownloads || hasExternalLinks || isAdmin) && (
-        <div className="flex flex-wrap gap-1.5 overflow-x-auto">
+        <div className="flex flex-wrap gap-1.5">
           {/* Links first */}
           {hasExternalLinks && (
             <>
@@ -166,11 +166,11 @@ export function OutputLinks({ job }: OutputLinksProps) {
                       href={youtubeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded-l bg-red-600 hover:bg-red-500 text-white transition-colors"
+                      className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-l bg-red-600 hover:bg-red-500 text-white transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <ExternalLink className="w-3 h-3" />
-                      <span className="hidden sm:inline">YouTube</span>
+                      YouTube
                     </a>
                     <button
                       type="button"
@@ -189,11 +189,11 @@ export function OutputLinks({ job }: OutputLinksProps) {
                       href={dropboxUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded-l bg-[#0061FE] hover:bg-[#0052d6] text-white transition-colors"
+                      className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-l bg-[#0061FE] hover:bg-[#0052d6] text-white transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <FolderOpen className="w-3 h-3" />
-                      <span className="hidden sm:inline">Dropbox</span>
+                      Dropbox
                     </a>
                     <button
                       type="button"
@@ -215,51 +215,51 @@ export function OutputLinks({ job }: OutputLinksProps) {
                 {downloadUrls?.finals?.lossy_4k_mp4 && (
                   <a
                     href={api.getDownloadUrl(job.job_id, "finals", "lossy_4k_mp4")}
-                    className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white transition-colors"
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    <span className="hidden sm:inline">4K Video</span>
+                    4K Video
                   </a>
                 )}
                 {downloadUrls?.finals?.lossy_720p_mp4 && (
                   <a
                     href={api.getDownloadUrl(job.job_id, "finals", "lossy_720p_mp4")}
-                    className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    <span className="hidden sm:inline">720p Video</span>
+                    720p Video
                   </a>
                 )}
                 {downloadUrls?.videos?.with_vocals && (
                   <a
                     href={api.getDownloadUrl(job.job_id, "videos", "with_vocals")}
-                    className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    <span className="hidden sm:inline">With Vocals</span>
+                    With Vocals
                   </a>
                 )}
                 {downloadUrls?.packages?.cdg_zip && (
                   <a
                     href={api.getDownloadUrl(job.job_id, "packages", "cdg_zip")}
-                    className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    <span className="hidden sm:inline">CDG</span>
+                    CDG
                   </a>
                 )}
                 {downloadUrls?.packages?.txt_zip && (
                   <a
                     href={api.getDownloadUrl(job.job_id, "packages", "txt_zip")}
-                    className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    <span className="hidden sm:inline">TXT</span>
+                    TXT
                   </a>
                 )}
             </>
@@ -271,11 +271,11 @@ export function OutputLinks({ job }: OutputLinksProps) {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setShowEmailDialog(true) }}
-                    className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded-l bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] border-r-0 transition-colors"
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-l bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] border-r-0 transition-colors"
                     title="Send completion email"
                   >
                     <Mail className="w-3 h-3" />
-                    <span className="hidden sm:inline">Email</span>
+                    Email
                   </button>
                   <button
                     type="button"
@@ -300,11 +300,11 @@ export function OutputLinks({ job }: OutputLinksProps) {
                 <a
                   href={`/admin/jobs/?id=${job.job_id}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 text-xs px-2 sm:px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
+                  className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
                   title="View job details in admin"
                 >
                   <Settings className="w-3 h-3" />
-                  <span className="hidden sm:inline">Admin</span>
+                  Admin
                 </a>
           )}
         </div>
