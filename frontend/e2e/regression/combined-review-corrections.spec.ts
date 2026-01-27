@@ -149,10 +149,19 @@ test.describe('Combined Review Corrections Preservation', () => {
     // Track all API calls
     page.on('request', (request: Request) => {
       if (request.url().includes('/api/')) {
+        const postData = request.postData();
+        let body: unknown = undefined;
+        if (postData) {
+          try {
+            body = JSON.parse(postData);
+          } catch {
+            body = postData; // Keep raw string if not valid JSON
+          }
+        }
         apiCalls.push({
           method: request.method(),
           url: request.url(),
-          body: request.postData() ? JSON.parse(request.postData()!) : undefined,
+          body,
         });
       }
     });
@@ -298,15 +307,16 @@ test.describe('Combined Review Corrections Preservation', () => {
       });
     });
 
-    // Find the save/corrections POST call
-    const saveCall = apiCalls.find(
-      call => call.method === 'POST' && call.url.includes('/corrections')
-    );
-
     // The test documents the expected behavior:
     // When user submits corrections, a POST is made to /api/jobs/{job_id}/corrections
     // This is where the user's edits are saved to corrections_updated.json
-    expect(true).toBe(true); // Test passes if page loads - actual saving tested elsewhere
+    // Note: We verify page loads successfully - the actual corrections POST flow
+    // requires user interaction which is tested in the other tests.
+    // This test verifies the page structure supports the corrections flow.
+    const correctionDataFetched = apiCalls.some(
+      call => call.method === 'GET' && call.url.includes('/correction-data')
+    );
+    expect(correctionDataFetched).toBe(true);
   });
 
   test('instrumental selector fetches correction data before submission', async ({ page }) => {
