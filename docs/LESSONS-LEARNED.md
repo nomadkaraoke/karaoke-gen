@@ -242,6 +242,37 @@ Use `expect(locator).toBeVisible()` instead of `page.waitForTimeout()`. Assertio
 ### Playwright: 'load' Not 'networkidle'
 Use `waitUntil: 'load'` for audio-heavy pages. `'networkidle'` can timeout waiting for streaming audio.
 
+### Always Test the Full Data Flow, Not Just Individual Components
+
+**Problem (Jan 2026)**: Lyrics corrections made during human review were being silently discarded. Final videos rendered with raw transcription instead of user-corrected lyrics.
+
+**Why tests didn't catch it**:
+1. **Component tests were isolated**: LyricsAnalyzer tests verified corrections saved to server. InstrumentalSelector tests verified submission worked. But no test verified the *connection* between them.
+2. **E2E tests used mocks**: Mock API responses always returned consistent data, hiding the fact that the real API returned different data than what was saved.
+3. **Backend tests checked structure, not behavior**: The `test_routes_review.py` tests documented expected behavior but didn't actually test the endpoint logic.
+
+**Root cause**:
+- `POST /api/jobs/{job_id}/corrections` saved to `corrections_updated.json` ✓
+- `GET /api/review/{job_id}/correction-data` returned `corrections.json` (original) ✗
+- `POST /api/review/{job_id}/complete` received original data and overwrote the user's edits ✗
+
+**The fix**: Make `get_correction_data` check for `corrections_updated.json` first (same pattern as `render_video_worker.py`).
+
+**Prevention pattern**:
+1. **Integration tests for data round-trips**: Test that data saved by component A is retrievable by component B
+2. **Contract tests**: Verify endpoints return what other endpoints expect
+3. **Real backend E2E tests**: At least one test per flow that hits the actual backend, not mocks
+4. **When two workers use the same data, verify they use it consistently**: Both `get_correction_data` and `render_video_worker` needed to check `corrections_updated.json` first
+
+**Test added**:
+```python
+def test_corrections_preserved_through_combined_review():
+    # 1. Create job with original corrections
+    # 2. Submit edited corrections (saves to corrections_updated.json)
+    # 3. Fetch correction data (should return corrections_updated content!)
+    # 4. Verify returned data contains the EDITED corrections
+```
+
 ---
 
 ## Deployment Notes

@@ -98,16 +98,26 @@ async def get_correction_data(
             detail=f"Job not ready for review (current status: {job.status})"
         )
 
-    # Get corrections URL from file_urls
-    corrections_gcs = job.file_urls.get('lyrics', {}).get('corrections')
-    if not corrections_gcs:
-        # Try direct path
-        corrections_gcs = f"jobs/{job_id}/lyrics/corrections.json"
-        if not storage.file_exists(corrections_gcs):
-            raise HTTPException(
-                status_code=404,
-                detail="Corrections data not found. Lyrics processing may not be complete."
-            )
+    # Check for updated corrections first (from previous review sessions where user edited lyrics)
+    # This mirrors the logic in render_video_worker.py to ensure consistency
+    corrections_updated_gcs = job.file_urls.get('lyrics', {}).get('corrections_updated')
+    if not corrections_updated_gcs:
+        # Try direct path for updated corrections
+        corrections_updated_gcs = f"jobs/{job_id}/lyrics/corrections_updated.json"
+
+    if corrections_updated_gcs and storage.file_exists(corrections_updated_gcs):
+        corrections_gcs = corrections_updated_gcs
+        logger.info(f"Job {job_id}: Using updated corrections from previous review")
+    else:
+        # Fall back to original corrections
+        corrections_gcs = job.file_urls.get('lyrics', {}).get('corrections')
+        if not corrections_gcs:
+            corrections_gcs = f"jobs/{job_id}/lyrics/corrections.json"
+            if not storage.file_exists(corrections_gcs):
+                raise HTTPException(
+                    status_code=404,
+                    detail="Corrections data not found. Lyrics processing may not be complete."
+                )
 
     # Download and return corrections data
     try:

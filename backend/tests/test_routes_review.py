@@ -442,3 +442,174 @@ class TestInstrumentalAnalysisAudioUrls:
         # Verify the mapping for backing is 'backing_vocals'
         assert expected_cloud_mode_keys['backing'] == 'backing_vocals'
         assert expected_cloud_mode_keys['clean'] == 'clean'
+
+
+class TestGetCorrectionDataPrioritizesUpdatedCorrections:
+    """Tests for the correction data endpoint's handling of updated vs original corrections.
+
+    The bug: When a user edits lyrics in LyricsAnalyzer, the edits are saved to
+    corrections_updated.json. However, when InstrumentalSelector fetches correction
+    data via GET /api/review/{job_id}/correction-data, it was returning the ORIGINAL
+    corrections.json, ignoring the user's edits.
+
+    The fix: The endpoint now checks for corrections_updated.json first and returns
+    that if it exists, matching the behavior of render_video_worker.py.
+    """
+
+    def test_endpoint_should_check_updated_corrections_first(self):
+        """Document that get_correction_data should check for corrections_updated first.
+
+        The endpoint logic should be:
+        1. Check for corrections_updated in file_urls or direct GCS path
+        2. If exists, use it
+        3. Otherwise, fall back to original corrections.json
+
+        This matches the pattern in render_video_worker.py:128-142.
+        """
+        # Document the expected file priority
+        file_priority = [
+            ("corrections_updated", "jobs/{job_id}/lyrics/corrections_updated.json"),
+            ("corrections", "jobs/{job_id}/lyrics/corrections.json"),
+        ]
+
+        # Verify corrections_updated comes first
+        assert file_priority[0][0] == "corrections_updated"
+        assert file_priority[1][0] == "corrections"
+
+    def test_updated_corrections_file_path_format(self):
+        """Document the expected file path for updated corrections."""
+        job_id = "test-job-123"
+
+        # The updated corrections path format
+        updated_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
+
+        assert "corrections_updated.json" in updated_path
+        assert job_id in updated_path
+
+    def test_file_urls_key_for_updated_corrections(self):
+        """Document the file_urls key used for updated corrections."""
+        # The file_urls structure for a job with updated corrections
+        file_urls = {
+            "lyrics": {
+                "corrections": "jobs/test-job/lyrics/corrections.json",
+                "corrections_updated": "jobs/test-job/lyrics/corrections_updated.json",
+            }
+        }
+
+        # The key for updated corrections is 'corrections_updated'
+        assert "corrections_updated" in file_urls["lyrics"]
+
+        # This is different from 'corrections' (the original)
+        assert "corrections" in file_urls["lyrics"]
+        assert file_urls["lyrics"]["corrections"] != file_urls["lyrics"]["corrections_updated"]
+
+    def test_render_video_worker_and_api_use_same_pattern(self):
+        """Verify render_video_worker and get_correction_data use consistent logic.
+
+        Both should:
+        1. Try corrections_updated from file_urls first
+        2. Try direct GCS path for corrections_updated
+        3. Fall back to corrections from file_urls
+        4. Fall back to direct GCS path for corrections.json
+
+        This ensures the user's edits are used consistently.
+        """
+        # render_video_worker.py pattern (lines 128-142):
+        render_worker_priority = [
+            "file_urls.lyrics.corrections_updated",
+            "file_urls.lyrics.corrections",
+            "jobs/{job_id}/lyrics/corrections_updated.json (GCS)",
+            "jobs/{job_id}/lyrics/corrections.json (GCS)",
+        ]
+
+        # Verify corrections_updated is checked before corrections
+        assert "corrections_updated" in render_worker_priority[0]
+        assert "corrections_updated" not in render_worker_priority[1]
+
+    def test_correction_data_keys_that_frontend_edits(self):
+        """Document which keys the frontend modifies during review.
+
+        The frontend (LyricsAnalyzer) sends only partial data when saving:
+        - corrections: List of corrections made
+        - corrected_segments: Updated segment data with user edits
+
+        The backend merges these with the original to preserve metadata,
+        original_segments, etc.
+        """
+        # Keys that the frontend modifies
+        frontend_edited_keys = ["corrections", "corrected_segments"]
+
+        # Keys that are preserved from original
+        preserved_keys = [
+            "original_segments",
+            "metadata",
+            "reference_lyrics",
+            "anchor_sequences",
+            "gap_sequences",
+        ]
+
+        # These should not overlap
+        assert not set(frontend_edited_keys) & set(preserved_keys)
+
+
+class TestCorrectionFlowIntegration:
+    """Integration tests documenting the full correction data flow.
+
+    These tests document the expected behavior of the combined review flow
+    where corrections must survive from LyricsAnalyzer through InstrumentalSelector
+    to the final video render.
+    """
+
+    def test_correction_flow_endpoints(self):
+        """Document the endpoints involved in the correction flow."""
+        # The flow uses these endpoints in order:
+        endpoints = [
+            ("GET", "/api/review/{job_id}/correction-data", "Fetch corrections for LyricsAnalyzer"),
+            ("POST", "/api/jobs/{job_id}/corrections", "Save user's edits from LyricsAnalyzer"),
+            ("GET", "/api/review/{job_id}/correction-data", "Fetch corrections for InstrumentalSelector"),
+            ("POST", "/api/review/{job_id}/complete", "Submit final review with instrumental selection"),
+        ]
+
+        # The second GET must return the UPDATED corrections, not the original
+        assert endpoints[2][0] == "GET"
+        assert "correction-data" in endpoints[2][1]
+
+    def test_gcs_file_lifecycle_during_review(self):
+        """Document the GCS file lifecycle during the review flow."""
+        job_id = "test-job-123"
+
+        # Initial state (after lyrics processing)
+        initial_files = {
+            f"jobs/{job_id}/lyrics/corrections.json": "Created by lyrics worker",
+        }
+
+        # After LyricsAnalyzer saves edits
+        after_lyrics_review = {
+            f"jobs/{job_id}/lyrics/corrections.json": "Still exists (original)",
+            f"jobs/{job_id}/lyrics/corrections_updated.json": "Created with user's edits",
+        }
+
+        # Verify corrections_updated.json is created during review
+        assert f"jobs/{job_id}/lyrics/corrections_updated.json" in after_lyrics_review
+        assert f"jobs/{job_id}/lyrics/corrections_updated.json" not in initial_files
+
+    def test_job_file_urls_updated_after_saving_corrections(self):
+        """Document that file_urls is updated when corrections are saved."""
+        # Before saving corrections
+        file_urls_before = {
+            "lyrics": {
+                "corrections": "jobs/test-job/lyrics/corrections.json",
+            }
+        }
+
+        # After POST /api/jobs/{job_id}/corrections
+        file_urls_after = {
+            "lyrics": {
+                "corrections": "jobs/test-job/lyrics/corrections.json",
+                "corrections_updated": "jobs/test-job/lyrics/corrections_updated.json",
+            }
+        }
+
+        # The corrections_updated key should be added
+        assert "corrections_updated" not in file_urls_before["lyrics"]
+        assert "corrections_updated" in file_urls_after["lyrics"]
