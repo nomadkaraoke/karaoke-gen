@@ -99,7 +99,7 @@ class RunnerManagerConfig:
     # Auto-scales runners from 3 VMs (down from 20) with spot instances
 
     FUNCTION_NAME = "github-runner-manager"
-    FUNCTION_MEMORY = "256M"
+    FUNCTION_MEMORY = "512M"  # Increased from 256M due to memory usage
     FUNCTION_TIMEOUT = 300  # 5 minutes
     IDLE_TIMEOUT_HOURS = 1  # Shorter than Aquarius (3h) since we have more CI activity
     IDLE_CHECK_SCHEDULE = "*/15 * * * *"  # Every 15 minutes
