@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Job, api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 import {
   Loader2, RotateCcw, XCircle
 } from "lucide-react"
@@ -15,6 +16,7 @@ interface JobActionsProps {
 export function JobActions({ job, onRefresh }: JobActionsProps) {
   const [isRetrying, setIsRetrying] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const { toast } = useToast()
 
   const canRetry = job.status === "failed" || job.status === "cancelled"
   const canCancel = !["complete", "failed", "cancelled"].includes(job.status)
@@ -23,9 +25,25 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
     setIsRetrying(true)
     try {
       await api.retryJob(job.job_id)
+      toast({
+        title: "Job retry started",
+        description: "The job is being retried. Refreshing status...",
+        variant: "default",
+      })
       onRefresh()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to retry job:", error)
+
+      // Extract error message from API response
+      const errorMessage = error?.response?.data?.detail ||
+                          error?.message ||
+                          "Failed to retry job. Please try again."
+
+      toast({
+        title: "Retry failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsRetrying(false)
     }
