@@ -104,8 +104,46 @@ When resetting a job or re-reviewing a completed job, all worker progress keys (
 ### Defense in Depth
 Enforce critical requirements at multiple layers (e.g., reject at creation in JobManager + safety net at processing time).
 
-### Retry Transient Failures
-HTTP calls to services that can restart (VMs, containers) need retry logic with exponential backoff (2s → 4s → 8s) for connection errors.
+### Retry Transient Failures (Feb 2026)
+HTTP calls to services that can restart (VMs, containers) need retry logic with exponential backoff for connection errors.
+
+**Implementation patterns:**
+- Use exponential backoff with cap: 10s → 20s → 40s → 60s (capped)
+- Retry on network errors (`httpx.RequestError`) and 5xx server errors
+- Do NOT retry on 4xx client errors (bad request, auth failure, not found)
+- Make retry configuration runtime-adjustable via environment variables
+- Let exceptions bubble through retry logic before wrapping in custom error types
+- Log each retry attempt with attempt number and wait time
+
+**State persistence for retry capability:**
+When operations can fail before completion, persist operation parameters BEFORE attempting the operation. This enables retry even if the operation fails. For example, when downloading audio, save the source info (provider, source_id, target_file, download_url) to the job document before calling the download service. If download fails, the retry endpoint can use these saved parameters to retry.
+
+**Example (flacfetch client):**
+```python
+# Manual retry logic with exponential backoff
+async def with_retry(func, *args, **kwargs):
+    max_attempts = 9
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            if not should_retry(e):  # Don't retry 4xx errors
+                raise
+            if attempt >= max_attempts:
+                raise
+            wait_time = min(10 * (2 ** (attempt - 1)), 60)
+            await asyncio.sleep(wait_time)
+    raise last_exception
+
+# Wrap implementation, handle errors after retry logic
+async def download_by_id(...):
+    try:
+        return await with_retry(self._download_by_id_impl, ...)
+    except httpx.RequestError as e:
+        raise FlacfetchServiceError(f"Download failed after retries: {e}")
+```
+
+See `backend/services/flacfetch_client.py` and `backend/tests/test_flacfetch_client.py` for full implementation.
 
 ### Cross-Domain localStorage
 Auth tokens in localStorage are domain-isolated. Keep auth on a single domain or use cookies with `domain=.example.com`.
