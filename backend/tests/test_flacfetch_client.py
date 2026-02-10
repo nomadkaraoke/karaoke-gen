@@ -637,16 +637,17 @@ class TestFlacfetchRetryLogic:
     @pytest.mark.asyncio
     async def test_download_by_id_retries_on_request_error(self):
         """Test download_by_id retries on network errors (RequestError)."""
-        client = FlacfetchClient(
-            base_url="http://test:8080",
-            api_key="test-key",
-        )
-
         # Mock config with retry settings
-        with patch("backend.services.flacfetch_client.settings") as mock_settings:
-            mock_settings.flacfetch_retry_max_attempts = 3
-            mock_settings.flacfetch_retry_min_wait = 0.01  # Fast retries for testing
-            mock_settings.flacfetch_retry_max_wait = 0.02
+        mock_settings = Mock()
+        mock_settings.flacfetch_retry_max_attempts = 3
+        mock_settings.flacfetch_retry_min_wait = 0.01  # Fast retries for testing
+        mock_settings.flacfetch_retry_max_wait = 0.02
+
+        with patch("backend.services.flacfetch_client.get_settings", return_value=mock_settings):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
 
             with patch("httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -671,15 +672,16 @@ class TestFlacfetchRetryLogic:
     @pytest.mark.asyncio
     async def test_download_by_id_no_retry_on_4xx(self):
         """Test download_by_id does NOT retry on 4xx client errors."""
-        client = FlacfetchClient(
-            base_url="http://test:8080",
-            api_key="test-key",
-        )
+        mock_settings = Mock()
+        mock_settings.flacfetch_retry_max_attempts = 3
+        mock_settings.flacfetch_retry_min_wait = 0.01
+        mock_settings.flacfetch_retry_max_wait = 0.02
 
-        with patch("backend.services.flacfetch_client.settings") as mock_settings:
-            mock_settings.flacfetch_retry_max_attempts = 3
-            mock_settings.flacfetch_retry_min_wait = 0.01
-            mock_settings.flacfetch_retry_max_wait = 0.02
+        with patch("backend.services.flacfetch_client.get_settings", return_value=mock_settings):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
 
             with patch("httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -709,15 +711,16 @@ class TestFlacfetchRetryLogic:
     @pytest.mark.asyncio
     async def test_download_by_id_retries_on_5xx(self):
         """Test download_by_id retries on 5xx server errors."""
-        client = FlacfetchClient(
-            base_url="http://test:8080",
-            api_key="test-key",
-        )
+        mock_settings = Mock()
+        mock_settings.flacfetch_retry_max_attempts = 3
+        mock_settings.flacfetch_retry_min_wait = 0.01
+        mock_settings.flacfetch_retry_max_wait = 0.02
 
-        with patch("backend.services.flacfetch_client.settings") as mock_settings:
-            mock_settings.flacfetch_retry_max_attempts = 3
-            mock_settings.flacfetch_retry_min_wait = 0.01
-            mock_settings.flacfetch_retry_max_wait = 0.02
+        with patch("backend.services.flacfetch_client.get_settings", return_value=mock_settings):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
 
             with patch("httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -763,15 +766,16 @@ class TestFlacfetchRetryLogic:
     @pytest.mark.asyncio
     async def test_download_by_id_fails_after_max_retries(self):
         """Test download_by_id fails with clear message after all retries exhausted."""
-        client = FlacfetchClient(
-            base_url="http://test:8080",
-            api_key="test-key",
-        )
+        mock_settings = Mock()
+        mock_settings.flacfetch_retry_max_attempts = 3
+        mock_settings.flacfetch_retry_min_wait = 0.01
+        mock_settings.flacfetch_retry_max_wait = 0.02
 
-        with patch("backend.services.flacfetch_client.settings") as mock_settings:
-            mock_settings.flacfetch_retry_max_attempts = 3
-            mock_settings.flacfetch_retry_min_wait = 0.01
-            mock_settings.flacfetch_retry_max_wait = 0.02
+        with patch("backend.services.flacfetch_client.get_settings", return_value=mock_settings):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
 
             with patch("httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -789,15 +793,16 @@ class TestFlacfetchRetryLogic:
     @pytest.mark.asyncio
     async def test_download_retries_same_as_download_by_id(self):
         """Test download() method has same retry behavior as download_by_id()."""
-        client = FlacfetchClient(
-            base_url="http://test:8080",
-            api_key="test-key",
-        )
+        mock_settings = Mock()
+        mock_settings.flacfetch_retry_max_attempts = 3
+        mock_settings.flacfetch_retry_min_wait = 0.01
+        mock_settings.flacfetch_retry_max_wait = 0.02
 
-        with patch("backend.services.flacfetch_client.settings") as mock_settings:
-            mock_settings.flacfetch_retry_max_attempts = 3
-            mock_settings.flacfetch_retry_min_wait = 0.01
-            mock_settings.flacfetch_retry_max_wait = 0.02
+        with patch("backend.services.flacfetch_client.get_settings", return_value=mock_settings):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
 
             with patch("httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
