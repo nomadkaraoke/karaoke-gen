@@ -97,7 +97,13 @@ class Settings(BaseSettings):
     # This is required for torrent downloads since Cloud Run doesn't support BitTorrent.
     flacfetch_api_url: Optional[str] = os.getenv("FLACFETCH_API_URL")  # e.g., http://10.0.0.5:8080
     flacfetch_api_key: Optional[str] = os.getenv("FLACFETCH_API_KEY")
-    
+
+    # Flacfetch client retry settings
+    # Retries help handle transient network failures when calling the flacfetch service
+    flacfetch_retry_max_attempts: int = int(os.getenv("FLACFETCH_RETRY_MAX_ATTEMPTS", "9"))  # Total attempts (1 initial + 8 retries)
+    flacfetch_retry_min_wait: float = float(os.getenv("FLACFETCH_RETRY_MIN_WAIT", "10.0"))  # seconds
+    flacfetch_retry_max_wait: float = float(os.getenv("FLACFETCH_RETRY_MAX_WAIT", "60.0"))  # seconds
+
     # Default distribution settings (can be overridden per-request)
     default_dropbox_path: Optional[str] = os.getenv("DEFAULT_DROPBOX_PATH")
     default_gdrive_folder_id: Optional[str] = os.getenv("DEFAULT_GDRIVE_FOLDER_ID")

@@ -86,6 +86,7 @@ uvicorn = { version = ">=0.24.0", extras = ["standard"] }
 pydantic = ">=2.5.0"
 pydantic-settings = ">=2.1.0"
 httpx = ">=0.25.0"
+tenacity = "^8.2.0"  # Retry logic for external service calls
 google-cloud-firestore = ">=2.14.0"
 google-cloud-storage = ">=2.14.0"
 google-cloud-secret-manager = ">=2.18.0"

@@ -33,13 +33,47 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception,
+    before_sleep_log,
+    RetryError,
+)
+
+from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 class FlacfetchServiceError(Exception):
     """Error communicating with or returned from flacfetch service."""
     pass
+
+
+def should_retry_flacfetch_error(exception: Exception) -> bool:
+    """
+    Determine if a flacfetch exception should be retried.
+
+    Retry on:
+    - httpx.RequestError (network failures: timeout, connection refused, etc.)
+    - httpx.HTTPStatusError with 5xx status (server errors)
+
+    Don't retry on:
+    - httpx.HTTPStatusError with 4xx status (client errors: bad request, auth, not found)
+    """
+    if isinstance(exception, httpx.RequestError):
+        # Network-level failures - always retry
+        return True
+
+    if isinstance(exception, httpx.HTTPStatusError):
+        # HTTP errors - only retry on 5xx (server errors)
+        return exception.response.status_code >= 500
+
+    # Don't retry on other exceptions (e.g., FlacfetchServiceError after wrapping)
+    return False
 
 
 class FlacfetchClient:
@@ -148,7 +182,18 @@ class FlacfetchClient:
             raise FlacfetchServiceError(f"Search request failed: {e}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Search failed: {e.response.status_code} - {e.response.text}")
-    
+
+    @retry(
+        stop=stop_after_attempt(settings.flacfetch_retry_max_attempts),
+        wait=wait_exponential(
+            multiplier=1,
+            min=settings.flacfetch_retry_min_wait,
+            max=settings.flacfetch_retry_max_wait,
+        ),
+        retry=retry_if_exception(should_retry_flacfetch_error),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     async def download(
         self,
         search_id: str,
@@ -158,18 +203,21 @@ class FlacfetchClient:
     ) -> str:
         """
         Start downloading an audio file.
-        
+
+        Retries automatically on network errors and server errors (5xx) using
+        exponential backoff. Configured via FLACFETCH_RETRY_* environment variables.
+
         Args:
             search_id: Search ID from previous search
             result_index: Index of result to download
             output_filename: Optional custom filename (without extension)
             gcs_path: GCS path for upload (e.g., "uploads/job123/audio/")
-            
+
         Returns:
             Download ID for tracking progress
-            
+
         Raises:
-            FlacfetchServiceError: On download start failure
+            FlacfetchServiceError: On download start failure (after all retries exhausted)
         """
         try:
             async with httpx.AsyncClient() as client:
@@ -198,7 +246,18 @@ class FlacfetchClient:
             raise FlacfetchServiceError(f"Download request failed: {e}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Download start failed: {e.response.status_code} - {e.response.text}")
-    
+
+    @retry(
+        stop=stop_after_attempt(settings.flacfetch_retry_max_attempts),
+        wait=wait_exponential(
+            multiplier=1,
+            min=settings.flacfetch_retry_min_wait,
+            max=settings.flacfetch_retry_max_wait,
+        ),
+        retry=retry_if_exception(should_retry_flacfetch_error),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     async def download_by_id(
         self,
         source_name: str,
@@ -214,6 +273,9 @@ class FlacfetchClient:
         This is useful when you have stored the source_id from a previous search
         and want to download later without re-searching.
 
+        Retries automatically on network errors and server errors (5xx) using
+        exponential backoff. Configured via FLACFETCH_RETRY_* environment variables.
+
         Args:
             source_name: Provider name (RED, OPS, YouTube, Spotify)
             source_id: Source-specific ID (torrent ID, video ID, track ID)
@@ -226,7 +288,7 @@ class FlacfetchClient:
             Download ID for tracking progress
 
         Raises:
-            FlacfetchServiceError: On download start failure
+            FlacfetchServiceError: On download start failure (after all retries exhausted)
         """
         try:
             async with httpx.AsyncClient() as client:

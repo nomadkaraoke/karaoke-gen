@@ -310,6 +310,20 @@ async def _download_and_start_processing(
         target_file = selected.get('target_file')
         download_url = selected.get('url')
 
+        # Save download params to job BEFORE attempting download
+        # This enables retry even if download fails
+        job_manager.update_job(job_id, {
+            'audio_source_type': 'audio_search',
+            'source_name': source_name,
+            'source_id': source_id,
+            'target_file': target_file,
+            'download_url': download_url,
+        })
+        logger.info(
+            f"Job {job_id}: Saved download params before attempt: "
+            f"source_name={source_name}, source_id={source_id}"
+        )
+
         # Route to appropriate download handler based on source type
         if source_name == 'YouTube':
             # Use YouTubeDownloadService for all YouTube downloads

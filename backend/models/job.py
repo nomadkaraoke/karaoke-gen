@@ -205,7 +205,14 @@ class Job(BaseModel):
     title: Optional[str] = None
     filename: Optional[str] = None               # Original uploaded filename
     input_media_gcs_path: Optional[str] = None   # GCS path to uploaded file
-    
+
+    # Audio source tracking (for retry capability)
+    audio_source_type: Optional[str] = None      # Source type: 'audio_search', 'youtube_url', 'file_upload'
+    source_name: Optional[str] = None            # Provider name (RED, OPS, YouTube, Spotify) - for audio_search
+    source_id: Optional[str] = None              # Source-specific ID (torrent ID, video ID, track ID) - for audio_search
+    target_file: Optional[str] = None            # For torrents, specific file to extract - for audio_search
+    download_url: Optional[str] = None           # Direct download URL if available - for audio_search
+
     # User preferences
     enable_cdg: bool = False                     # Generate CDG+MP3 package (requires style config)
     enable_txt: bool = False                     # Generate TXT+MP3 package (requires style config)
