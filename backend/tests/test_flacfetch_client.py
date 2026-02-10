@@ -630,3 +630,195 @@ class TestGetFlacfetchClient:
         assert client1 is not client2
         assert client2.base_url == "http://other:8080"
 
+
+class TestFlacfetchRetryLogic:
+    """Test retry logic for flacfetch download methods."""
+
+    @pytest.mark.asyncio
+    async def test_download_by_id_retries_on_request_error(self):
+        """Test download_by_id retries on network errors (RequestError)."""
+        client = FlacfetchClient(
+            base_url="http://test:8080",
+            api_key="test-key",
+        )
+
+        # Mock config with retry settings
+        with patch("backend.services.flacfetch_client.settings") as mock_settings:
+            mock_settings.flacfetch_retry_max_attempts = 3
+            mock_settings.flacfetch_retry_min_wait = 0.01  # Fast retries for testing
+            mock_settings.flacfetch_retry_max_wait = 0.02
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                # Fail twice with network error, then succeed
+                mock_response = Mock()
+                mock_response.json.return_value = {"download_id": "test123"}
+                mock_response.raise_for_status = Mock()
+
+                mock_client.post.side_effect = [
+                    httpx.RequestError("Connection timeout"),
+                    httpx.RequestError("Connection refused"),
+                    mock_response,  # Success on third attempt
+                ]
+
+                result = await client.download_by_id("YouTube", "abc123")
+
+                assert result == "test123"
+                assert mock_client.post.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_download_by_id_no_retry_on_4xx(self):
+        """Test download_by_id does NOT retry on 4xx client errors."""
+        client = FlacfetchClient(
+            base_url="http://test:8080",
+            api_key="test-key",
+        )
+
+        with patch("backend.services.flacfetch_client.settings") as mock_settings:
+            mock_settings.flacfetch_retry_max_attempts = 3
+            mock_settings.flacfetch_retry_min_wait = 0.01
+            mock_settings.flacfetch_retry_max_wait = 0.02
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                # 404 error
+                mock_response = Mock()
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+
+                def raise_status_error():
+                    raise httpx.HTTPStatusError(
+                        "Not found",
+                        request=Mock(),
+                        response=mock_response
+                    )
+
+                mock_response.raise_for_status.side_effect = raise_status_error
+                mock_client.post.return_value = mock_response
+
+                with pytest.raises(FlacfetchServiceError, match="404"):
+                    await client.download_by_id("YouTube", "abc123")
+
+                # Should only attempt once (no retries for 4xx)
+                assert mock_client.post.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_download_by_id_retries_on_5xx(self):
+        """Test download_by_id retries on 5xx server errors."""
+        client = FlacfetchClient(
+            base_url="http://test:8080",
+            api_key="test-key",
+        )
+
+        with patch("backend.services.flacfetch_client.settings") as mock_settings:
+            mock_settings.flacfetch_retry_max_attempts = 3
+            mock_settings.flacfetch_retry_min_wait = 0.01
+            mock_settings.flacfetch_retry_max_wait = 0.02
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                # 503 error twice, then success
+                mock_503_response = Mock()
+                mock_503_response.status_code = 503
+                mock_503_response.text = "Service Unavailable"
+
+                def raise_503():
+                    raise httpx.HTTPStatusError(
+                        "Service Unavailable",
+                        request=Mock(),
+                        response=mock_503_response
+                    )
+
+                mock_success_response = Mock()
+                mock_success_response.json.return_value = {"download_id": "test456"}
+                mock_success_response.raise_for_status = Mock()
+
+                mock_503_response_1 = Mock()
+                mock_503_response_1.status_code = 503
+                mock_503_response_1.text = "Service Unavailable"
+                mock_503_response_1.raise_for_status.side_effect = raise_503
+
+                mock_503_response_2 = Mock()
+                mock_503_response_2.status_code = 503
+                mock_503_response_2.text = "Service Unavailable"
+                mock_503_response_2.raise_for_status.side_effect = raise_503
+
+                mock_client.post.side_effect = [
+                    mock_503_response_1,
+                    mock_503_response_2,
+                    mock_success_response,
+                ]
+
+                result = await client.download_by_id("YouTube", "abc123")
+
+                assert result == "test456"
+                assert mock_client.post.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_download_by_id_fails_after_max_retries(self):
+        """Test download_by_id fails with clear message after all retries exhausted."""
+        client = FlacfetchClient(
+            base_url="http://test:8080",
+            api_key="test-key",
+        )
+
+        with patch("backend.services.flacfetch_client.settings") as mock_settings:
+            mock_settings.flacfetch_retry_max_attempts = 3
+            mock_settings.flacfetch_retry_min_wait = 0.01
+            mock_settings.flacfetch_retry_max_wait = 0.02
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                # All attempts fail
+                mock_client.post.side_effect = httpx.RequestError("Connection timeout")
+
+                with pytest.raises(FlacfetchServiceError, match="request failed"):
+                    await client.download_by_id("YouTube", "abc123")
+
+                # Should have attempted max times
+                assert mock_client.post.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_download_retries_same_as_download_by_id(self):
+        """Test download() method has same retry behavior as download_by_id()."""
+        client = FlacfetchClient(
+            base_url="http://test:8080",
+            api_key="test-key",
+        )
+
+        with patch("backend.services.flacfetch_client.settings") as mock_settings:
+            mock_settings.flacfetch_retry_max_attempts = 3
+            mock_settings.flacfetch_retry_min_wait = 0.01
+            mock_settings.flacfetch_retry_max_wait = 0.02
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                # Fail twice, then succeed
+                mock_response = Mock()
+                mock_response.json.return_value = {"download_id": "test789"}
+                mock_response.raise_for_status = Mock()
+
+                mock_client.post.side_effect = [
+                    httpx.RequestError("Network error"),
+                    httpx.RequestError("Network error"),
+                    mock_response,
+                ]
+
+                result = await client.download(
+                    search_id="search123",
+                    result_index=0,
+                )
+
+                assert result == "test789"
+                assert mock_client.post.call_count == 3
+
