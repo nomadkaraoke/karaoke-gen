@@ -3,6 +3,7 @@ import glob as glob_module
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from typing import Optional
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, Depends
 from google.cloud import storage
+from packaging.version import Version
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
@@ -261,8 +263,16 @@ def ensure_latest_wheel():
             logger.warning("No wheel found in GCS, using fallback encoding logic")
             return False
 
-        # Sort to get latest version
-        wheel_path = sorted(wheels)[-1]
+        # Sort to get latest version (by semantic version, not alphabetically)
+        def extract_version(wheel_path):
+            """Extract version from wheel filename like karaoke_gen-0.116.1-py3-none-any.whl"""
+            match = re.search(r'karaoke_gen-([0-9.]+)-', wheel_path)
+            if match:
+                return Version(match.group(1))
+            return Version("0.0.0")  # Fallback for unparseable filenames
+
+        wheels.sort(key=extract_version, reverse=True)
+        wheel_path = wheels[0]
         logger.info(f"Installing wheel: {wheel_path}")
 
         # Install (or upgrade) the wheel

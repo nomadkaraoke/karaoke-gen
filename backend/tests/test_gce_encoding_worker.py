@@ -9,7 +9,9 @@ to avoid dependency issues in CI/CD environments.
 """
 
 import pytest
+import re
 from pathlib import Path
+from packaging.version import Version
 
 
 # Copy the find_file function here to test it in isolation
@@ -268,7 +270,11 @@ class TestWheelFilenameFiltering:
         assert filtered == []
 
     def test_selects_latest_version_after_filtering(self):
-        """Test that the latest version is selected after filtering out current."""
+        """Test that the latest version is selected after filtering out current.
+
+        Note: This test verifies filtering but uses simple sorting.
+        See TestWheelVersionSorting for comprehensive semantic version sorting tests.
+        """
         wheels = [
             "/tmp/karaoke_gen-0.114.0-py3-none-any.whl",
             "/tmp/karaoke_gen-current.whl",
@@ -277,10 +283,10 @@ class TestWheelFilenameFiltering:
         ]
 
         filtered = self.filter_wheels(wheels)
-        latest = sorted(filtered)[-1]
 
-        # Lexicographic sort puts 0.116.0 last
-        assert "0.116.0" in latest
+        # Verify current wheel was filtered out
+        assert len(filtered) == 3
+        assert all("-current" not in w for w in filtered)
 
     def test_no_filtering_when_no_current_wheel(self):
         """Test that valid wheels pass through when no current wheel exists."""
@@ -305,3 +311,148 @@ class TestWheelFilenameFiltering:
 
         assert len(filtered) == 1
         assert "/tmp/karaoke_gen-0.116.0-py3-none-any.whl" in filtered
+
+
+class TestWheelVersionSorting:
+    """Test semantic version sorting for wheel selection.
+
+    Bug: The ensure_latest_wheel() function uses sorted(wheels)[-1] which does
+    alphabetical sorting, not semantic version sorting. This causes version 0.99.9
+    to be selected over 0.116.1 because string comparison puts '9' > '1'.
+
+    Fix: Extract version from filename using regex and sort by packaging.version.Version
+    """
+
+    def extract_version(self, wheel_path):
+        """Replicate the version extraction logic from ensure_latest_wheel()."""
+        match = re.search(r'karaoke_gen-([0-9.]+)-', wheel_path)
+        if match:
+            return Version(match.group(1))
+        return Version("0.0.0")  # Fallback for unparseable filenames
+
+    def select_latest_wheel(self, wheels):
+        """Replicate the full selection logic from ensure_latest_wheel()."""
+        # Filter out -current wheels
+        filtered = [w for w in wheels if '-current' not in w]
+        if not filtered:
+            return None
+        # Sort by semantic version
+        filtered.sort(key=self.extract_version, reverse=True)
+        return filtered[0]
+
+    def test_semantic_version_sorting_regression(self):
+        """Test the exact bug: 0.99.9 should NOT be selected over 0.116.1"""
+        wheels = [
+            "/tmp/karaoke_gen-0.99.9-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.116.1-py3-none-any.whl",
+        ]
+
+        latest = self.select_latest_wheel(wheels)
+
+        # Semantic version: 0.116.1 > 0.99.9
+        assert "0.116.1" in latest
+        assert "0.99.9" not in latest
+
+    def test_alphabetical_would_fail(self):
+        """Demonstrate that alphabetical sorting gives wrong result."""
+        wheels = [
+            "/tmp/karaoke_gen-0.99.9-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.116.1-py3-none-any.whl",
+        ]
+
+        # This is the OLD buggy behavior (alphabetical)
+        alphabetical_latest = sorted(wheels)[-1]
+
+        # Alphabetical puts 0.99.9 last (WRONG!)
+        assert "0.99.9" in alphabetical_latest
+
+    def test_version_extraction(self):
+        """Test that version is correctly extracted from wheel filename."""
+        test_cases = [
+            ("/tmp/karaoke_gen-0.116.1-py3-none-any.whl", "0.116.1"),
+            ("/tmp/karaoke_gen-0.99.9-py3-none-any.whl", "0.99.9"),
+            ("/tmp/karaoke_gen-1.0.0-py3-none-any.whl", "1.0.0"),
+            ("/tmp/karaoke_gen-0.1.2-py3-none-any.whl", "0.1.2"),
+        ]
+
+        for wheel_path, expected_version in test_cases:
+            version = self.extract_version(wheel_path)
+            assert str(version) == expected_version
+
+    def test_version_extraction_fallback(self):
+        """Test that unparseable filenames get fallback version."""
+        invalid_wheels = [
+            "/tmp/karaoke_gen-current.whl",
+            "/tmp/karaoke_gen-latest.whl",
+            "/tmp/invalid-filename.whl",
+        ]
+
+        for wheel in invalid_wheels:
+            version = self.extract_version(wheel)
+            assert version == Version("0.0.0")
+
+    def test_complex_version_sorting(self):
+        """Test sorting with multiple versions including patch, minor, major."""
+        wheels = [
+            "/tmp/karaoke_gen-0.99.9-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.116.0-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.116.1-py3-none-any.whl",
+            "/tmp/karaoke_gen-1.0.0-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.115.0-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.1.0-py3-none-any.whl",
+        ]
+
+        latest = self.select_latest_wheel(wheels)
+
+        # 1.0.0 is the highest version
+        assert "1.0.0" in latest
+
+    def test_version_sorting_with_current_wheel(self):
+        """Test that current wheel is filtered before version sorting."""
+        wheels = [
+            "/tmp/karaoke_gen-0.99.9-py3-none-any.whl",
+            "/tmp/karaoke_gen-current.whl",
+            "/tmp/karaoke_gen-0.116.1-py3-none-any.whl",
+        ]
+
+        latest = self.select_latest_wheel(wheels)
+
+        # Current is filtered out, 0.116.1 is selected
+        assert "0.116.1" in latest
+        assert "current" not in latest
+
+    def test_patch_version_comparison(self):
+        """Test that patch versions are compared correctly."""
+        wheels = [
+            "/tmp/karaoke_gen-0.116.0-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.116.1-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.116.2-py3-none-any.whl",
+        ]
+
+        latest = self.select_latest_wheel(wheels)
+
+        assert "0.116.2" in latest
+
+    def test_minor_version_comparison(self):
+        """Test that minor versions are compared correctly."""
+        wheels = [
+            "/tmp/karaoke_gen-0.115.0-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.116.0-py3-none-any.whl",
+            "/tmp/karaoke_gen-0.200.0-py3-none-any.whl",
+        ]
+
+        latest = self.select_latest_wheel(wheels)
+
+        assert "0.200.0" in latest
+
+    def test_empty_wheels_list(self):
+        """Test that empty list returns None."""
+        wheels = []
+        latest = self.select_latest_wheel(wheels)
+        assert latest is None
+
+    def test_only_current_wheel_returns_none(self):
+        """Test that list with only current wheel returns None."""
+        wheels = ["/tmp/karaoke_gen-current.whl"]
+        latest = self.select_latest_wheel(wheels)
+        assert latest is None
