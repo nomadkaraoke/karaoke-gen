@@ -23,7 +23,7 @@ export default function ModeSelector({ effectiveMode, onChange }: ModeSelectorPr
         <ToggleGroup
           type="single"
           value={effectiveMode}
-          onValueChange={(value) => value === 'edit' && onChange(value as InteractionMode)}
+          onValueChange={(value) => value && onChange(value as InteractionMode)}
           className="h-8"
         >
           <Tooltip>
@@ -40,7 +40,7 @@ export default function ModeSelector({ effectiveMode, onChange }: ModeSelectorPr
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <ToggleGroupItem value="highlight" className="h-8 px-2 text-[0.75rem]" disabled>
+              <ToggleGroupItem value="highlight" className="h-8 px-2 text-[0.75rem]">
                 <Highlighter className="h-3.5 w-3.5 mr-1" />
                 Highlight
               </ToggleGroupItem>
@@ -52,7 +52,7 @@ export default function ModeSelector({ effectiveMode, onChange }: ModeSelectorPr
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <ToggleGroupItem value="delete_word" className="h-8 px-2 text-[0.75rem]" disabled>
+              <ToggleGroupItem value="delete_word" className="h-8 px-2 text-[0.75rem]">
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 Delete
               </ToggleGroupItem>
