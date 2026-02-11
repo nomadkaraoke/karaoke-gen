@@ -114,6 +114,31 @@ wheels = [w for w in wheels if '-current' not in w]
 
 **Pattern**: When downloading artifacts with wildcards, filter results to exclude non-standard naming patterns before processing. CI convenience files (symlinks, "latest", "current") often don't follow the same naming conventions as versioned releases. Always validate artifact names match expected patterns before attempting to use them.
 
+### Semantic Version Sorting (Feb 2026)
+**What happened**: PR #384 fixed the invalid wheel filename crash but exposed a version sorting bug. Production encoder started showing "Encoder: v0.99.9" instead of the latest v0.116.1. The GCE encoding worker was running an extremely old version from months ago.
+
+**Root cause**: After filtering out invalid wheels, the code used `sorted(wheels)[-1]` to select the "latest" wheel. This does **alphabetical sorting**, not semantic version sorting. String comparison puts "karaoke_gen-0.99.9-..." AFTER "karaoke_gen-0.116.1-..." because '9' > '1' in the second character position.
+
+**Why it's tricky**: For some version ranges, alphabetical sorting happens to work correctly (0.100.0 > 0.99.0), but fails for others (0.99.9 > 0.116.1). This makes the bug intermittent and hard to notice until a specific version combination triggers it.
+
+**Fix**: Extract version numbers from filenames and sort using `packaging.version.Version`:
+```python
+from packaging.version import Version
+import re
+
+def extract_version(wheel_path):
+    """Extract version from wheel filename like karaoke_gen-0.116.1-py3-none-any.whl"""
+    match = re.search(r'karaoke_gen-([0-9.]+)-', wheel_path)
+    if match:
+        return Version(match.group(1))
+    return Version("0.0.0")  # Fallback for unparseable filenames
+
+wheels.sort(key=extract_version, reverse=True)
+latest_wheel = wheels[0]
+```
+
+**Pattern**: When selecting "latest" from a list of versioned artifacts (wheels, releases, tags), always use semantic version comparison, not string/alphabetical sorting. The `packaging` library is part of Python's standard packaging infrastructure and handles all semantic versioning edge cases (major.minor.patch, pre-releases, etc.). String sorting only works accidentally for some version ranges.
+
 ### Clear Worker Progress Keys When Reprocessing
 When resetting a job or re-reviewing a completed job, all worker progress keys (`*_progress`) must be cleared from `state_data`. Workers check `state_data.{worker}_progress.stage == 'complete'` for idempotency - if stale keys exist from a previous run, workers will skip execution even though the job needs reprocessing. **Pattern**: Any operation that intends to re-run workers (admin reset, review resubmission) must explicitly clear progress keys using `job_manager.delete_state_data_keys()`. See `backend/api/routes/review.py:complete_review()` and `backend/api/routes/admin.py:clear_worker_state()`.
 
