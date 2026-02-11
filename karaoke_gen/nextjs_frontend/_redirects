@@ -1,0 +1,7 @@
+# Cloudflare Pages redirects/rewrites
+# https://developers.cloudflare.com/pages/configuration/redirects/
+
+# Note: With hash-based routing (e.g., /app/jobs/#/{jobId}/review),
+# no server-side redirects are needed. The hash portion is never sent
+# to the server, so all requests go to /app/jobs/ and routing is
+# handled client-side.

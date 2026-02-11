@@ -1,0 +1,31 @@
+{
+  "name": "Nomad Karaoke Generator",
+  "short_name": "Karaoke Gen",
+  "description": "Generate professional karaoke videos with AI-powered vocal separation and synchronized lyrics",
+  "start_url": "/app/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#ff7acc",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/nomad-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "music", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}
