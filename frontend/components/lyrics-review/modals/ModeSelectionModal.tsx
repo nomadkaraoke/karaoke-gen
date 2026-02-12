@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, ClipboardPaste, X } from 'lucide-react'
+import { RefreshCw, ClipboardPaste, TextCursorInput, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ModeSelectionModalProps {
@@ -10,6 +10,7 @@ interface ModeSelectionModalProps {
   onClose: () => void
   onSelectReplace: () => void
   onSelectResync: () => void
+  onSelectReplaceSegments: () => void
   hasExistingLyrics: boolean
 }
 
@@ -18,6 +19,7 @@ export default function ModeSelectionModal({
   onClose,
   onSelectReplace,
   onSelectResync,
+  onSelectReplaceSegments,
   hasExistingLyrics,
 }: ModeSelectionModalProps) {
   return (
@@ -54,6 +56,29 @@ export default function ModeSelectionModal({
                       correct but timing has drifted, especially in the second half of the song.
                     </p>
                     <p className="text-xs text-green-500 mt-2">Recommended for fixing timing drift</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Replace Segment Lyrics option - only show if there are existing lyrics */}
+            {hasExistingLyrics && (
+              <div
+                className={cn(
+                  'p-4 border rounded-lg cursor-pointer',
+                  'hover:bg-muted/30 hover:border-muted-foreground transition-colors'
+                )}
+                onClick={onSelectReplaceSegments}
+              >
+                <div className="flex items-start gap-3">
+                  <TextCursorInput className="h-10 w-10 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold">Replace Segment Lyrics</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Edit or paste new lyrics for each line. Timing is preserved — only the words
+                      change. Best for custom lyrics, translations, or fixing multiple lines at once.
+                    </p>
+                    <p className="text-xs text-green-500 mt-2">Recommended for custom lyrics</p>
                   </div>
                 </div>
               </div>

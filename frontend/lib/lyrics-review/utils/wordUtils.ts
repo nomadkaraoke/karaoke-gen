@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid'
 import { Word, LyricsSegment } from '../types'
 
 /**
@@ -47,6 +48,32 @@ export function splitWordWithTiming(
     text: wordText,
     start_time: hasValidTiming ? startTime + i * wordDuration : null,
     end_time: hasValidTiming ? startTime + (i + 1) * wordDuration : null,
+  }))
+}
+
+/**
+ * Create Word objects with evenly distributed timing across a segment's duration.
+ * Used when replacing segment text while preserving the segment's time range.
+ */
+export function createWordsWithDistributedTiming(
+  text: string,
+  segStart: number | null,
+  segEnd: number | null
+): Word[] {
+  const wordTexts = text.trim().split(/\s+/).filter((w) => w.length > 0)
+  if (wordTexts.length === 0) return []
+
+  const start = segStart ?? 0
+  const end = segEnd ?? start + 1
+  const totalDuration = end - start
+  const wordDuration = totalDuration / wordTexts.length
+
+  return wordTexts.map((text, index) => ({
+    id: nanoid(),
+    text,
+    start_time: start + index * wordDuration,
+    end_time: start + (index + 1) * wordDuration,
+    confidence: 1.0,
   }))
 }
 

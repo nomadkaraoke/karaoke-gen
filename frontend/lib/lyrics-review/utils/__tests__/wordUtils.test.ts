@@ -1,4 +1,4 @@
-import { splitWordWithTiming, findWordById, getWordsFromIds } from '../wordUtils'
+import { splitWordWithTiming, createWordsWithDistributedTiming, findWordById, getWordsFromIds } from '../wordUtils'
 import { LyricsSegment } from '../../types'
 
 describe('splitWordWithTiming', () => {
@@ -159,6 +159,63 @@ describe('splitWordWithTiming', () => {
 
       expect(result).toHaveLength(0)
     })
+  })
+})
+
+describe('createWordsWithDistributedTiming', () => {
+  it('distributes timing equally for 3 words across 0-3s', () => {
+    const result = createWordsWithDistributedTiming('one two three', 0, 3)
+
+    expect(result).toHaveLength(3)
+    expect(result[0]).toMatchObject({ text: 'one', start_time: 0, end_time: 1, confidence: 1.0 })
+    expect(result[1]).toMatchObject({ text: 'two', start_time: 1, end_time: 2, confidence: 1.0 })
+    expect(result[2]).toMatchObject({ text: 'three', start_time: 2, end_time: 3, confidence: 1.0 })
+  })
+
+  it('single word fills entire segment', () => {
+    const result = createWordsWithDistributedTiming('hello', 5, 8)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ text: 'hello', start_time: 5, end_time: 8 })
+  })
+
+  it('returns empty array for empty text', () => {
+    const result = createWordsWithDistributedTiming('', 0, 3)
+    expect(result).toHaveLength(0)
+  })
+
+  it('returns empty array for whitespace-only text', () => {
+    const result = createWordsWithDistributedTiming('   \t  ', 0, 3)
+    expect(result).toHaveLength(0)
+  })
+
+  it('defaults to 0-1s when timing is null', () => {
+    const result = createWordsWithDistributedTiming('hello world', null, null)
+
+    expect(result).toHaveLength(2)
+    expect(result[0]).toMatchObject({ text: 'hello', start_time: 0, end_time: 0.5 })
+    expect(result[1]).toMatchObject({ text: 'world', start_time: 0.5, end_time: 1 })
+  })
+
+  it('defaults start to 0 and end to 1 when only start is null', () => {
+    const result = createWordsWithDistributedTiming('a b', null, null)
+
+    expect(result[0].start_time).toBe(0)
+    expect(result[1].end_time).toBe(1)
+  })
+
+  it('generates unique IDs for each word', () => {
+    const result = createWordsWithDistributedTiming('a b c', 0, 3)
+    const ids = result.map((w) => w.id)
+    expect(new Set(ids).size).toBe(3)
+  })
+
+  it('handles extra whitespace between words', () => {
+    const result = createWordsWithDistributedTiming('  hello   world  ', 0, 2)
+
+    expect(result).toHaveLength(2)
+    expect(result[0].text).toBe('hello')
+    expect(result[1].text).toBe('world')
   })
 })
 

@@ -1,7 +1,7 @@
 # Makefile for karaoke-gen project
 # Run `make help` to see available commands
 
-.PHONY: help install install-backend install-frontend build-frontend test test-unit test-backend test-e2e test-frontend test-all lint clean emulators-start emulators-stop
+.PHONY: help install install-backend install-frontend build-frontend dev-install test test-unit test-backend test-e2e test-frontend test-all lint clean emulators-start emulators-stop
 
 # Default target
 help:
@@ -12,7 +12,8 @@ help:
 	@echo "  make test-unit      - Run unit tests only (karaoke_gen package)"
 	@echo "  make test-e2e       - Run emulator tests with auto-start/stop"
 	@echo "  make install        - Install all dependencies (backend + frontend)"
-	@echo "  make build-frontend - Build frontend and copy to Python package (for local testing)"
+	@echo "  make build-frontend - Build frontend and copy to Python package"
+	@echo "  make dev-install    - Build frontend + pip install -e . (for local CLI testing)"
 	@echo "  make lint           - Run linter checks"
 	@echo "  make emulators-start - Start GCP emulators for local development"
 	@echo "  make emulators-stop  - Stop GCP emulators"
@@ -34,13 +35,24 @@ install-frontend:
 
 install: install-backend install-frontend
 
-# Build frontend and copy to Python package (for local CLI testing)
+# Build frontend and copy to Python package
 build-frontend: install-frontend
 	@echo "=== Building frontend ==="
 	cd frontend && npm run build
 	@echo "=== Copying build to Python package ==="
+	rm -rf karaoke_gen/nextjs_frontend/out
+	mkdir -p karaoke_gen/nextjs_frontend/out
 	cp -r frontend/out/* karaoke_gen/nextjs_frontend/out/
-	@echo "✅ Frontend built and ready for local testing"
+	@echo "✅ Frontend built and copied to karaoke_gen/nextjs_frontend/out/"
+
+# Build frontend + install package in editable mode for local CLI testing
+# After running this, `karaoke-gen` CLI will use the freshly built frontend.
+dev-install: build-frontend
+	@echo "=== Installing package in editable mode ==="
+	pip install -e .
+	@echo ""
+	@echo "✅ Ready! You can now run karaoke-gen with the updated frontend."
+	@echo "   Example: karaoke-gen input.flac \"Artist\" \"Title\""
 
 # Run unit tests for karaoke_gen package
 test-unit: install-backend

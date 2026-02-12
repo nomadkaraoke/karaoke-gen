@@ -10,7 +10,7 @@ import EditWordList from '../EditWordList'
 import EditTimelineSection from '../EditTimelineSection'
 import useManualSync from '@/hooks/useManualSync'
 import { setModalHandler } from '@/lib/lyrics-review/utils/keyboardHandlers'
-import { splitWordWithTiming } from '@/lib/lyrics-review/utils/wordUtils'
+import { splitWordWithTiming, createWordsWithDistributedTiming } from '@/lib/lyrics-review/utils/wordUtils'
 
 interface EditModalProps {
   open: boolean
@@ -248,22 +248,12 @@ export default function EditModal({
   const handleReplaceAllWords = useCallback(
     (replacementText: string) => {
       if (!editedSegment) return
-      const wordTexts = replacementText.trim().split(/\s+/).filter((w) => w.length > 0)
-      if (wordTexts.length === 0) return
-
-      const segStart = editedSegment.start_time ?? 0
-      const segEnd = editedSegment.end_time ?? segStart + 1
-      const totalDuration = segEnd - segStart
-      const wordDuration = totalDuration / wordTexts.length
-
-      const newWords: Word[] = wordTexts.map((text, index) => ({
-        id: nanoid(),
-        text,
-        start_time: segStart + index * wordDuration,
-        end_time: segStart + (index + 1) * wordDuration,
-        confidence: 1.0,
-      }))
-
+      const newWords = createWordsWithDistributedTiming(
+        replacementText,
+        editedSegment.start_time,
+        editedSegment.end_time
+      )
+      if (newWords.length === 0) return
       updateSegment(newWords)
     },
     [editedSegment, updateSegment]

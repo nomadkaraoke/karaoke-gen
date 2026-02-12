@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { X, ArrowLeft, ClipboardPaste, Sparkles } from 'lucide-react'
+import { X, ArrowLeft, ClipboardPaste, Sparkles, Info, Check, AlertTriangle } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { LyricsSegment, Word } from '@/lib/lyrics-review/types'
+import { createWordsWithDistributedTiming } from '@/lib/lyrics-review/utils/wordUtils'
 import ModeSelectionModal from './ModeSelectionModal'
 import LyricsSynchronizer from '../synchronizer/LyricsSynchronizer'
 
@@ -18,7 +19,7 @@ declare global {
   }
 }
 
-type ModalMode = 'selection' | 'replace' | 'resync'
+type ModalMode = 'selection' | 'replace' | 'resync' | 'replaceSegments'
 
 interface ReplaceAllLyricsModalProps {
   open: boolean
@@ -66,6 +67,15 @@ export default function ReplaceAllLyricsModal({
 
     return { lines: lines.length, words: totalWords }
   }, [inputText])
+
+  // Line count validation for replaceSegments mode
+  const replaceSegmentsInfo = useMemo(() => {
+    const expectedLineCount = existingSegments.length
+    const lines = inputText.split('\n')
+    const currentLineCount = lines.length
+    const lineDiff = currentLineCount - expectedLineCount
+    return { expectedLineCount, currentLineCount, lineDiff }
+  }, [inputText, existingSegments])
 
   // Process the input text into segments and words
   const processLyrics = useCallback(() => {
@@ -123,6 +133,36 @@ export default function ReplaceAllLyricsModal({
     onClose()
   }, [onClose])
 
+  // Apply replace segments: build updated segments with new words for changed lines
+  const handleApplyReplaceSegments = useCallback(() => {
+    const newLines = inputText.split('\n')
+    const updatedSegments: LyricsSegment[] = existingSegments.map((segment, i) => {
+      const newLineText = newLines[i]?.trim() ?? ''
+      const originalText = segment.text.trim()
+
+      if (newLineText === originalText) {
+        // Unchanged — deep copy to avoid mutation
+        return JSON.parse(JSON.stringify(segment))
+      }
+
+      // Changed — create new words with distributed timing
+      const newWords = createWordsWithDistributedTiming(
+        newLineText,
+        segment.start_time,
+        segment.end_time
+      )
+
+      return {
+        ...segment,
+        text: newLineText,
+        words: newWords,
+      }
+    })
+
+    onSave(updatedSegments)
+    handleClose()
+  }, [inputText, existingSegments, onSave, handleClose])
+
   // Handle save from synchronizer
   const handleSave = useCallback(
     (segments: LyricsSegment[]) => {
@@ -140,6 +180,11 @@ export default function ReplaceAllLyricsModal({
   const handleSelectResync = useCallback(() => {
     setMode('resync')
   }, [])
+
+  const handleSelectReplaceSegments = useCallback(() => {
+    setInputText(existingSegments.map((s) => s.text.trim()).join('\n'))
+    setMode('replaceSegments')
+  }, [existingSegments])
 
   // Handle back to selection
   const handleBackToSelection = useCallback(() => {
@@ -163,6 +208,7 @@ export default function ReplaceAllLyricsModal({
         onClose={handleClose}
         onSelectReplace={handleSelectReplace}
         onSelectResync={handleSelectResync}
+        onSelectReplaceSegments={handleSelectReplaceSegments}
         hasExistingLyrics={hasExistingLyrics}
       />
 
@@ -214,6 +260,86 @@ export default function ReplaceAllLyricsModal({
             <Button onClick={processLyrics} disabled={!inputText.trim()}>
               <Sparkles className="h-4 w-4 mr-2" />
               Continue to Sync
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Replace Segment Lyrics Modal */}
+      <Dialog open={open && mode === 'replaceSegments'} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+        <DialogContent className="max-w-2xl h-[80vh] max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleBackToSelection} className="h-8 w-8">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="flex-1">Replace Segment Lyrics</span>
+              <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden flex flex-col gap-4">
+            <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 text-sm text-muted-foreground">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <p>
+                Edit lyrics line by line. Each line corresponds to a timed segment.
+                The number of lines must stay the same (currently: {replaceSegmentsInfo.expectedLineCount} lines).
+                Changed lines will get new word timing estimated from the segment duration.
+                Unchanged lines are left as-is.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="sm" onClick={handlePasteFromClipboard}>
+                <ClipboardPaste className="h-4 w-4 mr-2" />
+                Paste from Clipboard
+              </Button>
+              <span className={`text-sm font-medium ${replaceSegmentsInfo.lineDiff === 0 ? 'text-green-500' : 'text-destructive'}`}>
+                {replaceSegmentsInfo.lineDiff === 0 ? (
+                  <span className="flex items-center gap-1">
+                    <Check className="h-4 w-4" />
+                    {replaceSegmentsInfo.currentLineCount}/{replaceSegmentsInfo.expectedLineCount} lines
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4" />
+                    {replaceSegmentsInfo.currentLineCount}/{replaceSegmentsInfo.expectedLineCount} lines
+                  </span>
+                )}
+              </span>
+            </div>
+
+            <Textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Edit lyrics line by line..."
+              className="flex-1 resize-none font-mono text-sm min-h-[300px]"
+            />
+
+            {replaceSegmentsInfo.lineDiff !== 0 && (
+              <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-sm text-destructive">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <p>
+                  You have {Math.abs(replaceSegmentsInfo.lineDiff)} too{' '}
+                  {replaceSegmentsInfo.lineDiff > 0 ? 'many' : 'few'} lines (expected{' '}
+                  {replaceSegmentsInfo.expectedLineCount}, got {replaceSegmentsInfo.currentLineCount}).
+                  Each line maps to a timed segment, so the count must match exactly.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApplyReplaceSegments}
+              disabled={replaceSegmentsInfo.lineDiff !== 0}
+            >
+              Apply
             </Button>
           </DialogFooter>
         </DialogContent>
