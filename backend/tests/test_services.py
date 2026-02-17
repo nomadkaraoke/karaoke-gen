@@ -184,7 +184,12 @@ class TestWorkerService:
             mock_run_v2.RunJobRequest.Overrides = MagicMock()
             mock_run_v2.RunJobRequest.Overrides.ContainerOverride = MagicMock()
 
-            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}):
+            # Patch both sys.modules and the parent package attribute to ensure
+            # 'from google.cloud import run_v2' resolves to our mock regardless
+            # of whether the real package is installed (namespace package resolution)
+            import google.cloud
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
                 service = WorkerService()
                 result = await service.trigger_audio_worker("test123")
 
@@ -222,7 +227,12 @@ class TestWorkerService:
             mock_run_v2.RunJobRequest.Overrides = MagicMock()
             mock_run_v2.RunJobRequest.Overrides.ContainerOverride = MagicMock()
 
-            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}):
+            # Patch both sys.modules and the parent package attribute to ensure
+            # 'from google.cloud import run_v2' resolves to our mock regardless
+            # of whether the real package is installed (namespace package resolution)
+            import google.cloud
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
                 service = WorkerService()
                 result = await service.trigger_lyrics_worker("test123")
 
