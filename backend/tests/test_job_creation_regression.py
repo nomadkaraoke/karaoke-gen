@@ -381,7 +381,7 @@ class TestAudioSearchCacheIndependence:
 
     def test_download_code_uses_youtube_download_service(self):
         """
-        Verify that _download_and_start_processing uses YouTubeDownloadService.
+        Verify that _download_audio_and_trigger_workers uses YouTubeDownloadService.
 
         After the consolidation refactor (2025-01), all YouTube downloads go through
         YouTubeDownloadService instead of using download_from_url directly. This
@@ -390,14 +390,14 @@ class TestAudioSearchCacheIndependence:
         from backend.api.routes import audio_search
         import inspect
 
-        # Get the source of _download_and_start_processing
-        source = inspect.getsource(audio_search._download_and_start_processing)
+        # Get the source of _download_audio_and_trigger_workers
+        source = inspect.getsource(audio_search._download_audio_and_trigger_workers)
 
         # Verify YouTubeDownloadService is used for YouTube
         assert "source_name == 'YouTube'" in source, \
-            "_download_and_start_processing must check for YouTube source"
+            "_download_audio_and_trigger_workers must check for YouTube source"
         assert 'youtube_service' in source or 'get_youtube_download_service' in source, \
-            "_download_and_start_processing must use YouTubeDownloadService for YouTube"
+            "_download_audio_and_trigger_workers must use YouTubeDownloadService for YouTube"
 
     def test_youtube_download_service_import_exists(self):
         """

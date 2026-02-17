@@ -75,7 +75,7 @@ class TestAudioSearchYouTubeFlow:
         }
 
         # Import the route function
-        from backend.api.routes.audio_search import _download_and_start_processing
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
 
         # Patch dependencies
         with patch(
@@ -87,20 +87,19 @@ class TestAudioSearchYouTubeFlow:
         ), patch(
             'backend.api.routes.audio_search.storage_service',
             mock_services['storage_service']
+        ), patch(
+            'backend.api.routes.audio_search.worker_service',
+            mock_services['worker_service']
         ):
             # Create a mock audio_search_service
             mock_audio_search_service = MagicMock()
             mock_audio_search_service.is_remote_enabled = MagicMock(return_value=True)
 
-            # Create a mock background_tasks
-            mock_background_tasks = MagicMock()
-
-            # Call the download function
-            result = await _download_and_start_processing(
+            # Call the download function (now runs as background task, returns None)
+            await _download_audio_and_trigger_workers(
                 job_id="test_job_123",
                 selection_index=0,
                 audio_search_service=mock_audio_search_service,
-                background_tasks=mock_background_tasks,
             )
 
             # Verify YouTubeDownloadService was used
@@ -131,7 +130,7 @@ class TestAudioSearchYouTubeFlow:
             'audio_search_count': 1,
         }
 
-        from backend.api.routes.audio_search import _download_and_start_processing
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
 
         # Mock audio_search_service for torrent download
         mock_audio_search_service = MagicMock()
@@ -149,14 +148,15 @@ class TestAudioSearchYouTubeFlow:
         ), patch(
             'backend.api.routes.audio_search.storage_service',
             mock_services['storage_service']
+        ), patch(
+            'backend.api.routes.audio_search.worker_service',
+            mock_services['worker_service']
         ):
-            mock_background_tasks = MagicMock()
-
-            result = await _download_and_start_processing(
+            # Call the download function (now runs as background task, returns None)
+            await _download_audio_and_trigger_workers(
                 job_id="test_job_123",
                 selection_index=0,
                 audio_search_service=mock_audio_search_service,
-                background_tasks=mock_background_tasks,
             )
 
             # YouTubeDownloadService should NOT be called for torrent
