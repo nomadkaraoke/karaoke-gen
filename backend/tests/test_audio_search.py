@@ -1140,37 +1140,48 @@ class TestFlacfetchIntegration:
 
 class TestAudioSearchApiRouteDownload:
     """
-    Tests for _download_and_start_processing function in audio_search routes.
-    
+    Tests for audio search download functions in audio_search routes.
+
     This tests the API layer's handling of the download flow, including:
     - Correct routing between local and remote downloads
     - GCS path handling for remote downloads
     - Error handling
+    - Background task scheduling (select endpoint returns immediately)
     """
-    
+
     @pytest.fixture
     def mock_job_manager(self):
         """Mock the job manager singleton."""
         with patch('backend.api.routes.audio_search.job_manager') as mock:
             yield mock
-    
+
     @pytest.fixture
     def mock_storage_service(self):
         """Mock the storage service singleton."""
         with patch('backend.api.routes.audio_search.storage_service') as mock:
             yield mock
-    
-    def test_remote_download_passes_gcs_path(self, mock_job_manager, mock_storage_service):
+
+    @pytest.fixture
+    def mock_worker_service(self):
+        """Mock the worker service."""
+        with patch('backend.api.routes.audio_search.get_worker_service') as mock:
+            worker = Mock()
+            worker.trigger_audio_worker = AsyncMock()
+            worker.trigger_lyrics_worker = AsyncMock()
+            mock.return_value = worker
+            yield worker
+
+    def test_remote_download_passes_gcs_path(self, mock_job_manager, mock_storage_service, mock_worker_service):
         """
         Test that remote torrent downloads include GCS path for direct upload.
-        
+
         This was the bug: we were calling download() without gcs_path for
         torrent sources, causing flacfetch VM to return a local path that
         Cloud Run couldn't access.
         """
-        from backend.api.routes.audio_search import _download_and_start_processing
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
         import asyncio
-        
+
         # Setup mock job with RED search result
         mock_job = Mock()
         mock_job.state_data = {
@@ -1184,49 +1195,45 @@ class TestAudioSearchApiRouteDownload:
         mock_job.audio_search_artist = 'Avril Lavigne'
         mock_job.audio_search_title = 'Unwanted'
         mock_job_manager.get_job.return_value = mock_job
-        
+
         # Create mock audio search service with remote client
         mock_audio_service = Mock()
         mock_audio_service.is_remote_enabled.return_value = True
-        
+
         # Mock download to return GCS path
         mock_download_result = Mock()
         mock_download_result.filepath = "gs://bucket/uploads/job123/audio/Avril Lavigne - Unwanted.flac"
         mock_audio_service.download.return_value = mock_download_result
-        
-        # Create mock background tasks
-        mock_bg_tasks = Mock()
-        
+
         # Run the async function
         loop = asyncio.new_event_loop()
         try:
-            result = loop.run_until_complete(
-                _download_and_start_processing(
+            loop.run_until_complete(
+                _download_audio_and_trigger_workers(
                     job_id="job123",
                     selection_index=0,
                     audio_search_service=mock_audio_service,
-                    background_tasks=mock_bg_tasks,
                 )
             )
         finally:
             loop.close()
-        
+
         # CRITICAL: Verify download was called with gcs_path for remote torrent source
         mock_audio_service.download.assert_called_once()
         call_kwargs = mock_audio_service.download.call_args.kwargs
-        
+
         # The gcs_path should be set for remote torrent downloads
         assert 'gcs_path' in call_kwargs
         assert call_kwargs['gcs_path'] == "uploads/job123/audio/"
-    
-    def test_youtube_remote_download_uses_youtube_service(self, mock_job_manager, mock_storage_service):
+
+    def test_youtube_remote_download_uses_youtube_service(self, mock_job_manager, mock_storage_service, mock_worker_service):
         """
         Test that YouTube downloads use YouTubeDownloadService.
 
         After the consolidation refactor, all YouTube downloads go through
         YouTubeDownloadService instead of audio_search_service.download_by_id().
         """
-        from backend.api.routes.audio_search import _download_and_start_processing
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
         import asyncio
 
         # Setup mock job with YouTube search result that has source_id
@@ -1237,7 +1244,7 @@ class TestAudioSearchApiRouteDownload:
                 'artist': 'Kenny Chesney',
                 'provider': 'YouTube',
                 'quality': 'Opus 128kbps',
-                'source_id': 'qmTjyGH9ro4',  # YouTube video ID (11 chars)
+                'source_id': 'qmTjyGH9ro4',
                 'url': 'https://www.youtube.com/watch?v=qmTjyGH9ro4',
             }]
         }
@@ -1256,20 +1263,15 @@ class TestAudioSearchApiRouteDownload:
         )
         mock_youtube_service._extract_video_id = Mock(return_value="qmTjyGH9ro4")
 
-        # Create mock background tasks
-        mock_bg_tasks = Mock()
-
         # Patch get_youtube_download_service to return our mock
         with patch('backend.api.routes.audio_search.get_youtube_download_service', return_value=mock_youtube_service):
-            # Run the async function
             loop = asyncio.new_event_loop()
             try:
-                result = loop.run_until_complete(
-                    _download_and_start_processing(
+                loop.run_until_complete(
+                    _download_audio_and_trigger_workers(
                         job_id="job456",
                         selection_index=0,
                         audio_search_service=mock_audio_service,
-                        background_tasks=mock_bg_tasks,
                     )
                 )
             finally:
@@ -1288,12 +1290,12 @@ class TestAudioSearchApiRouteDownload:
         # audio_search_service.download_by_id should NOT be called for YouTube
         mock_audio_service.download_by_id.assert_not_called()
 
-    def test_youtube_download_always_uses_youtube_service(self, mock_job_manager, mock_storage_service):
+    def test_youtube_download_always_uses_youtube_service(self, mock_job_manager, mock_storage_service, mock_worker_service):
         """
         Test that YouTube downloads always use YouTubeDownloadService,
         regardless of remote enabled status. The service handles fallback internally.
         """
-        from backend.api.routes.audio_search import _download_and_start_processing
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
         import asyncio
 
         # Setup mock job with YouTube search result (use valid 11-char video ID)
@@ -1304,7 +1306,7 @@ class TestAudioSearchApiRouteDownload:
                 'artist': 'Avril Lavigne',
                 'provider': 'YouTube',
                 'quality': 'Opus 128kbps',
-                'source_id': 'abc123xyz45',  # Valid 11-char ID
+                'source_id': 'abc123xyz45',
                 'url': 'https://www.youtube.com/watch?v=abc123xyz45',
             }]
         }
@@ -1323,20 +1325,15 @@ class TestAudioSearchApiRouteDownload:
         )
         mock_youtube_service._extract_video_id = Mock(return_value="abc123xyz45")
 
-        # Create mock background tasks
-        mock_bg_tasks = Mock()
-
         # Patch get_youtube_download_service to return our mock
         with patch('backend.api.routes.audio_search.get_youtube_download_service', return_value=mock_youtube_service):
-            # Run the async function
             loop = asyncio.new_event_loop()
             try:
-                result = loop.run_until_complete(
-                    _download_and_start_processing(
+                loop.run_until_complete(
+                    _download_audio_and_trigger_workers(
                         job_id="job789",
                         selection_index=0,
                         audio_search_service=mock_audio_service,
-                        background_tasks=mock_bg_tasks,
                     )
                 )
             finally:
@@ -1344,12 +1341,12 @@ class TestAudioSearchApiRouteDownload:
 
             # YouTubeDownloadService.download_by_id should always be called for YouTube
             mock_youtube_service.download_by_id.assert_called_once()
-    
-    def test_handles_gcs_path_response_correctly(self, mock_job_manager, mock_storage_service):
+
+    def test_handles_gcs_path_response_correctly(self, mock_job_manager, mock_storage_service, mock_worker_service):
         """Test that GCS path responses are parsed correctly."""
-        from backend.api.routes.audio_search import _download_and_start_processing
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
         import asyncio
-        
+
         # Setup mock job with RED search result
         mock_job = Mock()
         mock_job.state_data = {
@@ -1361,33 +1358,32 @@ class TestAudioSearchApiRouteDownload:
             }]
         }
         mock_job_manager.get_job.return_value = mock_job
-        
+
         # Create mock audio search service
         mock_audio_service = Mock()
         mock_audio_service.is_remote_enabled.return_value = True
-        
+
         # Mock download to return full GCS path
         mock_download_result = Mock()
         mock_download_result.filepath = "gs://karaoke-gen-bucket/uploads/job789/audio/test.flac"
         mock_audio_service.download.return_value = mock_download_result
-        
+
         # Run the async function
         loop = asyncio.new_event_loop()
         try:
-            result = loop.run_until_complete(
-                _download_and_start_processing(
+            loop.run_until_complete(
+                _download_audio_and_trigger_workers(
                     job_id="job789",
                     selection_index=0,
                     audio_search_service=mock_audio_service,
-                    background_tasks=Mock(),
                 )
             )
         finally:
             loop.close()
-        
+
         # Verify job was updated with correct GCS path (without gs://bucket/ prefix)
         update_calls = mock_job_manager.update_job.call_args_list
-        
+
         # Find the call that sets input_media_gcs_path
         gcs_path_set = False
         for call in update_calls:
@@ -1397,24 +1393,17 @@ class TestAudioSearchApiRouteDownload:
                 assert gcs_path == "uploads/job789/audio/test.flac"
                 gcs_path_set = True
                 break
-        
+
         assert gcs_path_set, "input_media_gcs_path was not set in job update"
-    
+
     def test_torrent_download_requires_remote(self, mock_job_manager, mock_storage_service):
         """
         Test that torrent sources (RED/OPS) require remote flacfetch.
 
-        Torrent downloads can only happen on the flacfetch VM which has:
-        - BitTorrent peer connectivity
-        - Private tracker credentials
-        - Long-running seeding capability
-
-        Cloud Run cannot download torrents, so remote must be enabled.
+        When running as a background task, the error is caught and the job is failed.
         """
-        from backend.api.routes.audio_search import _download_and_start_processing
-        from backend.services.audio_search_service import DownloadError
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
         import asyncio
-        import pytest
 
         # Setup mock job with RED search result
         mock_job = Mock()
@@ -1422,7 +1411,7 @@ class TestAudioSearchApiRouteDownload:
             'audio_search_results': [{
                 'title': 'Test',
                 'artist': 'Test',
-                'provider': 'RED',  # Torrent source requires remote
+                'provider': 'RED',
                 'quality': 'FLAC',
             }]
         }
@@ -1430,21 +1419,220 @@ class TestAudioSearchApiRouteDownload:
 
         # Create mock audio search service WITHOUT remote client
         mock_audio_service = Mock()
-        mock_audio_service.is_remote_enabled.return_value = False  # REMOTE DISABLED
+        mock_audio_service.is_remote_enabled.return_value = False
 
         loop = asyncio.new_event_loop()
         try:
-            # Should raise an error because RED requires remote
-            with pytest.raises(Exception) as exc_info:
-                loop.run_until_complete(
-                    _download_and_start_processing(
-                        job_id="job_no_remote",
-                        selection_index=0,
-                        audio_search_service=mock_audio_service,
-                        background_tasks=Mock(),
-                    )
+            # The background task catches exceptions and fails the job
+            loop.run_until_complete(
+                _download_audio_and_trigger_workers(
+                    job_id="job_no_remote",
+                    selection_index=0,
+                    audio_search_service=mock_audio_service,
                 )
-            # Verify the error message mentions remote flacfetch
-            assert "remote flacfetch" in str(exc_info.value).lower() or "flacfetch" in str(exc_info.value).lower()
+            )
         finally:
             loop.close()
+
+        # Verify the job was failed with an appropriate error message
+        mock_job_manager.fail_job.assert_called_once()
+        fail_args = mock_job_manager.fail_job.call_args
+        assert fail_args.args[0] == "job_no_remote"
+        assert "remote flacfetch" in fail_args.args[1].lower() or "flacfetch" in fail_args.args[1].lower()
+
+    def test_validate_and_prepare_selection(self, mock_job_manager, mock_storage_service):
+        """
+        Test that _validate_and_prepare_selection transitions job state and returns
+        selection info without performing the download.
+        """
+        from backend.api.routes.audio_search import _validate_and_prepare_selection
+
+        # Setup mock job
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{
+                'title': 'Waterloo',
+                'artist': 'ABBA',
+                'provider': 'RED',
+                'quality': 'FLAC',
+                'source_id': 'abc123',
+                'target_file': 'Waterloo.flac',
+                'url': '',
+            }]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        result = _validate_and_prepare_selection(
+            job_id="job_test",
+            selection_index=0,
+        )
+
+        # Should return selection info
+        assert result['selected_index'] == 0
+        assert result['selected_title'] == 'Waterloo'
+        assert result['selected_artist'] == 'ABBA'
+        assert result['selected_provider'] == 'RED'
+
+        # Should transition to DOWNLOADING_AUDIO
+        mock_job_manager.transition_to_state.assert_called_once()
+        call_kwargs = mock_job_manager.transition_to_state.call_args.kwargs
+        assert call_kwargs['new_status'] == JobStatus.DOWNLOADING_AUDIO
+
+        # Should save download params
+        mock_job_manager.update_job.assert_called_once()
+        update_data = mock_job_manager.update_job.call_args.args[1]
+        assert update_data['audio_source_type'] == 'audio_search'
+        assert update_data['source_name'] == 'RED'
+
+    def test_validate_and_prepare_selection_invalid_index(self, mock_job_manager, mock_storage_service):
+        """Test _validate_and_prepare_selection raises HTTPException for invalid index."""
+        from backend.api.routes.audio_search import _validate_and_prepare_selection
+        from fastapi import HTTPException
+
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{'title': 'Song', 'artist': 'Artist', 'provider': 'RED'}]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_and_prepare_selection(job_id="job_test", selection_index=99)
+
+        assert exc_info.value.status_code == 400
+        assert "Invalid selection index" in exc_info.value.detail
+
+    def test_validate_and_prepare_selection_job_not_found(self, mock_job_manager, mock_storage_service):
+        """Test _validate_and_prepare_selection raises HTTPException when job not found."""
+        from backend.api.routes.audio_search import _validate_and_prepare_selection
+        from fastapi import HTTPException
+
+        mock_job_manager.get_job.return_value = None
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_and_prepare_selection(job_id="nonexistent", selection_index=0)
+
+        assert exc_info.value.status_code == 404
+
+    def test_validate_and_prepare_selection_no_results(self, mock_job_manager, mock_storage_service):
+        """Test _validate_and_prepare_selection raises HTTPException when no search results."""
+        from backend.api.routes.audio_search import _validate_and_prepare_selection
+        from fastapi import HTTPException
+
+        mock_job = Mock()
+        mock_job.state_data = {'audio_search_results': []}
+        mock_job_manager.get_job.return_value = mock_job
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_and_prepare_selection(job_id="job_test", selection_index=0)
+
+        assert exc_info.value.status_code == 400
+        assert "No search results" in exc_info.value.detail
+
+    def test_download_background_job_not_found(self, mock_job_manager, mock_storage_service):
+        """Test _download_audio_and_trigger_workers handles missing job gracefully."""
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
+        import asyncio
+
+        mock_job_manager.get_job.return_value = None
+        mock_audio_service = Mock()
+
+        loop = asyncio.new_event_loop()
+        try:
+            # Should not raise - background tasks must handle errors gracefully
+            loop.run_until_complete(
+                _download_audio_and_trigger_workers(
+                    job_id="gone",
+                    selection_index=0,
+                    audio_search_service=mock_audio_service,
+                )
+            )
+        finally:
+            loop.close()
+
+        # Should not try to fail a non-existent job
+        mock_job_manager.fail_job.assert_not_called()
+
+    def test_download_triggers_workers_on_success(self, mock_job_manager, mock_storage_service, mock_worker_service):
+        """Test that _download_audio_and_trigger_workers triggers both workers after download."""
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
+        import asyncio
+
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{
+                'title': 'Test',
+                'artist': 'Artist',
+                'provider': 'RED',
+                'quality': 'FLAC',
+            }]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_audio_service = Mock()
+        mock_audio_service.is_remote_enabled.return_value = True
+        mock_download_result = Mock()
+        mock_download_result.filepath = "gs://bucket/uploads/job_w/audio/test.flac"
+        mock_audio_service.download.return_value = mock_download_result
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(
+                _download_audio_and_trigger_workers(
+                    job_id="job_w",
+                    selection_index=0,
+                    audio_search_service=mock_audio_service,
+                )
+            )
+        finally:
+            loop.close()
+
+        # Both workers should be triggered
+        mock_worker_service.trigger_audio_worker.assert_called_once_with("job_w")
+        mock_worker_service.trigger_lyrics_worker.assert_called_once_with("job_w")
+
+        # Job should transition to DOWNLOADING
+        transition_calls = mock_job_manager.transition_to_state.call_args_list
+        assert any(
+            c.kwargs.get('new_status') == JobStatus.DOWNLOADING
+            for c in transition_calls
+        ), "Job should transition to DOWNLOADING status"
+
+    def test_download_generic_exception_fails_job(self, mock_job_manager, mock_storage_service):
+        """Test that generic exceptions in background download fail the job gracefully."""
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
+        import asyncio
+
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{
+                'title': 'Test',
+                'artist': 'Artist',
+                'provider': 'RED',
+                'quality': 'FLAC',
+            }]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_audio_service = Mock()
+        mock_audio_service.is_remote_enabled.return_value = True
+        mock_audio_service.download.side_effect = RuntimeError("Unexpected connection error")
+
+        loop = asyncio.new_event_loop()
+        try:
+            # Should not raise - background tasks catch all exceptions
+            loop.run_until_complete(
+                _download_audio_and_trigger_workers(
+                    job_id="job_err",
+                    selection_index=0,
+                    audio_search_service=mock_audio_service,
+                )
+            )
+        finally:
+            loop.close()
+
+        # Job should be failed with error message
+        mock_job_manager.fail_job.assert_called_once()
+        fail_args = mock_job_manager.fail_job.call_args
+        assert fail_args.args[0] == "job_err"
+        assert "Unexpected connection error" in fail_args.args[1]
+

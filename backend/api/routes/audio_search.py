@@ -254,27 +254,20 @@ def _extract_gcs_path(filepath: str) -> str:
     return filepath
 
 
-async def _download_and_start_processing(
+def _validate_and_prepare_selection(
     job_id: str,
     selection_index: int,
-    audio_search_service,
-    background_tasks: BackgroundTasks,
 ) -> Dict[str, Any]:
     """
-    Download selected audio and start job processing.
-    
-    This is called either:
-    - Immediately after search if auto_download=True
-    - When user calls the select endpoint
-    
-    For remote flacfetch downloads (torrent sources), the file is downloaded
-    on the flacfetch VM and uploaded directly to GCS. For local downloads
-    (YouTube), the file is downloaded locally and then uploaded to GCS.
+    Validate selection and transition job to DOWNLOADING_AUDIO state.
+
+    Returns selection info dict with the selected result details.
+    Raises HTTPException on validation errors.
     """
     job = job_manager.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    
+
     # Get search results from state_data
     search_results = job.state_data.get('audio_search_results', [])
     if not search_results:
@@ -288,9 +281,6 @@ async def _download_and_start_processing(
 
     selected = search_results[selection_index]
 
-    # Get remote_search_id from state_data (stored during initial search)
-    remote_search_id = job.state_data.get('remote_search_id')
-    
     # Transition to downloading state
     job_manager.transition_to_state(
         job_id=job_id,
@@ -302,27 +292,64 @@ async def _download_and_start_processing(
             'selected_audio_provider': selected['provider'],
         }
     )
-    
+
+    # Save download params to job BEFORE attempting download
+    # This enables retry even if download fails
+    source_name = selected.get('provider')
+    source_id = selected.get('source_id')
+    target_file = selected.get('target_file')
+    download_url = selected.get('url')
+
+    job_manager.update_job(job_id, {
+        'audio_source_type': 'audio_search',
+        'source_name': source_name,
+        'source_id': source_id,
+        'target_file': target_file,
+        'download_url': download_url,
+    })
+    logger.info(
+        f"Job {job_id}: Saved download params before attempt: "
+        f"source_name={source_name}, source_id={source_id}"
+    )
+
+    return {
+        'selected_index': selection_index,
+        'selected_title': selected['title'],
+        'selected_artist': selected['artist'],
+        'selected_provider': selected['provider'],
+    }
+
+
+async def _download_audio_and_trigger_workers(
+    job_id: str,
+    selection_index: int,
+    audio_search_service,
+) -> None:
+    """
+    Download audio and trigger processing workers.
+
+    This runs as a background task after the select endpoint returns.
+    Also called synchronously from the auto_download path during search.
+
+    For remote flacfetch downloads (torrent sources), the file is downloaded
+    on the flacfetch VM and uploaded directly to GCS. For local downloads
+    (YouTube), the file is downloaded locally and then uploaded to GCS.
+    """
     try:
+        job = job_manager.get_job(job_id)
+        if not job:
+            logger.error(f"Job {job_id} not found during background download")
+            return
+
+        search_results = job.state_data.get('audio_search_results', [])
+        selected = search_results[selection_index]
+        remote_search_id = job.state_data.get('remote_search_id')
+
         # Get source info from selected result
         source_name = selected.get('provider')
         source_id = selected.get('source_id')
         target_file = selected.get('target_file')
         download_url = selected.get('url')
-
-        # Save download params to job BEFORE attempting download
-        # This enables retry even if download fails
-        job_manager.update_job(job_id, {
-            'audio_source_type': 'audio_search',
-            'source_name': source_name,
-            'source_id': source_id,
-            'target_file': target_file,
-            'download_url': download_url,
-        })
-        logger.info(
-            f"Job {job_id}: Saved download params before attempt: "
-            f"source_name={source_name}, source_id={source_id}"
-        )
 
         # Route to appropriate download handler based on source type
         if source_name == 'YouTube':
@@ -439,7 +466,7 @@ async def _download_and_start_processing(
                         shutil.rmtree(temp_dir)
                 except Exception as e:
                     logger.warning(f"Failed to clean up temp files: {e}")
-        
+
         # Update job with GCS path
         job_manager.update_job(job_id, {
             'input_media_gcs_path': audio_gcs_path,
@@ -456,29 +483,19 @@ async def _download_and_start_processing(
             message="Audio downloaded, starting processing"
         )
 
-        # Trigger workers in background
-        async def trigger_workers():
-            worker_service = get_worker_service()
-            await asyncio.gather(
-                worker_service.trigger_audio_worker(job_id),
-                worker_service.trigger_lyrics_worker(job_id)
-            )
+        # Trigger workers directly
+        worker_service = get_worker_service()
+        await asyncio.gather(
+            worker_service.trigger_audio_worker(job_id),
+            worker_service.trigger_lyrics_worker(job_id)
+        )
 
-        background_tasks.add_task(trigger_workers)
-        
-        return {
-            'selected_index': selection_index,
-            'selected_title': selected['title'],
-            'selected_artist': selected['artist'],
-            'selected_provider': selected['provider'],
-        }
-        
     except DownloadError as e:
+        logger.error(f"Download failed for job {job_id}: {e}")
         job_manager.fail_job(job_id, f"Audio download failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Download failed: {e}")
     except Exception as e:
+        logger.error(f"Download failed for job {job_id}: {e}", exc_info=True)
         job_manager.fail_job(job_id, f"Audio download failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Download failed: {e}")
 
 
 @router.post("/audio-search/search", response_model=AudioSearchResponse)
@@ -743,16 +760,22 @@ async def search_audio(
         # If auto_download, select best and start processing
         if body.auto_download:
             best_index = audio_search_service.select_best(search_results)
-            
+
             logger.info(f"Auto-download enabled, selecting result {best_index}")
-            
-            selection_info = await _download_and_start_processing(
+
+            selection_info = _validate_and_prepare_selection(
                 job_id=job_id,
                 selection_index=best_index,
-                audio_search_service=audio_search_service,
-                background_tasks=background_tasks,
             )
-            
+
+            # For auto_download, run download in background so this endpoint returns quickly
+            background_tasks.add_task(
+                _download_audio_and_trigger_workers,
+                job_id,
+                best_index,
+                audio_search_service,
+            )
+
             return AudioSearchResponse(
                 status="success",
                 job_id=job_id,
@@ -886,24 +909,23 @@ async def select_audio_source(
 ):
     """
     Select an audio source and start job processing.
-    
-    This endpoint:
-    1. Validates the job is awaiting selection
-    2. Downloads the selected audio
-    3. Uploads to GCS
-    4. Triggers audio and lyrics workers
+
+    This endpoint returns immediately after validating the selection and
+    transitioning the job to DOWNLOADING_AUDIO state. The actual download
+    runs as a background task so the UI can close the selection dialog
+    without waiting for the download to complete.
     """
     job = job_manager.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    
+
     # Verify job is awaiting selection
     if job.status != JobStatus.AWAITING_AUDIO_SELECTION:
         raise HTTPException(
             status_code=400,
             detail=f"Job is not awaiting audio selection (status: {job.status})"
         )
-    
+
     # Get search service instance
     # Note: With download_by_id, we no longer need to re-search to populate the cache.
     # The source_id stored in job.state_data['audio_search_results'] is sufficient.
@@ -913,18 +935,25 @@ async def select_audio_source(
     search_results = job.state_data.get('audio_search_results', [])
     if not search_results:
         raise HTTPException(status_code=400, detail="No search results cached for this job")
-    
-    selection_info = await _download_and_start_processing(
+
+    # Validate selection and transition to DOWNLOADING_AUDIO (returns immediately)
+    selection_info = _validate_and_prepare_selection(
         job_id=job_id,
         selection_index=body.selection_index,
-        audio_search_service=audio_search_service,
-        background_tasks=background_tasks,
     )
-    
+
+    # Schedule the actual download as a background task
+    background_tasks.add_task(
+        _download_audio_and_trigger_workers,
+        job_id,
+        body.selection_index,
+        audio_search_service,
+    )
+
     return AudioSelectResponse(
         status="success",
         job_id=job_id,
-        message="Audio selected and download started",
+        message="Audio selected, download starting",
         selected_index=selection_info['selected_index'],
         selected_title=selection_info['selected_title'],
         selected_artist=selection_info['selected_artist'],
