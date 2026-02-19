@@ -27,6 +27,11 @@ class LyricsProviderConfig:
 class BaseLyricsProvider(ABC):
     """Base class for lyrics providers."""
 
+    # Lyrics text beyond this length are almost certainly not real song lyrics
+    # (e.g. screenplays, articles, or other non-lyrics content from web scraping).
+    # Typical songs are 1000-4000 chars; 3000 is a safe truncation point.
+    MAX_LYRICS_LENGTH = 3000
+
     def __init__(self, config: LyricsProviderConfig, logger: Optional[logging.Logger] = None):
         self.logger = logger or logging.getLogger(__name__)
         self.cache_dir = Path(config.cache_dir) if config.cache_dir else None
@@ -123,6 +128,20 @@ class BaseLyricsProvider(ABC):
         Returns:
             List of LyricsSegment objects with unique IDs and Word objects
         """
+        # Guard against abnormally long text (screenplays, articles, etc.)
+        if len(text) > self.MAX_LYRICS_LENGTH:
+            self.logger.warning(
+                f"{self.get_name()}: Lyrics text is {len(text):,} chars, truncating to ~{self.MAX_LYRICS_LENGTH:,} "
+                f"(likely non-lyrics content)"
+            )
+            # Truncate at the last complete line before the limit
+            truncated = text[: self.MAX_LYRICS_LENGTH]
+            last_newline = truncated.rfind("\n")
+            if last_newline > 0:
+                text = truncated[:last_newline]
+            else:
+                text = truncated
+
         segments = []
         lines = text.strip().split("\n")
 

@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, getJobProgressPercent, getJobPriority, sortJobsByPriority, JobStep } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, getJobProgressPercent, getJobPriority, sortJobsByPriority, getDisplayJobs, JobStep } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -593,5 +593,104 @@ describe('sortJobsByPriority', () => {
     expect(sorted[3].status).toBe('complete'); // complete, older
     expect(sorted[3].created_at).toBe('2024-01-01T10:00:00Z');
     expect(sorted[4].status).toBe('failed'); // failed
+  });
+});
+
+describe('getDisplayJobs', () => {
+  // Helper: pre-sorted jobs (blocking, processing, complete, failed)
+  function createSortedJobs(counts: { blocking?: number; processing?: number; complete?: number; failed?: number }): Job[] {
+    const jobs: Job[] = [];
+    let t = 20; // descending timestamp within each priority group
+    for (let i = 0; i < (counts.blocking ?? 0); i++) {
+      jobs.push({ job_id: `blocking-${i}`, status: 'awaiting_review', progress: 0, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
+    }
+    for (let i = 0; i < (counts.processing ?? 0); i++) {
+      jobs.push({ job_id: `processing-${i}`, status: 'rendering_video', progress: 0, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
+    }
+    for (let i = 0; i < (counts.complete ?? 0); i++) {
+      jobs.push({ job_id: `complete-${i}`, status: 'complete', progress: 100, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
+    }
+    for (let i = 0; i < (counts.failed ?? 0); i++) {
+      jobs.push({ job_id: `failed-${i}`, status: 'failed', progress: 0, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
+    }
+    return jobs;
+  }
+
+  it('returns all jobs when fewer than display limit', () => {
+    const jobs = createSortedJobs({ complete: 3 });
+    const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5);
+    expect(displayedJobs).toHaveLength(3);
+    expect(totalFetched).toBe(3);
+  });
+
+  it('returns empty array for empty input', () => {
+    const { displayedJobs, totalFetched } = getDisplayJobs([], 5);
+    expect(displayedJobs).toHaveLength(0);
+    expect(totalFetched).toBe(0);
+  });
+
+  it('limits to displayLimit when no incomplete jobs', () => {
+    const jobs = createSortedJobs({ complete: 10 });
+    const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5);
+    expect(displayedJobs).toHaveLength(5);
+    expect(totalFetched).toBe(10);
+  });
+
+  it('expands beyond limit when more incomplete than limit', () => {
+    const jobs = createSortedJobs({ blocking: 3, processing: 4, complete: 5 });
+    const { displayedJobs } = getDisplayJobs(jobs, 5);
+    // 7 incomplete > limit of 5, so show all 7
+    expect(displayedJobs).toHaveLength(7);
+    expect(displayedJobs.filter(j => j.status === 'awaiting_review')).toHaveLength(3);
+    expect(displayedJobs.filter(j => j.status === 'rendering_video')).toHaveLength(4);
+  });
+
+  it('fills remaining slots with completed when fewer incomplete than limit', () => {
+    const jobs = createSortedJobs({ blocking: 1, processing: 1, complete: 10 });
+    const { displayedJobs } = getDisplayJobs(jobs, 5);
+    // 2 incomplete < 5 limit, so show 5 total (2 incomplete + 3 completed)
+    expect(displayedJobs).toHaveLength(5);
+    expect(displayedJobs[0].status).toBe('awaiting_review');
+    expect(displayedJobs[1].status).toBe('rendering_video');
+    expect(displayedJobs[2].status).toBe('complete');
+  });
+
+  it('returns all jobs when displayLimit is -1 (All mode)', () => {
+    const jobs = createSortedJobs({ blocking: 2, complete: 20 });
+    const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1);
+    expect(displayedJobs).toHaveLength(22);
+    expect(totalFetched).toBe(22);
+  });
+
+  it('preserves sort order from input', () => {
+    const jobs = createSortedJobs({ blocking: 1, processing: 1, complete: 3 });
+    const { displayedJobs } = getDisplayJobs(jobs, 5);
+    expect(displayedJobs[0].status).toBe('awaiting_review');
+    expect(displayedJobs[1].status).toBe('rendering_video');
+    expect(displayedJobs[2].status).toBe('complete');
+    expect(displayedJobs[3].status).toBe('complete');
+    expect(displayedJobs[4].status).toBe('complete');
+  });
+
+  it('core bug: old incomplete job visible even when recent jobs are all completed', () => {
+    // Simulate the bug scenario: 5 recent completed jobs + 1 older blocking job
+    // With old behavior (LIMIT 5 at query), the blocking job would never be fetched.
+    // With new behavior, all 6 are fetched and display limit of 5 expands to show blocking.
+    const jobs = sortJobsByPriority([
+      { job_id: 'old-blocking', status: 'awaiting_review', progress: 0, created_at: '2024-01-01T01:00:00Z', updated_at: '2024-01-01T01:00:00Z' },
+      { job_id: 'new-1', status: 'complete', progress: 100, created_at: '2024-01-10T01:00:00Z', updated_at: '2024-01-10T01:00:00Z' },
+      { job_id: 'new-2', status: 'complete', progress: 100, created_at: '2024-01-09T01:00:00Z', updated_at: '2024-01-09T01:00:00Z' },
+      { job_id: 'new-3', status: 'complete', progress: 100, created_at: '2024-01-08T01:00:00Z', updated_at: '2024-01-08T01:00:00Z' },
+      { job_id: 'new-4', status: 'complete', progress: 100, created_at: '2024-01-07T01:00:00Z', updated_at: '2024-01-07T01:00:00Z' },
+      { job_id: 'new-5', status: 'complete', progress: 100, created_at: '2024-01-06T01:00:00Z', updated_at: '2024-01-06T01:00:00Z' },
+    ]);
+
+    const { displayedJobs } = getDisplayJobs(jobs, 5);
+    // The blocking job must be visible
+    const blockingJobs = displayedJobs.filter(j => j.status === 'awaiting_review');
+    expect(blockingJobs).toHaveLength(1);
+    expect(blockingJobs[0].job_id).toBe('old-blocking');
+    // Should show 5 total (1 incomplete + 4 completed, since limit is 5 and max(5, 1) = 5)
+    expect(displayedJobs).toHaveLength(5);
   });
 });
