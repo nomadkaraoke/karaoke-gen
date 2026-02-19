@@ -125,26 +125,26 @@ class AudioShakeAPI:
         return {"x-api-key": self.config.api_token, "Content-Type": "application/json"}
 
     def upload_file(self, filepath: str) -> str:
-        """Upload audio file and return file URL."""
+        """Upload audio file via Assets API and return asset ID."""
         self.logger.info(f"Uploading {filepath} to AudioShake")
         self._validate_config()  # Validate before making API call
 
-        url = f"{self.config.base_url}/upload/"
+        url = f"{self.config.base_url}/assets"
         with open(filepath, "rb") as file:
             files = {"file": (os.path.basename(filepath), file)}
             response = requests.post(url, headers={"x-api-key": self.config.api_token}, files=files)
 
         self.logger.debug(f"Upload response: {response.status_code} - {response.text}")
         response.raise_for_status()
-        return response.json()["link"]
+        return response.json()["id"]
 
-    def create_task(self, file_url: str) -> str:
+    def create_task(self, asset_id: str) -> str:
         """Create transcription task and return task ID."""
-        self.logger.info(f"Creating task for file {file_url}")
+        self.logger.info(f"Creating task for asset {asset_id}")
 
         url = f"{self.config.base_url}/tasks"
         data = {
-            "url": file_url,
+            "assetId": asset_id,
             "targets": [
                 {
                     "model": "alignment",
@@ -290,10 +290,10 @@ class AudioShakeTranscriber(BaseTranscriber):
         
         try:
             # Upload file and create task
-            file_url = self.api.upload_file(upload_filepath)
-            self.logger.debug(f"File uploaded successfully. File URL: {file_url}")
+            asset_id = self.api.upload_file(upload_filepath)
+            self.logger.debug(f"File uploaded successfully. Asset ID: {asset_id}")
 
-            task_id = self.api.create_task(file_url)
+            task_id = self.api.create_task(asset_id)
             self.logger.debug(f"Task created successfully. Task ID: {task_id}")
 
             return task_id
