@@ -47,10 +47,20 @@ class TestGetCachePath:
         result = service._get_cache_path("jobs/abc123/input/song.wav")
         assert result == "jobs/abc123/review-audio/song.ogg"
 
-    def test_no_jobs_prefix_fallback(self):
+    def test_no_jobs_prefix_fallback_uses_hash(self):
         service = self._make_service()
         result = service._get_cache_path("other/path/audio.flac")
-        assert result == "jobs/_unknown/review-audio/audio.ogg"
+        # Should use a hash-based fallback, not a literal "_unknown"
+        assert result.startswith("jobs/_")
+        assert result.endswith("/review-audio/audio.ogg")
+        assert len(result.split("/")[1]) == 13  # "_" + 12-char hash
+
+    def test_no_jobs_prefix_different_paths_different_hashes(self):
+        service = self._make_service()
+        result1 = service._get_cache_path("other/path/audio.flac")
+        result2 = service._get_cache_path("another/path/audio.flac")
+        # Different source paths should produce different cache paths
+        assert result1 != result2
 
 
 class TestTranscodeIfNeeded:

@@ -11,6 +11,7 @@ Falls back to original FLAC signed URLs if transcoded version is missing.
 """
 
 import asyncio
+import hashlib
 import logging
 import os
 import subprocess
@@ -48,8 +49,8 @@ class AudioTranscodingService:
             jobs_idx = list(parts).index("jobs")
             job_id = parts[jobs_idx + 1]
         except (ValueError, IndexError):
-            # Fallback: use the full path hash
-            job_id = "_unknown"
+            # Fallback: use a hash of the full path to avoid collisions
+            job_id = "_" + hashlib.sha256(source_gcs_path.encode()).hexdigest()[:12]
 
         filename = Path(source_gcs_path).stem + ".ogg"
         return f"jobs/{job_id}/review-audio/{filename}"

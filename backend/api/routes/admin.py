@@ -1362,9 +1362,10 @@ async def prepare_review_audio(
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
     try:
+        import asyncio
         from backend.services.audio_transcoding_service import AudioTranscodingService
         transcoding = AudioTranscodingService()
-        transcoded = transcoding.prepare_review_audio_for_job(job)
+        transcoded = await asyncio.to_thread(transcoding.prepare_review_audio_for_job, job)
 
         logger.info(
             f"Admin {admin_email} prepared review audio for job {job_id}: "
