@@ -184,6 +184,12 @@ async def generate_screens(job_id: str) -> bool:
                     job_log.info("Analyzing backing vocals for instrumental selection...")
                     await _analyze_backing_vocals(job_id, job_manager, storage, job_log)
 
+                # Transcode review audio to OGG Opus for fast browser playback
+                # This runs BEFORE review so all files are cached when the user opens the UI
+                with job_span("transcode-review-audio", job_id):
+                    job_log.info("Transcoding review audio to OGG Opus...")
+                    await _transcode_review_audio(job_id, job_manager, job_log)
+
                 # Transition to AWAITING_REVIEW (combined lyrics + instrumental review)
                 # Human must review lyrics AND select instrumental before video can be rendered
                 logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
@@ -613,6 +619,37 @@ async def _analyze_backing_vocals(
             'analysis_error': str(e),
             'recommended_selection': 'review_needed',
         })
+
+
+async def _transcode_review_audio(
+    job_id: str,
+    job_manager: JobManager,
+    job_log: logging.Logger,
+) -> None:
+    """
+    Transcode all review audio files to OGG Opus for fast browser playback.
+
+    This eagerly transcodes input audio + stems so the review UI serves
+    ~3 MB OGG files instead of 35+ MB FLACs. Non-fatal: if transcoding
+    fails, the review UI falls back to original FLAC signed URLs.
+    """
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
+    try:
+        job = job_manager.get_job(job_id)
+        if not job:
+            job_log.warning(f"Could not get job {job_id} for review audio transcoding")
+            return
+
+        transcoding = AudioTranscodingService()
+        transcoded = transcoding.prepare_review_audio_for_job(job)
+
+        job_log.info(f"Review audio transcoding complete: {len(transcoded)} files")
+
+    except Exception as e:
+        # Non-fatal: review UI will fall back to FLAC signed URLs
+        job_log.warning(f"Review audio transcoding failed (non-fatal): {e}")
+        logger.warning(f"Job {job_id}: Review audio transcoding failed: {e}")
 
 
 async def _apply_countdown_padding_if_needed(

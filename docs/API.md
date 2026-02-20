@@ -166,7 +166,7 @@ Generates preview video during review. The `use_background_image` option control
 GET /api/review/{job_id}/audio/{stem_type}
 ```
 
-Streams audio for review playback.
+Redirects to a signed GCS URL for review playback. Audio is served as OGG Opus (~3 MB) transcoded from the original FLAC (~35 MB). Transcoding happens eagerly during screen generation; if the transcoded file is missing, falls back to the original FLAC.
 
 ### Instrumental Selection (Finalise-Only Jobs)
 
@@ -989,6 +989,30 @@ Response:
 ```
 
 Screen generation takes 30-60 seconds. Monitor progress via job timeline or logs.
+
+#### Prepare Review Audio
+
+```http
+POST /api/admin/jobs/{job_id}/prepare-review-audio
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Transcodes all review audio files (input + stems) to OGG Opus 128kbps for fast browser playback. Idempotent — skips files already transcoded.
+
+Use this to backfill existing jobs created before eager transcoding was deployed, or to re-transcode after stems are regenerated.
+
+Response:
+```json
+{
+  "status": "success",
+  "job_id": "abc123",
+  "transcoded_files": [
+    "jobs/abc123/review-audio/song.ogg",
+    "jobs/abc123/review-audio/instrumental_clean.ogg"
+  ],
+  "message": "Transcoded 2 files to OGG Opus"
+}
+```
 
 #### Restart Job
 

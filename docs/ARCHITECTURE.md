@@ -55,10 +55,11 @@
    └────────┬────────┘    └────────┬────────┘
             └──────────┬───────────┘
                        ▼
-3. SCREENS GENERATION + BACKING VOCALS ANALYSIS
+3. SCREENS GENERATION + BACKING VOCALS ANALYSIS + AUDIO TRANSCODING
    • Title screen (5s video)
    • End screen (5s video)
    • Analyze backing vocals track (for instrumental selection)
+   • Transcode audio to OGG Opus for review UI (~3 MB vs 35 MB FLAC)
                        ▼
 4. COMBINED HUMAN REVIEW (AWAITING_REVIEW)
    • React UI for lyrics correction
@@ -228,6 +229,7 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `email_service.py` | SendGrid email delivery with CC support |
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
+| `audio_transcoding_service.py` | Transcode FLAC → OGG Opus for review UI playback |
 
 ## Audio Source Download Flow
 

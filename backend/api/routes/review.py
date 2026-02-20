@@ -138,27 +138,40 @@ async def get_correction_data(
         }
 
         # === Add instrumental data for combined review ===
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+        transcoding = AudioTranscodingService(storage_service=storage)
 
         # Get instrumental stem URLs
         stems = job.file_urls.get('stems', {})
         clean_url = stems.get('instrumental_clean')
         backing_url = stems.get('instrumental_with_backing')
 
-        # Build instrumental options with signed URLs
+        # Build instrumental options with transcoded signed URLs (OGG Opus)
         instrumental_options = []
+        url_tasks = {}
+        if clean_url:
+            url_tasks['clean'] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
+        if backing_url:
+            url_tasks['with_backing'] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
+
+        signed_urls = {}
+        if url_tasks:
+            results = await asyncio.gather(*url_tasks.values())
+            signed_urls = dict(zip(url_tasks.keys(), results))
+
         if clean_url:
             instrumental_options.append({
                 "id": "clean",
                 "label": "Clean Instrumental",
                 "description": "No backing vocals - just the music",
-                "audio_url": storage.generate_signed_url(clean_url, expiration_minutes=120),
+                "audio_url": signed_urls['clean'],
             })
         if backing_url:
             instrumental_options.append({
                 "id": "with_backing",
                 "label": "Instrumental with Backing Vocals",
                 "description": "Includes harmonies and background vocals",
-                "audio_url": storage.generate_signed_url(backing_url, expiration_minutes=120),
+                "audio_url": signed_urls['with_backing'],
             })
 
         corrections_data['instrumental_options'] = instrumental_options
@@ -215,11 +228,12 @@ async def _stream_audio(job_id: str):
     """
     Redirect to a signed GCS URL for audio playback in the review interface.
 
-    Uses a signed URL redirect instead of proxying the file through Cloud Run,
-    which avoids the 32 MiB response body size limit on the load balancer.
+    Serves transcoded OGG Opus (~3 MB) instead of raw FLAC (~35 MB).
+    Falls back to FLAC if transcoded version is not available.
     """
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
     job_manager = JobManager()
-    storage = StorageService()
 
     job = job_manager.get_job(job_id)
     if not job:
@@ -230,7 +244,8 @@ async def _stream_audio(job_id: str):
         raise HTTPException(status_code=404, detail="Audio file not found")
 
     try:
-        signed_url = storage.generate_signed_url(audio_gcs_path, expiration_minutes=120)
+        transcoding = AudioTranscodingService()
+        signed_url = await transcoding.get_review_audio_url_async(audio_gcs_path, expiration_minutes=120)
         logger.info(f"Job {job_id}: Redirecting to signed URL for audio review")
         return RedirectResponse(url=signed_url, status_code=302)
 
@@ -766,23 +781,29 @@ async def get_instrumental_analysis(
     backing_analysis = job.state_data.get('backing_vocals_analysis', {})
 
     # Get stem URLs
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+    transcoding = AudioTranscodingService(storage_service=storage)
+
     stems = job.file_urls.get('stems', {})
     clean_url = stems.get('instrumental_clean')
     backing_url = stems.get('instrumental_with_backing')
-
-    # Build audio URLs with signed access
-    audio_urls = {}
-    if clean_url:
-        audio_urls['clean'] = storage.generate_signed_url(clean_url, expiration_minutes=120)
-    if backing_url:
-        audio_urls['with_backing'] = storage.generate_signed_url(backing_url, expiration_minutes=120)
-    if job.input_media_gcs_path:
-        audio_urls['original'] = storage.generate_signed_url(job.input_media_gcs_path, expiration_minutes=120)
-
-    # Check for backing vocals stem for playback
     backing_vocals_path = stems.get('backing_vocals')
+
+    # Build audio URLs with transcoded signed access (OGG Opus, parallel)
+    url_tasks = {}
+    if clean_url:
+        url_tasks['clean'] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
+    if backing_url:
+        url_tasks['with_backing'] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
+    if job.input_media_gcs_path:
+        url_tasks['original'] = transcoding.get_review_audio_url_async(job.input_media_gcs_path, expiration_minutes=120)
     if backing_vocals_path:
-        audio_urls['backing_vocals'] = storage.generate_signed_url(backing_vocals_path, expiration_minutes=120)
+        url_tasks['backing_vocals'] = transcoding.get_review_audio_url_async(backing_vocals_path, expiration_minutes=120)
+
+    audio_urls = {}
+    if url_tasks:
+        results = await asyncio.gather(*url_tasks.values())
+        audio_urls = dict(zip(url_tasks.keys(), results))
 
     # Format response to match InstrumentalAnalysis type
     return {

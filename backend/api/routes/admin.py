@@ -1328,6 +1328,68 @@ async def trigger_worker(
 
 
 # =============================================================================
+# Prepare Review Audio Endpoint
+# =============================================================================
+
+class PrepareReviewAudioResponse(BaseModel):
+    """Response from prepare-review-audio endpoint."""
+    status: str
+    job_id: str
+    transcoded_files: List[str]
+    message: str
+
+
+@router.post("/jobs/{job_id}/prepare-review-audio", response_model=PrepareReviewAudioResponse)
+async def prepare_review_audio(
+    job_id: str,
+    auth_data: AuthResult = Depends(require_admin),
+):
+    """
+    Transcode review audio to OGG Opus for a job (admin only).
+
+    Use this to backfill transcoded audio for existing jobs that were
+    created before eager transcoding was deployed. Transcodes the main
+    input audio and all stem files to OGG Opus 128kbps.
+
+    Idempotent: skips files that are already transcoded.
+    """
+    admin_email = auth_data.user_email or "unknown"
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    try:
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+        transcoding = AudioTranscodingService()
+        transcoded = transcoding.prepare_review_audio_for_job(job)
+
+        logger.info(
+            f"Admin {admin_email} prepared review audio for job {job_id}: "
+            f"{len(transcoded)} files transcoded"
+        )
+
+        return PrepareReviewAudioResponse(
+            status="success",
+            job_id=job_id,
+            transcoded_files=transcoded,
+            message=f"Transcoded {len(transcoded)} files to OGG Opus",
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Admin {admin_email} failed to prepare review audio for job {job_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to prepare review audio: {str(e)}",
+        )
+
+
+# =============================================================================
 # Clear Worker State Endpoint
 # =============================================================================
 
