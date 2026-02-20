@@ -21,7 +21,10 @@ if (fs.existsSync(envLocalPath)) {
 // Configurable port for dev server (default: 3000)
 // Use E2E_PORT env var to change, e.g.: E2E_PORT=3001 npx playwright test
 const PORT = process.env.E2E_PORT || '3000';
-const BASE_URL = `http://localhost:${PORT}`;
+// Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues on macOS.
+// localhost resolves to ::1 (IPv6) first, but Next.js dev server may not accept
+// IPv6 connections, causing Playwright's webServer health check to hang.
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 /**
  * Playwright configuration for karaoke-gen frontend E2E tests.

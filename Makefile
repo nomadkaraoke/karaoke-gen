@@ -3,6 +3,11 @@
 
 .PHONY: help install install-backend install-frontend build-frontend dev-install test test-unit test-backend test-e2e test-frontend test-all lint clean emulators-start emulators-stop
 
+# Per-stage timeout in seconds (default: 10 minutes)
+# Prevents hangs from stale dev servers, broken emulators, etc.
+# Override with: make test TEST_TIMEOUT=300
+TEST_TIMEOUT ?= 600
+
 # Default target
 help:
 	@echo "Available commands:"
@@ -57,12 +62,12 @@ dev-install: build-frontend
 # Run unit tests for karaoke_gen package
 test-unit: install-backend
 	@echo "=== Running karaoke_gen unit tests ==="
-	poetry run pytest tests/unit/ -v --cov=karaoke_gen --cov-report=term-missing --cov-fail-under=69
+	timeout $(TEST_TIMEOUT) poetry run pytest tests/unit/ -v --cov=karaoke_gen --cov-report=term-missing --cov-fail-under=69
 
 # Run backend unit tests (excludes emulator tests)
 test-backend-unit: install-backend
 	@echo "=== Running backend unit tests ==="
-	poetry run pytest backend/tests/ --ignore=backend/tests/emulator -v
+	timeout $(TEST_TIMEOUT) poetry run pytest backend/tests/ --ignore=backend/tests/emulator -v
 
 # Run E2E integration tests with emulators
 test-e2e: install-backend
@@ -74,7 +79,7 @@ test-e2e: install-backend
 	export GCS_BUCKET_NAME=test-bucket && \
 	export ADMIN_TOKENS=test-admin-token && \
 	export ENVIRONMENT=test && \
-	poetry run pytest backend/tests/emulator/ -v; \
+	timeout $(TEST_TIMEOUT) poetry run pytest backend/tests/emulator/ -v; \
 	TEST_RESULT=$$?; \
 	./scripts/stop-emulators.sh; \
 	exit $$TEST_RESULT
@@ -87,7 +92,7 @@ test-backend: test-unit test-backend-unit test-e2e
 # Run frontend tests (unit + E2E)
 test-frontend: install-frontend
 	@echo "=== Running frontend tests ==="
-	cd frontend && npm run test:all
+	cd frontend && timeout $(TEST_TIMEOUT) npm run test:all
 
 # Run ALL tests (backend + frontend) - use this before committing!
 test: test-backend test-frontend
