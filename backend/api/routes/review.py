@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, Any, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
 from backend.models.job import JobStatus
@@ -213,49 +213,30 @@ async def get_audio_no_hash(
 
 async def _stream_audio(job_id: str):
     """
-    Stream the audio file for playback in the review interface.
+    Redirect to a signed GCS URL for audio playback in the review interface.
+
+    Uses a signed URL redirect instead of proxying the file through Cloud Run,
+    which avoids the 32 MiB response body size limit on the load balancer.
     """
     job_manager = JobManager()
     storage = StorageService()
-    
+
     job = job_manager.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     audio_gcs_path = job.input_media_gcs_path
     if not audio_gcs_path:
         raise HTTPException(status_code=404, detail="Audio file not found")
-    
-    # Download to temp file and stream
+
     try:
-        # Create temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".flac") as tmp:
-            tmp_path = tmp.name
-        
-        storage.download_file(audio_gcs_path, tmp_path)
-        
-        # Determine content type
-        if audio_gcs_path.endswith('.flac'):
-            media_type = "audio/flac"
-        elif audio_gcs_path.endswith('.wav'):
-            media_type = "audio/wav"
-        elif audio_gcs_path.endswith('.mp3'):
-            media_type = "audio/mpeg"
-        else:
-            media_type = "audio/mpeg"
-        
-        logger.info(f"Job {job_id}: Streaming audio for review")
-        
-        return FileResponse(
-            tmp_path,
-            media_type=media_type,
-            filename=os.path.basename(audio_gcs_path),
-            background=BackgroundTask(os.unlink, tmp_path),
-        )
-        
+        signed_url = storage.generate_signed_url(audio_gcs_path, expiration_minutes=120)
+        logger.info(f"Job {job_id}: Redirecting to signed URL for audio review")
+        return RedirectResponse(url=signed_url, status_code=302)
+
     except Exception as e:
-        logger.error(f"Job {job_id}: Error streaming audio: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error streaming audio: {str(e)}")
+        logger.error(f"Job {job_id}: Error generating audio signed URL: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error serving audio: {str(e)}")
 
 
 @router.post("/{job_id}/complete")
