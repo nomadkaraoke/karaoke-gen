@@ -304,24 +304,30 @@ export function sortJobsByPriority(jobs: Job[]): Job[] {
  */
 export function getDisplayJobs(
   sortedJobs: Job[],
-  displayLimit: number
+  displayLimit: number,
+  hideCompleted: boolean = false
 ): { displayedJobs: Job[]; totalFetched: number } {
   const totalFetched = sortedJobs.length;
 
+  // Filter out completed/failed jobs when toggle is on
+  const filteredJobs = hideCompleted
+    ? sortedJobs.filter((job) => getJobPriority(job) <= 1)
+    : sortedJobs;
+
   // Show all: -1 or fewer jobs than limit
-  if (displayLimit === -1 || sortedJobs.length <= displayLimit) {
-    return { displayedJobs: sortedJobs, totalFetched };
+  if (displayLimit === -1 || filteredJobs.length <= displayLimit) {
+    return { displayedJobs: filteredJobs, totalFetched };
   }
 
   // Count incomplete jobs (priority 0 = blocking, 1 = processing)
-  const incompleteCount = sortedJobs.filter(
+  const incompleteCount = filteredJobs.filter(
     (job) => getJobPriority(job) <= 1
   ).length;
 
   // Show at least displayLimit jobs, but expand if there are more incomplete
   const showCount = Math.max(displayLimit, incompleteCount);
   return {
-    displayedJobs: sortedJobs.slice(0, showCount),
+    displayedJobs: filteredJobs.slice(0, showCount),
     totalFetched,
   };
 }

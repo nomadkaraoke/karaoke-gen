@@ -672,6 +672,42 @@ describe('getDisplayJobs', () => {
     expect(displayedJobs[4].status).toBe('complete');
   });
 
+  describe('hideCompleted filter', () => {
+    it('filters out complete and failed jobs when hideCompleted is true', () => {
+      const jobs = createSortedJobs({ blocking: 1, processing: 2, complete: 5, failed: 3 });
+      const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1, true);
+      expect(totalFetched).toBe(11);
+      expect(displayedJobs).toHaveLength(3);
+      expect(displayedJobs.every(j => j.status === 'awaiting_review' || j.status === 'rendering_video')).toBe(true);
+    });
+
+    it('respects display limit after filtering', () => {
+      const jobs = createSortedJobs({ blocking: 2, processing: 5, complete: 10 });
+      const { displayedJobs } = getDisplayJobs(jobs, 5, true);
+      // 7 incomplete jobs, all visible since incomplete count (7) > limit (5)
+      expect(displayedJobs).toHaveLength(7);
+    });
+
+    it('returns empty when all jobs are complete and hideCompleted is true', () => {
+      const jobs = createSortedJobs({ complete: 10 });
+      const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5, true);
+      expect(displayedJobs).toHaveLength(0);
+      expect(totalFetched).toBe(10);
+    });
+
+    it('does not filter when hideCompleted is false', () => {
+      const jobs = createSortedJobs({ blocking: 1, complete: 5, failed: 2 });
+      const { displayedJobs } = getDisplayJobs(jobs, -1, false);
+      expect(displayedJobs).toHaveLength(8);
+    });
+
+    it('defaults to showing all when hideCompleted is omitted', () => {
+      const jobs = createSortedJobs({ complete: 5, failed: 2 });
+      const { displayedJobs } = getDisplayJobs(jobs, -1);
+      expect(displayedJobs).toHaveLength(7);
+    });
+  });
+
   it('core bug: old incomplete job visible even when recent jobs are all completed', () => {
     // Simulate the bug scenario: 5 recent completed jobs + 1 older blocking job
     // With old behavior (LIMIT 5 at query), the blocking job would never be fetched.

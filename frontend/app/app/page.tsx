@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Moon, Sun } from "lucide-react"
+import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff } from "lucide-react"
 import { sortJobsByPriority, getDisplayJobs } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
@@ -44,15 +44,23 @@ function AppPageContent() {
   const { isDarkMode, toggleTheme, mounted } = useTheme()
   const { user, fetchUser, verifyMagicLink } = useAuth()
   const { showTestData } = useAdminSettings()
-  const [jobLimit, setJobLimit] = useState<number>(5)
+  const [jobLimit, setJobLimit] = useState<number>(() => {
+    if (typeof window === "undefined") return 5
+    const saved = localStorage.getItem("nomad-karaoke-job-limit")
+    return saved ? Number(saved) : 5
+  })
+  const [hideCompleted, setHideCompleted] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("nomad-karaoke-hide-completed") === "true"
+  })
 
   // Check if user is admin (for exclude_test parameter)
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
 
-  // Derive displayed jobs from allJobs + display limit (instant, no re-fetch)
+  // Derive displayed jobs from allJobs + display limit + filter (instant, no re-fetch)
   const { displayedJobs: jobs, totalFetched } = useMemo(
-    () => getDisplayJobs(allJobs, jobLimit),
-    [allJobs, jobLimit]
+    () => getDisplayJobs(allJobs, jobLimit, hideCompleted),
+    [allJobs, jobLimit, hideCompleted]
   )
 
   // Memoize loadJobs for use with visibility refresh
@@ -241,7 +249,33 @@ function AppPageContent() {
                 <CardTitle style={{ color: 'var(--text)' }}>Recent Jobs</CardTitle>
                 <div className="flex items-center gap-2">
                   {isLoadingJobs && <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />}
-                  <Select value={String(jobLimit)} onValueChange={(v) => setJobLimit(Number(v))}>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          style={{ color: 'var(--text-muted)' }}
+                          onClick={() => {
+                            const next = !hideCompleted
+                            setHideCompleted(next)
+                            localStorage.setItem("nomad-karaoke-hide-completed", String(next))
+                          }}
+                        >
+                          {hideCompleted ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p>{hideCompleted ? "Show all jobs" : "Hide completed jobs"}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Select value={String(jobLimit)} onValueChange={(v) => {
+                    const val = Number(v)
+                    setJobLimit(val)
+                    localStorage.setItem("nomad-karaoke-job-limit", String(val))
+                  }}>
                     <SelectTrigger className="h-7 w-[80px] text-xs">
                       <SelectValue />
                     </SelectTrigger>
@@ -255,9 +289,11 @@ function AppPageContent() {
                 </div>
               </div>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
-                {jobs.length < totalFetched
-                  ? `Showing ${jobs.length} of ${totalFetched} jobs`
-                  : `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`}
+                {hideCompleted
+                  ? `${jobs.length} incomplete of ${totalFetched} total`
+                  : jobs.length < totalFetched
+                    ? `Showing ${jobs.length} of ${totalFetched} jobs`
+                    : `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`}
               </CardDescription>
             </CardHeader>
             <CardContent className="px-3 sm:px-6">
