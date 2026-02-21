@@ -102,9 +102,16 @@ const mockJobData = {
 };
 
 const mockUserData = {
-  email: 'test@example.com',
-  name: 'Test User',
-  role: 'user',
+  user: {
+    email: 'test@example.com',
+    name: 'Test User',
+    role: 'user',
+    credits: 10,
+    display_name: 'Test User',
+    total_jobs_created: 5,
+    total_jobs_completed: 3,
+  },
+  has_session: true,
 };
 
 const mockInstrumentalAnalysis = {
@@ -166,7 +173,7 @@ test.describe('Combined Review Corrections Preservation', () => {
       }
     });
 
-    await setAuthToken(page);
+    await setAuthToken(page, 'test-token-123');
   });
 
   test.afterEach(async ({ page }) => {
@@ -289,7 +296,7 @@ test.describe('Combined Review Corrections Preservation', () => {
         // Audio endpoint
         {
           method: 'GET',
-          path: new RegExp(`/api/review/${TEST_JOB_ID}/audio`),
+          path: `/api/review/${TEST_JOB_ID}/audio/:audioHash`,
           response: { status: 200, body: '' },
         },
       ],
@@ -381,7 +388,7 @@ test.describe('Combined Review Corrections Preservation', () => {
 
 test.describe('Regression Prevention', () => {
   test.beforeEach(async ({ page }) => {
-    await setAuthToken(page);
+    await setAuthToken(page, 'test-token-123');
   });
 
   test.afterEach(async ({ page }) => {

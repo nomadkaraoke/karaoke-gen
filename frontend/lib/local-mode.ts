@@ -42,7 +42,8 @@ export function isLocalMode(): boolean {
 
   // If using hash-based routing (cloud mode pattern), it's NOT local mode
   // Cloud mode uses: /app/jobs/#/{jobId}/review or /app/jobs/#/{jobId}/instrumental
-  if (hash && hash.match(/^#\/?[^/]+\/(review|instrumental)/)) {
+  // Any hash starting with #/ indicates cloud mode routing (even for invalid routes)
+  if (hash && hash.startsWith('#/')) {
     return false
   }
 

@@ -103,9 +103,16 @@ const mockJobData = {
 };
 
 const mockUserData = {
-  email: 'test@example.com',
-  name: 'Test User',
-  role: 'user',
+  user: {
+    email: 'test@example.com',
+    name: 'Test User',
+    role: 'user',
+    credits: 10,
+    display_name: 'Test User',
+    total_jobs_created: 5,
+    total_jobs_completed: 3,
+  },
+  has_session: true,
 };
 
 // Setup function to configure mocks for cloud mode
@@ -147,6 +154,45 @@ async function setupCloudModeMocks(page: Page) {
         path: `/api/review/${TEST_JOB_ID}/audio/test_audio_hash_cloud`,
         response: { status: 200, body: '' },
       },
+      // Instrumental analysis endpoint (for instrumental route)
+      {
+        method: 'GET',
+        path: `/api/review/${TEST_JOB_ID}/instrumental-analysis`,
+        response: {
+          body: {
+            job_id: TEST_JOB_ID,
+            artist: 'Test Artist',
+            title: 'Test Song',
+            duration_seconds: 180,
+            analysis: {
+              has_audible_content: false,
+              total_duration_seconds: 180,
+              audible_segments: [],
+              recommended_selection: 'clean',
+              total_audible_duration_seconds: 0,
+              audible_percentage: 0,
+              silence_threshold_db: -40,
+            },
+            audio_urls: {
+              clean: 'https://storage.example.com/clean.flac',
+              with_backing: 'https://storage.example.com/with_backing.flac',
+            },
+            has_original: true,
+            has_uploaded_instrumental: false,
+          },
+        },
+      },
+      // Waveform data endpoint (for instrumental route)
+      {
+        method: 'GET',
+        path: `/api/review/${TEST_JOB_ID}/waveform-data`,
+        response: {
+          body: {
+            amplitudes: Array(100).fill(0.5),
+            duration_seconds: 180,
+          },
+        },
+      },
       // User endpoint (for auth)
       {
         method: 'GET',
@@ -179,7 +225,7 @@ test.describe('Cloud Mode - Hash Route Parsing', () => {
   });
 
   test('parses hash-based instrumental route correctly', async ({ page }) => {
-    // Update mock to include instrumental options for the job in instrumental state
+    // Update mock to include instrumental analysis endpoints
     await setupApiFixtures(page, {
       mocks: [
         {
@@ -191,6 +237,43 @@ test.describe('Cloud Mode - Hash Route Parsing', () => {
           method: 'GET',
           path: `/api/review/${TEST_JOB_ID}/correction-data`,
           response: { body: mockCorrectionData },
+        },
+        {
+          method: 'GET',
+          path: `/api/review/${TEST_JOB_ID}/instrumental-analysis`,
+          response: {
+            body: {
+              job_id: TEST_JOB_ID,
+              artist: 'Test Artist',
+              title: 'Test Song',
+              duration_seconds: 180,
+              analysis: {
+                has_audible_content: false,
+                total_duration_seconds: 180,
+                audible_segments: [],
+                recommended_selection: 'clean',
+                total_audible_duration_seconds: 0,
+                audible_percentage: 0,
+                silence_threshold_db: -40,
+              },
+              audio_urls: {
+                clean: 'https://storage.example.com/clean.flac',
+                with_backing: 'https://storage.example.com/with_backing.flac',
+              },
+              has_original: true,
+              has_uploaded_instrumental: false,
+            },
+          },
+        },
+        {
+          method: 'GET',
+          path: `/api/review/${TEST_JOB_ID}/waveform-data`,
+          response: {
+            body: {
+              amplitudes: Array(100).fill(0.5),
+              duration_seconds: 180,
+            },
+          },
         },
         {
           method: 'GET',
@@ -210,7 +293,7 @@ test.describe('Cloud Mode - Hash Route Parsing', () => {
     await page.waitForLoadState('networkidle');
 
     // Should show the instrumental selection UI (not "Page not found")
-    await expect(page.locator('h1')).toContainText('Instrumental Selection', { timeout: 10000 });
+    await expect(page.getByText('Instrumental Review')).toBeVisible({ timeout: 10000 });
   });
 
   test('invalid hash route shows page not found', async ({ page }) => {
@@ -297,7 +380,7 @@ test.describe('Cloud Mode - Navigation Flow', () => {
     await page.waitForTimeout(500);
 
     // Should now show instrumental UI
-    await expect(page.locator('h1')).toContainText('Instrumental Selection', { timeout: 10000 });
+    await expect(page.getByText('Instrumental Review')).toBeVisible({ timeout: 10000 });
   });
 });
 
@@ -416,7 +499,7 @@ test.describe('Cloud Mode - Instrumental Audio Loading', () => {
     await page.waitForLoadState('networkidle');
 
     // Should show the instrumental selection UI
-    await expect(page.locator('h1')).toContainText('Instrumental Selection', { timeout: 10000 });
+    await expect(page.getByText('Instrumental Review')).toBeVisible({ timeout: 10000 });
 
     // Wait for UI to fully load
     await page.waitForTimeout(1000);
@@ -507,7 +590,7 @@ test.describe('Cloud Mode - Instrumental Audio Loading', () => {
     await page.waitForLoadState('networkidle');
 
     // Should show the instrumental selection UI
-    await expect(page.locator('h1')).toContainText('Instrumental Selection', { timeout: 10000 });
+    await expect(page.getByText('Instrumental Review')).toBeVisible({ timeout: 10000 });
 
     // Find audio tabs
     const originalTab = page.getByRole('button', { name: /^original$/i });

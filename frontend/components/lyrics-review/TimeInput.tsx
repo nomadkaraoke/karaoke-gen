@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, memo } from 'react'
+import { useState, useRef, useEffect, useCallback, useId, memo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -19,6 +19,7 @@ const TimeInput = memo(function TimeInput({
   widthClass = 'w-24',
   debounceMs = 300
 }: TimeInputProps) {
+  const inputId = useId()
   const [localValue, setLocalValue] = useState<string>('')
   const [isFocused, setIsFocused] = useState(false)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -65,8 +66,9 @@ const TimeInput = memo(function TimeInput({
 
   return (
     <div className={widthClass}>
-      <Label className="text-xs text-muted-foreground mb-1">{label}</Label>
+      <Label htmlFor={inputId} className="text-xs text-muted-foreground mb-1">{label}</Label>
       <Input
+        id={inputId}
         type="number"
         value={isFocused ? localValue : (value?.toFixed(2) ?? '')}
         onFocus={handleFocus}

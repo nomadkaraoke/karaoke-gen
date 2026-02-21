@@ -418,10 +418,9 @@ test.describe('Admin Job Detail Page', () => {
     // Reset buttons are now in a toolbar (not accordion) labeled "Reset to:"
     await expect(page.getByText('Reset to:')).toBeVisible();
     // Check the reset buttons are visible in the toolbar
-    await expect(page.locator('button:has-text("Start")').first()).toBeVisible();
+    // Note: "Start" and "Inst." were removed; "Lyrics" renamed to "Review"
     await expect(page.locator('button:has-text("Audio")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Lyrics")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Inst.")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Review")').first()).toBeVisible();
     await expect(page.locator('button:has-text("Reprocess")').first()).toBeVisible();
   });
 
@@ -438,8 +437,8 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // Click a reset button (Start = reset to pending)
-    await page.locator('button:has-text("Start")').first().click();
+    // Click a reset button (Audio = reset to awaiting_audio_selection)
+    await page.locator('button:has-text("Audio")').first().click();
 
     // Should show confirmation dialog
     await expect(page.getByRole('alertdialog')).toBeVisible();
@@ -448,121 +447,7 @@ test.describe('Admin Job Detail Page', () => {
     await expect(page.getByRole('button', { name: 'Reset' })).toBeVisible();
   });
 
-  test('clear workers button is visible in toolbar', async ({ page }) => {
-    // Mock job with complete worker progress (typical state when workers need clearing)
-    const jobWithWorkerProgress = {
-      ...mockJob,
-      state_data: {
-        ...mockJob.state_data,
-        render_progress: { stage: 'complete' },
-        video_progress: { stage: 'complete' },
-        encoding_progress: { stage: 'complete' },
-      },
-    };
-
-    await setupApiFixtures(page, {
-      mocks: [
-        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
-        { method: 'GET', path: '/api/jobs', response: { body: [] } },
-        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: jobWithWorkerProgress } },
-        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
-      ],
-    });
-
-    await page.goto('/admin/jobs?id=test-job-123');
-    await page.waitForLoadState('networkidle');
-
-    // Clear Workers button should be visible in the toolbar (near Del Outputs, Delete Job)
-    await expect(page.locator('button:has-text("Clear Workers")')).toBeVisible();
-  });
-
-  test('clear workers button calls API endpoint', async ({ page }) => {
-    // Mock successful clear workers response
-    const clearWorkersResponse = {
-      status: 'success',
-      job_id: 'test-job-123',
-      message: 'Cleared 3 worker progress keys',
-      cleared_keys: ['render_progress', 'video_progress', 'encoding_progress'],
-    };
-
-    // Track API calls
-    let clearWorkersApiCalled = false;
-
-    await setupApiFixtures(page, {
-      mocks: [
-        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
-        { method: 'GET', path: '/api/jobs', response: { body: [] } },
-        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
-        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
-        { method: 'POST', path: '/api/admin/jobs/test-job-123/clear-workers', response: { body: clearWorkersResponse } },
-      ],
-    });
-
-    // Also track when the clear-workers endpoint is called
-    await page.route('**/api/admin/jobs/*/clear-workers', async (route) => {
-      clearWorkersApiCalled = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(clearWorkersResponse),
-      });
-    });
-
-    await page.goto('/admin/jobs?id=test-job-123');
-    await page.waitForLoadState('networkidle');
-
-    // Click Clear Workers button in toolbar
-    await page.locator('button:has-text("Clear Workers")').click();
-
-    // Wait a bit for the API call to complete
-    await page.waitForTimeout(1000);
-
-    // Verify the API was called
-    expect(clearWorkersApiCalled).toBe(true);
-  });
-
-  test('clear workers button shows loading state while processing', async ({ page }) => {
-    // Mock slow clear workers response
-    const clearWorkersResponse = {
-      status: 'success',
-      job_id: 'test-job-123',
-      message: 'Cleared 3 worker progress keys',
-      cleared_keys: ['render_progress', 'video_progress', 'encoding_progress'],
-    };
-
-    await setupApiFixtures(page, {
-      mocks: [
-        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
-        { method: 'GET', path: '/api/jobs', response: { body: [] } },
-        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
-        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
-      ],
-    });
-
-    // Add delayed response for clear-workers
-    await page.route('**/api/admin/jobs/*/clear-workers', async (route) => {
-      // Delay response to test loading state
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(clearWorkersResponse),
-      });
-    });
-
-    await page.goto('/admin/jobs?id=test-job-123');
-    await page.waitForLoadState('networkidle');
-
-    // Get the Clear Workers button
-    const clearWorkersButton = page.locator('button:has-text("Clear Workers")');
-
-    // Click it and immediately check for disabled state
-    await clearWorkersButton.click();
-
-    // Button should be disabled during processing (has spinning icon)
-    // The button contains a RefreshCw icon that animates when clearingWorkers is true
-    await expect(clearWorkersButton).toBeDisabled({ timeout: 500 });
-  });
+  // Note: "Clear Workers" tests removed - feature replaced by Full Restart + Regen Screens
 
   test('delete outputs button shows confirmation dialog', async ({ page }) => {
     await setupApiFixtures(page, {

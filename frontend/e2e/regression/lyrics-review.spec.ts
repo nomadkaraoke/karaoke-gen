@@ -463,8 +463,8 @@ test.describe('Lyrics Review - Edit Operations', () => {
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
-    // Find the start time input (labeled "Start")
-    const startInput = dialog.getByLabel('Start');
+    // Find the first start time input (labeled "Start") - multiple segments may have one
+    const startInput = dialog.getByLabel('Start').first();
     await expect(startInput).toBeVisible();
 
     // Click into the input to focus it
@@ -477,7 +477,7 @@ test.describe('Lyrics Review - Edit Operations', () => {
     await expect(startInput).toHaveValue('12.34');
 
     // Test end time input as well
-    const endInput = dialog.getByLabel('End');
+    const endInput = dialog.getByLabel('End').first();
     await expect(endInput).toBeVisible();
 
     await endInput.click();
@@ -566,7 +566,7 @@ test.describe('Lyrics Review - Complete Review Flow', () => {
     await expect(dialog).toBeVisible({ timeout: 10000 });
 
     // Look for Complete Review button in modal
-    const completeBtn = dialog.getByRole('button', { name: /complete review/i });
+    const completeBtn = dialog.getByRole('button', { name: /proceed to instrumental review/i });
     if (await completeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await completeBtn.click();
       // Should submit and close
@@ -655,27 +655,7 @@ test.describe('Lyrics Review - Submit UX', () => {
     await setupSubmitFlowMocks(page);
   });
 
-  test('success screen shows after submission in local mode', async ({ page }) => {
-    await page.goto('/app/jobs/local/review');
-    await page.waitForLoadState('networkidle');
-
-    // Open preview modal and submit
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    const previewBtn = page.getByRole('button', { name: /preview video/i });
-    await expect(previewBtn).toBeVisible({ timeout: 10000 });
-    await previewBtn.click();
-
-    const dialog = page.locator('[role="dialog"]');
-    await expect(dialog).toBeVisible({ timeout: 10000 });
-
-    await dialog.getByRole('button', { name: /complete review/i }).click();
-
-    // Wait for success screen
-    await expect(page.getByText('Review Submitted')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/Closing in \d+s/)).toBeVisible();
-  });
-
-  test('submit button becomes disabled when clicked', async ({ page }) => {
+  test('proceed button navigates to instrumental review in local mode', async ({ page }) => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');
 
@@ -688,18 +668,36 @@ test.describe('Lyrics Review - Submit UX', () => {
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 10000 });
 
-    const completeBtn = dialog.getByRole('button', { name: /complete review/i });
-    await expect(completeBtn).toBeVisible({ timeout: 5000 });
+    await dialog.getByRole('button', { name: /proceed to instrumental review/i }).click();
+
+    // Should navigate to instrumental review page
+    await page.waitForURL('**/instrumental**', { timeout: 10000 });
+    expect(page.url()).toContain('/instrumental');
+  });
+
+  test('proceed button is enabled and clickable in preview modal', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+
+    // Open preview modal
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const previewBtn = page.getByRole('button', { name: /preview video/i });
+    await expect(previewBtn).toBeVisible({ timeout: 10000 });
+    await previewBtn.click();
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+
+    const proceedBtn = dialog.getByRole('button', { name: /proceed to instrumental review/i });
+    await expect(proceedBtn).toBeVisible({ timeout: 5000 });
 
     // Verify button is enabled before click
-    await expect(completeBtn).toBeEnabled();
+    await expect(proceedBtn).toBeEnabled();
 
-    // Click the button
-    await completeBtn.click();
-
-    // Transition should occur - either loading state or success screen
-    // We can verify we reach the success screen
-    await expect(page.getByText('Review Submitted')).toBeVisible({ timeout: 10000 });
+    // Click navigates to instrumental review
+    await proceedBtn.click();
+    await page.waitForURL('**/instrumental**', { timeout: 10000 });
+    expect(page.url()).toContain('/instrumental');
   });
 });
 
