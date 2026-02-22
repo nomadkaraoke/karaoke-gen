@@ -100,12 +100,15 @@ GET /api/jobs
 GET /api/jobs?status=complete
 GET /api/jobs?limit=10&offset=0
 GET /api/jobs?exclude_test=false
+GET /api/jobs?fields=summary&hide_completed=true
 ```
 
 Query parameters:
 - `exclude_test` (bool, default: true) - Admin only: filter out jobs from test users
 - `status` - Filter by job status
 - `limit` / `offset` - Pagination
+- `fields` (string, optional) - Set to `summary` to return only dashboard-required fields using Firestore field projection. Reduces payload from ~16MB to <500KB for large job lists.
+- `hide_completed` (bool, default: false) - Exclude terminal statuses (complete, prep_complete, failed, cancelled) server-side
 
 #### Delete Job
 
