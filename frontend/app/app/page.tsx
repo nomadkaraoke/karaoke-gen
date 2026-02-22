@@ -71,10 +71,12 @@ function AppPageContent() {
       return
     }
     try {
-      // Always fetch 100 jobs; display limit is applied client-side
+      // Use summary mode for reduced payload (~12 fields instead of 50+)
       const data = await api.listJobs({
         limit: 100,
-        exclude_test: isAdmin ? !showTestData : undefined
+        exclude_test: isAdmin ? !showTestData : undefined,
+        fields: 'summary',
+        hide_completed: hideCompleted,
       })
       // Sort: blocking jobs first, then processing, then completed
       setAllJobs(sortJobsByPriority(data))
@@ -87,7 +89,7 @@ function AppPageContent() {
       setIsLoadingJobs(false)
       setIsInitialLoad(false)
     }
-  }, [isAdmin, showTestData])
+  }, [isAdmin, showTestData, hideCompleted])
 
   // Enable notifications for job status changes (sound + title animation)
   useJobNotifications(allJobs)

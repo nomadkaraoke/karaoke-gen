@@ -269,11 +269,19 @@ export const api = {
   /**
    * List all jobs
    */
-  async listJobs(params?: { status?: string; limit?: number; exclude_test?: boolean }): Promise<Job[]> {
+  async listJobs(params?: {
+    status?: string;
+    limit?: number;
+    exclude_test?: boolean;
+    fields?: 'summary';
+    hide_completed?: boolean;
+  }): Promise<Job[]> {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
+    if (params?.fields) searchParams.set('fields', params.fields);
+    if (params?.hide_completed !== undefined) searchParams.set('hide_completed', String(params.hide_completed));
 
     const url = `${API_BASE_URL}/api/jobs${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     const response = await fetch(url, {

@@ -173,6 +173,74 @@ class FirestoreService:
             logger.error(f"Error listing jobs: {e}")
             raise
     
+    # Fields needed by the dashboard summary view
+    SUMMARY_FIELD_PATHS = [
+        'job_id', 'status', 'progress', 'created_at', 'artist', 'title',
+        'error_message', 'non_interactive', 'outputs_deleted_at', 'user_email',
+        'state_data.brand_code', 'state_data.youtube_url', 'state_data.dropbox_link',
+        'state_data.audio_progress', 'state_data.lyrics_progress',
+        'state_data.audio_complete', 'state_data.lyrics_complete',
+        'state_data.backing_vocals_analysis',
+        'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
+    ]
+
+    def list_jobs_summary(
+        self,
+        status: Optional[JobStatus] = None,
+        exclude_statuses: Optional[List[str]] = None,
+        environment: Optional[str] = None,
+        client_id: Optional[str] = None,
+        created_after: Optional[datetime] = None,
+        created_before: Optional[datetime] = None,
+        user_email: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        List jobs with Firestore field projection for reduced payload.
+
+        Uses ``query.select()`` so Firestore only reads the requested fields,
+        drastically cutting bandwidth and deserialization cost.
+
+        Returns raw dicts (not Job models) because projected documents would
+        fail Pydantic validation for missing required fields.
+        """
+        try:
+            query = self.db.collection(self.collection)
+
+            if status:
+                query = query.where(filter=FieldFilter('status', '==', status.value))
+
+            if exclude_statuses:
+                query = query.where(filter=FieldFilter('status', 'not-in', exclude_statuses))
+
+            if environment:
+                query = query.where(filter=FieldFilter('request_metadata.environment', '==', environment))
+
+            if client_id:
+                query = query.where(filter=FieldFilter('request_metadata.client_id', '==', client_id))
+
+            if user_email:
+                query = query.where(filter=FieldFilter('user_email', '==', user_email.lower()))
+
+            if tenant_id:
+                query = query.where(filter=FieldFilter('tenant_id', '==', tenant_id))
+
+            if created_after:
+                query = query.where(filter=FieldFilter('created_at', '>=', created_after))
+
+            if created_before:
+                query = query.where(filter=FieldFilter('created_at', '<=', created_before))
+
+            query = query.order_by('created_at', direction=firestore.Query.DESCENDING).limit(limit)
+            query = query.select(self.SUMMARY_FIELD_PATHS)
+
+            docs = query.stream()
+            return [doc.to_dict() for doc in docs]
+        except Exception as e:
+            logger.error(f"Error listing jobs summary: {e}")
+            raise
+
     def delete_jobs_by_filter(
         self,
         environment: Optional[str] = None,

@@ -188,7 +188,33 @@ def _check_job_ownership(job: Job, auth_result: AuthResult) -> bool:
     return True
 
 
-@router.get("", response_model=List[Job])
+_SUMMARY_STATE_DATA_KEYS = {
+    'brand_code', 'youtube_url', 'dropbox_link',
+    'audio_progress', 'lyrics_progress',
+    'audio_complete', 'lyrics_complete',
+    'backing_vocals_analysis',
+}
+_SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
+_HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'failed', 'cancelled']
+
+
+def _prune_state_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Strip state_data down to dashboard-required keys."""
+    sd = data.get('state_data')
+    if isinstance(sd, dict):
+        data['state_data'] = {k: v for k, v in sd.items() if k in _SUMMARY_STATE_DATA_KEYS}
+    return data
+
+
+def _prune_file_urls(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Strip file_urls down to dashboard-required keys."""
+    fu = data.get('file_urls')
+    if isinstance(fu, dict):
+        data['file_urls'] = {k: v for k, v in fu.items() if k in _SUMMARY_FILE_URLS_KEYS}
+    return data
+
+
+@router.get("", response_model=None)
 async def list_jobs(
     request: Request,
     status: Optional[JobStatus] = None,
@@ -198,8 +224,10 @@ async def list_jobs(
     created_before: Optional[str] = None,
     exclude_test: bool = True,
     limit: int = 100,
+    fields: Optional[str] = None,
+    hide_completed: bool = False,
     auth_result: AuthResult = Depends(require_auth)
-) -> List[Job]:
+):
     """
     List jobs with optional filters.
 
@@ -214,9 +242,13 @@ async def list_jobs(
         created_before: Filter jobs created before this ISO datetime
         exclude_test: If True (default), exclude jobs from test users (admin only)
         limit: Maximum number of jobs to return (default 100)
+        fields: Set to "summary" for reduced payload with only dashboard-required fields
+        hide_completed: If True, exclude terminal-status jobs (complete, prep_complete, failed, cancelled)
 
     Returns:
-        List of jobs matching filters, ordered by created_at descending
+        List of jobs matching filters, ordered by created_at descending.
+        When fields=summary, returns List[dict] (pruned).
+        Otherwise returns List[Job] (full model).
     """
     from datetime import datetime
 
@@ -253,6 +285,32 @@ async def list_jobs(
         # Tenant users only see jobs from their tenant
         tenant_id = get_tenant_from_request(request)
 
+        # --- Summary mode: field-projected query returning dicts ---
+        if fields == "summary":
+            exclude_statuses = _HIDE_COMPLETED_STATUSES if hide_completed else None
+            jobs_dicts = job_manager.list_jobs_summary(
+                status=status,
+                exclude_statuses=exclude_statuses,
+                environment=environment,
+                client_id=client_id,
+                created_after=created_after_dt,
+                created_before=created_before_dt,
+                user_email=user_email_filter,
+                tenant_id=tenant_id,
+                limit=limit,
+            )
+
+            # Exclude test user jobs (Python-side, same as full mode)
+            if exclude_test and auth_result.is_admin:
+                jobs_dicts = [j for j in jobs_dicts if not is_test_email(j.get('user_email') or "")]
+
+            # Safety-net pruning (in case Firestore returned extra nested keys)
+            jobs_dicts = [_prune_file_urls(_prune_state_data(j)) for j in jobs_dicts]
+
+            logger.debug(f"Listed {len(jobs_dicts)} summary jobs for user={auth_result.user_email}")
+            return jobs_dicts
+
+        # --- Full mode: existing behaviour (List[Job]) ---
         jobs = job_manager.list_jobs(
             status=status,
             environment=environment,

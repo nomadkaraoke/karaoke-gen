@@ -52,6 +52,66 @@ describe("API Client", () => {
       expect(callArgs).toContain("status=complete")
       expect(callArgs).toContain("limit=10")
     })
+
+    it("should send fields=summary query param", async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+
+      await api.listJobs({ fields: "summary", limit: 100 })
+      const callArgs = (global.fetch as jest.Mock).mock.calls[0][0]
+      expect(callArgs).toContain("fields=summary")
+    })
+
+    it("should send hide_completed=true query param", async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+
+      await api.listJobs({ fields: "summary", hide_completed: true })
+      const callArgs = (global.fetch as jest.Mock).mock.calls[0][0]
+      expect(callArgs).toContain("hide_completed=true")
+    })
+
+    it("should not send hide_completed when undefined", async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+
+      await api.listJobs({ fields: "summary" })
+      const callArgs = (global.fetch as jest.Mock).mock.calls[0][0]
+      expect(callArgs).not.toContain("hide_completed")
+    })
+
+    it("should handle summary response with partial job data", async () => {
+      const summaryJobs = [
+        {
+          job_id: "abc",
+          status: "pending",
+          progress: 0,
+          created_at: "2026-01-01T00:00:00",
+          artist: "Test",
+          title: "Song",
+          state_data: { brand_code: "NKP" },
+          file_urls: { finals: {} },
+        },
+      ]
+
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => summaryJobs,
+      })
+
+      const result = await api.listJobs({ fields: "summary" })
+      expect(result).toHaveLength(1)
+      expect(result[0].job_id).toBe("abc")
+      // Summary jobs may have missing optional fields
+      expect(result[0].timeline).toBeUndefined()
+      expect(result[0].review_token).toBeUndefined()
+    })
   })
 
   describe("getJob", () => {

@@ -374,6 +374,168 @@ class TestCompleteReviewWithInstrumentalSelection:
         assert selection in ['clean', 'with_backing', 'custom']
 
 
+class TestSummaryEndpoint:
+    """Tests for the fields=summary query parameter on list_jobs.
+
+    When fields=summary, the endpoint uses Firestore field projection and
+    returns pruned dicts instead of full Job models. This dramatically
+    reduces payload size for the dashboard polling use case.
+    """
+
+    def test_prune_state_data_keeps_allowed_keys(self):
+        """Verify _prune_state_data keeps only dashboard-required keys."""
+        from backend.api.routes.jobs import _prune_state_data
+
+        data = {
+            'state_data': {
+                'brand_code': 'NKP',
+                'youtube_url': 'https://youtu.be/abc',
+                'audio_progress': {'stage': 'separating'},
+                'lyrics_progress': {'stage': 'transcribing'},
+                'audio_complete': True,
+                'lyrics_complete': True,
+                'backing_vocals_analysis': {'recommended_selection': 'clean'},
+                'dropbox_link': 'https://dropbox.com/s/...',
+                # These should be stripped
+                'corrected_lyrics': {'lines': [1, 2, 3]},
+                'render_progress': {'stage': 'done'},
+                'blocking_state_entered_at': '2026-01-01',
+            }
+        }
+
+        result = _prune_state_data(data)
+        sd = result['state_data']
+        assert 'brand_code' in sd
+        assert 'youtube_url' in sd
+        assert 'audio_progress' in sd
+        assert 'lyrics_progress' in sd
+        assert 'audio_complete' in sd
+        assert 'lyrics_complete' in sd
+        assert 'backing_vocals_analysis' in sd
+        assert 'dropbox_link' in sd
+        # Stripped keys
+        assert 'corrected_lyrics' not in sd
+        assert 'render_progress' not in sd
+        assert 'blocking_state_entered_at' not in sd
+
+    def test_prune_state_data_handles_missing(self):
+        """Verify _prune_state_data is safe when state_data is absent."""
+        from backend.api.routes.jobs import _prune_state_data
+
+        assert _prune_state_data({}) == {}
+        assert _prune_state_data({'state_data': None}) == {'state_data': None}
+
+    def test_prune_file_urls_keeps_allowed_keys(self):
+        """Verify _prune_file_urls keeps only dashboard-required keys."""
+        from backend.api.routes.jobs import _prune_file_urls
+
+        data = {
+            'file_urls': {
+                'finals': {'lossless_4k_mp4': 'gs://bucket/finals/4k.mp4'},
+                'videos': {'with_vocals': 'gs://bucket/videos/wv.mkv'},
+                'packages': {'cdg_zip': 'gs://bucket/packages/cdg.zip'},
+                # These should be stripped
+                'stems': {'clean': 'gs://bucket/stems/clean.flac'},
+                'lyrics': {'corrections': 'gs://bucket/lyrics/c.json'},
+                'screens': {'title': 'gs://bucket/screens/title.mov'},
+            }
+        }
+
+        result = _prune_file_urls(data)
+        fu = result['file_urls']
+        assert 'finals' in fu
+        assert 'videos' in fu
+        assert 'packages' in fu
+        assert 'stems' not in fu
+        assert 'lyrics' not in fu
+        assert 'screens' not in fu
+
+    def test_prune_file_urls_handles_missing(self):
+        """Verify _prune_file_urls is safe when file_urls is absent."""
+        from backend.api.routes.jobs import _prune_file_urls
+
+        assert _prune_file_urls({}) == {}
+        assert _prune_file_urls({'file_urls': None}) == {'file_urls': None}
+
+    def test_summary_returns_only_expected_fields(self):
+        """Verify a pruned summary dict only contains dashboard fields."""
+        from backend.api.routes.jobs import _prune_state_data, _prune_file_urls
+
+        raw = {
+            'job_id': 'abc123',
+            'status': 'pending',
+            'progress': 0,
+            'created_at': '2026-01-01T00:00:00',
+            'artist': 'Test',
+            'title': 'Song',
+            'error_message': None,
+            'non_interactive': False,
+            'outputs_deleted_at': None,
+            'user_email': 'test@example.com',
+            'state_data': {
+                'brand_code': 'NKP',
+                'corrected_lyrics': 'should be removed',
+            },
+            'file_urls': {
+                'finals': {'lossless_4k_mp4': 'gs://...'},
+                'stems': {'clean': 'gs://...'},
+            },
+        }
+
+        result = _prune_file_urls(_prune_state_data(raw))
+
+        # state_data should only have brand_code
+        assert list(result['state_data'].keys()) == ['brand_code']
+        # file_urls should only have finals
+        assert list(result['file_urls'].keys()) == ['finals']
+
+    def test_hide_completed_statuses(self):
+        """Verify _HIDE_COMPLETED_STATUSES includes the expected terminal statuses."""
+        from backend.api.routes.jobs import _HIDE_COMPLETED_STATUSES
+
+        assert 'complete' in _HIDE_COMPLETED_STATUSES
+        assert 'prep_complete' in _HIDE_COMPLETED_STATUSES
+        assert 'failed' in _HIDE_COMPLETED_STATUSES
+        assert 'cancelled' in _HIDE_COMPLETED_STATUSES
+        # Active statuses should NOT be in the list
+        assert 'pending' not in _HIDE_COMPLETED_STATUSES
+        assert 'downloading' not in _HIDE_COMPLETED_STATUSES
+
+    def test_exclude_test_works_with_summary_dicts(self):
+        """Verify test email filtering works on raw dicts (not Job models)."""
+        from backend.utils.test_data import is_test_email
+
+        # Summary mode returns dicts, so exclude_test filters using dict access
+        job_dicts = [
+            {'job_id': '1', 'user_email': 'real@example.com'},
+            {'job_id': '2', 'user_email': 'test@inbox.testmail.app'},
+            {'job_id': '3', 'user_email': None},
+        ]
+
+        filtered = [j for j in job_dicts if not is_test_email(j.get('user_email') or "")]
+        assert len(filtered) == 2
+        assert filtered[0]['job_id'] == '1'
+        assert filtered[1]['job_id'] == '3'
+
+    def test_full_response_unchanged_without_fields_param(self):
+        """Verify the endpoint returns full Job models when fields is not set.
+
+        This is a backward-compatibility test: the admin jobs page (adminApi.listAllJobs)
+        does NOT send fields=summary, so it must continue receiving full Job objects.
+        """
+        # When fields is None, the route falls through to the full Job path.
+        # We verify this by checking that the route accepts fields=None gracefully.
+        # (The actual HTTP test would require a TestClient, so here we verify
+        # the route function signature accepts None.)
+        import inspect
+        from backend.api.routes.jobs import list_jobs
+
+        sig = inspect.signature(list_jobs)
+        fields_param = sig.parameters.get('fields')
+        assert fields_param is not None
+        assert fields_param.default is None  # Default should be None (full mode)
+
+
 class TestScreensWorkerBackingVocalsAnalysis:
     """Tests documenting that backing vocals analysis now runs in screens_worker.
 

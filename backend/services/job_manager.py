@@ -210,6 +210,31 @@ class JobManager:
             limit=limit
         )
     
+    def list_jobs_summary(
+        self,
+        status: Optional[JobStatus] = None,
+        exclude_statuses: Optional[List[str]] = None,
+        environment: Optional[str] = None,
+        client_id: Optional[str] = None,
+        created_after: Optional[datetime] = None,
+        created_before: Optional[datetime] = None,
+        user_email: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """List jobs with field projection (summary mode)."""
+        return self.firestore.list_jobs_summary(
+            status=status,
+            exclude_statuses=exclude_statuses,
+            environment=environment,
+            client_id=client_id,
+            created_after=created_after,
+            created_before=created_before,
+            user_email=user_email,
+            tenant_id=tenant_id,
+            limit=limit,
+        )
+
     def delete_jobs_by_filter(
         self,
         environment: Optional[str] = None,
