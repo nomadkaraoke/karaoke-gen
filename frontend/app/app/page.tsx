@@ -45,9 +45,9 @@ function AppPageContent() {
   const { user, fetchUser, verifyMagicLink } = useAuth()
   const { showTestData } = useAdminSettings()
   const [jobLimit, setJobLimit] = useState<number>(() => {
-    if (typeof window === "undefined") return 5
+    if (typeof window === "undefined") return 10
     const saved = localStorage.getItem("nomad-karaoke-job-limit")
-    return saved ? Number(saved) : 5
+    return saved ? Number(saved) : 10
   })
   const [hideCompleted, setHideCompleted] = useState<boolean>(() => {
     if (typeof window === "undefined") return false
