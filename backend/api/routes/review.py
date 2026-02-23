@@ -292,8 +292,9 @@ async def complete_review(
         )
 
     valid_selections = ["clean", "with_backing"]
-    # Also allow "custom" for user-provided instrumentals
-    if job.existing_instrumental_gcs_path:
+    # Allow "custom" for mute-region instrumentals or user-uploaded instrumentals
+    stems = job.file_urls.get("stems", {}) if job.file_urls else {}
+    if job.existing_instrumental_gcs_path or stems.get("custom_instrumental"):
         valid_selections.append("custom")
 
     if instrumental_selection not in valid_selections:

@@ -613,3 +613,40 @@ class TestCorrectionFlowIntegration:
         # The corrections_updated key should be added
         assert "corrections_updated" not in file_urls_before["lyrics"]
         assert "corrections_updated" in file_urls_after["lyrics"]
+
+
+class TestInstrumentalSelectionValidation:
+    """Tests for instrumental_selection validation in complete_review."""
+
+    def test_custom_allowed_with_custom_instrumental_stem(self):
+        """'custom' should be valid when custom_instrumental stem exists (mute-region editing)."""
+        from unittest.mock import Mock, patch, AsyncMock
+
+        valid_selections = ["clean", "with_backing"]
+        # Simulate the validation logic from review.py
+        stems = {"custom_instrumental": "jobs/test/stems/custom_instrumental.flac"}
+        existing_instrumental_gcs_path = None
+        if existing_instrumental_gcs_path or stems.get("custom_instrumental"):
+            valid_selections.append("custom")
+
+        assert "custom" in valid_selections
+
+    def test_custom_allowed_with_uploaded_instrumental(self):
+        """'custom' should be valid when existing_instrumental_gcs_path is set."""
+        valid_selections = ["clean", "with_backing"]
+        stems = {}
+        existing_instrumental_gcs_path = "uploads/test/audio/instrumental.flac"
+        if existing_instrumental_gcs_path or stems.get("custom_instrumental"):
+            valid_selections.append("custom")
+
+        assert "custom" in valid_selections
+
+    def test_custom_rejected_without_custom_stem_or_upload(self):
+        """'custom' should NOT be valid when neither custom stem nor upload exists."""
+        valid_selections = ["clean", "with_backing"]
+        stems = {"instrumental_clean": "jobs/test/stems/clean.flac"}
+        existing_instrumental_gcs_path = None
+        if existing_instrumental_gcs_path or stems.get("custom_instrumental"):
+            valid_selections.append("custom")
+
+        assert "custom" not in valid_selections

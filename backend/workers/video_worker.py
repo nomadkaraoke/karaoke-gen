@@ -925,11 +925,12 @@ def _validate_prerequisites(job) -> bool:
         logger.error(f"Job {job.job_id}: Missing lyrics video")
         return False
     
-    # Check instrumental exists - for 'custom', check existing_instrumental_gcs_path instead of stems
+    # Check instrumental exists - for 'custom', check uploaded file or mute-region stem
     if instrumental_selection == 'custom':
         existing_instrumental_path = getattr(job, 'existing_instrumental_gcs_path', None)
-        if not existing_instrumental_path:
-            logger.error(f"Job {job.job_id}: Custom instrumental selected but no existing_instrumental_gcs_path")
+        stems = job.file_urls.get('stems', {})
+        if not existing_instrumental_path and not stems.get('custom_instrumental'):
+            logger.error(f"Job {job.job_id}: Custom instrumental selected but no existing_instrumental_gcs_path or custom_instrumental stem")
             return False
         return True  # Other stem checks not needed for custom instrumental
     
@@ -1000,6 +1001,13 @@ async def _setup_working_directory(
         log_progress(f"Downloading user-provided existing instrumental...")
         storage.download_file(existing_instrumental_path, instrumental_path)
         log_progress("Downloaded user-provided instrumental")
+    elif instrumental_selection == 'custom':
+        # Custom instrumental from mute-region editing
+        custom_url = job.file_urls['stems']['custom_instrumental']
+        instrumental_path = os.path.join(temp_dir, f"{base_name} (Instrumental Custom).flac")
+        log_progress("Downloading custom (mute-region) instrumental...")
+        storage.download_file(custom_url, instrumental_path)
+        log_progress("Downloaded custom instrumental")
     else:
         # Use AI-separated instrumental based on selection
         instrumental_key = 'instrumental_clean' if instrumental_selection == 'clean' else 'instrumental_with_backing'
