@@ -20,6 +20,7 @@ from backend.models.requests import (
     CancelJobRequest,
     InstrumentalSelection,
     CompleteReviewRequest,
+    CreateCustomInstrumentalRequest,
 )
 from backend.services.job_manager import JobManager
 from backend.services.worker_service import get_worker_service
@@ -594,8 +595,14 @@ async def submit_corrections(
         )
     
     try:
-        # Store corrected lyrics in state_data
-        job_manager.update_state_data(job_id, 'corrected_lyrics', submission.corrections)
+        # Strip reference_lyrics from Firestore save to avoid exceeding 1MB document
+        # limit. reference_lyrics can be very large (e.g. Genius fetching non-lyrics
+        # content like screenplays). The full data is preserved in the GCS upload below.
+        corrections_for_firestore = {
+            k: v for k, v in submission.corrections.items()
+            if k != 'reference_lyrics'
+        }
+        job_manager.update_state_data(job_id, 'corrected_lyrics', corrections_for_firestore)
         if submission.user_notes:
             job_manager.update_state_data(job_id, 'review_notes', submission.user_notes)
         
@@ -625,6 +632,87 @@ async def submit_corrections(
         
     except Exception as e:
         logger.error(f"Error saving corrections for job {job_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/create-custom-instrumental")
+async def create_custom_instrumental(
+    job_id: str,
+    request: CreateCustomInstrumentalRequest,
+    auth_result: AuthResult = Depends(require_auth)
+) -> dict:
+    """
+    Create a custom instrumental by muting regions of backing vocals.
+
+    Downloads the clean instrumental and backing vocals stems, applies mute
+    regions, combines them, uploads to GCS, and returns a signed URL for playback.
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not _check_job_ownership(job, auth_result):
+        raise HTTPException(status_code=403, detail="You don't have permission to modify this job")
+
+    if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job not in review state (current status: {job.status})"
+        )
+
+    # Get stem paths from job
+    stems = job.file_urls.get('stems', {})
+    clean_path = stems.get('instrumental_clean')
+    backing_path = stems.get('backing_vocals')
+
+    if not clean_path or not backing_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Job missing required stems (instrumental_clean and/or backing_vocals)"
+        )
+
+    try:
+        from backend.services.audio_editing_service import AudioEditingService
+        from karaoke_gen.instrumental_review import MuteRegion
+
+        storage = StorageService()
+        editing_service = AudioEditingService(storage_service=storage)
+
+        # Convert request mute regions to domain model
+        mute_regions = [
+            MuteRegion(start_seconds=r.start_seconds, end_seconds=r.end_seconds)
+            for r in request.mute_regions
+        ]
+
+        # Create custom instrumental and upload to GCS
+        output_path = f"jobs/{job_id}/stems/custom_instrumental.flac"
+        result = editing_service.create_custom_instrumental(
+            gcs_clean_instrumental_path=clean_path,
+            gcs_backing_vocals_path=backing_path,
+            mute_regions=mute_regions,
+            gcs_output_path=output_path,
+            job_id=job_id,
+        )
+
+        # Store the custom instrumental path in job file_urls
+        job_manager.update_file_url(job_id, 'stems', 'custom_instrumental', output_path)
+
+        # Generate signed URL for playback
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+        transcoding = AudioTranscodingService(storage_service=storage)
+        audio_url = await transcoding.get_review_audio_url_async(output_path, expiration_minutes=120)
+
+        logger.info(f"Job {job_id}: Custom instrumental created with {len(mute_regions)} mute regions")
+
+        return {
+            "status": "success",
+            "message": f"Custom instrumental created with {len(mute_regions)} mute regions",
+            "audio_url": audio_url,
+            "muted_duration_seconds": result.total_muted_duration_seconds,
+        }
+
+    except Exception as e:
+        logger.error(f"Error creating custom instrumental for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -486,7 +486,7 @@ export const api = {
   /**
    * Create a custom instrumental with mute regions
    */
-  async createCustomInstrumental(jobId: string, muteRegions: MuteRegion[]): Promise<{ status: string; message: string }> {
+  async createCustomInstrumental(jobId: string, muteRegions: MuteRegion[]): Promise<{ status: string; message: string; audio_url?: string }> {
     const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/create-custom-instrumental`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },

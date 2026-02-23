@@ -71,6 +71,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
 
   // UI state
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>(1)
+  const [customAudioUrl, setCustomAudioUrl] = useState<string | null>(null)
   const [isCreatingCustom, setIsCreatingCustom] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -222,6 +223,10 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
 
   // Get audio URL for current selection
   const getAudioUrl = useCallback(() => {
+    // Custom instrumental uses the signed URL from creation response
+    if (activeAudio === "custom" && customAudioUrl) {
+      return customAudioUrl
+    }
     // For cloud mode, use signed URLs from analysis data
     // For local mode, use the API stream endpoint
     if (!isLocalMode && analysisData?.audio_urls) {
@@ -237,7 +242,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
     // Local mode: use API stream endpoint
     const stemType = STEM_TYPE_MAP[activeAudio]
     return api.getAudioStreamUrl(job.job_id, stemType)
-  }, [job.job_id, activeAudio, isLocalMode, analysisData])
+  }, [job.job_id, activeAudio, isLocalMode, analysisData, customAudioUrl])
 
   // Handle audio type change
   const handleAudioChange = useCallback(
@@ -253,9 +258,12 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
       setIsAudioLoading(true)
 
       // Update audio source
-      // For cloud mode, use signed URLs from analysis data
       let audioUrl: string
-      if (!isLocalMode && analysisData?.audio_urls) {
+      // Custom instrumental uses the signed URL from creation response
+      if (type === "custom" && customAudioUrl) {
+        audioUrl = customAudioUrl
+      } else if (!isLocalMode && analysisData?.audio_urls) {
+        // Cloud mode: use signed URLs from analysis data
         const urls = analysisData.audio_urls
         switch (type) {
           case "clean": audioUrl = urls.clean || ""; break
@@ -290,7 +298,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
       audio.addEventListener("loadeddata", handleLoaded, { once: true })
       audio.addEventListener("error", handleError, { once: true })
     },
-    [job.job_id, isLocalMode, analysisData]
+    [job.job_id, isLocalMode, analysisData, customAudioUrl]
   )
 
   // Seek to time
@@ -351,14 +359,16 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
 
     setIsCreatingCustom(true)
     try {
-      await api.createCustomInstrumental(job.job_id, muteRegions)
+      const result = await api.createCustomInstrumental(job.job_id, muteRegions)
+      const audioUrl = result.audio_url || api.getAudioStreamUrl(job.job_id, "custom_instrumental")
+      setCustomAudioUrl(audioUrl)
       setHasCustom(true)
       setSelectedOption("custom")
       setActiveAudio("custom")
 
-      // Update audio source
+      // Update audio source with signed URL from response
       if (audio) {
-        audio.src = api.getAudioStreamUrl(job.job_id, "custom_instrumental")
+        audio.src = audioUrl
         audio.addEventListener(
           "loadeddata",
           () => {
