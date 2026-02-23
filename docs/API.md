@@ -171,6 +171,32 @@ GET /api/review/{job_id}/audio/{stem_type}
 
 Redirects to a signed GCS URL for review playback. Audio is served as OGG Opus (~3 MB) transcoded from the original FLAC (~35 MB). Transcoding happens eagerly during screen generation; if the transcoded file is missing, falls back to the original FLAC.
 
+#### Create Custom Instrumental
+
+```http
+POST /api/jobs/{job_id}/create-custom-instrumental
+Content-Type: application/json
+
+{
+  "mute_regions": [
+    {"start_seconds": 17.0, "end_seconds": 42.0},
+    {"start_seconds": 53.8, "end_seconds": 71.4}
+  ]
+}
+```
+
+Creates a custom instrumental by muting selected regions of backing vocals, combining with the clean instrumental, and uploading to GCS. Returns a signed audio URL for immediate playback.
+
+Response:
+```json
+{
+  "status": "success",
+  "message": "Custom instrumental created with 2 mute regions",
+  "audio_url": "https://storage.googleapis.com/...",
+  "muted_duration_seconds": 42.6
+}
+```
+
 ### Instrumental Selection (Finalise-Only Jobs)
 
 For finalise-only jobs (where audio prep was done externally), instrumental selection is handled separately:

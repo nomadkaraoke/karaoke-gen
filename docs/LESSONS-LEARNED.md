@@ -610,7 +610,7 @@ Set `min-instances > 0` for Cloud Run services with heavy initialization.
 ## Data & Storage
 
 ### Firestore 1MB Limit
-Use subcollections for unbounded data (logs, events). Embedded arrays hit 1MB limit.
+Use subcollections for unbounded data (logs, events). Embedded arrays hit 1MB limit. When saving large objects to Firestore `state_data`, strip fields not needed for Firestore queries (e.g. `reference_lyrics`) and store full data in GCS instead. The Genius API occasionally returns non-lyrics content (screenplays, articles) that can bloat documents past 1MB.
 
 ### Firestore Timezone-Aware
 Firestore returns timezone-aware datetimes. Compare with `datetime.now(timezone.utc)`, not naive `datetime.now()`.
