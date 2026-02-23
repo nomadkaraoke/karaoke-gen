@@ -485,6 +485,19 @@ async def download_audio(
             local_path = os.path.join(temp_dir, safe_filename)
             storage.download_file(job.input_media_gcs_path, local_path)
             logger.info(f"Job {job_id}: Downloaded uploaded file to {local_path}")
+
+            # Persist uploaded audio to jobs/ prefix (uploads/ has 7-day lifecycle)
+            if job.input_media_gcs_path.startswith("uploads/"):
+                try:
+                    persistent_path = f"jobs/{job_id}/input/{safe_filename}"
+                    storage.upload_file(local_path, persistent_path)
+                    jm = job_manager_instance or JobManager()
+                    jm.update_job(job_id, {'input_media_gcs_path': persistent_path})
+                    jm.update_file_url(job_id, 'input', 'audio', persistent_path)
+                    logger.info(f"Job {job_id}: Persisted upload to {persistent_path}")
+                except Exception as e:
+                    logger.warning(f"Job {job_id}: Failed to persist upload to jobs/ prefix: {e}")
+
             return local_path
         
         # Case 2: URL download (from file_urls if already downloaded, or from job.url)

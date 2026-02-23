@@ -137,12 +137,55 @@ class TestGetReviewAudioUrl:
         )
 
     def test_falls_back_to_flac_on_error(self):
-        """On transcoding error, fall back to original FLAC signed URL."""
+        """On transcoding error with no cache, fall back to original FLAC signed URL."""
         from backend.services.audio_transcoding_service import AudioTranscodingService
 
         mock_storage = Mock()
         mock_storage.file_exists.return_value = False
         mock_storage.download_file.side_effect = Exception("GCS download failed")
+        mock_storage.generate_signed_url.return_value = "https://signed-url/song.flac"
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        result = service.get_review_audio_url("jobs/abc/input/song.flac")
+
+        assert result == "https://signed-url/song.flac"
+        mock_storage.generate_signed_url.assert_called_once_with(
+            "jobs/abc/input/song.flac", 120
+        )
+        # file_exists called twice: once in transcode_if_needed (cache miss),
+        # once in fallback (cache still missing → fall through to FLAC)
+        assert mock_storage.file_exists.call_count == 2
+
+    def test_serves_cache_when_source_deleted(self):
+        """When source is deleted but OGG cache exists, serve the cache."""
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_storage = Mock()
+        # First file_exists (in transcode_if_needed): cache miss
+        # download_file fails: source deleted
+        # Second file_exists (in fallback): cache found
+        mock_storage.file_exists.side_effect = [False, True]
+        mock_storage.download_file.side_effect = Exception("blob not found")
+        mock_storage.generate_signed_url.return_value = "https://signed-url/song.ogg"
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        result = service.get_review_audio_url("jobs/abc/input/song.flac")
+
+        assert result == "https://signed-url/song.ogg"
+        mock_storage.generate_signed_url.assert_called_once_with(
+            "jobs/abc/review-audio/song.ogg", 120
+        )
+
+    def test_falls_back_to_flac_when_cache_check_also_fails(self):
+        """When source is deleted and file_exists() also throws, fall back to FLAC."""
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_storage = Mock()
+        # First file_exists (in transcode_if_needed): cache miss
+        # download_file fails: source deleted
+        # Second file_exists (in fallback): also throws
+        mock_storage.file_exists.side_effect = [False, Exception("GCS unavailable")]
+        mock_storage.download_file.side_effect = Exception("blob not found")
         mock_storage.generate_signed_url.return_value = "https://signed-url/song.flac"
         service = AudioTranscodingService(storage_service=mock_storage)
 

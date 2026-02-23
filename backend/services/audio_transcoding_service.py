@@ -116,6 +116,14 @@ class AudioTranscodingService:
             cache_path = self.transcode_if_needed(source_gcs_path)
             return self.storage.generate_signed_url(cache_path, expiration_minutes)
         except Exception as e:
+            # Source may be deleted but cache from earlier transcode persists
+            try:
+                cache_path = self._get_cache_path(source_gcs_path)
+                if self.storage.file_exists(cache_path):
+                    logger.info(f"Source gone but cache exists, serving: {cache_path}")
+                    return self.storage.generate_signed_url(cache_path, expiration_minutes)
+            except Exception:
+                pass  # Fall through to FLAC fallback below
             logger.warning(
                 f"Transcoding failed for {source_gcs_path}, falling back to FLAC: {e}"
             )
