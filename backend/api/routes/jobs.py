@@ -684,14 +684,17 @@ async def create_custom_instrumental(
             for r in request.mute_regions
         ]
 
-        # Create custom instrumental and upload to GCS
+        # Create custom instrumental and upload to GCS (offload blocking IO to thread)
         output_path = f"jobs/{job_id}/stems/custom_instrumental.flac"
-        result = editing_service.create_custom_instrumental(
-            gcs_clean_instrumental_path=clean_path,
-            gcs_backing_vocals_path=backing_path,
-            mute_regions=mute_regions,
-            gcs_output_path=output_path,
-            job_id=job_id,
+        result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: editing_service.create_custom_instrumental(
+                gcs_clean_instrumental_path=clean_path,
+                gcs_backing_vocals_path=backing_path,
+                mute_regions=mute_regions,
+                gcs_output_path=output_path,
+                job_id=job_id,
+            )
         )
 
         # Store the custom instrumental path in job file_urls
