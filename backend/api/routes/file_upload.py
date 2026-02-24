@@ -469,10 +469,11 @@ async def upload_and_create_job(
 
         # Validate credentials for requested distribution services (including defaults)
         # This prevents accepting jobs that will fail later due to missing credentials
+        # Skip YouTube/GDrive checks for private jobs (they won't use those services)
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if effective_enable_youtube_upload:
+        if effective_enable_youtube_upload and not is_private:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -482,7 +483,7 @@ async def upload_and_create_job(
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
 
-        if dist.gdrive_folder_id:
+        if dist.gdrive_folder_id and not is_private:
             result = credential_manager.check_gdrive_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
@@ -1034,10 +1035,11 @@ async def create_job_with_upload_urls(
         effective_enable_youtube_upload = body.enable_youtube_upload if body.enable_youtube_upload is not None else settings.default_enable_youtube_upload
 
         # Validate credentials for requested distribution services
+        # Skip YouTube/GDrive checks for private jobs (they won't use those services)
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if effective_enable_youtube_upload:
+        if effective_enable_youtube_upload and not body.is_private:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -1047,7 +1049,7 @@ async def create_job_with_upload_urls(
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
 
-        if dist.gdrive_folder_id:
+        if dist.gdrive_folder_id and not body.is_private:
             result = credential_manager.check_gdrive_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
@@ -1477,10 +1479,11 @@ async def create_job_from_url(
         effective_enable_youtube_upload = body.enable_youtube_upload if body.enable_youtube_upload is not None else settings.default_enable_youtube_upload
 
         # Validate credentials for requested distribution services
+        # Skip YouTube/GDrive checks for private jobs (they won't use those services)
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if effective_enable_youtube_upload:
+        if effective_enable_youtube_upload and not body.is_private:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -1490,7 +1493,7 @@ async def create_job_from_url(
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
 
-        if dist.gdrive_folder_id:
+        if dist.gdrive_folder_id and not body.is_private:
             result = credential_manager.check_gdrive_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
@@ -1785,10 +1788,11 @@ async def create_finalise_only_job(
         effective_enable_youtube_upload = body.enable_youtube_upload if body.enable_youtube_upload is not None else settings.default_enable_youtube_upload
 
         # Validate distribution credentials if services are requested
+        # Skip YouTube/GDrive checks for private jobs (they won't use those services)
         invalid_services = []
         credential_manager = get_credential_manager()
 
-        if effective_enable_youtube_upload:
+        if effective_enable_youtube_upload and not body.is_private:
             result = credential_manager.check_youtube_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
@@ -1798,7 +1802,7 @@ async def create_finalise_only_job(
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
 
-        if dist.gdrive_folder_id:
+        if dist.gdrive_folder_id and not body.is_private:
             result = credential_manager.check_gdrive_credentials()
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
