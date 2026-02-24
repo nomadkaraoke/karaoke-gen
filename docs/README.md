@@ -30,6 +30,7 @@
 | CI/CD self-hosted runner | Working (GCP) |
 | E2E happy path test | Working (~20-25 min full pipeline) |
 | **White-label B2B portals** | Working (Vocal Star first tenant) |
+| **Private (non-published) tracks** | Working |
 
 ## Known Issues
 
@@ -40,6 +41,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Private (Non-Published) Tracks** (2026-02-24): Added `is_private` flag on jobs for private/non-published track production. Private jobs upload to Dropbox `Tracks-NonPublished` folder with `NOMADNP` brand prefix, skip YouTube and Google Drive entirely, and send completion emails without the YouTube section. Available as a checkbox on all job creation tabs and as an admin toggle (auto-deletes outputs when toggling a completed job to private). See [archive/2026-02-24-private-tracks-plan.md](archive/2026-02-24-private-tracks-plan.md).
 
 - **GCE Encoding Worker Version Sorting Fix** (2026-02-11): Fixed critical regression from PR #384 where alphabetical sorting caused encoder to use v0.99.9 instead of v0.116.1. **Root cause**: `sorted(wheels)[-1]` uses string comparison, not semantic versioning. String comparison puts "0.99.9" > "0.116.1" (because '9' > '1' in second position). **Impact**: Production encoder was running an extremely old version (v0.99.9 from months ago) instead of the latest (v0.116.1). **Fix**: Extract version from wheel filename using regex, sort by `packaging.version.Version` objects instead of strings. Added 10 comprehensive unit tests covering the exact regression case (0.99.9 vs 0.116.1), edge cases (empty list, invalid filenames), and complex version comparisons (major/minor/patch). Production now correctly selects the latest semantic version. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#semantic-version-sorting-feb-2026).
 

@@ -77,6 +77,7 @@ Content-Type: multipart/form-data
 file: <audio file>
 artist: "Artist Name"
 title: "Song Title"
+is_private: false  # Optional. If true, Dropbox uses Tracks-NonPublished/NOMADNP, no YouTube/GDrive
 ```
 
 Returns job ID. Triggers async processing.
@@ -887,7 +888,9 @@ Content-Type: application/json
 }
 ```
 
-Updates editable job fields. Allowed fields: `artist`, `title`, `user_email`, `theme_id`, `brand_prefix`, `discord_webhook_url`, `youtube_description`, `youtube_description_template`, `customer_email`, `customer_notes`, `enable_cdg`, `enable_txt`, `enable_youtube_upload`, `non_interactive`, `prep_only`.
+Updates editable job fields. Allowed fields: `artist`, `title`, `user_email`, `theme_id`, `brand_prefix`, `discord_webhook_url`, `youtube_description`, `youtube_description_template`, `customer_email`, `customer_notes`, `enable_cdg`, `enable_txt`, `enable_youtube_upload`, `non_interactive`, `prep_only`, `is_private`.
+
+**Note:** Setting `is_private=true` on a completed job with existing outputs triggers automatic output deletion.
 
 Response:
 ```json
