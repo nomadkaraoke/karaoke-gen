@@ -64,6 +64,9 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   // Non-interactive mode (shared across all tabs)
   const [nonInteractive, setNonInteractive] = useState(false)
 
+  // Private (non-published) mode - Dropbox only, no YouTube/GDrive
+  const [isPrivate, setIsPrivate] = useState(false)
+
   async function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
@@ -81,6 +84,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
     try {
       await api.uploadJob(uploadFile, uploadArtist.trim(), uploadTitle.trim(), {
         non_interactive: nonInteractive,
+        is_private: isPrivate,
       })
       setUploadFile(null)
       setUploadArtist("")
@@ -118,6 +122,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
         youtubeTitle.trim(),
         {
           non_interactive: nonInteractive,
+          is_private: isPrivate,
         }
       )
       setYoutubeUrl("")
@@ -148,6 +153,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
     try {
       await api.searchAudio(searchArtist.trim(), searchTitle.trim(), false, {
         non_interactive: nonInteractive,
+        is_private: isPrivate,
         // Display overrides (empty string means use search values)
         display_artist: displayArtist.trim() || undefined,
         display_title: displayTitle.trim() || undefined,
@@ -307,6 +313,28 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             </div>
           )}
 
+          {/* Private (non-published) mode */}
+          <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--card-border)' }}>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="private-upload"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-1 w-4 h-4 rounded border-border bg-secondary accent-[var(--brand-pink)] focus:ring-[var(--brand-pink)] focus:ring-offset-background"
+              />
+              <div>
+                <Label htmlFor="private-upload" className="cursor-pointer" style={{ color: 'var(--text)' }}>
+                  Private (non-published)
+                </Label>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Files delivered via Dropbox only. No YouTube or Google Drive upload.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {error && activeTab === "upload" && (
             <p className="text-sm text-red-400 bg-red-500/10 rounded p-2">{error}</p>
           )}
@@ -401,6 +429,28 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               </div>
             </div>
           )}
+
+          {/* Private (non-published) mode */}
+          <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--card-border)' }}>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="private-url"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-1 w-4 h-4 rounded border-border bg-secondary accent-[var(--brand-pink)] focus:ring-[var(--brand-pink)] focus:ring-offset-background"
+              />
+              <div>
+                <Label htmlFor="private-url" className="cursor-pointer" style={{ color: 'var(--text)' }}>
+                  Private (non-published)
+                </Label>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Files delivered via Dropbox only. No YouTube or Google Drive upload.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {error && activeTab === "url" && (
             <p className="text-sm text-red-400 bg-red-500/10 rounded p-2">{error}</p>
@@ -534,6 +584,28 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               </div>
             </div>
           )}
+
+          {/* Private (non-published) mode */}
+          <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--card-border)' }}>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="private-search"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-1 w-4 h-4 rounded border-border bg-secondary accent-[var(--brand-pink)] focus:ring-[var(--brand-pink)] focus:ring-offset-background"
+              />
+              <div>
+                <Label htmlFor="private-search" className="cursor-pointer" style={{ color: 'var(--text)' }}>
+                  Private (non-published)
+                </Label>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Files delivered via Dropbox only. No YouTube or Google Drive upload.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {error && activeTab === "search" && (
             <p className="text-sm text-red-400 bg-red-500/10 rounded p-2">{error}</p>

@@ -71,6 +71,7 @@ class JobNotificationService:
         youtube_url: Optional[str] = None,
         dropbox_url: Optional[str] = None,
         brand_code: Optional[str] = None,
+        is_private: bool = False,
     ) -> bool:
         """
         Send job completion email to user.
@@ -84,6 +85,7 @@ class JobNotificationService:
             youtube_url: YouTube video URL
             dropbox_url: Dropbox folder URL
             brand_code: Release ID (e.g., "NOMAD-1178")
+            is_private: If True, omit YouTube section (private/non-published tracks)
 
         Returns:
             True if email was sent successfully
@@ -106,6 +108,7 @@ class JobNotificationService:
                 title=title,
                 job_id=job_id,
                 feedback_url=FEEDBACK_FORM_URL,
+                is_private=is_private,
             )
 
             # Send the email with CC to admin
@@ -218,6 +221,7 @@ class JobNotificationService:
         title: Optional[str] = None,
         youtube_url: Optional[str] = None,
         dropbox_url: Optional[str] = None,
+        is_private: bool = False,
     ) -> str:
         """
         Get the rendered completion message for a job (for admin copy functionality).
@@ -229,6 +233,7 @@ class JobNotificationService:
             title: Song title
             youtube_url: YouTube video URL
             dropbox_url: Dropbox folder URL
+            is_private: If True, omit YouTube section (private/non-published tracks)
 
         Returns:
             Rendered message content as plain text
@@ -241,6 +246,7 @@ class JobNotificationService:
             title=title,
             job_id=job_id,
             feedback_url=FEEDBACK_FORM_URL,
+            is_private=is_private,
         )
 
 

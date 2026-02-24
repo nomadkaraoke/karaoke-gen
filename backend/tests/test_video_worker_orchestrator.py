@@ -855,6 +855,7 @@ class TestCreateOrchestratorConfigFromJob:
         job.enable_cdg = True
         job.enable_txt = False
         job.enable_youtube_upload = True
+        job.is_private = False
         job.brand_prefix = "NOMAD"
         job.discord_webhook_url = "https://discord.com/api/webhooks/123/abc"
         job.youtube_description_template = "Test description"
@@ -888,6 +889,7 @@ class TestCreateOrchestratorConfigFromJob:
         job.enable_cdg = False
         job.enable_txt = False
         job.enable_youtube_upload = False
+        job.is_private = False
         job.brand_prefix = None
         job.discord_webhook_url = None
         job.youtube_description_template = None
@@ -926,6 +928,7 @@ class TestCreateOrchestratorConfigFromJob:
         job.enable_cdg = False
         job.enable_txt = False
         job.enable_youtube_upload = False
+        job.is_private = False
         job.brand_prefix = None
         job.discord_webhook_url = None
         job.youtube_description_template = None

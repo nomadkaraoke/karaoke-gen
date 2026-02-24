@@ -71,6 +71,7 @@ export interface Job {
   instrumental_token?: string;
   audio_hash?: string;
   non_interactive?: boolean;
+  is_private?: boolean;
   user_email?: string;
   outputs_deleted_at?: string;
   outputs_deleted_by?: string;
@@ -315,6 +316,7 @@ export const api = {
       theme_id?: string;
       color_overrides?: ColorOverrides;
       non_interactive?: boolean;
+      is_private?: boolean;
     }
   ): Promise<UploadJobResponse> {
     const formData = new FormData();
@@ -343,6 +345,9 @@ export const api = {
     if (options?.non_interactive !== undefined) {
       formData.append('non_interactive', String(options.non_interactive));
     }
+    if (options?.is_private !== undefined) {
+      formData.append('is_private', String(options.is_private));
+    }
 
     const response = await fetch(`${API_BASE_URL}/api/jobs/upload`, {
       method: 'POST',
@@ -368,6 +373,7 @@ export const api = {
       theme_id?: string;
       color_overrides?: ColorOverrides;
       non_interactive?: boolean;
+      is_private?: boolean;
     }
   ): Promise<{ status: string; job_id: string; message: string }> {
     const body: Record<string, any> = { url };
@@ -380,6 +386,7 @@ export const api = {
     if (options?.theme_id) body.theme_id = options.theme_id;
     if (options?.color_overrides) body.color_overrides = options.color_overrides;
     if (options?.non_interactive !== undefined) body.non_interactive = options.non_interactive;
+    if (options?.is_private !== undefined) body.is_private = options.is_private;
 
     const response = await fetch(`${API_BASE_URL}/api/jobs/create-from-url`, {
       method: 'POST',
@@ -564,6 +571,7 @@ export const api = {
       theme_id?: string;
       color_overrides?: ColorOverrides;
       non_interactive?: boolean;
+      is_private?: boolean;
       // Display overrides - if provided, these appear on title screens/filenames instead of search values
       display_artist?: string;
       display_title?: string;
@@ -577,6 +585,7 @@ export const api = {
     if (options?.theme_id) body.theme_id = options.theme_id;
     if (options?.color_overrides) body.color_overrides = options.color_overrides;
     if (options?.non_interactive !== undefined) body.non_interactive = options.non_interactive;
+    if (options?.is_private !== undefined) body.is_private = options.is_private;
     // Display overrides
     if (options?.display_artist) body.display_artist = options.display_artist;
     if (options?.display_title) body.display_title = options.display_title;
@@ -1717,6 +1726,7 @@ export interface JobUpdateRequest {
   enable_youtube_upload?: boolean;
   non_interactive?: boolean;
   prep_only?: boolean;
+  is_private?: boolean;
 }
 
 export interface JobUpdateResponse {

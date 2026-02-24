@@ -134,6 +134,9 @@ class AudioSearchRequest(BaseModel):
     # Non-interactive mode
     non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
 
+    # Private (non-published) track mode
+    is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
+
     @validator('artist', 'title', 'lyrics_artist', 'lyrics_title', 'display_artist', 'display_title')
     def normalize_text_fields(cls, v):
         """Normalize text fields to standardize Unicode characters."""
@@ -621,6 +624,7 @@ async def search_audio(
             auto_download=body.auto_download,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else None,
         )

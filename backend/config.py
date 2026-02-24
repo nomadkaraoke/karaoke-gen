@@ -116,6 +116,10 @@ class Settings(BaseSettings):
     default_enable_youtube_upload: bool = os.getenv("DEFAULT_ENABLE_YOUTUBE_UPLOAD", "false").lower() in ("true", "1", "yes")
     default_brand_prefix: Optional[str] = os.getenv("DEFAULT_BRAND_PREFIX")
 
+    # Private (non-published) track distribution settings
+    default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")
+    default_private_brand_prefix: Optional[str] = os.getenv("DEFAULT_PRIVATE_BRAND_PREFIX", "NOMADNP")
+
     # Rate Limiting Configuration
     # Enable/disable rate limiting system-wide (useful for development)
     enable_rate_limiting: bool = os.getenv("ENABLE_RATE_LIMITING", "true").lower() in ("true", "1", "yes")

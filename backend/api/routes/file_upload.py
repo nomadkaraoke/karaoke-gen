@@ -111,6 +111,9 @@ class CreateJobFromUrlRequest(BaseModel):
     # Non-interactive mode
     non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
 
+    # Private (non-published) track mode
+    is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
+
 
 class CreateJobFromUrlResponse(BaseModel):
     """Response from creating a job from URL."""
@@ -171,6 +174,9 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
 
     # Non-interactive mode
     non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
+
+    # Private (non-published) track mode
+    is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
 
 
 class SignedUploadUrl(BaseModel):
@@ -361,6 +367,8 @@ async def upload_and_create_job(
     other_stems_models: Optional[str] = Form(None, description="Comma-separated list of models for other stems (bass, drums, guitar, etc.)"),
     # Non-interactive mode
     non_interactive: bool = Form(False, description="Skip interactive steps (lyrics review, instrumental selection)"),
+    # Private (non-published) track mode
+    is_private: bool = Form(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive"),
 ):
     """
     Upload an audio file and create a karaoke generation job with full style configuration.
@@ -574,6 +582,8 @@ async def upload_and_create_job(
             request_metadata=request_metadata,
             # Non-interactive mode
             non_interactive=non_interactive,
+            # Private (non-published) track mode
+            is_private=is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else None,
         )
@@ -876,6 +886,8 @@ class CreateFinaliseOnlyJobRequest(BaseModel):
     dropbox_path: Optional[str] = Field(None, description="Dropbox folder path for organized output")
     gdrive_folder_id: Optional[str] = Field(None, description="Google Drive folder ID for public share uploads")
 
+    # Private (non-published) track mode
+    is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
 
 
 
@@ -1104,6 +1116,7 @@ async def create_job_with_upload_urls(
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else None,
         )
@@ -1544,6 +1557,7 @@ async def create_job_from_url(
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else None,
         )
@@ -1842,6 +1856,7 @@ async def create_finalise_only_job(
             finalise_only=True,
             keep_brand_code=body.keep_brand_code,
             request_metadata=request_metadata,
+            is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else None,
         )

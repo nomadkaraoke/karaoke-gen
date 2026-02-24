@@ -61,6 +61,45 @@ def get_effective_distribution_settings(
     )
 
 
+def get_effective_distribution_for_job(job) -> EffectiveDistributionSettings:
+    """
+    Get effective distribution settings for a job, applying private overrides if is_private=True.
+
+    For private (non-published) jobs, this overrides:
+    - dropbox_path → private Dropbox path (Tracks-NonPublished)
+    - brand_prefix → private brand prefix (NOMADNP)
+    - enable_youtube_upload → False (no YouTube for private)
+    - gdrive_folder_id → None (no Google Drive for private)
+
+    For non-private jobs, returns the job's own distribution settings unchanged.
+
+    Args:
+        job: Job object (or any object with distribution fields)
+
+    Returns:
+        EffectiveDistributionSettings with private overrides applied if needed
+    """
+    if getattr(job, 'is_private', False):
+        settings = get_settings()
+        return EffectiveDistributionSettings(
+            dropbox_path=settings.default_private_dropbox_path,
+            brand_prefix=settings.default_private_brand_prefix,
+            enable_youtube_upload=False,
+            gdrive_folder_id=None,
+            discord_webhook_url=getattr(job, 'discord_webhook_url', None),
+            youtube_description=None,
+        )
+    # Non-private: return job's own settings
+    return EffectiveDistributionSettings(
+        dropbox_path=getattr(job, 'dropbox_path', None),
+        brand_prefix=getattr(job, 'brand_prefix', None),
+        enable_youtube_upload=getattr(job, 'enable_youtube_upload', False),
+        gdrive_folder_id=getattr(job, 'gdrive_folder_id', None),
+        discord_webhook_url=getattr(job, 'discord_webhook_url', None),
+        youtube_description=getattr(job, 'youtube_description_template', None),
+    )
+
+
 def resolve_cdg_txt_defaults(
     theme_id: Optional[str],
     enable_cdg: Optional[bool] = None,

@@ -1210,6 +1210,41 @@ function AdminJobsPageContent() {
                         )}
                       </div>
                     ))}
+
+                    {/* Private (non-published) toggle */}
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase w-20 shrink-0">Private</span>
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="checkbox"
+                          id="admin-is-private"
+                          checked={selectedJob.is_private || false}
+                          onChange={async (e) => {
+                            const newValue = e.target.checked
+                            try {
+                              await adminApi.updateJob(selectedJobId!, { is_private: newValue })
+                              setSelectedJob({ ...selectedJob, is_private: newValue })
+                              toast({
+                                title: "Updated",
+                                description: newValue
+                                  ? "Job set to private (outputs will be auto-deleted if completed)"
+                                  : "Job set to public",
+                              })
+                            } catch (err: any) {
+                              toast({
+                                title: "Error",
+                                description: err.message || "Failed to update private flag",
+                                variant: "destructive",
+                              })
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded border-border accent-orange-500"
+                        />
+                        <label htmlFor="admin-is-private" className="text-xs cursor-pointer">
+                          Non-published (Dropbox only, no YouTube/GDrive)
+                        </label>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 

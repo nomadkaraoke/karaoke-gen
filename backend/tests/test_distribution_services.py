@@ -777,21 +777,22 @@ class TestVideoWorkerDistribution:
     async def test_handle_native_distribution_dropbox_not_configured(self):
         """Test Dropbox upload skipped when service not configured."""
         from backend.workers.video_worker import _handle_native_distribution
-        
+
         mock_job = MagicMock()
         mock_job.dropbox_path = "/test/path"
         mock_job.brand_prefix = "TEST"
         mock_job.gdrive_folder_id = None
+        mock_job.is_private = False
         mock_job.artist = "Test"
         mock_job.title = "Song"
         mock_job.state_data = {}
-        
+
         mock_job_log = MagicMock()
         mock_job_manager = MagicMock()
-        
+
         mock_dropbox = MagicMock()
         mock_dropbox.is_configured = False
-        
+
         with patch('backend.services.dropbox_service.get_dropbox_service', return_value=mock_dropbox):
             await _handle_native_distribution(
                 job_id="test-123",
@@ -801,7 +802,7 @@ class TestVideoWorkerDistribution:
                 temp_dir="/tmp/test",
                 result={},
             )
-        
+
         # Should log warning about not configured
         mock_job_log.warning.assert_called()
 
@@ -809,21 +810,22 @@ class TestVideoWorkerDistribution:
     async def test_handle_native_distribution_gdrive_not_configured(self):
         """Test Google Drive upload skipped when service not configured."""
         from backend.workers.video_worker import _handle_native_distribution
-        
+
         mock_job = MagicMock()
         mock_job.dropbox_path = None
         mock_job.brand_prefix = None
         mock_job.gdrive_folder_id = "test_folder_id"
+        mock_job.is_private = False
         mock_job.artist = "Test"
         mock_job.title = "Song"
         mock_job.state_data = {}
-        
+
         mock_job_log = MagicMock()
         mock_job_manager = MagicMock()
-        
+
         mock_gdrive = MagicMock()
         mock_gdrive.is_configured = False
-        
+
         with patch('backend.services.gdrive_service.get_gdrive_service', return_value=mock_gdrive):
             await _handle_native_distribution(
                 job_id="test-123",
@@ -833,7 +835,7 @@ class TestVideoWorkerDistribution:
                 temp_dir="/tmp/test",
                 result={},
             )
-        
+
         # Should log warning about not configured
         mock_job_log.warning.assert_called()
 
@@ -841,18 +843,19 @@ class TestVideoWorkerDistribution:
     async def test_handle_native_distribution_handles_import_error(self):
         """Test that import errors for services are handled gracefully."""
         from backend.workers.video_worker import _handle_native_distribution
-        
+
         mock_job = MagicMock()
         mock_job.dropbox_path = "/test/path"
         mock_job.brand_prefix = "TEST"
         mock_job.gdrive_folder_id = None
+        mock_job.is_private = False
         mock_job.artist = "Test"
         mock_job.title = "Song"
         mock_job.state_data = {}
-        
+
         mock_job_log = MagicMock()
         mock_job_manager = MagicMock()
-        
+
         # Simulate import error
         with patch('backend.services.dropbox_service.get_dropbox_service', side_effect=ImportError("No module")):
             await _handle_native_distribution(
@@ -863,6 +866,6 @@ class TestVideoWorkerDistribution:
                 temp_dir="/tmp/test",
                 result={},
             )
-        
+
         # Should log warning about import error
         mock_job_log.warning.assert_called()

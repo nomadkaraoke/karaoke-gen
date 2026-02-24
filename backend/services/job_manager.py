@@ -557,6 +557,7 @@ class JobManager:
                     youtube_url=youtube_url,
                     dropbox_url=dropbox_url,
                     brand_code=brand_code,
+                    is_private=getattr(job, 'is_private', False),
                 )
 
             # Try to get existing event loop, create new one if none exists
