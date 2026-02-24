@@ -241,6 +241,82 @@ class TestTemplateServicePrivate:
         assert "Hi Jane" in result
 
 
+class TestNotificationServicePrivate:
+    """Tests for notification service passing is_private to template."""
+
+    @pytest.mark.asyncio
+    async def test_send_completion_email_passes_is_private(self):
+        """send_job_completion_email should pass is_private to template renderer."""
+        from backend.services.job_notification_service import JobNotificationService
+
+        service = JobNotificationService()
+        service.email_service = Mock()
+        service.email_service.send_job_completion.return_value = True
+        service.template_service = Mock()
+        service.template_service.render_job_completion.return_value = "Test message"
+
+        with patch('backend.services.job_notification_service.ENABLE_AUTO_EMAILS', True):
+            await service.send_job_completion_email(
+                job_id="job-123",
+                user_email="user@example.com",
+                is_private=True,
+            )
+
+        # Verify is_private=True was passed to template renderer
+        call_kwargs = service.template_service.render_job_completion.call_args
+        assert call_kwargs[1].get('is_private') is True or \
+               (call_kwargs[0] and True in call_kwargs[0])  # positional or keyword
+
+    @pytest.mark.asyncio
+    async def test_send_completion_email_defaults_is_private_false(self):
+        """send_job_completion_email should default is_private to False."""
+        from backend.services.job_notification_service import JobNotificationService
+
+        service = JobNotificationService()
+        service.email_service = Mock()
+        service.email_service.send_job_completion.return_value = True
+        service.template_service = Mock()
+        service.template_service.render_job_completion.return_value = "Test message"
+
+        with patch('backend.services.job_notification_service.ENABLE_AUTO_EMAILS', True):
+            await service.send_job_completion_email(
+                job_id="job-123",
+                user_email="user@example.com",
+            )
+
+        call_kwargs = service.template_service.render_job_completion.call_args
+        assert call_kwargs[1].get('is_private') is False
+
+    def test_get_completion_message_passes_is_private(self):
+        """get_completion_message should pass is_private to template renderer."""
+        from backend.services.job_notification_service import JobNotificationService
+
+        service = JobNotificationService()
+        service.template_service = Mock()
+        service.template_service.render_job_completion.return_value = "Test message"
+
+        service.get_completion_message(job_id="job-123", is_private=True)
+
+        call_kwargs = service.template_service.render_job_completion.call_args
+        assert call_kwargs[1].get('is_private') is True
+
+
+class TestRequestModelIsPrivate:
+    """Tests for is_private on API request models."""
+
+    def test_url_submission_request_has_is_private(self):
+        """URLSubmissionRequest should accept is_private field."""
+        from backend.models.requests import URLSubmissionRequest
+        req = URLSubmissionRequest(url="https://youtube.com/watch?v=123", is_private=True)
+        assert req.is_private is True
+
+    def test_url_submission_request_is_private_defaults_none(self):
+        """URLSubmissionRequest.is_private should default to None."""
+        from backend.models.requests import URLSubmissionRequest
+        req = URLSubmissionRequest(url="https://youtube.com/watch?v=123")
+        assert req.is_private is None
+
+
 class TestAdminPrivateToggle:
     """Tests for admin API handling of is_private toggle."""
 
@@ -260,3 +336,44 @@ class TestAdminPrivateToggle:
         from backend.api.routes.admin import JobUpdateRequest
         req = JobUpdateRequest()
         assert req.is_private is None
+
+
+class TestOrchestratorConfigPrivate:
+    """Tests for orchestrator config with private jobs."""
+
+    @patch('backend.services.job_defaults_service.get_settings')
+    def test_private_job_config_disables_youtube_and_gdrive(self, mock_settings):
+        """Private job should produce config with no YouTube and no GDrive."""
+        mock_settings.return_value = SimpleNamespace(
+            default_private_dropbox_path="/Tracks-NonPublished",
+            default_private_brand_prefix="NOMADNP",
+        )
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = MagicMock()
+        job.job_id = "test-private"
+        job.artist = "Artist"
+        job.title = "Title"
+        job.state_data = {"instrumental_selection": "clean"}
+        job.enable_cdg = False
+        job.enable_txt = False
+        job.enable_youtube_upload = True  # Would normally enable YouTube
+        job.is_private = True  # But private overrides it
+        job.brand_prefix = "NOMAD"
+        job.discord_webhook_url = None
+        job.youtube_description_template = "desc"
+        job.dropbox_path = "/Tracks-Organized"
+        job.gdrive_folder_id = "folder-123"
+        job.keep_brand_code = None
+        job.existing_instrumental_gcs_path = None
+
+        config = create_orchestrator_config_from_job(
+            job=job,
+            temp_dir="/tmp/test",
+            youtube_credentials={"token": "test"},
+        )
+
+        assert config.enable_youtube_upload is False
+        assert config.gdrive_folder_id is None
+        assert config.brand_prefix == "NOMADNP"
+        assert config.youtube_description_template is None
