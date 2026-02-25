@@ -41,6 +41,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   }, [availableTabs, activeTab])
 
   const [error, setError] = useState("")
+  const [isCreditError, setIsCreditError] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Upload form
@@ -70,6 +71,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   async function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+    setIsCreditError(false)
 
     if (!uploadFile) {
       setError("Please select an audio file")
@@ -91,6 +93,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       onJobCreated()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
+        setIsCreditError(true)
         setError("You're out of credits. Buy more to continue creating karaoke videos.")
       } else if (err instanceof ApiError) {
         setError(err.message)
@@ -105,6 +108,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   async function handleUrlSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+    setIsCreditError(false)
 
     if (!youtubeUrl.trim()) {
       setError("Please enter a URL")
@@ -131,6 +135,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       onJobCreated()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
+        setIsCreditError(true)
         setError("You're out of credits. Buy more to continue creating karaoke videos.")
       } else if (err instanceof ApiError) {
         setError(err.message)
@@ -145,6 +150,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   async function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+    setIsCreditError(false)
 
     if (!searchArtist.trim() || !searchTitle.trim()) {
       setError("Please enter both artist and title")
@@ -166,6 +172,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       onJobCreated()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
+        setIsCreditError(true)
         setError("You're out of credits. Buy more to continue creating karaoke videos.")
       } else if (err instanceof ApiError) {
         setError(err.message)
@@ -336,7 +343,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
           {error && activeTab === "upload" && (
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
               <p>{error}</p>
-              {error.includes("out of credits") && (
+              {isCreditError && (
                 <a href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</a>
               )}
             </div>
@@ -436,7 +443,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
           {error && activeTab === "url" && (
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
               <p>{error}</p>
-              {error.includes("out of credits") && (
+              {isCreditError && (
                 <a href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</a>
               )}
             </div>
@@ -574,7 +581,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
           {error && activeTab === "search" && (
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
               <p>{error}</p>
-              {error.includes("out of credits") && (
+              {isCreditError && (
                 <a href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</a>
               )}
             </div>
