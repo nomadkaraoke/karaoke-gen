@@ -32,6 +32,7 @@ from backend.services.auth_service import AuthResult
 from backend.services.metrics import metrics
 from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
+from backend.exceptions import InsufficientCreditsError, RateLimitExceededError
 
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,8 @@ async def create_job(
             job_id=job.job_id,
             message="Job created successfully. Processing started."
         )
+    except (InsufficientCreditsError, RateLimitExceededError):
+        raise
     except Exception as e:
         logger.error(f"Error creating job: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

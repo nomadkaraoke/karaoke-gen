@@ -46,6 +46,7 @@ from backend.version import VERSION
 from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.middleware.tenant import get_tenant_config_from_request
+from backend.exceptions import InsufficientCreditsError, RateLimitExceededError
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -865,6 +866,8 @@ async def search_audio(
         )
         
     except HTTPException:
+        raise
+    except (InsufficientCreditsError, RateLimitExceededError):
         raise
     except Exception as e:
         logger.error(f"Error in audio search: {e}", exc_info=True)
