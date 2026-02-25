@@ -377,7 +377,9 @@ POST /api/internal/jobs/{job_id}/trigger-video
 Common status codes:
 - `400` - Bad request
 - `401` - Unauthorized
+- `402` - Insufficient credits (see [Credit Enforcement](#credit-enforcement))
 - `404` - Job not found
+- `429` - Rate limit exceeded
 - `500` - Server error
 
 ## User Authentication
@@ -476,6 +478,30 @@ After payment completes via Stripe webhook:
 - `customer_notes: str` - Optional notes from customer
 
 **Email suppression**: Intermediate reminder emails (lyrics review, instrumental selection) are suppressed for made-for-you jobs since admin handles these directly. Only order confirmation and final delivery emails go to customer
+
+### Credit Enforcement
+
+Credits are checked and deducted at job creation time. The flow:
+
+1. **Check** - `user_service.has_credits()` verifies the user has >= 1 credit
+2. **Create job** - Job is persisted to Firestore
+3. **Deduct** - `user_service.deduct_credit()` atomically deducts 1 credit (with job_id for audit trail)
+4. **Refund on failure** - If the job fails, 1 credit is automatically refunded
+
+Admin users bypass credit checks entirely. New users receive 2 welcome credits.
+
+#### 402 Response
+
+When a user has no credits, job creation returns HTTP 402:
+
+```json
+{
+  "detail": "You're out of credits. Buy more to continue creating karaoke videos.",
+  "credits_available": 0,
+  "credits_required": 1,
+  "buy_url": "/#pricing"
+}
+```
 
 ### Stripe Webhook
 

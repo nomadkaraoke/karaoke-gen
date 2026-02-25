@@ -75,6 +75,32 @@ class TestMain:
         assert 'karaoke' in app.title.lower() or app.title
 
 
+class TestExceptionHandlers:
+    """Tests for global exception handlers in main.py."""
+
+    @pytest.mark.asyncio
+    async def test_insufficient_credits_handler_returns_402_response(self):
+        """Test that the insufficient credits handler returns HTTP 402 with correct body."""
+        from backend.main import insufficient_credits_exception_handler
+        from backend.exceptions import InsufficientCreditsError
+
+        exc = InsufficientCreditsError(
+            message="No credits remaining",
+            credits_available=0,
+            credits_required=1,
+        )
+
+        response = await insufficient_credits_exception_handler(request=None, exc=exc)
+
+        assert response.status_code == 402
+        import json
+        body = json.loads(response.body)
+        assert body["detail"] == "No credits remaining"
+        assert body["credits_available"] == 0
+        assert body["credits_required"] == 1
+        assert body["buy_url"] == "/#pricing"
+
+
 class TestDependencies:
     """Tests for dependencies.py."""
     

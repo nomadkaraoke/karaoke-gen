@@ -32,6 +32,35 @@ class TestAuthServiceBasics:
         assert hasattr(AuthService, 'validate_token') or hasattr(AuthService, 'verify_token')
 
 
+class TestIncrementTokenUsage:
+    """Tests for increment_token_usage after credit deduction cleanup."""
+
+    def test_session_token_does_not_deduct_credits(self):
+        """
+        Verify that increment_token_usage does NOT deduct credits for session tokens.
+
+        Credit deduction is handled by JobManager.create_job(), not here.
+        This test ensures the dead code removal didn't break the method.
+        """
+        mock_firestore = MagicMock()
+        # Session token: not in admin_tokens, not in Firestore auth_tokens
+        mock_firestore.get_token.return_value = None
+
+        with patch('backend.services.auth_service.FirestoreService', return_value=mock_firestore), \
+             patch.dict('os.environ', {'ADMIN_TOKENS': 'admin-token'}):
+            from backend.services.auth_service import AuthService
+            service = AuthService()
+
+            # Mock validate_token to return valid session user
+            with patch.object(service, 'validate_token', return_value=(True, 'stripe', 5, 'OK')):
+                result = service.increment_token_usage("session-token-123", "job-abc")
+
+        # Should return True (no-op for session tokens)
+        assert result is True
+        # Should NOT try to deduct credits via user_service
+        # (If it did, it would fail since user_service is not mocked)
+
+
 class TestFirestoreServiceBasics:
     """Basic tests for FirestoreService."""
     

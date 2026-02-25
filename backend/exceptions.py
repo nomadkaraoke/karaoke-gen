@@ -66,6 +66,28 @@ class IPBlockedError(Exception):
         super().__init__(message)
 
 
+class InsufficientCreditsError(Exception):
+    """
+    Raised when a user attempts to create a job without sufficient credits.
+
+    Attributes:
+        message: Human-readable error message
+        credits_available: Number of credits the user currently has
+        credits_required: Number of credits required (always 1 for now)
+    """
+
+    def __init__(
+        self,
+        message: str,
+        credits_available: int = 0,
+        credits_required: int = 1
+    ):
+        self.message = message
+        self.credits_available = credits_available
+        self.credits_required = credits_required
+        super().__init__(message)
+
+
 class InvalidStateTransitionError(Exception):
     """
     Raised when an invalid job state transition is attempted.

@@ -428,7 +428,7 @@ class TestMadeForYouFieldMapping:
             brand_prefix="NOMAD",
         )
 
-        job = job_manager.create_job(job_create)
+        job = job_manager.create_job(job_create, is_admin=True)
 
         # Verify all made-for-you fields
         assert job.made_for_you is True

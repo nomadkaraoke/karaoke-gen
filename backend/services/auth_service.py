@@ -437,10 +437,11 @@ class AuthService:
 
     def increment_token_usage(self, token: str, job_id: str) -> bool:
         """
-        Increment usage count for a token and track the job.
+        Increment usage count for an auth_token and track the job.
 
-        For session tokens (magic link auth), this deducts a credit from the user.
-        For auth_tokens, this increments the usage count.
+        Note: Credit deduction for session-based users is handled in
+        JobManager.create_job(), not here. This method only tracks usage
+        for legacy auth_tokens stored in Firestore.
 
         Args:
             token: The access token
@@ -465,32 +466,11 @@ class AuthService:
         if token in self.admin_tokens:
             return True
 
-        # Check if this is a session token (STRIPE type from validate_token means it's a session)
-        # Session tokens are not in auth_tokens collection
+        # Only increment usage for auth_tokens in Firestore
+        # Session tokens (magic link auth) have credits managed by JobManager.create_job()
         token_data = self.firestore.get_token(token)
-
         if not token_data:
-            # This is a session token - deduct credit from user
-            from backend.services.user_service import get_user_service
-            user_service = get_user_service()
-
-            # Get the user email from the session
-            is_valid, user, _ = user_service.validate_session(token)
-            if not is_valid or not user:
-                logger.error(f"Session token validation failed during usage increment")
-                return False
-
-            # Deduct one credit
-            success, new_balance, deduct_message = user_service.deduct_credit(
-                user.email, job_id, reason="job_creation"
-            )
-
-            if success:
-                logger.info(f"Deducted credit for user {user.email} (remaining: {new_balance})")
-                return True
-            else:
-                logger.error(f"Failed to deduct credit for user {user.email}: {deduct_message}")
-                return False
+            return True
 
         # Regular auth_token - increment usage in Firestore
         try:

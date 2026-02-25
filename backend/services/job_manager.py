@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from backend.config import settings
-from backend.exceptions import RateLimitExceededError, InvalidStateTransitionError
+from backend.exceptions import RateLimitExceededError, InvalidStateTransitionError, InsufficientCreditsError
 from backend.models.job import Job, JobStatus, JobCreate, STATE_TRANSITIONS
 from backend.models.worker_log import WorkerLogEntry
 from backend.services.firestore_service import FirestoreService
@@ -80,6 +80,18 @@ class JobManager:
                     limit_value=settings.rate_limit_jobs_per_day
                 )
 
+        # Check credits (skip for admins)
+        if job_create.user_email and not is_admin:
+            from backend.services.user_service import get_user_service
+            user_service = get_user_service()
+            if not user_service.has_credits(job_create.user_email):
+                credits_available = user_service.check_credits(job_create.user_email)
+                raise InsufficientCreditsError(
+                    message="You're out of credits. Buy more to continue creating karaoke videos.",
+                    credits_available=credits_available,
+                    credits_required=1,
+                )
+
         # Enforce theme requirement - all jobs must have a theme
         # This prevents unstyled videos from ever being generated
         if not job_create.theme_id:
@@ -134,6 +146,26 @@ class JobManager:
         
         self.firestore.create_job(job)
         logger.info(f"Created new job {job_id} with status PENDING")
+
+        # Deduct credit atomically (after job is persisted so we have job_id for transaction record)
+        if job_create.user_email and not is_admin:
+            from backend.services.user_service import get_user_service
+            user_service = get_user_service()
+            success, _remaining, deduct_msg = user_service.deduct_credit(
+                job_create.user_email, job_id, reason="job_creation"
+            )
+            if not success:
+                # Deduction failed (e.g., race condition) - delete the job and raise error
+                logger.error(f"Credit deduction failed for job {job_id}: {deduct_msg}")
+                try:
+                    self.firestore.delete_job(job_id)
+                except Exception:
+                    logger.exception(f"Failed to delete job {job_id} after credit deduction failure")
+                raise InsufficientCreditsError(
+                    message="Failed to deduct credit. Please try again.",
+                    credits_available=0,
+                    credits_required=1,
+                )
 
         # Record job creation for rate limiting (after successful persistence)
         if job_create.user_email:
@@ -780,11 +812,32 @@ class JobManager:
             )
             
             logger.error(f"Job {job_id} failed: {error_message}")
+
+            # Auto-refund credit on failure (skip for admin-owned jobs)
+            try:
+                job = self.get_job(job_id)
+                if job and job.user_email:
+                    from backend.services.auth_service import is_admin_email
+                    from backend.services.user_service import get_user_service
+
+                    if not is_admin_email(job.user_email):
+                        user_service = get_user_service()
+                        refund_ok, new_balance, refund_msg = user_service.refund_credit(
+                            job.user_email, job_id, reason="job_failed"
+                        )
+                        if refund_ok:
+                            logger.info(f"Refunded credit for failed job {job_id} to {_mask_email(job.user_email)} (balance: {new_balance})")
+                        else:
+                            logger.warning(f"Credit refund failed for job {job_id}: {refund_msg}")
+            except Exception as refund_err:
+                # Don't fail the fail_job call if refund fails
+                logger.warning(f"Error refunding credit for job {job_id}: {refund_err}")
+
             return True
         except Exception as e:
             logger.error(f"Error marking job {job_id} as failed: {e}")
             return False
-    
+
     def update_file_url(self, job_id: str, category: str, file_type: str, url: str) -> None:
         """
         Update a file URL in the job's file_urls structure.

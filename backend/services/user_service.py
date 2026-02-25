@@ -48,7 +48,7 @@ class UserService:
     """Service for user management and authentication."""
 
     # Number of free credits granted to new users
-    NEW_USER_FREE_CREDITS = 1
+    NEW_USER_FREE_CREDITS = 2
 
     def __init__(self):
         """Initialize user service with Firestore client."""

@@ -167,7 +167,7 @@ app.include_router(tenant.router)  # Tenant/white-label configuration (no /api p
 # Exception handler for rate limiting
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from backend.exceptions import RateLimitExceededError
+from backend.exceptions import RateLimitExceededError, InsufficientCreditsError
 
 
 @app.exception_handler(RateLimitExceededError)
@@ -184,6 +184,20 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceededE
         headers={
             "Retry-After": str(exc.remaining_seconds),
         } if exc.remaining_seconds > 0 else None,
+    )
+
+
+@app.exception_handler(InsufficientCreditsError)
+async def insufficient_credits_exception_handler(request: Request, exc: InsufficientCreditsError):
+    """Handle insufficient credits errors with 402 Payment Required status."""
+    return JSONResponse(
+        status_code=402,
+        content={
+            "detail": exc.message,
+            "credits_available": exc.credits_available,
+            "credits_required": exc.credits_required,
+            "buy_url": "/#pricing",
+        },
     )
 
 
