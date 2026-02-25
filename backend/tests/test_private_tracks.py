@@ -45,6 +45,46 @@ class TestJobModelIsPrivate:
         job_create = JobCreate(artist="Test", title="Song", is_private=True)
         assert job_create.is_private is True
 
+    def test_create_job_persists_is_private(self):
+        """JobManager.create_job should persist is_private from JobCreate to Job."""
+        from backend.services.job_manager import JobManager
+
+        manager = JobManager()
+        manager.firestore = Mock()
+        manager.firestore.create_job = Mock()
+
+        job_create = JobCreate(
+            artist="Test",
+            title="Song",
+            is_private=True,
+            theme_id="nomad",
+        )
+
+        job = manager.create_job(job_create, is_admin=True)
+
+        assert job.is_private is True
+        manager.firestore.create_job.assert_called_once()
+        saved_job = manager.firestore.create_job.call_args[0][0]
+        assert saved_job.is_private is True
+
+    def test_create_job_defaults_is_private_false(self):
+        """JobManager.create_job should default is_private to False."""
+        from backend.services.job_manager import JobManager
+
+        manager = JobManager()
+        manager.firestore = Mock()
+        manager.firestore.create_job = Mock()
+
+        job_create = JobCreate(
+            artist="Test",
+            title="Song",
+            theme_id="nomad",
+        )
+
+        job = manager.create_job(job_create, is_admin=True)
+
+        assert job.is_private is False
+
 
 class TestGetEffectiveDistributionForJob:
     """Tests for get_effective_distribution_for_job() helper."""

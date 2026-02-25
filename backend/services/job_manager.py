@@ -142,6 +142,8 @@ class JobManager:
             made_for_you=job_create.made_for_you,
             customer_email=job_create.customer_email,
             customer_notes=job_create.customer_notes,
+            # Private (non-published) track mode
+            is_private=job_create.is_private,
         )
         
         self.firestore.create_job(job)
