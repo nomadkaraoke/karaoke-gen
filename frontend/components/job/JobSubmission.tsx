@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload, Youtube, Music, Loader2, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react"
+import Link from "next/link"
 
 interface JobSubmissionProps {
   onJobCreated: () => void
@@ -200,13 +201,13 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-sm" style={{ color: 'var(--text)' }}>
             <p>You have no credits remaining. Buy credits to create new karaoke videos.</p>
-            <a
+            <Link
               href="/#pricing"
               className="inline-block mt-1 text-sm font-medium underline"
               style={{ color: 'var(--brand-pink)' }}
             >
               Buy Credits
-            </a>
+            </Link>
           </div>
         </div>
       )}
@@ -344,7 +345,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
               <p>{error}</p>
               {isCreditError && (
-                <a href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</a>
+                <Link href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</Link>
               )}
             </div>
           )}
@@ -444,7 +445,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
               <p>{error}</p>
               {isCreditError && (
-                <a href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</a>
+                <Link href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</Link>
               )}
             </div>
           )}
@@ -582,7 +583,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
               <p>{error}</p>
               {isCreditError && (
-                <a href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</a>
+                <Link href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</Link>
               )}
             </div>
           )}
