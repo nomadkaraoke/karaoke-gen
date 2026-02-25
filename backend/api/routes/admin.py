@@ -961,14 +961,14 @@ async def update_job(
         and not getattr(job, 'is_private', False)
     )
 
-    # Perform the update
-    success = job_manager.update_job(job_id, updates)
-
-    if not success:
+    # Perform the update (update_job returns None; exceptions indicate failure)
+    try:
+        job_manager.update_job(job_id, updates)
+    except Exception as e:
         raise HTTPException(
             status_code=500,
             detail="Failed to update job. Please try again."
-        )
+        ) from e
 
     # Auto-delete outputs when toggling to private on a job with existing outputs
     auto_deleted = False
