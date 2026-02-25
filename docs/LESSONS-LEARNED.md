@@ -321,6 +321,38 @@ admin_email = auth_data.user_email or "unknown"  # Use attribute access
 
 **Key insight**: When a class has `__iter__` for backward-compatible tuple unpacking but not `__getitem__`, prefer attribute access over index access. Type hints can be misleading if the codebase hasn't been updated consistently.
 
+### Field Mapping Gaps in Manual Constructors (Feb 2026)
+**What happened**: The `is_private` field was added to the `JobCreate` Pydantic model and the `Job` model, but `job_manager.create_job()` manually maps fields from `JobCreate` to `Job()` — and the `is_private` field was omitted from that mapping. The API accepted the field, the model had it, but it silently defaulted to `False` in Firestore because the constructor never included it.
+
+**Root cause**: The constructor uses explicit field-by-field mapping (`Job(title=data.title, artist=data.artist, ...)`) rather than something like `data.model_dump()`. When a new field is added to the input model, it's easy to forget to add it to the manual mapping.
+
+**Fix**: Add `is_private=data.is_private` to the `Job()` constructor in `create_job()`.
+
+**Pattern**: When adding new fields to Pydantic models, trace the full path from API request -> model -> persistence to ensure the field is explicitly mapped at every step. Automated regression tests that verify round-trip persistence are essential — a test that creates a job with `is_private=True` and reads it back would have caught this immediately.
+
+### Return Value Contract Mismatches (Feb 2026)
+**What happened**: `job_manager.update_job()` returns `None` (no explicit return), but `admin.py` checked `if not success:` treating `None` as failure. Since `not None` is `True`, this caused ALL admin PATCH updates to return 500 errors — not just the private toggle.
+
+**Root cause**: The calling code assumed `update_job()` returned a boolean success indicator, but the actual contract is void (returns `None`, raises on error). `success = await job_manager.update_job(...)` assigns `None`, and `if not success:` always evaluates to `True`.
+
+**Fix**: Use `try/except` for void functions rather than checking return values:
+```python
+# ❌ WRONG - update_job returns None, not a boolean
+success = await job_manager.update_job(job_id, updates)
+if not success:
+    raise HTTPException(status_code=500, ...)
+
+# ✅ CORRECT - catch exceptions from void functions
+try:
+    await job_manager.update_job(job_id, updates)
+except Exception as e:
+    raise HTTPException(status_code=500, ...)
+```
+
+**Pattern**: When calling a function and checking its return value, verify what it actually returns. Use `try/except` for void functions rather than checking return values. This is closely related to the "Mocks Must Match Real Return Values" lesson — mocks that return `True` for a void function will hide this class of bug entirely.
+
+---
+
 ## Testing Insights
 
 ### Test Webhook Handlers with Unit Tests
