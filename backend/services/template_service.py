@@ -212,6 +212,7 @@ class TemplateService:
         title: Optional[str] = None,
         job_id: Optional[str] = None,
         feedback_url: Optional[str] = None,
+        is_private: bool = False,
     ) -> str:
         """
         Render the job completion email template.
@@ -224,11 +225,21 @@ class TemplateService:
             title: Song title
             job_id: Job ID
             feedback_url: Feedback form URL (optional)
+            is_private: If True, remove YouTube section entirely (private/non-published tracks)
 
         Returns:
             Rendered email content
         """
         template = self.get_job_completion_template()
+
+        # For private tracks, remove the YouTube section entirely
+        if is_private:
+            template = re.sub(
+                r"\n*Here's the link for the karaoke video published to YouTube:\n\{youtube_url\}\n*",
+                '\n',
+                template,
+            )
+
         variables = {
             "name": name or "there",
             "youtube_url": youtube_url or "[YouTube URL not available]",

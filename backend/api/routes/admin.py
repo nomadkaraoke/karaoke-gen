@@ -96,6 +96,7 @@ class JobUpdateRequest(BaseModel):
     enable_youtube_upload: Optional[bool] = None
     non_interactive: Optional[bool] = None
     prep_only: Optional[bool] = None
+    is_private: Optional[bool] = None
 
 
 class JobUpdateResponse(BaseModel):
@@ -123,6 +124,7 @@ EDITABLE_JOB_FIELDS = {
     "enable_youtube_upload",
     "non_interactive",
     "prep_only",
+    "is_private",
 }
 
 
@@ -912,6 +914,7 @@ async def update_job(
     - customer_email, customer_notes: Made-for-you order info
     - brand_prefix: Brand code prefix
     - non_interactive, prep_only: Workflow options
+    - is_private: Private (non-published) track mode
     - discord_webhook_url: Notification URL
     - youtube_description, youtube_description_template: YouTube settings
 
@@ -950,6 +953,14 @@ async def update_job(
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
+    # Check if we're toggling is_private from False to True on a completed job
+    # If so, auto-delete existing outputs (YouTube, Dropbox, GDrive)
+    toggling_to_private = (
+        "is_private" in updates
+        and updates["is_private"] is True
+        and not getattr(job, 'is_private', False)
+    )
+
     # Perform the update
     success = job_manager.update_job(job_id, updates)
 
@@ -959,17 +970,46 @@ async def update_job(
             detail="Failed to update job. Please try again."
         )
 
+    # Auto-delete outputs when toggling to private on a job with existing outputs
+    auto_deleted = False
+    if toggling_to_private and job.status in TERMINAL_STATES and not job.outputs_deleted_at:
+        state_data = job.state_data or {}
+        has_outputs = (
+            state_data.get('youtube_url')
+            or state_data.get('dropbox_link')
+            or state_data.get('gdrive_files')
+        )
+        if has_outputs:
+            try:
+                logger.info(
+                    f"Auto-deleting outputs for job {job_id} (toggled to private by {admin_email})"
+                )
+                # Call the delete-outputs endpoint directly (same module)
+                await delete_job_outputs(job_id, auth_data)
+                auto_deleted = True
+            except HTTPException:
+                # delete_job_outputs raises HTTPException on validation failures,
+                # but we've already validated terminal state + not-already-deleted
+                logger.warning(f"Auto-delete outputs skipped for job {job_id} (validation)")
+            except Exception as e:
+                logger.warning(f"Auto-delete outputs failed for job {job_id}: {e}")
+
     # Log the admin action
     logger.info(
         f"Admin {admin_email} updated job {job_id}. "
         f"Updated fields: {list(updates.keys())}"
+        f"{' (outputs auto-deleted)' if auto_deleted else ''}"
     )
+
+    message = f"Successfully updated {len(updates)} field(s)"
+    if auto_deleted:
+        message += ". Existing outputs were auto-deleted (job set to private)."
 
     return JobUpdateResponse(
         status="success",
         job_id=job_id,
         updated_fields=list(updates.keys()),
-        message=f"Successfully updated {len(updates)} field(s)",
+        message=message,
     )
 
 
@@ -1754,6 +1794,7 @@ async def get_job_completion_message(
         title=job.title,
         youtube_url=youtube_url,
         dropbox_url=dropbox_url,
+        is_private=getattr(job, 'is_private', False),
     )
 
     # Build subject: "NOMAD-1178: Artist - Title (Your karaoke video is ready!)"
@@ -1818,6 +1859,7 @@ async def send_job_completion_email(
         title=job.title,
         youtube_url=youtube_url,
         dropbox_url=dropbox_url,
+        is_private=getattr(job, 'is_private', False),
     )
 
     # Send the email

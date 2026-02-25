@@ -731,6 +731,10 @@ def create_orchestrator_config_from_job(
         instrumental_suffix = "Clean" if instrumental_selection == 'clean' else "Backing"
         instrumental_path = os.path.join(temp_dir, f"{base_name} (Instrumental {instrumental_suffix}).flac")
 
+    # Get effective distribution settings (applies private track overrides if is_private=True)
+    from backend.services.job_defaults_service import get_effective_distribution_for_job
+    dist = get_effective_distribution_for_job(job)
+
     return OrchestratorConfig(
         job_id=job.job_id,
         artist=job.artist,
@@ -750,18 +754,18 @@ def create_orchestrator_config_from_job(
         # Feature flags
         enable_cdg=getattr(job, 'enable_cdg', False),
         enable_txt=getattr(job, 'enable_txt', False),
-        enable_youtube_upload=getattr(job, 'enable_youtube_upload', False),
+        enable_youtube_upload=dist.enable_youtube_upload,
 
-        # Service configurations
-        brand_prefix=getattr(job, 'brand_prefix', None),
-        discord_webhook_url=getattr(job, 'discord_webhook_url', None),
+        # Service configurations (distribution settings from helper, respects is_private)
+        brand_prefix=dist.brand_prefix,
+        discord_webhook_url=dist.discord_webhook_url,
         youtube_credentials=youtube_credentials,
-        youtube_description_template=getattr(job, 'youtube_description_template', None),
+        youtube_description_template=dist.youtube_description,
         cdg_styles=cdg_styles,
 
-        # Dropbox/GDrive
-        dropbox_path=getattr(job, 'dropbox_path', None),
-        gdrive_folder_id=getattr(job, 'gdrive_folder_id', None),
+        # Dropbox/GDrive (overridden for private tracks)
+        dropbox_path=dist.dropbox_path,
+        gdrive_folder_id=dist.gdrive_folder_id,
 
         # Keep existing brand code
         keep_brand_code=getattr(job, 'keep_brand_code', None),

@@ -299,6 +299,9 @@ class Job(BaseModel):
     customer_email: Optional[str] = None         # Customer email for final delivery (job owned by admin during processing)
     customer_notes: Optional[str] = None         # Notes provided by customer with their order
 
+    # Private (non-published) track mode
+    is_private: bool = False                     # Private tracks: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive
+
     # Output deletion tracking (for admin cleanup without deleting job)
     outputs_deleted_at: Optional[datetime] = None  # Timestamp when outputs were deleted by admin
     outputs_deleted_by: Optional[str] = None       # Admin email who deleted outputs
@@ -505,6 +508,9 @@ class JobCreate(BaseModel):
     made_for_you: bool = False                   # Flag indicating this is a made-for-you customer order
     customer_email: Optional[str] = None         # Customer email for final delivery (job owned by admin during processing)
     customer_notes: Optional[str] = None         # Notes provided by customer with their order
+
+    # Private (non-published) track mode
+    is_private: bool = False                     # Private tracks: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive
 
     # Request metadata (set by API endpoint from request headers)
     request_metadata: Dict[str, Any] = Field(default_factory=dict)

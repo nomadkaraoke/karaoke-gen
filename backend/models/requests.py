@@ -10,7 +10,7 @@ class URLSubmissionRequest(BaseModel):
     url: HttpUrl
     artist: Optional[str] = None  # Auto-detected if not provided
     title: Optional[str] = None   # Auto-detected if not provided
-    
+
     # Optional preferences
     enable_cdg: bool = False  # Requires style config
     enable_txt: bool = False  # Requires style config
@@ -18,6 +18,7 @@ class URLSubmissionRequest(BaseModel):
     youtube_description: Optional[str] = None
     webhook_url: Optional[str] = None
     user_email: Optional[str] = None
+    is_private: Optional[bool] = None  # Private (non-published) track mode
 
 
 class UploadSubmissionRequest(BaseModel):

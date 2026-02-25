@@ -116,7 +116,8 @@ async def create_job(
             enable_youtube_upload=effective_enable_youtube_upload,
             youtube_description=request.youtube_description,
             webhook_url=request.webhook_url,
-            user_email=user_email
+            user_email=user_email,
+            is_private=request.is_private or False,
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
 

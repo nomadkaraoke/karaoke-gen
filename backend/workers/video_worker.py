@@ -237,15 +237,17 @@ async def generate_video_orchestrated(job_id: str) -> bool:
         if rclone_service.setup_rclone_config():
             job_log.info("Rclone config loaded for Dropbox upload")
 
-    # Load YouTube credentials if needed
+    # Load YouTube credentials if needed (skip for private/non-published tracks)
     youtube_credentials = None
-    if getattr(job, 'enable_youtube_upload', False):
+    if getattr(job, 'enable_youtube_upload', False) and not getattr(job, 'is_private', False):
         youtube_service = get_youtube_service()
         if youtube_service.is_configured:
             youtube_credentials = youtube_service.get_credentials_dict()
             job_log.info("YouTube credentials loaded for video upload")
         else:
             job_log.warning("YouTube credentials not available - upload will be skipped")
+    elif getattr(job, 'is_private', False):
+        job_log.info("Private track - skipping YouTube upload")
 
     try:
         # Wrap entire worker in a tracing span
@@ -467,16 +469,18 @@ async def generate_video_legacy(job_id: str) -> bool:
         else:
             job_log.warning("Rclone config not available - Dropbox upload will be skipped")
     
-    # Load YouTube credentials if needed
+    # Load YouTube credentials if needed (skip for private/non-published tracks)
     youtube_credentials = None
-    if getattr(job, 'enable_youtube_upload', False):
+    if getattr(job, 'enable_youtube_upload', False) and not getattr(job, 'is_private', False):
         youtube_service = get_youtube_service()
         if youtube_service.is_configured:
             youtube_credentials = youtube_service.get_credentials_dict()
             job_log.info("YouTube credentials loaded for video upload")
         else:
             job_log.warning("YouTube credentials not available - upload will be skipped")
-    
+    elif getattr(job, 'is_private', False):
+        job_log.info("Private track - skipping YouTube upload")
+
     try:
         # Wrap entire worker in a tracing span
         with job_span("video-worker", job_id, {"artist": job.artist, "title": job.title}) as root_span:
@@ -776,10 +780,14 @@ async def _handle_native_distribution(
         brand_code = keep_brand_code
         result['brand_code'] = brand_code
         job_log.info(f"Using preserved brand code: {brand_code}")
-    
+
+    # Get effective distribution settings (applies private track overrides if is_private=True)
+    from backend.services.job_defaults_service import get_effective_distribution_for_job
+    dist = get_effective_distribution_for_job(job)
+
     # Upload to Dropbox using native SDK
-    dropbox_path = getattr(job, 'dropbox_path', None)
-    brand_prefix = getattr(job, 'brand_prefix', None)
+    dropbox_path = dist.dropbox_path
+    brand_prefix = dist.brand_prefix
     
     if dropbox_path and brand_prefix:
         try:
@@ -836,7 +844,7 @@ async def _handle_native_distribution(
     # Upload to Google Drive using native API
     # Skip if orchestrator already uploaded (gdrive_files already populated)
     # This prevents duplicate uploads when using the orchestrator path
-    gdrive_folder_id = getattr(job, 'gdrive_folder_id', None)
+    gdrive_folder_id = dist.gdrive_folder_id
     existing_gdrive_files = result.get('gdrive_files')
 
     if gdrive_folder_id and not existing_gdrive_files:
