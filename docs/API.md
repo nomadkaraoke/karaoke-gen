@@ -198,6 +198,33 @@ Response:
 }
 ```
 
+#### Upload Custom Instrumental
+
+```http
+POST /api/jobs/{job_id}/upload-instrumental
+Content-Type: multipart/form-data
+
+file: <audio file (mp3, wav, flac, ogg, aac, m4a)>
+```
+
+Uploads an external instrumental audio file for use during review. The uploaded file's duration is validated against the original audio — must match within ±0.5 seconds. Requires job to be in `awaiting_review` or `in_review` state.
+
+Response:
+```json
+{
+  "status": "success",
+  "duration_seconds": 240.0,
+  "message": "Custom instrumental uploaded (240.0s)"
+}
+```
+
+Error (duration mismatch):
+```json
+{
+  "detail": "Duration mismatch: uploaded file is 235.0s but original audio is 240.0s. The instrumental must be exactly 240.0s (±0.5s)."
+}
+```
+
 ### Instrumental Selection (Finalise-Only Jobs)
 
 For finalise-only jobs (where audio prep was done externally), instrumental selection is handled separately:
