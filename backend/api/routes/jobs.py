@@ -774,6 +774,7 @@ async def upload_custom_instrumental(
 
     storage = StorageService()
     tmp_path = None
+    flac_path = None
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -800,9 +801,17 @@ async def upload_custom_instrumental(
                     ),
                 )
 
-        # Upload to GCS
-        output_path = f"jobs/{job_id}/stems/custom_instrumental{suffix}"
-        storage.upload_file(tmp_path, output_path)
+        # Convert to FLAC for consistency with the rest of the pipeline
+        # (GCE encoding worker searches for *.flac patterns)
+        flac_path = tmp_path.rsplit('.', 1)[0] + '.flac' if '.' in tmp_path else tmp_path + '.flac'
+        if suffix != '.flac':
+            audio_segment.export(flac_path, format='flac')
+        else:
+            flac_path = tmp_path  # Already FLAC, no conversion needed
+
+        # Upload to GCS (always as .flac)
+        output_path = f"jobs/{job_id}/stems/custom_instrumental.flac"
+        storage.upload_file(flac_path, output_path)
 
     except HTTPException:
         raise
@@ -812,6 +821,8 @@ async def upload_custom_instrumental(
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+        if flac_path and flac_path != tmp_path and os.path.exists(flac_path):
+            os.unlink(flac_path)
 
     # Record in job file_urls
     job_manager.update_file_url(job_id, 'stems', 'custom_instrumental', output_path)

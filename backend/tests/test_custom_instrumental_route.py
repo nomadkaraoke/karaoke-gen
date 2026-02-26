@@ -467,7 +467,7 @@ class TestUploadInstrumentalEndpoint:
     def test_success_returns_duration(
         self, review_job, mock_job_manager, mock_worker_service, patched_client, upload_headers
     ):
-        """Happy path: uploads file, gets duration, stores in GCS, returns duration."""
+        """Happy path: uploads FLAC file, gets duration, stores in GCS, returns duration."""
         mock_job_manager.get_job.return_value = review_job
 
         mock_storage = MagicMock()
@@ -489,6 +489,8 @@ class TestUploadInstrumentalEndpoint:
         assert data["status"] == "success"
         assert data["duration_seconds"] == 240.0
         assert "240.0s" in data["message"]
+        # FLAC input should not trigger conversion — no export call
+        mock_audio_segment.export.assert_not_called()
 
     def test_job_not_found_returns_404(
         self, mock_job_manager, mock_worker_service, patched_client, upload_headers
@@ -562,10 +564,10 @@ class TestUploadInstrumentalEndpoint:
             "jobs/job-abc/stems/custom_instrumental.flac",
         )
 
-    def test_extension_inferred_from_content_type(
+    def test_non_flac_upload_converted_to_flac(
         self, review_job, mock_job_manager, mock_worker_service, patched_client, upload_headers
     ):
-        """When filename has no extension, derives it from content-type."""
+        """Non-FLAC uploads (mp3, m4a, etc.) are converted to FLAC before storing in GCS."""
         mock_job_manager.get_job.return_value = review_job
 
         mock_storage = MagicMock()
@@ -578,14 +580,19 @@ class TestUploadInstrumentalEndpoint:
                    new_callable=AsyncMock, return_value=None):
             patched_client.post(
                 "/api/jobs/job-abc/upload-instrumental",
-                files={"file": ("noext", b"audio", "audio/mpeg")},
+                files={"file": ("track.mp3", b"audio", "audio/mpeg")},
                 headers=upload_headers,
             )
 
+        # Always stored as .flac regardless of input format
         mock_job_manager.update_file_url.assert_called_with(
             "job-abc", "stems", "custom_instrumental",
-            "jobs/job-abc/stems/custom_instrumental.mp3",
+            "jobs/job-abc/stems/custom_instrumental.flac",
         )
+        # Conversion to FLAC was triggered
+        mock_audio_segment.export.assert_called_once()
+        call_args = mock_audio_segment.export.call_args
+        assert call_args[1]["format"] == "flac" or call_args[0][1] == "flac"
 
     def test_in_review_status_also_accepted(
         self, in_review_job, mock_job_manager, mock_worker_service, patched_client, upload_headers
@@ -945,3 +952,201 @@ class TestUploadedVsCustomSelectionContract:
         mock_job_manager.update_state_data.assert_any_call(
             "job-abc", "instrumental_selection", "custom"
         )
+
+
+# --- Tests: GCE encoding worker instrumental file resolution ---
+
+
+class TestGceEncodingInstrumentalResolution:
+    """
+    Tests that the GCE encoding worker's find_file logic correctly resolves
+    custom instrumentals instead of falling back to clean/with_backing.
+    """
+
+    def test_find_file_returns_first_match(self, tmp_path):
+        """find_file returns the first matching pattern."""
+        from backend.services.gce_encoding.main import find_file
+
+        # Create test files
+        stems = tmp_path / "stems"
+        stems.mkdir()
+        (stems / "custom_instrumental.flac").write_bytes(b"custom")
+        (stems / "instrumental_clean.flac").write_bytes(b"clean")
+
+        result = find_file(tmp_path, "*custom_instrumental*.flac")
+        assert result is not None
+        assert "custom_instrumental" in str(result)
+
+    def test_custom_selection_finds_custom_instrumental(self, tmp_path):
+        """When instrumental_selection is 'custom', find_file should match custom_instrumental.flac."""
+        from backend.services.gce_encoding.main import find_file
+
+        stems = tmp_path / "stems"
+        stems.mkdir()
+        (stems / "custom_instrumental.flac").write_bytes(b"custom audio")
+        (stems / "instrumental_clean.flac").write_bytes(b"clean audio")
+        (stems / "instrumental_with_backing.flac").write_bytes(b"backing audio")
+
+        # Reproduce the exact logic from gce_encoding/main.py run_encoding
+        instrumental_selection = "custom"
+        if instrumental_selection == "custom":
+            instrumental = find_file(
+                tmp_path,
+                "*custom_instrumental*.flac", "*Instrumental Custom*.flac",
+                "*custom_instrumental*.mp3",
+            )
+        elif instrumental_selection == "with_backing":
+            instrumental = find_file(
+                tmp_path,
+                "*instrumental_with_backing*.flac", "*Instrumental Backing*.flac",
+            )
+        else:
+            instrumental = find_file(
+                tmp_path,
+                "*instrumental_clean*.flac", "*Instrumental Clean*.flac",
+            )
+
+        assert instrumental is not None
+        assert "custom_instrumental" in str(instrumental)
+
+    def test_custom_selection_does_not_fallback_to_clean(self, tmp_path):
+        """Custom selection must NOT accidentally resolve to clean instrumental."""
+        from backend.services.gce_encoding.main import find_file
+
+        stems = tmp_path / "stems"
+        stems.mkdir()
+        # Only clean instrumental exists — custom is missing
+        (stems / "instrumental_clean.flac").write_bytes(b"clean audio")
+        (stems / "instrumental_with_backing.flac").write_bytes(b"backing audio")
+
+        instrumental_selection = "custom"
+        if instrumental_selection == "custom":
+            instrumental = find_file(
+                tmp_path,
+                "*custom_instrumental*.flac", "*Instrumental Custom*.flac",
+                "*custom_instrumental*.mp3",
+            )
+        else:
+            instrumental = find_file(tmp_path, "*instrumental_clean*.flac")
+
+        # Should be None — no custom instrumental exists
+        assert instrumental is None
+
+    def test_clean_selection_still_works(self, tmp_path):
+        """Clean selection unaffected by the custom case addition."""
+        from backend.services.gce_encoding.main import find_file
+
+        stems = tmp_path / "stems"
+        stems.mkdir()
+        (stems / "custom_instrumental.flac").write_bytes(b"custom")
+        (stems / "instrumental_clean.flac").write_bytes(b"clean")
+        (stems / "instrumental_with_backing.flac").write_bytes(b"backing")
+
+        instrumental_selection = "clean"
+        if instrumental_selection == "custom":
+            instrumental = find_file(tmp_path, "*custom_instrumental*.flac")
+        elif instrumental_selection == "with_backing":
+            instrumental = find_file(tmp_path, "*instrumental_with_backing*.flac")
+        else:
+            instrumental = find_file(tmp_path, "*instrumental_clean*.flac")
+
+        assert instrumental is not None
+        assert "instrumental_clean" in str(instrumental)
+
+    def test_with_backing_selection_still_works(self, tmp_path):
+        """With-backing selection unaffected by the custom case addition."""
+        from backend.services.gce_encoding.main import find_file
+
+        stems = tmp_path / "stems"
+        stems.mkdir()
+        (stems / "instrumental_clean.flac").write_bytes(b"clean")
+        (stems / "instrumental_with_backing.flac").write_bytes(b"backing")
+
+        instrumental_selection = "with_backing"
+        if instrumental_selection == "custom":
+            instrumental = find_file(tmp_path, "*custom_instrumental*.flac")
+        elif instrumental_selection == "with_backing":
+            instrumental = find_file(
+                tmp_path,
+                "*instrumental_with_backing*.flac", "*Instrumental Backing*.flac",
+            )
+        else:
+            instrumental = find_file(tmp_path, "*instrumental_clean*.flac")
+
+        assert instrumental is not None
+        assert "instrumental_with_backing" in str(instrumental)
+
+
+# --- Tests: Orchestrator config instrumental path resolution ---
+
+
+class TestOrchestratorInstrumentalPath:
+    """
+    Tests that create_orchestrator_config_from_job correctly constructs the instrumental
+    file path for all selection types, including 'custom'.
+    """
+
+    def _make_job(self, instrumental_selection, existing_instrumental=None, custom_stem=False):
+        """Create a Job with the given instrumental selection in state_data."""
+        file_urls = {"stems": {"instrumental_clean": "jobs/j/stems/instrumental_clean.flac"}}
+        if custom_stem:
+            file_urls["stems"]["custom_instrumental"] = "jobs/j/stems/custom_instrumental.flac"
+
+        job = Job(
+            job_id="test-orch",
+            status=JobStatus.RENDERING_VIDEO,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test Artist",
+            title="Test Song",
+            state_data={"instrumental_selection": instrumental_selection},
+            file_urls=file_urls,
+            existing_instrumental_gcs_path=existing_instrumental,
+        )
+        return job
+
+    def test_custom_selection_uses_custom_path(self, tmp_path):
+        """Custom selection produces '(Instrumental Custom).flac' path."""
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = self._make_job("custom", custom_stem=True)
+        config = create_orchestrator_config_from_job(job, str(tmp_path))
+
+        assert "(Instrumental Custom).flac" in config.instrumental_audio_path
+
+    def test_clean_selection_uses_clean_path(self, tmp_path):
+        """Clean selection produces '(Instrumental Clean).flac' path."""
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = self._make_job("clean")
+        config = create_orchestrator_config_from_job(job, str(tmp_path))
+
+        assert "(Instrumental Clean).flac" in config.instrumental_audio_path
+
+    def test_with_backing_selection_uses_backing_path(self, tmp_path):
+        """With-backing selection produces '(Instrumental Backing).flac' path."""
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = self._make_job("with_backing")
+        config = create_orchestrator_config_from_job(job, str(tmp_path))
+
+        assert "(Instrumental Backing).flac" in config.instrumental_audio_path
+
+    def test_existing_instrumental_takes_priority(self, tmp_path):
+        """existing_instrumental_gcs_path takes priority over selection type."""
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = self._make_job("custom", existing_instrumental="jobs/j/input/user_instrumental.wav")
+        config = create_orchestrator_config_from_job(job, str(tmp_path))
+
+        assert "(Instrumental User).wav" in config.instrumental_audio_path
+
+    def test_custom_selection_not_confused_with_backing(self, tmp_path):
+        """Regression: custom selection must NOT produce Backing path (the original bug)."""
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = self._make_job("custom", custom_stem=True)
+        config = create_orchestrator_config_from_job(job, str(tmp_path))
+
+        assert "Backing" not in config.instrumental_audio_path
+        assert "Custom" in config.instrumental_audio_path

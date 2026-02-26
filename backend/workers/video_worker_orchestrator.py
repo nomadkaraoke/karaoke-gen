@@ -727,6 +727,8 @@ def create_orchestrator_config_from_job(
     if existing_instrumental:
         ext = Path(existing_instrumental).suffix.lower()
         instrumental_path = os.path.join(temp_dir, f"{base_name} (Instrumental User){ext}")
+    elif instrumental_selection == 'custom':
+        instrumental_path = os.path.join(temp_dir, f"{base_name} (Instrumental Custom).flac")
     else:
         instrumental_suffix = "Clean" if instrumental_selection == 'clean' else "Backing"
         instrumental_path = os.path.join(temp_dir, f"{base_name} (Instrumental {instrumental_suffix}).flac")

@@ -372,7 +372,14 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         instrumental_selection = config.get("instrumental_selection", "clean")
         logger.info(f"Instrumental selection from config: {instrumental_selection}")
 
-        if instrumental_selection == "with_backing":
+        if instrumental_selection == "custom":
+            # User uploaded a custom instrumental or created one via mute-region editing
+            instrumental = find_file(
+                work_dir,
+                "*custom_instrumental*.flac", "*Instrumental Custom*.flac",
+                "*custom_instrumental*.mp3",
+            )
+        elif instrumental_selection == "with_backing":
             # User selected instrumental with backing vocals
             instrumental = find_file(
                 work_dir,
