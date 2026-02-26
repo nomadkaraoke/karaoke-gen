@@ -8,9 +8,14 @@ Handles job lifecycle endpoints including:
 - Job deletion and cancellation
 """
 import asyncio
+import json
 import logging
+import os
+import subprocess
+import tempfile
+from pathlib import Path
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile, File
 
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -721,6 +726,134 @@ async def create_custom_instrumental(
     except Exception as e:
         logger.error(f"Error creating custom instrumental for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/upload-instrumental")
+async def upload_custom_instrumental(
+    job_id: str,
+    file: UploadFile = File(...),
+    auth_result: AuthResult = Depends(require_auth)
+) -> dict:
+    """
+    Upload a custom instrumental audio file for use during review.
+
+    Accepts any audio format supported by pydub/ffmpeg (mp3, wav, flac, ogg, etc.).
+    The file is stored to GCS and its path recorded in the job's stems metadata.
+    The user can then select 'custom' as their instrumental_selection when completing review.
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not _check_job_ownership(job, auth_result):
+        raise HTTPException(status_code=403, detail="You don't have permission to modify this job")
+
+    if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job not in review state (current status: {job.status})"
+        )
+
+    # Determine extension from filename or content type
+    original_filename = file.filename or "instrumental"
+    suffix = Path(original_filename).suffix.lower()
+    if not suffix:
+        content_type = file.content_type or ""
+        suffix_map = {
+            "audio/mpeg": ".mp3",
+            "audio/mp3": ".mp3",
+            "audio/wav": ".wav",
+            "audio/x-wav": ".wav",
+            "audio/flac": ".flac",
+            "audio/x-flac": ".flac",
+            "audio/ogg": ".ogg",
+            "audio/aac": ".aac",
+            "audio/mp4": ".m4a",
+        }
+        suffix = suffix_map.get(content_type, ".audio")
+
+    storage = StorageService()
+    tmp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp_path = tmp.name
+            content = await file.read()
+            tmp.write(content)
+
+        # Get duration of uploaded file using pydub
+        from pydub import AudioSegment
+        audio_segment = AudioSegment.from_file(tmp_path)
+        upload_duration = len(audio_segment) / 1000.0
+
+        # Get duration of original job audio to validate match
+        original_duration = await _get_audio_duration_ffprobe_signed(job_id, job, storage)
+        if original_duration is not None:
+            diff = abs(upload_duration - original_duration)
+            if diff > 0.5:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Duration mismatch: uploaded file is {upload_duration:.1f}s "
+                        f"but original audio is {original_duration:.1f}s. "
+                        f"The instrumental must be exactly {original_duration:.1f}s (±0.5s)."
+                    ),
+                )
+
+        # Upload to GCS
+        output_path = f"jobs/{job_id}/stems/custom_instrumental{suffix}"
+        storage.upload_file(tmp_path, output_path)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error processing uploaded instrumental: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process audio file: {str(e)}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+    # Record in job file_urls
+    job_manager.update_file_url(job_id, 'stems', 'custom_instrumental', output_path)
+
+    logger.info(f"Job {job_id}: Custom instrumental uploaded ({upload_duration:.1f}s) to {output_path}")
+
+    return {
+        "status": "success",
+        "duration_seconds": upload_duration,
+        "message": f"Custom instrumental uploaded ({upload_duration:.1f}s)",
+    }
+
+
+async def _get_audio_duration_ffprobe_signed(job_id: str, job, storage: StorageService) -> Optional[float]:
+    """
+    Get the duration of the job's original audio using ffprobe on a signed GCS URL.
+
+    Uses ffprobe which reads only the container header - fast even for large files.
+    Returns None if the duration cannot be determined (non-fatal, upload proceeds).
+    """
+    gcs_path = job.input_media_gcs_path
+    if not gcs_path:
+        return None
+
+    try:
+        signed_url = storage.generate_signed_url(gcs_path, expiration_minutes=5)
+
+        def _run_ffprobe() -> float:
+            result = subprocess.run(
+                ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', signed_url],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode != 0:
+                raise ValueError(f"ffprobe error: {result.stderr[:200]}")
+            data = json.loads(result.stdout)
+            return float(data['format']['duration'])
+
+        return await asyncio.get_event_loop().run_in_executor(None, _run_ffprobe)
+
+    except Exception as e:
+        logger.warning(f"Job {job_id}: Could not determine original audio duration: {e}")
+        return None
 
 
 @router.post("/{job_id}/complete-review")
