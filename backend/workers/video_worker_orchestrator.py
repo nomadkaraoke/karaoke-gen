@@ -109,6 +109,9 @@ class OrchestratorResult:
     dropbox_link: Optional[str] = None
     gdrive_files: Optional[Dict[str, str]] = field(default_factory=dict)
 
+    # Distribution warnings (non-fatal upload failures)
+    distribution_warnings: List[str] = field(default_factory=list)
+
     # Timing
     encoding_time_seconds: Optional[float] = None
     total_time_seconds: Optional[float] = None
@@ -603,6 +606,7 @@ class VideoWorkerOrchestrator:
 
         except Exception as e:
             self.job_log.error(f"YouTube upload failed: {e}")
+            self.result.distribution_warnings.append(f"YouTube upload failed: {e}")
             # Don't fail the pipeline - YouTube is optional
 
     async def _upload_to_dropbox(self):
@@ -639,6 +643,7 @@ class VideoWorkerOrchestrator:
 
         except Exception as e:
             self.job_log.error(f"Dropbox upload failed: {e}")
+            self.result.distribution_warnings.append(f"Dropbox upload failed: {e}")
             # Don't fail the pipeline - Dropbox is optional
 
     async def _upload_to_gdrive(self):
@@ -675,6 +680,7 @@ class VideoWorkerOrchestrator:
 
         except Exception as e:
             self.job_log.error(f"Google Drive upload failed: {e}")
+            self.result.distribution_warnings.append(f"Google Drive upload failed: {e}")
             # Don't fail the pipeline - GDrive is optional
 
     async def _run_notifications(self):

@@ -68,3 +68,27 @@ gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
 gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
   --command="sudo systemctl restart encoding-worker"
 ```
+
+---
+
+## Google Drive uploads missing (gdrive_files empty)
+
+**Symptoms:** Jobs complete successfully but `state_data.gdrive_files` is empty `{}`. Cloud Run logs show `BrokenPipeError` or `SSL: UNEXPECTED_EOF_WHILE_READING`.
+
+**Cause:** Stale HTTP connections in the singleton `GoogleDriveService`. Since v0.119.7, this is handled automatically with retry + connection reset.
+
+**Backfill affected jobs:**
+```bash
+# Dry run - list affected jobs
+GCS_BUCKET_NAME=karaoke-gen-storage-nomadkaraoke \
+GOOGLE_CLOUD_PROJECT=nomadkaraoke \
+python scripts/backfill_gdrive_uploads.py --all-missing --dry-run
+
+# Run for real
+GCS_BUCKET_NAME=karaoke-gen-storage-nomadkaraoke \
+GOOGLE_CLOUD_PROJECT=nomadkaraoke \
+python scripts/backfill_gdrive_uploads.py --all-missing
+
+# Specific jobs
+python scripts/backfill_gdrive_uploads.py --job-ids JOB1,JOB2
+```

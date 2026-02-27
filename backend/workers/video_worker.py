@@ -339,15 +339,26 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             # Store result metadata in job BEFORE transitioning to COMPLETE
             # This ensures youtube_url is available when completion email is sent
             logger.info(f"[job:{job_id}] Video generation complete")
-            job_manager.update_job(job_id, {
-                'state_data': {
-                    **job.state_data,
-                    'brand_code': result.brand_code,
-                    'youtube_url': result.youtube_url,
-                    'dropbox_link': result.dropbox_link,
-                    'gdrive_files': result.gdrive_files,
-                }
-            })
+            state_update = {
+                **job.state_data,
+                'brand_code': result.brand_code,
+                'youtube_url': result.youtube_url,
+                'dropbox_link': result.dropbox_link,
+                'gdrive_files': result.gdrive_files,
+            }
+            if result.distribution_warnings:
+                state_update['distribution_warnings'] = result.distribution_warnings
+            job_manager.update_job(job_id, {'state_data': state_update})
+
+            # Send Pushbullet alert if any distribution uploads failed
+            if result.distribution_warnings:
+                _send_distribution_warning_notification(
+                    job_id=job_id,
+                    artist=job.artist,
+                    title=job.title,
+                    warnings=result.distribution_warnings,
+                    settings=settings,
+                )
 
             # Mark job as complete (triggers completion email with youtube_url now available)
             job_manager.transition_to_state(
@@ -841,6 +852,7 @@ async def _handle_native_distribution(
             job_log.warning(f"Dropbox SDK not installed: {e}")
         except Exception as e:
             job_log.error(f"Native Dropbox upload failed: {e}", exc_info=True)
+            result.setdefault('distribution_warnings', []).append(f"Dropbox upload failed: {e}")
             # Don't fail the job - distribution is optional
     
     # Upload to Google Drive using native API
@@ -884,6 +896,7 @@ async def _handle_native_distribution(
             job_log.warning(f"Google API packages not installed: {e}")
         except Exception as e:
             job_log.error(f"Native Google Drive upload failed: {e}", exc_info=True)
+            result.setdefault('distribution_warnings', []).append(f"Google Drive upload failed: {e}")
             # Don't fail the job - distribution is optional
     elif existing_gdrive_files:
         job_log.info(f"Skipping Google Drive upload - orchestrator already uploaded {len(existing_gdrive_files)} files")
@@ -891,16 +904,63 @@ async def _handle_native_distribution(
     # Update job state_data with brand code and links
     if brand_code or result.get('dropbox_link') or result.get('gdrive_files'):
         try:
-            job_manager.update_job(job_id, {
-                'state_data': {
-                    **job.state_data,
-                    'brand_code': brand_code,
-                    'dropbox_link': result.get('dropbox_link'),
-                    'gdrive_files': result.get('gdrive_files'),
-                }
-            })
+            state_update = {
+                **job.state_data,
+                'brand_code': brand_code,
+                'dropbox_link': result.get('dropbox_link'),
+                'gdrive_files': result.get('gdrive_files'),
+            }
+            if result.get('distribution_warnings'):
+                state_update['distribution_warnings'] = result['distribution_warnings']
+            job_manager.update_job(job_id, {'state_data': state_update})
         except Exception as e:
             job_log.warning(f"Failed to update job state_data: {e}")
+
+    # Send Pushbullet alert if any distribution uploads failed
+    if result.get('distribution_warnings'):
+        _send_distribution_warning_notification(
+            job_id=job_id,
+            artist=job.artist,
+            title=job.title,
+            warnings=result['distribution_warnings'],
+            settings=settings,
+        )
+
+
+def _send_distribution_warning_notification(
+    job_id: str,
+    artist: str,
+    title: str,
+    warnings: list[str],
+    settings=None,
+) -> None:
+    """Send Pushbullet notification when distribution uploads fail."""
+    try:
+        if settings is None:
+            settings = get_settings()
+        api_key = settings.get_secret("pushbullet-api-key")
+        if not api_key:
+            logger.warning("Pushbullet API key not found, skipping distribution warning notification")
+            return
+
+        import requests as req
+
+        push_title = f"Distribution Warning: {artist} - {title}"
+        body = f"Job {job_id} completed but {len(warnings)} upload(s) failed:\n\n"
+        body += "\n".join(f"  - {w}" for w in warnings)
+
+        resp = req.post(
+            "https://api.pushbullet.com/v2/pushes",
+            headers={"Access-Token": api_key, "Content-Type": "application/json"},
+            json={"type": "note", "title": push_title, "body": body},
+            timeout=10,
+        )
+        if resp.ok:
+            logger.info(f"[job:{job_id}] Distribution warning notification sent via Pushbullet")
+        else:
+            logger.warning(f"[job:{job_id}] Pushbullet notification failed: {resp.status_code} {resp.text}")
+    except Exception as e:
+        logger.warning(f"[job:{job_id}] Failed to send Pushbullet notification: {e}")
 
 
 def _validate_prerequisites(job) -> bool:

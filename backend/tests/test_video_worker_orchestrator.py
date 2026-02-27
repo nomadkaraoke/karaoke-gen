@@ -1512,3 +1512,64 @@ class TestOrchestratorCountdownPadding:
         assert captured_input is not None, "encode() should have been called"
         assert captured_input.options.get("countdown_padding_seconds") == 3.0, \
             "Orchestrator must pass countdown_padding_seconds in EncodingInput.options"
+
+
+class TestDistributionWarnings:
+    """Test distribution_warnings tracking in OrchestratorResult."""
+
+    def test_result_has_distribution_warnings_field(self):
+        """Test that OrchestratorResult has distribution_warnings as empty list by default."""
+        result = OrchestratorResult(success=True)
+        assert result.distribution_warnings == []
+
+    @pytest.mark.asyncio
+    async def test_gdrive_failure_populates_warnings(self):
+        """Test that Google Drive upload failure populates distribution_warnings."""
+        config = OrchestratorConfig(
+            job_id="test-job",
+            artist="Test Artist",
+            title="Test Title",
+            title_video_path="/path/title.mov",
+            karaoke_video_path="/path/karaoke.mov",
+            instrumental_audio_path="/path/audio.flac",
+            gdrive_folder_id="folder-123",
+        )
+        orchestrator = VideoWorkerOrchestrator(config)
+        orchestrator.result.brand_code = "NOMAD-0001"
+
+        with patch("backend.services.gdrive_service.get_gdrive_service") as mock_get:
+            mock_gdrive = MagicMock()
+            mock_gdrive.is_configured = True
+            mock_gdrive.upload_to_public_share.side_effect = Exception("Connection refused")
+            mock_get.return_value = mock_gdrive
+
+            await orchestrator._upload_to_gdrive()
+
+        assert len(orchestrator.result.distribution_warnings) == 1
+        assert "Google Drive upload failed" in orchestrator.result.distribution_warnings[0]
+
+    @pytest.mark.asyncio
+    async def test_dropbox_failure_populates_warnings(self):
+        """Test that Dropbox upload failure populates distribution_warnings."""
+        config = OrchestratorConfig(
+            job_id="test-job",
+            artist="Test Artist",
+            title="Test Title",
+            title_video_path="/path/title.mov",
+            karaoke_video_path="/path/karaoke.mov",
+            instrumental_audio_path="/path/audio.flac",
+            dropbox_path="/Public Share",
+        )
+        orchestrator = VideoWorkerOrchestrator(config)
+        orchestrator.result.brand_code = "NOMAD-0001"
+
+        with patch("backend.services.dropbox_service.get_dropbox_service") as mock_get:
+            mock_dropbox = MagicMock()
+            mock_dropbox.is_configured = True
+            mock_dropbox.upload_folder.side_effect = Exception("Auth expired")
+            mock_get.return_value = mock_dropbox
+
+            await orchestrator._upload_to_dropbox()
+
+        assert len(orchestrator.result.distribution_warnings) == 1
+        assert "Dropbox upload failed" in orchestrator.result.distribution_warnings[0]

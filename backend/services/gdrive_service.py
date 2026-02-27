@@ -12,12 +12,18 @@ shared with YouTube credentials if scopes include drive.file.
 import json
 import logging
 import os
+import ssl
 from typing import Any, Dict, Optional
+
+from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from backend.config import get_settings
 from karaoke_gen.utils import sanitize_filename
 
 logger = logging.getLogger(__name__)
+
+# Transient errors that indicate a stale HTTP connection (Cloud Run idle containers)
+TRANSIENT_ERRORS = (BrokenPipeError, ConnectionResetError, ConnectionError, ssl.SSLError)
 
 
 class GoogleDriveService:
@@ -32,6 +38,11 @@ class GoogleDriveService:
         self._service = None
         self._credentials_data: Optional[Dict[str, Any]] = None
         self._loaded = False
+
+    def _reset_service(self):
+        """Reset the cached Drive service to force a fresh connection on next use."""
+        logger.info("Resetting Google Drive service connection")
+        self._service = None
 
     def _load_credentials(self) -> Optional[Dict[str, Any]]:
         """Load OAuth credentials from Secret Manager."""
@@ -127,6 +138,9 @@ class GoogleDriveService:
         """
         Get existing folder or create new one, return folder ID.
 
+        Retries on transient connection errors (BrokenPipeError, SSLError)
+        that occur when Cloud Run containers sit idle between jobs.
+
         Args:
             parent_id: Parent folder ID
             folder_name: Name of folder to find or create
@@ -134,33 +148,41 @@ class GoogleDriveService:
         Returns:
             Folder ID
         """
-        logger.info(f"Looking for folder '{folder_name}' in parent {parent_id}")
+        for attempt in Retrying(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=2, max=8),
+            retry=retry_if_exception_type(TRANSIENT_ERRORS),
+            before_sleep=lambda retry_state: self._reset_service(),
+            reraise=True,
+        ):
+            with attempt:
+                logger.info(f"Looking for folder '{folder_name}' in parent {parent_id}")
 
-        # Search for existing folder
-        # Escape single quotes in folder name for Google Drive API query syntax
-        escaped_folder_name = folder_name.replace("'", "\\'")
-        query = (
-            f"name='{escaped_folder_name}' and '{parent_id}' in parents "
-            f"and mimeType='application/vnd.google-apps.folder' and trashed=false"
-        )
-        results = self.service.files().list(q=query, fields="files(id, name)").execute()
+                # Search for existing folder
+                # Escape single quotes in folder name for Google Drive API query syntax
+                escaped_folder_name = folder_name.replace("'", "\\'")
+                query = (
+                    f"name='{escaped_folder_name}' and '{parent_id}' in parents "
+                    f"and mimeType='application/vnd.google-apps.folder' and trashed=false"
+                )
+                results = self.service.files().list(q=query, fields="files(id, name)").execute()
 
-        if results.get("files"):
-            folder_id = results["files"][0]["id"]
-            logger.info(f"Found existing folder '{folder_name}': {folder_id}")
-            return folder_id
+                if results.get("files"):
+                    folder_id = results["files"][0]["id"]
+                    logger.info(f"Found existing folder '{folder_name}': {folder_id}")
+                    return folder_id
 
-        # Create folder
-        logger.info(f"Creating new folder '{folder_name}'")
-        metadata = {
-            "name": folder_name,
-            "mimeType": "application/vnd.google-apps.folder",
-            "parents": [parent_id],
-        }
-        folder = self.service.files().create(body=metadata, fields="id").execute()
-        folder_id = folder["id"]
-        logger.info(f"Created folder '{folder_name}': {folder_id}")
-        return folder_id
+                # Create folder
+                logger.info(f"Creating new folder '{folder_name}'")
+                metadata = {
+                    "name": folder_name,
+                    "mimeType": "application/vnd.google-apps.folder",
+                    "parents": [parent_id],
+                }
+                folder = self.service.files().create(body=metadata, fields="id").execute()
+                folder_id = folder["id"]
+                logger.info(f"Created folder '{folder_name}': {folder_id}")
+                return folder_id
 
     def upload_file(
         self,
@@ -171,6 +193,9 @@ class GoogleDriveService:
     ) -> str:
         """
         Upload a file to a specific Drive folder.
+
+        Retries on transient connection errors (BrokenPipeError, SSLError)
+        that occur when Cloud Run containers sit idle between jobs.
 
         Args:
             local_path: Local file path
@@ -183,49 +208,57 @@ class GoogleDriveService:
         """
         from googleapiclient.http import MediaFileUpload
 
-        file_size = os.path.getsize(local_path)
-        logger.info(
-            f"Uploading {local_path} ({file_size / 1024 / 1024:.1f} MB) "
-            f"as '{filename}' to folder {parent_id}"
-        )
+        for attempt in Retrying(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=2, max=8),
+            retry=retry_if_exception_type(TRANSIENT_ERRORS),
+            before_sleep=lambda retry_state: self._reset_service(),
+            reraise=True,
+        ):
+            with attempt:
+                file_size = os.path.getsize(local_path)
+                logger.info(
+                    f"Uploading {local_path} ({file_size / 1024 / 1024:.1f} MB) "
+                    f"as '{filename}' to folder {parent_id}"
+                )
 
-        # Determine MIME type
-        ext = os.path.splitext(local_path)[1].lower()
-        mime_types = {
-            ".mp4": "video/mp4",
-            ".mkv": "video/x-matroska",
-            ".zip": "application/zip",
-            ".flac": "audio/flac",
-            ".mp3": "audio/mpeg",
-            ".wav": "audio/wav",
-            ".png": "image/png",
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-        }
-        mime_type = mime_types.get(ext, "application/octet-stream")
+                # Determine MIME type
+                ext = os.path.splitext(local_path)[1].lower()
+                mime_types = {
+                    ".mp4": "video/mp4",
+                    ".mkv": "video/x-matroska",
+                    ".zip": "application/zip",
+                    ".flac": "audio/flac",
+                    ".mp3": "audio/mpeg",
+                    ".wav": "audio/wav",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                }
+                mime_type = mime_types.get(ext, "application/octet-stream")
 
-        # Check for existing file with same name
-        if replace_existing:
-            # Escape single quotes in filename for Google Drive API query syntax
-            escaped_filename = filename.replace("'", "\\'")
-            query = (
-                f"name='{escaped_filename}' and '{parent_id}' in parents and trashed=false"
-            )
-            results = self.service.files().list(q=query, fields="files(id)").execute()
-            for existing_file in results.get("files", []):
-                logger.info(f"Deleting existing file: {existing_file['id']}")
-                self.service.files().delete(fileId=existing_file["id"]).execute()
+                # Check for existing file with same name
+                if replace_existing:
+                    # Escape single quotes in filename for Google Drive API query syntax
+                    escaped_filename = filename.replace("'", "\\'")
+                    query = (
+                        f"name='{escaped_filename}' and '{parent_id}' in parents and trashed=false"
+                    )
+                    results = self.service.files().list(q=query, fields="files(id)").execute()
+                    for existing_file in results.get("files", []):
+                        logger.info(f"Deleting existing file: {existing_file['id']}")
+                        self.service.files().delete(fileId=existing_file["id"]).execute()
 
-        # Upload file
-        metadata = {"name": filename, "parents": [parent_id]}
-        media = MediaFileUpload(local_path, mimetype=mime_type, resumable=True)
+                # Upload file
+                metadata = {"name": filename, "parents": [parent_id]}
+                media = MediaFileUpload(local_path, mimetype=mime_type, resumable=True)
 
-        file_result = (
-            self.service.files().create(body=metadata, media_body=media, fields="id").execute()
-        )
-        file_id = file_result["id"]
-        logger.info(f"Successfully uploaded '{filename}': {file_id}")
-        return file_id
+                file_result = (
+                    self.service.files().create(body=metadata, media_body=media, fields="id").execute()
+                )
+                file_id = file_result["id"]
+                logger.info(f"Successfully uploaded '{filename}': {file_id}")
+                return file_id
 
     def upload_to_public_share(
         self,
@@ -308,6 +341,9 @@ class GoogleDriveService:
         """
         Delete a file from Google Drive.
 
+        Retries on transient connection errors (BrokenPipeError, SSLError)
+        that occur when Cloud Run containers sit idle between jobs.
+
         Args:
             file_id: Google Drive file ID to delete
 
@@ -317,9 +353,17 @@ class GoogleDriveService:
         logger.info(f"Deleting Google Drive file: {file_id}")
 
         try:
-            self.service.files().delete(fileId=file_id).execute()
-            logger.info(f"Successfully deleted file: {file_id}")
-            return True
+            for attempt in Retrying(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=2, max=8),
+                retry=retry_if_exception_type(TRANSIENT_ERRORS),
+                before_sleep=lambda retry_state: self._reset_service(),
+                reraise=True,
+            ):
+                with attempt:
+                    self.service.files().delete(fileId=file_id).execute()
+                    logger.info(f"Successfully deleted file: {file_id}")
+                    return True
         except Exception as e:
             # Check if it's a 404 (already deleted)
             if hasattr(e, 'resp') and e.resp.status == 404:

@@ -222,6 +222,18 @@ When deferring processing from one worker to another, you MUST update the job st
 ### Google Drive Query Escaping
 Escape special chars in Google Drive API queries: `'` → `\'`, `\` → `\\\\`.
 
+### Google Drive Stale Connection on Cloud Run (Feb 2026)
+**What happened**: Every GDrive upload silently failed for ~1 month (64 errors, 12+ jobs). Errors: `[Errno 32] Broken pipe` or `[SSL: UNEXPECTED_EOF_WHILE_READING]`. Jobs completed with `gdrive_files: {}` and no alert was sent.
+
+**Root cause**: The singleton `GoogleDriveService` caches its HTTP connection. When Cloud Run containers sit idle between jobs, the underlying TCP connection goes stale. The next API call hits a dead socket. The orchestrator catches all exceptions in distribution and continues silently.
+
+**Fix** (v0.119.7):
+1. Added tenacity retry with `_reset_service()` (sets `self._service = None` to force fresh connection) on transient errors (`BrokenPipeError`, `ConnectionResetError`, `ssl.SSLError`)
+2. Added `distribution_warnings` field to `OrchestratorResult` to track non-fatal upload failures
+3. Added Pushbullet notification when distribution uploads fail, so operator is alerted immediately
+
+**Pattern**: Any singleton service that caches HTTP connections should have retry logic with connection reset for stale connection errors. Cloud Run containers can idle for minutes between requests, killing keep-alive connections. Also, never silently swallow distribution failures - always track and alert on them.
+
 ### FFmpeg Path Escaping
 For subprocess without shell, FFmpeg filter paths need: apostrophes escaped as `'\\''`, special chars as `\\[char]`.
 

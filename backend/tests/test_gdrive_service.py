@@ -9,6 +9,7 @@ These tests mock the Google API client and Secret Manager to verify:
 """
 import json
 import os
+import ssl
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 
@@ -499,6 +500,186 @@ class TestUploadToPublicShare:
                 # Should only upload the one file that exists
                 assert mock_upload.call_count == 1
                 assert len(result) == 1
+
+
+class TestRetryBehavior:
+    """Test retry behavior for transient connection errors."""
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_retries_on_broken_pipe(self, mock_get_settings):
+        """Test that BrokenPipeError triggers retry and succeeds on second attempt."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        service = GoogleDriveService()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        # First call raises BrokenPipeError, second succeeds
+        mock_list_result.execute.side_effect = [
+            BrokenPipeError("[Errno 32] Broken pipe"),
+            {"files": [{"id": "folder-123", "name": "MP4"}]},
+        ]
+        mock_files_api.list.return_value = mock_list_result
+
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+        service._loaded = True
+        service._credentials_data = {"refresh_token": "token", "client_id": "id", "client_secret": "secret"}
+
+        # Patch _reset_service to clear but re-set the mock (avoid real OAuth)
+        def mock_reset():
+            service._service = mock_drive
+
+        service._reset_service = mock_reset
+
+        folder_id = service.get_or_create_folder("parent-123", "MP4")
+        assert folder_id == "folder-123"
+        assert mock_list_result.execute.call_count == 2
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_gives_up_after_3_attempts(self, mock_get_settings):
+        """Test that 3 consecutive failures raises the exception."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        service = GoogleDriveService()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        mock_list_result.execute.side_effect = BrokenPipeError("[Errno 32] Broken pipe")
+        mock_files_api.list.return_value = mock_list_result
+
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+        service._loaded = True
+        service._credentials_data = {"refresh_token": "token", "client_id": "id", "client_secret": "secret"}
+
+        # Patch _reset_service to re-set the mock (avoid real OAuth)
+        service._reset_service = lambda: setattr(service, '_service', mock_drive)
+
+        with pytest.raises(BrokenPipeError):
+            service.get_or_create_folder("parent-123", "MP4")
+
+        assert mock_list_result.execute.call_count == 3
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_service_reset_on_retry(self, mock_get_settings):
+        """Test that _service is reset to None between retry attempts."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        service = GoogleDriveService()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        mock_list_result.execute.side_effect = [
+            BrokenPipeError("[Errno 32] Broken pipe"),
+            {"files": [{"id": "folder-123", "name": "MP4"}]},
+        ]
+        mock_files_api.list.return_value = mock_list_result
+
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+        service._loaded = True
+        service._credentials_data = {"refresh_token": "token", "client_id": "id", "client_secret": "secret"}
+
+        # Patch _reset_service to track calls but still do the reset
+        original_reset = service._reset_service
+        reset_calls = []
+
+        def tracked_reset():
+            reset_calls.append(True)
+            original_reset()
+            # Re-set mock service so the retry works
+            service._service = mock_drive
+
+        service._reset_service = tracked_reset
+
+        folder_id = service.get_or_create_folder("parent-123", "MP4")
+        assert folder_id == "folder-123"
+        assert len(reset_calls) == 1  # Reset called once between attempt 1 and 2
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_retries_on_ssl_error(self, mock_get_settings):
+        """Test that SSLError triggers retry."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        service = GoogleDriveService()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        mock_list_result.execute.side_effect = [
+            ssl.SSLError("SSL: UNEXPECTED_EOF_WHILE_READING"),
+            {"files": [{"id": "folder-123", "name": "MP4"}]},
+        ]
+        mock_files_api.list.return_value = mock_list_result
+
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+        service._loaded = True
+        service._credentials_data = {"refresh_token": "token", "client_id": "id", "client_secret": "secret"}
+
+        # Patch _reset_service to re-set the mock (avoid real OAuth)
+        service._reset_service = lambda: setattr(service, '_service', mock_drive)
+
+        folder_id = service.get_or_create_folder("parent-123", "MP4")
+        assert folder_id == "folder-123"
+        assert mock_list_result.execute.call_count == 2
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_no_retry_on_non_transient_error(self, mock_get_settings):
+        """Test that non-transient errors are not retried."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        service = GoogleDriveService()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        mock_list_result.execute.side_effect = ValueError("bad value")
+        mock_files_api.list.return_value = mock_list_result
+
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+        service._loaded = True
+        service._credentials_data = {"refresh_token": "token", "client_id": "id", "client_secret": "secret"}
+
+        with pytest.raises(ValueError):
+            service.get_or_create_folder("parent-123", "MP4")
+
+        assert mock_list_result.execute.call_count == 1
 
 
 class TestGetGdriveService:
