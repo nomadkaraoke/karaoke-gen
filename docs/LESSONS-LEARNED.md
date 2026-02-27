@@ -707,6 +707,17 @@ Use subdomain detection in middleware. Disable query param detection in producti
 ### Middleware Mocking
 When mocking tenant middleware, patch both the middleware import path AND the service factory function.
 
+### Resilient Remote Worker Interactions (Feb 2026)
+
+When a Cloud Run poller calls a stateful GCE worker, deployments can kill the poller mid-encoding. The worker completes but nobody receives the result — the job gets permanently stuck. Worse, re-submitting gets a 409 because the worker's in-memory dict still has the job.
+
+**Three-part fix pattern:**
+1. **Make worker endpoints idempotent** — return cached results for completed jobs, allow retry on failure, return status for in-progress jobs (instead of hard 409 reject)
+2. **Handle all response types on the caller side** — `cached` → return immediately, `in_progress` → join the existing poll, `accepted` → normal flow. On 409 fallback, check job status before giving up.
+3. **Add stuck-job detection** — flag jobs in `encoding` status >50 min without `updated_at` advancing. This catches the case where the poller dies entirely.
+
+This generalizes the preview encoding pattern (`/encode-preview` was already idempotent; `/encode` was not).
+
 ---
 
 ## What We'd Do Differently
