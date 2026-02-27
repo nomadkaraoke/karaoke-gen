@@ -4,7 +4,7 @@ Tests for the job health service.
 Tests consistency checks and worker validation functions.
 """
 import pytest
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, timezone, UTC
 
 from backend.models.job import Job, JobStatus
 from backend.services.job_health_service import (
@@ -134,6 +134,43 @@ class TestCheckJobConsistency:
         )
         issues = check_job_consistency(job)
         assert issues == []
+
+    def test_encoding_recently_started_not_flagged(self):
+        """Encoding job started 10 minutes ago should not be flagged."""
+        job = create_test_job(status=JobStatus.ENCODING)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+        issues = check_job_consistency(job)
+        assert not any("encoding_stuck" in i for i in issues)
+
+    def test_encoding_stuck_55_min_flagged(self):
+        """Encoding job stuck for 55 minutes should be flagged."""
+        job = create_test_job(status=JobStatus.ENCODING)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=55)
+        issues = check_job_consistency(job)
+        assert any("encoding_stuck" in i for i in issues)
+        stuck_issue = [i for i in issues if "encoding_stuck" in i][0]
+        assert "55 min" in stuck_issue
+
+    def test_encoding_at_49_min_not_flagged(self):
+        """Encoding job at 49 minutes should not be flagged (must exceed 50)."""
+        job = create_test_job(status=JobStatus.ENCODING)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=49)
+        issues = check_job_consistency(job)
+        assert not any("encoding_stuck" in i for i in issues)
+
+    def test_non_encoding_job_not_affected(self):
+        """Non-encoding job should not trigger encoding_stuck check."""
+        job = create_test_job(status=JobStatus.GENERATING_VIDEO)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=120)
+        issues = check_job_consistency(job)
+        assert not any("encoding_stuck" in i for i in issues)
+
+    def test_encoding_stuck_with_naive_datetime(self):
+        """Encoding-stuck check handles naive datetime (no tzinfo)."""
+        job = create_test_job(status=JobStatus.ENCODING)
+        job.updated_at = datetime.utcnow() - timedelta(minutes=60)
+        issues = check_job_consistency(job)
+        assert any("encoding_stuck" in i for i in issues)
 
 
 class TestCheckJobConsistencyDetailed:

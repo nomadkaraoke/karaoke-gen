@@ -7,6 +7,7 @@ bugs in the state machine or trigger logic.
 Created as part of state machine robustness improvements (2026-02-02).
 """
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 
 from backend.models.job import Job, JobStatus
@@ -103,6 +104,21 @@ def check_job_consistency(job: Job) -> List[str]:
         issues.append(
             f"pending_with_input_media: has input_media_gcs_path but status=pending (may be stuck)"
         )
+
+    # Check: job stuck in encoding status beyond 50 minutes
+    # Encoding timeout is 1 hour; if updated_at hasn't advanced in 50 min,
+    # the poller likely died (e.g., Cloud Run deployment killed the instance)
+    if status == JobStatus.ENCODING and job.updated_at:
+        now = datetime.now(timezone.utc)
+        updated_at = job.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        encoding_age = now - updated_at
+        if encoding_age > timedelta(minutes=50):
+            minutes = int(encoding_age.total_seconds() / 60)
+            issues.append(
+                f"encoding_stuck: status=encoding for {minutes} min without update (updated_at={updated_at.isoformat()})"
+            )
 
     return issues
 

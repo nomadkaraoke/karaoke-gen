@@ -198,7 +198,24 @@ class EncodingService:
         if resp["status"] == 401:
             raise RuntimeError("Invalid API key for encoding worker")
         if resp["status"] == 409:
-            raise RuntimeError(f"Encoding job {job_id} already exists")
+            # Job already exists on worker — check if it already completed
+            logger.warning(f"[job:{job_id}] GCE worker returned 409, checking job status")
+            try:
+                status = await self.get_job_status(job_id)
+                job_status = status.get("status", "unknown")
+                if job_status == "complete":
+                    logger.info(f"[job:{job_id}] Job already complete on GCE worker, returning cached result")
+                    return {"status": "cached", "job_id": job_id, "output_files": status.get("output_files")}
+                elif job_status in ("pending", "running"):
+                    logger.info(f"[job:{job_id}] Job still in progress on GCE worker")
+                    return {"status": "in_progress", "job_id": job_id}
+                else:
+                    raise RuntimeError(f"Encoding job {job_id} already exists with status: {job_status}")
+            except RuntimeError as e:
+                if "not found" in str(e).lower():
+                    # Job was in worker memory but got cleared (restart) — safe to raise original error
+                    raise RuntimeError(f"Encoding job {job_id} conflict: 409 but job not found on status check")
+                raise
         if resp["status"] != 200:
             raise RuntimeError(f"Failed to submit encoding job: {resp['status']} - {resp['text']}")
 
@@ -331,7 +348,17 @@ class EncodingService:
         config = encoding_config or {"formats": ["mp4_4k", "mp4_720p"]}
 
         # Submit the job
-        await self.submit_encoding_job(job_id, input_gcs_path, output_gcs_path, config)
+        submit_result = await self.submit_encoding_job(job_id, input_gcs_path, output_gcs_path, config)
+
+        # If cached, return immediately — encoding already done
+        submit_status = submit_result.get("status")
+        if submit_status == "cached":
+            logger.info(f"[job:{job_id}] Encoding already cached, returning immediately")
+            return {"status": "complete", "output_files": submit_result.get("output_files")}
+
+        # If in_progress, another request is encoding it — just wait for that
+        if submit_status == "in_progress":
+            logger.info(f"[job:{job_id}] Encoding already in progress, joining poll")
 
         # Wait for completion
         return await self.wait_for_completion(

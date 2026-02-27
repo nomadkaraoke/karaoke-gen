@@ -596,8 +596,18 @@ async def submit_encode_job(request: EncodeRequest, background_tasks: Background
     # Submit an encoding job
     job_id = request.job_id
 
+    # If job already exists, return cached result or current status
     if job_id in jobs:
-        raise HTTPException(status_code=409, detail=f"Job {job_id} already exists")
+        existing_job = jobs[job_id]
+        if existing_job["status"] == "complete":
+            # Return cached result - encoding already done
+            return {"status": "cached", "job_id": job_id, "output_files": existing_job.get("output_files")}
+        elif existing_job["status"] == "failed":
+            # Previous attempt failed, allow retry by replacing the job
+            pass
+        else:
+            # Job is still in progress
+            return {"status": "in_progress", "job_id": job_id}
 
     jobs[job_id] = {
         "job_id": job_id,
