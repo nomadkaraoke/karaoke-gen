@@ -128,14 +128,37 @@ EOF
 
 ### GCE Encoding Worker
 ```bash
-# SSH to restart service (clears in-memory job queue)
-gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
-  --command="sudo systemctl restart encoding-worker"
-
-# Check health
+# Check health (includes wheel_version)
 gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
   --command="curl -s http://localhost:8080/health"
+
+# Restart service (pick up new wheel after a deploy)
+gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
+  --command="sudo systemctl restart encoding-worker"
 ```
+
+**Job stuck at `encoding` status?** This happens when a Cloud Run deployment kills the poller mid-encoding. The GCE worker finishes but nobody receives the result. Recovery steps:
+
+```bash
+# 1. Check if the job is flagged by health monitoring
+curl -s "https://api.nomadkaraoke.com/api/health/job-consistency" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)" \
+  | python3 -m json.tool | grep -A3 "encoding_stuck"
+
+# 2. Check GCE worker status for the specific job
+WORKER_URL=$(gcloud secrets versions access latest --secret=encoding-worker-url --project=nomadkaraoke)
+WORKER_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key --project=nomadkaraoke)
+curl -s "$WORKER_URL/status/YOUR_JOB_ID" -H "X-API-Key: $WORKER_KEY" | python3 -m json.tool
+
+# 3. Re-trigger the video worker — it will rejoin the GCE poll if still running,
+#    or pick up the cached result if already complete
+curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/video" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)" \
+  -H "Content-Type: application/json" \
+  -d '{"job_id": "YOUR_JOB_ID"}'
+```
+
+Note: **SSH restart is not needed** for stuck encoding jobs since PR #413 (v0.119.6). The `/encode` endpoint is now idempotent — re-triggering the video worker is sufficient.
 
 ### What Doesn't Work
 - `gcloud auth print-identity-token` - Wrong token type for internal endpoints
