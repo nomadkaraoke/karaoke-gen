@@ -1924,6 +1924,179 @@ class TestAsyncEventLoopFixes:
         mock_job_manager.fail_job.assert_called_once()
         assert "Connection refused" in mock_job_manager.fail_job.call_args.args[1]
 
+    def test_wait_for_download_no_filepath_fails_job(
+        self, mock_job_manager, mock_storage_service
+    ):
+        """If wait_for_download returns no filepath, job should be failed."""
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
+        import asyncio
+
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{
+                'title': 'Test',
+                'artist': 'Artist',
+                'provider': 'RED',
+                'quality': 'FLAC',
+                'source_id': 'torrent_nofp',
+            }]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_audio_service = Mock()
+
+        # wait_for_download returns status without gcs_path or output_path
+        mock_flacfetch = Mock()
+        mock_flacfetch.download_by_id = AsyncMock(return_value="dl-nofp")
+        mock_flacfetch.wait_for_download = AsyncMock(return_value={
+            "status": "complete",
+            # No gcs_path or output_path
+        })
+
+        with patch('backend.api.routes.audio_search.get_flacfetch_client', return_value=mock_flacfetch):
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    _download_audio_and_trigger_workers(
+                        job_id="job_nofp",
+                        selection_index=0,
+                        audio_search_service=mock_audio_service,
+                    )
+                )
+            finally:
+                loop.close()
+
+        mock_job_manager.fail_job.assert_called_once()
+        assert "no file path" in mock_job_manager.fail_job.call_args.args[1].lower()
+
+    def test_spotify_wait_for_download_no_filepath_fails_job(
+        self, mock_job_manager, mock_storage_service
+    ):
+        """Spotify: if wait_for_download returns no filepath, job should be failed."""
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
+        import asyncio
+
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{
+                'title': 'Test',
+                'artist': 'Artist',
+                'provider': 'Spotify',
+                'quality': 'OGG',
+                'source_id': 'spotify:track:nofp',
+            }]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_audio_service = Mock()
+
+        mock_flacfetch = Mock()
+        mock_flacfetch.download_by_id = AsyncMock(return_value="dl-sp-nofp")
+        mock_flacfetch.wait_for_download = AsyncMock(return_value={
+            "status": "complete",
+        })
+
+        with patch('backend.api.routes.audio_search.get_flacfetch_client', return_value=mock_flacfetch):
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    _download_audio_and_trigger_workers(
+                        job_id="job_sp_nofp",
+                        selection_index=0,
+                        audio_search_service=mock_audio_service,
+                    )
+                )
+            finally:
+                loop.close()
+
+        mock_job_manager.fail_job.assert_called_once()
+        assert "no file path" in mock_job_manager.fail_job.call_args.args[1].lower()
+
+    def test_youtube_download_error_fails_job(
+        self, mock_job_manager, mock_storage_service
+    ):
+        """YouTubeDownloadError should be caught and job failed."""
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
+        from backend.services.youtube_download_service import YouTubeDownloadError
+        import asyncio
+
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{
+                'title': 'Deleted Video',
+                'artist': 'Unknown',
+                'provider': 'YouTube',
+                'quality': 'Opus',
+                'source_id': 'deleted123',
+            }]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_audio_service = Mock()
+
+        mock_youtube_service = Mock()
+        mock_youtube_service.download_by_id = AsyncMock(
+            side_effect=YouTubeDownloadError("Video unavailable")
+        )
+
+        with patch('backend.api.routes.audio_search.get_youtube_download_service', return_value=mock_youtube_service):
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    _download_audio_and_trigger_workers(
+                        job_id="job_yt_err",
+                        selection_index=0,
+                        audio_search_service=mock_audio_service,
+                    )
+                )
+            finally:
+                loop.close()
+
+        mock_job_manager.fail_job.assert_called_once()
+        assert "Video unavailable" in mock_job_manager.fail_job.call_args.args[1]
+
+    def test_youtube_no_video_id_fails_job(
+        self, mock_job_manager, mock_storage_service
+    ):
+        """YouTube download with no source_id and no extractable video ID should fail."""
+        from backend.api.routes.audio_search import _download_audio_and_trigger_workers
+        import asyncio
+
+        mock_job = Mock()
+        mock_job.state_data = {
+            'audio_search_results': [{
+                'title': 'Bad Link',
+                'artist': 'Unknown',
+                'provider': 'YouTube',
+                'quality': 'Opus',
+                # No source_id
+                'url': 'https://example.com/not-youtube',
+            }]
+        }
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_audio_service = Mock()
+
+        mock_youtube_service = Mock()
+        mock_youtube_service._extract_video_id = Mock(return_value=None)
+
+        with patch('backend.api.routes.audio_search.get_youtube_download_service', return_value=mock_youtube_service):
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    _download_audio_and_trigger_workers(
+                        job_id="job_yt_noid",
+                        selection_index=0,
+                        audio_search_service=mock_audio_service,
+                    )
+                )
+            finally:
+                loop.close()
+
+        mock_job_manager.fail_job.assert_called_once()
+        assert "video ID" in mock_job_manager.fail_job.call_args.args[1] or \
+               "No video" in mock_job_manager.fail_job.call_args.args[1]
+
 
 class TestSearchAsyncUsage:
     """Tests that the search endpoint uses search_async instead of sync search."""
