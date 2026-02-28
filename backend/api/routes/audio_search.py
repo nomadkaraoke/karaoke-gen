@@ -35,6 +35,7 @@ from backend.services.audio_search_service import (
     NoResultsError,
     DownloadError,
 )
+from backend.services.flacfetch_client import get_flacfetch_client, FlacfetchServiceError
 from backend.services.youtube_download_service import (
     get_youtube_download_service,
     YouTubeDownloadError,
@@ -382,8 +383,9 @@ async def _download_audio_and_trigger_workers(
                 raise DownloadError(f"YouTube download failed: {e}")
 
         elif source_name in ['RED', 'OPS']:
-            # Torrent sources - must use remote flacfetch
-            if not audio_search_service.is_remote_enabled():
+            # Torrent sources - must use remote flacfetch (async, no event loop blocking)
+            flacfetch_client = get_flacfetch_client()
+            if not flacfetch_client:
                 raise DownloadError(
                     f"Cannot download from {source_name} without remote flacfetch service. "
                     "Configure FLACFETCH_API_URL."
@@ -393,31 +395,44 @@ async def _download_audio_and_trigger_workers(
 
             if source_id:
                 logger.info(f"Torrent download via download_by_id: {source_name} ID={source_id}")
-                result = audio_search_service.download_by_id(
+                download_id = await flacfetch_client.download_by_id(
                     source_name=source_name,
                     source_id=source_id,
-                    output_dir="",
                     target_file=target_file,
                     download_url=download_url,
                     gcs_path=gcs_destination,
                 )
             else:
                 logger.info(f"Torrent download via search-based download")
-                result = audio_search_service.download(
+                download_id = await flacfetch_client.download(
+                    search_id=remote_search_id,
                     result_index=selection_index,
-                    output_dir="",
                     gcs_path=gcs_destination,
-                    remote_search_id=remote_search_id,
                 )
 
-            # Extract GCS path from result
-            audio_gcs_path = _extract_gcs_path(result.filepath)
-            filename = os.path.basename(result.filepath)
+            def log_progress(status):
+                progress = status.get("progress", 0)
+                speed = status.get("download_speed_kbps", 0)
+                logger.debug(f"Download progress: {progress:.1f}% ({speed:.1f} KB/s)")
+
+            final_status = await flacfetch_client.wait_for_download(
+                download_id,
+                timeout=600,
+                progress_callback=log_progress,
+            )
+
+            filepath = final_status.get("gcs_path") or final_status.get("output_path")
+            if not filepath:
+                raise DownloadError("Remote download completed but no file path returned")
+
+            audio_gcs_path = _extract_gcs_path(filepath)
+            filename = os.path.basename(filepath)
             logger.info(f"Torrent download complete: {audio_gcs_path}")
 
         elif source_name == 'Spotify':
-            # Spotify downloads - use audio_search_service
-            if not audio_search_service.is_remote_enabled():
+            # Spotify downloads - use async FlacfetchClient directly (no event loop blocking)
+            flacfetch_client = get_flacfetch_client()
+            if not flacfetch_client:
                 raise DownloadError(
                     f"Cannot download from Spotify without remote flacfetch service. "
                     "Configure FLACFETCH_API_URL."
@@ -426,25 +441,40 @@ async def _download_audio_and_trigger_workers(
             gcs_destination = f"uploads/{job_id}/audio/"
             logger.info(f"Spotify download: source_id={source_id}")
 
-            result = audio_search_service.download_by_id(
+            download_id = await flacfetch_client.download_by_id(
                 source_name=source_name,
                 source_id=source_id,
-                output_dir="",
                 download_url=download_url,
                 gcs_path=gcs_destination,
             )
 
-            audio_gcs_path = _extract_gcs_path(result.filepath)
-            filename = os.path.basename(result.filepath)
+            def log_progress(status):
+                progress = status.get("progress", 0)
+                speed = status.get("download_speed_kbps", 0)
+                logger.debug(f"Download progress: {progress:.1f}% ({speed:.1f} KB/s)")
+
+            final_status = await flacfetch_client.wait_for_download(
+                download_id,
+                timeout=600,
+                progress_callback=log_progress,
+            )
+
+            filepath = final_status.get("gcs_path") or final_status.get("output_path")
+            if not filepath:
+                raise DownloadError("Remote download completed but no file path returned")
+
+            audio_gcs_path = _extract_gcs_path(filepath)
+            filename = os.path.basename(filepath)
             logger.info(f"Spotify download complete: {audio_gcs_path}")
 
         else:
-            # Unknown source - try generic download
+            # Unknown source - try generic download (run sync code in thread to avoid blocking)
             logger.warning(f"Unknown source type: {source_name}, attempting generic download")
             temp_dir = tempfile.mkdtemp(prefix=f"audio_download_{job_id}_")
 
             try:
-                result = audio_search_service.download(
+                result = await asyncio.to_thread(
+                    audio_search_service.download,
                     result_index=selection_index,
                     output_dir=temp_dir,
                     remote_search_id=remote_search_id,
@@ -494,7 +524,7 @@ async def _download_audio_and_trigger_workers(
             worker_service.trigger_lyrics_worker(job_id)
         )
 
-    except DownloadError as e:
+    except (DownloadError, FlacfetchServiceError) as e:
         logger.error(f"Download failed for job {job_id}: {e}")
         job_manager.fail_job(job_id, f"Audio download failed: {e}")
     except Exception as e:
@@ -734,7 +764,7 @@ async def search_audio(
         audio_search_service = get_audio_search_service()
         
         try:
-            search_results = audio_search_service.search(body.artist, body.title)
+            search_results = await audio_search_service.search_async(body.artist, body.title)
         except NoResultsError as e:
             job_manager.fail_job(job_id, f"No audio sources found for: {body.artist} - {body.title}")
             raise HTTPException(
@@ -867,9 +897,9 @@ async def search_audio(
         
     except HTTPException:
         raise
-    except (InsufficientCreditsError, RateLimitExceededError):
-        raise
     except Exception as e:
+        if isinstance(e, (InsufficientCreditsError, RateLimitExceededError)):
+            raise
         logger.error(f"Error in audio search: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 

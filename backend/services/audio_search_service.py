@@ -612,13 +612,13 @@ class AudioSearchService:
     async def search_async(self, artist: str, title: str) -> List[AudioSearchResult]:
         """
         Async version of search for use in async routes.
-        
-        Note: Currently wraps sync search in executor. Future optimization
-        could make this fully async.
+
+        Runs the sync search in a thread executor to avoid blocking
+        the event loop.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self.search, artist, title)
-    
+
     async def download_async(
         self,
         result_index: int,
@@ -630,10 +630,10 @@ class AudioSearchService:
         """
         Async version of download for use in async routes.
 
-        Note: Currently wraps sync download in executor. Future optimization
-        could make this fully async.
+        Runs the sync download in a thread executor to avoid blocking
+        the event loop.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None,
             lambda: self.download(result_index, output_dir, output_filename, gcs_path, remote_search_id)
@@ -651,8 +651,11 @@ class AudioSearchService:
     ) -> AudioDownloadResult:
         """
         Async version of download_by_id for use in async routes.
+
+        Runs the sync download_by_id in a thread executor to avoid blocking
+        the event loop.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None,
             lambda: self.download_by_id(

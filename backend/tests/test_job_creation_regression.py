@@ -196,7 +196,7 @@ class TestUserEmailExtraction:
             mock_jm.create_job.return_value = mock_job
             mock_jm.get_job.return_value = mock_job
             mock_cred.return_value.check_youtube_credentials.return_value = Mock(status=Mock(value="valid"))
-            mock_search.return_value.search.return_value = []
+            mock_search.return_value.search_async = AsyncMock(return_value=[])
 
             await search_audio(
                 request=mock_request,

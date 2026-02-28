@@ -115,6 +115,7 @@ class TestAudioSearchYouTubeFlow:
     async def test_torrent_download_does_not_use_youtube_service(self, mock_youtube_service, mock_services):
         """
         When selecting a torrent result (RED/OPS), should NOT use YouTubeDownloadService.
+        Should use FlacfetchClient directly instead.
         """
         mock_job = mock_services['job_manager'].get_job.return_value
         mock_job.status = "awaiting_audio_selection"
@@ -132,16 +133,22 @@ class TestAudioSearchYouTubeFlow:
 
         from backend.api.routes.audio_search import _download_audio_and_trigger_workers
 
-        # Mock audio_search_service for torrent download
         mock_audio_search_service = MagicMock()
-        mock_audio_search_service.is_remote_enabled = MagicMock(return_value=True)
-        mock_result = MagicMock()
-        mock_result.filepath = "gs://bucket/uploads/test/audio/test.flac"
-        mock_audio_search_service.download_by_id = MagicMock(return_value=mock_result)
+
+        # Mock FlacfetchClient for direct async download
+        mock_flacfetch = MagicMock()
+        mock_flacfetch.download_by_id = AsyncMock(return_value="dl-test-123")
+        mock_flacfetch.wait_for_download = AsyncMock(return_value={
+            "status": "complete",
+            "gcs_path": "gs://bucket/uploads/test/audio/test.flac",
+        })
 
         with patch(
             'backend.api.routes.audio_search.get_youtube_download_service',
             return_value=mock_youtube_service
+        ), patch(
+            'backend.api.routes.audio_search.get_flacfetch_client',
+            return_value=mock_flacfetch
         ), patch(
             'backend.api.routes.audio_search.job_manager',
             mock_services['job_manager']
@@ -152,7 +159,6 @@ class TestAudioSearchYouTubeFlow:
             'backend.api.routes.audio_search.worker_service',
             mock_services['worker_service']
         ):
-            # Call the download function (now runs as background task, returns None)
             await _download_audio_and_trigger_workers(
                 job_id="test_job_123",
                 selection_index=0,
@@ -162,8 +168,8 @@ class TestAudioSearchYouTubeFlow:
             # YouTubeDownloadService should NOT be called for torrent
             mock_youtube_service.download_by_id.assert_not_called()
 
-            # audio_search_service.download_by_id should be called instead
-            mock_audio_search_service.download_by_id.assert_called_once()
+            # FlacfetchClient.download_by_id should be called directly
+            mock_flacfetch.download_by_id.assert_called_once()
 
 
 class TestDirectUrlSubmissionFlow:
