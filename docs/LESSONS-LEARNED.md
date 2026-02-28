@@ -669,6 +669,9 @@ Langfuse v3 is built on OpenTelemetry. If `CallbackHandler()` is created without
 ### Cold Start Mitigation
 Set `min-instances > 0` for Cloud Run services with heavy initialization.
 
+### Never Call sync-over-async from FastAPI async Routes (Feb 2026)
+Sync methods that internally create new event loops (`asyncio.new_event_loop()` + `loop.run_until_complete()`) will **block the FastAPI event loop** when called from `async def` routes or background tasks. The response body gets queued but never flushed because the blocked loop can't process I/O — causing 20-36s endpoint latency instead of <1s. **Fix**: Either (a) call the underlying async client directly with `await` (preferred — e.g., `await flacfetch_client.download_by_id()`), or (b) wrap sync calls in `await asyncio.to_thread()` / `loop.run_in_executor()` to run them in a thread pool. The `nest_asyncio` library is NOT a reliable workaround — it patches CPython internals and can cause deadlocks. See `audio_search.py` and `youtube_download_service.py` for the correct async patterns.
+
 ---
 
 ## Data & Storage
