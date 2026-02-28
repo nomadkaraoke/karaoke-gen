@@ -403,6 +403,10 @@ async def _download_audio_and_trigger_workers(
                     gcs_path=gcs_destination,
                 )
             else:
+                if not remote_search_id:
+                    raise DownloadError(
+                        f"No source_id or remote_search_id available for {source_name} download"
+                    )
                 logger.info(f"Torrent download via search-based download")
                 download_id = await flacfetch_client.download(
                     search_id=remote_search_id,
