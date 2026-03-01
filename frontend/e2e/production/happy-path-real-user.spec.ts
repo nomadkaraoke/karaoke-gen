@@ -13,8 +13,8 @@ import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-tes
  * 1. Landing Page - Navigate and verify
  * 2. New User Signup - Create testmail.app inbox, submit beta form, verify email
  * 3. Magic Link Auth - Click magic link to authenticate
- * 4. Create Job - Search for test song via UI
- * 5. Audio Selection - Select audio source via UI dialog
+ * 4. Create Job - Guided flow Step 1 (Song Info) + Step 2 (Choose Audio)
+ * 5. Audio Selection & Create - Guided flow Step 3 (Customize & Create) → "Job Created"
  * 6. Wait for Processing - Monitor via UI status updates
  * 7. Combined Review - Open review UI, preview video, proceed to instrumental
  * 8. Instrumental Selection - Select instrumental and submit (same page via hash nav)
@@ -358,39 +358,98 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       }
 
       // =========================================================================
-      // STEP 4: Create Karaoke Job (via UI)
+      // STEP 4: Create Karaoke Job via Guided Flow
+      // The new guided flow has 3 inline steps:
+      //   Step 1 (Song Info): Fill artist/title → "Choose Audio"
+      //   Step 2 (Choose Audio): Auto-search → select result
+      //   Step 3 (Customize & Create): Confirm settings → "Create Karaoke Video"
       // =========================================================================
       console.log('\n========================================');
-      console.log('STEP 4: Create Karaoke Job');
+      console.log('STEP 4: Create Karaoke Job (Guided Flow)');
       console.log('========================================');
 
-      // Navigate to Search tab
-      await page.getByRole('tab', { name: /search/i }).click();
-      await page.waitForTimeout(1000);
+      // --- Guided Step 1: Song Info ---
+      await page.getByTestId('guided-artist-input').fill(TEST_SONG.artist);
+      await page.getByTestId('guided-title-input').fill(TEST_SONG.title);
+      console.log(`  Filled song info: ${TEST_SONG.artist} - ${TEST_SONG.title}`);
 
-      // Fill artist and title (using data-testid for robust test selectors)
-      await page.getByTestId('search-artist-input').fill(TEST_SONG.artist);
-      await page.getByTestId('search-title-input').fill(TEST_SONG.title);
-      console.log(`  Searching for: ${TEST_SONG.artist} - ${TEST_SONG.title}`);
+      await page.screenshot({ path: 'test-results/04a-song-info.png' });
 
-      await page.screenshot({ path: 'test-results/04a-search-form.png' });
+      // Click "Choose Audio" to advance to Step 2 and trigger search
+      await page.getByRole('button', { name: /choose audio/i }).click();
+      console.log('  Clicked "Choose Audio" — searching for audio sources...');
 
-      // Submit search
-      await page.getByRole('button', { name: /search.*create/i }).click();
+      // =========================================================================
+      // STEP 5: Audio Selection (Guided Step 2)
+      // =========================================================================
+      console.log('\n========================================');
+      console.log('STEP 5: Audio Selection (Guided Step 2)');
+      console.log('========================================');
 
-      // Wait for job card to appear
-      console.log('  Waiting for job card...');
+      // Wait for search results to appear (Tier 1/2/3 or no results)
+      await expect(
+        page.getByText('Perfect match found')
+          .or(page.getByText('Recommended'))
+          .or(page.getByText('Limited sources found'))
+          .or(page.getByText(/no audio sources/i))
+      ).toBeVisible({ timeout: TIMEOUTS.audioSearch });
+
+      await page.screenshot({ path: 'test-results/05a-search-results.png' });
+
+      // Determine tier and select audio
+      const hasPickCard = await page.getByTestId('pick-card').isVisible().catch(() => false);
+      if (hasPickCard) {
+        // Tier 1 or 2: click "Use This Audio" on the pick card
+        const tierText = await page.getByText('Perfect match found').isVisible().catch(() => false)
+          ? 'Tier 1 (Perfect match)' : 'Tier 2 (Recommended)';
+        console.log(`  ${tierText} — clicking "Use This Audio"`);
+        await page.getByRole('button', { name: /use this audio/i }).click();
+      } else if (await page.getByText('Limited sources found').isVisible().catch(() => false)) {
+        // Tier 3: find and click the first Select button in results
+        console.log('  Tier 3 (Limited sources) — selecting first available result');
+        const selectBtns = page.getByRole('button', { name: /^select$/i });
+        const count = await selectBtns.count();
+        console.log(`  Found ${count} selectable results`);
+        if (count > 0) {
+          await selectBtns.first().click();
+        } else {
+          throw new Error('No audio sources available for selection');
+        }
+      } else {
+        throw new Error('No audio sources found — cannot proceed');
+      }
+
+      await page.screenshot({ path: 'test-results/05b-audio-selected.png' });
+      console.log('  Audio source selected');
+
+      // --- Guided Step 3: Customize & Create ---
+      console.log('  Waiting for Customize & Create step...');
+      await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
+
+      await page.screenshot({ path: 'test-results/05c-customize-step.png' });
+
+      // Accept defaults and create
+      await page.getByRole('button', { name: /create karaoke video/i }).click();
+      console.log('  Clicked "Create Karaoke Video"');
+
+      // Wait for success state
+      await expect(page.getByText('Job Created')).toBeVisible({ timeout: TIMEOUTS.action });
+      console.log('  Job created successfully!');
+
+      await page.screenshot({ path: 'test-results/05d-job-created.png' });
+
+      // Find the job card in Recent Jobs
+      console.log('  Looking for job card in Recent Jobs...');
       const jobCard = page.locator('[class*="rounded-lg"][class*="border"]').filter({
-        hasText: `${TEST_SONG.artist} - ${TEST_SONG.title}`
+        hasText: new RegExp(`${TEST_SONG.artist}.*${TEST_SONG.title}`, 'i')
       }).first();
 
-      await expect(jobCard).toBeVisible({ timeout: TIMEOUTS.audioSearch });
+      await expect(jobCard).toBeVisible({ timeout: TIMEOUTS.action });
       console.log('  Job card visible');
 
-      // Extract job ID from the card's full text content
-      // The ID appears as "ID: xxxxxxxx" in the card text (e.g., "piri - dogID: af10c81f")
+      // Extract job ID from the card
       const cardFullText = await jobCard.textContent() || '';
-      const idMatch = cardFullText.match(/ID:\s*([a-f0-9]{8,})/i);
+      const idMatch = cardFullText.match(/ID:\s*([a-f0-9]{8,})/i) || cardFullText.match(/([a-f0-9]{8})/i);
       if (idMatch) {
         jobId = idMatch[1];
         console.log(`  Job ID: ${jobId}`);
@@ -399,76 +458,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log(`  Card text sample: ${cardFullText.substring(0, 100)}...`);
       }
 
-      await page.screenshot({ path: 'test-results/04b-job-created.png' });
-      console.log('STEP 4 COMPLETE: Job created');
-
-      // =========================================================================
-      // STEP 5: Audio Selection (via UI)
-      // =========================================================================
-      console.log('\n========================================');
-      console.log('STEP 5: Audio Selection');
-      console.log('========================================');
-
-      // Wait for job to need audio selection or skip if not needed
-      await page.waitForTimeout(5000);
-
-      // Check if Select Audio button appears
-      const selectAudioBtn = jobCard.getByRole('button', { name: /select audio/i });
-      if (await selectAudioBtn.isVisible({ timeout: 30000 }).catch(() => false)) {
-        console.log('  Opening audio selection dialog...');
-        await selectAudioBtn.click();
-        await page.waitForTimeout(2000);
-
-        const dialog = page.locator('[role="dialog"]');
-        if (await dialog.isVisible({ timeout: 5000 })) {
-          await page.screenshot({ path: 'test-results/05a-audio-dialog-loading.png' });
-
-          // Wait for the loading spinner to disappear
-          // The AudioSearchDialog shows "Loading..." while fetching results
-          const loadingIndicator = dialog.getByText(/loading/i);
-          try {
-            await expect(loadingIndicator).not.toBeVisible({ timeout: 60000 });
-            console.log('  Audio results loaded');
-          } catch {
-            console.log('  WARNING: Loading indicator timeout');
-          }
-
-          await page.screenshot({ path: 'test-results/05b-audio-dialog-loaded.png' });
-
-          // Check for "No audio sources found" message
-          const noResultsMsg = dialog.getByText(/no audio sources found/i);
-          if (await noResultsMsg.isVisible({ timeout: 2000 }).catch(() => false)) {
-            console.log('  WARNING: No audio sources found - this may cause the test to fail');
-            await page.screenshot({ path: 'test-results/05b-no-audio-sources.png' });
-          }
-
-          // Find and click first Select button
-          const selectButtons = dialog.getByRole('button', { name: /^select$/i });
-          const count = await selectButtons.count();
-          console.log(`  Found ${count} audio options`);
-
-          if (count > 0) {
-            await selectButtons.first().click();
-            console.log('  Audio selected via UI');
-
-            // Wait for dialog to close
-            await dialog.waitFor({ state: 'hidden', timeout: TIMEOUTS.audioSearch }).catch(() => {
-              console.log('  Dialog still open - pressing Escape');
-              return page.keyboard.press('Escape');
-            });
-          } else {
-            console.log('  ERROR: No Select buttons found - closing dialog');
-            await page.keyboard.press('Escape');
-            // This is a critical error - the job won't progress without audio selection
-            throw new Error('No audio sources available for selection. The job cannot proceed.');
-          }
-        }
-      } else {
-        console.log('  No audio selection needed - job auto-selected or cached');
-      }
-
-      await page.screenshot({ path: 'test-results/05c-after-audio.png' });
-      console.log('STEP 5 COMPLETE: Audio selection handled');
+      console.log('STEP 5 COMPLETE: Job created via guided flow');
 
       // =========================================================================
       // STEP 6: Wait for Lyrics Processing
