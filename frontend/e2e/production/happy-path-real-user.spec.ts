@@ -419,14 +419,15 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         throw new Error('No audio sources found — cannot proceed');
       }
 
-      await page.screenshot({ path: 'test-results/05b-audio-selected.png' });
       console.log('  Audio source selected');
 
       // --- Guided Step 3: Customize & Create ---
       console.log('  Waiting for Customize & Create step...');
       await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
 
-      await page.screenshot({ path: 'test-results/05c-customize-step.png' });
+      // Wait for Title Card Preview to render (it starts blank)
+      await page.waitForTimeout(3000);
+      await page.screenshot({ path: 'test-results/05b-customize-step.png' });
 
       // Accept defaults and create
       await page.getByRole('button', { name: /create karaoke video/i }).click();
@@ -580,15 +581,12 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       await reviewPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await reviewPage.waitForTimeout(1000);
 
-      await reviewPage.screenshot({ path: 'test-results/07b-scrolled-to-bottom.png', fullPage: true });
-
       // Click "Preview Video" button (at bottom of the lyrics review page)
-      // This button has text "Preview Video" and an OndemandVideo icon
       const previewVideoBtn = reviewPage.getByRole('button', { name: /preview video/i });
       await expect(previewVideoBtn).toBeVisible({ timeout: TIMEOUTS.action });
       console.log('  Found "Preview Video" button');
 
-      await reviewPage.screenshot({ path: 'test-results/07c-before-preview-click.png', fullPage: true });
+      await reviewPage.screenshot({ path: 'test-results/07b-before-preview-click.png', fullPage: true });
       await previewVideoBtn.click();
       console.log('  Clicked "Preview Video" button');
 
@@ -598,7 +596,9 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       await expect(previewModal).toBeVisible({ timeout: TIMEOUTS.action });
       console.log('  Preview modal opened');
 
-      await reviewPage.screenshot({ path: 'test-results/07d-preview-modal.png', fullPage: true });
+      // Wait for modal open animation to complete
+      await reviewPage.waitForTimeout(5000);
+      await reviewPage.screenshot({ path: 'test-results/07c-preview-modal.png', fullPage: true });
 
       // Wait for video to load in the modal
       // The PreviewVideoSection component first shows "Generating preview video..."
@@ -616,8 +616,6 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log('  WARNING: Loading indicator timeout - checking for video anyway');
       }
 
-      await reviewPage.screenshot({ path: 'test-results/07e-after-generation.png', fullPage: true });
-
       // Now check for the video element or an error message
       const videoElement = reviewPage.locator('video');
       const errorAlert = reviewPage.locator('[role="alert"]');
@@ -626,7 +624,6 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       if (await errorAlert.isVisible({ timeout: 5000 }).catch(() => false)) {
         const errorText = await errorAlert.textContent();
         console.log(`  WARNING: Preview error: ${errorText}`);
-        await reviewPage.screenshot({ path: 'test-results/07e-preview-error.png', fullPage: true });
         // Continue anyway - we can still proceed to instrumental even if preview failed
       } else if (await videoElement.isVisible({ timeout: 10000 }).catch(() => false)) {
         console.log('  Video element visible in modal');
@@ -636,7 +633,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log('  WARNING: No video element found, but continuing anyway');
       }
 
-      await reviewPage.screenshot({ path: 'test-results/07f-video-state.png', fullPage: true });
+      await reviewPage.screenshot({ path: 'test-results/07d-preview-ready.png', fullPage: true });
 
       // Click "Proceed to Instrumental Review" button in the modal
       // This button saves corrections and navigates to the instrumental selection UI
@@ -650,8 +647,6 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       // Wait for the navigation to instrumental selection (happens via hash change)
       // The page navigates to #/{jobId}/instrumental
       await reviewPage.waitForTimeout(3000);
-
-      await reviewPage.screenshot({ path: 'test-results/07g-after-proceed.png', fullPage: true });
 
       // =========================================================================
       // STEP 8: Instrumental Selection (continuation of combined flow)
@@ -678,6 +673,8 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         }
       }
 
+      // Wait for waveform and UI to fully render
+      await reviewPage.waitForTimeout(5000);
       await reviewPage.screenshot({ path: 'test-results/08a-instrumental-opened.png', fullPage: true });
       console.log('  Instrumental selection UI opened');
 
@@ -732,9 +729,6 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.waitForTimeout(3000);
       }
 
-      await reviewPage.screenshot({ path: 'test-results/08d-after-instrumental.png', fullPage: true }).catch(() => {
-        // reviewPage may be closed already, that's OK
-      });
       await page.screenshot({ path: 'test-results/08d-main-after-instrumental.png' });
       console.log('STEP 8 COMPLETE: Instrumental selection handled via UI');
 
@@ -867,7 +861,6 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log(`  Download URL verified accessible (status: ${status})`);
       }
 
-      await page.screenshot({ path: 'test-results/10-downloads-verified.png' });
       console.log('STEP 10 COMPLETE: Downloads verified');
 
       // =========================================================================
