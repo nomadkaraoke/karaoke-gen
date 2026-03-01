@@ -1,4 +1,9 @@
 playwright-report-prod/
+playwright-report-demo/
+
+# Demo video output and raw recordings (large files, not for git)
+demo-output/
+docs/images/e2e-happy-path/video/
 
 # Local debug scripts (may contain tokens - never commit)
 # Use this pattern for ad-hoc testing: test-*.local.{js,cjs,mjs,ts}

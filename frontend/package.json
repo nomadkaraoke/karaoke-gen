@@ -22,6 +22,9 @@
     "test:e2e:prod": "playwright test --config=playwright.production.config.ts",
     "test:e2e:prod:headed": "playwright test --config=playwright.production.config.ts --headed",
     "test:e2e:prod:debug": "playwright test --config=playwright.production.config.ts --debug",
+    "test:e2e:demo": "playwright test --config=playwright.demo.config.ts",
+    "test:e2e:demo:headed": "playwright test --config=playwright.demo.config.ts --headed",
+    "demo:create-video": "node scripts/create-demo-video.mjs",
     "test:all": "npm run test:unit && npm run test:e2e",
     "fixtures:review": "npx ts-node e2e/fixtures/review-cli.ts",
     "fixtures:review-ui": "playwright test --config=playwright.review.config.ts --headed"
