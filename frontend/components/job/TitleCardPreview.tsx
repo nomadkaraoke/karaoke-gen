@@ -140,6 +140,17 @@ export function TitleCardPreview({ artist, title }: TitleCardPreviewProps) {
     const computedFont = getComputedStyle(canvas).getPropertyValue("--font-title-card").trim()
     const fontFamily = computedFont || "'AvenirNext-Bold', 'Avenir Next', sans-serif"
 
+    // Ensure font is loaded before rendering — canvas doesn't participate in CSS
+    // font swap, so we must explicitly wait for the font to be available.
+    const fontSpec = `700 100px ${fontFamily}`
+    if (!document.fonts.check(fontSpec)) {
+      try {
+        await document.fonts.load(fontSpec)
+      } catch {
+        // Font failed to load; will render with fallback
+      }
+    }
+
     // Apply uppercase transform (matching style_params.json title_text_transform/artist_text_transform)
     const titleText = (title || "Song Title").toUpperCase()
     const artistText = (artist || "Artist").toUpperCase()
@@ -165,11 +176,6 @@ export function TitleCardPreview({ artist, title }: TitleCardPreviewProps) {
 
   useEffect(() => {
     draw()
-  }, [draw])
-
-  // Re-draw when fonts load
-  useEffect(() => {
-    document.fonts.ready.then(() => draw())
   }, [draw])
 
   return (
