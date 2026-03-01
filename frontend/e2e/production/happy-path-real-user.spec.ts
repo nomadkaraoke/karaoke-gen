@@ -123,6 +123,31 @@ async function getAuthToken(page: Page): Promise<string | null> {
   return await page.evaluate(() => localStorage.getItem('karaoke_access_token'));
 }
 
+/**
+ * Navigate to a URL with retry logic for transient network errors.
+ * Production tests can hit ERR_INTERNET_DISCONNECTED or similar when opening new pages.
+ */
+async function gotoWithRetry(
+  page: Page,
+  url: string,
+  options: { waitUntil?: 'networkidle' | 'load' | 'domcontentloaded'; timeout?: number } = {},
+  maxRetries = 3
+): Promise<void> {
+  const { waitUntil = 'networkidle', timeout = 60000 } = options;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await page.goto(url, { waitUntil, timeout });
+      return;
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      console.log(`  WARNING: goto attempt ${attempt}/${maxRetries} failed: ${msg.substring(0, 120)}`);
+      if (attempt === maxRetries) throw err;
+      // Wait before retrying (increasing backoff)
+      await page.waitForTimeout(2000 * attempt);
+    }
+  }
+}
+
 // =============================================================================
 // TEST
 // =============================================================================
@@ -179,8 +204,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       console.log('STEP 1: Landing Page');
       console.log('========================================');
 
-      await page.goto(PROD_URL);
-      await page.waitForLoadState('networkidle');
+      await gotoWithRetry(page, PROD_URL);
 
       // Verify hero section
       await expect(page.locator('h1')).toContainText('Karaoke Video', { timeout: TIMEOUTS.expect });
@@ -207,7 +231,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log(`  Using token: ${accessToken.substring(0, 8)}...`);
 
         // Navigate to app and inject token into localStorage
-        await page.goto(`${PROD_URL}/app`);
+        await gotoWithRetry(page, `${PROD_URL}/app`);
         await page.evaluate((token) => {
           localStorage.setItem('karaoke_access_token', token);
         }, accessToken);
@@ -558,23 +582,33 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       const reviewLink = jobCard.getByRole('link', { name: /review lyrics/i });
       await expect(reviewLink).toBeVisible({ timeout: TIMEOUTS.action });
 
-      // Get the review URL and open in new page
-      const reviewUrl = await reviewLink.getAttribute('href');
+      // Get the review URL and construct absolute URL
+      const reviewHref = await reviewLink.getAttribute('href');
+      const reviewUrl = reviewHref!.startsWith('http') ? reviewHref! : `${PROD_URL}${reviewHref}`;
       console.log(`  Review URL: ${reviewUrl}`);
 
-      // Open review UI in new page
+      // Open review UI in new page (with retry for transient network errors)
       const reviewPage = await context.newPage();
-      await reviewPage.goto(reviewUrl!, { waitUntil: 'networkidle' });
-      await reviewPage.waitForTimeout(3000);
+      await gotoWithRetry(reviewPage, reviewUrl);
+
+      // Wait for the review page to actually render meaningful content
+      // The lyrics review page should show either the review UI or an auth prompt
+      try {
+        await expect(
+          reviewPage.getByRole('button', { name: /preview video/i })
+            .or(reviewPage.getByText(/review/i))
+            .or(reviewPage.getByText(/sign in/i))
+        ).toBeVisible({ timeout: TIMEOUTS.action });
+        console.log('  Lyrics review UI loaded');
+      } catch {
+        // If content still not visible, try reloading once
+        console.log('  WARNING: Review page content not found, reloading...');
+        await reviewPage.reload({ waitUntil: 'networkidle' });
+        await reviewPage.waitForTimeout(5000);
+      }
 
       await reviewPage.screenshot({ path: 'test-results/07a-lyrics-review-opened.png', fullPage: true });
       console.log('  Lyrics review UI opened');
-
-      // Wait for the page content to load
-      await expect(reviewPage.locator('body')).not.toBeEmpty({ timeout: TIMEOUTS.action });
-
-      // Wait for the main content to render - give MUI time to initialize
-      await reviewPage.waitForTimeout(2000);
 
       // Scroll to bottom of the page to see the "Preview Video" button
       console.log('  Scrolling to bottom of page...');
