@@ -728,9 +728,9 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       // Refresh main app
       await page.bringToFront();
-      const refreshBtn = page.getByRole('button', { name: /refresh/i });
-      if (await refreshBtn.isVisible().catch(() => false)) {
-        await refreshBtn.click();
+      const refreshBtnAfterInstrumental = page.getByRole('button', { name: /refresh/i });
+      if (await refreshBtnAfterInstrumental.isVisible().catch(() => false)) {
+        await refreshBtnAfterInstrumental.click();
         await page.waitForTimeout(3000);
       }
 
