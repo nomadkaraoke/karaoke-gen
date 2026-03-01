@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, getJobProgressPercent, getJobPriority, sortJobsByPriority, getDisplayJobs, JobStep } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, getJobPriority, sortJobsByPriority, getDisplayJobs, JobStep } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -423,6 +423,41 @@ describe('isBlockingStatus', () => {
   it('handles null/undefined gracefully', () => {
     expect(isBlockingStatus(null as unknown as string)).toBe(false);
     expect(isBlockingStatus(undefined as unknown as string)).toBe(false);
+  });
+});
+
+describe('isNotifiableBlockingStatus', () => {
+  it('returns true for awaiting_review', () => {
+    expect(isNotifiableBlockingStatus('awaiting_review')).toBe(true);
+  });
+
+  it('returns true for in_review', () => {
+    expect(isNotifiableBlockingStatus('in_review')).toBe(true);
+  });
+
+  it('returns true for awaiting_instrumental_selection', () => {
+    expect(isNotifiableBlockingStatus('awaiting_instrumental_selection')).toBe(true);
+  });
+
+  it('returns false for awaiting_audio_selection (user already engaged)', () => {
+    expect(isNotifiableBlockingStatus('awaiting_audio_selection')).toBe(false);
+  });
+
+  it('returns false for non-blocking statuses', () => {
+    expect(isNotifiableBlockingStatus('pending')).toBe(false);
+    expect(isNotifiableBlockingStatus('downloading')).toBe(false);
+    expect(isNotifiableBlockingStatus('complete')).toBe(false);
+    expect(isNotifiableBlockingStatus('failed')).toBe(false);
+  });
+
+  it('handles case insensitivity', () => {
+    expect(isNotifiableBlockingStatus('AWAITING_REVIEW')).toBe(true);
+    expect(isNotifiableBlockingStatus('AWAITING_AUDIO_SELECTION')).toBe(false);
+  });
+
+  it('handles null/undefined gracefully', () => {
+    expect(isNotifiableBlockingStatus(null as unknown as string)).toBe(false);
+    expect(isNotifiableBlockingStatus(undefined as unknown as string)).toBe(false);
   });
 });
 

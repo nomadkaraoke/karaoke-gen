@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import type { Job } from '@/lib/api'
-import { isBlockingStatus } from '@/lib/job-status'
+import { isNotifiableBlockingStatus } from '@/lib/job-status'
 
 const TITLE_FLASH_INTERVAL = 1000 // ms between title flashes
 const DEFAULT_TITLE = 'Karaoke Generator'
@@ -15,55 +15,87 @@ interface NotificationState {
 }
 
 /**
- * Creates a notification sound using Web Audio API.
- * Returns a function that plays the sound when called.
+ * Play the alert chime — a two-tone chord (A5 + E5) for action-needed / failure.
  */
-function createNotificationSound(): () => void {
+function playAlertChime(ctx: AudioContext, now: number): void {
+  const oscillator1 = ctx.createOscillator()
+  const oscillator2 = ctx.createOscillator()
+  const gainNode = ctx.createGain()
+
+  oscillator1.connect(gainNode)
+  oscillator2.connect(gainNode)
+  gainNode.connect(ctx.destination)
+
+  oscillator1.frequency.setValueAtTime(880, now) // A5
+  oscillator1.type = 'sine'
+  oscillator2.frequency.setValueAtTime(659.25, now) // E5
+  oscillator2.type = 'sine'
+
+  gainNode.gain.setValueAtTime(0, now)
+  gainNode.gain.linearRampToValueAtTime(0.3, now + 0.02)
+  gainNode.gain.setValueAtTime(0.3, now + 0.1)
+  gainNode.gain.linearRampToValueAtTime(0, now + 0.3)
+
+  oscillator1.start(now)
+  oscillator2.start(now)
+  oscillator1.stop(now + 0.3)
+  oscillator2.stop(now + 0.3)
+}
+
+/**
+ * Play the success chime — a rising C major arpeggio (C6 → E6 → G6).
+ * Brighter and quieter than the alert chord so it's unmistakably different.
+ */
+function playSuccessChime(ctx: AudioContext, now: number): void {
+  const notes = [1046.50, 1318.51, 1567.98] // C6, E6, G6
+  const noteDuration = 0.12
+  const noteGap = 0.02
+
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.frequency.setValueAtTime(freq, now)
+    osc.type = 'sine'
+
+    const noteStart = now + i * (noteDuration + noteGap)
+    gain.gain.setValueAtTime(0, noteStart)
+    gain.gain.linearRampToValueAtTime(0.25, noteStart + 0.01)
+    gain.gain.setValueAtTime(0.25, noteStart + noteDuration * 0.7)
+    gain.gain.linearRampToValueAtTime(0, noteStart + noteDuration)
+
+    osc.start(noteStart)
+    osc.stop(noteStart + noteDuration)
+  })
+}
+
+/**
+ * Creates a notification sound using Web Audio API.
+ * Returns a function that plays a chime appropriate for the notification reason.
+ */
+function createNotificationSound(): (reason: NotificationReason) => void {
   let audioContext: AudioContext | null = null
 
-  return () => {
+  return (reason: NotificationReason) => {
     try {
-      // Create or reuse AudioContext (lazy init for browser compatibility)
       if (!audioContext) {
         audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       }
 
-      // Resume context if suspended (browsers require user interaction)
       if (audioContext.state === 'suspended') {
         audioContext.resume()
       }
 
       const now = audioContext.currentTime
 
-      // Create a pleasant two-tone notification sound
-      const oscillator1 = audioContext.createOscillator()
-      const oscillator2 = audioContext.createOscillator()
-      const gainNode = audioContext.createGain()
-
-      oscillator1.connect(gainNode)
-      oscillator2.connect(gainNode)
-      gainNode.connect(audioContext.destination)
-
-      // First tone - higher frequency
-      oscillator1.frequency.setValueAtTime(880, now) // A5
-      oscillator1.type = 'sine'
-
-      // Second tone - lower frequency (harmony)
-      oscillator2.frequency.setValueAtTime(659.25, now) // E5
-      oscillator2.type = 'sine'
-
-      // Envelope: quick attack, short sustain, fade out
-      gainNode.gain.setValueAtTime(0, now)
-      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.02) // Quick attack
-      gainNode.gain.setValueAtTime(0.3, now + 0.1) // Sustain
-      gainNode.gain.linearRampToValueAtTime(0, now + 0.3) // Fade out
-
-      oscillator1.start(now)
-      oscillator2.start(now)
-      oscillator1.stop(now + 0.3)
-      oscillator2.stop(now + 0.3)
+      if (reason === 'complete') {
+        playSuccessChime(audioContext, now)
+      } else {
+        playAlertChime(audioContext, now)
+      }
     } catch (error) {
-      // Silently fail - notifications are non-critical
       console.debug('Notification sound failed:', error)
     }
   }
@@ -79,7 +111,7 @@ export function useJobNotifications(jobs: Job[]) {
   const previousStatesRef = useRef<Map<string, NotificationState>>(new Map())
   const titleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const originalTitleRef = useRef<string>(DEFAULT_TITLE)
-  const playSoundRef = useRef<() => void>(createNotificationSound())
+  const playSoundRef = useRef<(reason: NotificationReason) => void>(createNotificationSound())
   const isFlashingRef = useRef<boolean>(false)
   const hasInteractedRef = useRef<boolean>(false)
 
@@ -134,7 +166,7 @@ export function useJobNotifications(jobs: Job[]) {
   const notify = useCallback((reason: NotificationReason, jobTitle?: string) => {
     // Play sound if user has interacted with the page
     if (hasInteractedRef.current) {
-      playSoundRef.current()
+      playSoundRef.current(reason)
     }
 
     // Start title flash based on notification type
@@ -196,8 +228,8 @@ export function useJobNotifications(jobs: Job[]) {
         : undefined
 
       // Check for status transitions that need notifications
-      const wasBlocking = isBlockingStatus(previousState.status)
-      const isNowBlocking = isBlockingStatus(currentStatus)
+      const wasBlocking = isNotifiableBlockingStatus(previousState.status)
+      const isNowBlocking = isNotifiableBlockingStatus(currentStatus)
 
       // Notify when entering a blocking state (from non-blocking)
       if (!wasBlocking && isNowBlocking) {

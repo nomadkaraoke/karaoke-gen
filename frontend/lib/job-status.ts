@@ -253,6 +253,21 @@ export function isBlockingStatus(status: string): boolean {
 }
 
 /**
+ * Check if a blocking status should trigger a notification (chime + title flash).
+ *
+ * Excludes `awaiting_audio_selection` because the user is already engaged
+ * with the inline audio picker during job creation — no chime needed.
+ *
+ * @param status - The job status string
+ * @returns true if the status is blocking AND warrants a notification
+ */
+export function isNotifiableBlockingStatus(status: string): boolean {
+  const normalized = status?.toLowerCase()
+  if (normalized === 'awaiting_audio_selection') return false
+  return isBlockingStatus(status)
+}
+
+/**
  * Get the progress percentage for a job (0-100).
  * This is based on step progression, not the backend progress field.
  *
