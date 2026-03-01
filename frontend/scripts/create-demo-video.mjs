@@ -51,12 +51,20 @@ function findVideos() {
     process.exit(1);
   }
 
-  // Sort by name - video.webm is main page, video-1.webm is review page
-  const sorted = testResultDirs.sort();
+  // Sort so video.webm (main page) comes first, video-1.webm (review page) second.
+  // Playwright names them: video.webm for the first context, video-1.webm for the second.
+  // Alphabetically video-1.webm sorts before video.webm, so we reverse to get correct order.
+  const sorted = testResultDirs.sort((a, b) => {
+    // Prefer shorter filename (video.webm) over video-1.webm
+    const aBase = a.split('/').pop();
+    const bBase = b.split('/').pop();
+    return aBase.length - bBase.length;
+  });
   console.log('Found videos:');
-  sorted.forEach((v) => {
+  sorted.forEach((v, i) => {
     const duration = getDuration(v);
-    console.log(`  ${v} (${formatTime(duration)})`);
+    const label = i === 0 ? '(main page)' : '(review page)';
+    console.log(`  ${label} ${v} (${formatTime(duration)})`);
   });
 
   return sorted;
@@ -172,21 +180,23 @@ function addTitleCards(inputVideo) {
 
   // Create intro card (3 seconds, black background with white text)
   const introCard = join(OUTPUT_DIR, 'intro.mp4');
+  const introFilter = [
+    "drawtext=text='Nomad Karaoke':fontsize=64:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-40:font=Arial",
+    "drawtext=text='Create Karaoke Videos for Any Song':fontsize=28:fontcolor=0xcccccc:x=(w-text_w)/2:y=(h-text_h)/2+30:font=Arial",
+  ].join(',');
   run(
-    `ffmpeg -y -f lavfi -i "color=c=black:s=1280x720:d=4:r=30" ` +
-    `-vf "drawtext=text='Nomad Karaoke':fontsize=64:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-40:font=Arial," +
-    "drawtext=text='Create Karaoke Videos for Any Song':fontsize=28:fontcolor=0xcccccc:x=(w-text_w)/2:y=(h-text_h)/2+30:font=Arial" ` +
-    `-c:v libx264 -pix_fmt yuv420p "${introCard}"`,
+    `ffmpeg -y -f lavfi -i "color=c=black:s=1280x720:d=4:r=30" -vf "${introFilter}" -c:v libx264 -pix_fmt yuv420p "${introCard}"`,
     'Create intro title card'
   );
 
   // Create outro card (4 seconds)
   const outroCard = join(OUTPUT_DIR, 'outro.mp4');
+  const outroFilter = [
+    "drawtext=text='Try it free':fontsize=48:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-40:font=Arial",
+    "drawtext=text='gen.nomadkaraoke.com':fontsize=36:fontcolor=0xff7acc:x=(w-text_w)/2:y=(h-text_h)/2+30:font=Arial",
+  ].join(',');
   run(
-    `ffmpeg -y -f lavfi -i "color=c=black:s=1280x720:d=4:r=30" ` +
-    `-vf "drawtext=text='Try it free':fontsize=48:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-40:font=Arial," +
-    "drawtext=text='gen.nomadkaraoke.com':fontsize=36:fontcolor=0xff7acc:x=(w-text_w)/2:y=(h-text_h)/2+30:font=Arial" ` +
-    `-c:v libx264 -pix_fmt yuv420p "${outroCard}"`,
+    `ffmpeg -y -f lavfi -i "color=c=black:s=1280x720:d=4:r=30" -vf "${outroFilter}" -c:v libx264 -pix_fmt yuv420p "${outroCard}"`,
     'Create outro title card'
   );
 
