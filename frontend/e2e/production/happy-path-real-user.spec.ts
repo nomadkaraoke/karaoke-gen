@@ -438,24 +438,25 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       await page.screenshot({ path: 'test-results/05d-job-created.png' });
 
-      // Find the job card in the Recent Jobs panel (not the guided flow success card)
-      // The Recent Jobs section has a heading "Recent Jobs" — scope to that panel
+      // Find the job card in the Recent Jobs panel
+      // Job cards have "ID: xxxxxxxx" text which the success card does not
       console.log('  Looking for job card in Recent Jobs...');
 
-      // Wait for Refresh button to appear, then click to ensure job list updates
+      // Wait a moment for the jobs list to refresh after creation
+      await page.waitForTimeout(3000);
+
+      // Click Refresh to ensure job list is up to date
       const refreshBtn = page.getByRole('button', { name: /refresh/i });
       if (await refreshBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await refreshBtn.click();
         await page.waitForTimeout(3000);
       }
 
-      // Scope to the Recent Jobs section to avoid matching the success card
-      const recentJobsSection = page.locator('section, div').filter({
-        has: page.getByText('Recent Jobs', { exact: true })
-      }).first();
-
-      const jobCard = recentJobsSection.locator('[class*="rounded-lg"][class*="border"]').filter({
-        hasText: new RegExp(`${TEST_SONG.artist}.*${TEST_SONG.title}`, 'i')
+      // Match on a card that has both the artist/title AND "ID:" (only real job cards have this)
+      const jobCard = page.locator('[class*="rounded-lg"][class*="border"]').filter({
+        hasText: /ID:/
+      }).filter({
+        hasText: new RegExp(`${TEST_SONG.artist}`, 'i')
       }).first();
 
       await expect(jobCard).toBeVisible({ timeout: TIMEOUTS.action });
@@ -463,7 +464,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       // Extract job ID from the card
       const cardFullText = await jobCard.textContent() || '';
-      const idMatch = cardFullText.match(/(?:ID:\s*)?([a-f0-9]{8})/i);
+      const idMatch = cardFullText.match(/ID:\s*([a-f0-9]{8,})/i);
       if (idMatch) {
         jobId = idMatch[1];
         console.log(`  Job ID: ${jobId}`);
