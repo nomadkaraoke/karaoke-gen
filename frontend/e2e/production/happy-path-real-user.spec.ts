@@ -375,9 +375,27 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       await page.screenshot({ path: 'test-results/04a-song-info.png' });
 
+      // Set up request interception to capture the job ID from the search API
+      const searchResponsePromise = page.waitForResponse(
+        resp => resp.url().includes('/api/audio-search/search') && resp.request().method() === 'POST',
+        { timeout: TIMEOUTS.audioSearch }
+      );
+
       // Click "Choose Audio" to advance to Step 2 and trigger search
       await page.getByRole('button', { name: /choose audio/i }).click();
       console.log('  Clicked "Choose Audio" — searching for audio sources...');
+
+      // Capture job ID from the search API response
+      try {
+        const searchResponse = await searchResponsePromise;
+        const searchData = await searchResponse.json();
+        if (searchData.job_id) {
+          jobId = searchData.job_id;
+          console.log(`  Captured job ID from API: ${jobId}`);
+        }
+      } catch {
+        console.log('  WARNING: Could not capture job ID from search API');
+      }
 
       // =========================================================================
       // STEP 5: Audio Selection (Guided Step 2)
@@ -452,26 +470,26 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.waitForTimeout(3000);
       }
 
-      // Match on a card that has both the artist/title AND "ID:" (only real job cards have this)
-      const jobCard = page.locator('[class*="rounded-lg"][class*="border"]').filter({
-        hasText: /ID:/
-      }).filter({
-        hasText: new RegExp(`${TEST_SONG.artist}`, 'i')
-      }).first();
+      // Find the specific job card using the captured job ID
+      let jobCard;
+      if (jobId) {
+        // Use the exact job ID to find the right card
+        jobCard = page.locator('[class*="rounded-lg"][class*="border"][class*="p-3"]').filter({
+          hasText: new RegExp(`ID:\\s*${jobId.slice(0, 8)}`)
+        }).first();
+        console.log(`  Looking for card with ID: ${jobId.slice(0, 8)}`);
+      } else {
+        // Fallback: match by artist name (less precise if multiple jobs exist)
+        jobCard = page.locator('[class*="rounded-lg"][class*="border"][class*="p-3"]').filter({
+          hasText: /ID:/
+        }).filter({
+          hasText: new RegExp(`${TEST_SONG.artist}`, 'i')
+        }).first();
+        console.log('  Falling back to artist name match');
+      }
 
       await expect(jobCard).toBeVisible({ timeout: TIMEOUTS.action });
       console.log('  Job card visible in Recent Jobs');
-
-      // Extract job ID from the card
-      const cardFullText = await jobCard.textContent() || '';
-      const idMatch = cardFullText.match(/ID:\s*([a-f0-9]{8,})/i);
-      if (idMatch) {
-        jobId = idMatch[1];
-        console.log(`  Job ID: ${jobId}`);
-      } else {
-        console.log(`  WARNING: Could not extract job ID from card text`);
-        console.log(`  Card text sample: ${cardFullText.substring(0, 100)}...`);
-      }
 
       console.log('STEP 5 COMPLETE: Job created via guided flow');
 
