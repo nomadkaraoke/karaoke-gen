@@ -403,20 +403,20 @@ export default function LandingPage() {
             Here&apos;s what the process looks like at each step
           </p>
           <div className="grid md:grid-cols-2 gap-8">
-            {/* Job Dashboard Screenshot */}
+            {/* Job Creation Screenshot */}
             <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
               <div className="aspect-video bg-dark-900 relative">
                 <Image
                   src="/screenshots/job-dashboard.avif"
-                  alt="Job Dashboard showing karaoke video projects with status indicators"
+                  alt="Guided job creation flow with artist and title entry"
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               </div>
               <div className="p-4">
-                <h3 className="font-semibold mb-1">Job Dashboard</h3>
-                <p className="text-dark-400 text-sm">Track progress of all your karaoke video projects</p>
+                <h3 className="font-semibold mb-1">Create Your Video</h3>
+                <p className="text-dark-400 text-sm">Enter any song and we find the best audio automatically</p>
               </div>
             </div>
 
@@ -425,15 +425,15 @@ export default function LandingPage() {
               <div className="aspect-video bg-dark-900 relative">
                 <Image
                   src="/screenshots/lyrics-review.avif"
-                  alt="Lyrics Review UI with word-by-word editing and timing controls"
+                  alt="Lyrics review with synced lyrics alongside reference lyrics for correction"
                   fill
-                  className="object-cover"
+                  className="object-cover object-top"
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               </div>
               <div className="p-4">
-                <h3 className="font-semibold mb-1">Lyrics Review</h3>
-                <p className="text-dark-400 text-sm">Correct any transcription errors before generating your video</p>
+                <h3 className="font-semibold mb-1">Review Lyrics</h3>
+                <p className="text-dark-400 text-sm">Compare synced lyrics with references and fix any errors</p>
               </div>
             </div>
 
@@ -442,15 +442,15 @@ export default function LandingPage() {
               <div className="aspect-video bg-dark-900 relative">
                 <Image
                   src="/screenshots/instrumental-review.avif"
-                  alt="Instrumental Selection UI with audio player and backing vocals options"
+                  alt="Instrumental review with waveform visualization and backing vocal options"
                   fill
-                  className="object-cover"
+                  className="object-cover object-top"
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               </div>
               <div className="p-4">
-                <h3 className="font-semibold mb-1">Instrumental Selection</h3>
-                <p className="text-dark-400 text-sm">Pick the sound that works best for your karaoke</p>
+                <h3 className="font-semibold mb-1">Choose Your Instrumental</h3>
+                <p className="text-dark-400 text-sm">Listen to audio options and pick the best backing track</p>
               </div>
             </div>
 
@@ -459,15 +459,15 @@ export default function LandingPage() {
               <div className="aspect-video bg-dark-900 relative">
                 <Image
                   src="/screenshots/example-output.avif"
-                  alt="Example karaoke video output with synchronized lyrics"
+                  alt="Completed karaoke job with download options for 4K, 720p, CDG, and more"
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               </div>
               <div className="p-4">
-                <h3 className="font-semibold mb-1">Final Video</h3>
-                <p className="text-dark-400 text-sm">4K karaoke video ready for your next singing session</p>
+                <h3 className="font-semibold mb-1">Download & Share</h3>
+                <p className="text-dark-400 text-sm">Get your 4K video, 720p, CDG, and more in minutes</p>
               </div>
             </div>
           </div>
