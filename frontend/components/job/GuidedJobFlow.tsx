@@ -131,6 +131,11 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
               <span className="font-medium" style={{ color: 'var(--text)' }}>{effectiveArtist} - {effectiveTitle}</span>
             </p>
+            {jobId && (
+              <p className="text-xs mt-0.5 font-mono" style={{ color: 'var(--text-muted)' }} data-testid="created-job-id">
+                ID: {jobId.slice(0, 8)}
+              </p>
+            )}
           </div>
         </div>
 

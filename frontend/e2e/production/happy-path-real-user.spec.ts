@@ -375,27 +375,9 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       await page.screenshot({ path: 'test-results/04a-song-info.png' });
 
-      // Set up request interception to capture the job ID from the search API
-      const searchResponsePromise = page.waitForResponse(
-        resp => resp.url().includes('/api/audio-search/search') && resp.request().method() === 'POST',
-        { timeout: TIMEOUTS.audioSearch }
-      );
-
       // Click "Choose Audio" to advance to Step 2 and trigger search
       await page.getByRole('button', { name: /choose audio/i }).click();
       console.log('  Clicked "Choose Audio" — searching for audio sources...');
-
-      // Capture job ID from the search API response
-      try {
-        const searchResponse = await searchResponsePromise;
-        const searchData = await searchResponse.json();
-        if (searchData.job_id) {
-          jobId = searchData.job_id;
-          console.log(`  Captured job ID from API: ${jobId}`);
-        }
-      } catch {
-        console.log('  WARNING: Could not capture job ID from search API');
-      }
 
       // =========================================================================
       // STEP 5: Audio Selection (Guided Step 2)
@@ -454,10 +436,20 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       await expect(page.getByText('Job Created')).toBeVisible({ timeout: TIMEOUTS.action });
       console.log('  Job created successfully!');
 
+      // Read the job ID from the success card (shown as "ID: xxxxxxxx")
+      const createdJobIdEl = page.getByTestId('created-job-id');
+      if (await createdJobIdEl.isVisible({ timeout: 5000 }).catch(() => false)) {
+        const idText = await createdJobIdEl.textContent() || '';
+        const idMatch = idText.match(/ID:\s*([a-f0-9]{8,})/i);
+        if (idMatch) {
+          jobId = idMatch[1];
+          console.log(`  Job ID: ${jobId}`);
+        }
+      }
+
       await page.screenshot({ path: 'test-results/05d-job-created.png' });
 
       // Find the job card in the Recent Jobs panel
-      // Job cards have "ID: xxxxxxxx" text which the success card does not
       console.log('  Looking for job card in Recent Jobs...');
 
       // Wait a moment for the jobs list to refresh after creation
@@ -470,23 +462,10 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.waitForTimeout(3000);
       }
 
-      // Find the specific job card using the captured job ID
-      let jobCard;
-      if (jobId) {
-        // Use the exact job ID to find the right card
-        jobCard = page.locator('[class*="rounded-lg"][class*="border"][class*="p-3"]').filter({
-          hasText: new RegExp(`ID:\\s*${jobId.slice(0, 8)}`)
-        }).first();
-        console.log(`  Looking for card with ID: ${jobId.slice(0, 8)}`);
-      } else {
-        // Fallback: match by artist name (less precise if multiple jobs exist)
-        jobCard = page.locator('[class*="rounded-lg"][class*="border"][class*="p-3"]').filter({
-          hasText: /ID:/
-        }).filter({
-          hasText: new RegExp(`${TEST_SONG.artist}`, 'i')
-        }).first();
-        console.log('  Falling back to artist name match');
-      }
+      // Find the specific job card using the job ID from the success screen
+      const jobCard = page.locator('[class*="rounded-lg"][class*="border"][class*="p-3"]').filter({
+        hasText: new RegExp(`ID:\\s*${jobId ? jobId.slice(0, 8) : TEST_SONG.artist}`, 'i')
+      }).first();
 
       await expect(jobCard).toBeVisible({ timeout: TIMEOUTS.action });
       console.log('  Job card visible in Recent Jobs');
