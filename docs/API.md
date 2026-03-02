@@ -620,6 +620,56 @@ Content-Type: application/json
 
 Bonus credit for detailed feedback (50+ chars).
 
+### User Feedback for Credits
+
+Available to all users (not just beta testers). Users who have completed 2+ jobs can submit feedback to earn 2 free credits.
+
+#### Check Eligibility
+
+```http
+GET /api/users/feedback/eligibility
+Authorization: Bearer SESSION_TOKEN
+```
+
+Response:
+```json
+{
+  "eligible": true,
+  "has_submitted": false,
+  "jobs_completed": 3,
+  "credits_reward": 2
+}
+```
+
+#### Submit Feedback
+
+```http
+POST /api/users/feedback
+Authorization: Bearer SESSION_TOKEN
+Content-Type: application/json
+
+{
+  "overall_rating": 4,
+  "ease_of_use_rating": 5,
+  "lyrics_accuracy_rating": 4,
+  "correction_experience_rating": 3,
+  "what_went_well": "The lyrics sync was really accurate...",
+  "what_could_improve": "Would love more theme options...",
+  "additional_comments": "",
+  "would_recommend": true,
+  "would_use_again": true
+}
+```
+
+Requirements:
+- User must have completed 2+ jobs
+- At least one text field must have >50 characters
+- User can only submit once (duplicate prevention)
+
+Grants 2 credits on success. Feedback stored in `user_feedback` Firestore collection.
+
+The `/api/users/me` response includes `feedback_eligible: bool` so the frontend can show/hide feedback prompts without an extra API call.
+
 ## Admin Endpoints
 
 All admin endpoints require an admin-role session token.

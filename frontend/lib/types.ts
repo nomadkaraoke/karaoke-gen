@@ -8,6 +8,7 @@ export interface User {
   display_name?: string
   total_jobs_created?: number
   total_jobs_completed?: number
+  feedback_eligible?: boolean
 }
 
 export interface UserPublic {
@@ -17,6 +18,7 @@ export interface UserPublic {
   display_name?: string
   total_jobs_created?: number
   total_jobs_completed?: number
+  feedback_eligible?: boolean
 }
 
 export interface MagicLinkResponse {

@@ -744,6 +744,25 @@ export const api = {
   },
 
   // ==========================================================================
+  // Feedback-for-Credits API endpoints
+  // ==========================================================================
+
+  /**
+   * Submit product feedback to earn free credits
+   */
+  async submitFeedback(data: FeedbackRequest): Promise<FeedbackResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/users/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  // ==========================================================================
   // Version & Health API endpoints
   // ==========================================================================
 
@@ -2114,6 +2133,25 @@ export interface UserOverrideRequest {
 export interface UserOverridesListResponse {
   overrides: UserOverride[];
   total: number;
+}
+
+// Feedback-for-Credits types
+export interface FeedbackRequest {
+  overall_rating: number;
+  ease_of_use_rating: number;
+  lyrics_accuracy_rating: number;
+  correction_experience_rating: number;
+  what_went_well?: string;
+  what_could_improve?: string;
+  additional_comments?: string;
+  would_recommend: boolean;
+  would_use_again: boolean;
+}
+
+export interface FeedbackResponse {
+  status: string;
+  message: string;
+  credits_granted: number;
 }
 
 export { ApiError };

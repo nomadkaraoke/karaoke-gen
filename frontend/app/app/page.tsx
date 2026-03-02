@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff } from "lucide-react"
+import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff, Gift, X } from "lucide-react"
 import { sortJobsByPriority, getDisplayJobs } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
@@ -24,6 +24,7 @@ import { AuthStatus } from "@/components/auth"
 import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
 import { PushNotificationPrompt } from "@/components/push-notification-prompt"
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 import { useTheme } from "@/lib/theme"
 import {
   Tooltip,
@@ -53,6 +54,8 @@ function AppPageContent() {
     if (typeof window === "undefined") return false
     return localStorage.getItem("nomad-karaoke-hide-completed") === "true"
   })
+  const [feedbackBannerDismissed, setFeedbackBannerDismissed] = useState(false)
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
 
   // Check if user is admin (for exclude_test parameter)
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
@@ -232,9 +235,52 @@ function AppPageContent() {
         </div>
       </header>
 
+      {/* Feedback dialog */}
+      <FeedbackDialog
+        open={showFeedbackDialog}
+        onClose={() => setShowFeedbackDialog(false)}
+      />
+
       <main className="px-4 pt-24 pb-8 space-y-6">
         {/* Push notification prompt - shows once when appropriate */}
         <PushNotificationPrompt />
+
+        {/* Feedback-for-credits banner */}
+        {user?.feedback_eligible && !feedbackBannerDismissed && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3"
+            style={{
+              borderColor: 'var(--accent)',
+              backgroundColor: 'rgba(34, 197, 94, 0.05)',
+            }}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Gift className="w-5 h-5 text-green-500 shrink-0" />
+              <p className="text-sm" style={{ color: 'var(--text)' }}>
+                <strong>Earn 2 free credits!</strong>{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  Share your feedback on the karaoke creation experience.
+                </span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowFeedbackDialog(true)}
+                className="text-green-500 border-green-500/30 hover:bg-green-500/10"
+              >
+                Give Feedback
+              </Button>
+              <button
+                onClick={() => setFeedbackBannerDismissed(true)}
+                className="p-1 rounded hover:bg-secondary transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Submit Job Card */}
