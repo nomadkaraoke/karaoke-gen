@@ -39,19 +39,24 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   const [jobId, setJobId] = useState<string | null>(null)
   const [audioSource, setAudioSource] = useState<"search" | "upload" | "url">("search")
   const [selectedResultIndex, setSelectedResultIndex] = useState<number | null>(null)
+  const [searchSessionId, setSearchSessionId] = useState<string | null>(null)
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
 
-  function handleJobCreated(id: string, source: "search" | "upload" | "url") {
+  function handleSearchCompleted(sessionId: string) {
+    setSearchSessionId(sessionId)
+    setAudioSource("search")
+  }
+
+  function handleJobCreated(id: string, source: "upload" | "url") {
     setJobId(id)
     setAudioSource(source)
   }
 
   function handleSearchResultChosen(resultIndex: number) {
-    // Just store the choice — don't call selectAudioResult yet
-    // The job stays in awaiting_audio_selection (hidden from Recent Jobs)
+    // Just store the choice — job is created at Step 3 confirm
     setSelectedResultIndex(resultIndex)
     setStep(3)
   }
@@ -63,18 +68,22 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   }
 
   async function handleConfirm() {
-    if (!jobId || selectedResultIndex === null) return
+    if (!searchSessionId || selectedResultIndex === null) return
 
     setIsSubmitting(true)
     setSubmitError("")
     try {
-      // NOW we trigger the actual audio selection + processing
-      // Pass overrides from Step 3 (Customize) — these weren't available at job creation
-      await api.selectAudioResult(jobId, selectedResultIndex, {
-        is_private: isPrivate || undefined,
+      // Create the job now with all final values from Steps 1+3
+      const response = await api.createJobFromSearch({
+        search_session_id: searchSessionId,
+        selection_index: selectedResultIndex,
+        artist: artist,
+        title: title,
         display_artist: displayArtist.trim() || undefined,
         display_title: displayTitle.trim() || undefined,
+        is_private: isPrivate,
       })
+      setJobId(response.job_id)
       onJobCreated()
       setShowSuccess(true)
     } catch (err) {
@@ -88,14 +97,9 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     }
   }
 
-  async function handleBackFromAudio(jobIdToCleanup: string | null) {
-    // Clean up the stale job (best-effort, don't block on failure)
-    if (jobIdToCleanup) {
-      api.deleteJob(jobIdToCleanup).catch(() => {
-        // Silently ignore cleanup failures
-      })
-    }
-    setJobId(null)
+  function handleBackFromAudio() {
+    // Sessions expire naturally — no cleanup needed
+    setSearchSessionId(null)
     setAudioSource("search")
     setSelectedResultIndex(null)
     setStep(1)
@@ -112,6 +116,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setJobId(null)
     setAudioSource("search")
     setSelectedResultIndex(null)
+    setSearchSessionId(null)
     setSubmitError("")
   }
 
@@ -336,6 +341,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           displayArtist={displayArtist}
           displayTitle={displayTitle}
           isPrivate={isPrivate}
+          onSearchCompleted={handleSearchCompleted}
           onJobCreated={handleJobCreated}
           onSearchResultChosen={handleSearchResultChosen}
           onFallbackComplete={handleFallbackComplete}

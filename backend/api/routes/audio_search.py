@@ -17,6 +17,8 @@ import mimetypes
 import os
 import shutil
 import tempfile
+import uuid
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Depends
@@ -48,6 +50,7 @@ from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.middleware.tenant import get_tenant_config_from_request
 from backend.exceptions import InsufficientCreditsError, RateLimitExceededError
+from backend.services.firestore_service import FirestoreService
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -195,6 +198,25 @@ class AudioSearchResponse(BaseModel):
     server_version: str
     # Style file upload URLs (when style_files are specified in request)
     style_upload_urls: Optional[List[StyleUploadUrl]] = None
+
+
+class StandaloneSearchRequest(BaseModel):
+    """Request for standalone audio search (no job created)."""
+    artist: str = Field(..., description="Artist name to search for")
+    title: str = Field(..., description="Song title to search for")
+
+    @validator('artist', 'title')
+    def normalize_text_fields(cls, v):
+        if v is not None and isinstance(v, str):
+            return normalize_text(v)
+        return v
+
+
+class StandaloneSearchResponse(BaseModel):
+    """Response from standalone audio search."""
+    search_session_id: str
+    results: List[AudioSearchResultResponse]
+    results_count: int
 
 
 class AudioSelectRequest(BaseModel):
@@ -909,6 +931,139 @@ async def search_audio(
         if isinstance(e, (InsufficientCreditsError, RateLimitExceededError)):
             raise
         logger.error(f"Error in audio search: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/audio-search/search-standalone", response_model=StandaloneSearchResponse)
+async def search_audio_standalone(
+    request: Request,
+    body: StandaloneSearchRequest,
+    auth_result: AuthResult = Depends(require_auth)
+):
+    """
+    Search for audio by artist and title WITHOUT creating a job.
+
+    Returns a search session ID and results. Call POST /api/jobs/create-from-search
+    with the session ID and selected result index to create the actual job.
+
+    Credits are checked here (early feedback) but NOT deducted — deduction
+    happens when the job is created via create-from-search.
+    """
+    # Check tenant feature flag
+    tenant_config = get_tenant_config_from_request(request)
+    if tenant_config and not tenant_config.features.audio_search:
+        raise HTTPException(
+            status_code=403,
+            detail="Audio search is not available for this portal"
+        )
+
+    try:
+        user_email = auth_result.user_email
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        # Credit check — give early feedback but do NOT deduct here
+        if not auth_result.is_admin:
+            from backend.services.user_service import get_user_service
+            user_service = get_user_service()
+            if not user_service.has_credits(user_email):
+                credits_available = user_service.check_credits(user_email)
+                raise InsufficientCreditsError(
+                    message="You're out of credits. Buy more to continue creating karaoke videos.",
+                    credits_available=credits_available,
+                    credits_required=1,
+                )
+
+        # Perform the search (runs in thread to avoid blocking the event loop)
+        audio_search_service = get_audio_search_service()
+        try:
+            search_results = await audio_search_service.search_async(body.artist, body.title)
+        except NoResultsError:
+            # No results is a normal outcome — return empty list, not an error
+            search_results = []
+        except AudioSearchError as e:
+            raise HTTPException(status_code=500, detail=f"Search failed: {e}")
+
+        # Build result response objects
+        result_responses: List[AudioSearchResultResponse] = []
+        results_dicts: List[Dict[str, Any]] = []
+        for r in search_results:
+            raw_dict: Dict[str, Any] = {}
+            if r.raw_result:
+                if isinstance(r.raw_result, dict):
+                    raw_dict = r.raw_result
+                else:
+                    try:
+                        raw_dict = r.raw_result.to_dict()
+                    except AttributeError:
+                        pass
+
+            result_responses.append(
+                AudioSearchResultResponse(
+                    index=r.index,
+                    title=r.title,
+                    artist=r.artist,
+                    provider=r.provider,
+                    url=r.url,
+                    duration=r.duration,
+                    quality=r.quality,
+                    source_id=r.source_id,
+                    seeders=raw_dict.get('seeders') or r.seeders,
+                    target_file=raw_dict.get('target_file') or r.target_file,
+                    year=raw_dict.get('year'),
+                    label=raw_dict.get('label'),
+                    edition_info=raw_dict.get('edition_info'),
+                    release_type=raw_dict.get('release_type'),
+                    channel=raw_dict.get('channel'),
+                    view_count=raw_dict.get('view_count'),
+                    size_bytes=raw_dict.get('size_bytes'),
+                    target_file_size=raw_dict.get('target_file_size'),
+                    track_pattern=raw_dict.get('track_pattern'),
+                    match_score=raw_dict.get('match_score'),
+                    formatted_size=raw_dict.get('formatted_size'),
+                    formatted_duration=raw_dict.get('formatted_duration'),
+                    formatted_views=raw_dict.get('formatted_views'),
+                    is_lossless=raw_dict.get('is_lossless'),
+                    quality_str=raw_dict.get('quality_str'),
+                    quality_data=raw_dict.get('quality_data') or raw_dict.get('quality'),
+                )
+            )
+            results_dicts.append(r.to_dict())
+
+        # Store session in Firestore (TTL: 30 minutes)
+        session_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+        session_data = {
+            'session_id': session_id,
+            'user_email': user_email,
+            'tenant_id': tenant_config.id if tenant_config else None,
+            'artist': body.artist,
+            'title': body.title,
+            'results': results_dicts,
+            'remote_search_id': audio_search_service.last_remote_search_id,
+            'created_at': now.isoformat(),
+            'ttl_expiry': now + timedelta(minutes=30),
+        }
+        firestore_service = FirestoreService()
+        firestore_service.create_search_session(session_data)
+
+        logger.info(
+            f"Standalone search complete for {body.artist} - {body.title}: "
+            f"{len(search_results)} results, session={session_id}"
+        )
+
+        return StandaloneSearchResponse(
+            search_session_id=session_id,
+            results=result_responses,
+            results_count=len(result_responses),
+        )
+
+    except HTTPException:
+        raise
+    except (InsufficientCreditsError, RateLimitExceededError):
+        raise
+    except Exception as e:
+        logger.error(f"Error in standalone audio search: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

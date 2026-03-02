@@ -174,6 +174,20 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # Search sessions TTL: short-lived sessions from guided job creation flow expire after 30 minutes
+    # Sessions are created by POST /api/audio-search/search-standalone and consumed by
+    # POST /api/jobs/create-from-search.  The TTL is a safety net for abandoned sessions.
+    resources["firestore_field_search_sessions_ttl"] = firestore.Field(
+        "firestore-field-search-sessions-ttl",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="search_sessions",
+        field="ttl_expiry",
+        ttl_config={},  # Empty block enables TTL based on ttl_expiry field
+        index_config={},  # Disable indexing on TTL field
+        opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
+    )
+
     # ==================== Firestore Indexes for Logs Subcollection ====================
 
     # Logs: query by worker, order by timestamp

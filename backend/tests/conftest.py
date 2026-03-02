@@ -117,7 +117,8 @@ def mock_auth_dependency(request):
             user_type=UserType.ADMIN,
             remaining_uses=999,
             message="Test admin token",
-            is_admin=True
+            is_admin=True,
+            user_email="test@example.com",
         )
 
     async def mock_require_admin():
@@ -127,7 +128,8 @@ def mock_auth_dependency(request):
             user_type=UserType.ADMIN,
             remaining_uses=999,
             message="Test admin token",
-            is_admin=True
+            is_admin=True,
+            user_email="test@example.com",
         )
 
     async def mock_require_review_auth(job_id: str = "test123"):

@@ -763,6 +763,44 @@ export const api = {
   },
   
   /**
+   * Search for audio WITHOUT creating a job (guided flow Step 2).
+   * Returns a search session ID and results.
+   * Use createJobFromSearch() to create the actual job.
+   */
+  async searchStandalone(
+    artist: string,
+    title: string
+  ): Promise<{ search_session_id: string; results: AudioSearchResult[]; results_count: number }> {
+    const response = await fetch(`${API_BASE_URL}/api/audio-search/search-standalone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ artist, title }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Create a job from a standalone search session (guided flow Step 3 confirm).
+   * Deducts a credit and starts the download + processing pipeline.
+   */
+  async createJobFromSearch(params: {
+    search_session_id: string;
+    selection_index: number;
+    artist: string;
+    title: string;
+    display_artist?: string;
+    display_title?: string;
+    is_private?: boolean;
+  }): Promise<{ status: string; job_id: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/create-from-search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(params),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Get audio search results for a job
    */
   async getAudioSearchResults(jobId: string): Promise<AudioSearchResponse> {

@@ -25,10 +25,11 @@ interface AudioSourceStepProps {
   displayArtist: string
   displayTitle: string
   isPrivate: boolean
-  onJobCreated: (jobId: string, source: "search" | "upload" | "url") => void
+  onSearchCompleted: (searchSessionId: string) => void
+  onJobCreated: (jobId: string, source: "upload" | "url") => void
   onSearchResultChosen: (resultIndex: number) => void
   onFallbackComplete: () => void
-  onBack: (jobIdToCleanup: string | null) => void
+  onBack: () => void
   noCredits: boolean
 }
 
@@ -95,6 +96,7 @@ export function AudioSourceStep({
   displayArtist,
   displayTitle,
   isPrivate,
+  onSearchCompleted,
   onJobCreated,
   onSearchResultChosen,
   onFallbackComplete,
@@ -103,10 +105,8 @@ export function AudioSourceStep({
 }: AudioSourceStepProps) {
   const [results, setResults] = useState<ExtendedAudioSearchResult[]>([])
   const [isSearching, setIsSearching] = useState(true)
-  const [jobId, setJobId] = useState<string | null>(null)
   const [error, setError] = useState("")
   const [isCreditError, setIsCreditError] = useState(false)
-  const [isTimeoutError, setIsTimeoutError] = useState(false)
   const [showOtherOptions, setShowOtherOptions] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const searchTriggered = useRef(false)
@@ -127,16 +127,10 @@ export function AudioSourceStep({
     setError("")
     setIsCreditError(false)
     try {
-      const response = await api.searchAudio(artist, title, false, {
-        is_private: isPrivate,
-        display_artist: displayArtist.trim() || undefined,
-        display_title: displayTitle.trim() || undefined,
-      })
-      setJobId(response.job_id)
-      onJobCreated(response.job_id, "search")
-
-      // Now poll for results
-      await pollForResults(response.job_id)
+      const response = await api.searchStandalone(artist, title)
+      // Notify parent of completed session (no job created yet)
+      onSearchCompleted(response.search_session_id)
+      setResults(response.results as ExtendedAudioSearchResult[])
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setIsCreditError(true)
@@ -146,43 +140,14 @@ export function AudioSourceStep({
       } else {
         setError("Failed to search for audio")
       }
+    } finally {
       setIsSearching(false)
     }
-  }, [artist, title, displayArtist, displayTitle, isPrivate, onJobCreated])
+  }, [artist, title, onSearchCompleted])
 
   useEffect(() => {
     triggerSearch()
   }, [triggerSearch])
-
-  async function pollForResults(jid: string) {
-    const maxAttempts = 30
-    const interval = 2000
-
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const data = await api.getAudioSearchResults(jid)
-        if (data.results && data.results.length > 0) {
-          setResults(data.results as ExtendedAudioSearchResult[])
-          setIsSearching(false)
-          return
-        }
-        // Check if search is still in progress
-        if (data.status === "search_complete" || data.status === "audio_search_complete") {
-          // Search finished but no results
-          setResults([])
-          setIsSearching(false)
-          return
-        }
-      } catch {
-        // Ignore errors during polling - keep trying
-      }
-      await new Promise(resolve => setTimeout(resolve, interval))
-    }
-    // Timeout
-    setIsTimeoutError(true)
-    setError("Search is taking longer than expected. You can try the fallback options below.")
-    setIsSearching(false)
-  }
 
   const confidence = useMemo(() => getSearchConfidence(results, title), [results, title])
   const groupedResults = useMemo(() => groupResults(results), [results])
@@ -195,7 +160,7 @@ export function AudioSourceStep({
   }
 
   function handleBack() {
-    onBack(jobId)
+    onBack()
   }
 
   function toggleCategory(category: string) {
@@ -225,7 +190,7 @@ export function AudioSourceStep({
         { is_private: isPrivate },
         (progress) => setUploadProgress(progress),
       )
-      onJobCreated(response.job_id, "upload")
+      onJobCreated(response.job_id, "upload" as const)
       onFallbackComplete()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
@@ -253,7 +218,7 @@ export function AudioSourceStep({
       const response = await api.createJobFromUrl(youtubeUrl.trim(), artist.trim(), title.trim(), {
         is_private: isPrivate,
       })
-      onJobCreated(response.job_id, "url")
+      onJobCreated(response.job_id, "url" as const)
       onFallbackComplete()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
@@ -293,11 +258,7 @@ export function AudioSourceStep({
 
       {/* Error display */}
       {error && (
-        <div className={`text-sm rounded p-3 ${
-          isTimeoutError
-            ? 'text-amber-400 bg-amber-500/10'
-            : 'text-red-400 bg-red-500/10'
-        }`}>
+        <div className="text-sm rounded p-3 text-red-400 bg-red-500/10">
           <p>{error}</p>
           {isCreditError && (
             <Link href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</Link>

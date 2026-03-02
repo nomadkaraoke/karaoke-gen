@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile, File
 
+from datetime import datetime
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
     URLSubmissionRequest,
@@ -38,6 +39,8 @@ from backend.services.metrics import metrics
 from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
 from backend.exceptions import InsufficientCreditsError, RateLimitExceededError
+from backend.services.firestore_service import FirestoreService
+from pydantic import BaseModel, Field, validator
 
 
 logger = logging.getLogger(__name__)
@@ -1843,4 +1846,218 @@ async def cleanup_distribution(
             results["job_delete_error"] = str(e)
 
     return results
+
+
+# ============================================================================
+# Guided Flow: Create job from search session
+# ============================================================================
+
+class CreateFromSearchRequest(BaseModel):
+    """Request to create a job from a completed standalone search session."""
+    search_session_id: str = Field(..., description="Session ID returned by /api/audio-search/search-standalone")
+    selection_index: int = Field(..., description="Index of the selected audio source from search results")
+    artist: str = Field(..., description="Search artist name (from Step 1)")
+    title: str = Field(..., description="Search title (from Step 1)")
+    display_artist: Optional[str] = Field(None, description="Display artist override for title screens/filenames")
+    display_title: Optional[str] = Field(None, description="Display title override for title screens/filenames")
+    is_private: bool = Field(False, description="Private track: Dropbox only, no YouTube/GDrive")
+
+    @validator('display_artist', 'display_title')
+    def strip_whitespace(cls, v):
+        if v is not None:
+            return v.strip() or None
+        return v
+
+
+@router.post("/create-from-search", response_model=JobResponse)
+async def create_job_from_search(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: CreateFromSearchRequest,
+    auth_result: AuthResult = Depends(require_auth)
+) -> JobResponse:
+    """
+    Create a karaoke job from a previously completed standalone search session.
+
+    This is the second half of the guided job creation flow:
+    1. POST /api/audio-search/search-standalone  → search_session_id + results
+    2. User picks a result (Step 2 of wizard)
+    3. User confirms job settings (Step 3 of wizard)
+    4. POST /api/jobs/create-from-search         → job_id (this endpoint)
+
+    The job is created with all final field values at creation time (including
+    is_private and display overrides).  It skips AWAITING_AUDIO_SELECTION and
+    goes directly to DOWNLOADING_AUDIO, then triggers workers.
+
+    Credit deduction happens here (inside job_manager.create_job).
+    """
+    # Lazy imports from audio_search to avoid circular imports at module level
+    from backend.api.routes.audio_search import (
+        _validate_and_prepare_selection,
+        _download_audio_and_trigger_workers,
+        extract_request_metadata,
+    )
+    from backend.services.audio_search_service import get_audio_search_service
+    from backend.middleware.tenant import get_tenant_config_from_request
+
+    try:
+        user_email = auth_result.user_email
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        # Retrieve and validate the search session
+        firestore_service = FirestoreService()
+        session = firestore_service.get_search_session(body.search_session_id)
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail="Search expired — please search again"
+            )
+
+        # Verify the session belongs to the requesting user (or admin)
+        if not auth_result.is_admin and session.get('user_email') != user_email:
+            raise HTTPException(status_code=403, detail="You don't have permission to use this search session")
+
+        # Check TTL (belt-and-suspenders — Firestore TTL may not delete immediately)
+        ttl_expiry = session.get('ttl_expiry')
+        if ttl_expiry:
+            if isinstance(ttl_expiry, str):
+                try:
+                    ttl_expiry = datetime.fromisoformat(ttl_expiry)
+                except ValueError:
+                    ttl_expiry = None
+            if ttl_expiry and datetime.utcnow() > ttl_expiry.replace(tzinfo=None):
+                firestore_service.delete_search_session(body.search_session_id)
+                raise HTTPException(
+                    status_code=404,
+                    detail="Search expired — please search again"
+                )
+
+        search_results = session.get('results', [])
+        if not search_results:
+            raise HTTPException(status_code=400, detail="Search session has no results")
+
+        if body.selection_index < 0 or body.selection_index >= len(search_results):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid selection index {body.selection_index}. Valid range: 0-{len(search_results)-1}"
+            )
+
+        # Apply server defaults (same as existing search endpoint)
+        settings_obj = get_settings()
+        effective_dropbox_path = settings_obj.default_dropbox_path
+        effective_gdrive_folder_id = settings_obj.default_gdrive_folder_id
+        effective_discord_webhook_url = settings_obj.default_discord_webhook_url
+        effective_enable_youtube_upload = settings_obj.default_enable_youtube_upload
+        effective_brand_prefix = settings_obj.default_brand_prefix
+        effective_youtube_description = settings_obj.default_youtube_description
+
+        # Apply default theme
+        theme_service = get_theme_service()
+        effective_theme_id = theme_service.get_default_theme_id()
+        if effective_theme_id:
+            logger.info(f"Applying default theme: {effective_theme_id}")
+
+        from backend.services.job_defaults_service import resolve_cdg_txt_defaults
+        resolved_cdg, resolved_txt = resolve_cdg_txt_defaults(effective_theme_id, None, None)
+
+        # Determine display values
+        session_artist = session.get('artist', body.artist)
+        session_title = session.get('title', body.title)
+        effective_display_artist = body.display_artist or session_artist
+        effective_display_title = body.display_title or session_title
+
+        tenant_id = session.get('tenant_id')
+
+        request_metadata = extract_request_metadata(request, created_from="guided_flow")
+
+        # Create the job with all final values
+        job_create = JobCreate(
+            artist=effective_display_artist,
+            title=effective_display_title,
+            theme_id=effective_theme_id,
+            enable_cdg=resolved_cdg,
+            enable_txt=resolved_txt,
+            brand_prefix=effective_brand_prefix,
+            enable_youtube_upload=effective_enable_youtube_upload,
+            youtube_description=effective_youtube_description,
+            youtube_description_template=effective_youtube_description,
+            discord_webhook_url=effective_discord_webhook_url,
+            dropbox_path=effective_dropbox_path,
+            gdrive_folder_id=effective_gdrive_folder_id,
+            user_email=user_email,
+            audio_search_artist=session_artist,
+            audio_search_title=session_title,
+            request_metadata=request_metadata,
+            is_private=body.is_private,
+            tenant_id=tenant_id,
+        )
+        job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
+        job_id = job.job_id
+
+        logger.info(f"Created job {job_id} from search session {body.search_session_id}")
+
+        metrics.record_job_created(job_id, source="guided_search")
+
+        # Apply default theme style to job (copy style_params.json to job folder)
+        if effective_theme_id:
+            from backend.api.routes.file_upload import _prepare_theme_for_job
+            try:
+                style_params_path, theme_style_assets, youtube_desc = _prepare_theme_for_job(
+                    job_id, effective_theme_id, {}
+                )
+                theme_update = {
+                    'style_params_gcs_path': style_params_path,
+                    'style_assets': theme_style_assets,
+                }
+                if youtube_desc and not effective_youtube_description:
+                    theme_update['youtube_description_template'] = youtube_desc
+                job_manager.update_job(job_id, theme_update)
+            except Exception as e:
+                logger.warning(f"Failed to prepare theme '{effective_theme_id}' for job {job_id}: {e}")
+
+        # Store search results and remote_search_id in job state_data
+        # (required by _download_audio_and_trigger_workers)
+        state_data_update: Dict[str, Any] = {
+            'audio_search_results': search_results,
+            'audio_search_count': len(search_results),
+        }
+        if session.get('remote_search_id'):
+            state_data_update['remote_search_id'] = session['remote_search_id']
+        job_manager.update_job(job_id, {'state_data': state_data_update})
+
+        # Transition to DOWNLOADING_AUDIO (skips AWAITING_AUDIO_SELECTION entirely)
+        _validate_and_prepare_selection(
+            job_id=job_id,
+            selection_index=body.selection_index,
+        )
+
+        # Trigger audio download as a background task
+        audio_search_service = get_audio_search_service()
+        background_tasks.add_task(
+            _download_audio_and_trigger_workers,
+            job_id,
+            body.selection_index,
+            audio_search_service,
+        )
+
+        # Consume the session (best-effort — session expires via TTL anyway)
+        try:
+            firestore_service.delete_search_session(body.search_session_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete search session {body.search_session_id}: {e}")
+
+        return JobResponse(
+            status="success",
+            job_id=job_id,
+            message="Job created successfully. Audio download starting."
+        )
+
+    except HTTPException:
+        raise
+    except (InsufficientCreditsError, RateLimitExceededError):
+        raise
+    except Exception as e:
+        logger.error(f"Error creating job from search: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
