@@ -182,7 +182,8 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 | `jobs/{job_id}/logs` | Worker log entries (subcollection) | timestamp, level, worker, message, ttl_expiry |
 | `sessions` | Magic link auth sessions | user_email, token, expires_at |
 | `magic_links` | Passwordless auth tokens | email, token, expires_at, used |
-| `beta_feedback` | Beta program feedback | user_email, ratings, comments |
+| `user_feedback` | User feedback for credits (all users) | user_email, ratings, comments, created_at |
+| `beta_feedback` | Beta program feedback (deprecated) | user_email, ratings, comments |
 
 **Note**: The `users` collection in the same Firestore instance belongs to karaoke-decide (different schema: user_id, is_guest, quiz_* fields). Don't use it for karaoke-gen.
 

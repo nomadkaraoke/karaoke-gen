@@ -483,6 +483,8 @@ GET /api/users/me
 Authorization: Bearer SESSION_TOKEN
 ```
 
+Response includes `feedback_eligible: bool` indicating whether the user can earn credits by submitting feedback (requires 2+ completed jobs and no prior feedback submission).
+
 ### Logout
 
 ```http
@@ -561,7 +563,7 @@ Credits are checked and deducted at job creation time. The flow:
 3. **Deduct** - `user_service.deduct_credit()` atomically deducts 1 credit (with job_id for audit trail)
 4. **Refund on failure** - If the job fails, 1 credit is automatically refunded
 
-Admin users bypass credit checks entirely. New users receive 2 welcome credits.
+Admin users bypass credit checks entirely. New users receive 2 welcome credits. Users can earn 2 additional free credits by submitting product feedback after completing 2+ jobs (see [User Feedback for Credits](#user-feedback-for-credits)).
 
 #### 402 Response
 
@@ -584,7 +586,9 @@ POST /api/users/webhooks/stripe
 
 Handles `checkout.session.completed` events.
 
-## Beta Tester Program (PR #90)
+## Beta Tester Program (Deprecated)
+
+> **Note**: The beta program was removed from the homepage in PR #430. These endpoints are preserved for backward compatibility but are no longer actively promoted. New users receive 2 welcome credits instead. See [User Feedback for Credits](#user-feedback-for-credits) for the current feedback-for-credits mechanism.
 
 ### Enroll as Beta Tester
 
@@ -601,7 +605,7 @@ Content-Type: application/json
 
 Returns 1 free credit and session token.
 
-### Submit Feedback
+### Submit Beta Feedback
 
 ```http
 POST /api/users/beta/feedback
