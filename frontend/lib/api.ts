@@ -1236,6 +1236,17 @@ export const adminApi = {
   },
 
   /**
+   * Permanently delete a user and all associated data
+   */
+  async deleteUser(email: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * List all jobs (admin view)
    */
   async listAllJobs(params?: AdminJobListParams & { exclude_test?: boolean }): Promise<Job[]> {

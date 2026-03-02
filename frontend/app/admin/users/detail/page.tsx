@@ -22,6 +22,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -34,6 +44,7 @@ import {
   CreditCard,
   Briefcase,
   Clock,
+  Trash2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -46,6 +57,9 @@ export default function AdminUserDetailPage() {
   const [user, setUser] = useState<AdminUserDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+
+  // Delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   // Credit dialog
   const [creditDialogOpen, setCreditDialogOpen] = useState(false)
@@ -142,6 +156,28 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  const handleDeleteUser = async () => {
+    if (!user) return
+
+    try {
+      setActionLoading(true)
+      await adminApi.deleteUser(email)
+      toast({
+        title: "User Deleted",
+        description: `User ${email} has been permanently deleted`,
+      })
+      router.push("/admin/users")
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete user",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Never"
     return new Date(dateStr).toLocaleString()
@@ -229,6 +265,16 @@ export default function AdminUserDetailPage() {
             </>
           )}
         </Button>
+        {user.role !== "admin" && (
+          <Button
+            variant="destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={actionLoading}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete User
+          </Button>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -438,6 +484,31 @@ export default function AdminUserDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete user {email}? This action
+              cannot be undone. All sessions and authentication data will be removed.
+              Jobs will be preserved as historical records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={actionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

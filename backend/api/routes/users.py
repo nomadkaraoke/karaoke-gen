@@ -1410,6 +1410,31 @@ async def enable_user(
     return {"status": "success", "message": f"User {email} has been enabled"}
 
 
+@router.delete("/admin/users/{email}")
+async def delete_user(
+    email: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Permanently delete a user and all associated data (admin only).
+
+    Jobs are NOT deleted - they remain as historical records.
+    """
+    admin_token, _, _ = auth_data
+    admin_id = f"admin:{admin_token[:8]}..." if admin_token else "admin:unknown"
+
+    try:
+        success = user_service.delete_user(email, admin_email=admin_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"status": "success", "message": f"User {email} has been deleted"}
+
+
 @router.post("/admin/users/{email}/role")
 async def set_user_role(
     email: str,

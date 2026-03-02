@@ -768,6 +768,55 @@ class UserService:
             logger.exception("Error enabling user")
             return False
 
+    def delete_user(self, email: str, admin_email: str) -> bool:
+        """
+        Permanently delete a user and all their associated data.
+
+        Deletes: user document, sessions, magic links.
+        Does NOT delete jobs (they remain as historical records).
+
+        Args:
+            email: Email of the user to delete
+            admin_email: Email/ID of the admin performing the action
+
+        Returns:
+            True if user was deleted, False if user not found
+
+        Raises:
+            ValueError: If trying to delete an admin user
+        """
+        try:
+            email = email.lower()
+            user = self.get_user(email)
+
+            if not user:
+                return False
+
+            if user.role == UserRole.ADMIN:
+                raise ValueError("Cannot delete admin users")
+
+            # Revoke all active sessions
+            self.revoke_all_sessions(email)
+
+            # Delete magic links for the user
+            magic_links = self.db.collection(MAGIC_LINKS_COLLECTION).where(
+                filter=FieldFilter('email', '==', email)
+            ).stream()
+            for doc in magic_links:
+                doc.reference.delete()
+
+            # Delete the user document
+            self.db.collection(USERS_COLLECTION).document(email).delete()
+
+            logger.info(f"Admin {admin_email} permanently deleted user {email}")
+            return True
+
+        except ValueError:
+            raise
+        except Exception:
+            logger.exception(f"Error deleting user {email}")
+            return False
+
     def increment_jobs_completed(self, email: str) -> bool:
         """Increment the completed jobs counter for a user using atomic increment."""
         try:
