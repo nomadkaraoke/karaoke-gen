@@ -117,8 +117,8 @@ describe('api module — standalone search methods', () => {
 
 describe('AudioSourceStep — component interface', () => {
   it('exports AudioSourceStep as a named export', async () => {
-    const module = await import('@/components/job/steps/AudioSourceStep')
-    expect(typeof module.AudioSourceStep).toBe('function')
+    const mod = await import('@/components/job/steps/AudioSourceStep')
+    expect(typeof mod.AudioSourceStep).toBe('function')
   })
 
   it('AudioSourceStep accepts onSearchCompleted prop (search path does not use onJobCreated)', async () => {
@@ -256,7 +256,7 @@ jest.mock('@/lib/tenant', () => ({
 
 describe('GuidedJobFlow — component interface', () => {
   it('exports GuidedJobFlow as a named export', async () => {
-    const module = await import('@/components/job/GuidedJobFlow')
-    expect(typeof module.GuidedJobFlow).toBe('function')
+    const mod = await import('@/components/job/GuidedJobFlow')
+    expect(typeof mod.GuidedJobFlow).toBe('function')
   })
 })
