@@ -1905,9 +1905,9 @@ async def create_job_from_search(
         if not user_email:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        # Retrieve and validate the search session
+        # Atomically retrieve and consume the search session to prevent duplicate job creation
         firestore_service = FirestoreService()
-        session = firestore_service.get_search_session(body.search_session_id)
+        session = firestore_service.consume_search_session(body.search_session_id)
         if not session:
             raise HTTPException(
                 status_code=404,
@@ -1918,7 +1918,14 @@ async def create_job_from_search(
         if not auth_result.is_admin and session.get('user_email') != user_email:
             raise HTTPException(status_code=403, detail="You don't have permission to use this search session")
 
-        # Check TTL (belt-and-suspenders — Firestore TTL may not delete immediately)
+        # Verify tenant consistency — session must have been created in the same tenant context
+        request_tenant_id = getattr(request.state, 'tenant_id', None)
+        if session.get('tenant_id') != request_tenant_id:
+            raise HTTPException(status_code=403, detail="You don't have permission to use this search session")
+
+        # Check TTL (belt-and-suspenders — Firestore TTL may not delete immediately).
+        # The session was already consumed (deleted) by consume_search_session above,
+        # so no explicit delete is needed here.
         ttl_expiry = session.get('ttl_expiry')
         if ttl_expiry:
             if isinstance(ttl_expiry, str):
@@ -1927,7 +1934,6 @@ async def create_job_from_search(
                 except ValueError:
                     ttl_expiry = None
             if ttl_expiry and datetime.utcnow() > ttl_expiry.replace(tzinfo=None):
-                firestore_service.delete_search_session(body.search_session_id)
                 raise HTTPException(
                     status_code=404,
                     detail="Search expired — please search again"
@@ -2040,12 +2046,6 @@ async def create_job_from_search(
             body.selection_index,
             audio_search_service,
         )
-
-        # Consume the session (best-effort — session expires via TTL anyway)
-        try:
-            firestore_service.delete_search_session(body.search_session_id)
-        except Exception as e:
-            logger.warning(f"Failed to delete search session {body.search_session_id}: {e}")
 
         return JobResponse(
             status="success",

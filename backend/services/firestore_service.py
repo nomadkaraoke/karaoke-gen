@@ -623,9 +623,12 @@ class FirestoreService:
     def get_search_session(self, session_id: str) -> Optional[dict]:
         """Retrieve a search session by ID.
 
-        Returns None if the session does not exist or has been deleted.
-        TTL-expired documents may still appear briefly; callers should treat
-        an expired ttl_expiry as missing.
+        Returns None only if the document does not exist.
+        Raises on Firestore errors so callers can distinguish a missing session
+        from a transient datastore failure.
+
+        TTL-expired documents may still appear briefly; callers should check
+        ttl_expiry and treat expired sessions as missing.
 
         Args:
             session_id: UUID string identifying the session.
@@ -633,15 +636,40 @@ class FirestoreService:
         Returns:
             Session dict or None.
         """
-        try:
-            doc_ref = self.db.collection('search_sessions').document(session_id)
-            doc = doc_ref.get()
+        doc_ref = self.db.collection('search_sessions').document(session_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            return None
+        return doc.to_dict()
+
+    def consume_search_session(self, session_id: str) -> Optional[dict]:
+        """Atomically read and delete a search session.
+
+        Uses a Firestore transaction to prevent two concurrent job-creation
+        requests from both reading the same session and creating duplicate jobs.
+
+        Returns the session dict if it existed, None if it did not exist.
+        Raises on Firestore errors.
+
+        Args:
+            session_id: UUID string identifying the session.
+
+        Returns:
+            Session dict or None.
+        """
+        doc_ref = self.db.collection('search_sessions').document(session_id)
+
+        @firestore.transactional
+        def _read_and_delete(transaction, ref):
+            doc = ref.get(transaction=transaction)
             if not doc.exists:
                 return None
-            return doc.to_dict()
-        except Exception as e:
-            logger.error(f"Error getting search session {session_id}: {e}")
-            return None
+            session_data = doc.to_dict()
+            transaction.delete(ref)
+            return session_data
+
+        transaction = self.db.transaction()
+        return _read_and_delete(transaction, doc_ref)
 
     def delete_search_session(self, session_id: str) -> None:
         """Delete a search session after it has been consumed by job creation.

@@ -2,9 +2,9 @@
 Unit tests for the standalone search + create-from-search guided flow.
 
 Covers:
-- FirestoreService search session CRUD
+- FirestoreService search session CRUD (including consume_search_session)
 - POST /api/audio-search/search-standalone (no job created)
-- POST /api/jobs/create-from-search (session validation, ownership, job creation)
+- POST /api/jobs/create-from-search (session validation, ownership, tenant, job creation)
 """
 import pytest
 from datetime import datetime, timedelta, UTC
@@ -43,13 +43,13 @@ def _make_mock_job_manager(job=None):
     return mgr
 
 
-def _make_search_session(user_email="test@example.com", expired=False):
+def _make_search_session(user_email="test@example.com", expired=False, tenant_id=None):
     now = datetime.utcnow()
     ttl = now - timedelta(hours=1) if expired else now + timedelta(minutes=30)
     return {
         "session_id": "sess-abc-123",
         "user_email": user_email,
-        "tenant_id": None,
+        "tenant_id": tenant_id,
         "artist": "ABBA",
         "title": "Waterloo",
         "results": [
@@ -144,8 +144,8 @@ class TestFirestoreServiceSearchSessionCRUD:
 
         assert result is None
 
-    def test_get_search_session_returns_none_on_error(self):
-        """get_search_session should return None (not raise) on Firestore error."""
+    def test_get_search_session_raises_on_firestore_error(self):
+        """get_search_session should raise (not return None) on Firestore errors."""
         from backend.services.firestore_service import FirestoreService
 
         mock_collection = MagicMock()
@@ -156,7 +156,76 @@ class TestFirestoreServiceSearchSessionCRUD:
         svc = FirestoreService.__new__(FirestoreService)
         svc.db = mock_db
 
-        result = svc.get_search_session("sess-xyz")
+        with pytest.raises(Exception, match="Firestore unavailable"):
+            svc.get_search_session("sess-xyz")
+
+    def test_consume_search_session_returns_session_and_deletes_atomically(self):
+        """consume_search_session should return session data and delete within transaction."""
+        from backend.services.firestore_service import FirestoreService
+        from google.cloud import firestore as fs
+
+        session_dict = {"session_id": "sess-xyz", "user_email": "user@example.com"}
+
+        mock_snapshot = MagicMock()
+        mock_snapshot.exists = True
+        mock_snapshot.to_dict.return_value = session_dict
+
+        mock_doc_ref = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db = MagicMock()
+        mock_db.collection.return_value = mock_collection
+
+        # Simulate Firestore transaction: the @transactional function gets called
+        # with a transaction object; we simulate by calling the inner function directly.
+        captured_fn = {}
+
+        def fake_transactional(fn):
+            captured_fn['fn'] = fn
+            def wrapper(transaction, *args, **kwargs):
+                return fn(transaction, *args, **kwargs)
+            return wrapper
+
+        mock_transaction = MagicMock()
+        mock_doc_ref.get.return_value = mock_snapshot
+        mock_db.transaction.return_value = mock_transaction
+
+        svc = FirestoreService.__new__(FirestoreService)
+        svc.db = mock_db
+
+        with patch.object(fs, 'transactional', fake_transactional):
+            result = svc.consume_search_session("sess-xyz")
+
+        assert result == session_dict
+
+    def test_consume_search_session_returns_none_when_missing(self):
+        """consume_search_session returns None when document doesn't exist."""
+        from backend.services.firestore_service import FirestoreService
+        from google.cloud import firestore as fs
+
+        mock_snapshot = MagicMock()
+        mock_snapshot.exists = False
+
+        mock_doc_ref = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.document.return_value = mock_doc_ref
+        mock_db = MagicMock()
+        mock_db.collection.return_value = mock_collection
+
+        def fake_transactional(fn):
+            def wrapper(transaction, *args, **kwargs):
+                return fn(transaction, *args, **kwargs)
+            return wrapper
+
+        mock_transaction = MagicMock()
+        mock_doc_ref.get.return_value = mock_snapshot
+        mock_db.transaction.return_value = mock_transaction
+
+        svc = FirestoreService.__new__(FirestoreService)
+        svc.db = mock_db
+
+        with patch.object(fs, 'transactional', fake_transactional):
+            result = svc.consume_search_session("nonexistent-session")
 
         assert result is None
 
@@ -354,8 +423,7 @@ def create_from_search_client(mock_job_manager_cfs):
     session = _make_search_session(user_email="test@example.com")
 
     mock_firestore = MagicMock()
-    mock_firestore.get_search_session.return_value = session
-    mock_firestore.delete_search_session.return_value = None
+    mock_firestore.consume_search_session.return_value = session
 
     mock_audio_search = MagicMock()
 
@@ -460,8 +528,8 @@ class TestCreateJobFromSearch:
         assert job_create.artist == "Abba (Display)"
         assert job_create.title == "Waterloo (Karaoke)"
 
-    def test_session_deleted_after_job_created(self, create_from_search_client, auth_headers):
-        """Search session must be deleted (consumed) after job creation."""
+    def test_session_consumed_atomically(self, create_from_search_client, auth_headers):
+        """Session is consumed (atomically read+deleted) via consume_search_session."""
         create_from_search_client.post(
             "/api/jobs/create-from-search",
             json={
@@ -472,14 +540,17 @@ class TestCreateJobFromSearch:
             },
             headers=auth_headers,
         )
-        create_from_search_client._mock_firestore.delete_search_session.assert_called_once_with(
+        # consume_search_session handles both read + delete atomically
+        create_from_search_client._mock_firestore.consume_search_session.assert_called_once_with(
             "sess-abc-123"
         )
+        # No separate delete_search_session call needed
+        create_from_search_client._mock_firestore.delete_search_session.assert_not_called()
 
     def test_missing_session_returns_404(self, mock_job_manager_cfs, auth_headers):
         """Returns 404 when search session is not found (expired or invalid)."""
         mock_firestore = MagicMock()
-        mock_firestore.get_search_session.return_value = None  # session not found
+        mock_firestore.consume_search_session.return_value = None  # session not found
 
         mock_theme_service = MagicMock()
         mock_theme_service.get_default_theme_id.return_value = None
@@ -517,8 +588,7 @@ class TestCreateJobFromSearch:
         expired_session = _make_search_session(user_email="test@example.com", expired=True)
 
         mock_firestore = MagicMock()
-        mock_firestore.get_search_session.return_value = expired_session
-        mock_firestore.delete_search_session.return_value = None
+        mock_firestore.consume_search_session.return_value = expired_session
 
         mock_theme_service = MagicMock()
         mock_theme_service.get_default_theme_id.return_value = None
@@ -551,12 +621,51 @@ class TestCreateJobFromSearch:
         assert response.status_code == 404
         assert "Search expired" in response.json()["detail"]
 
+    def test_tenant_mismatch_returns_403(self, mock_job_manager_cfs, auth_headers):
+        """Returns 403 when session tenant_id doesn't match the request tenant."""
+        # Session was created in tenant "tenant-a"
+        session_with_tenant = _make_search_session(user_email="test@example.com", tenant_id="tenant-a")
+
+        mock_firestore = MagicMock()
+        mock_firestore.consume_search_session.return_value = session_with_tenant
+
+        mock_theme_service = MagicMock()
+        mock_theme_service.get_default_theme_id.return_value = None
+
+        mock_creds = _make_mock_creds()
+
+        def mock_jm_factory(*args, **kwargs):
+            return mock_job_manager_cfs
+
+        with patch("backend.api.routes.jobs.job_manager", mock_job_manager_cfs), \
+             patch("backend.api.routes.jobs.FirestoreService", return_value=mock_firestore), \
+             patch("backend.api.routes.jobs.get_theme_service", return_value=mock_theme_service), \
+             patch("backend.services.job_manager.JobManager", mock_jm_factory), \
+             patch("backend.services.firestore_service.firestore"), \
+             patch("backend.services.storage_service.storage"), \
+             patch("google.auth.default", return_value=(mock_creds, "test-project")):
+            from backend.main import app
+            client = TestClient(app)
+            # Request arrives from the default (no-tenant) context — tenant_id=None in request.state
+            response = client.post(
+                "/api/jobs/create-from-search",
+                json={
+                    "search_session_id": "sess-abc-123",
+                    "selection_index": 0,
+                    "artist": "ABBA",
+                    "title": "Waterloo",
+                },
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 403
+
     def test_invalid_selection_index_returns_400(self, mock_job_manager_cfs, auth_headers):
         """Returns 400 when selection_index is out of bounds."""
         session = _make_search_session()  # 1 result at index 0
 
         mock_firestore = MagicMock()
-        mock_firestore.get_search_session.return_value = session
+        mock_firestore.consume_search_session.return_value = session
 
         mock_theme_service = MagicMock()
         mock_theme_service.get_default_theme_id.return_value = None
