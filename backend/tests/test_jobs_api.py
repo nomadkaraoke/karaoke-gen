@@ -214,6 +214,91 @@ class TestDeleteJob:
             assert response.status_code in [200, 404]
 
 
+class TestDeleteJobBrandCodeRecycling:
+    """Tests for brand code recycling in DELETE /api/jobs/{job_id}."""
+
+    def test_brand_code_recycled_before_deletion(self, mock_worker_service, mock_theme_service, auth_headers):
+        """Test that brand code is recycled before the job is deleted."""
+        mock_job_manager = MagicMock()
+        job_with_brand = Job(
+            job_id="test-bc-123",
+            status=JobStatus.COMPLETE,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Test",
+            state_data={"brand_code": "NOMAD-0042"},
+            outputs_deleted_at=datetime.now(UTC),
+        )
+        mock_job_manager.get_job.return_value = job_with_brand
+        mock_job_manager.delete_job.return_value = True
+        mock_creds = MagicMock()
+        mock_creds.universe_domain = 'googleapis.com'
+
+        with patch('backend.api.routes.jobs.job_manager', mock_job_manager), \
+             patch('backend.api.routes.jobs.worker_service', mock_worker_service), \
+             patch('backend.api.routes.jobs.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.services.job_manager.JobManager', lambda *a, **k: mock_job_manager), \
+             patch('backend.services.firestore_service.firestore'), \
+             patch('backend.services.storage_service.storage'), \
+             patch('google.auth.default', return_value=(mock_creds, 'test-project')), \
+             patch('backend.services.brand_code_service.BrandCodeService.parse_brand_code', return_value=("NOMAD", 42)) as mock_parse, \
+             patch('backend.services.brand_code_service.get_brand_code_service') as mock_get_svc:
+            mock_svc = MagicMock()
+            mock_get_svc.return_value = mock_svc
+
+            from backend.main import app
+            client = TestClient(app)
+            response = client.delete("/api/jobs/test-bc-123", headers=auth_headers)
+
+            assert response.status_code == 200
+            mock_parse.assert_called_once_with("NOMAD-0042")
+            mock_svc.recycle_brand_code.assert_called_once_with("NOMAD", 42)
+            mock_job_manager.delete_job.assert_called_once()
+
+    def test_recycling_failure_does_not_prevent_deletion(self, mock_worker_service, mock_theme_service, auth_headers):
+        """Test that job deletion proceeds even if brand code recycling fails."""
+        mock_job_manager = MagicMock()
+        job_with_brand = Job(
+            job_id="test-bc-456",
+            status=JobStatus.COMPLETE,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Test",
+            state_data={"brand_code": "NOMAD-0099"},
+            outputs_deleted_at=datetime.now(UTC),
+        )
+        mock_job_manager.get_job.return_value = job_with_brand
+        mock_job_manager.delete_job.return_value = True
+        mock_creds = MagicMock()
+        mock_creds.universe_domain = 'googleapis.com'
+
+        with patch('backend.api.routes.jobs.job_manager', mock_job_manager), \
+             patch('backend.api.routes.jobs.worker_service', mock_worker_service), \
+             patch('backend.api.routes.jobs.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.services.job_manager.JobManager', lambda *a, **k: mock_job_manager), \
+             patch('backend.services.firestore_service.firestore'), \
+             patch('backend.services.storage_service.storage'), \
+             patch('google.auth.default', return_value=(mock_creds, 'test-project')), \
+             patch('backend.services.brand_code_service.BrandCodeService.parse_brand_code', side_effect=ValueError("Bad format")):
+            from backend.main import app
+            client = TestClient(app)
+            response = client.delete("/api/jobs/test-bc-456", headers=auth_headers)
+
+            assert response.status_code == 200
+            # Job should still be deleted despite recycling failure
+            mock_job_manager.delete_job.assert_called_once()
+
+    def test_no_brand_code_skips_recycling(self, client, mock_job_manager, auth_headers):
+        """Test that deletion without brand code doesn't attempt recycling."""
+        with patch('backend.services.brand_code_service.get_brand_code_service') as mock_get_svc:
+            response = client.delete("/api/jobs/test123", headers=auth_headers)
+
+            assert response.status_code == 200
+            mock_get_svc.assert_not_called()
+
+
 class TestCancelJob:
     """Tests for POST /api/jobs/{job_id}/cancel."""
     

@@ -470,3 +470,107 @@ class TestDeleteOutputsGCSFinals:
             assert response.status_code == 200
             # Verify path format is jobs/{job_id}/finals/
             mock_storage.delete_folder.assert_called_once_with("jobs/abc-123-xyz/finals/")
+
+
+class TestDeleteOutputsBrandCodeRecycling:
+    """Tests for brand code recycling during output deletion."""
+
+    def test_brand_code_recycled_on_success(self, client, mock_complete_job):
+        """Test that brand code is recycled when Dropbox and GDrive cleanup succeed."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.brand_code_service.BrandCodeService.parse_brand_code') as mock_parse, \
+             patch('backend.services.brand_code_service.get_brand_code_service') as mock_get_svc:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            mock_parse.return_value = ("NOMAD", 1234)
+            mock_svc = Mock()
+            mock_get_svc.return_value = mock_svc
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            assert response.status_code == 200
+            data = response.json()
+            # Brand code should be recycled (all services skip = success condition)
+            assert "brand_code" in data["deleted_services"]
+            assert data["deleted_services"]["brand_code"]["status"] == "recycled"
+            assert data["deleted_services"]["brand_code"]["code"] == "NOMAD-1234"
+            mock_svc.recycle_brand_code.assert_called_once_with("NOMAD", 1234)
+
+    def test_brand_code_not_recycled_without_brand_code(self, client, mock_job_no_outputs):
+        """Test that no recycling happens when job has no brand code."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job_no_outputs
+            mock_jm_class.return_value = mock_jm
+
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            response = client.post("/api/admin/jobs/test-job-456/delete-outputs")
+
+            assert response.status_code == 200
+            data = response.json()
+            # No brand_code key in response since there's nothing to recycle
+            assert "brand_code" not in data["deleted_services"]
+
+    def test_brand_code_skipped_when_dropbox_fails(self, client, mock_complete_job):
+        """Test that brand code is NOT recycled when Dropbox cleanup fails."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.dropbox_service.get_dropbox_service') as mock_dropbox_svc:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            # Make Dropbox fail
+            mock_dropbox = Mock()
+            mock_dropbox.is_configured = True
+            mock_dropbox.delete_folder.side_effect = Exception("Dropbox error")
+            mock_dropbox_svc.return_value = mock_dropbox
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["deleted_services"]["brand_code"]["status"] == "skipped"
+            assert "incomplete" in data["deleted_services"]["brand_code"]["reason"].lower()
+
+    def test_brand_code_recycle_error_handled_gracefully(self, client, mock_complete_job):
+        """Test that brand code recycling errors don't crash the endpoint."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.brand_code_service.BrandCodeService.parse_brand_code') as mock_parse:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+
+            mock_db = Mock()
+            mock_job_ref = Mock()
+            mock_db.collection.return_value.document.return_value = mock_job_ref
+            mock_user_service.return_value.db = mock_db
+
+            # Make parse_brand_code raise an error
+            mock_parse.side_effect = ValueError("Invalid brand code format")
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["deleted_services"]["brand_code"]["status"] == "failed"
+            assert "Invalid brand code format" in data["deleted_services"]["brand_code"]["error"]
