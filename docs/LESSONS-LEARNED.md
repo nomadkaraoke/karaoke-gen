@@ -33,6 +33,9 @@ Audio separation and lyrics transcription run in parallel. Both can fail indepen
 ### GCE Instance Selection for FFmpeg
 AMD EPYC (C4D series) significantly outperforms Intel Xeon (C4 series) for CPU-bound FFmpeg encoding with libass. C4D-highcpu-32 is ~5x faster than C4-standard-8. C4D requires `hyperdisk-balanced` disk type.
 
+### Deferred Job Creation with Search Sessions (Mar 2026)
+When a multi-step wizard searches for resources before the user confirms (e.g., audio search in Step 2, job settings in Step 3), don't create the backend resource during the search step. Instead, store a short-lived session (Firestore TTL: 30 min) with the search results, and create the resource only at the final confirm step with all values set correctly. Benefits: no orphan records, no wrong-value patching, no ghost entries in lists, no spurious notifications. The session pattern works well: `search-standalone` returns `search_session_id` + results, `create-from-search` takes `search_session_id` + user choices → creates job with final values. Sessions auto-expire via Firestore TTL; no cleanup needed on back/abandon.
+
 ### Combined Review Flow (Jan 2026)
 When two sequential human review steps can be combined into one, do it. We originally had separate steps: (1) lyrics review, (2) instrumental selection. This doubled user friction and email notifications. By the time users enter lyrics review, audio separation is already complete - the instrumental stems are ready. We combined both into a single "Combined Review" session: users review lyrics AND select instrumental track on the same page, submit once. **Benefits**: Better UX (one interaction vs two), faster turnaround, reduced drop-off, simpler email notifications, cleaner codebase. **Implementation pattern**: Move analysis that was done after review (backing vocals analysis) to before review (in screens_worker). Include instrumental options in the correction-data endpoint. Require instrumental selection in the review completion request body. Remove the separate `AWAITING_INSTRUMENTAL_SELECTION` state from normal flow (keep for edge cases like finalise-only jobs for DB compatibility).
 
@@ -783,7 +786,7 @@ This generalizes the preview encoding pattern (`/encode-preview` was already ide
 
 **Key lessons:**
 1. **Fire-and-forget validation is risky** — When a validator runs alongside cleanup, the order matters. A 5-minute Cloud Tasks delay is a simple, reliable fix.
-2. **Multi-step UI state can silently lose data** — The guided flow's `is_private` checkbox was in Step 3, but the job was created in Step 2 with the default value. Always check where state is committed vs. where it's displayed.
+2. **Multi-step UI state can silently lose data** — The guided flow's `is_private` checkbox was in Step 3, but the job was created in Step 2 with the default value. Fixed by decoupling search from job creation: search now returns a session ID, and the job is created only at Step 3 confirm with all final values. See `docs/archive/2026-03-02-decouple-search-from-job-creation.md`.
 3. **Cloud Run service naming matters for debugging** — The service is `karaoke-backend`, not `karaoke-gen-api`. Wrong name returns empty logs, wasting investigation time.
 4. **Cross-folder gap detection needs global context** — Per-folder max misses trailing gaps when folders have different highest numbers. Use the global max across all folders as the upper bound.
 

@@ -2,7 +2,7 @@
 
 **Created:** 2026-03-02
 **Branch:** feat/sess-20260302-1716-guided-submission-flow
-**Status:** Planned — ready for implementation
+**Status:** Implemented (v0.122.4)
 
 ---
 

@@ -373,6 +373,56 @@ Content-Type: application/json
 
 Selects an audio source from the search results and starts processing.
 
+#### Standalone Search (Guided Flow — Step 2)
+
+```http
+POST /api/audio-search/search-standalone
+Content-Type: application/json
+
+{
+  "artist": "Artist Name",
+  "title": "Song Title"
+}
+```
+
+Searches for audio **without creating a job**. Returns a short-lived search session (30-min TTL).
+Credits are checked here but **not deducted** — deduction happens at job creation.
+
+**Response:**
+```json
+{
+  "search_session_id": "uuid",
+  "results": [...],
+  "results_count": 3
+}
+```
+
+No results returns `results: []` (not a 404). Use `search_session_id` with the create-from-search endpoint below.
+
+#### Create Job from Search Session (Guided Flow — Step 3)
+
+```http
+POST /api/jobs/create-from-search
+Content-Type: application/json
+
+{
+  "search_session_id": "uuid",
+  "selection_index": 0,
+  "artist": "ABBA",
+  "title": "Waterloo",
+  "display_artist": "ABBA (Display)",
+  "display_title": "Waterloo (Karaoke)",
+  "is_private": false
+}
+```
+
+Creates the job from a previously completed standalone search session. All final field values
+(is_private, display overrides) are set at creation time — no patching needed afterward.
+The job goes directly to `DOWNLOADING_AUDIO` (skips `AWAITING_AUDIO_SELECTION`).
+The session is consumed (deleted) on success.
+
+Returns 404 with "Search expired — please search again" if the session has expired.
+
 ### Themes
 
 ```http
