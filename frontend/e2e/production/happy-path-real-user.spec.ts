@@ -247,13 +247,24 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log('STEP 3: Verify Authentication');
         console.log('========================================');
 
-        // Verify we're authenticated by checking for the app UI
-        await expect(page.locator('body')).not.toContainText('Sign in', { timeout: TIMEOUTS.action });
-        console.log('  User authenticated');
+        // Verify the token is actually valid by waiting for user data to load.
+        // When authenticated, AuthStatus shows credits (e.g., "3 credits").
+        // When token is invalid, AuthStatus shows "Login" button.
+        const loginButton = page.getByRole('button', { name: /^Login$/i });
+        const creditIndicator = page.getByText(/\d+\s+credits?/i).first();
 
-        // Try to find credit indicator
-        const creditText = await page.getByText(/credit/i).first().textContent().catch(() => 'N/A');
-        console.log(`  Credits visible: ${creditText}`);
+        // Wait for either credits (auth success) or Login button (auth failure)
+        await expect(creditIndicator.or(loginButton)).toBeVisible({ timeout: TIMEOUTS.action });
+
+        if (await loginButton.isVisible().catch(() => false)) {
+          throw new Error(
+            'E2E_TEST_TOKEN is expired or invalid — the "Login" button is still visible after token injection. ' +
+            'Please update the E2E_TEST_TOKEN secret in GitHub Actions with a valid token.'
+          );
+        }
+
+        const creditText = await creditIndicator.textContent().catch(() => 'N/A');
+        console.log(`  User authenticated — ${creditText}`);
 
         console.log('STEP 3 COMPLETE: User authenticated with pre-configured token');
 
