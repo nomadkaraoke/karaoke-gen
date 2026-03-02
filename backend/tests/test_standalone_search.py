@@ -423,6 +423,7 @@ def create_from_search_client(mock_job_manager_cfs):
     session = _make_search_session(user_email="test@example.com")
 
     mock_firestore = MagicMock()
+    mock_firestore.get_search_session.return_value = session
     mock_firestore.consume_search_session.return_value = session
 
     mock_audio_search = MagicMock()
@@ -550,7 +551,7 @@ class TestCreateJobFromSearch:
     def test_missing_session_returns_404(self, mock_job_manager_cfs, auth_headers):
         """Returns 404 when search session is not found (expired or invalid)."""
         mock_firestore = MagicMock()
-        mock_firestore.consume_search_session.return_value = None  # session not found
+        mock_firestore.get_search_session.return_value = None  # session not found
 
         mock_theme_service = MagicMock()
         mock_theme_service.get_default_theme_id.return_value = None
@@ -588,7 +589,7 @@ class TestCreateJobFromSearch:
         expired_session = _make_search_session(user_email="test@example.com", expired=True)
 
         mock_firestore = MagicMock()
-        mock_firestore.consume_search_session.return_value = expired_session
+        mock_firestore.get_search_session.return_value = expired_session
 
         mock_theme_service = MagicMock()
         mock_theme_service.get_default_theme_id.return_value = None
@@ -627,7 +628,7 @@ class TestCreateJobFromSearch:
         session_with_tenant = _make_search_session(user_email="test@example.com", tenant_id="tenant-a")
 
         mock_firestore = MagicMock()
-        mock_firestore.consume_search_session.return_value = session_with_tenant
+        mock_firestore.get_search_session.return_value = session_with_tenant
 
         mock_theme_service = MagicMock()
         mock_theme_service.get_default_theme_id.return_value = None
@@ -665,7 +666,7 @@ class TestCreateJobFromSearch:
         session = _make_search_session()  # 1 result at index 0
 
         mock_firestore = MagicMock()
-        mock_firestore.consume_search_session.return_value = session
+        mock_firestore.get_search_session.return_value = session
 
         mock_theme_service = MagicMock()
         mock_theme_service.get_default_theme_id.return_value = None

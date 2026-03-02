@@ -1905,9 +1905,11 @@ async def create_job_from_search(
         if not user_email:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        # Atomically retrieve and consume the search session to prevent duplicate job creation
+        # Read the session non-destructively for validation.
+        # consume_search_session (atomic read+delete) is called later, just before job creation,
+        # so that a 4xx validation error leaves the session intact for the user to retry.
         firestore_service = FirestoreService()
-        session = firestore_service.consume_search_session(body.search_session_id)
+        session = firestore_service.get_search_session(body.search_session_id)
         if not session:
             raise HTTPException(
                 status_code=404,
@@ -1923,9 +1925,7 @@ async def create_job_from_search(
         if session.get('tenant_id') != request_tenant_id:
             raise HTTPException(status_code=403, detail="You don't have permission to use this search session")
 
-        # Check TTL (belt-and-suspenders — Firestore TTL may not delete immediately).
-        # The session was already consumed (deleted) by consume_search_session above,
-        # so no explicit delete is needed here.
+        # Check TTL (belt-and-suspenders — Firestore TTL may not delete immediately)
         ttl_expiry = session.get('ttl_expiry')
         if ttl_expiry:
             if isinstance(ttl_expiry, str):
@@ -1976,6 +1976,16 @@ async def create_job_from_search(
         tenant_id = session.get('tenant_id')
 
         request_metadata = extract_request_metadata(request, created_from="guided_flow")
+
+        # All validation passed — atomically consume (read+delete) the session to prevent
+        # a second concurrent request from creating a duplicate job.
+        consumed_session = firestore_service.consume_search_session(body.search_session_id)
+        if not consumed_session:
+            # Another concurrent request already consumed the session
+            raise HTTPException(
+                status_code=404,
+                detail="Search expired — please search again"
+            )
 
         # Create the job with all final values
         job_create = JobCreate(
