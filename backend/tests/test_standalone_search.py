@@ -728,3 +728,220 @@ class TestCreateJobFromSearch:
         # by _validate_and_prepare_selection (which is mocked here)
         created_job = create_from_search_client._mock_jm.create_job.return_value
         assert created_job.status != JobStatus.AWAITING_AUDIO_SELECTION
+
+    def test_different_user_cannot_use_anothers_session(self, mock_job_manager_cfs, auth_headers):
+        """Returns 403 when session belongs to a different user (ownership check)."""
+        from backend.api.dependencies import require_auth
+        from backend.services.auth_service import AuthResult, UserType
+
+        # Session belongs to alice, but request comes from bob (non-admin)
+        session = _make_search_session(user_email="alice@example.com")
+
+        mock_firestore = MagicMock()
+        mock_firestore.get_search_session.return_value = session
+
+        mock_theme_service = MagicMock()
+        mock_theme_service.get_default_theme_id.return_value = None
+
+        mock_creds = _make_mock_creds()
+
+        def mock_jm_factory(*args, **kwargs):
+            return mock_job_manager_cfs
+
+        async def bob_auth():
+            return AuthResult(
+                is_valid=True, user_type=UserType.LIMITED,
+                remaining_uses=5, message="OK", is_admin=False,
+                user_email="bob@example.com",
+            )
+
+        with patch("backend.api.routes.jobs.job_manager", mock_job_manager_cfs), \
+             patch("backend.api.routes.jobs.FirestoreService", return_value=mock_firestore), \
+             patch("backend.api.routes.jobs.get_theme_service", return_value=mock_theme_service), \
+             patch("backend.services.job_manager.JobManager", mock_jm_factory), \
+             patch("backend.services.firestore_service.firestore"), \
+             patch("backend.services.storage_service.storage"), \
+             patch("google.auth.default", return_value=(mock_creds, "test-project")):
+            from backend.main import app
+            app.dependency_overrides[require_auth] = bob_auth
+            try:
+                client = TestClient(app)
+                response = client.post(
+                    "/api/jobs/create-from-search",
+                    json={
+                        "search_session_id": "sess-abc-123",
+                        "selection_index": 0,
+                        "artist": "ABBA",
+                        "title": "Waterloo",
+                    },
+                    headers=auth_headers,
+                )
+            finally:
+                # Restore the default admin mock
+                # Restore the default admin auth (same as conftest autouse fixture)
+                async def _restore_admin_auth():
+                    return AuthResult(
+                        is_valid=True, user_type=UserType.ADMIN,
+                        remaining_uses=999, message="Test admin token",
+                        is_admin=True, user_email="test@example.com",
+                    )
+                app.dependency_overrides[require_auth] = _restore_admin_auth
+
+        assert response.status_code == 403
+
+    def test_remote_search_id_stored_in_state_data(self, mock_job_manager_cfs, auth_headers):
+        """remote_search_id from session is copied to job state_data."""
+        session = _make_search_session(user_email="test@example.com")
+        session["remote_search_id"] = "torrent-search-42"
+
+        mock_firestore = MagicMock()
+        mock_firestore.get_search_session.return_value = session
+        mock_firestore.consume_search_session.return_value = session
+
+        mock_audio_search = MagicMock()
+
+        mock_theme_service = MagicMock()
+        mock_theme_service.get_default_theme_id.return_value = None
+
+        mock_creds = _make_mock_creds()
+
+        def mock_jm_factory(*args, **kwargs):
+            return mock_job_manager_cfs
+
+        with patch("backend.api.routes.jobs.job_manager", mock_job_manager_cfs), \
+             patch("backend.api.routes.jobs.FirestoreService", return_value=mock_firestore), \
+             patch("backend.api.routes.jobs.get_theme_service", return_value=mock_theme_service), \
+             patch("backend.api.routes.audio_search._validate_and_prepare_selection"), \
+             patch("backend.api.routes.audio_search._download_audio_and_trigger_workers"), \
+             patch("backend.api.routes.audio_search.extract_request_metadata", return_value={}), \
+             patch("backend.api.routes.audio_search.get_audio_search_service", return_value=mock_audio_search), \
+             patch("backend.services.job_manager.JobManager", mock_jm_factory), \
+             patch("backend.services.firestore_service.firestore"), \
+             patch("backend.services.storage_service.storage"), \
+             patch("google.auth.default", return_value=(mock_creds, "test-project")):
+            from backend.main import app
+            client = TestClient(app)
+            response = client.post(
+                "/api/jobs/create-from-search",
+                json={
+                    "search_session_id": "sess-abc-123",
+                    "selection_index": 0,
+                    "artist": "ABBA",
+                    "title": "Waterloo",
+                },
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+        # Check that update_job was called with state_data containing remote_search_id
+        update_calls = mock_job_manager_cfs.update_job.call_args_list
+        state_data_call = [c for c in update_calls if 'state_data' in c[0][1]]
+        assert len(state_data_call) >= 1
+        state_data = state_data_call[0][0][1]['state_data']
+        assert state_data['remote_search_id'] == "torrent-search-42"
+
+    def test_concurrent_consume_second_request_returns_404(self, mock_job_manager_cfs, auth_headers):
+        """Second concurrent request to same session gets 404 (session already consumed)."""
+        session = _make_search_session(user_email="test@example.com")
+
+        mock_firestore = MagicMock()
+        mock_firestore.get_search_session.return_value = session
+        # First consume succeeds, simulating that another request already consumed it
+        mock_firestore.consume_search_session.return_value = None
+
+        mock_audio_search = MagicMock()
+
+        mock_theme_service = MagicMock()
+        mock_theme_service.get_default_theme_id.return_value = None
+
+        mock_creds = _make_mock_creds()
+
+        def mock_jm_factory(*args, **kwargs):
+            return mock_job_manager_cfs
+
+        with patch("backend.api.routes.jobs.job_manager", mock_job_manager_cfs), \
+             patch("backend.api.routes.jobs.FirestoreService", return_value=mock_firestore), \
+             patch("backend.api.routes.jobs.get_theme_service", return_value=mock_theme_service), \
+             patch("backend.api.routes.audio_search._validate_and_prepare_selection"), \
+             patch("backend.api.routes.audio_search._download_audio_and_trigger_workers"), \
+             patch("backend.api.routes.audio_search.extract_request_metadata", return_value={}), \
+             patch("backend.api.routes.audio_search.get_audio_search_service", return_value=mock_audio_search), \
+             patch("backend.services.job_manager.JobManager", mock_jm_factory), \
+             patch("backend.services.firestore_service.firestore"), \
+             patch("backend.services.storage_service.storage"), \
+             patch("google.auth.default", return_value=(mock_creds, "test-project")):
+            from backend.main import app
+            client = TestClient(app)
+            response = client.post(
+                "/api/jobs/create-from-search",
+                json={
+                    "search_session_id": "sess-abc-123",
+                    "selection_index": 0,
+                    "artist": "ABBA",
+                    "title": "Waterloo",
+                },
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 404
+        assert "Search expired" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# POST /api/audio-search/search-standalone — credit check
+# ---------------------------------------------------------------------------
+
+class TestSearchStandaloneCredits:
+    """Tests for credit checking on the standalone search endpoint."""
+
+    def test_insufficient_credits_returns_402(self, auth_headers):
+        """Non-admin user with no credits gets 402 on search."""
+        from backend.api.dependencies import require_auth
+        from backend.services.auth_service import AuthResult, UserType
+
+        mock_audio_search = MagicMock()
+        mock_user_service = MagicMock()
+        mock_user_service.has_credits.return_value = False
+        mock_user_service.check_credits.return_value = 0
+
+        mock_firestore = MagicMock()
+        mock_creds = _make_mock_creds()
+        mock_jm = _make_mock_job_manager()
+
+        async def regular_user_auth():
+            return AuthResult(
+                is_valid=True, user_type=UserType.LIMITED,
+                remaining_uses=0, message="OK", is_admin=False,
+                user_email="user@example.com",
+            )
+
+        with patch("backend.api.routes.audio_search.job_manager", mock_jm), \
+             patch("backend.api.routes.audio_search.get_audio_search_service", return_value=mock_audio_search), \
+             patch("backend.api.routes.audio_search.FirestoreService", return_value=mock_firestore), \
+             patch("backend.services.user_service.get_user_service", return_value=mock_user_service), \
+             patch("backend.services.job_manager.JobManager", lambda *a, **k: mock_jm), \
+             patch("backend.services.firestore_service.firestore"), \
+             patch("backend.services.storage_service.storage"), \
+             patch("google.auth.default", return_value=(mock_creds, "test-project")):
+            from backend.main import app
+            app.dependency_overrides[require_auth] = regular_user_auth
+            try:
+                client = TestClient(app, raise_server_exceptions=False)
+                response = client.post(
+                    "/api/audio-search/search-standalone",
+                    json={"artist": "ABBA", "title": "Waterloo"},
+                    headers=auth_headers,
+                )
+            finally:
+                # Restore the default admin auth (same as conftest autouse fixture)
+                async def _restore_admin_auth():
+                    return AuthResult(
+                        is_valid=True, user_type=UserType.ADMIN,
+                        remaining_uses=999, message="Test admin token",
+                        is_admin=True, user_email="test@example.com",
+                    )
+                app.dependency_overrides[require_auth] = _restore_admin_auth
+
+        assert response.status_code == 402
+        data = response.json()
+        assert "credits" in data["detail"].lower()
