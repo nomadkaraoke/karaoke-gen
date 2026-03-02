@@ -1534,8 +1534,9 @@ function AdminJobsPageContent() {
                   This will permanently delete:
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li>YouTube video (if uploaded)</li>
-                    <li>Dropbox folder (frees brand code for reuse)</li>
+                    <li>Dropbox folder (if uploaded)</li>
                     <li>Google Drive files (if uploaded)</li>
+                    <li>Recycles brand code for reuse</li>
                   </ul>
                   <br />
                   The job record will be preserved with a timestamp marking when outputs were deleted.
@@ -1653,6 +1654,33 @@ function AdminJobsPageContent() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Brand Code */}
+                    {deleteOutputsResult.deleted_services.brand_code && (
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                        <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                          deleteOutputsResult.deleted_services.brand_code.status === "recycled"
+                            ? "bg-green-500"
+                            : deleteOutputsResult.deleted_services.brand_code.status === "skipped"
+                              ? "bg-gray-400"
+                              : "bg-red-500"
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">Brand Code</div>
+                          <div className="text-xs text-muted-foreground">
+                            {deleteOutputsResult.deleted_services.brand_code.status === "recycled" && (
+                              <>Recycled <code className="text-xs bg-muted px-1 rounded">{deleteOutputsResult.deleted_services.brand_code.code}</code> for reuse</>
+                            )}
+                            {deleteOutputsResult.deleted_services.brand_code.status === "skipped" && (
+                              <>{deleteOutputsResult.deleted_services.brand_code.reason}</>
+                            )}
+                            {deleteOutputsResult.deleted_services.brand_code.status === "failed" && (
+                              <span className="text-red-500">{deleteOutputsResult.deleted_services.brand_code.error}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {deleteOutputsResult.cleared_state_data.length > 0 && (

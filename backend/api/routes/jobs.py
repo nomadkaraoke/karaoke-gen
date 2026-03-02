@@ -361,6 +361,24 @@ async def delete_job(
         if not _check_job_ownership(job, auth_result):
             raise HTTPException(status_code=403, detail="You don't have permission to delete this job")
 
+        # Recycle any unreturned brand code before deleting the job record
+        state_data = job.state_data or {}
+        brand_code = state_data.get('brand_code')
+        if brand_code:
+            if not job.outputs_deleted_at:
+                logger.warning(
+                    f"Deleting job {job_id} with brand_code {brand_code} whose outputs "
+                    f"were not cleaned up first. Brand code will be recycled but "
+                    f"distributed files (GDrive/Dropbox/YouTube) may be orphaned."
+                )
+            try:
+                from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
+                prefix, number = BrandCodeService.parse_brand_code(brand_code)
+                get_brand_code_service().recycle_brand_code(prefix, number)
+                logger.info(f"Recycled brand code {brand_code} before deleting job {job_id}")
+            except (ValueError, Exception) as e:
+                logger.warning(f"Failed to recycle brand code {brand_code}: {e}")
+
         job_manager.delete_job(job_id, delete_files=delete_files)
 
         return {"status": "success", "message": f"Job {job_id} deleted"}

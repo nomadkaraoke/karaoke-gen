@@ -1551,8 +1551,9 @@ async def delete_job_outputs(
 
     This endpoint deletes:
     1. YouTube video (if uploaded)
-    2. Dropbox folder (if uploaded) - frees brand code for reuse
+    2. Dropbox folder (if uploaded)
     3. Google Drive files (if uploaded)
+    4. Recycles brand code for reuse (if Dropbox + GDrive cleanup succeeded)
 
     The job record is preserved with outputs_deleted_at timestamp set.
     State data related to distribution is cleared.
@@ -1688,6 +1689,23 @@ async def delete_job_outputs(
         logger.error(f"Error deleting GCS finals folder for job {job_id}: {e}", exc_info=True)
         results["gcs_finals"] = {"status": "error", "error": str(e)}
 
+    # Recycle brand code if Dropbox and GDrive cleanup both succeeded
+    dropbox_success = results["dropbox"]["status"] in ("success", "skipped")
+    gdrive_success = results["gdrive"]["status"] in ("success", "skipped")
+    if brand_code and dropbox_success and gdrive_success:
+        try:
+            from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
+            prefix, number = BrandCodeService.parse_brand_code(brand_code)
+            get_brand_code_service().recycle_brand_code(prefix, number)
+            results["brand_code"] = {"status": "recycled", "code": brand_code}
+            logger.info(f"Recycled brand code {brand_code} during delete-outputs for job {job_id}")
+        except (ValueError, Exception) as e:
+            logger.warning(f"Failed to recycle brand code {brand_code}: {e}")
+            results["brand_code"] = {"status": "failed", "error": str(e)}
+    elif brand_code:
+        logger.warning(f"Brand code {brand_code} NOT recycled: cleanup incomplete (dropbox={results['dropbox']['status']}, gdrive={results['gdrive']['status']})")
+        results["brand_code"] = {"status": "skipped", "reason": "Dropbox/GDrive cleanup incomplete"}
+
     # Update job record
     deletion_timestamp = datetime.now(timezone.utc)
     user_service = get_user_service()
@@ -1735,12 +1753,14 @@ async def delete_job_outputs(
         overall_status = "success"
         message = "Outputs deleted successfully"
 
+    brand_code_status = results.get('brand_code', {}).get('status', 'n/a')
     logger.info(
         f"Admin {admin_email} deleted outputs for job {job_id}. "
         f"YouTube: {results['youtube']['status']}, "
         f"Dropbox: {results['dropbox']['status']}, "
         f"GDrive: {results['gdrive']['status']}, "
-        f"GCS Finals: {results['gcs_finals']['status']}. "
+        f"GCS Finals: {results['gcs_finals']['status']}, "
+        f"Brand Code: {brand_code_status}. "
         f"Cleared state_data keys: {cleared_keys}"
     )
 

@@ -2084,6 +2084,7 @@ export interface DeleteOutputsResponse {
     youtube: { status: string; video_id?: string; reason?: string; error?: string };
     dropbox: { status: string; path?: string; reason?: string; error?: string };
     gdrive: { status: string; files?: Record<string, boolean>; reason?: string; error?: string };
+    brand_code?: { status: string; code?: string; reason?: string; error?: string };
   };
   cleared_state_data: string[];
   outputs_deleted_at: string;

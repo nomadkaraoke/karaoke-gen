@@ -453,6 +453,11 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       await page.waitForTimeout(3000);
       await page.screenshot({ path: 'test-results/05b-customize-step.png' });
 
+      // Enable private mode - test jobs should never consume public NOMAD brand codes
+      const privateCheckbox = page.locator('#guided-private');
+      await privateCheckbox.check();
+      console.log('  Enabled private mode (NOMADNP prefix, no GDrive/YouTube)');
+
       // Accept defaults and create
       await page.getByRole('button', { name: /create karaoke video/i }).click();
       console.log('  Clicked "Create Karaoke Video"');
@@ -904,18 +909,21 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       console.log('STEP 11: Verify Distribution');
       console.log('========================================');
 
-      // Check for distribution indicators in job card or state
+      // Private mode skips public distribution (YouTube, GDrive) — only Dropbox may be present
       const cardText = await jobCard.textContent() || '';
 
       if (cardText.toLowerCase().includes('youtube') ||
-          cardText.toLowerCase().includes('dropbox') ||
           cardText.toLowerCase().includes('drive')) {
-        console.log('  Distribution indicators found in UI');
+        console.log('  WARNING: Public distribution indicators found despite private mode!');
       } else {
-        console.log('  No distribution indicators visible in UI (may be in backend state)');
+        console.log('  No public distribution indicators (expected for private/NOMADNP jobs)');
       }
 
-      console.log('STEP 11 COMPLETE: Distribution check done');
+      if (cardText.toLowerCase().includes('dropbox')) {
+        console.log('  Dropbox distribution present (private jobs still upload to Dropbox)');
+      }
+
+      console.log('STEP 11 COMPLETE: Distribution check done (private mode)');
 
       // =========================================================================
       // STEP 12: Cleanup
