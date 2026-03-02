@@ -677,14 +677,16 @@ jobs:
   ci-gate:
     name: "CI Gate"
     runs-on: ubuntu-latest
-    # Note: frontend-e2e-full is optional (requires 'e2e' label) so not included here
     # frontend-e2e-smoke IS required - fast smoke tests catch critical regressions
     # frontend-lint IS required - catches React hooks violations that cause runtime crashes
-    needs: [frontend-lint, frontend-unit-tests, frontend-e2e-smoke, frontend-build, package-unit-tests, package-integration-tests, backend-unit-tests, backend-emulator-tests, backend-lint]
+    # frontend-e2e-happy-path is required ONLY when 'e2e-happy-path' label is present
+    # frontend-e2e-full is optional (requires 'e2e' label) so not enforced here
+    needs: [frontend-lint, frontend-unit-tests, frontend-e2e-smoke, frontend-build, package-unit-tests, package-integration-tests, backend-unit-tests, backend-emulator-tests, backend-lint, frontend-e2e-happy-path]
     if: github.ref != 'refs/heads/main' && always()
     steps:
       - name: Check results
         run: |
+          # Check all always-required jobs
           results=(
             "${{ needs.frontend-lint.result }}"
             "${{ needs.frontend-unit-tests.result }}"
@@ -702,6 +704,20 @@ jobs:
               exit 1
             fi
           done
+
+          # E2E Happy Path: enforced when 'e2e-happy-path' label is on the PR
+          e2e_result="${{ needs.frontend-e2e-happy-path.result }}"
+          has_label="${{ contains(github.event.pull_request.labels.*.name, 'e2e-happy-path') }}"
+          if [[ "$has_label" == "true" ]]; then
+            if [[ "$e2e_result" != "success" ]]; then
+              echo "❌ E2E Happy Path is required (label present) but result is: $e2e_result"
+              exit 1
+            fi
+            echo "✅ E2E Happy Path passed (required by label)"
+          else
+            echo "ℹ️  E2E Happy Path skipped (no label)"
+          fi
+
           echo "✅ CI passed"
 
   # ============================================

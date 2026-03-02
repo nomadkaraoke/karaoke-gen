@@ -359,7 +359,12 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       console.log('========================================');
 
       // --- Guided Step 1: Song Info ---
-      await page.getByTestId('guided-artist-input').fill(TEST_SONG.artist);
+      // Wait for the app to finish loading (auth check → WarmingUpLoader → GuidedJobFlow)
+      const artistInput = page.getByTestId('guided-artist-input');
+      await expect(artistInput).toBeVisible({ timeout: TIMEOUTS.action });
+      console.log('  Guided flow visible, filling song info...');
+
+      await artistInput.fill(TEST_SONG.artist);
       await page.getByTestId('guided-title-input').fill(TEST_SONG.title);
       console.log(`  Filled song info: ${TEST_SONG.artist} - ${TEST_SONG.title}`);
 
