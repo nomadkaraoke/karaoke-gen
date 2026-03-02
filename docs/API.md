@@ -1079,7 +1079,7 @@ Allowed target states:
 **Note**: With the combined review flow, `awaiting_instrumental_selection` is no longer a valid reset target for new jobs. Use `awaiting_review` instead to re-select the instrumental.
 
 The `instrumental_selected` state is useful for re-encoding and re-distributing a job after using "Delete Outputs":
-1. Delete outputs → Removes YouTube/Dropbox/GDrive files, frees brand code
+1. Delete outputs → Removes YouTube/Dropbox/GDrive files, recycles brand code
 2. Reset to `instrumental_selected` → Clears video state, keeps settings, auto-triggers video worker
 3. Job re-processes with same instrumental, lyrics, and distribution settings
 
@@ -1304,7 +1304,7 @@ POST /api/admin/jobs/{job_id}/delete-outputs
 Authorization: Bearer ADMIN_TOKEN
 ```
 
-Deletes all distributed outputs (YouTube, Dropbox, Google Drive) for a job while preserving the job record. Use this to fix quality issues: delete outputs, reset to `awaiting_review`, correct lyrics, and re-process.
+Deletes all distributed outputs (YouTube, Dropbox, Google Drive) for a job and recycles the brand code. The job record is preserved. Use this to fix quality issues: delete outputs, reset to `awaiting_review`, correct lyrics, and re-process.
 
 Requirements:
 - Job must be in terminal state (`complete`, `prep_complete`, `failed`, or `cancelled`)
@@ -1319,7 +1319,8 @@ Response:
   "deleted_services": {
     "youtube": {"status": "success", "video_id": "dQw4w9WgXcQ"},
     "dropbox": {"status": "success", "path": "/Karaoke/NOMAD-1234 - Artist - Title"},
-    "gdrive": {"status": "success", "files": {"mp4": true, "mp4_720p": true}}
+    "gdrive": {"status": "success", "files": {"mp4": true, "mp4_720p": true}},
+    "brand_code": {"status": "recycled", "code": "NOMAD-1234"}
   },
   "cleared_state_data": ["youtube_url", "brand_code", "dropbox_link", "gdrive_files"],
   "outputs_deleted_at": "2026-01-10T12:00:00Z"
@@ -1328,7 +1329,7 @@ Response:
 
 Service statuses: `success`, `failed`, `skipped` (not configured or no data), `partial` (some files failed), `error` (exception).
 
-The brand code is freed for reuse when the Dropbox folder is deleted. When the job is re-processed and outputs are re-uploaded, the `outputs_deleted_at` flag is automatically cleared.
+The brand code is automatically recycled after both Dropbox and GDrive cleanup succeed. If either cleanup fails, the brand code is preserved to prevent collisions. Brand code recycling status is returned in `deleted_services.brand_code`. The `DELETE /api/jobs/{id}` endpoint also recycles brand codes before deletion. When the job is re-processed and outputs are re-uploaded, the `outputs_deleted_at` flag is automatically cleared.
 
 #### Clear Worker Progress
 

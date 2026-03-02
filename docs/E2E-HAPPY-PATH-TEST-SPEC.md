@@ -36,12 +36,13 @@
 - [ ] Click "Search" or equivalent button
 - [ ] Wait for search results to appear in the UI
 
-### 3. Audio Selection (UI Only)
+### 3. Audio Selection & Customization (UI Only)
 
 - [ ] Audio selection dialog/panel should appear
 - [ ] View available audio options in the UI
 - [ ] Click to select the first/best audio option
 - [ ] Confirm the selection via UI button
+- [ ] **Enable private mode** (check the `#guided-private` checkbox) — test jobs use `NOMADNP` prefix to avoid consuming public `NOMAD` brand codes and skip GDrive/YouTube uploads
 - [ ] Wait for job to transition to processing state
 
 ### 4. Wait for Lyrics Transcription
@@ -93,14 +94,12 @@
 > **CRITICAL**: Test MUST clean up after itself to avoid polluting production distribution channels
 
 - [ ] Verify job.state_data contains distribution results:
-  - [ ] `brand_code` - The generated brand code (e.g., "NOMAD-1234")
-  - [ ] `youtube_url` - YouTube video URL (if YouTube enabled)
+  - [ ] `brand_code` - The generated brand code (e.g., `NOMADNP-0042` for private mode)
   - [ ] `dropbox_link` - Dropbox shared link (if Dropbox enabled)
-  - [ ] `gdrive_files` - Google Drive file IDs (if GDrive enabled)
-- [ ] **CLEANUP** - After verification, delete all distributed content:
-  - [ ] Delete YouTube video via API (using stored youtube_url)
-  - [ ] Delete Dropbox folder via API (using brand_code + dropbox_path)
-  - [ ] Delete Google Drive files via API (using gdrive_files IDs)
+  - [ ] YouTube and GDrive should NOT be present (private mode skips them)
+- [ ] **CLEANUP** - After verification, clean up via `cleanup-distribution` endpoint:
+  - [ ] Deletes Dropbox folder and recycles brand code
+  - [ ] YouTube/GDrive cleanup skipped for private jobs
 - [ ] Delete the test job from the system (GCS + Firestore)
 
 ## Technical Requirements
