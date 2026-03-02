@@ -104,6 +104,9 @@ class User(BaseModel):
     # Users can subscribe from multiple devices/browsers
     push_subscriptions: List[PushSubscription] = Field(default_factory=list)
 
+    # Feedback-for-credits program
+    has_submitted_feedback: bool = False
+
 
 class MagicLinkToken(BaseModel):
     """
@@ -185,6 +188,7 @@ class UserPublic(BaseModel):
     total_jobs_created: int = 0
     total_jobs_completed: int = 0
     tenant_id: Optional[str] = None
+    feedback_eligible: bool = False
 
 
 class AddCreditsRequest(BaseModel):
@@ -288,3 +292,70 @@ class BetaFeedbackResponse(BaseModel):
     status: str
     message: str
     bonus_credits: int = 0  # Bonus credits for great feedback
+
+
+# ============================================================================
+# User Feedback-for-Credits Models
+# ============================================================================
+
+class UserFeedback(BaseModel):
+    """
+    Feedback from any user (not just beta testers).
+
+    Stored in Firestore 'user_feedback' collection.
+    Users earn 2 free credits for submitting detailed feedback.
+    """
+    id: str
+    user_email: str
+
+    # Ratings (1-5 scale)
+    overall_rating: int = Field(ge=1, le=5)
+    ease_of_use_rating: int = Field(ge=1, le=5)
+    lyrics_accuracy_rating: int = Field(ge=1, le=5)
+    correction_experience_rating: int = Field(ge=1, le=5)
+
+    # Open-ended feedback
+    what_went_well: Optional[str] = None
+    what_could_improve: Optional[str] = None
+    additional_comments: Optional[str] = None
+
+    # Would they recommend / use again?
+    would_recommend: bool = True
+    would_use_again: bool = True
+
+    # Metadata
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    submitted_via: str = "web"
+
+
+class UserFeedbackRequest(BaseModel):
+    """Request to submit user feedback for credits."""
+    # Ratings (1-5 scale)
+    overall_rating: int = Field(ge=1, le=5)
+    ease_of_use_rating: int = Field(ge=1, le=5)
+    lyrics_accuracy_rating: int = Field(ge=1, le=5)
+    correction_experience_rating: int = Field(ge=1, le=5)
+
+    # Open-ended feedback
+    what_went_well: Optional[str] = None
+    what_could_improve: Optional[str] = None
+    additional_comments: Optional[str] = None
+
+    # Would they recommend / use again?
+    would_recommend: bool = True
+    would_use_again: bool = True
+
+
+class UserFeedbackResponse(BaseModel):
+    """Response after submitting user feedback."""
+    status: str
+    message: str
+    credits_granted: int = 0
+
+
+class FeedbackEligibilityResponse(BaseModel):
+    """Response for feedback eligibility check."""
+    eligible: bool
+    has_submitted: bool
+    jobs_completed: int
+    credits_reward: int = 2

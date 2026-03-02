@@ -48,6 +48,10 @@ from backend.models.user import (
     BetaFeedbackRequest,
     BetaFeedbackResponse,
     BetaTesterFeedback,
+    UserFeedback,
+    UserFeedbackRequest,
+    UserFeedbackResponse,
+    FeedbackEligibilityResponse,
 )
 from backend.services.user_service import get_user_service, UserService, USERS_COLLECTION
 from backend.services.email_service import get_email_service, EmailService
@@ -321,6 +325,10 @@ async def get_current_user(
     if auth_result.is_valid and auth_result.user_email:
         # Get or create user record for the authenticated email
         user = user_service.get_or_create_user(auth_result.user_email)
+        feedback_eligible = (
+            user.total_jobs_completed >= 2
+            and not user.has_submitted_feedback
+        )
         user_public = UserPublic(
             email=user.email,
             role=user.role if not auth_result.is_admin else UserRole.ADMIN,
@@ -328,6 +336,7 @@ async def get_current_user(
             display_name=user.display_name,
             total_jobs_created=user.total_jobs_created,
             total_jobs_completed=user.total_jobs_completed,
+            feedback_eligible=feedback_eligible,
         )
         return UserProfileResponse(user=user_public, has_session=True)
 
@@ -337,6 +346,10 @@ async def get_current_user(
     if not valid or not user:
         raise HTTPException(status_code=401, detail=message)
 
+    feedback_eligible = (
+        user.total_jobs_completed >= 2
+        and not user.has_submitted_feedback
+    )
     user_public = UserPublic(
         email=user.email,
         role=user.role,
@@ -344,6 +357,7 @@ async def get_current_user(
         display_name=user.display_name,
         total_jobs_created=user.total_jobs_created,
         total_jobs_completed=user.total_jobs_completed,
+        feedback_eligible=feedback_eligible,
     )
 
     return UserProfileResponse(user=user_public, has_session=True)
@@ -1128,6 +1142,153 @@ async def get_feedback_form_data(
             user.beta_tester_status != BetaTesterStatus.COMPLETED.value
         ),
     }
+
+
+# =============================================================================
+# User Feedback-for-Credits Endpoints
+# =============================================================================
+
+@router.get("/feedback/eligibility", response_model=FeedbackEligibilityResponse)
+async def check_feedback_eligibility(
+    authorization: Optional[str] = Header(None),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Check if the current user is eligible to submit feedback for credits.
+
+    Eligible if: total_jobs_completed >= 2 AND has not already submitted feedback.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+
+    # Try auth service first (admin tokens, auth_tokens)
+    from backend.services.auth_service import get_auth_service
+    auth_service = get_auth_service()
+    auth_result = auth_service.validate_token_full(token)
+
+    user = None
+    if auth_result.is_valid and auth_result.user_email:
+        user = user_service.get_or_create_user(auth_result.user_email)
+    else:
+        valid, user, message = user_service.validate_session(token)
+        if not valid or not user:
+            raise HTTPException(status_code=401, detail=message)
+
+    eligible = user.total_jobs_completed >= 2 and not user.has_submitted_feedback
+
+    return FeedbackEligibilityResponse(
+        eligible=eligible,
+        has_submitted=user.has_submitted_feedback,
+        jobs_completed=user.total_jobs_completed,
+        credits_reward=2,
+    )
+
+
+@router.post("/feedback", response_model=UserFeedbackResponse)
+async def submit_user_feedback(
+    request: UserFeedbackRequest,
+    authorization: Optional[str] = Header(None),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Submit product feedback to earn 2 free credits.
+
+    Requires authentication. Users must have completed 2+ jobs and
+    not have already submitted feedback. At least one text field
+    must have >50 characters.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+
+    # Try auth service first (admin tokens, auth_tokens)
+    from backend.services.auth_service import get_auth_service
+    auth_service = get_auth_service()
+    auth_result = auth_service.validate_token_full(token)
+
+    user = None
+    if auth_result.is_valid and auth_result.user_email:
+        user = user_service.get_or_create_user(auth_result.user_email)
+    else:
+        valid, user, message = user_service.validate_session(token)
+        if not valid or not user:
+            raise HTTPException(status_code=401, detail=message)
+
+    # Check eligibility: must have completed 2+ jobs
+    if user.total_jobs_completed < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="You need to complete at least 2 karaoke videos before submitting feedback."
+        )
+
+    # Check if already submitted
+    if user.has_submitted_feedback:
+        raise HTTPException(
+            status_code=400,
+            detail="You have already submitted feedback. Thank you!"
+        )
+
+    # Validate: at least one text field has >50 characters
+    has_detailed_feedback = (
+        (request.what_went_well and len(request.what_went_well) > 50) or
+        (request.what_could_improve and len(request.what_could_improve) > 50) or
+        (request.additional_comments and len(request.additional_comments) > 50)
+    )
+    if not has_detailed_feedback:
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide detailed feedback in at least one text field (more than 50 characters)."
+        )
+
+    # Save feedback to Firestore
+    import uuid
+
+    feedback = UserFeedback(
+        id=str(uuid.uuid4()),
+        user_email=user.email,
+        overall_rating=request.overall_rating,
+        ease_of_use_rating=request.ease_of_use_rating,
+        lyrics_accuracy_rating=request.lyrics_accuracy_rating,
+        correction_experience_rating=request.correction_experience_rating,
+        what_went_well=request.what_went_well,
+        what_could_improve=request.what_could_improve,
+        additional_comments=request.additional_comments,
+        would_recommend=request.would_recommend,
+        would_use_again=request.would_use_again,
+        submitted_via="web",
+    )
+
+    user_service.db.collection("user_feedback").document(feedback.id).set(
+        feedback.model_dump(mode='json')
+    )
+
+    # Mark user as having submitted feedback
+    user_service.update_user(
+        user.email,
+        has_submitted_feedback=True,
+    )
+
+    # Grant 2 credits
+    credits_granted = 2
+    user_service.add_credits(
+        email=user.email,
+        amount=credits_granted,
+        reason="feedback_bonus",
+    )
+
+    logger.info(
+        f"User feedback received from {_mask_email(user.email)}, "
+        f"credits granted: {credits_granted}"
+    )
+
+    return UserFeedbackResponse(
+        status="success",
+        message=f"Thank you for your feedback! You earned {credits_granted} free credits.",
+        credits_granted=credits_granted,
+    )
 
 
 # =============================================================================

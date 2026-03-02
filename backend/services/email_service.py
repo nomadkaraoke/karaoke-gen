@@ -400,9 +400,31 @@ Start creating: {self.frontend_url}
         """
         subject = "Welcome to Nomad Karaoke! 🎤"
 
-        credits_text = f"You have <strong>{credits} credits</strong> to get started!" if credits > 0 else ""
-
         extra_styles = """
+        .credits-box {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #e2b714;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            margin: 24px 0;
+        }
+        .credits-box .credits-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #e2b714;
+            line-height: 1;
+        }
+        .credits-box .credits-label {
+            font-size: 16px;
+            color: #ccc;
+            margin-top: 4px;
+        }
+        .credits-box .credits-note {
+            font-size: 13px;
+            color: #999;
+            margin-top: 12px;
+        }
         .feature {
             display: flex;
             align-items: flex-start;
@@ -414,10 +436,22 @@ Start creating: {self.frontend_url}
         }
 """
 
+        credits_box = ""
+        if credits > 0:
+            credits_box = f"""
+    <div class="credits-box">
+        <div class="credits-number">{credits}</div>
+        <div class="credits-label">Free Credits</div>
+        <div class="credits-note">Each credit creates one professional karaoke video</div>
+    </div>
+"""
+
         content = f"""
     <p>Welcome to Nomad Karaoke!</p>
 
-    <p>Turn any song into a professional karaoke video in minutes. {credits_text}</p>
+    <p>Turn any song into a professional karaoke video in minutes.</p>
+
+    {credits_box}
 
     <p><strong>Here's how it works:</strong></p>
 
@@ -453,6 +487,10 @@ Start creating: {self.frontend_url}
         </div>
     </div>
 
+    <p style="text-align: center; font-size: 14px; color: #999; margin-top: 20px;">
+        Complete 2 videos and earn 2 more free credits by sharing your feedback!
+    </p>
+
     <p style="text-align: center;">
         <a href="{self.frontend_url}" class="button">Get Started</a>
     </p>
@@ -460,11 +498,13 @@ Start creating: {self.frontend_url}
 
         html_content = self._build_email_html(content, extra_styles)
 
+        credits_text = f"\nYou have {credits} free credits to get started!\nEach credit creates one professional karaoke video.\n" if credits > 0 else ""
+
         text_content = f"""
 Welcome to Nomad Karaoke!
 
 Turn any song into a professional karaoke video in minutes.
-
+{credits_text}
 Here's how it works:
 
 1. Search for a song
@@ -478,6 +518,8 @@ Here's how it works:
 
 4. Get your video
    Download your 4K karaoke video or upload directly to YouTube.
+
+Complete 2 videos and earn 2 more free credits by sharing your feedback!
 
 Get started: {self.frontend_url}
 

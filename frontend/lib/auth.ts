@@ -82,6 +82,7 @@ export const useAuth = create<AuthStore>()(
             display_name: response.user.display_name,
             total_jobs_created: response.user.total_jobs_created,
             total_jobs_completed: response.user.total_jobs_completed,
+            feedback_eligible: response.user.feedback_eligible,
           }
 
           set({ user, isLoading: false })
@@ -114,6 +115,7 @@ export const useAuth = create<AuthStore>()(
             display_name: response.user.display_name,
             total_jobs_created: response.user.total_jobs_created,
             total_jobs_completed: response.user.total_jobs_completed,
+            feedback_eligible: response.user.feedback_eligible,
           }
 
           set({ user, isLoading: false })
@@ -161,6 +163,7 @@ export const useAuth = create<AuthStore>()(
             display_name: response.user.display_name,
             total_jobs_created: response.user.total_jobs_created,
             total_jobs_completed: response.user.total_jobs_completed,
+            feedback_eligible: response.user.feedback_eligible,
           }
 
           set({ user, isLoading: false })
@@ -222,6 +225,7 @@ export const useAuth = create<AuthStore>()(
             display_name: userResponse.user.display_name,
             total_jobs_created: userResponse.user.total_jobs_created,
             total_jobs_completed: userResponse.user.total_jobs_completed,
+            feedback_eligible: userResponse.user.feedback_eligible,
           }
 
           set({

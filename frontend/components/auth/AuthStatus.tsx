@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical } from "lucide-react"
+import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/lib/auth"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { AuthDialog } from "./AuthDialog"
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 
 interface AuthStatusProps {
   onAuthChange?: () => void
@@ -25,6 +26,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
   const { user, logout } = useAuth()
   const { showTestData, setShowTestData } = useAdminSettings()
   const [showAuthDialog, setShowAuthDialog] = useState(false)
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   // Avoid hydration mismatch
@@ -60,6 +62,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
 
   if (user) {
     return (
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -101,6 +104,15 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             <CreditCard className="w-4 h-4 mr-2" />
             <span>Buy More Credits</span>
           </DropdownMenuItem>
+          {user.feedback_eligible && (
+            <DropdownMenuItem
+              onClick={() => setShowFeedbackDialog(true)}
+              className="text-green-500 focus:text-green-400 focus:bg-secondary"
+            >
+              <Gift className="w-4 h-4 mr-2" />
+              <span>Earn 2 Free Credits</span>
+            </DropdownMenuItem>
+          )}
           {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
             <>
               <DropdownMenuSeparator className="bg-border" />
@@ -134,6 +146,11 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <FeedbackDialog
+        open={showFeedbackDialog}
+        onClose={() => setShowFeedbackDialog(false)}
+      />
+    </>
     )
   }
 
