@@ -1536,7 +1536,7 @@ function AdminJobsPageContent() {
                     <li>YouTube video (if uploaded)</li>
                     <li>Dropbox folder (if uploaded)</li>
                     <li>Google Drive files (if uploaded)</li>
-                    <li>Recycles brand code for reuse</li>
+                    <li>Brand code (recycled for reuse if cleanup succeeds)</li>
                   </ul>
                   <br />
                   The job record will be preserved with a timestamp marking when outputs were deleted.
