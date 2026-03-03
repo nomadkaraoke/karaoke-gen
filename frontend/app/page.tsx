@@ -258,7 +258,7 @@ export default function LandingPage() {
             <div className="aspect-video">
               <iframe
                 className="w-full h-full rounded-xl"
-                src="https://www.youtube.com/embed/GJY60IfIHOQ"
+                src="https://www.youtube.com/embed/RLkIEHGwFcU"
                 title="Nomad Karaoke Demo"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -289,6 +289,29 @@ export default function LandingPage() {
                 <p className="text-dark-400 text-sm">{step.desc}</p>
               </div>
             ))}
+          </div>
+
+          {/* Full Tutorial Video */}
+          <div className="mt-12 text-center">
+            <h3 className="text-xl font-semibold mb-2">Want a deeper walkthrough?</h3>
+            <p className="text-dark-400 text-sm mb-6 max-w-xl mx-auto">
+              Watch the full tutorial to see every step in detail — from creating a job to downloading your finished video.
+            </p>
+            <div className="max-w-3xl mx-auto">
+              <div className="bg-dark-800 border border-dark-700 rounded-2xl p-2 overflow-hidden">
+                <div className="aspect-video">
+                  <iframe
+                    className="w-full h-full rounded-xl"
+                    src="https://www.youtube.com/embed/-dI3r7qXo3A"
+                    title="Nomad Karaoke Full Tutorial"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Lightbulb, X } from "lucide-react"
+import { ExternalLink, Lightbulb, X } from "lucide-react"
 import type { BackingVocalAnalysis, AudibleSegment } from "@/lib/api"
 
 interface InstrumentalGuidancePanelProps {
@@ -70,6 +70,15 @@ export function InstrumentalGuidancePanel({
             <span className="inline-block w-2 h-2 rounded-full bg-pink-500/60 align-middle" />{" "}
             pink sections in the waveform to listen to the backing vocals.
           </p>
+          <a
+            href="https://www.youtube.com/watch?v=-dI3r7qXo3A"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors mt-1"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Watch full tutorial
+          </a>
         </div>
         <button
           className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -117,6 +126,15 @@ export function InstrumentalGuidancePanel({
             <strong>Create Custom</strong>.
           </p>
         </div>
+        <a
+          href="https://www.youtube.com/watch?v=-dI3r7qXo3A"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors mt-1"
+        >
+          <ExternalLink className="h-3 w-3" />
+          Watch full tutorial
+        </a>
       </div>
       <button
         className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
