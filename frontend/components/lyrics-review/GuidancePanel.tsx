@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Lightbulb, X } from 'lucide-react'
+import { ExternalLink, Lightbulb, X } from 'lucide-react'
 import { CorrectionData } from '@/lib/lyrics-review/types'
 import { cn } from '@/lib/utils'
 
@@ -182,6 +182,15 @@ export default function GuidancePanel({
                 <p>Try the <strong>Timeline</strong> view to spot any unusually long words (10+ seconds), which usually indicate a timing problem.</p>
               </>
             )}
+            <a
+              href="https://www.youtube.com/watch?v=-dI3r7qXo3A"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors mt-1"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Watch full tutorial
+            </a>
           </div>
           <button
             className="text-muted-foreground hover:text-foreground transition-colors shrink-0"

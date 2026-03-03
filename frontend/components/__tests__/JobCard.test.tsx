@@ -13,6 +13,10 @@ jest.mock('../job/JobActions', () => ({
   JobActions: () => <div data-testid="job-actions">Job Actions</div>
 }))
 
+jest.mock('../job/AdminJobActions', () => ({
+  AdminJobActions: () => <div data-testid="admin-job-actions">Admin Job Actions</div>
+}))
+
 jest.mock('../job/JobLogs', () => ({
   JobLogs: () => <div data-testid="job-logs">Job Logs</div>
 }))
@@ -186,5 +190,25 @@ describe('JobCard', () => {
     render(<JobCard job={noTitleJob} onRefresh={mockOnRefresh} />)
 
     expect(screen.getByText('Test Artist - Unknown')).toBeInTheDocument()
+  })
+
+  describe('admin controls', () => {
+    it('shows admin job actions when showAdminControls is true', () => {
+      render(<JobCard job={mockJob} onRefresh={mockOnRefresh} showAdminControls={true} />)
+
+      expect(screen.getByTestId('admin-job-actions')).toBeInTheDocument()
+    })
+
+    it('does not show admin job actions when showAdminControls is false', () => {
+      render(<JobCard job={mockJob} onRefresh={mockOnRefresh} showAdminControls={false} />)
+
+      expect(screen.queryByTestId('admin-job-actions')).not.toBeInTheDocument()
+    })
+
+    it('does not show admin job actions by default', () => {
+      render(<JobCard job={mockJob} onRefresh={mockOnRefresh} />)
+
+      expect(screen.queryByTestId('admin-job-actions')).not.toBeInTheDocument()
+    })
   })
 })

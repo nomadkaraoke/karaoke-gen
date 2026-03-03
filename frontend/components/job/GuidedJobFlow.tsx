@@ -6,7 +6,7 @@ import { useTenant } from "@/lib/tenant"
 import { api, ApiError } from "@/lib/api"
 import { AlertTriangle, CheckCircle2, Music } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 import { SongInfoStep } from "./steps/SongInfoStep"
 import { AudioSourceStep } from "./steps/AudioSourceStep"
 import { CustomizeStep } from "./steps/CustomizeStep"
@@ -27,6 +27,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
 
   const [step, setStep] = useState<Step>(1)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showBuyCreditsDialog, setShowBuyCreditsDialog] = useState(false)
 
   // Form state (persists across steps)
   const [artist, setArtist] = useState("")
@@ -260,13 +261,13 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-sm" style={{ color: 'var(--text)' }}>
             <p>You have no credits remaining. Buy credits to create new karaoke videos.</p>
-            <Link
-              href="/#pricing"
+            <button
+              onClick={() => setShowBuyCreditsDialog(true)}
               className="inline-block mt-1 text-sm font-medium underline"
               style={{ color: 'var(--brand-pink)' }}
             >
               Buy Credits
-            </Link>
+            </button>
           </div>
         </div>
       )}
@@ -365,6 +366,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           isSubmitting={isSubmitting}
         />
       )}
+
+      <BuyCreditsDialog open={showBuyCreditsDialog} onClose={() => setShowBuyCreditsDialog(false)} />
     </div>
   )
 }

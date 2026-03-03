@@ -145,7 +145,7 @@ test.describe('Mobile - App Page', () => {
       expect(noOverflow).toBe(true);
     });
 
-    test(`${deviceName}: Tab buttons are visible and clickable`, async ({ page }) => {
+    test(`${deviceName}: Song info inputs are visible`, async ({ page }) => {
       await page.setViewportSize(viewport);
 
       await setupApiFixtures(page, { mocks: APP_PAGE_MOCKS });
@@ -153,13 +153,10 @@ test.describe('Mobile - App Page', () => {
       await page.goto('/app');
       await page.waitForLoadState('networkidle');
 
-      // Tabs should be visible
-      const searchTab = page.getByRole('tab', { name: /search/i });
-      await expect(searchTab).toBeVisible();
-
-      // Should be clickable
-      await searchTab.click();
-      await expect(page.getByTestId('search-artist-input')).toBeVisible();
+      // GuidedJobFlow Step 1 inputs should be visible
+      const artistInput = page.getByTestId('guided-artist-input');
+      await expect(artistInput).toBeVisible();
+      await expect(page.getByTestId('guided-title-input')).toBeVisible();
     });
 
     test(`${deviceName}: Form inputs fit viewport`, async ({ page }) => {
@@ -170,10 +167,8 @@ test.describe('Mobile - App Page', () => {
       await page.goto('/app');
       await page.waitForLoadState('networkidle');
 
-      await page.getByRole('tab', { name: /search/i }).click();
-
       // Input should fit within viewport
-      const artistInput = page.getByTestId('search-artist-input');
+      const artistInput = page.getByTestId('guided-artist-input');
       const box = await artistInput.boundingBox();
 
       if (box) {
@@ -223,9 +218,7 @@ test.describe('Mobile - Touch Targets', () => {
     await page.goto('/app');
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('tab', { name: /search/i }).click();
-
-    const artistInput = page.getByTestId('search-artist-input');
+    const artistInput = page.getByTestId('guided-artist-input');
     const box = await artistInput.boundingBox();
 
     if (box) {
@@ -247,9 +240,7 @@ test.describe('Mobile - Interactions', () => {
     await page.goto('/app');
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('tab', { name: /search/i }).click();
-
-    const artistInput = page.getByTestId('search-artist-input');
+    const artistInput = page.getByTestId('guided-artist-input');
     await artistInput.focus();
     await artistInput.fill('Test Artist');
 

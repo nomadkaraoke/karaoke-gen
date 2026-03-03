@@ -10,7 +10,7 @@ import { Job } from '@/lib/api'
 jest.mock('@/lib/api', () => ({
   api: {
     retryJob: jest.fn(),
-    cancelJob: jest.fn(),
+    deleteJob: jest.fn(),
   }
 }))
 
@@ -42,7 +42,7 @@ describe('JobActions', () => {
       expect(screen.getByText('Retry')).toBeInTheDocument()
     })
 
-    it('shows retry button for cancelled jobs', () => {
+    it('does not show retry button for cancelled jobs (legacy status)', () => {
       const cancelledJob = { ...baseJob, status: 'cancelled' } as Job
       render(
         <JobActions
@@ -51,7 +51,8 @@ describe('JobActions', () => {
         />
       )
 
-      expect(screen.getByText('Retry')).toBeInTheDocument()
+      // Cancelled is no longer retryable - cancel now deletes the job
+      expect(screen.queryByText('Retry')).not.toBeInTheDocument()
     })
 
     it('does not show retry button for pending jobs', () => {
@@ -91,8 +92,8 @@ describe('JobActions', () => {
     })
   })
 
-  describe('Cancel button visibility', () => {
-    it('shows cancel button for pending jobs', () => {
+  describe('Delete button visibility', () => {
+    it('shows delete button for pending jobs', () => {
       const pendingJob = { ...baseJob, status: 'pending' } as Job
       render(
         <JobActions
@@ -101,10 +102,10 @@ describe('JobActions', () => {
         />
       )
 
-      expect(screen.getByText('Cancel')).toBeInTheDocument()
+      expect(screen.getByText('Delete')).toBeInTheDocument()
     })
 
-    it('does not show cancel button for failed jobs', () => {
+    it('does not show delete button for failed jobs', () => {
       const failedJob = { ...baseJob, status: 'failed' } as Job
       render(
         <JobActions
@@ -113,24 +114,24 @@ describe('JobActions', () => {
         />
       )
 
-      expect(screen.queryByText('Cancel')).not.toBeInTheDocument()
+      expect(screen.queryByText('Delete')).not.toBeInTheDocument()
     })
 
-    it('does not show cancel button for cancelled jobs', () => {
-      const cancelledJob = { ...baseJob, status: 'cancelled' } as Job
+    it('does not show delete button for complete jobs', () => {
+      const completeJob = { ...baseJob, status: 'complete' } as Job
       render(
         <JobActions
-          job={cancelledJob}
+          job={completeJob}
           onRefresh={mockOnRefresh}
         />
       )
 
-      expect(screen.queryByText('Cancel')).not.toBeInTheDocument()
+      expect(screen.queryByText('Delete')).not.toBeInTheDocument()
     })
   })
 
   describe('Renders nothing when no actions available', () => {
-    it('returns null for complete jobs (no cancel, no retry)', () => {
+    it('returns null for complete jobs (no delete, no retry)', () => {
       const completeJob = { ...baseJob, status: 'complete' } as Job
       const { container } = render(
         <JobActions

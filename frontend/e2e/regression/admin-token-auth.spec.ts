@@ -152,7 +152,7 @@ test.describe('Admin Token Authentication', () => {
                 job_id: 'made-for-you-job-123',
                 artist: 'Test Artist',
                 title: 'Test Song',
-                status: 'awaiting_audio_selection',
+                status: 'in_review',
                 made_for_you: true,
                 created_at: new Date().toISOString(),
               },

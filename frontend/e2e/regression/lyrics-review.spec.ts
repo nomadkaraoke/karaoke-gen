@@ -276,6 +276,9 @@ test.describe('Lyrics Review - Local Mode', () => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');
 
+    // Open Stats panel first (metrics are behind the Stats toggle)
+    await page.getByRole('button', { name: 'Stats' }).click();
+
     // Wait for data to load - use exact text to avoid matching substrings
     await expect(page.getByText('Anchor Sequences', { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Corrected Gaps', { exact: true })).toBeVisible();
@@ -295,13 +298,16 @@ test.describe('Lyrics Review - Local Mode', () => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');
 
-    // Should show reference lyrics section
-    await expect(page.getByText('Reference Lyrics')).toBeVisible({ timeout: 10000 });
+    // Should show reference lyrics section header
+    await expect(page.getByText('Reference Lyrics').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('shows handler toggles with counts', async ({ page }) => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');
+
+    // Open Stats panel first (handlers are behind the Stats toggle)
+    await page.getByRole('button', { name: 'Stats' }).click();
 
     // Handler toggles should be visible
     await expect(page.getByText('Correction Handlers')).toBeVisible({ timeout: 10000 });
@@ -501,6 +507,9 @@ test.describe('Lyrics Review - Handler Management', () => {
   test('handler toggle switches are interactive', async ({ page }) => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');
+
+    // Open Stats panel first (handler switches are behind the Stats toggle)
+    await page.getByRole('button', { name: 'Stats' }).click();
 
     // Find a handler toggle switch
     const handlerSwitch = page.locator('button[role="switch"]').first();

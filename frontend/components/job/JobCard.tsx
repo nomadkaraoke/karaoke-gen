@@ -5,6 +5,7 @@ import { Job } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Zap } from "lucide-react"
 import { JobActions } from "./JobActions"
+import { AdminJobActions } from "./AdminJobActions"
 import { OutputLinks } from "./OutputLinks"
 import { AudioSearchDialog } from "../audio-search/AudioSearchDialog"
 import { getJobStep, formatStepIndicator, getJobProgressPercent } from "@/lib/job-status"
@@ -71,9 +72,10 @@ function ProgressBar({ job }: { job: Job }) {
 interface JobCardProps {
   job: Job
   onRefresh: () => void
+  showAdminControls?: boolean
 }
 
-export function JobCard({ job, onRefresh }: JobCardProps) {
+export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
   const [showAudioSearch, setShowAudioSearch] = useState(false)
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -189,11 +191,16 @@ export function JobCard({ job, onRefresh }: JobCardProps) {
         </div>
       )}
 
-      {/* Actions row: Cancel/secondary on left, primary action on right */}
+      {/* Actions row: Delete/secondary on left, primary action on right */}
       <div className="mt-2 flex items-center justify-between">
         <JobActions job={job} onRefresh={onRefresh} />
         {renderPrimaryAction()}
       </div>
+
+      {/* Admin controls (toggled via header button) */}
+      {showAdminControls && (
+        <AdminJobActions job={job} onRefresh={onRefresh} />
+      )}
 
       <AudioSearchDialog
         jobId={job.job_id}

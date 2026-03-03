@@ -37,9 +37,6 @@ export function isLocalMode(): boolean {
   // Must be on localhost
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') return false
 
-  // Must be on one of the known local server ports
-  if (!ALL_LOCAL_PORTS.includes(port)) return false
-
   // If using hash-based routing (cloud mode pattern), it's NOT local mode
   // Cloud mode uses: /app/jobs/#/{jobId}/review or /app/jobs/#/{jobId}/instrumental
   // Any hash starting with #/ indicates cloud mode routing (even for invalid routes)
@@ -47,11 +44,15 @@ export function isLocalMode(): boolean {
     return false
   }
 
-  // If pathname explicitly contains /local/, it's local mode
+  // If pathname explicitly contains /local/, it's local mode regardless of port
   // Local mode uses: /app/jobs/local/review or /app/jobs/local/instrumental
+  // This covers both CLI ports and E2E test dev server ports (3100-3199 range)
   if (pathname.includes('/local/')) {
     return true
   }
+
+  // Must be on one of the known local server ports for implicit local mode
+  if (!ALL_LOCAL_PORTS.includes(port)) return false
 
   // Default to local mode on localhost with known ports (backwards compatibility)
   // This handles the case where the local CLI opens the page at /app/jobs/local/review

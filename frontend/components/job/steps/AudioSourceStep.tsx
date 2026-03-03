@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, Music2, ChevronDown, ChevronUp, Upload, Youtube, ArrowLeft, Check, AlertTriangle, CheckCircle2, Lightbulb, Info } from "lucide-react"
-import Link from "next/link"
+import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 
 interface AudioSourceStepProps {
   artist: string
@@ -110,6 +110,8 @@ export function AudioSourceStep({
   const [showOtherOptions, setShowOtherOptions] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const searchTriggered = useRef(false)
+
+  const [showBuyCreditsDialog, setShowBuyCreditsDialog] = useState(false)
 
   // Fallback form state
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -237,6 +239,7 @@ export function AudioSourceStep({
   const isLossyBest = confidence.bestCategory === 'YOUTUBE'
 
   return (
+    <>
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
@@ -261,7 +264,7 @@ export function AudioSourceStep({
         <div className="text-sm rounded p-3 text-red-400 bg-red-500/10">
           <p>{error}</p>
           {isCreditError && (
-            <Link href="/#pricing" className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</Link>
+            <button onClick={() => setShowBuyCreditsDialog(true)} className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</button>
           )}
         </div>
       )}
@@ -363,6 +366,8 @@ export function AudioSourceStep({
         />
       )}
     </div>
+    <BuyCreditsDialog open={showBuyCreditsDialog} onClose={() => setShowBuyCreditsDialog(false)} />
+    </>
   )
 }
 

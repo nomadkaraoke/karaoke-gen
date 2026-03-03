@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, getJobPriority, sortJobsByPriority, getDisplayJobs, JobStep } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, getDisplayJobs, JobStep } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -493,38 +493,7 @@ describe('getJobProgressPercent', () => {
   });
 });
 
-describe('getJobPriority', () => {
-  it('returns 0 for blocking statuses (user action needed)', () => {
-    expect(getJobPriority(createJob('awaiting_review'))).toBe(0);
-    expect(getJobPriority(createJob('awaiting_audio_selection'))).toBe(0);
-    expect(getJobPriority(createJob('awaiting_instrumental_selection'))).toBe(0);
-    expect(getJobPriority(createJob('in_review'))).toBe(0);
-  });
-
-  it('returns 1 for active/processing statuses', () => {
-    expect(getJobPriority(createJob('pending'))).toBe(1);
-    expect(getJobPriority(createJob('downloading'))).toBe(1);
-    expect(getJobPriority(createJob('rendering_video'))).toBe(1);
-    expect(getJobPriority(createJob('separating_stage1'))).toBe(1);
-  });
-
-  it('returns 2 for completed statuses', () => {
-    expect(getJobPriority(createJob('complete'))).toBe(2);
-    expect(getJobPriority(createJob('prep_complete'))).toBe(2);
-  });
-
-  it('returns 3 for failed/cancelled statuses', () => {
-    expect(getJobPriority(createJob('failed'))).toBe(3);
-    expect(getJobPriority(createJob('cancelled'))).toBe(3);
-  });
-
-  it('handles case insensitivity', () => {
-    expect(getJobPriority(createJob('AWAITING_REVIEW'))).toBe(0);
-    expect(getJobPriority(createJob('COMPLETE'))).toBe(2);
-  });
-});
-
-describe('sortJobsByPriority', () => {
+describe('sortJobsByDate', () => {
   // Helper to create job with specific date
   function createJobWithDate(status: string, createdAt: string): Job {
     return {
@@ -536,123 +505,77 @@ describe('sortJobsByPriority', () => {
     };
   }
 
-  it('sorts blocking jobs before completed jobs', () => {
-    const jobs = [
-      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
-      createJobWithDate('awaiting_review', '2024-01-01T12:00:00Z'),
-    ];
-    const sorted = sortJobsByPriority(jobs);
-    expect(sorted[0].status).toBe('awaiting_review');
-    expect(sorted[1].status).toBe('complete');
-  });
-
-  it('sorts blocking jobs before processing jobs', () => {
-    const jobs = [
-      createJobWithDate('rendering_video', '2024-01-01T12:00:00Z'),
-      createJobWithDate('awaiting_review', '2024-01-01T12:00:00Z'),
-    ];
-    const sorted = sortJobsByPriority(jobs);
-    expect(sorted[0].status).toBe('awaiting_review');
-    expect(sorted[1].status).toBe('rendering_video');
-  });
-
-  it('sorts processing jobs before completed jobs', () => {
-    const jobs = [
-      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
-      createJobWithDate('rendering_video', '2024-01-01T12:00:00Z'),
-    ];
-    const sorted = sortJobsByPriority(jobs);
-    expect(sorted[0].status).toBe('rendering_video');
-    expect(sorted[1].status).toBe('complete');
-  });
-
-  it('sorts completed jobs before failed jobs', () => {
-    const jobs = [
-      createJobWithDate('failed', '2024-01-01T12:00:00Z'),
-      createJobWithDate('complete', '2024-01-01T12:00:00Z'),
-    ];
-    const sorted = sortJobsByPriority(jobs);
-    expect(sorted[0].status).toBe('complete');
-    expect(sorted[1].status).toBe('failed');
-  });
-
-  it('sorts by created_at (newest first) within same priority', () => {
+  it('sorts by created_at descending (newest first)', () => {
     const jobs = [
       createJobWithDate('complete', '2024-01-01T10:00:00Z'),
       createJobWithDate('complete', '2024-01-01T14:00:00Z'),
       createJobWithDate('complete', '2024-01-01T12:00:00Z'),
     ];
-    const sorted = sortJobsByPriority(jobs);
+    const sorted = sortJobsByDate(jobs);
     expect(sorted[0].created_at).toBe('2024-01-01T14:00:00Z');
     expect(sorted[1].created_at).toBe('2024-01-01T12:00:00Z');
     expect(sorted[2].created_at).toBe('2024-01-01T10:00:00Z');
   });
 
+  it('does not use priority bucketing - all jobs sorted by date only', () => {
+    const jobs = [
+      createJobWithDate('complete', '2024-01-01T14:00:00Z'),
+      createJobWithDate('failed', '2024-01-01T11:00:00Z'),
+      createJobWithDate('awaiting_review', '2024-01-01T09:00:00Z'),
+      createJobWithDate('rendering_video', '2024-01-01T12:00:00Z'),
+    ];
+    const sorted = sortJobsByDate(jobs);
+    // Pure date order, regardless of status
+    expect(sorted[0].created_at).toBe('2024-01-01T14:00:00Z');
+    expect(sorted[1].created_at).toBe('2024-01-01T12:00:00Z');
+    expect(sorted[2].created_at).toBe('2024-01-01T11:00:00Z');
+    expect(sorted[3].created_at).toBe('2024-01-01T09:00:00Z');
+  });
+
   it('does not mutate the original array', () => {
     const jobs = [
       createJobWithDate('complete', '2024-01-01T12:00:00Z'),
-      createJobWithDate('awaiting_review', '2024-01-01T12:00:00Z'),
+      createJobWithDate('awaiting_review', '2024-01-01T14:00:00Z'),
     ];
     const originalOrder = [...jobs];
-    sortJobsByPriority(jobs);
+    sortJobsByDate(jobs);
     expect(jobs[0].status).toBe(originalOrder[0].status);
     expect(jobs[1].status).toBe(originalOrder[1].status);
   });
 
   it('handles empty array', () => {
-    const sorted = sortJobsByPriority([]);
+    const sorted = sortJobsByDate([]);
     expect(sorted).toEqual([]);
   });
 
   it('handles single job', () => {
     const jobs = [createJobWithDate('complete', '2024-01-01T12:00:00Z')];
-    const sorted = sortJobsByPriority(jobs);
+    const sorted = sortJobsByDate(jobs);
     expect(sorted.length).toBe(1);
     expect(sorted[0].status).toBe('complete');
-  });
-
-  it('correctly orders a realistic job list', () => {
-    const jobs = [
-      createJobWithDate('complete', '2024-01-01T10:00:00Z'),
-      createJobWithDate('failed', '2024-01-01T11:00:00Z'),
-      createJobWithDate('awaiting_review', '2024-01-01T09:00:00Z'),
-      createJobWithDate('rendering_video', '2024-01-01T12:00:00Z'),
-      createJobWithDate('complete', '2024-01-01T14:00:00Z'),
-    ];
-    const sorted = sortJobsByPriority(jobs);
-    // Priority order: blocking (0), processing (1), complete (2), failed (3)
-    expect(sorted[0].status).toBe('awaiting_review'); // blocking
-    expect(sorted[1].status).toBe('rendering_video'); // processing
-    expect(sorted[2].status).toBe('complete'); // complete, newer
-    expect(sorted[2].created_at).toBe('2024-01-01T14:00:00Z');
-    expect(sorted[3].status).toBe('complete'); // complete, older
-    expect(sorted[3].created_at).toBe('2024-01-01T10:00:00Z');
-    expect(sorted[4].status).toBe('failed'); // failed
   });
 });
 
 describe('getDisplayJobs', () => {
-  // Helper: pre-sorted jobs (blocking, processing, complete, failed)
-  function createSortedJobs(counts: { blocking?: number; processing?: number; complete?: number; failed?: number }): Job[] {
-    const jobs: Job[] = [];
-    let t = 20; // descending timestamp within each priority group
-    for (let i = 0; i < (counts.blocking ?? 0); i++) {
-      jobs.push({ job_id: `blocking-${i}`, status: 'awaiting_review', progress: 0, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
-    }
-    for (let i = 0; i < (counts.processing ?? 0); i++) {
-      jobs.push({ job_id: `processing-${i}`, status: 'rendering_video', progress: 0, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
-    }
-    for (let i = 0; i < (counts.complete ?? 0); i++) {
-      jobs.push({ job_id: `complete-${i}`, status: 'complete', progress: 100, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
-    }
-    for (let i = 0; i < (counts.failed ?? 0); i++) {
-      jobs.push({ job_id: `failed-${i}`, status: 'failed', progress: 0, created_at: `2024-01-01T${t--}:00:00Z`, updated_at: '2024-01-01T00:00:00Z' });
-    }
-    return jobs;
+  // Helper: create jobs sorted by date (newest first)
+  function createDateSortedJobs(jobSpecs: Array<{ status: string; date: string }>): Job[] {
+    return jobSpecs
+      .map((spec, i) => ({
+        job_id: `job-${i}`,
+        status: spec.status,
+        progress: spec.status === 'complete' ? 100 : 0,
+        created_at: spec.date,
+        updated_at: spec.date,
+      }))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   it('returns all jobs when fewer than display limit', () => {
-    const jobs = createSortedJobs({ complete: 3 });
+    const jobs = createDateSortedJobs([
+      { status: 'complete', date: '2024-01-01T10:00:00Z' },
+      { status: 'complete', date: '2024-01-01T11:00:00Z' },
+      { status: 'complete', date: '2024-01-01T12:00:00Z' },
+    ]);
     const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5);
     expect(displayedJobs).toHaveLength(3);
     expect(totalFetched).toBe(3);
@@ -664,104 +587,121 @@ describe('getDisplayJobs', () => {
     expect(totalFetched).toBe(0);
   });
 
-  it('limits to displayLimit when no incomplete jobs', () => {
-    const jobs = createSortedJobs({ complete: 10 });
+  it('limits to displayLimit', () => {
+    const jobs = createDateSortedJobs(
+      Array.from({ length: 10 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` }))
+    );
     const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5);
     expect(displayedJobs).toHaveLength(5);
     expect(totalFetched).toBe(10);
   });
 
-  it('expands beyond limit when more incomplete than limit', () => {
-    const jobs = createSortedJobs({ blocking: 3, processing: 4, complete: 5 });
-    const { displayedJobs } = getDisplayJobs(jobs, 5);
-    // 7 incomplete > limit of 5, so show all 7
-    expect(displayedJobs).toHaveLength(7);
-    expect(displayedJobs.filter(j => j.status === 'awaiting_review')).toHaveLength(3);
-    expect(displayedJobs.filter(j => j.status === 'rendering_video')).toHaveLength(4);
-  });
-
-  it('fills remaining slots with completed when fewer incomplete than limit', () => {
-    const jobs = createSortedJobs({ blocking: 1, processing: 1, complete: 10 });
-    const { displayedJobs } = getDisplayJobs(jobs, 5);
-    // 2 incomplete < 5 limit, so show 5 total (2 incomplete + 3 completed)
-    expect(displayedJobs).toHaveLength(5);
-    expect(displayedJobs[0].status).toBe('awaiting_review');
-    expect(displayedJobs[1].status).toBe('rendering_video');
-    expect(displayedJobs[2].status).toBe('complete');
-  });
-
   it('returns all jobs when displayLimit is -1 (All mode)', () => {
-    const jobs = createSortedJobs({ blocking: 2, complete: 20 });
+    const jobs = createDateSortedJobs(
+      Array.from({ length: 22 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` }))
+    );
     const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1);
     expect(displayedJobs).toHaveLength(22);
     expect(totalFetched).toBe(22);
   });
 
-  it('preserves sort order from input', () => {
-    const jobs = createSortedJobs({ blocking: 1, processing: 1, complete: 3 });
-    const { displayedJobs } = getDisplayJobs(jobs, 5);
-    expect(displayedJobs[0].status).toBe('awaiting_review');
-    expect(displayedJobs[1].status).toBe('rendering_video');
-    expect(displayedJobs[2].status).toBe('complete');
-    expect(displayedJobs[3].status).toBe('complete');
-    expect(displayedJobs[4].status).toBe('complete');
+  it('preserves date sort order from input', () => {
+    const jobs = createDateSortedJobs([
+      { status: 'complete', date: '2024-01-03T12:00:00Z' },
+      { status: 'failed', date: '2024-01-04T12:00:00Z' },
+      { status: 'awaiting_review', date: '2024-01-02T12:00:00Z' },
+      { status: 'rendering_video', date: '2024-01-05T12:00:00Z' },
+    ]);
+    const { displayedJobs } = getDisplayJobs(jobs, 10);
+    // Should be newest first
+    expect(displayedJobs[0].created_at).toBe('2024-01-05T12:00:00Z');
+    expect(displayedJobs[1].created_at).toBe('2024-01-04T12:00:00Z');
+    expect(displayedJobs[2].created_at).toBe('2024-01-03T12:00:00Z');
+    expect(displayedJobs[3].created_at).toBe('2024-01-02T12:00:00Z');
   });
 
   describe('hideCompleted filter', () => {
-    it('filters out complete and failed jobs when hideCompleted is true', () => {
-      const jobs = createSortedJobs({ blocking: 1, processing: 2, complete: 5, failed: 3 });
+    it('filters out only complete and prep_complete when hideCompleted is true (keeps failed)', () => {
+      const jobs = createDateSortedJobs([
+        { status: 'awaiting_review', date: '2024-01-05T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-04T12:00:00Z' },
+        { status: 'complete', date: '2024-01-03T12:00:00Z' },
+        { status: 'failed', date: '2024-01-02T12:00:00Z' },
+        { status: 'prep_complete', date: '2024-01-01T12:00:00Z' },
+      ]);
       const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1, true);
-      expect(totalFetched).toBe(11);
-      expect(displayedJobs).toHaveLength(3);
-      expect(displayedJobs.every(j => j.status === 'awaiting_review' || j.status === 'rendering_video')).toBe(true);
+      expect(totalFetched).toBe(5);
+      expect(displayedJobs).toHaveLength(3); // blocking + processing + failed
+      expect(displayedJobs.some(j => j.status === 'failed')).toBe(true);
+      expect(displayedJobs.some(j => j.status === 'complete')).toBe(false);
+      expect(displayedJobs.some(j => j.status === 'prep_complete')).toBe(false);
     });
 
     it('respects display limit after filtering', () => {
-      const jobs = createSortedJobs({ blocking: 2, processing: 5, complete: 10 });
+      const jobs = createDateSortedJobs([
+        { status: 'rendering_video', date: '2024-01-10T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-09T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-08T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-07T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-06T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-05T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-04T12:00:00Z' },
+        ...Array.from({ length: 10 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T10:00:00Z` })),
+      ]);
       const { displayedJobs } = getDisplayJobs(jobs, 5, true);
-      // 7 incomplete jobs, all visible since incomplete count (7) > limit (5)
-      expect(displayedJobs).toHaveLength(7);
+      // 7 non-complete jobs after filtering, but limit is 5
+      expect(displayedJobs).toHaveLength(5);
     });
 
     it('returns empty when all jobs are complete and hideCompleted is true', () => {
-      const jobs = createSortedJobs({ complete: 10 });
+      const jobs = createDateSortedJobs(
+        Array.from({ length: 10 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` }))
+      );
       const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5, true);
       expect(displayedJobs).toHaveLength(0);
       expect(totalFetched).toBe(10);
     });
 
     it('does not filter when hideCompleted is false', () => {
-      const jobs = createSortedJobs({ blocking: 1, complete: 5, failed: 2 });
+      const jobs = createDateSortedJobs([
+        { status: 'awaiting_review', date: '2024-01-04T12:00:00Z' },
+        { status: 'complete', date: '2024-01-03T12:00:00Z' },
+        { status: 'complete', date: '2024-01-02T12:00:00Z' },
+        { status: 'failed', date: '2024-01-01T12:00:00Z' },
+      ]);
       const { displayedJobs } = getDisplayJobs(jobs, -1, false);
-      expect(displayedJobs).toHaveLength(8);
+      expect(displayedJobs).toHaveLength(4);
     });
 
     it('defaults to showing all when hideCompleted is omitted', () => {
-      const jobs = createSortedJobs({ complete: 5, failed: 2 });
+      const jobs = createDateSortedJobs([
+        { status: 'complete', date: '2024-01-02T12:00:00Z' },
+        { status: 'failed', date: '2024-01-01T12:00:00Z' },
+      ]);
       const { displayedJobs } = getDisplayJobs(jobs, -1);
-      expect(displayedJobs).toHaveLength(7);
+      expect(displayedJobs).toHaveLength(2);
     });
   });
 
-  it('core bug: old incomplete job visible even when recent jobs are all completed', () => {
-    // Simulate the bug scenario: 5 recent completed jobs + 1 older blocking job
-    // With old behavior (LIMIT 5 at query), the blocking job would never be fetched.
-    // With new behavior, all 6 are fetched and display limit of 5 expands to show blocking.
-    const jobs = sortJobsByPriority([
-      { job_id: 'old-blocking', status: 'awaiting_review', progress: 0, created_at: '2024-01-01T01:00:00Z', updated_at: '2024-01-01T01:00:00Z' },
-      { job_id: 'new-1', status: 'complete', progress: 100, created_at: '2024-01-10T01:00:00Z', updated_at: '2024-01-10T01:00:00Z' },
-      { job_id: 'new-2', status: 'complete', progress: 100, created_at: '2024-01-09T01:00:00Z', updated_at: '2024-01-09T01:00:00Z' },
-      { job_id: 'new-3', status: 'complete', progress: 100, created_at: '2024-01-08T01:00:00Z', updated_at: '2024-01-08T01:00:00Z' },
-      { job_id: 'new-4', status: 'complete', progress: 100, created_at: '2024-01-07T01:00:00Z', updated_at: '2024-01-07T01:00:00Z' },
-      { job_id: 'new-5', status: 'complete', progress: 100, created_at: '2024-01-06T01:00:00Z', updated_at: '2024-01-06T01:00:00Z' },
+  it('core bug fix: recently failed job appears at top of list', () => {
+    // The original bug: a newly failed job was invisible because priority sorting
+    // put all 45 complete jobs above it, and the limit of 10 truncated it.
+    // With date-based sorting, the newest job (failed) appears first.
+    const jobs = sortJobsByDate([
+      { job_id: 'new-failed', status: 'failed', progress: 0, created_at: '2024-01-10T15:00:00Z', updated_at: '2024-01-10T15:00:00Z' },
+      ...Array.from({ length: 45 }, (_, i) => ({
+        job_id: `complete-${i}`,
+        status: 'complete',
+        progress: 100,
+        created_at: `2024-01-${String(10 - Math.floor(i / 5)).padStart(2, '0')}T${String(12 - (i % 5)).padStart(2, '0')}:00:00Z`,
+        updated_at: '2024-01-01T00:00:00Z',
+      })),
     ]);
 
-    const { displayedJobs } = getDisplayJobs(jobs, 5);
-    // The blocking job must be visible
-    const blockingJobs = displayedJobs.filter(j => j.status === 'awaiting_review');
-    expect(blockingJobs).toHaveLength(1);
-    expect(blockingJobs[0].job_id).toBe('old-blocking');
-    // Should show 5 total (1 incomplete + 4 completed, since limit is 5 and max(5, 1) = 5)
-    expect(displayedJobs).toHaveLength(5);
+    const { displayedJobs } = getDisplayJobs(jobs, 10);
+    // The failed job should be first (newest)
+    expect(displayedJobs[0].job_id).toBe('new-failed');
+    expect(displayedJobs[0].status).toBe('failed');
+    expect(displayedJobs).toHaveLength(10);
   });
 });

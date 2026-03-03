@@ -5,7 +5,7 @@ import { Job, api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import {
-  Loader2, RotateCcw, XCircle
+  Loader2, RotateCcw, Trash2
 } from "lucide-react"
 
 interface JobActionsProps {
@@ -15,11 +15,11 @@ interface JobActionsProps {
 
 export function JobActions({ job, onRefresh }: JobActionsProps) {
   const [isRetrying, setIsRetrying] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { toast } = useToast()
 
-  const canRetry = job.status === "failed" || job.status === "cancelled"
-  const canCancel = !["complete", "failed", "cancelled"].includes(job.status)
+  const canRetry = job.status === "failed"
+  const canDelete = !["complete", "failed", "prep_complete"].includes(job.status)
 
   async function handleRetry() {
     setIsRetrying(true)
@@ -49,46 +49,60 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
     }
   }
 
-  async function handleCancel() {
-    if (!confirm("Are you sure you want to cancel this job?")) return
+  async function handleDelete() {
+    if (!confirm("Are you sure you want to permanently cancel and delete this job? This cannot be undone.")) return
 
-    setIsCancelling(true)
+    setIsDeleting(true)
     try {
-      await api.cancelJob(job.job_id)
+      await api.deleteJob(job.job_id)
+      toast({
+        title: "Job deleted",
+        description: "The job has been permanently deleted.",
+      })
       onRefresh()
-    } catch (error) {
-      console.error("Failed to cancel job:", error)
+    } catch (error: any) {
+      console.error("Failed to delete job:", error)
+
+      const errorMessage = error?.response?.data?.detail ||
+                          error?.message ||
+                          "Failed to delete job. Please try again."
+
+      toast({
+        title: "Delete failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
-      setIsCancelling(false)
+      setIsDeleting(false)
     }
   }
 
   // Don't render anything if no actions are available
-  if (!canCancel && !canRetry) {
+  if (!canDelete && !canRetry) {
     return null
   }
 
   return (
     <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-      {/* Cancel button (red) */}
-      {canCancel && (
+      {/* Delete button (red) */}
+      {canDelete && (
         <Button
           size="sm"
           variant="ghost"
-          onClick={handleCancel}
-          disabled={isCancelling}
+          onClick={handleDelete}
+          disabled={isDeleting}
           className="text-xs text-red-400 hover:text-red-300"
         >
-          {isCancelling ? (
+          {isDeleting ? (
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
           ) : (
-            <XCircle className="w-3 h-3 mr-1" />
+            <Trash2 className="w-3 h-3 mr-1" />
           )}
-          Cancel
+          Delete
         </Button>
       )}
 
-      {/* Retry button */}
+      {/* Retry button (failed jobs only) */}
       {canRetry && (
         <Button
           size="sm"

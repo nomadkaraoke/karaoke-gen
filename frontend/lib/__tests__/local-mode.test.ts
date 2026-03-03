@@ -59,13 +59,27 @@ describe('isLocalMode', () => {
     })
   })
 
-  describe('returns false when on localhost with non-local port', () => {
-    it('returns false for arbitrary port', () => {
+  describe('pathname /local/ takes priority over port', () => {
+    it('returns true for /local/ pathname even on non-standard port', () => {
+      // Pathname check happens before port check, so /local/ in path means
+      // local mode regardless of port (needed for E2E tests on arbitrary ports)
       const restore = mockWindowLocation({
         hostname: 'localhost',
         port: '5000',
         hash: '',
         pathname: '/app/jobs/local/review',
+      })
+
+      expect(isLocalMode()).toBe(true)
+      restore()
+    })
+
+    it('returns false for non-local pathname on non-standard port', () => {
+      const restore = mockWindowLocation({
+        hostname: 'localhost',
+        port: '5000',
+        hash: '',
+        pathname: '/app',
       })
 
       expect(isLocalMode()).toBe(false)

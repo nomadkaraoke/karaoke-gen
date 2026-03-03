@@ -490,13 +490,14 @@ class TestSummaryEndpoint:
         assert list(result['file_urls'].keys()) == ['finals']
 
     def test_hide_completed_statuses(self):
-        """Verify _HIDE_COMPLETED_STATUSES includes the expected terminal statuses."""
+        """Verify _HIDE_COMPLETED_STATUSES only hides successful completions (not failed/cancelled)."""
         from backend.api.routes.jobs import _HIDE_COMPLETED_STATUSES
 
         assert 'complete' in _HIDE_COMPLETED_STATUSES
         assert 'prep_complete' in _HIDE_COMPLETED_STATUSES
-        assert 'failed' in _HIDE_COMPLETED_STATUSES
-        assert 'cancelled' in _HIDE_COMPLETED_STATUSES
+        # Failed/cancelled should NOT be hidden - users need to see these
+        assert 'failed' not in _HIDE_COMPLETED_STATUSES
+        assert 'cancelled' not in _HIDE_COMPLETED_STATUSES
         # Active statuses should NOT be in the list
         assert 'pending' not in _HIDE_COMPLETED_STATUSES
         assert 'downloading' not in _HIDE_COMPLETED_STATUSES

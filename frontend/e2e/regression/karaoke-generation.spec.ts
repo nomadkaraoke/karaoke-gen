@@ -80,36 +80,28 @@ const APP_PAGE_MOCKS = [
   },
 ];
 
-// Mocks for a successful search flow
+// Mocks for a successful search flow (standalone search + create-from-search)
 const SEARCH_FLOW_MOCKS = [
   ...APP_PAGE_MOCKS,
   {
     method: 'POST',
-    path: '/api/audio-search/search',
+    path: '/api/audio-search/search-standalone',
     response: {
       body: {
-        job_id: 'new-job-123',
-        status: 'audio_search',
-      },
-    },
-  },
-  {
-    method: 'GET',
-    path: '/api/audio-search/new-job-123/results',
-    response: {
-      body: {
+        search_session_id: 'session-123',
         results: MOCK_SEARCH_RESULTS,
-        status: 'search_complete',
+        results_count: MOCK_SEARCH_RESULTS.length,
       },
     },
   },
   {
     method: 'POST',
-    path: '/api/audio-search/new-job-123/select',
+    path: '/api/jobs/create-from-search',
     response: {
       body: {
         job_id: 'new-job-123',
         status: 'downloading',
+        message: 'Job created',
       },
     },
   },
@@ -191,25 +183,16 @@ test.describe('Step 2: Choose Audio - Search Results', () => {
   });
 
   test('advances to Step 2 and shows search loading', async ({ page }) => {
-    await setupApiFixtures(page, {
-      mocks: [
-        ...APP_PAGE_MOCKS,
-        {
-          method: 'POST',
-          path: '/api/audio-search/search',
-          response: {
-            body: { job_id: 'new-job-123', status: 'audio_search' },
-          },
-        },
-        // Don't mock results yet — let it poll
-        {
-          method: 'GET',
-          path: '/api/audio-search/new-job-123/results',
-          response: {
-            body: { results: [], status: 'audio_search' },
-          },
-        },
-      ],
+    await setupApiFixtures(page, { mocks: APP_PAGE_MOCKS });
+
+    // Delay search-standalone response so we can observe the loading state
+    await page.route('**/api/audio-search/search-standalone', async (route) => {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ search_session_id: 'session-123', results: [], results_count: 0 }),
+      });
     });
 
     await page.goto('/app');
@@ -329,17 +312,8 @@ test.describe('Step 2: Choose Audio - Search Results', () => {
     await expect(page.getByRole('button', { name: /upload.*create/i })).toBeVisible();
   });
 
-  test('Back button returns to Step 1 and cleans up job', async ({ page }) => {
-    await setupApiFixtures(page, {
-      mocks: [
-        ...SEARCH_FLOW_MOCKS,
-        {
-          method: 'DELETE',
-          path: '/api/jobs/new-job-123',
-          response: { body: { success: true } },
-        },
-      ],
-    });
+  test('Back button returns to Step 1', async ({ page }) => {
+    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
 
     await page.goto('/app');
     await page.waitForLoadState('networkidle');
@@ -350,7 +324,7 @@ test.describe('Step 2: Choose Audio - Search Results', () => {
 
     await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
 
-    // Click Back
+    // Click Back (no job cleanup needed — search session expires naturally)
     await page.getByRole('button', { name: /back/i }).click();
 
     // Should return to Step 1 — artist/title inputs should be visible
@@ -364,16 +338,9 @@ test.describe('Step 2: Choose Audio - Search Results', () => {
         ...APP_PAGE_MOCKS,
         {
           method: 'POST',
-          path: '/api/audio-search/search',
+          path: '/api/audio-search/search-standalone',
           response: {
-            body: { job_id: 'empty-job', status: 'audio_search' },
-          },
-        },
-        {
-          method: 'GET',
-          path: '/api/audio-search/empty-job/results',
-          response: {
-            body: { results: [], status: 'search_complete' },
+            body: { search_session_id: 'session-empty', results: [], results_count: 0 },
           },
         },
       ],

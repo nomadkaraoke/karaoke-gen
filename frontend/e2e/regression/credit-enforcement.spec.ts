@@ -6,7 +6,7 @@ import { setupApiFixtures, setAuthToken } from '../fixtures/test-helper';
  *
  * Tests that the credit system properly gates job creation:
  * - Zero-credit users see warning and disabled submit
- * - 402 errors display "out of credits" message with buy link
+ * - 402 errors display "out of credits" message with buy button
  * - Users with credits can submit normally
  */
 
@@ -59,14 +59,14 @@ test.describe('Credit Enforcement', () => {
 
     // Warning banner should be visible
     await expect(page.getByText('You have no credits remaining')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Buy Credits' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Buy Credits' })).toBeVisible();
 
-    // Submit button should be disabled
-    const submitButton = page.getByRole('button', { name: /Create Karaoke Video|Search & Create Job/i });
+    // "Choose Audio" button should be disabled (GuidedJobFlow step 1)
+    const submitButton = page.getByRole('button', { name: /Choose Audio/i });
     await expect(submitButton).toBeDisabled();
   });
 
-  test('402 error displays out of credits message with buy link', async ({ page }) => {
+  test('402 error displays out of credits message with buy button', async ({ page }) => {
     await setupApiFixtures(page, {
       mocks: [
         userMeMock(1),  // Has credits initially (form enabled)
@@ -78,7 +78,7 @@ test.describe('Credit Enforcement', () => {
         },
         {
           method: 'POST',
-          path: '/api/audio-search',
+          path: '/api/audio-search/search-standalone',
           response: {
             status: 402,
             body: {
@@ -95,18 +95,18 @@ test.describe('Credit Enforcement', () => {
     await page.goto('/app');
     await page.waitForLoadState('networkidle');
 
-    // Fill in the search form
-    await page.getByTestId('search-artist-input').fill('Test Artist');
-    await page.getByTestId('search-title-input').fill('Test Song');
+    // Fill in the search form (GuidedJobFlow uses guided-artist/title-input)
+    await page.getByTestId('guided-artist-input').fill('Test Artist');
+    await page.getByTestId('guided-title-input').fill('Test Song');
 
-    // Submit
-    await page.getByRole('button', { name: /Search & Create Job/i }).click();
+    // Submit step 1 to trigger search
+    await page.getByRole('button', { name: /Choose Audio/i }).click();
 
     // Should show credit error message
     await expect(page.getByText(/out of credits/i)).toBeVisible();
 
-    // Should show buy credits link
-    await expect(page.getByRole('link', { name: 'Buy Credits' })).toBeVisible();
+    // Should show buy credits button (not a link)
+    await expect(page.getByRole('button', { name: 'Buy Credits' })).toBeVisible();
   });
 
   test('user with credits can submit normally', async ({ page }) => {
@@ -128,8 +128,12 @@ test.describe('Credit Enforcement', () => {
     // No warning banner
     await expect(page.getByText('You have no credits remaining')).not.toBeVisible();
 
-    // Submit button should be enabled
-    const submitButton = page.getByRole('button', { name: /Create Karaoke Video|Search & Create Job/i });
+    // "Choose Audio" button should be enabled (disabled only when fields empty + no credits)
+    // Fill in required fields first
+    await page.getByTestId('guided-artist-input').fill('Test Artist');
+    await page.getByTestId('guided-title-input').fill('Test Song');
+
+    const submitButton = page.getByRole('button', { name: /Choose Audio/i });
     await expect(submitButton).toBeEnabled();
   });
 });

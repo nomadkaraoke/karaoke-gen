@@ -235,7 +235,7 @@ function getShortLyricsStatus(stage: string): string {
  */
 export function formatStepIndicator(step: number, total: number, label: string): string {
   if (step === 0) {
-    // Terminal states (failed, cancelled) don't show step numbers
+    // Terminal states (failed, cancelled, etc.) don't show step numbers
     return label;
   }
   return `[${step}/${total}] ${label}`;
@@ -281,39 +281,19 @@ export function getJobProgressPercent(job: Job): number {
 }
 
 /**
- * Get priority score for sorting. Lower = higher priority.
- * - 0: Blocking (user action needed)
- * - 1: Active (processing)
- * - 2: Completed successfully
- * - 3: Failed/Cancelled
+ * Sort jobs by creation date (newest first).
  */
-export function getJobPriority(job: Job): number {
-  const status = job.status?.toLowerCase() || "";
-  const config = STATUS_CONFIG[status];
-
-  if (config?.isBlocking) return 0;
-  if (status === "complete" || status === "prep_complete") return 2;
-  if (status === "failed" || status === "cancelled") return 3;
-  return 1;
-}
-
-/**
- * Sort jobs by priority (blocking first), then by created_at (newest first).
- */
-export function sortJobsByPriority(jobs: Job[]): Job[] {
+export function sortJobsByDate(jobs: Job[]): Job[] {
   return [...jobs].sort((a, b) => {
-    const priorityDiff = getJobPriority(a) - getJobPriority(b);
-    if (priorityDiff !== 0) return priorityDiff;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 }
 
 /**
- * Select which jobs to display from a sorted list, ensuring all incomplete
- * jobs (blocking + processing) are always visible even if they exceed the
- * display limit. Completed/failed jobs fill remaining slots.
+ * Select which jobs to display from a sorted list.
+ * When sorted by date, simply applies the display limit and hide-completed filter.
  *
- * @param sortedJobs - Jobs already sorted by sortJobsByPriority
+ * @param sortedJobs - Jobs already sorted by sortJobsByDate
  * @param displayLimit - Max jobs to show (-1 = show all)
  * @returns Object with displayedJobs array and totalFetched count
  */
@@ -324,9 +304,12 @@ export function getDisplayJobs(
 ): { displayedJobs: Job[]; totalFetched: number } {
   const totalFetched = sortedJobs.length;
 
-  // Filter out completed/failed jobs when toggle is on
+  // Filter out successfully completed jobs when toggle is on (keep failed jobs visible)
   const filteredJobs = hideCompleted
-    ? sortedJobs.filter((job) => getJobPriority(job) <= 1)
+    ? sortedJobs.filter((job) => {
+        const status = job.status?.toLowerCase() || ""
+        return status !== "complete" && status !== "prep_complete"
+      })
     : sortedJobs;
 
   // Show all: -1 or fewer jobs than limit
@@ -334,15 +317,8 @@ export function getDisplayJobs(
     return { displayedJobs: filteredJobs, totalFetched };
   }
 
-  // Count incomplete jobs (priority 0 = blocking, 1 = processing)
-  const incompleteCount = filteredJobs.filter(
-    (job) => getJobPriority(job) <= 1
-  ).length;
-
-  // Show at least displayLimit jobs, but expand if there are more incomplete
-  const showCount = Math.max(displayLimit, incompleteCount);
   return {
-    displayedJobs: filteredJobs.slice(0, showCount),
+    displayedJobs: filteredJobs.slice(0, displayLimit),
     totalFetched,
   };
 }

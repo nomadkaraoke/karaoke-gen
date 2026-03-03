@@ -304,7 +304,7 @@ test.describe('Instrumental Review - Waveform Layout', () => {
 
     // The main container uses flex layout with h-screen
     // Check that the page fills the viewport
-    const mainContainer = page.locator('.flex.flex-col.h-screen');
+    const mainContainer = page.locator('.flex.flex-col.min-h-screen');
     await expect(mainContainer).toBeVisible({ timeout: 5000 });
 
     // Verify the container takes full height
