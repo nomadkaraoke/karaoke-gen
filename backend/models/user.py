@@ -177,6 +177,7 @@ class VerifyMagicLinkResponse(BaseModel):
     session_token: str
     user: "UserPublic"
     message: str
+    tenant_subdomain: Optional[str] = None
 
 
 class UserPublic(BaseModel):

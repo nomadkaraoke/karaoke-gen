@@ -31,6 +31,7 @@ export interface VerifyMagicLinkResponse {
   session_token: string
   user: UserPublic
   message: string
+  tenant_subdomain?: string | null
 }
 
 export interface UserProfileResponse {

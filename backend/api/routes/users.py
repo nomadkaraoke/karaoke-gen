@@ -186,13 +186,23 @@ async def send_magic_link(
         tenant_id=tenant_id
     )
 
-    # Get tenant-specific sender email
+    # Get tenant-specific email configuration
     sender_email = None
+    tenant_frontend_url = None
+    tenant_name = None
     if tenant_config:
         sender_email = tenant_config.get_sender_email()
+        tenant_frontend_url = tenant_config.get_frontend_url()
+        tenant_name = tenant_config.name
 
-    # Send email (with tenant-specific sender if configured)
-    sent = email_service.send_magic_link(email, magic_link.token, sender_email=sender_email)
+    # Send email (with tenant-specific sender, URL, and name if configured)
+    sent = email_service.send_magic_link(
+        email,
+        magic_link.token,
+        sender_email=sender_email,
+        tenant_frontend_url=tenant_frontend_url,
+        tenant_name=tenant_name,
+    )
 
     if not sent:
         logger.error(f"Failed to send magic link email to {email}")
@@ -269,11 +279,21 @@ async def verify_magic_link(
         tenant_id=user.tenant_id,
     )
 
+    # Resolve tenant subdomain for cross-domain redirect safety
+    tenant_subdomain = None
+    if magic_link_tenant_id:
+        from backend.services.tenant_service import get_tenant_service
+        tenant_service = get_tenant_service()
+        tenant_cfg = tenant_service.get_tenant_config(magic_link_tenant_id)
+        if tenant_cfg:
+            tenant_subdomain = tenant_cfg.subdomain
+
     return VerifyMagicLinkResponse(
         status="success",
         session_token=session.token,
         user=user_public,
-        message="Successfully signed in"
+        message="Successfully signed in",
+        tenant_subdomain=tenant_subdomain,
     )
 
 

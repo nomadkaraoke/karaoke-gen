@@ -73,6 +73,13 @@ export const useAuth = create<AuthStore>()(
           // Store the session token
           setAccessToken(response.session_token)
 
+          // Store tenant_subdomain for cross-domain redirect safety
+          if (typeof window !== 'undefined' && response.tenant_subdomain) {
+            (window as any).__LAST_VERIFY_RESPONSE__ = {
+              tenant_subdomain: response.tenant_subdomain,
+            }
+          }
+
           // Create user from response
           const user: User = {
             token: response.session_token,

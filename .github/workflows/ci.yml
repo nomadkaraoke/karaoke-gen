@@ -903,18 +903,37 @@ jobs:
         working-directory: frontend
         run: npm ci --legacy-peer-deps
 
-      - name: Build frontend (Next.js static export)
+      # ===== Consumer Build (gen.nomadkaraoke.com) =====
+      - name: Build frontend (consumer)
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: https://api.nomadkaraoke.com
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy consumer to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy frontend/out --project-name=karaoke-gen --branch=main
+
+      # ===== Tenant Portal Build (vocalstar.nomadkaraoke.com, singa.nomadkaraoke.com, etc.) =====
+      # Separate build with NEXT_PUBLIC_TENANT_PORTAL=true which tree-shakes
+      # consumer marketing content and renders TenantLandingPage at root.
+      # The Cloudflare Pages Function (frontend/functions/) injects tenant config at the edge.
+      - name: Build frontend (tenant portal)
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://api.nomadkaraoke.com
+          NEXT_PUBLIC_TENANT_PORTAL: "true"
+        run: npm run build
+
+      - name: Deploy tenant portal to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/out --project-name=karaoke-gen-tenant --branch=main
 
   # NOTE: buy-site was consolidated into the main frontend (PR #122, Dec 2024)
   # Landing page and payment flow are now at gen.nomadkaraoke.com (root)

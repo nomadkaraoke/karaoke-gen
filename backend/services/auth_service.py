@@ -49,6 +49,7 @@ class AuthResult:
     user_email: Optional[str] = None  # Email if authenticated via session/API key
     is_admin: bool = False  # True if admin token or admin email domain
     api_key_id: Optional[str] = None  # API key ID if authenticated via API key
+    tenant_id: Optional[str] = None  # Tenant scope from token or session
 
     def __iter__(self):
         """Allow unpacking as tuple for backward compatibility."""
@@ -284,6 +285,7 @@ class AuthService:
         # All auth_tokens must have an associated user_email for job ownership
         token_user_email = token_data.get("user_email")
         api_key_id = token_data.get("api_key_id")
+        token_tenant_id = token_data.get("tenant_id")
 
         # Require user_email on all auth_tokens (no anonymous token auth)
         if not token_user_email:
@@ -307,7 +309,8 @@ class AuthService:
                 message="Unlimited access granted",
                 user_email=token_user_email,
                 is_admin=token_is_admin,
-                api_key_id=api_key_id
+                api_key_id=api_key_id,
+                tenant_id=token_tenant_id
             )
 
         # LIMITED tokens: check usage count
@@ -320,7 +323,8 @@ class AuthService:
                     message="Limited token with unlimited uses",
                     user_email=token_user_email,
                     is_admin=token_is_admin,
-                    api_key_id=api_key_id
+                    api_key_id=api_key_id,
+                    tenant_id=token_tenant_id
                 )
 
             current_uses = token_data.get("usage_count", 0)
@@ -333,7 +337,8 @@ class AuthService:
                     remaining_uses=0,
                     message="Token usage limit exceeded",
                     user_email=token_user_email,
-                    api_key_id=api_key_id
+                    api_key_id=api_key_id,
+                    tenant_id=token_tenant_id
                 )
 
             return AuthResult(
@@ -343,7 +348,8 @@ class AuthService:
                 message=f"Limited token: {remaining} uses remaining",
                 user_email=token_user_email,
                 is_admin=token_is_admin,
-                api_key_id=api_key_id
+                api_key_id=api_key_id,
+                tenant_id=token_tenant_id
             )
 
         # STRIPE tokens: check expiration and usage
@@ -357,7 +363,8 @@ class AuthService:
                     remaining_uses=0,
                     message="Token has expired",
                     user_email=token_user_email,
-                    api_key_id=api_key_id
+                    api_key_id=api_key_id,
+                    tenant_id=token_tenant_id
                 )
 
             if max_uses > 0:
@@ -371,7 +378,8 @@ class AuthService:
                         remaining_uses=0,
                         message="Token usage limit exceeded",
                         user_email=token_user_email,
-                        api_key_id=api_key_id
+                        api_key_id=api_key_id,
+                        tenant_id=token_tenant_id
                     )
 
                 return AuthResult(
@@ -381,7 +389,8 @@ class AuthService:
                     message=f"Stripe token: {remaining} uses remaining",
                     user_email=token_user_email,
                     is_admin=token_is_admin,
-                    api_key_id=api_key_id
+                    api_key_id=api_key_id,
+                    tenant_id=token_tenant_id
                 )
 
             return AuthResult(
@@ -391,7 +400,8 @@ class AuthService:
                 message="Stripe access granted",
                 user_email=token_user_email,
                 is_admin=token_is_admin,
-                api_key_id=api_key_id
+                api_key_id=api_key_id,
+                tenant_id=token_tenant_id
             )
 
         # API_KEY tokens
@@ -406,7 +416,8 @@ class AuthService:
                         remaining_uses=0,
                         message="API key usage limit exceeded",
                         user_email=token_user_email,
-                        api_key_id=api_key_id
+                        api_key_id=api_key_id,
+                        tenant_id=token_tenant_id
                     )
                 return AuthResult(
                     is_valid=True,
@@ -415,7 +426,8 @@ class AuthService:
                     message=f"API key valid: {remaining} uses remaining",
                     user_email=token_user_email,
                     is_admin=token_is_admin,
-                    api_key_id=api_key_id
+                    api_key_id=api_key_id,
+                    tenant_id=token_tenant_id
                 )
 
             return AuthResult(
@@ -425,7 +437,8 @@ class AuthService:
                 message="API key access granted",
                 user_email=token_user_email,
                 is_admin=token_is_admin,
-                api_key_id=api_key_id
+                api_key_id=api_key_id,
+                tenant_id=token_tenant_id
             )
 
         return AuthResult(

@@ -247,6 +247,8 @@ class EmailService:
         email: str,
         token: str,
         sender_email: Optional[str] = None,
+        tenant_frontend_url: Optional[str] = None,
+        tenant_name: Optional[str] = None,
     ) -> bool:
         """
         Send a magic link email for authentication.
@@ -255,13 +257,17 @@ class EmailService:
             email: User's email address
             token: Magic link token
             sender_email: Override sender email address (for multi-tenant)
+            tenant_frontend_url: Override frontend URL for tenant portals (e.g., https://vocalstar.nomadkaraoke.com)
+            tenant_name: Override brand name for tenant portals (e.g., "Vocal Star")
 
         Returns:
             True if email was sent successfully
         """
-        magic_link_url = f"{self.frontend_url}/auth/verify?token={token}"
+        base_url = tenant_frontend_url or self.frontend_url
+        magic_link_url = f"{base_url}/auth/verify?token={token}"
 
-        subject = "Sign in to Nomad Karaoke"
+        brand_name = tenant_name or "Nomad Karaoke"
+        subject = f"Sign in to {brand_name}"
 
         extra_styles = """
         .warning {
@@ -277,7 +283,7 @@ class EmailService:
         content = f"""
     <p>Hi there,</p>
 
-    <p>Click the button below to sign in to Nomad Karaoke:</p>
+    <p>Click the button below to sign in to {html.escape(brand_name)}:</p>
 
     <p style="text-align: center;">
         <a href="{magic_link_url}" class="button">Sign In</a>
@@ -298,7 +304,7 @@ class EmailService:
         html_content = self._build_email_html(content, extra_styles)
 
         text_content = f"""
-Sign in to Nomad Karaoke
+Sign in to {brand_name}
 ========================
 
 Click this link to sign in:
@@ -309,7 +315,7 @@ This link expires in 15 minutes and can only be used once.
 If you didn't request this email, you can safely ignore it.
 
 ---
-© {self._get_year()} Nomad Karaoke
+© {self._get_year()} {brand_name}
 """
 
         return self.provider.send_email(

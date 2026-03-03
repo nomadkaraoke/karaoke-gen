@@ -26,6 +26,9 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useTenant } from '@/lib/tenant';
 import { TenantLandingPage } from '@/components/TenantLandingPage';
 
+// Build-time constant: when true, this build is for tenant portals only
+const IS_TENANT_PORTAL = process.env.NEXT_PUBLIC_TENANT_PORTAL === 'true';
+
 // FAQ data
 const faqs = [
   {
@@ -56,6 +59,16 @@ const faqs = [
 ];
 
 export default function LandingPage() {
+  // Tenant portal builds always render the tenant landing page
+  // This is a build-time constant so the consumer code gets tree-shaken
+  if (IS_TENANT_PORTAL) {
+    return <TenantLandingPage />;
+  }
+
+  return <ConsumerLandingPage />;
+}
+
+function ConsumerLandingPage() {
   const router = useRouter();
   const { isDefault: isDefaultTenant, isLoading: tenantLoading, isInitialized: tenantInitialized } = useTenant();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);

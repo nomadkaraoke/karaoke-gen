@@ -113,6 +113,11 @@ async def require_auth(
             detail=f"Authentication failed: {auth_result.message}"
         )
 
+    # If token has a tenant_id, override the hostname-based tenant detection.
+    # This allows tenant-scoped tokens to enforce tenant context regardless of domain.
+    if auth_result.tenant_id:
+        request.state.tenant_id = auth_result.tenant_id
+
     # Log successful auth with request_id for correlation with request audit
     logger.info(
         "auth_success",
@@ -122,6 +127,7 @@ async def require_auth(
             "user_type": auth_result.user_type.value if auth_result.user_type else None,
             "is_admin": auth_result.is_admin,
             "remaining_uses": auth_result.remaining_uses,
+            "tenant_id": auth_result.tenant_id,
             "audit_type": "auth_event",
         }
     )

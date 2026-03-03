@@ -113,18 +113,25 @@ function getDefaults(state: TenantStore): TenantDefaults {
 }
 
 /**
- * Detect tenant from current URL subdomain.
- * Returns tenant ID if on a tenant subdomain, null otherwise.
+ * Detect tenant from current URL subdomain or admin preview param.
+ * Returns tenant ID if on a tenant subdomain or previewing, null otherwise.
  */
 function detectTenantFromUrl(): string | null {
   if (typeof window === "undefined") return null
 
   const hostname = window.location.hostname.toLowerCase()
+  const params = new URLSearchParams(window.location.search)
 
   // Local development - check for tenant query param
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    const params = new URLSearchParams(window.location.search)
     return params.get("tenant")
+  }
+
+  // Admin preview: ?preview_tenant=X on any domain
+  // The preview banner and auth check happen in the UI layer
+  const previewTenant = params.get("preview_tenant")
+  if (previewTenant) {
+    return previewTenant
   }
 
   // Production - check for subdomain
@@ -150,6 +157,24 @@ function detectTenantFromUrl(): string | null {
   return null
 }
 
+/**
+ * Check if admin tenant preview is active (via ?preview_tenant=X query param).
+ */
+export function isPreviewingTenant(): boolean {
+  if (typeof window === "undefined") return false
+  const params = new URLSearchParams(window.location.search)
+  return !!params.get("preview_tenant")
+}
+
+/**
+ * Get the previewed tenant ID if admin preview is active.
+ */
+export function getPreviewTenantId(): string | null {
+  if (typeof window === "undefined") return null
+  const params = new URLSearchParams(window.location.search)
+  return params.get("preview_tenant")
+}
+
 const useTenantStore = create<TenantStore>()((set, get) => ({
   // Initial state
   tenant: null,
@@ -162,6 +187,22 @@ const useTenantStore = create<TenantStore>()((set, get) => ({
   fetchTenantConfig: async () => {
     const state = get()
     if (state.isLoading) return // Already loading
+
+    // Check for edge-injected config (from Cloudflare Pages Function)
+    // This provides instant tenant config without a network request
+    if (typeof window !== "undefined" && (window as any).__TENANT_CONFIG__) {
+      const data = (window as any).__TENANT_CONFIG__ as TenantConfigResponse
+      set({
+        tenant: data.tenant,
+        isDefault: data.is_default,
+        isLoading: false,
+        isInitialized: true,
+      })
+      if (data.tenant) {
+        applyTenantBranding(data.tenant.branding)
+      }
+      return
+    }
 
     set({ isLoading: true, error: null })
 

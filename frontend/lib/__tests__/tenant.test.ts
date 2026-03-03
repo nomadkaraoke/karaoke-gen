@@ -9,6 +9,8 @@ import {
   useTenant,
   getTenantHeaders,
   isFeatureEnabled,
+  isPreviewingTenant,
+  getPreviewTenantId,
   TenantConfig,
 } from "../tenant"
 
@@ -373,5 +375,119 @@ describe("API fetch behavior", () => {
       expect.stringContaining("/api/tenant/config"),
       expect.any(Object)
     )
+  })
+})
+
+describe("edge-injected config (window.__TENANT_CONFIG__)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    resetStore()
+    // Clean up any injected config
+    delete (window as any).__TENANT_CONFIG__
+  })
+
+  afterEach(() => {
+    delete (window as any).__TENANT_CONFIG__
+  })
+
+  it("should use edge-injected config when available", async () => {
+    ;(window as any).__TENANT_CONFIG__ = {
+      tenant: SAMPLE_VOCALSTAR_CONFIG,
+      is_default: false,
+    }
+
+    await useTenant.getState().fetchTenantConfig()
+
+    const state = useTenant.getState()
+    expect(state.tenant?.id).toBe("vocalstar")
+    expect(state.isDefault).toBe(false)
+    expect(state.isInitialized).toBe(true)
+    // Should NOT have made a fetch call
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it("should apply branding from edge-injected config", async () => {
+    ;(window as any).__TENANT_CONFIG__ = {
+      tenant: SAMPLE_VOCALSTAR_CONFIG,
+      is_default: false,
+    }
+
+    await useTenant.getState().fetchTenantConfig()
+
+    expect(mockSetProperty).toHaveBeenCalledWith("--tenant-primary", "#ffff00")
+    expect(mockSetProperty).toHaveBeenCalledWith("--tenant-secondary", "#006CF9")
+  })
+
+  it("should fall back to API when no edge-injected config", async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ tenant: null, is_default: true }),
+    })
+
+    await useTenant.getState().fetchTenantConfig()
+
+    expect(global.fetch).toHaveBeenCalled()
+  })
+
+  it("should handle edge-injected config with null tenant", async () => {
+    ;(window as any).__TENANT_CONFIG__ = {
+      tenant: null,
+      is_default: true,
+    }
+
+    await useTenant.getState().fetchTenantConfig()
+
+    const state = useTenant.getState()
+    expect(state.tenant).toBeNull()
+    expect(state.isDefault).toBe(true)
+    expect(state.isInitialized).toBe(true)
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe("admin preview (preview_tenant param)", () => {
+  const originalLocation = window.location
+
+  beforeEach(() => {
+    resetStore()
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      writable: true,
+    })
+  })
+
+  it("isPreviewingTenant returns false when no preview param", () => {
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, search: "" },
+      writable: true,
+    })
+    expect(isPreviewingTenant()).toBe(false)
+  })
+
+  it("isPreviewingTenant returns true when preview_tenant param exists", () => {
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, search: "?preview_tenant=vocalstar" },
+      writable: true,
+    })
+    expect(isPreviewingTenant()).toBe(true)
+  })
+
+  it("getPreviewTenantId returns null when no preview param", () => {
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, search: "" },
+      writable: true,
+    })
+    expect(getPreviewTenantId()).toBeNull()
+  })
+
+  it("getPreviewTenantId returns tenant ID when preview param exists", () => {
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, search: "?preview_tenant=singa" },
+      writable: true,
+    })
+    expect(getPreviewTenantId()).toBe("singa")
   })
 })

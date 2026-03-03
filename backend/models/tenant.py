@@ -139,6 +139,10 @@ class TenantConfig(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+    def get_frontend_url(self) -> str:
+        """Get the frontend URL for this tenant's portal."""
+        return f"https://{self.subdomain}"
+
     def get_sender_email(self) -> str:
         """Get the email sender address for this tenant."""
         if self.auth.sender_email:
