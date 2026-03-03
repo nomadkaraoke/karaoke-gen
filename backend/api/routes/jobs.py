@@ -256,7 +256,7 @@ async def list_jobs(
         exclude_test: If True (default), exclude jobs from test users (admin only)
         limit: Maximum number of jobs to return (default 100)
         fields: Set to "summary" for reduced payload with only dashboard-required fields
-        hide_completed: If True, exclude terminal-status jobs (complete, prep_complete, failed, cancelled)
+        hide_completed: If True, exclude successful completions (complete, prep_complete). Failed jobs remain visible.
 
     Returns:
         List of jobs matching filters, ordered by created_at descending.

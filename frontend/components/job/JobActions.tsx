@@ -62,9 +62,14 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
       onRefresh()
     } catch (error: any) {
       console.error("Failed to delete job:", error)
+
+      const errorMessage = error?.response?.data?.detail ||
+                          error?.message ||
+                          "Failed to delete job. Please try again."
+
       toast({
         title: "Delete failed",
-        description: error?.message || "Failed to delete job. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
