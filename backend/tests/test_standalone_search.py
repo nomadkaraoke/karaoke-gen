@@ -68,6 +68,18 @@ def _make_search_session(user_email="test@example.com", expired=False, tenant_id
 
 
 # ---------------------------------------------------------------------------
+# State machine — PENDING → DOWNLOADING_AUDIO transition
+# ---------------------------------------------------------------------------
+
+class TestStateTransitionPendingToDownloadingAudio:
+    """Verify PENDING → DOWNLOADING_AUDIO is a valid state transition (create-from-search path)."""
+
+    def test_pending_allows_downloading_audio_transition(self):
+        from backend.models.job import STATE_TRANSITIONS
+        assert JobStatus.DOWNLOADING_AUDIO in STATE_TRANSITIONS[JobStatus.PENDING]
+
+
+# ---------------------------------------------------------------------------
 # FirestoreService session CRUD
 # ---------------------------------------------------------------------------
 

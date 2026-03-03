@@ -93,8 +93,9 @@ class JobStatus(str, Enum):
 
 # Valid state transitions
 STATE_TRANSITIONS = {
-    # PENDING can go to DOWNLOADING (file upload) or SEARCHING_AUDIO (artist+title search)
-    JobStatus.PENDING: [JobStatus.DOWNLOADING, JobStatus.SEARCHING_AUDIO, JobStatus.FAILED, JobStatus.CANCELLED],
+    # PENDING can go to DOWNLOADING (file upload), SEARCHING_AUDIO (artist+title search),
+    # or DOWNLOADING_AUDIO (create-from-search where audio is pre-selected)
+    JobStatus.PENDING: [JobStatus.DOWNLOADING, JobStatus.SEARCHING_AUDIO, JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED, JobStatus.CANCELLED],
 
     # Audio search flow (for artist+title search mode)
     JobStatus.SEARCHING_AUDIO: [JobStatus.AWAITING_AUDIO_SELECTION, JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED],
