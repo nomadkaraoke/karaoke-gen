@@ -37,17 +37,19 @@ const CACHE_TTL_SECONDS = 300 // 5 minutes
 
 /**
  * Extract tenant ID from hostname.
- * Supports: {tenant}.nomadkaraoke.com
+ * Supports: {tenant}.nomadkaraoke.com and {tenant}.gen.nomadkaraoke.com
  */
 function extractTenantFromHost(hostname: string): string | null {
   const parts = hostname.toLowerCase().split(".")
   const nonTenantSubdomains = ["gen", "api", "www", "buy", "admin", "app", "beta"]
 
   // Accept exactly 3 parts (tenant.nomadkaraoke.com)
-  if (parts.length === 3 && parts[1] === "nomadkaraoke" && parts[2] === "com") {
-    if (!nonTenantSubdomains.includes(parts[0])) {
-      return parts[0]
-    }
+  // or exactly 4 parts where second is "gen" (tenant.gen.nomadkaraoke.com)
+  const isThreePart = parts.length === 3 && parts[1] === "nomadkaraoke" && parts[2] === "com"
+  const isFourPart = parts.length === 4 && parts[1] === "gen" && parts[2] === "nomadkaraoke" && parts[3] === "com"
+
+  if ((isThreePart || isFourPart) && !nonTenantSubdomains.includes(parts[0])) {
+    return parts[0]
   }
 
   return null
