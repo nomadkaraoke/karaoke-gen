@@ -106,6 +106,7 @@ class OrchestratorResult:
 
     # Distribution results
     youtube_url: Optional[str] = None
+    youtube_upload_queued: bool = False  # True if upload was deferred due to quota
     dropbox_link: Optional[str] = None
     gdrive_files: Optional[Dict[str, str]] = field(default_factory=dict)
 
@@ -543,16 +544,24 @@ class VideoWorkerOrchestrator:
         """Upload video to YouTube."""
         self.job_log.info("Uploading to YouTube")
 
-        # Check YouTube upload rate limit (system-wide)
+        # Get user_email from job
+        user_email = "unknown"
+        if self.job_manager:
+            job = self.job_manager.get_job(self.config.job_id)
+            if job and job.user_email:
+                user_email = job.user_email
+
+        # Check YouTube quota availability (unit-based tracking)
         try:
-            from backend.services.rate_limit_service import get_rate_limit_service
-            rate_limit_service = get_rate_limit_service()
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
+            from backend.services.youtube_quota_service import get_youtube_quota_service
+            quota_service = get_youtube_quota_service()
+            allowed, remaining, message = quota_service.check_quota_available()
             if not allowed:
-                self.job_log.warning(f"YouTube upload skipped: {message}")
+                self.job_log.warning(f"YouTube quota insufficient, queueing upload: {message}")
+                self._queue_youtube_upload(user_email, reason="quota_exceeded")
                 return
         except Exception as e:
-            self.job_log.warning(f"Rate limit check failed, proceeding with upload: {e}")
+            self.job_log.warning(f"Quota check failed, proceeding with upload: {e}")
 
         # Find the best video file to upload (prefer MKV for FLAC audio, then lossless MP4)
         video_to_upload = None
@@ -592,27 +601,64 @@ class VideoWorkerOrchestrator:
                 self.result.youtube_url = video_url
                 self.job_log.info(f"Uploaded to YouTube: {video_url}")
 
-                # Record the upload for rate limiting
+                # Record quota consumption for all operations in the upload flow
                 try:
-                    # Get user_email from job if available
-                    user_email = "unknown"
-                    if self.job_manager:
-                        job = self.job_manager.get_job(self.config.job_id)
-                        if job and job.user_email:
-                            user_email = job.user_email
+                    quota_service = get_youtube_quota_service()
+                    # search.list (duplicate check) + videos.insert + thumbnails.set
+                    quota_service.record_operation(self.config.job_id, user_email, "search.list")
+                    quota_service.record_operation(self.config.job_id, user_email, "videos.insert")
+                    if self.config.title_jpg_path and os.path.isfile(self.config.title_jpg_path):
+                        quota_service.record_operation(self.config.job_id, user_email, "thumbnails.set")
+                except Exception as e:
+                    self.job_log.warning(f"Failed to record YouTube quota usage: {e}")
+
+                # Also record in legacy rate limit service for backward compatibility
+                try:
+                    from backend.services.rate_limit_service import get_rate_limit_service
+                    rate_limit_service = get_rate_limit_service()
                     rate_limit_service.record_youtube_upload(
                         job_id=self.config.job_id,
                         user_email=user_email
                     )
                 except Exception as e:
-                    self.job_log.warning(f"Failed to record YouTube upload for rate limiting: {e}")
+                    self.job_log.warning(f"Failed to record YouTube upload for legacy rate limiting: {e}")
             else:
                 self.job_log.warning("YouTube upload did not return a URL")
 
         except Exception as e:
+            error_str = str(e)
+            # Check for YouTube quota exceeded error (HTTP 403 with quotaExceeded reason)
+            if "quotaExceeded" in error_str or (
+                hasattr(e, 'resp') and hasattr(e.resp, 'status') and e.resp.status == 403
+            ):
+                self.job_log.warning(f"YouTube quota exceeded during upload, queueing: {e}")
+                self._queue_youtube_upload(user_email, reason="quota_exceeded_api")
+                return
+
             self.job_log.error(f"YouTube upload failed: {e}")
             self.result.distribution_warnings.append(f"YouTube upload failed: {e}")
             # Don't fail the pipeline - YouTube is optional
+
+    def _queue_youtube_upload(self, user_email: str, reason: str = "quota_exceeded"):
+        """Queue a YouTube upload for later processing when quota is insufficient."""
+        try:
+            from backend.services.youtube_upload_queue_service import get_youtube_upload_queue_service
+            queue_service = get_youtube_upload_queue_service()
+            queue_service.queue_upload(
+                job_id=self.config.job_id,
+                user_email=user_email,
+                artist=self.config.artist,
+                title=self.config.title,
+                brand_code=self.result.brand_code,
+                reason=reason,
+            )
+            self.result.youtube_upload_queued = True
+            self.job_log.info(f"YouTube upload queued for later processing (reason: {reason})")
+        except Exception as e:
+            self.job_log.error(f"Failed to queue YouTube upload: {e}")
+            self.result.distribution_warnings.append(
+                f"YouTube upload skipped (quota exceeded) and failed to queue: {e}"
+            )
 
     async def _upload_to_dropbox(self):
         """Upload files to Dropbox."""

@@ -36,9 +36,22 @@ class RateLimitStatsResponse(BaseModel):
     beta_ip_per_day_limit: int
     rate_limiting_enabled: bool
 
-    # Current usage
+    # Current usage (legacy count-based)
     youtube_uploads_today: int
     youtube_uploads_remaining: int
+
+    # YouTube quota (unit-based tracking)
+    youtube_quota_units_consumed: int
+    youtube_quota_units_remaining: int
+    youtube_quota_daily_limit: int
+    youtube_quota_effective_limit: int
+    youtube_quota_upload_cost: int
+    youtube_quota_estimated_uploads_remaining: int
+    youtube_quota_seconds_until_reset: int
+
+    # YouTube upload queue
+    youtube_uploads_queued: int
+    youtube_uploads_failed: int
 
     # Blocklist stats
     disposable_domains_count: int
@@ -47,6 +60,29 @@ class RateLimitStatsResponse(BaseModel):
 
     # User override stats
     total_overrides: int
+
+
+class YouTubeQueueEntry(BaseModel):
+    """A queued YouTube upload entry."""
+    job_id: str
+    status: str
+    reason: Optional[str] = None
+    user_email: Optional[str] = None
+    artist: Optional[str] = None
+    title: Optional[str] = None
+    brand_code: Optional[str] = None
+    queued_at: Optional[datetime] = None
+    attempts: int = 0
+    max_attempts: int = 5
+    last_error: Optional[str] = None
+    youtube_url: Optional[str] = None
+    notification_sent: bool = False
+
+
+class YouTubeQueueListResponse(BaseModel):
+    """List of YouTube upload queue entries."""
+    entries: List[YouTubeQueueEntry]
+    stats: dict
 
 
 class UserRateLimitStatusResponse(BaseModel):
@@ -124,15 +160,26 @@ async def get_rate_limit_stats(
     """
     Get current rate limit statistics.
 
-    Returns configuration values, current usage counts, and blocklist stats.
+    Returns configuration values, current usage counts, quota tracking,
+    queue stats, and blocklist stats.
     """
     rate_limit_service = get_rate_limit_service()
     email_validation = get_email_validation_service()
 
-    # Get YouTube uploads today
+    # Get YouTube uploads today (legacy count)
     youtube_today = rate_limit_service.get_youtube_uploads_today()
     youtube_limit = settings.rate_limit_youtube_uploads_per_day
     youtube_remaining = max(0, youtube_limit - youtube_today) if youtube_limit > 0 else -1
+
+    # Get YouTube quota stats (unit-based)
+    from backend.services.youtube_quota_service import get_youtube_quota_service
+    quota_service = get_youtube_quota_service()
+    quota_stats = quota_service.get_quota_stats()
+
+    # Get YouTube upload queue stats
+    from backend.services.youtube_upload_queue_service import get_youtube_upload_queue_service
+    queue_service = get_youtube_upload_queue_service()
+    queue_stats = queue_service.get_queue_stats()
 
     # Get blocklist stats
     blocklist_stats = email_validation.get_blocklist_stats()
@@ -147,6 +194,15 @@ async def get_rate_limit_stats(
         rate_limiting_enabled=settings.enable_rate_limiting,
         youtube_uploads_today=youtube_today,
         youtube_uploads_remaining=youtube_remaining,
+        youtube_quota_units_consumed=quota_stats["units_consumed"],
+        youtube_quota_units_remaining=quota_stats["units_remaining"],
+        youtube_quota_daily_limit=quota_stats["units_limit"],
+        youtube_quota_effective_limit=quota_stats["effective_limit"],
+        youtube_quota_upload_cost=quota_stats["upload_cost"],
+        youtube_quota_estimated_uploads_remaining=quota_stats["estimated_uploads_remaining"],
+        youtube_quota_seconds_until_reset=quota_stats["seconds_until_reset"],
+        youtube_uploads_queued=queue_stats["queued"],
+        youtube_uploads_failed=queue_stats["failed"],
         disposable_domains_count=blocklist_stats["disposable_domains_count"],
         blocked_emails_count=blocklist_stats["blocked_emails_count"],
         blocked_ips_count=blocklist_stats["blocked_ips_count"],
@@ -425,4 +481,88 @@ async def remove_user_override(
     return SuccessResponse(
         success=True,
         message=f"Override removed for user '{email}'"
+    )
+
+
+# =============================================================================
+# YouTube Upload Queue Management Endpoints
+# =============================================================================
+
+@router.get("/youtube-queue", response_model=YouTubeQueueListResponse)
+async def get_youtube_queue(
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """
+    Get YouTube upload queue entries and stats.
+
+    Returns all queue entries (any status) and aggregate statistics.
+    """
+    from backend.services.youtube_upload_queue_service import get_youtube_upload_queue_service
+
+    queue_service = get_youtube_upload_queue_service()
+    entries = queue_service.get_all_queue_entries(limit=50)
+    stats = queue_service.get_queue_stats()
+
+    return YouTubeQueueListResponse(
+        entries=[YouTubeQueueEntry(**entry) for entry in entries],
+        stats=stats,
+    )
+
+
+@router.post("/youtube-queue/{job_id}/retry", response_model=SuccessResponse)
+async def retry_youtube_upload(
+    job_id: str,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """
+    Manually retry a failed YouTube upload.
+
+    Resets the entry back to 'queued' status with 0 attempts.
+    """
+    from backend.services.youtube_upload_queue_service import get_youtube_upload_queue_service
+
+    queue_service = get_youtube_upload_queue_service()
+
+    if not queue_service.retry_upload(job_id):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Upload not found or not in retryable state for job {job_id}"
+        )
+
+    return SuccessResponse(
+        success=True,
+        message=f"YouTube upload for job {job_id} queued for retry"
+    )
+
+
+@router.post("/youtube-queue/process", response_model=SuccessResponse)
+async def trigger_youtube_queue_processing(
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """
+    Manually trigger YouTube upload queue processing.
+
+    Same as the scheduled processor but triggered from the admin dashboard.
+    Runs in the background and returns immediately.
+    """
+    from backend.workers.youtube_queue_processor import process_youtube_upload_queue
+    import asyncio
+
+    async def _process():
+        try:
+            result = await process_youtube_upload_queue()
+            logger.info(f"Manual YouTube queue processing complete: {result}")
+        except Exception as e:
+            logger.exception(f"Manual YouTube queue processing failed: {e}")
+
+    # Fire and forget
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_process())
+    except RuntimeError:
+        pass
+
+    return SuccessResponse(
+        success=True,
+        message="YouTube queue processing started in background"
     )

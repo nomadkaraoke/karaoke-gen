@@ -1568,7 +1568,7 @@ Called by Cloud Tasks 5 minutes after a job enters a blocking state (primarily `
 ### User Limits
 
 - **Jobs per day**: 5 (configurable via `RATE_LIMIT_JOBS_PER_DAY`)
-- **YouTube uploads per day**: 10 system-wide (configurable via `RATE_LIMIT_YOUTUBE_UPLOADS_PER_DAY`)
+- **YouTube uploads**: Quota-aware, ~33 uploads/day within 10,000 units/day API quota (configurable via `YOUTUBE_QUOTA_DAILY_LIMIT`, `YOUTUBE_QUOTA_UPLOAD_COST`, `YOUTUBE_QUOTA_SAFETY_MARGIN`). Uploads exceeding quota are queued and processed hourly.
 - **Beta enrollment per IP**: 1 per 24 hours (configurable via `RATE_LIMIT_BETA_IP_PER_DAY`)
 
 Rate limiting can be disabled via `ENABLE_RATE_LIMITING=false`.
@@ -1622,6 +1622,30 @@ PUT /api/admin/rate-limits/overrides/{email}
 DELETE /api/admin/rate-limits/overrides/{email}
 ```
 Manage user overrides (bypass or custom limits).
+
+### YouTube Upload Queue
+
+```http
+GET /api/admin/rate-limits/youtube-queue
+```
+Returns list of queued/processing/failed YouTube uploads with job details, status, attempt count, and timestamps.
+
+```http
+POST /api/admin/rate-limits/youtube-queue/{job_id}/retry
+```
+Reset a failed upload back to queued status for retry.
+
+```http
+POST /api/admin/rate-limits/youtube-queue/process
+```
+Manually trigger queue processing (normally runs hourly via Cloud Scheduler).
+
+### Internal YouTube Queue Processing
+
+```http
+POST /api/internal/youtube-queue/process
+```
+Called by Cloud Scheduler hourly. Processes queued uploads while quota is available. Returns summary of processed/failed/remaining uploads.
 
 ## Webhooks
 

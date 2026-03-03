@@ -278,6 +278,30 @@ gdrive_validator_scheduler = cloudscheduler.Job(
     ),
 )
 
+# ==================== YouTube Upload Queue Processor ====================
+
+# Cloud Scheduler job to process deferred YouTube uploads hourly
+youtube_queue_scheduler = cloudscheduler.Job(
+    "youtube-queue-scheduler",
+    name="youtube-queue-hourly",
+    description="Process deferred YouTube uploads when API quota is available",
+    region=REGION,
+    schedule="0 * * * *",  # Every hour on the hour
+    time_zone="America/Los_Angeles",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/youtube-queue/process",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Compute VMs ====================
 
 # Encoding Worker VM (video encoding service)
@@ -363,6 +387,10 @@ pulumi.export("error_rate_alert_id", alert_policies["error_rate"].name)
 pulumi.export("queue_backlog_alert_id", alert_policies["queue_backlog"].name)
 pulumi.export("memory_alert_id", alert_policies["memory"].name)
 pulumi.export("service_unavailable_alert_id", alert_policies["service_unavailable"].name)
+
+# YouTube upload queue
+pulumi.export("youtube_upload_queue", queues["youtube-upload-queue"].name)
+pulumi.export("youtube_queue_scheduler_name", youtube_queue_scheduler.name)
 
 # GDrive validator
 pulumi.export("gdrive_validator_function_url", gdrive_validator_function.url)

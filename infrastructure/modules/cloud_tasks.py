@@ -130,6 +130,24 @@ def create_queues() -> dict[str, cloudtasks.Queue]:
         ),
     )
 
+    # YouTube upload queue - deferred uploads when quota is exhausted
+    # Processor runs hourly via Cloud Scheduler, processing one upload at a time
+    queues["youtube-upload-queue"] = cloudtasks.Queue(
+        "youtube-upload-queue",
+        name="youtube-upload-queue",
+        location=REGION,
+        rate_limits=cloudtasks.QueueRateLimitsArgs(
+            max_dispatches_per_second=1,     # One upload at a time
+            max_concurrent_dispatches=1,
+        ),
+        retry_config=cloudtasks.QueueRetryConfigArgs(
+            max_attempts=3,
+            min_backoff="60s",
+            max_backoff="600s",
+            max_retry_duration="3600s",      # 1 hour total
+        ),
+    )
+
     # GDrive validation queue - delayed tasks for post-job validation
     # Tasks are scheduled with a 5-minute delay after job completion to allow
     # E2E test cleanup to finish before the validator checks for sequence gaps

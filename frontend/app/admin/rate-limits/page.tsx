@@ -7,6 +7,8 @@ import {
   BlocklistsResponse,
   UserOverridesListResponse,
   UserOverride,
+  YouTubeQueueListResponse,
+  YouTubeQueueEntry,
 } from "@/lib/api"
 import { StatsCard, StatsGrid } from "@/components/admin/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,7 +60,14 @@ import {
   Plus,
   Trash2,
   Search,
+  Play,
+  RotateCcw,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AdminRateLimitsPage() {
@@ -66,7 +75,9 @@ export default function AdminRateLimitsPage() {
   const [stats, setStats] = useState<RateLimitStatsResponse | null>(null)
   const [blocklists, setBlocklists] = useState<BlocklistsResponse | null>(null)
   const [overrides, setOverrides] = useState<UserOverridesListResponse | null>(null)
+  const [youtubeQueue, setYoutubeQueue] = useState<YouTubeQueueListResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [processingQueue, setProcessingQueue] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
 
   // Form states
@@ -87,14 +98,16 @@ export default function AdminRateLimitsPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [statsData, blocklistsData, overridesData] = await Promise.all([
+      const [statsData, blocklistsData, overridesData, queueData] = await Promise.all([
         adminApi.getRateLimitStats(),
         adminApi.getBlocklists(),
         adminApi.getUserOverrides(),
+        adminApi.getYouTubeQueue(),
       ])
       setStats(statsData)
       setBlocklists(blocklistsData)
       setOverrides(overridesData)
+      setYoutubeQueue(queueData)
     } catch (err: any) {
       console.error("Failed to load rate limits data:", err)
       toast({
@@ -212,6 +225,31 @@ export default function AdminRateLimitsPage() {
     }
   }
 
+  // YouTube queue actions
+  const handleRetryUpload = async (jobId: string) => {
+    try {
+      await adminApi.retryYouTubeUpload(jobId)
+      toast({ title: "Success", description: `Upload for job ${jobId} queued for retry` })
+      loadData()
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    }
+  }
+
+  const handleProcessQueue = async () => {
+    try {
+      setProcessingQueue(true)
+      await adminApi.processYouTubeQueue()
+      toast({ title: "Success", description: "Queue processing started in background" })
+      // Refresh after a short delay to show updated state
+      setTimeout(loadData, 3000)
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setProcessingQueue(false)
+    }
+  }
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "—"
     const date = new Date(dateStr)
@@ -264,6 +302,12 @@ export default function AdminRateLimitsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="youtube-queue">
+            YouTube Queue
+            {(stats?.youtube_uploads_queued ?? 0) > 0 && (
+              <Badge variant="destructive" className="ml-2 text-xs">{stats?.youtube_uploads_queued}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="blocklists">Blocklists</TabsTrigger>
           <TabsTrigger value="overrides">User Overrides</TabsTrigger>
         </TabsList>
@@ -310,28 +354,55 @@ export default function AdminRateLimitsPage() {
             </CardContent>
           </Card>
 
-          {/* Current Usage Stats */}
+          {/* YouTube Quota & Queue Stats */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Youtube className="w-5 h-5" />
-                Today&apos;s Usage
+                YouTube API Quota
               </CardTitle>
-              <CardDescription>Current rate limit usage</CardDescription>
+              <CardDescription>
+                Daily quota usage (resets at midnight Pacific Time)
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <StatsGrid columns={3}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{stats?.youtube_quota_units_consumed?.toLocaleString() ?? 0} / {stats?.youtube_quota_effective_limit?.toLocaleString() ?? 0} units used</span>
+                  <span className="text-muted-foreground">
+                    {stats?.youtube_quota_seconds_until_reset
+                      ? `Resets in ${Math.floor(stats.youtube_quota_seconds_until_reset / 3600)}h ${Math.floor((stats.youtube_quota_seconds_until_reset % 3600) / 60)}m`
+                      : ""}
+                  </span>
+                </div>
+                <Progress
+                  value={stats?.youtube_quota_effective_limit
+                    ? ((stats?.youtube_quota_units_consumed ?? 0) / stats.youtube_quota_effective_limit) * 100
+                    : 0
+                  }
+                  className="h-3"
+                />
+              </div>
+              <StatsGrid columns={4}>
                 <StatsCard
-                  title="YouTube Uploads Today"
+                  title="Uploads Today"
                   value={stats?.youtube_uploads_today ?? 0}
-                  description={`${stats?.youtube_uploads_remaining ?? 0} remaining`}
+                  description={`~${stats?.youtube_quota_estimated_uploads_remaining ?? 0} more possible`}
                   icon={Youtube}
                 />
                 <StatsCard
-                  title="Blocked Domains"
-                  value={stats?.disposable_domains_count ?? 0}
-                  description="Disposable email domains"
-                  icon={Globe}
+                  title="Queued"
+                  value={stats?.youtube_uploads_queued ?? 0}
+                  description="Waiting for quota"
+                  icon={Clock}
+                  valueClassName={(stats?.youtube_uploads_queued ?? 0) > 0 ? "text-yellow-600" : undefined}
+                />
+                <StatsCard
+                  title="Failed"
+                  value={stats?.youtube_uploads_failed ?? 0}
+                  description="Need manual retry"
+                  icon={XCircle}
+                  valueClassName={(stats?.youtube_uploads_failed ?? 0) > 0 ? "text-red-600" : undefined}
                 />
                 <StatsCard
                   title="User Overrides"
@@ -369,6 +440,124 @@ export default function AdminRateLimitsPage() {
                   icon={Server}
                 />
               </StatsGrid>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* YouTube Queue Tab */}
+        <TabsContent value="youtube-queue" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Youtube className="w-5 h-5" />
+                    YouTube Upload Queue
+                  </CardTitle>
+                  <CardDescription>
+                    Uploads deferred due to API quota limits. Processed automatically every hour.
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={handleProcessQueue}
+                  disabled={processingQueue}
+                  variant="outline"
+                >
+                  {processingQueue ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-2" />
+                  )}
+                  Process Queue Now
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!youtubeQueue?.entries.length ? (
+                <p className="text-muted-foreground text-sm py-8 text-center">
+                  No YouTube uploads in queue
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job ID</TableHead>
+                      <TableHead>Song</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Attempts</TableHead>
+                      <TableHead>Queued</TableHead>
+                      <TableHead>Error</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {youtubeQueue.entries.map((entry) => (
+                      <TableRow key={entry.job_id}>
+                        <TableCell className="font-mono text-xs">
+                          {entry.job_id.substring(0, 8)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{entry.artist} - {entry.title}</div>
+                          <div className="text-xs text-muted-foreground">{entry.brand_code}</div>
+                        </TableCell>
+                        <TableCell>
+                          {entry.status === "queued" && (
+                            <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                              <Clock className="w-3 h-3" /> Queued
+                            </Badge>
+                          )}
+                          {entry.status === "processing" && (
+                            <Badge variant="default" className="flex items-center gap-1 w-fit">
+                              <Loader2 className="w-3 h-3 animate-spin" /> Processing
+                            </Badge>
+                          )}
+                          {entry.status === "completed" && (
+                            <Badge variant="default" className="flex items-center gap-1 w-fit bg-green-600">
+                              <CheckCircle2 className="w-3 h-3" /> Done
+                            </Badge>
+                          )}
+                          {entry.status === "failed" && (
+                            <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                              <XCircle className="w-3 h-3" /> Failed
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {entry.attempts}/{entry.max_attempts}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(entry.queued_at)}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground" title={entry.last_error || undefined}>
+                          {entry.last_error || "—"}
+                        </TableCell>
+                        <TableCell>
+                          {(entry.status === "failed" || entry.status === "queued") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRetryUpload(entry.job_id)}
+                              title="Retry upload"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {entry.status === "completed" && entry.youtube_url && (
+                            <a
+                              href={entry.youtube_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline text-sm"
+                            >
+                              View
+                            </a>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

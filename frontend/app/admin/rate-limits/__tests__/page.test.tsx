@@ -26,6 +26,9 @@ jest.mock("@/lib/api", () => ({
     removeBlockedIP: jest.fn(),
     setUserOverride: jest.fn(),
     removeUserOverride: jest.fn(),
+    getYouTubeQueue: jest.fn(),
+    retryYouTubeUpload: jest.fn(),
+    processYouTubeQueue: jest.fn(),
   },
 }))
 
@@ -50,6 +53,15 @@ const mockStats = {
   rate_limiting_enabled: true,
   youtube_uploads_today: 3,
   youtube_uploads_remaining: 7,
+  youtube_quota_units_consumed: 900,
+  youtube_quota_units_remaining: 8600,
+  youtube_quota_daily_limit: 10000,
+  youtube_quota_effective_limit: 9500,
+  youtube_quota_upload_cost: 300,
+  youtube_quota_estimated_uploads_remaining: 28,
+  youtube_quota_seconds_until_reset: 43200,
+  youtube_uploads_queued: 0,
+  youtube_uploads_failed: 0,
   disposable_domains_count: 130,
   blocked_emails_count: 2,
   blocked_ips_count: 1,
@@ -78,12 +90,18 @@ const mockOverrides = {
   total: 1,
 }
 
+const mockYouTubeQueue = {
+  entries: [],
+  total: 0,
+}
+
 describe("AdminRateLimitsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockAdminApi.getRateLimitStats.mockResolvedValue(mockStats)
     mockAdminApi.getBlocklists.mockResolvedValue(mockBlocklists)
     mockAdminApi.getUserOverrides.mockResolvedValue(mockOverrides)
+    mockAdminApi.getYouTubeQueue.mockResolvedValue(mockYouTubeQueue)
   })
 
   describe("Loading State", () => {
@@ -152,14 +170,14 @@ describe("AdminRateLimitsPage", () => {
       expect(screen.getByText("10")).toBeInTheDocument()
     })
 
-    it("displays current usage statistics", async () => {
+    it("displays YouTube API quota section", async () => {
       render(<AdminRateLimitsPage />)
 
       await waitFor(() => {
-        expect(screen.getByText("Today's Usage")).toBeInTheDocument()
+        expect(screen.getByText("YouTube API Quota")).toBeInTheDocument()
       })
 
-      expect(screen.getByText("YouTube Uploads Today")).toBeInTheDocument()
+      expect(screen.getByText("Uploads Today")).toBeInTheDocument()
       expect(screen.getByText("3")).toBeInTheDocument()
     })
 

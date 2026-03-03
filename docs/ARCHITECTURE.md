@@ -167,7 +167,8 @@ LyricsTranscriber                 LyricsTranscriber
 | Flacfetch | Audio downloads (YouTube, torrents) | Recommended* |
 | YouTube API | Video upload | Optional |
 | SendGrid | Email notifications | Optional |
-| Cloud Tasks | Delayed task scheduling (idle reminders) | Optional |
+| Cloud Tasks | Delayed task scheduling (idle reminders, YouTube queue) | Optional |
+| Cloud Scheduler | Hourly YouTube upload queue processing | Optional |
 | karaoke-decide | Song catalog (MusicBrainz + Spotify) for autocomplete | Optional |
 | KaraokeNerds | Community karaoke version detection | Optional |
 
@@ -186,6 +187,8 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 | `magic_links` | Passwordless auth tokens | email, token, expires_at, used |
 | `user_feedback` | User feedback for credits (all users) | user_email, ratings, comments, created_at |
 | `beta_feedback` | Beta program feedback (deprecated) | user_email, ratings, comments |
+| `youtube_quota` | Daily YouTube API quota tracking | date_pt, units_consumed, units_limit, operations[] |
+| `youtube_upload_queue` | Deferred YouTube uploads | job_id, status, user_email, queued_at, youtube_url |
 
 **Note**: The `users` collection in the same Firestore instance belongs to karaoke-decide (different schema: user_id, is_guest, quiz_* fields). Don't use it for karaoke-gen.
 
@@ -235,6 +238,8 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
 | `audio_transcoding_service.py` | Transcode FLAC → OGG Opus for review UI playback |
+| `youtube_quota_service.py` | Track YouTube API quota units (Firestore, PT midnight reset) |
+| `youtube_upload_queue_service.py` | Deferred YouTube upload queue management |
 | `catalog_proxy_service.py` | Proxy to karaoke-decide catalog API (artist/track search) |
 | `karaokenerds_service.py` | Scrape karaokenerds.com for community karaoke versions |
 
@@ -486,7 +491,8 @@ The frontend's `TenantProvider` reads `window.__TENANT_CONFIG__` on startup (no 
 - **Database**: Firestore
 - **Storage**: Google Cloud Storage
 - **Secrets**: Google Secret Manager
-- **Task Queues**: Cloud Tasks (idle reminders)
+- **Task Queues**: Cloud Tasks (idle reminders, YouTube upload queue)
+- **Scheduling**: Cloud Scheduler (hourly YouTube queue processing)
 - **Email**: SendGrid
 - **IaC**: Pulumi
 - **CI/CD**: GitHub Actions

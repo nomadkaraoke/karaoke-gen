@@ -59,6 +59,8 @@ class TestGetRateLimitStats:
         """Test successful stats retrieval."""
         with patch('backend.api.routes.rate_limits.get_rate_limit_service') as mock_get_rls, \
              patch('backend.api.routes.rate_limits.get_email_validation_service') as mock_get_evs, \
+             patch('backend.services.youtube_quota_service.get_youtube_quota_service') as mock_get_qs, \
+             patch('backend.services.youtube_upload_queue_service.get_youtube_upload_queue_service') as mock_get_uqs, \
              patch('backend.api.routes.rate_limits.settings', mock_settings):
 
             # Setup rate limit service mock
@@ -77,6 +79,30 @@ class TestGetRateLimitStats:
             }
             mock_get_evs.return_value = mock_evs
 
+            # Setup quota service mock
+            mock_quota = Mock()
+            mock_quota.get_quota_stats.return_value = {
+                "units_consumed": 900,
+                "units_remaining": 8600,
+                "units_limit": 10000,
+                "effective_limit": 9500,
+                "upload_cost": 300,
+                "estimated_uploads_remaining": 28,
+                "seconds_until_reset": 43200,
+            }
+            mock_get_qs.return_value = mock_quota
+
+            # Setup queue service mock
+            mock_queue = Mock()
+            mock_queue.get_queue_stats.return_value = {
+                "queued": 0,
+                "processing": 0,
+                "failed": 0,
+                "completed": 0,
+                "total": 0,
+            }
+            mock_get_uqs.return_value = mock_queue
+
             response = client.get(
                 "/api/admin/rate-limits/stats",
                 headers={"Authorization": "Bearer admin-token"}
@@ -90,6 +116,10 @@ class TestGetRateLimitStats:
             assert data["youtube_uploads_remaining"] == 7
             assert data["disposable_domains_count"] == 100
             assert data["total_overrides"] == 1
+            # New quota fields
+            assert data["youtube_quota_units_consumed"] == 900
+            assert data["youtube_quota_units_remaining"] == 8600
+            assert data["youtube_quota_daily_limit"] == 10000
 
 
 class TestGetUserRateLimitStatus:
@@ -390,3 +420,96 @@ class TestUserOverrideEndpoints:
             )
 
             assert response.status_code == 404
+
+
+class TestYouTubeQueueEndpoints:
+    """Tests for YouTube upload queue management endpoints."""
+
+    def test_get_youtube_queue(self, client):
+        """Test getting YouTube queue entries."""
+        with patch('backend.services.youtube_upload_queue_service.get_youtube_upload_queue_service') as mock_get_qs:
+
+            mock_qs = Mock()
+            mock_qs.get_all_queue_entries.return_value = [
+                {
+                    "job_id": "job-123",
+                    "status": "queued",
+                    "reason": "quota_exceeded",
+                    "user_email": "user@example.com",
+                    "artist": "Test Artist",
+                    "title": "Test Song",
+                    "brand_code": "NOMAD-100",
+                    "queued_at": "2026-03-03T10:00:00",
+                    "attempts": 0,
+                    "max_attempts": 5,
+                    "last_error": None,
+                    "youtube_url": None,
+                    "notification_sent": False,
+                }
+            ]
+            mock_qs.get_queue_stats.return_value = {
+                "queued": 1,
+                "processing": 0,
+                "failed": 0,
+                "completed": 5,
+                "total": 6,
+            }
+            mock_get_qs.return_value = mock_qs
+
+            response = client.get(
+                "/api/admin/rate-limits/youtube-queue",
+                headers={"Authorization": "Bearer admin-token"}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert len(data["entries"]) == 1
+            assert data["entries"][0]["job_id"] == "job-123"
+            assert data["entries"][0]["status"] == "queued"
+            assert data["stats"]["queued"] == 1
+            assert data["stats"]["total"] == 6
+
+    def test_retry_youtube_upload_success(self, client):
+        """Test retrying a failed YouTube upload."""
+        with patch('backend.services.youtube_upload_queue_service.get_youtube_upload_queue_service') as mock_get_qs:
+
+            mock_qs = Mock()
+            mock_qs.retry_upload.return_value = True
+            mock_get_qs.return_value = mock_qs
+
+            response = client.post(
+                "/api/admin/rate-limits/youtube-queue/job-123/retry",
+                headers={"Authorization": "Bearer admin-token"}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            mock_qs.retry_upload.assert_called_once_with("job-123")
+
+    def test_retry_youtube_upload_not_found(self, client):
+        """Test retrying a non-existent or non-retryable upload."""
+        with patch('backend.services.youtube_upload_queue_service.get_youtube_upload_queue_service') as mock_get_qs:
+
+            mock_qs = Mock()
+            mock_qs.retry_upload.return_value = False
+            mock_get_qs.return_value = mock_qs
+
+            response = client.post(
+                "/api/admin/rate-limits/youtube-queue/nonexistent/retry",
+                headers={"Authorization": "Bearer admin-token"}
+            )
+
+            assert response.status_code == 404
+
+    def test_trigger_queue_processing(self, client):
+        """Test manually triggering queue processing."""
+        response = client.post(
+            "/api/admin/rate-limits/youtube-queue/process",
+            headers={"Authorization": "Bearer admin-token"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "background" in data["message"].lower()

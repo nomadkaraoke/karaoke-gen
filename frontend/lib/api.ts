@@ -1980,6 +1980,32 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  // YouTube Upload Queue
+
+  async getYouTubeQueue(): Promise<YouTubeQueueListResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/rate-limits/youtube-queue`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async retryYouTubeUpload(jobId: string): Promise<SuccessResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/rate-limits/youtube-queue/${encodeURIComponent(jobId)}/retry`,
+      { method: 'POST', headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async processYouTubeQueue(): Promise<SuccessResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/rate-limits/youtube-queue/process`,
+      { method: 'POST', headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
 };
 
 // Types for admin completion message API
@@ -2373,10 +2399,48 @@ export interface RateLimitStatsResponse {
   rate_limiting_enabled: boolean;
   youtube_uploads_today: number;
   youtube_uploads_remaining: number;
+  // YouTube quota (unit-based tracking)
+  youtube_quota_units_consumed: number;
+  youtube_quota_units_remaining: number;
+  youtube_quota_daily_limit: number;
+  youtube_quota_effective_limit: number;
+  youtube_quota_upload_cost: number;
+  youtube_quota_estimated_uploads_remaining: number;
+  youtube_quota_seconds_until_reset: number;
+  // YouTube upload queue
+  youtube_uploads_queued: number;
+  youtube_uploads_failed: number;
   disposable_domains_count: number;
   blocked_emails_count: number;
   blocked_ips_count: number;
   total_overrides: number;
+}
+
+export interface YouTubeQueueEntry {
+  job_id: string;
+  status: string;
+  reason?: string;
+  user_email?: string;
+  artist?: string;
+  title?: string;
+  brand_code?: string;
+  queued_at?: string;
+  attempts: number;
+  max_attempts: number;
+  last_error?: string;
+  youtube_url?: string;
+  notification_sent: boolean;
+}
+
+export interface YouTubeQueueListResponse {
+  entries: YouTubeQueueEntry[];
+  stats: {
+    queued: number;
+    processing: number;
+    failed: number;
+    completed: number;
+    total: number;
+  };
 }
 
 export interface UserRateLimitStatusResponse {

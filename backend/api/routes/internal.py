@@ -428,6 +428,46 @@ async def check_idle_reminder(
         return {"status": "error", "job_id": job_id, "message": str(e)}
 
 
+@router.post("/youtube-queue/process")
+async def process_youtube_upload_queue(
+    http_request: Request,
+    background_tasks: BackgroundTasks,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """
+    Process queued YouTube uploads.
+
+    Called by Cloud Scheduler (hourly) to retry uploads that were deferred
+    due to YouTube API quota exhaustion. Can also be triggered manually
+    from the admin dashboard.
+
+    Processes queued uploads one at a time, stopping if quota is exhausted.
+    """
+    from backend.workers.youtube_queue_processor import process_youtube_upload_queue as process_queue
+
+    trace_context = extract_trace_context(dict(http_request.headers))
+
+    logger.info("YOUTUBE_QUEUE_PROCESS starting")
+    add_span_attribute("operation", "youtube_queue_process")
+
+    # Run in background so the HTTP response returns quickly
+    # (Cloud Scheduler has a 30min timeout but we don't want to block)
+    async def _process():
+        try:
+            result = await process_queue()
+            logger.info(f"YOUTUBE_QUEUE_PROCESS complete: {result}")
+        except Exception as e:
+            logger.exception(f"YOUTUBE_QUEUE_PROCESS failed: {e}")
+
+    background_tasks.add_task(_process)
+
+    add_span_event("queue_processing_started")
+    return {
+        "status": "started",
+        "message": "YouTube upload queue processing started in background"
+    }
+
+
 @router.post("/trigger-gdrive-validation")
 async def trigger_gdrive_validation_endpoint(
     http_request: Request,
