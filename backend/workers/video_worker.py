@@ -343,6 +343,7 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 **job.state_data,
                 'brand_code': result.brand_code,
                 'youtube_url': result.youtube_url,
+                'youtube_upload_queued': result.youtube_upload_queued,
                 'dropbox_link': result.dropbox_link,
                 'gdrive_files': result.gdrive_files,
             }

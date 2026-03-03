@@ -79,6 +79,18 @@ Thanks!
 """
 
 
+DEFAULT_YOUTUBE_UPLOAD_COMPLETE_TEMPLATE = """Hi {name},
+
+Great news! Your karaoke video for "{artist} - {title}" has been uploaded to YouTube:
+{youtube_url}
+
+This upload was briefly delayed while our systems processed other uploads, but everything is all set now.
+
+Thanks!
+-Andrew
+"""
+
+
 class TemplateService:
     """
     Service for fetching and rendering email templates from GCS.
@@ -213,6 +225,7 @@ class TemplateService:
         job_id: Optional[str] = None,
         feedback_url: Optional[str] = None,
         is_private: bool = False,
+        youtube_queued: bool = False,
     ) -> str:
         """
         Render the job completion email template.
@@ -226,6 +239,7 @@ class TemplateService:
             job_id: Job ID
             feedback_url: Feedback form URL (optional)
             is_private: If True, remove YouTube section entirely (private/non-published tracks)
+            youtube_queued: If True, YouTube upload was deferred - show pending message
 
         Returns:
             Rendered email content
@@ -238,6 +252,13 @@ class TemplateService:
                 r"\n*Here's the link for the karaoke video published to YouTube:\n\{youtube_url\}\n*",
                 '\n',
                 template,
+            )
+        elif youtube_queued and not youtube_url:
+            # Replace YouTube URL with pending message
+            template = template.replace(
+                "Here's the link for the karaoke video published to YouTube:\n{youtube_url}",
+                "Your YouTube upload is queued and will be processed automatically. "
+                "You'll receive a follow-up email with the link shortly."
             )
 
         variables = {
@@ -311,6 +332,39 @@ class TemplateService:
             "artist": artist or "Unknown Artist",
             "title": title or "Unknown Title",
             "instrumental_url": instrumental_url,
+        }
+        return self.render_template(template, variables)
+
+    def render_youtube_upload_complete(
+        self,
+        name: Optional[str] = None,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        youtube_url: Optional[str] = None,
+    ) -> str:
+        """
+        Render the YouTube upload complete follow-up email template.
+
+        Sent when a deferred YouTube upload completes after quota becomes available.
+
+        Args:
+            name: User's display name
+            artist: Artist name
+            title: Song title
+            youtube_url: YouTube video URL
+
+        Returns:
+            Rendered email content
+        """
+        template = self._fetch_template_from_gcs("youtube-upload-complete.txt")
+        if template is None:
+            template = DEFAULT_YOUTUBE_UPLOAD_COMPLETE_TEMPLATE
+
+        variables = {
+            "name": name or "there",
+            "artist": artist or "Unknown Artist",
+            "title": title or "Unknown Title",
+            "youtube_url": youtube_url or "[YouTube URL not available]",
         }
         return self.render_template(template, variables)
 

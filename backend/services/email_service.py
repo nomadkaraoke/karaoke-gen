@@ -1173,6 +1173,56 @@ Thanks for being part of making Nomad Karaoke better!
             text_content=message_content,
         )
 
+    def send_youtube_upload_complete(
+        self,
+        to_email: str,
+        message_content: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        brand_code: Optional[str] = None,
+    ) -> bool:
+        """
+        Send follow-up email when a deferred YouTube upload completes.
+
+        Args:
+            to_email: User's email address
+            message_content: Pre-rendered message content (plain text)
+            artist: Artist name for subject line
+            title: Song title for subject line
+            brand_code: Release ID for subject line
+
+        Returns:
+            True if email was sent successfully
+        """
+        safe_artist = sanitize_filename(artist) if artist else None
+        safe_title = sanitize_filename(title) if title else None
+        if brand_code and safe_artist and safe_title:
+            subject = f"{brand_code}: {safe_artist} - {safe_title} (YouTube upload ready!)"
+        elif safe_artist and safe_title:
+            subject = f"{safe_artist} - {safe_title} (YouTube upload ready!)"
+        else:
+            subject = "Your YouTube upload is ready!"
+
+        extra_styles = """
+        .content {
+            white-space: pre-wrap;
+        }
+"""
+
+        content = f"""
+    <div class="content">{html.escape(message_content)}</div>
+"""
+
+        html_content = self._build_email_html(content, extra_styles)
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=message_content,
+            cc_emails=["gen@nomadkaraoke.com"],
+        )
+
     def send_made_for_you_order_confirmation(
         self,
         to_email: str,

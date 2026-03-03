@@ -164,39 +164,44 @@ class RateLimitService:
         logger.info(f"Recorded job {job_id} for user {user_email} rate limiting")
 
     # -------------------------------------------------------------------------
-    # YouTube Upload Rate Limiting
+    # YouTube Upload Rate Limiting (DEPRECATED - use YouTubeQuotaService)
     # -------------------------------------------------------------------------
 
     def check_youtube_upload_limit(self) -> Tuple[bool, int, str]:
         """
         Check if the system can perform a YouTube upload.
 
-        YouTube uploads are limited system-wide due to API quota constraints.
+        DEPRECATED: Use YouTubeQuotaService.check_quota_available() instead.
+        This method now delegates to the quota service for backward compatibility.
 
         Returns:
             Tuple of (allowed, remaining, message)
         """
+        try:
+            from backend.services.youtube_quota_service import get_youtube_quota_service
+            quota_service = get_youtube_quota_service()
+        except (ImportError, Exception) as e:
+            logger.warning(f"Quota service unavailable, falling back to legacy check: {e}")
+            # Fallback to legacy behavior below
+            quota_service = None
+
+        if quota_service is not None:
+            try:
+                return quota_service.check_quota_available()
+            except Exception as e:
+                logger.error(f"Quota service check failed: {e}")
+                return False, 0, f"Quota service error: {e}"
+
+        # Fallback to legacy behavior
         if not settings.enable_rate_limiting:
             return True, -1, "Rate limiting disabled"
-
         limit = settings.rate_limit_youtube_uploads_per_day
         if limit == 0:
             return True, -1, "No YouTube upload limit configured"
-
         current_count = self.get_youtube_uploads_today()
         remaining = max(0, limit - current_count)
-
         if current_count >= limit:
-            seconds = _seconds_until_midnight_utc()
-            logger.warning(
-                f"YouTube upload limit exceeded: {current_count}/{limit} uploads today"
-            )
-            return (
-                False,
-                0,
-                f"Daily YouTube upload limit reached ({limit} uploads per day). Resets in {seconds // 3600}h {(seconds % 3600) // 60}m."
-            )
-
+            return False, 0, f"Daily YouTube upload limit reached ({limit} per day)"
         return True, remaining, f"{remaining} YouTube uploads remaining today"
 
     def get_youtube_uploads_today(self) -> int:
@@ -216,7 +221,8 @@ class RateLimitService:
         """
         Record a YouTube upload for rate limiting.
 
-        Uses Firestore transactions for atomic increment.
+        DEPRECATED: Use YouTubeQuotaService.record_operation() instead.
+        This method still records to the legacy collection for backward compatibility.
         """
         if not settings.enable_rate_limiting:
             return

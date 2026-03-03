@@ -176,55 +176,70 @@ class TestRateLimitService:
     # YouTube Upload Rate Limiting Tests
     # =========================================================================
 
-    def test_check_youtube_limit_under_limit(self, rate_limit_service, mock_db, mock_settings):
-        """Test YouTube upload under limit is allowed."""
+    def test_check_youtube_limit_delegates_to_quota_service(self, rate_limit_service, mock_db, mock_settings):
+        """Test YouTube upload check delegates to YouTubeQuotaService."""
+        mock_quota_service = Mock()
+        mock_quota_service.check_quota_available.return_value = (True, 9500, "9500 quota units remaining")
+
+        with patch('backend.services.rate_limit_service.settings', mock_settings), \
+             patch('backend.services.youtube_quota_service.get_youtube_quota_service', return_value=mock_quota_service):
+            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
+
+        assert allowed is True
+        assert remaining == 9500
+        mock_quota_service.check_quota_available.assert_called_once()
+
+    def test_check_youtube_limit_quota_exceeded(self, rate_limit_service, mock_db, mock_settings):
+        """Test YouTube upload check when quota is exceeded."""
+        mock_quota_service = Mock()
+        mock_quota_service.check_quota_available.return_value = (False, 0, "YouTube API quota exhausted")
+
+        with patch('backend.services.rate_limit_service.settings', mock_settings), \
+             patch('backend.services.youtube_quota_service.get_youtube_quota_service', return_value=mock_quota_service):
+            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
+
+        assert allowed is False
+        assert remaining == 0
+        assert "quota" in message.lower()
+
+    def test_check_youtube_limit_fallback_on_quota_service_error(self, rate_limit_service, mock_db, mock_settings):
+        """Test YouTube upload falls back to legacy when quota service unavailable."""
         mock_doc = Mock()
         mock_doc.exists = True
         mock_doc.to_dict.return_value = {"count": 3}
         mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
-        with patch('backend.services.rate_limit_service.settings', mock_settings):
+        with patch('backend.services.rate_limit_service.settings', mock_settings), \
+             patch('backend.services.youtube_quota_service.get_youtube_quota_service', side_effect=Exception("Service unavailable")):
             allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
 
         assert allowed is True
         assert remaining == 7  # 10 - 3
 
-    def test_check_youtube_limit_at_limit(self, rate_limit_service, mock_db, mock_settings):
-        """Test YouTube upload at limit is blocked."""
-        mock_doc = Mock()
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = {"count": 10}
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings):
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
-
-        assert allowed is False
-        assert remaining == 0
-        assert "Daily YouTube upload limit reached" in message
-
-    def test_check_youtube_limit_no_uploads_yet(self, rate_limit_service, mock_db, mock_settings):
-        """Test YouTube upload with no uploads today is allowed."""
-        mock_doc = Mock()
-        mock_doc.exists = False
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings):
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
-
-        assert allowed is True
-        assert remaining == 10
-
-    def test_check_youtube_limit_zero_configured(self, rate_limit_service, mock_db, mock_settings):
-        """Test that zero limit means unlimited YouTube uploads."""
+    def test_check_youtube_limit_fallback_zero_configured(self, rate_limit_service, mock_db, mock_settings):
+        """Test that zero limit means unlimited when falling back to legacy."""
         mock_settings.rate_limit_youtube_uploads_per_day = 0
 
-        with patch('backend.services.rate_limit_service.settings', mock_settings):
+        with patch('backend.services.rate_limit_service.settings', mock_settings), \
+             patch('backend.services.youtube_quota_service.get_youtube_quota_service', side_effect=Exception("Service unavailable")):
             allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
 
         assert allowed is True
         assert remaining == -1
         assert "No YouTube upload limit" in message
+
+    def test_check_youtube_limit_denies_on_runtime_error(self, rate_limit_service, mock_db, mock_settings):
+        """Test YouTube upload denied when quota service check_quota_available raises."""
+        mock_quota_service = Mock()
+        mock_quota_service.check_quota_available.side_effect = Exception("Firestore timeout")
+
+        with patch('backend.services.rate_limit_service.settings', mock_settings), \
+             patch('backend.services.youtube_quota_service.get_youtube_quota_service', return_value=mock_quota_service):
+            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
+
+        assert allowed is False
+        assert remaining == 0
+        assert "Quota service error" in message
 
     # =========================================================================
     # Beta Enrollment IP Rate Limiting Tests

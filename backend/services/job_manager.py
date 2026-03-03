@@ -568,6 +568,7 @@ class JobManager:
             youtube_url = state_data.get('youtube_url')
             dropbox_url = state_data.get('dropbox_link')
             brand_code = state_data.get('brand_code')
+            youtube_queued = state_data.get('youtube_upload_queued', False)
 
             # For made-for-you orders, send to customer and transfer ownership
             recipient_email = job.user_email
@@ -592,6 +593,7 @@ class JobManager:
                     dropbox_url=dropbox_url,
                     brand_code=brand_code,
                     is_private=getattr(job, 'is_private', False),
+                    youtube_queued=youtube_queued,
                 )
 
             # Try to get existing event loop, create new one if none exists

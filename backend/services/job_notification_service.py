@@ -72,6 +72,7 @@ class JobNotificationService:
         dropbox_url: Optional[str] = None,
         brand_code: Optional[str] = None,
         is_private: bool = False,
+        youtube_queued: bool = False,
     ) -> bool:
         """
         Send job completion email to user.
@@ -86,6 +87,7 @@ class JobNotificationService:
             dropbox_url: Dropbox folder URL
             brand_code: Release ID (e.g., "NOMAD-1178")
             is_private: If True, omit YouTube section (private/non-published tracks)
+            youtube_queued: If True, YouTube upload was deferred due to quota
 
         Returns:
             True if email was sent successfully
@@ -109,6 +111,7 @@ class JobNotificationService:
                 job_id=job_id,
                 feedback_url=FEEDBACK_FORM_URL,
                 is_private=is_private,
+                youtube_queued=youtube_queued,
             )
 
             # Send the email with CC to admin
@@ -130,6 +133,63 @@ class JobNotificationService:
 
         except Exception as e:
             logger.exception(f"Error sending completion email for job {job_id}: {e}")
+            return False
+
+    async def send_youtube_upload_complete_email(
+        self,
+        job_id: str,
+        user_email: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        youtube_url: Optional[str] = None,
+        brand_code: Optional[str] = None,
+    ) -> bool:
+        """
+        Send follow-up email when a deferred YouTube upload completes.
+
+        Args:
+            job_id: Job ID
+            user_email: User's email address
+            artist: Artist name
+            title: Song title
+            youtube_url: YouTube video URL
+            brand_code: Release ID
+
+        Returns:
+            True if email was sent successfully
+        """
+        if not ENABLE_AUTO_EMAILS:
+            logger.info(f"Auto emails disabled, skipping YouTube notification for job {job_id}")
+            return False
+
+        if not user_email:
+            logger.warning(f"No user email for job {job_id}, skipping YouTube notification")
+            return False
+
+        try:
+            message_content = self.template_service.render_youtube_upload_complete(
+                artist=artist,
+                title=title,
+                youtube_url=youtube_url,
+            )
+
+            success = self.email_service.send_youtube_upload_complete(
+                to_email=user_email,
+                message_content=message_content,
+                artist=artist,
+                title=title,
+                brand_code=brand_code,
+            )
+
+            if success:
+                logger.info(f"Sent YouTube upload notification for job {job_id} to {_mask_email(user_email)}")
+            else:
+                logger.error(f"Failed to send YouTube upload notification for job {job_id}")
+
+            return success
+
+        except Exception as e:
+            logger.exception(f"Error sending YouTube upload notification for job {job_id}: {e}")
             return False
 
     async def send_action_reminder_email(
@@ -222,6 +282,7 @@ class JobNotificationService:
         youtube_url: Optional[str] = None,
         dropbox_url: Optional[str] = None,
         is_private: bool = False,
+        youtube_queued: bool = False,
     ) -> str:
         """
         Get the rendered completion message for a job (for admin copy functionality).
@@ -234,6 +295,7 @@ class JobNotificationService:
             youtube_url: YouTube video URL
             dropbox_url: Dropbox folder URL
             is_private: If True, omit YouTube section (private/non-published tracks)
+            youtube_queued: If True, YouTube upload was deferred
 
         Returns:
             Rendered message content as plain text
@@ -247,6 +309,7 @@ class JobNotificationService:
             job_id=job_id,
             feedback_url=FEEDBACK_FORM_URL,
             is_private=is_private,
+            youtube_queued=youtube_queued,
         )
 
 
