@@ -94,16 +94,22 @@ interface TenantStore {
   error: string | null
   isInitialized: boolean
 
-  // Computed values (convenience accessors)
-  branding: TenantBranding
-  features: TenantFeatures
-  defaults: TenantDefaults
-  tenantId: string | null
-
   // Actions
   fetchTenantConfig: () => Promise<void>
   setTenant: (tenant: TenantConfig | null, isDefault: boolean) => void
   clearError: () => void
+}
+
+// Derived state helpers (computed outside store to avoid Zustand getter bug
+// where Object.assign during set() converts getters to stale static values)
+function getBranding(state: TenantStore): TenantBranding {
+  return state.tenant?.branding ?? DEFAULT_BRANDING
+}
+function getFeatures(state: TenantStore): TenantFeatures {
+  return state.tenant?.features ?? DEFAULT_FEATURES
+}
+function getDefaults(state: TenantStore): TenantDefaults {
+  return state.tenant?.defaults ?? DEFAULT_DEFAULTS
 }
 
 /**
@@ -144,31 +150,13 @@ function detectTenantFromUrl(): string | null {
   return null
 }
 
-export const useTenant = create<TenantStore>()((set, get) => ({
+const useTenantStore = create<TenantStore>()((set, get) => ({
   // Initial state
   tenant: null,
   isDefault: true,
   isLoading: false,
   error: null,
   isInitialized: false,
-
-  // Computed values
-  get branding() {
-    const { tenant } = get()
-    return tenant?.branding ?? DEFAULT_BRANDING
-  },
-  get features() {
-    const { tenant } = get()
-    return tenant?.features ?? DEFAULT_FEATURES
-  },
-  get defaults() {
-    const { tenant } = get()
-    return tenant?.defaults ?? DEFAULT_DEFAULTS
-  },
-  get tenantId() {
-    const { tenant } = get()
-    return tenant?.id ?? null
-  },
 
   // Actions
   fetchTenantConfig: async () => {
@@ -234,6 +222,35 @@ export const useTenant = create<TenantStore>()((set, get) => ({
 
   clearError: () => set({ error: null }),
 }))
+
+/**
+ * Primary hook for accessing tenant state with derived values.
+ * Consumers get branding/features/defaults computed fresh on each render.
+ */
+export function useTenant() {
+  const store = useTenantStore()
+  return {
+    ...store,
+    branding: getBranding(store),
+    features: getFeatures(store),
+    defaults: getDefaults(store),
+    tenantId: store.tenant?.id ?? null,
+  }
+}
+
+// Expose Zustand API surface for non-hook contexts and tests
+useTenant.getState = () => {
+  const state = useTenantStore.getState()
+  return {
+    ...state,
+    branding: getBranding(state),
+    features: getFeatures(state),
+    defaults: getDefaults(state),
+    tenantId: state.tenant?.id ?? null,
+  }
+}
+useTenant.setState = useTenantStore.setState
+useTenant.subscribe = useTenantStore.subscribe
 
 /**
  * Apply tenant branding by setting CSS custom properties.

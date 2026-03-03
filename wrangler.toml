@@ -1,10 +1,2 @@
-{
-  "build": {
-    "command": "cd frontend-react && npm install && npm run build",
-    "output": "frontend-react/dist"
-  },
-  "env": {
-    "NODE_VERSION": "18"
-  }
-}
-
+name = "karaoke-gen"
+pages_build_output_dir = "frontend/out"

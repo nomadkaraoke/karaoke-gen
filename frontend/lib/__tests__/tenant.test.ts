@@ -109,6 +109,20 @@ describe("useTenant store", () => {
       expect(state.tenant?.branding.site_title).toBe("Vocal Star Karaoke Generator")
     })
 
+    it("should return tenant branding via computed property after setTenant (regression: Zustand getter bug)", () => {
+      // This tests the computed `branding` property, not `tenant.branding`.
+      // The Zustand getter bug caused Object.assign during set() to convert
+      // getter properties to stale static values, so `state.branding` would
+      // always return DEFAULT_BRANDING even after tenant was loaded.
+      useTenant.getState().setTenant(SAMPLE_VOCALSTAR_CONFIG, false)
+      const state = useTenant.getState()
+      // These use the derived `branding` property, not `tenant?.branding`
+      expect(state.branding.primary_color).toBe("#ffff00")
+      expect(state.branding.secondary_color).toBe("#006CF9")
+      expect(state.branding.site_title).toBe("Vocal Star Karaoke Generator")
+      expect(state.branding.tagline).toBe("Professional Karaoke")
+    })
+
     it("should return default features when no tenant", () => {
       const state = useTenant.getState()
       expect(state.features.audio_search).toBe(true)
@@ -124,10 +138,50 @@ describe("useTenant store", () => {
       expect(state.tenant?.features.file_upload).toBe(true)
     })
 
+    it("should return tenant features via computed property after setTenant (regression: Zustand getter bug)", () => {
+      useTenant.getState().setTenant(SAMPLE_VOCALSTAR_CONFIG, false)
+      const state = useTenant.getState()
+      // These use the derived `features` property, not `tenant?.features`
+      expect(state.features.audio_search).toBe(false)
+      expect(state.features.youtube_upload).toBe(false)
+      expect(state.features.file_upload).toBe(true)
+      expect(state.features.enable_cdg).toBe(true)
+    })
+
     it("should return tenantId when tenant is set via setTenant", () => {
       useTenant.getState().setTenant(SAMPLE_VOCALSTAR_CONFIG, false)
       const state = useTenant.getState()
       expect(state.tenant?.id).toBe("vocalstar")
+    })
+
+    it("should return tenantId via computed property after setTenant (regression: Zustand getter bug)", () => {
+      useTenant.getState().setTenant(SAMPLE_VOCALSTAR_CONFIG, false)
+      const state = useTenant.getState()
+      // Uses the derived `tenantId` property, not `tenant?.id`
+      expect(state.tenantId).toBe("vocalstar")
+    })
+
+    it("should return correct defaults via computed property after setTenant", () => {
+      useTenant.getState().setTenant(SAMPLE_VOCALSTAR_CONFIG, false)
+      const state = useTenant.getState()
+      expect(state.defaults.theme_id).toBe("vocalstar")
+      expect(state.defaults.locked_theme).toBe("vocalstar")
+      expect(state.defaults.distribution_mode).toBe("download_only")
+    })
+
+    it("should return fresh computed values after multiple set() calls (regression: Zustand getter bug)", () => {
+      // The original bug: each set() call would freeze computed values.
+      // After set({isLoading: true}), branding would permanently return defaults.
+      useTenant.setState({ isLoading: true })
+      useTenant.setState({ isLoading: false })
+      useTenant.getState().setTenant(SAMPLE_VOCALSTAR_CONFIG, false)
+
+      const state = useTenant.getState()
+      // After multiple set() calls, computed values must still reflect tenant data
+      expect(state.branding.primary_color).toBe("#ffff00")
+      expect(state.features.audio_search).toBe(false)
+      expect(state.defaults.theme_id).toBe("vocalstar")
+      expect(state.tenantId).toBe("vocalstar")
     })
 
     it("should return null tenantId when no tenant", () => {

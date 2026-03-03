@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
   id-token: write
 
 concurrency:
@@ -869,7 +868,7 @@ jobs:
 
             ### Assets
             - Python package published to PyPI
-            - Frontend deployed to GitHub Pages at gen.nomadkaraoke.com
+            - Frontend deployed to Cloudflare Pages at gen.nomadkaraoke.com
 
             For detailed changes, see the commit history.
           draft: false
@@ -879,7 +878,7 @@ jobs:
             dist/*.tar.gz
 
   deploy-frontend:
-    name: "Deploy - Frontend (GitHub Pages)"
+    name: "Deploy - Frontend (Cloudflare Pages)"
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
@@ -910,17 +909,12 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api.nomadkaraoke.com
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: "frontend/out"
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/out --project-name=karaoke-gen --branch=main
 
   # NOTE: buy-site was consolidated into the main frontend (PR #122, Dec 2024)
   # Landing page and payment flow are now at gen.nomadkaraoke.com (root)

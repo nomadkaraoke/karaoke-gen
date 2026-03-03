@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { api, ApiError } from "@/lib/api"
+import type { CatalogArtistResult, CatalogTrackResult, CommunityCheckResponse } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AutocompleteInput, type AutocompleteSuggestion } from "@/components/ui/autocomplete-input"
+import { CommunityVersionBanner } from "@/components/job/CommunityVersionBanner"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload, Youtube, Music, Loader2, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react"
@@ -67,8 +70,83 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
   const [isPrivate, setIsPrivate] = useState(false)
   const [showBuyCreditsDialog, setShowBuyCreditsDialog] = useState(false)
 
+  // Community version check (Search tab only)
+  const [communityData, setCommunityData] = useState<CommunityCheckResponse | null>(null)
+  const [communityDismissed, setCommunityDismissed] = useState(false)
+  const communityCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Credit enforcement
   const noCredits = !isAdmin && user?.credits === 0
+
+  // --- Autocomplete helpers ---
+
+  const fetchArtistSuggestions = useCallback(async (query: string): Promise<AutocompleteSuggestion[]> => {
+    try {
+      const results = await api.searchCatalogArtists(query)
+      return results.map((artist: CatalogArtistResult) => ({
+        key: artist.mbid || artist.spotify_id || artist.name,
+        label: artist.name,
+        description: artist.disambiguation || undefined,
+        meta: artist.popularity != null ? `${artist.popularity}` : undefined,
+        data: artist,
+      }))
+    } catch {
+      return []
+    }
+  }, [])
+
+  const fetchTrackSuggestions = useCallback(
+    (artistFilter?: string) =>
+      async (query: string): Promise<AutocompleteSuggestion[]> => {
+        try {
+          const results = await api.searchCatalogTracks(query, artistFilter || undefined)
+          return results.map((track: CatalogTrackResult) => ({
+            key: track.track_id || `${track.artist_name}-${track.track_name}`,
+            label: track.track_name,
+            description: track.artist_name,
+            meta: track.duration_ms
+              ? `${Math.floor(track.duration_ms / 60000)}:${String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, "0")}`
+              : undefined,
+            data: track,
+          }))
+        } catch {
+          return []
+        }
+      },
+    []
+  )
+
+  // Community check: fires when both searchArtist and searchTitle have values (Search tab only)
+  useEffect(() => {
+    // Reset when inputs change
+    setCommunityData(null)
+    setCommunityDismissed(false)
+
+    if (communityCheckRef.current) {
+      clearTimeout(communityCheckRef.current)
+    }
+
+    const artist = searchArtist.trim()
+    const title = searchTitle.trim()
+    if (!artist || !title || artist.length < 2 || title.length < 2) {
+      return
+    }
+
+    communityCheckRef.current = setTimeout(async () => {
+      try {
+        const result = await api.checkCommunityVersions(artist, title)
+        setCommunityData(result)
+      } catch {
+        // Silently fail - community check is non-critical
+      }
+    }, 500)
+
+    return () => {
+      if (communityCheckRef.current) {
+        clearTimeout(communityCheckRef.current)
+      }
+    }
+  }, [searchArtist, searchTitle])
 
   async function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -293,29 +371,31 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="upload-artist" style={{ color: 'var(--text)' }}>Artist</Label>
-              <Input
+              <AutocompleteInput
                 id="upload-artist"
                 placeholder="Artist name"
                 value={uploadArtist}
-                onChange={(e) => setUploadArtist(e.target.value)}
+                onChange={setUploadArtist}
+                fetchSuggestions={fetchArtistSuggestions}
                 disabled={isSubmitting}
                 style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="upload-title" style={{ color: 'var(--text)' }}>Title</Label>
-              <Input
+              <AutocompleteInput
                 id="upload-title"
                 placeholder="Song title"
                 value={uploadTitle}
-                onChange={(e) => setUploadTitle(e.target.value)}
+                onChange={setUploadTitle}
+                fetchSuggestions={fetchTrackSuggestions(uploadArtist)}
                 disabled={isSubmitting}
                 style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
               />
             </div>
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span className="text-amber-500 font-medium">Note:</span> Format these exactly as you want them on the title card and video filename.
+            <span className="text-amber-500 font-medium">Tip:</span> Start typing and select from suggestions for correct formatting, or type freely.
           </p>
 
           {/* Private (no YouTube upload) mode */}
@@ -390,29 +470,31 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="youtube-artist" style={{ color: 'var(--text)' }}>Artist</Label>
-              <Input
+              <AutocompleteInput
                 id="youtube-artist"
                 placeholder="Artist name"
                 value={youtubeArtist}
-                onChange={(e) => setYoutubeArtist(e.target.value)}
+                onChange={setYoutubeArtist}
+                fetchSuggestions={fetchArtistSuggestions}
                 disabled={isSubmitting}
                 style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="youtube-title" style={{ color: 'var(--text)' }}>Title</Label>
-              <Input
+              <AutocompleteInput
                 id="youtube-title"
                 placeholder="Song title"
                 value={youtubeTitle}
-                onChange={(e) => setYoutubeTitle(e.target.value)}
+                onChange={setYoutubeTitle}
+                fetchSuggestions={fetchTrackSuggestions(youtubeArtist)}
                 disabled={isSubmitting}
                 style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
               />
             </div>
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span className="text-amber-500 font-medium">Note:</span> Format these exactly as you want them on the title card and video filename.
+            <span className="text-amber-500 font-medium">Tip:</span> Start typing and select from suggestions for correct formatting, or type freely.
           </p>
 
           {/* Private (no YouTube upload) mode */}
@@ -473,24 +555,26 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="search-artist" className="text-xs" style={{ color: 'var(--text-muted)' }}>Artist</Label>
-                <Input
+                <AutocompleteInput
                   id="search-artist"
                   data-testid="search-artist-input"
                   placeholder="Artist name"
                   value={searchArtist}
-                  onChange={(e) => setSearchArtist(e.target.value)}
+                  onChange={setSearchArtist}
+                  fetchSuggestions={fetchArtistSuggestions}
                   disabled={isSubmitting}
                   style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="search-title" className="text-xs" style={{ color: 'var(--text-muted)' }}>Title</Label>
-                <Input
+                <AutocompleteInput
                   id="search-title"
                   data-testid="search-title-input"
                   placeholder="Song title"
                   value={searchTitle}
-                  onChange={(e) => setSearchTitle(e.target.value)}
+                  onChange={setSearchTitle}
+                  fetchSuggestions={fetchTrackSuggestions(searchArtist)}
                   disabled={isSubmitting}
                   style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
                 />
@@ -498,8 +582,16 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             </div>
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span className="text-amber-500 font-medium">Note:</span> Format these exactly as you want them on the title card and video filename.
+            <span className="text-amber-500 font-medium">Tip:</span> Start typing and select from suggestions for correct formatting, or type freely.
           </p>
+
+          {/* Community version check banner */}
+          {communityData?.has_community && !communityDismissed && (
+            <CommunityVersionBanner
+              data={communityData}
+              onDismiss={() => setCommunityDismissed(true)}
+            />
+          )}
 
           {/* Display As toggle (optional) */}
           <div className="space-y-2">

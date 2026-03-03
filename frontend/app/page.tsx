@@ -23,6 +23,8 @@ import { api, setAccessToken, getAccessToken, CreditPackage } from '@/lib/api';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { WarmingUpLoader } from '@/components/WarmingUpLoader';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTenant } from '@/lib/tenant';
+import { TenantLandingPage } from '@/components/TenantLandingPage';
 
 // FAQ data
 const faqs = [
@@ -55,7 +57,9 @@ const faqs = [
 
 export default function LandingPage() {
   const router = useRouter();
+  const { isDefault: isDefaultTenant, isLoading: tenantLoading, isInitialized: tenantInitialized } = useTenant();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(true);
   const [packagesError, setPackagesError] = useState<string | null>(null);
@@ -76,6 +80,11 @@ export default function LandingPage() {
 
   // Auth dialog state
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+
+  // Track client-side mount to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Check if already logged in and redirect to app
   useEffect(() => {
@@ -113,6 +122,13 @@ export default function LandingPage() {
     }
     loadPackages();
   }, [isCheckingAuth]);
+
+  // Tenant portals get a minimal landing page (just logo + sign in)
+  // Only check after mount to avoid hydration mismatch with static export
+  // Must be AFTER all hooks to comply with React Rules of Hooks
+  if (isMounted && tenantInitialized && !isDefaultTenant) {
+    return <TenantLandingPage />;
+  }
 
   // Handle checkout
   const handleCheckout = async (e: React.FormEvent) => {

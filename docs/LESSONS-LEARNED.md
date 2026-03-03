@@ -14,6 +14,9 @@ For UI that renders differently based on data (e.g., audio search result tiers),
 ### Filename Matching Normalization
 When comparing filenames to search titles, treat underscores/hyphens/dots as word separators BEFORE stripping non-alphanumeric chars. Also require a minimum substring length (3 chars) to prevent false matches like filename "K" matching title "KoREH". For non-Latin scripts (Hebrew, etc.), return an indeterminate result rather than a false match or false mismatch.
 
+### Autocomplete UX: Less Is More (Mar 2026)
+When adding autocomplete to a multi-field form (artist + title), a single autocomplete on the **primary search field** (title) that overwrites both fields on selection is better than separate autocompletes on each field. Two autocompletes feel "janky" — they compete for attention, spam the backend with double the requests, and confuse users about which one to interact with first. Instead: plain text input for the first field (artist), autocomplete on the second field (title) that only activates when the first field is filled, and selection overwrites both fields with canonical values.
+
 ---
 
 ## Architecture Decisions
@@ -56,6 +59,39 @@ When two sequential human review steps can be combined into one, do it. We origi
 **Fix**: Use `if gdrive_files is not None` (or check explicitly). Gate resource recycling on **all** cleanup steps succeeding, not just the first one. When a resource has been distributed to N places, it's only safe to recycle when all N locations are confirmed clean.
 
 **Pattern**: Treat resource IDs (brand codes, sequential IDs) like distributed transactions — either all distribution points are cleaned, or the ID stays reserved.
+
+### Never Use JavaScript Getters in Zustand Stores (Mar 2026)
+**What happened**: Tenant branding, features, and defaults always returned initial defaults instead of loaded tenant data. The Singa portal showed the Nomad Karaoke pink theme and default logo instead of Singa's green branding.
+
+**Root cause**: The Zustand store defined computed values as JavaScript `get` property descriptors:
+```typescript
+// BROKEN - getter destroyed by Zustand's set() internals
+const useStore = create((set, get) => ({
+  tenant: null,
+  get branding() { return get().tenant?.branding ?? DEFAULT_BRANDING },
+}))
+```
+When Zustand calls `set()`, it uses `Object.assign({}, currentState, partialUpdate)`. `Object.assign` **invokes** getters and copies their return **values** as plain properties. After the first `set({ isLoading: true })`, `branding` became a frozen static copy of `DEFAULT_BRANDING` — all subsequent state updates were invisible to it.
+
+**Fix**: Move computed values outside the store. Use standalone functions that compute from state on each access:
+```typescript
+function getBranding(state) { return state.tenant?.branding ?? DEFAULT_BRANDING }
+export function useTenant() {
+  const store = useTenantStore()
+  return { ...store, branding: getBranding(store) }
+}
+```
+
+**Pattern**: Never use `get` property descriptors in objects that will be spread or `Object.assign`'d. Zustand, Redux, and other state libraries that merge objects will silently destroy getters. Use wrapper functions or selector hooks instead.
+
+### Conditional Returns Must Come After All Hooks (Mar 2026)
+**What happened**: React Error #300 (hydration mismatch) in production on tenant portals. The error pointed to a hooks ordering violation.
+
+**Root cause**: In `page.tsx`, a conditional early return (`if (isMounted && tenantInitialized && !isDefaultTenant) { return <TenantLandingPage /> }`) was placed between two `useEffect` hooks. When the condition was true, React saw fewer hooks than the initial render, violating the Rules of Hooks.
+
+**Fix**: Move ALL conditional returns to AFTER the last hook call in the component. Add a comment: `// Must be AFTER all hooks to comply with React Rules of Hooks`.
+
+**Pattern**: In Next.js static exports with client-side conditional rendering (e.g., `isMounted` guards), the conditional return is tempting to place early for readability. Don't. React requires the same hooks to execute in the same order on every render. Place conditional returns at the very end of the hooks section, never between hooks.
 
 ### Fail Fast, Don't Fall Back
 Silent fallbacks hide configuration errors. When critical configuration is missing (themes, credentials, etc.), raise clear errors instead of falling back to defaults. Better to fail loudly during testing than silently produce incorrect output in production. Example: Theme validation (v0.109.0) now raises `ValueError` on incomplete themes instead of merging with defaults. This ensures all cloud jobs use complete, explicit themes with no silent degradation.
