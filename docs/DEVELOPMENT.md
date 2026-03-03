@@ -131,6 +131,20 @@ npm run build
 npx wrangler pages deploy out
 ```
 
+Requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` environment variables (set via `.envrc` or exported manually). The `wrangler.toml` in the repo root configures the project name and build output directory.
+
+### Testing Tenant Portals Locally
+
+To test a tenant portal on `localhost:3000`, add a `?tenant=` query parameter:
+
+```
+http://localhost:3000/?tenant=singa      # Singa portal (green/black)
+http://localhost:3000/?tenant=vocalstar  # Vocal Star portal (yellow/blue)
+http://localhost:3000/                   # Default Nomad Karaoke (no tenant)
+```
+
+The frontend's `detectTenantFromUrl()` checks for the `tenant` query param on localhost. In production, tenants are detected from the subdomain (e.g., `singa.nomadkaraoke.com`).
+
 ## Environment Variables
 
 ### Backend (.env)
@@ -174,6 +188,8 @@ TESTMAIL_NAMESPACE=...       # testmail.app namespace
 | `./scripts/analyze_log_timing.py <log>` | Profile karaoke-gen performance from logs |
 | `./scripts/benchmark_ffmpeg.py` | Isolated FFmpeg encoding benchmark |
 | `./scripts/compare_local_vs_remote.py` | Compare local vs cloud karaoke-gen performance |
+| `./scripts/setup-singa-tenant.py` | Generate Singa tenant assets and upload to GCS |
+| `./scripts/setup-vocalstar-tenant.py` | Generate Vocal Star tenant assets and upload to GCS |
 
 ## Project Structure
 

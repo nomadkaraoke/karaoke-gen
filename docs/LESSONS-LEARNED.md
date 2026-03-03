@@ -81,6 +81,15 @@ export function useTenant() {
 
 **Pattern**: Never use `get` property descriptors in objects that will be spread or `Object.assign`'d. Zustand, Redux, and other state libraries that merge objects will silently destroy getters. Use wrapper functions or selector hooks instead.
 
+### Conditional Returns Must Come After All Hooks (Mar 2026)
+**What happened**: React Error #300 (hydration mismatch) in production on tenant portals. The error pointed to a hooks ordering violation.
+
+**Root cause**: In `page.tsx`, a conditional early return (`if (isMounted && tenantInitialized && !isDefaultTenant) { return <TenantLandingPage /> }`) was placed between two `useEffect` hooks. When the condition was true, React saw fewer hooks than the initial render, violating the Rules of Hooks.
+
+**Fix**: Move ALL conditional returns to AFTER the last hook call in the component. Add a comment: `// Must be AFTER all hooks to comply with React Rules of Hooks`.
+
+**Pattern**: In Next.js static exports with client-side conditional rendering (e.g., `isMounted` guards), the conditional return is tempting to place early for readability. Don't. React requires the same hooks to execute in the same order on every render. Place conditional returns at the very end of the hooks section, never between hooks.
+
 ### Fail Fast, Don't Fall Back
 Silent fallbacks hide configuration errors. When critical configuration is missing (themes, credentials, etc.), raise clear errors instead of falling back to defaults. Better to fail loudly during testing than silently produce incorrect output in production. Example: Theme validation (v0.109.0) now raises `ValueError` on incomplete themes instead of merging with defaults. This ensures all cloud jobs use complete, explicit themes with no silent degradation.
 

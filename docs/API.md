@@ -580,6 +580,20 @@ GET /api/tenant/config/{tenant_id}
 
 Get specific tenant config by ID. Returns 404 if tenant not found or inactive.
 
+#### Tenant Asset Proxy
+
+```http
+GET /api/tenant/asset/{tenant_id}/{filename}
+```
+
+Serves tenant assets (logos, etc.) from GCS. No authentication required. Returns the file with appropriate content-type headers.
+
+- `tenant_id`: Tenant identifier (e.g., `singa`, `vocalstar`)
+- `filename`: Asset filename (e.g., `logo.png`)
+- Returns 404 if asset not found
+
+Used by the frontend `TenantLogo` component to load tenant logos. Tenant configs store logo paths as `https://api.nomadkaraoke.com/api/tenant/asset/{tenant_id}/logo.png` (the frontend also converts legacy `gs://` paths to this format as a fallback).
+
 ### Internal (Admin Only)
 
 These endpoints are used by workers and require admin tokens.
