@@ -30,6 +30,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Set turbopack root to the frontend directory so it can resolve packages
+  // from worktrees (where the path differs from the main clone)
+  turbopack: {
+    root: __dirname,
+  },
   // GitHub Pages serves from subdomain, so no basePath needed
   // gen.nomadkaraoke.com -> nomadkaraoke.github.io/karaoke-gen
 

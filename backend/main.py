@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
-from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, rate_limits, push
+from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, rate_limits, push, catalog
 from backend.services.tracing import setup_tracing, instrument_app, get_current_trace_id
 from backend.services.structured_logging import setup_structured_logging
 from backend.services.spacy_preloader import preload_spacy_model
@@ -161,6 +161,7 @@ app.include_router(users.router, prefix="/api")  # User auth, credits, and Strip
 app.include_router(admin.router, prefix="/api")  # Admin dashboard and management
 app.include_router(rate_limits.router, prefix="/api")  # Rate limits admin management
 app.include_router(push.router, prefix="/api")  # Push notification subscription management
+app.include_router(catalog.router, prefix="/api")  # Catalog proxy for song/artist autocomplete
 app.include_router(tenant.router)  # Tenant/white-label configuration (no /api prefix, router has it)
 
 

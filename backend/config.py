@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     # Requires use_gce_encoding to be enabled and the GCE worker to support /encode-preview endpoint.
     use_gce_preview_encoding: bool = os.getenv("USE_GCE_PREVIEW_ENCODING", "false").lower() in ("true", "1", "yes")
     
+    # Karaoke-Decide catalog API (for song/artist autocomplete)
+    karaoke_decide_api_url: str = os.getenv("KARAOKE_DECIDE_API_URL", "https://decide.nomadkaraoke.com")
+
     # Storage paths
     temp_dir: str = os.getenv("TEMP_DIR", "/tmp/karaoke-gen")
 

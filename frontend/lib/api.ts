@@ -288,6 +288,48 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+// --- Catalog types (song/artist autocomplete + community check) ---
+
+export interface CatalogArtistResult {
+  name: string;
+  mbid?: string;
+  disambiguation?: string;
+  artist_type?: string;
+  spotify_id?: string;
+  popularity?: number;
+  genres?: string[];
+  tags?: string[];
+}
+
+export interface CatalogTrackResult {
+  track_name: string;
+  artist_name: string;
+  track_id?: string;
+  artist_id?: string;
+  popularity?: number;
+  duration_ms?: number;
+  explicit?: boolean;
+}
+
+export interface CommunityTrack {
+  brand_name: string;
+  brand_code: string;
+  youtube_url: string;
+  is_community: boolean;
+}
+
+export interface CommunityCheckSong {
+  title: string;
+  artist: string;
+  community_tracks: CommunityTrack[];
+}
+
+export interface CommunityCheckResponse {
+  has_community: boolean;
+  songs: CommunityCheckSong[];
+  best_youtube_url: string | null;
+}
+
 export const api = {
   /**
    * List all jobs
@@ -1142,6 +1184,37 @@ export const api = {
   async listPushSubscriptions(): Promise<PushSubscriptionsListResponse> {
     const response = await fetch(`${API_BASE_URL}/api/push/subscriptions`, {
       headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  // --- Catalog (song/artist autocomplete + community check) ---
+
+  async searchCatalogArtists(query: string, limit: number = 10): Promise<CatalogArtistResult[]> {
+    const params = new URLSearchParams({ q: query, limit: String(limit) });
+    const response = await fetch(`${API_BASE_URL}/api/catalog/artists?${params}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  async searchCatalogTracks(query: string, artist?: string, limit: number = 10): Promise<CatalogTrackResult[]> {
+    const params = new URLSearchParams({ q: query, limit: String(limit) });
+    if (artist) params.set('artist', artist);
+    const response = await fetch(`${API_BASE_URL}/api/catalog/tracks?${params}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  async checkCommunityVersions(artist: string, title: string): Promise<CommunityCheckResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/catalog/community-check`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ artist, title }),
     });
     return handleResponse(response);
   },

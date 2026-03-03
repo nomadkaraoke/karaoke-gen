@@ -1,9 +1,13 @@
 "use client"
 
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Lightbulb, Pencil, Search, Upload, Youtube } from "lucide-react"
+import { AutocompleteInput, AutocompleteSuggestion } from "@/components/ui/autocomplete-input"
+import { CommunityVersionBanner } from "@/components/job/CommunityVersionBanner"
+import { api, CommunityCheckResponse } from "@/lib/api"
 
 interface SongInfoStepProps {
   artist: string
@@ -23,6 +27,55 @@ export function SongInfoStep({
   disabled,
 }: SongInfoStepProps) {
   const canProceed = artist.trim() && title.trim()
+
+  // Community version check state
+  const [communityData, setCommunityData] = useState<CommunityCheckResponse | null>(null)
+  const [communityDismissed, setCommunityDismissed] = useState(false)
+  const communityCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Track autocomplete — only active when artist field has a value
+  const fetchTrackSuggestions = useCallback(async (query: string): Promise<AutocompleteSuggestion[]> => {
+    if (!artist.trim()) return []
+    try {
+      const results = await api.searchCatalogTracks(query, artist.trim(), 10)
+      return results.map((r) => {
+        const mins = r.duration_ms ? Math.floor(r.duration_ms / 60000) : null
+        const secs = r.duration_ms ? Math.floor((r.duration_ms % 60000) / 1000) : null
+        const duration = mins !== null && secs !== null ? `${mins}:${secs.toString().padStart(2, "0")}` : ""
+        return {
+          key: r.track_id || `${r.artist_name}-${r.track_name}`,
+          label: r.track_name,
+          description: r.artist_name,
+          meta: duration,
+          data: r,
+        }
+      })
+    } catch {
+      return []
+    }
+  }, [artist])
+
+  // Community version check — debounced when both fields are filled
+  useEffect(() => {
+    if (communityCheckRef.current) clearTimeout(communityCheckRef.current)
+    setCommunityData(null)
+    setCommunityDismissed(false)
+
+    if (!artist.trim() || !title.trim()) return
+
+    communityCheckRef.current = setTimeout(async () => {
+      try {
+        const data = await api.checkCommunityVersions(artist.trim(), title.trim())
+        setCommunityData(data)
+      } catch {
+        // Silently fail — community check is non-blocking
+      }
+    }, 500)
+
+    return () => {
+      if (communityCheckRef.current) clearTimeout(communityCheckRef.current)
+    }
+  }, [artist, title])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -67,17 +120,33 @@ export function SongInfoStep({
         </div>
         <div className="space-y-2">
           <Label htmlFor="guided-title" style={{ color: 'var(--text)' }}>Title</Label>
-          <Input
+          <AutocompleteInput
             id="guided-title"
             data-testid="guided-title-input"
             placeholder="e.g. Bohemian Rhapsody"
             value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
+            onChange={onTitleChange}
+            onSelect={(s) => {
+              onTitleChange(s.label)
+              // Overwrite artist with the canonical name from the selected track
+              if (s.data?.artist_name) {
+                onArtistChange(s.data.artist_name)
+              }
+            }}
+            fetchSuggestions={fetchTrackSuggestions}
             disabled={disabled}
             style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
           />
         </div>
       </div>
+
+      {/* Community version banner */}
+      {communityData?.has_community && !communityDismissed && (
+        <CommunityVersionBanner
+          data={communityData}
+          onDismiss={() => setCommunityDismissed(true)}
+        />
+      )}
 
       {/* Tip callout */}
       <div
