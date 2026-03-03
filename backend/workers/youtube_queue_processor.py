@@ -207,22 +207,22 @@ def _download_video_from_gcs(
     job_id: str, job, storage: StorageService, temp_dir: str
 ) -> Optional[str]:
     """Download the best available video file from GCS."""
-    # Check file_urls in job data for GCS paths
     file_urls = job.file_urls or {}
+    finals = file_urls.get("finals", {}) if isinstance(file_urls.get("finals"), dict) else {}
 
-    # Priority order: MKV (FLAC audio) > lossless MP4 > lossy MP4
+    # Priority order: MKV (FLAC audio) > lossless MP4 > lossy 4K MP4 > lossy 720p MP4
     candidates = [
-        ("final_video_mkv", ".mkv"),
-        ("final_video", ".mp4"),
-        ("final_video_lossy", ".mp4"),
+        (finals.get("lossless_4k_mkv"), "lossless_4k_mkv", ".mkv"),
+        (finals.get("lossless_4k_mp4"), "lossless_4k_mp4", ".mp4"),
+        (finals.get("lossy_4k_mp4"), "lossy_4k_mp4", ".mp4"),
+        (finals.get("lossy_720p_mp4"), "lossy_720p_mp4", ".mp4"),
     ]
 
-    for key, ext in candidates:
-        gcs_url = file_urls.get(key)
-        if gcs_url:
+    for gcs_path, key, ext in candidates:
+        if gcs_path:
             local_path = os.path.join(temp_dir, f"video{ext}")
             try:
-                storage.download_file(gcs_url, local_path)
+                storage.download_file(gcs_path, local_path)
                 if os.path.isfile(local_path) and os.path.getsize(local_path) > 0:
                     logger.info(f"Downloaded {key} from GCS for job {job_id}")
                     return local_path
@@ -237,7 +237,8 @@ def _download_thumbnail_from_gcs(
 ) -> Optional[str]:
     """Download the thumbnail from GCS if available."""
     file_urls = job.file_urls or {}
-    thumbnail_url = file_urls.get("title_jpg")
+    screens = file_urls.get("screens", {}) if isinstance(file_urls.get("screens"), dict) else {}
+    thumbnail_url = screens.get("title_jpg")
     if not thumbnail_url:
         return None
 

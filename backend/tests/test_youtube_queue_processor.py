@@ -178,8 +178,10 @@ class TestDownloadVideoFromGCS:
 
         mock_job = Mock()
         mock_job.file_urls = {
-            "final_video_mkv": "gs://bucket/job/final.mkv",
-            "final_video": "gs://bucket/job/final.mp4",
+            "finals": {
+                "lossless_4k_mkv": "jobs/job-123/finals/lossless_4k_mkv.mkv",
+                "lossless_4k_mp4": "jobs/job-123/finals/lossless_4k_mp4.mp4",
+            }
         }
 
         mock_storage = Mock()
@@ -191,7 +193,7 @@ class TestDownloadVideoFromGCS:
 
         assert result is not None
         assert result.endswith(".mkv")
-        mock_storage.download_file.assert_called_once_with("gs://bucket/job/final.mkv", "/tmp/test/video.mkv")
+        mock_storage.download_file.assert_called_once_with("jobs/job-123/finals/lossless_4k_mkv.mkv", "/tmp/test/video.mkv")
 
     def test_falls_back_to_mp4(self):
         """Should fall back to MP4 when MKV not available."""
@@ -199,7 +201,9 @@ class TestDownloadVideoFromGCS:
 
         mock_job = Mock()
         mock_job.file_urls = {
-            "final_video": "gs://bucket/job/final.mp4",
+            "finals": {
+                "lossless_4k_mp4": "jobs/job-123/finals/lossless_4k_mp4.mp4",
+            }
         }
 
         mock_storage = Mock()
@@ -229,7 +233,7 @@ class TestDownloadVideoFromGCS:
         from backend.workers.youtube_queue_processor import _download_video_from_gcs
 
         mock_job = Mock()
-        mock_job.file_urls = {"final_video_mkv": "gs://bucket/job/final.mkv"}
+        mock_job.file_urls = {"finals": {"lossless_4k_mkv": "jobs/job-123/finals/lossless_4k_mkv.mkv"}}
 
         mock_storage = Mock()
         mock_storage.download_file.side_effect = Exception("Download failed")
