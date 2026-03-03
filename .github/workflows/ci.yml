@@ -933,7 +933,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/out --project-name=karaoke-gen-tenant --branch=main
+          workingDirectory: frontend
+          command: pages deploy out --project-name=karaoke-gen-tenant --branch=main
 
   # NOTE: buy-site was consolidated into the main frontend (PR #122, Dec 2024)
   # Landing page and payment flow are now at gen.nomadkaraoke.com (root)
