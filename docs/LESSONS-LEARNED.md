@@ -14,6 +14,9 @@ For UI that renders differently based on data (e.g., audio search result tiers),
 ### Filename Matching Normalization
 When comparing filenames to search titles, treat underscores/hyphens/dots as word separators BEFORE stripping non-alphanumeric chars. Also require a minimum substring length (3 chars) to prevent false matches like filename "K" matching title "KoREH". For non-Latin scripts (Hebrew, etc.), return an indeterminate result rather than a false match or false mismatch.
 
+### Autocomplete UX: Less Is More (Mar 2026)
+When adding autocomplete to a multi-field form (artist + title), a single autocomplete on the **primary search field** (title) that overwrites both fields on selection is better than separate autocompletes on each field. Two autocompletes feel "janky" — they compete for attention, spam the backend with double the requests, and confuse users about which one to interact with first. Instead: plain text input for the first field (artist), autocomplete on the second field (title) that only activates when the first field is filled, and selection overwrites both fields with canonical values.
+
 ---
 
 ## Architecture Decisions

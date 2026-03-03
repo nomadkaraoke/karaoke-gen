@@ -324,6 +324,91 @@ Content-Type: application/json
 
 **Note**: For normal jobs, instrumental selection is now part of the combined review flow (see `/api/review/{job_id}/complete` above).
 
+### Catalog (Song Lookup)
+
+Proxies to karaoke-decide's MusicBrainz + Spotify catalog for autocomplete, and scrapes karaokenerds.com for community karaoke version detection. All endpoints require authentication and are rate-limited (20 requests/minute per user). Results are cached in-memory (5 min for catalog, 1 hour for community checks).
+
+#### Search Artists
+
+```http
+GET /api/catalog/artists?q=queen&limit=10
+```
+
+Response:
+```json
+[
+  {
+    "name": "Queen",
+    "mbid": "0383dadf-...",
+    "disambiguation": null,
+    "artist_type": "Group",
+    "spotify_id": "1dfeR4HaWDbWqFHLkxsg1d",
+    "popularity": 85,
+    "genres": ["rock"],
+    "tags": ["classic rock"]
+  }
+]
+```
+
+#### Search Tracks
+
+```http
+GET /api/catalog/tracks?q=bohemian&artist=queen&limit=10
+```
+
+Response:
+```json
+[
+  {
+    "track_name": "Bohemian Rhapsody - Remastered 2011",
+    "artist_name": "Queen",
+    "track_id": "4u7EnebtmKWzUH433cf5Qv",
+    "artist_id": "1dfeR4HaWDbWqFHLkxsg1d",
+    "popularity": 81,
+    "duration_ms": 354320,
+    "explicit": false
+  }
+]
+```
+
+The `artist` query parameter is optional but recommended — filters results by artist for more relevant suggestions.
+
+#### Check Community Versions
+
+```http
+POST /api/catalog/community-check
+Content-Type: application/json
+
+{
+  "artist": "Queen",
+  "title": "Bohemian Rhapsody"
+}
+```
+
+Response:
+```json
+{
+  "has_community": true,
+  "songs": [
+    {
+      "title": "Bohemian Rhapsody",
+      "artist": "Queen",
+      "community_tracks": [
+        {
+          "brand_name": "ObsKure Karaoke",
+          "brand_code": "OBSK",
+          "youtube_url": "https://www.youtube.com/watch?v=...",
+          "is_community": true
+        }
+      ]
+    }
+  ],
+  "best_youtube_url": "https://www.youtube.com/watch?v=..."
+}
+```
+
+When `has_community` is true, the frontend shows a dismissible green banner suggesting the user check existing versions before creating a new one.
+
 ### Audio Search
 
 #### Search for Audio

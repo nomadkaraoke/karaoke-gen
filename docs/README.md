@@ -31,6 +31,8 @@
 | E2E happy path test | Working (~20-25 min full pipeline) |
 | **White-label B2B portals** | Working (Vocal Star first tenant) |
 | **Private (non-published) tracks** | Working |
+| **Song lookup autocomplete** | Working (via karaoke-decide catalog) |
+| **Community version detection** | Working (via karaokenerds.com) |
 
 ## Known Issues
 
@@ -41,6 +43,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Song Lookup Autocomplete & Community Version Detection** (2026-03-03): Added song catalog integration to the job creation flow. Two features: (1) **Track autocomplete** on the title field provides canonical artist/title names from MusicBrainz + Spotify data via the karaoke-decide catalog API, improving text consistency for YouTube releases. Autocomplete activates when the artist field has a value; selecting a suggestion overwrites both artist and title with canonical names. (2) **Community version detection** checks karaokenerds.com for existing high-quality karaoke versions — if found, a dismissible green banner suggests the user check those versions first before spending credits. New backend: 3 endpoints (`/api/catalog/artists`, `/api/catalog/tracks`, `/api/catalog/community-check`) with per-user rate limiting (20 req/min) and in-memory TTL caching. New services: `catalog_proxy_service.py` (proxies to karaoke-decide), `karaokenerds_service.py` (scrapes karaokenerds.com). New frontend components: `AutocompleteInput` (reusable), `CommunityVersionBanner`. See [API.md](API.md#catalog-song-lookup).
 
 - **Feedback-for-Credits** (2026-03-01): Added a feedback-for-credits mechanism available to all users (replaces the old beta-only feedback flow). Users who complete 2+ karaoke videos can submit product feedback (star ratings + text) to earn 2 free credits (total possible free credits: 4 — 2 welcome + 2 feedback). New endpoints: `GET /api/users/feedback/eligibility`, `POST /api/users/feedback`. The `/api/users/me` response includes `feedback_eligible: bool` so the frontend can show/hide prompts without an extra API call. Frontend shows a dismissible banner on the dashboard and a "Earn 2 Free Credits" menu item in the user dropdown when eligible. Feedback stored in `user_feedback` Firestore collection with duplicate prevention via `has_submitted_feedback` flag on user model. Welcome email updated with credit-focused messaging and feedback teaser. See [API.md](API.md#user-feedback-for-credits).
 

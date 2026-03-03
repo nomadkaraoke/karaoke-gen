@@ -168,6 +168,8 @@ LyricsTranscriber                 LyricsTranscriber
 | YouTube API | Video upload | Optional |
 | SendGrid | Email notifications | Optional |
 | Cloud Tasks | Delayed task scheduling (idle reminders) | Optional |
+| karaoke-decide | Song catalog (MusicBrainz + Spotify) for autocomplete | Optional |
+| KaraokeNerds | Community karaoke version detection | Optional |
 
 *Flacfetch runs on a dedicated GCE VM with YouTube cookies and tracker access. Without it, YouTube downloads will fail due to bot detection on Cloud Run IPs.
 
@@ -233,6 +235,8 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
 | `audio_transcoding_service.py` | Transcode FLAC → OGG Opus for review UI playback |
+| `catalog_proxy_service.py` | Proxy to karaoke-decide catalog API (artist/track search) |
+| `karaokenerds_service.py` | Scrape karaokenerds.com for community karaoke versions |
 
 ## Audio Source Download Flow
 
