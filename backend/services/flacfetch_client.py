@@ -44,6 +44,31 @@ class FlacfetchServiceError(Exception):
     pass
 
 
+def _format_httpx_error(e: Exception) -> str:
+    """
+    Format an httpx exception into a descriptive error string.
+
+    httpx.RequestError subclasses (ConnectError, ReadError, etc.) often have
+    empty str() representations, which produces useless messages like
+    "Status request failed: ". This helper always returns something meaningful.
+    """
+    error_str = str(e)
+    error_type = type(e).__name__
+
+    if error_str:
+        return f"{error_type}: {error_str}"
+
+    # str(e) is empty - try to include request URL for context
+    if isinstance(e, httpx.RequestError):
+        try:
+            request = e.request
+            if request:
+                return f"{error_type} for {request.method} {request.url}"
+        except RuntimeError:
+            pass  # .request not set
+    return error_type
+
+
 def should_retry_flacfetch_error(exception: Exception) -> bool:
     """
     Determine if a flacfetch exception should be retried.
@@ -96,7 +121,8 @@ async def with_retry(func, *args, **kwargs):
             if attempt >= max_attempts:
                 # No more attempts - raise the last exception
                 logger.warning(
-                    f"Flacfetch request failed after {max_attempts} attempts: {e}"
+                    f"Flacfetch request failed after {max_attempts} attempts: "
+                    f"{_format_httpx_error(e) if isinstance(e, httpx.RequestError) else e}"
                 )
                 raise
 
@@ -104,7 +130,8 @@ async def with_retry(func, *args, **kwargs):
             wait_time = min(min_wait * (2 ** (attempt - 1)), max_wait)
 
             logger.warning(
-                f"Flacfetch request failed (attempt {attempt}/{max_attempts}): {e}. "
+                f"Flacfetch request failed (attempt {attempt}/{max_attempts}): "
+                f"{_format_httpx_error(e) if isinstance(e, httpx.RequestError) else e}. "
                 f"Retrying in {wait_time:.1f}s..."
             )
 
@@ -173,7 +200,7 @@ class FlacfetchClient:
                 
                 return data
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Cannot reach flacfetch service: {e}")
+            raise FlacfetchServiceError(f"Cannot reach flacfetch service: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Health check failed: {e.response.status_code}")
     
@@ -218,7 +245,7 @@ class FlacfetchClient:
                 return resp.json()
                 
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Search request failed: {e}")
+            raise FlacfetchServiceError(f"Search request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Search failed: {e.response.status_code} - {e.response.text}")
 
@@ -250,7 +277,7 @@ class FlacfetchClient:
         try:
             return await with_retry(self._download_impl, search_id, result_index, output_filename, gcs_path)
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Download request failed: {e}")
+            raise FlacfetchServiceError(f"Download request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Download start failed: {e.response.status_code} - {e.response.text}")
 
@@ -322,7 +349,7 @@ class FlacfetchClient:
                 source_name, source_id, output_filename, target_file, download_url, gcs_path
             )
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Download by ID request failed: {e}")
+            raise FlacfetchServiceError(f"Download by ID request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Download by ID failed: {e.response.status_code} - {e.response.text}")
 
@@ -365,15 +392,17 @@ class FlacfetchClient:
     async def get_download_status(self, download_id: str) -> Dict[str, Any]:
         """
         Get the current status of a download.
-        
+
         Args:
             download_id: Download ID from start_download
-            
+
         Returns:
             Status dict with progress, speed, path info
-            
+
         Raises:
-            FlacfetchServiceError: On status check failure
+            httpx.RequestError: On network-level failures (connection refused, timeout, etc.)
+                These are NOT wrapped so wait_for_download can handle retries.
+            FlacfetchServiceError: On application-level failures (404, other HTTP errors)
         """
         try:
             async with httpx.AsyncClient() as client:
@@ -384,9 +413,10 @@ class FlacfetchClient:
                 )
                 resp.raise_for_status()
                 return resp.json()
-                
-        except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Status request failed: {e}")
+
+        except httpx.RequestError:
+            # Let network errors bubble up so wait_for_download can handle retries
+            raise
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise FlacfetchServiceError(f"Download not found: {download_id}")
@@ -398,35 +428,59 @@ class FlacfetchClient:
         timeout: int = 600,
         poll_interval: float = 2.0,
         progress_callback: Optional[callable] = None,
+        max_consecutive_errors: int = 3,
     ) -> Dict[str, Any]:
         """
         Wait for a download to complete.
-        
+
+        Tolerates transient network errors during status polling. A single
+        connection hiccup won't fail the entire download -- only N consecutive
+        poll failures will.
+
         Args:
             download_id: Download ID to wait for
             timeout: Maximum wait time in seconds
             poll_interval: Time between status checks
             progress_callback: Optional callback(status_dict) for progress updates
-            
+            max_consecutive_errors: Number of consecutive poll failures before giving up
+
         Returns:
             Final status dict with output_path or gcs_path
-            
+
         Raises:
-            FlacfetchServiceError: On download failure or timeout
+            FlacfetchServiceError: On download failure, timeout, or too many consecutive poll errors
         """
         elapsed = 0.0
-        
+        consecutive_errors = 0
+
         while elapsed < timeout:
-            status = await self.get_download_status(download_id)
-            
+            try:
+                status = await self.get_download_status(download_id)
+                consecutive_errors = 0  # Reset on success
+            except httpx.RequestError as e:
+                consecutive_errors += 1
+                error_desc = _format_httpx_error(e)
+                logger.warning(
+                    f"Status poll failed for download {download_id} "
+                    f"({consecutive_errors}/{max_consecutive_errors}): {error_desc}"
+                )
+                if consecutive_errors >= max_consecutive_errors:
+                    raise FlacfetchServiceError(
+                        f"Status polling failed after {consecutive_errors} consecutive "
+                        f"network errors (last: {error_desc})"
+                    )
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+                continue
+
             if progress_callback:
                 try:
                     progress_callback(status)
                 except Exception as e:
                     logger.warning(f"Progress callback error: {e}")
-            
+
             download_status = status.get("status")
-            
+
             if download_status in ["complete", "seeding"]:
                 logger.info(f"Download {download_id} complete: {status.get('gcs_path') or status.get('output_path')}")
                 return status
@@ -435,7 +489,7 @@ class FlacfetchClient:
                 raise FlacfetchServiceError(f"Download failed: {error}")
             elif download_status == "cancelled":
                 raise FlacfetchServiceError("Download was cancelled")
-            
+
             # Log progress
             progress = status.get("progress", 0)
             speed = status.get("download_speed_kbps", 0)
@@ -444,10 +498,10 @@ class FlacfetchClient:
                 f"Download {download_id}: {progress:.1f}% "
                 f"({speed:.1f} KB/s, {peers} peers)"
             )
-            
+
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
-        
+
         raise FlacfetchServiceError(f"Download timed out after {timeout}s")
     
     async def list_torrents(self) -> Dict[str, Any]:
@@ -468,7 +522,7 @@ class FlacfetchClient:
                 return resp.json()
                 
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"List torrents failed: {e}")
+            raise FlacfetchServiceError(f"List torrents failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"List torrents failed: {e.response.status_code}")
     
@@ -499,7 +553,7 @@ class FlacfetchClient:
                 return resp.json()
                 
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Delete torrent failed: {e}")
+            raise FlacfetchServiceError(f"Delete torrent failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Delete torrent failed: {e.response.status_code}")
     
@@ -533,7 +587,7 @@ class FlacfetchClient:
                 return resp.json()
 
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Cleanup failed: {e}")
+            raise FlacfetchServiceError(f"Cleanup failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Cleanup failed: {e.response.status_code}")
 
@@ -574,7 +628,7 @@ class FlacfetchClient:
                 return deleted
 
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Clear search cache request failed: {e}")
+            raise FlacfetchServiceError(f"Clear search cache request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(
                 f"Clear search cache failed: {e.response.status_code} - {e.response.text}"
@@ -604,7 +658,7 @@ class FlacfetchClient:
                 return deleted_count
 
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Clear all cache request failed: {e}")
+            raise FlacfetchServiceError(f"Clear all cache request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(
                 f"Clear all cache failed: {e.response.status_code} - {e.response.text}"
@@ -631,7 +685,7 @@ class FlacfetchClient:
                 return resp.json()
 
         except httpx.RequestError as e:
-            raise FlacfetchServiceError(f"Get cache stats request failed: {e}")
+            raise FlacfetchServiceError(f"Get cache stats request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(
                 f"Get cache stats failed: {e.response.status_code} - {e.response.text}"

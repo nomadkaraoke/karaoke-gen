@@ -19,6 +19,7 @@ import httpx
 from backend.services.flacfetch_client import (
     FlacfetchClient,
     FlacfetchServiceError,
+    _format_httpx_error,
     get_flacfetch_client,
     reset_flacfetch_client,
 )
@@ -826,4 +827,224 @@ class TestFlacfetchRetryLogic:
 
                 assert result == "test789"
                 assert mock_client.post.call_count == 3
+
+
+class TestFormatHttpxError:
+    """Test _format_httpx_error helper for descriptive error messages."""
+
+    def test_formats_error_with_message(self):
+        """Test formatting when str(error) has content."""
+        error = httpx.ConnectError("Connection refused")
+        result = _format_httpx_error(error)
+        assert result == "ConnectError: Connection refused"
+
+    def test_formats_error_with_empty_message(self):
+        """Test formatting when str(error) is empty -- the exact case from job c6b1b00f."""
+        request = httpx.Request("GET", "http://10.128.0.41:8080/download/dl_abc/status")
+        error = httpx.ConnectError("", request=request)
+        result = _format_httpx_error(error)
+        # Should include class name and URL context, NOT be empty
+        assert "ConnectError" in result
+        assert "GET" in result
+        assert "10.128.0.41" in result
+
+    def test_formats_error_with_empty_message_no_request(self):
+        """Test formatting when both str and request are unavailable."""
+        # Use base RequestError which doesn't require request in constructor
+        error = httpx.RequestError("")
+        result = _format_httpx_error(error)
+        # Should at minimum return the class name
+        assert result == "RequestError"
+
+    def test_formats_timeout_error(self):
+        """Test formatting of timeout errors."""
+        error = httpx.ReadTimeout("timed out")
+        result = _format_httpx_error(error)
+        assert result == "ReadTimeout: timed out"
+
+    def test_formats_non_httpx_error(self):
+        """Test formatting of a generic exception."""
+        error = ValueError("bad value")
+        result = _format_httpx_error(error)
+        assert result == "ValueError: bad value"
+
+
+class TestWaitForDownloadRetryTolerance:
+    """Test that wait_for_download tolerates transient poll failures."""
+
+    @pytest.mark.asyncio
+    async def test_tolerates_single_poll_failure(self):
+        """Test that a single transient error doesn't fail the download."""
+        client = FlacfetchClient(
+            base_url="http://localhost:8080",
+            api_key="test-key",
+        )
+
+        call_count = 0
+        async def mock_get_status(download_id):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise httpx.ConnectError("transient failure")
+            if call_count >= 3:
+                return {"status": "complete", "gcs_path": "gs://bucket/test.flac"}
+            return {"status": "downloading", "progress": 50.0}
+
+        client.get_download_status = mock_get_status
+
+        result = await client.wait_for_download(
+            "dl_test", timeout=10, poll_interval=0.01
+        )
+        assert result["status"] == "complete"
+        assert call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_tolerates_two_consecutive_failures(self):
+        """Test that two consecutive errors don't fail with default threshold of 3."""
+        client = FlacfetchClient(
+            base_url="http://localhost:8080",
+            api_key="test-key",
+        )
+        mock_request = httpx.Request("GET", "http://localhost:8080/download/dl_test/status")
+
+        call_count = 0
+        async def mock_get_status(download_id):
+            nonlocal call_count
+            call_count += 1
+            if call_count in (2, 3):
+                raise httpx.ConnectError("", request=mock_request)
+            if call_count >= 4:
+                return {"status": "complete", "gcs_path": "gs://bucket/test.flac"}
+            return {"status": "downloading", "progress": 25.0}
+
+        client.get_download_status = mock_get_status
+
+        result = await client.wait_for_download(
+            "dl_test", timeout=10, poll_interval=0.01
+        )
+        assert result["status"] == "complete"
+
+    @pytest.mark.asyncio
+    async def test_fails_after_max_consecutive_errors(self):
+        """Test that 3 consecutive errors (default) fails with descriptive message."""
+        client = FlacfetchClient(
+            base_url="http://localhost:8080",
+            api_key="test-key",
+        )
+
+        call_count = 0
+        async def mock_get_status(download_id):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"status": "downloading", "progress": 10.0}
+            # All subsequent polls fail
+            raise httpx.ConnectError("connection reset")
+
+        client.get_download_status = mock_get_status
+
+        with pytest.raises(FlacfetchServiceError) as exc_info:
+            await client.wait_for_download(
+                "dl_test", timeout=10, poll_interval=0.01
+            )
+
+        error_msg = str(exc_info.value)
+        assert "3 consecutive" in error_msg
+        assert "ConnectError" in error_msg
+
+    @pytest.mark.asyncio
+    async def test_resets_error_count_on_success(self):
+        """Test that a successful poll resets the consecutive error counter."""
+        client = FlacfetchClient(
+            base_url="http://localhost:8080",
+            api_key="test-key",
+        )
+        mock_request = httpx.Request("GET", "http://localhost:8080/download/dl_test/status")
+
+        call_count = 0
+        async def mock_get_status(download_id):
+            nonlocal call_count
+            call_count += 1
+            # Fail twice, succeed, fail twice, succeed, complete
+            if call_count in (1, 2):
+                raise httpx.ConnectError("", request=mock_request)
+            if call_count == 3:
+                return {"status": "downloading", "progress": 25.0}
+            if call_count in (4, 5):
+                raise httpx.ConnectError("", request=mock_request)
+            if call_count == 6:
+                return {"status": "downloading", "progress": 75.0}
+            return {"status": "complete", "gcs_path": "gs://bucket/test.flac"}
+
+        client.get_download_status = mock_get_status
+
+        result = await client.wait_for_download(
+            "dl_test", timeout=10, poll_interval=0.01
+        )
+        assert result["status"] == "complete"
+        assert call_count == 7  # 2 fail + 1 ok + 2 fail + 1 ok + 1 complete
+
+    @pytest.mark.asyncio
+    async def test_custom_max_consecutive_errors(self):
+        """Test configuring a different consecutive error threshold."""
+        client = FlacfetchClient(
+            base_url="http://localhost:8080",
+            api_key="test-key",
+        )
+
+        async def mock_get_status(download_id):
+            raise httpx.ReadError("read failed")
+
+        client.get_download_status = mock_get_status
+
+        with pytest.raises(FlacfetchServiceError) as exc_info:
+            await client.wait_for_download(
+                "dl_test", timeout=10, poll_interval=0.01,
+                max_consecutive_errors=5,
+            )
+
+        assert "5 consecutive" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_error_message_includes_error_type_for_empty_str(self):
+        """Test the exact scenario from job c6b1b00f: empty httpx error string."""
+        client = FlacfetchClient(
+            base_url="http://localhost:8080",
+            api_key="test-key",
+        )
+        mock_request = httpx.Request("GET", "http://10.128.0.41:8080/download/dl_e93031543e96/status")
+
+        async def mock_get_status(download_id):
+            # Simulate the exact error from job c6b1b00f -- empty string
+            raise httpx.ConnectError("", request=mock_request)
+
+        client.get_download_status = mock_get_status
+
+        with pytest.raises(FlacfetchServiceError) as exc_info:
+            await client.wait_for_download(
+                "dl_test", timeout=10, poll_interval=0.01,
+            )
+
+        error_msg = str(exc_info.value)
+        # Must contain useful info, NOT just "Status request failed: "
+        assert "ConnectError" in error_msg
+        assert "consecutive" in error_msg
+
+    @pytest.mark.asyncio
+    async def test_application_errors_still_fail_immediately(self):
+        """Test that FlacfetchServiceError (download not found, etc.) still fails immediately."""
+        client = FlacfetchClient(
+            base_url="http://localhost:8080",
+            api_key="test-key",
+        )
+
+        async def mock_get_status(download_id):
+            raise FlacfetchServiceError("Download not found: dl_test")
+
+        client.get_download_status = mock_get_status
+
+        with pytest.raises(FlacfetchServiceError, match="Download not found"):
+            await client.wait_for_download(
+                "dl_test", timeout=10, poll_interval=0.01,
+            )
 
