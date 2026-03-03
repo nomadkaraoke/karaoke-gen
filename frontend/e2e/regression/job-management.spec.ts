@@ -316,7 +316,7 @@ test.describe('Job Management - Actions', () => {
     }
   });
 
-  test('cancel job button works', async ({ page }) => {
+  test('delete job button works', async ({ page }) => {
     await setupApiFixtures(page, {
       mocks: [
         ...APP_PAGE_BASE_MOCKS,
@@ -328,10 +328,10 @@ test.describe('Job Management - Actions', () => {
           },
         },
         {
-          method: 'POST',
-          path: '/api/jobs/job-awaiting-audio-3/cancel',
+          method: 'DELETE',
+          path: '/api/jobs/job-awaiting-audio-3',
           response: {
-            body: { success: true },
+            body: { status: 'success', message: 'Job deleted' },
           },
         },
       ],
@@ -345,13 +345,13 @@ test.describe('Job Management - Actions', () => {
     await jobCard.click();
     await page.waitForTimeout(500);
 
-    // Look for cancel button
-    const cancelBtn = page.getByRole('button', { name: /cancel/i }).first();
-    if (await cancelBtn.isVisible()) {
-      await cancelBtn.click();
+    // Look for delete button
+    const deleteBtn = page.getByRole('button', { name: /delete/i }).first();
+    if (await deleteBtn.isVisible()) {
+      await deleteBtn.click();
 
-      // Should either show confirmation or cancel immediately
-      const confirmBtn = page.getByRole('button', { name: /confirm|yes/i }).first();
+      // Should show confirmation dialog
+      const confirmBtn = page.getByRole('button', { name: /confirm|yes|ok/i }).first();
       if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await confirmBtn.click();
       }

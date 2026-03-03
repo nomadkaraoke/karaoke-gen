@@ -148,7 +148,7 @@ Query parameters:
 - `status` - Filter by job status
 - `limit` / `offset` - Pagination
 - `fields` (string, optional) - Set to `summary` to return only dashboard-required fields using Firestore field projection. Reduces payload from ~16MB to <500KB for large job lists.
-- `hide_completed` (bool, default: false) - Exclude terminal statuses (complete, prep_complete, failed, cancelled) server-side
+- `hide_completed` (bool, default: false) - Exclude successful completions (complete, prep_complete) server-side. Failed jobs remain visible.
 
 #### Delete Job
 

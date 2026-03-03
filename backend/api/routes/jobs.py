@@ -208,7 +208,7 @@ _SUMMARY_STATE_DATA_KEYS = {
     'backing_vocals_analysis',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
-_HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'failed', 'cancelled']
+_HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete']
 
 
 def _prune_state_data(data: Dict[str, Any]) -> Dict[str, Any]:

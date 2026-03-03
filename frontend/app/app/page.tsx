@@ -15,8 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff, Gift, X } from "lucide-react"
-import { sortJobsByPriority, getDisplayJobs } from "@/lib/job-status"
+import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff, Gift, X, Shield, ShieldOff } from "lucide-react"
+import { sortJobsByDate, getDisplayJobs } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
@@ -54,6 +54,10 @@ function AppPageContent() {
     if (typeof window === "undefined") return false
     return localStorage.getItem("nomad-karaoke-hide-completed") === "true"
   })
+  const [showAdminControls, setShowAdminControls] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("nomad-karaoke-admin-controls") === "true"
+  })
   const [feedbackBannerDismissed, setFeedbackBannerDismissed] = useState(false)
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
 
@@ -87,8 +91,8 @@ function AppPageContent() {
         fields: 'summary',
         hide_completed: hideCompleted,
       })
-      // Sort: blocking jobs first, then processing, then completed
-      setAllJobs(sortJobsByPriority(data))
+      // Sort by creation date (newest first)
+      setAllJobs(sortJobsByDate(data))
     } catch (err: any) {
       // Don't log auth errors - user just needs to authenticate
       if (err?.status !== 401) {
@@ -206,6 +210,30 @@ function AppPageContent() {
               <RefreshCw className={`w-4 h-4 sm:mr-2 ${isLoadingJobs ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
+            {isAdmin && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const next = !showAdminControls
+                        setShowAdminControls(next)
+                        localStorage.setItem("nomad-karaoke-admin-controls", String(next))
+                      }}
+                      className={`min-h-[40px] px-2 sm:px-3 ${showAdminControls ? 'text-amber-400' : ''}`}
+                      style={showAdminControls ? undefined : { color: 'var(--text-muted)' }}
+                    >
+                      {showAdminControls ? <Shield className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>{showAdminControls ? "Hide admin controls" : "Show admin controls"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <AuthStatus />
             {mounted && (
               <TooltipProvider>
@@ -359,7 +387,7 @@ function AppPageContent() {
               ) : (
                 <div className="space-y-3">
                   {jobs.map((job) => (
-                    <JobCard key={job.job_id} job={job} onRefresh={loadJobs} />
+                    <JobCard key={job.job_id} job={job} onRefresh={loadJobs} showAdminControls={isAdmin && showAdminControls} />
                   ))}
                 </div>
               )}
