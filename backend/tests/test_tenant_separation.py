@@ -240,3 +240,71 @@ class TestTenantScopedTokens:
         assert result.is_valid is True
         assert result.is_admin is True
         assert result.tenant_id is None
+
+
+class TestRequireAuthTenantOverride:
+    """Tests for tenant_id override logic in require_auth dependency."""
+
+    def _make_request(self, initial_tenant_id="hostname-tenant"):
+        """Create a mock Request with request.state.tenant_id pre-set."""
+        request = MagicMock()
+        request.state.tenant_id = initial_tenant_id
+        request.state.request_id = "req-123"
+        request.headers.get.return_value = ""
+        return request
+
+    @pytest.mark.asyncio
+    async def test_auth_result_with_tenant_id_overrides_request_state(self):
+        """When auth_result has tenant_id, it overrides the hostname-based tenant_id."""
+        from backend.api.dependencies import require_auth
+
+        request = self._make_request(initial_tenant_id="hostname-tenant")
+
+        mock_auth_result = AuthResult(
+            is_valid=True,
+            user_type=UserType.UNLIMITED,
+            remaining_uses=-1,
+            message="ok",
+            tenant_id="token-tenant",
+        )
+        mock_auth_service = MagicMock()
+        mock_auth_service.validate_token_full.return_value = mock_auth_result
+
+        with patch("backend.api.dependencies.get_auth_service", return_value=mock_auth_service):
+            result = await require_auth(
+                request=request,
+                auth_service=mock_auth_service,
+                credentials=MagicMock(credentials="valid-token"),
+                token=None,
+            )
+
+        assert result.tenant_id == "token-tenant"
+        assert request.state.tenant_id == "token-tenant"
+
+    @pytest.mark.asyncio
+    async def test_auth_result_without_tenant_id_leaves_request_state_unchanged(self):
+        """When auth_result has no tenant_id, request.state.tenant_id is not changed."""
+        from backend.api.dependencies import require_auth
+
+        request = self._make_request(initial_tenant_id="hostname-tenant")
+
+        mock_auth_result = AuthResult(
+            is_valid=True,
+            user_type=UserType.UNLIMITED,
+            remaining_uses=-1,
+            message="ok",
+            tenant_id=None,
+        )
+        mock_auth_service = MagicMock()
+        mock_auth_service.validate_token_full.return_value = mock_auth_result
+
+        with patch("backend.api.dependencies.get_auth_service", return_value=mock_auth_service):
+            result = await require_auth(
+                request=request,
+                auth_service=mock_auth_service,
+                credentials=MagicMock(credentials="valid-token"),
+                token=None,
+            )
+
+        assert result.tenant_id is None
+        assert request.state.tenant_id == "hostname-tenant"

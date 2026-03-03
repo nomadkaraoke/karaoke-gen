@@ -459,6 +459,26 @@ if tenant_config and not tenant_config.features.audio_search:
 - Auth: Restricted to `@singa.com` emails
 - Setup: `python scripts/setup-singa-tenant.py`
 
+### Tenant Portal Frontend (B2B Deployment)
+
+B2B tenants are served from a **separate Cloudflare Pages project** (`karaoke-gen-tenant`) built with `NEXT_PUBLIC_TENANT_PORTAL=true`. This build flag enables tree-shaking of consumer-only content (landing page, pricing, beta enrollment) at build time, keeping the bundle lean for white-label deployments.
+
+**Runtime tenant injection**: A Cloudflare Pages edge function intercepts HTML responses and injects tenant-specific configuration before the page reaches the browser:
+
+```javascript
+// Injected by edge function into <head>
+window.__TENANT_CONFIG__ = { id: "vocalstar", branding: { ... }, features: { ... } }
+// CSS variables for dynamic theming
+--tenant-primary-color: #ffd700;
+--tenant-background-color: #1a1a2e;
+```
+
+The frontend's `TenantProvider` reads `window.__TENANT_CONFIG__` on startup (no API round-trip needed for initial render). This approach works for both custom domains (`vocalstar.nomadkaraoke.com`) and the shared tenant portal domain.
+
+**Magic link emails**: When a tenant user requests a magic link, the email uses the tenant-specific URL (e.g., `https://vocalstar.nomadkaraoke.com/auth/verify?token=...`) rather than the main app URL. The `job_notification_service.py` resolves the correct base URL from the tenant config's `subdomain` field.
+
+**Admin preview**: Admins can preview any tenant's branding in the main app by appending `?preview_tenant=<tenant_id>` to any URL. This bypasses subdomain detection and loads the specified tenant config, useful for verifying branding before DNS cutover.
+
 ## Tech Stack
 
 - **Backend**: FastAPI, Python 3.12, Cloud Run
