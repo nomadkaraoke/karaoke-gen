@@ -16,23 +16,20 @@ if [ -f "$EMULATOR_LOG_DIR/firestore.pid" ]; then
     FIRESTORE_PID=$(cat "$EMULATOR_LOG_DIR/firestore.pid")
     if ps -p $FIRESTORE_PID > /dev/null 2>&1; then
         echo "📦 Stopping Firestore emulator (PID: $FIRESTORE_PID)..."
+        # Kill the process and its children (Java emulator subprocess)
+        pkill -P $FIRESTORE_PID 2>/dev/null || true
         kill $FIRESTORE_PID 2>/dev/null || true
-        rm "$EMULATOR_LOG_DIR/firestore.pid"
-        echo "   ✅ Firestore emulator stopped"
-    else
-        echo "⚠️  Firestore emulator not running"
-        rm "$EMULATOR_LOG_DIR/firestore.pid"
     fi
+    rm -f "$EMULATOR_LOG_DIR/firestore.pid"
+fi
+# Always clean up by port as a fallback (catches orphaned Java processes)
+REMAINING=$(lsof -ti:8080 2>/dev/null || true)
+if [ -n "$REMAINING" ]; then
+    echo "📦 Cleaning up remaining processes on port 8080..."
+    kill $REMAINING 2>/dev/null || true
+    echo "   ✅ Firestore emulator stopped"
 else
-    # Try to kill by port if PID file doesn't exist
-    FIRESTORE_PID=$(lsof -ti:8080 2>/dev/null || true)
-    if [ ! -z "$FIRESTORE_PID" ]; then
-        echo "📦 Stopping Firestore emulator on port 8080 (PID: $FIRESTORE_PID)..."
-        kill $FIRESTORE_PID 2>/dev/null || true
-        echo "   ✅ Firestore emulator stopped"
-    else
-        echo "⚠️  Firestore emulator not running"
-    fi
+    echo "⚠️  Firestore emulator not running"
 fi
 
 # Stop GCS emulator

@@ -21,6 +21,7 @@ else
     echo "📦 Starting Firestore emulator on port 8080..."
     gcloud beta emulators firestore start \
         --host-port=127.0.0.1:8080 \
+        --quiet \
         > "$EMULATOR_LOG_DIR/firestore.log" 2>&1 &
     
     FIRESTORE_PID=$!

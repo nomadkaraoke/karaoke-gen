@@ -18,9 +18,18 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
-// Configurable port for dev server (default: 3000)
-// Use E2E_PORT env var to change, e.g.: E2E_PORT=3001 npx playwright test
-const PORT = process.env.E2E_PORT || '3000';
+// Generate a stable port per worktree directory to avoid cross-worktree conflicts.
+// Each worktree gets a unique port in the 3100-3199 range based on a hash of __dirname.
+// Override with E2E_PORT env var, e.g.: E2E_PORT=3001 npx playwright test
+const DEFAULT_PORT = (() => {
+  const dir = __dirname;
+  let hash = 0;
+  for (let i = 0; i < dir.length; i++) {
+    hash = ((hash << 5) - hash + dir.charCodeAt(i)) | 0;
+  }
+  return 3100 + (Math.abs(hash) % 100); // 3100-3199
+})();
+const PORT = process.env.E2E_PORT || String(DEFAULT_PORT);
 // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues on macOS.
 // localhost resolves to ::1 (IPv6) first, but Next.js dev server may not accept
 // IPv6 connections, causing Playwright's webServer health check to hang.
