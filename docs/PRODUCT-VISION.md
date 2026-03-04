@@ -123,10 +123,6 @@ This is significantly cheaper than:
 - Hiring a studio: $100+ per track
 - DIY tools + your time: Hours of frustration
 
-### Beta Tester Program
-
-New users can join the beta program to get free credits in exchange for feedback, helping improve the system while building initial user base.
-
 ### B2B / White-Label
 
 Commercial producers pay for API access or custom integration to generate tracks at scale with their own branding, instrumentals, and distribution.
@@ -144,7 +140,6 @@ Commercial producers pay for API access or custom integration to generate tracks
 - Token-based authentication
 - Magic link authentication
 - Payment flow (Stripe)
-- Beta tester program
 - YouTube upload integration
 - Dropbox/Google Drive distribution
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { adminApi, AdminStatsOverview } from "@/lib/api"
+import { adminApi, AdminStatsOverview, RevenueSummary } from "@/lib/api"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { StatsCard, StatsGrid } from "@/components/admin/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +10,7 @@ import {
   Users,
   Briefcase,
   CreditCard,
-  TestTube2,
+  DollarSign,
   Clock,
   CheckCircle,
   XCircle,
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStatsOverview | null>(null)
+  const [revenue, setRevenue] = useState<RevenueSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { showTestData } = useAdminSettings()
@@ -30,8 +31,12 @@ export default function AdminDashboardPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await adminApi.getStats({ exclude_test: !showTestData })
+      const [data, revenueData] = await Promise.all([
+        adminApi.getStats({ exclude_test: !showTestData }),
+        adminApi.getPaymentSummary({ days: 30, exclude_test: !showTestData }).catch(() => null),
+      ])
       setStats(data)
+      setRevenue(revenueData)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load statistics"
       setError(message)
@@ -92,17 +97,18 @@ export default function AdminDashboardPage() {
           loading={loading}
         />
         <StatsCard
+          title="Revenue (30d)"
+          value={revenue ? `$${(revenue.total_gross / 100).toFixed(2)}` : "$0.00"}
+          description={revenue ? `${revenue.transaction_count} payments, ${`$${(revenue.total_net / 100).toFixed(2)}`} net` : "Loading..."}
+          icon={DollarSign}
+          loading={loading}
+          valueClassName="text-green-600 dark:text-green-400"
+        />
+        <StatsCard
           title="Credits Issued (30d)"
           value={stats?.total_credits_issued_30d ?? 0}
           description="Credits added to accounts"
           icon={CreditCard}
-          loading={loading}
-        />
-        <StatsCard
-          title="Beta Testers"
-          value={stats?.total_beta_testers ?? 0}
-          description="Active beta participants"
-          icon={TestTube2}
           loading={loading}
         />
       </StatsGrid>

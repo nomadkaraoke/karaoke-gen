@@ -6,7 +6,7 @@ import {
   LayoutDashboard,
   Users,
   Briefcase,
-  TestTube2,
+  DollarSign,
   ArrowLeft,
   Settings,
   Search,
@@ -44,14 +44,14 @@ const navItems = [
     icon: Briefcase,
   },
   {
+    title: "Payments",
+    href: "/admin/payments",
+    icon: DollarSign,
+  },
+  {
     title: "Audio Searches",
     href: "/admin/searches",
     icon: Search,
-  },
-  {
-    title: "Beta Program",
-    href: "/admin/beta",
-    icon: TestTube2,
   },
   {
     title: "Rate Limits",

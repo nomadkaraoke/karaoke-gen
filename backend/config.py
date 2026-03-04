@@ -128,10 +128,6 @@ class Settings(BaseSettings):
     enable_rate_limiting: bool = os.getenv("ENABLE_RATE_LIMITING", "true").lower() in ("true", "1", "yes")
     # Maximum jobs a user can create per day (0 = unlimited)
     rate_limit_jobs_per_day: int = int(os.getenv("RATE_LIMIT_JOBS_PER_DAY", "5"))
-    # Maximum YouTube uploads system-wide per day (0 = unlimited)
-    # DEPRECATED: Use youtube_quota_daily_limit instead. Kept for backward compatibility.
-    rate_limit_youtube_uploads_per_day: int = int(os.getenv("RATE_LIMIT_YOUTUBE_UPLOADS_PER_DAY", "10"))
-
     # YouTube Data API v3 Quota Configuration
     # Daily quota limit (YouTube grants 10,000 units/day by default)
     youtube_quota_daily_limit: int = int(os.getenv("YOUTUBE_QUOTA_DAILY_LIMIT", "10000"))
@@ -139,9 +135,6 @@ class Settings(BaseSettings):
     youtube_quota_upload_cost: int = int(os.getenv("YOUTUBE_QUOTA_UPLOAD_COST", "300"))
     # Safety margin to reserve (avoid hitting exact limit)
     youtube_quota_safety_margin: int = int(os.getenv("YOUTUBE_QUOTA_SAFETY_MARGIN", "500"))
-    # Maximum beta enrollments from same IP per day (0 = unlimited)
-    rate_limit_beta_ip_per_day: int = int(os.getenv("RATE_LIMIT_BETA_IP_PER_DAY", "1"))
-
     # E2E test bypass key for rate limiting (set via secret in production)
     e2e_bypass_key: str = os.getenv("E2E_BYPASS_KEY", "")
     default_youtube_description: str = os.getenv(

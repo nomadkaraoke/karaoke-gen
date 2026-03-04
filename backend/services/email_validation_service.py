@@ -2,7 +2,7 @@
 Email Validation Service.
 
 Provides email validation, normalization, and blocklist checking
-to prevent abuse during beta enrollment and other flows.
+to prevent abuse during enrollment and other flows.
 """
 
 import hashlib
@@ -368,36 +368,6 @@ class EmailValidationService:
 
         config = self.get_blocklist_config()
         return ip_address in config["blocked_ips"]
-
-    def validate_email_for_beta(self, email: str) -> Tuple[bool, str]:
-        """
-        Validate an email for beta enrollment.
-
-        Performs all validation checks:
-        1. Basic format validation
-        2. Disposable domain check
-        3. Blocked email check
-
-        Args:
-            email: Email address to validate
-
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
-        if not email or "@" not in email:
-            return False, "Invalid email format"
-
-        # Check disposable domain
-        if self.is_disposable_domain(email):
-            logger.warning(f"Beta enrollment blocked - disposable domain: {_mask_email(email)}")
-            return False, "Disposable email addresses are not allowed"
-
-        # Check blocked email
-        if self.is_email_blocked(email):
-            logger.warning(f"Beta enrollment blocked - email blocked: {_mask_email(email)}")
-            return False, "This email address is not allowed"
-
-        return True, ""
 
     def hash_ip(self, ip_address: str) -> str:
         """

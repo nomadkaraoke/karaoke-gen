@@ -47,8 +47,6 @@ def mock_settings():
     settings = Mock()
     settings.enable_rate_limiting = True
     settings.rate_limit_jobs_per_day = 5
-    settings.rate_limit_youtube_uploads_per_day = 10
-    settings.rate_limit_beta_ip_per_day = 1
     return settings
 
 
@@ -65,7 +63,6 @@ class TestGetRateLimitStats:
 
             # Setup rate limit service mock
             mock_rls = Mock()
-            mock_rls.get_youtube_uploads_today.return_value = 3
             mock_rls.get_all_overrides.return_value = {"user1@example.com": {}}
             mock_get_rls.return_value = mock_rls
 
@@ -89,10 +86,12 @@ class TestGetRateLimitStats:
                 "units_limit": 10000,
                 "effective_limit": 9500,
                 "upload_cost": 300,
+                "upload_count": 3,
                 "estimated_uploads_remaining": 28,
                 "seconds_until_reset": 43200,
                 "upload_count": 1,
             }
+            mock_quota.get_gcp_quota_usage.return_value = {"available": False}
             mock_get_qs.return_value = mock_quota
 
             # Setup queue service mock
@@ -114,9 +113,8 @@ class TestGetRateLimitStats:
             assert response.status_code == 200
             data = response.json()
             assert data["jobs_per_day_limit"] == 5
-            assert data["youtube_uploads_per_day_limit"] == 10
+            assert data["rate_limiting_enabled"] is True
             assert data["youtube_uploads_today"] == 3
-            assert data["youtube_uploads_remaining"] == 7
             assert data["disposable_domains_count"] == 100
             assert data["total_overrides"] == 1
             # Quota fields

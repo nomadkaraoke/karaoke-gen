@@ -47,10 +47,6 @@ def main():
     email_service.send_welcome_email("user@example.com", credits=3)
     save_preview(output_dir, "welcome", preview_provider)
 
-    # Beta welcome email
-    email_service.send_beta_welcome_email("user@example.com", credits=1)
-    save_preview(output_dir, "beta_welcome", preview_provider)
-
     # Feedback request email
     email_service.send_feedback_request_email(
         "user@example.com",

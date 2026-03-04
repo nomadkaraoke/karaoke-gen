@@ -774,47 +774,9 @@ POST /api/users/webhooks/stripe
 
 Handles `checkout.session.completed` events.
 
-## Beta Tester Program (Deprecated)
-
-> **Note**: The beta program was removed from the homepage in PR #430. These endpoints are preserved for backward compatibility but are no longer actively promoted. New users receive 2 welcome credits instead. See [User Feedback for Credits](#user-feedback-for-credits) for the current feedback-for-credits mechanism.
-
-### Enroll as Beta Tester
-
-```http
-POST /api/users/beta/enroll
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "promise_text": "I promise to provide feedback...",
-  "accept_corrections_work": true
-}
-```
-
-Returns 1 free credit and session token.
-
-### Submit Beta Feedback
-
-```http
-POST /api/users/beta/feedback
-Authorization: Bearer SESSION_TOKEN
-Content-Type: application/json
-
-{
-  "overall_rating": 4,
-  "ease_of_use_rating": 5,
-  "lyrics_accuracy_rating": 4,
-  "correction_experience_rating": 3,
-  "what_went_well": "...",
-  "what_could_improve": "..."
-}
-```
-
-Bonus credit for detailed feedback (50+ chars).
-
 ### User Feedback for Credits
 
-Available to all users (not just beta testers). Users who have completed 2+ jobs can submit feedback to earn 2 free credits.
+Users who have completed 2+ jobs can submit feedback to earn 2 free credits.
 
 #### Check Eligibility
 
@@ -903,8 +865,7 @@ Returns platform statistics:
     "complete": 400,
     "failed": 20
   },
-  "total_credits_issued_30d": 200,
-  "total_beta_testers": 30
+  "total_credits_issued_30d": 200
 }
 ```
 
@@ -994,24 +955,6 @@ Note: This endpoint exists but is not exposed in the admin UI. Use database oper
 ```http
 POST /api/users/admin/users/{email}/enable
 POST /api/users/admin/users/{email}/disable
-Authorization: Bearer ADMIN_TOKEN
-```
-
-### Beta Stats (Admin)
-
-```http
-GET /api/users/admin/beta/stats
-GET /api/users/admin/beta/stats?exclude_test=false
-Authorization: Bearer ADMIN_TOKEN
-```
-
-Query parameters:
-- `exclude_test` (bool, default: true) - Filter out test users from beta statistics
-
-### Beta Feedback List (Admin)
-
-```http
-GET /api/users/admin/beta/feedback?limit=50
 Authorization: Bearer ADMIN_TOKEN
 ```
 
@@ -1568,8 +1511,7 @@ Called by Cloud Tasks 5 minutes after a job enters a blocking state (primarily `
 ### User Limits
 
 - **Jobs per day**: 5 (configurable via `RATE_LIMIT_JOBS_PER_DAY`)
-- **YouTube uploads**: Quota-aware, ~33 uploads/day within 10,000 units/day API quota (configurable via `YOUTUBE_QUOTA_DAILY_LIMIT`, `YOUTUBE_QUOTA_UPLOAD_COST`, `YOUTUBE_QUOTA_SAFETY_MARGIN`). Uploads exceeding quota are queued and processed hourly.
-- **Beta enrollment per IP**: 1 per 24 hours (configurable via `RATE_LIMIT_BETA_IP_PER_DAY`)
+- **YouTube uploads**: Quota-aware, ~33 uploads/day within 10,000 units/day API quota (configurable via `YOUTUBE_QUOTA_DAILY_LIMIT`, `YOUTUBE_QUOTA_UPLOAD_COST`, `YOUTUBE_QUOTA_SAFETY_MARGIN`). Uploads exceeding quota are queued and processed hourly. GCP Cloud Monitoring integration provides cross-referencing of actual API quota consumption (see Admin Rate Limits API).
 
 Rate limiting can be disabled via `ENABLE_RATE_LIMITING=false`.
 
@@ -1598,7 +1540,21 @@ Admins can grant users bypass permissions or custom limits via the admin UI at `
 ```http
 GET /api/admin/rate-limits/stats
 ```
-Returns current rate limit statistics (usage, blocklist counts, override counts).
+Returns current rate limit statistics including YouTube quota usage, blocklist counts, override counts, and GCP Cloud Monitoring cross-reference data.
+
+Response fields include:
+- `jobs_per_day_limit`, `rate_limiting_enabled` - Configuration
+- `youtube_uploads_today` - Upload count from Firestore quota tracking (PT-based)
+- `youtube_quota_units_consumed`, `youtube_quota_units_remaining`, `youtube_quota_daily_limit`, `youtube_quota_effective_limit`, `youtube_quota_upload_cost`, `youtube_quota_estimated_uploads_remaining`, `youtube_quota_seconds_until_reset` - YouTube quota unit tracking
+- `youtube_uploads_queued`, `youtube_uploads_failed` - Upload queue status
+- `disposable_domains_count`, `blocked_emails_count`, `blocked_ips_count` - Blocklist stats
+- `total_overrides` - User override count
+- `gcp_quota_available` - Whether GCP Cloud Monitoring data is available
+- `gcp_quota_units_consumed` - Actual API quota units consumed per GCP (may differ from local tracking)
+- `gcp_quota_last_datapoint` - Timestamp of the most recent GCP monitoring data point
+- `gcp_quota_data_delay_minutes` - How stale the GCP data is (Cloud Monitoring has ~5 min delay)
+- `quota_drift` - Difference between local tracking and GCP-reported consumption
+- `quota_drift_alert` - Whether drift exceeds alert threshold
 
 ```http
 GET /api/admin/rate-limits/users/{email}

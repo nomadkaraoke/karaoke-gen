@@ -1,10 +1,9 @@
 """
-Rate limiting service for job creation, YouTube uploads, and beta enrollment.
+Rate limiting service for job creation.
 
 Uses Firestore for distributed rate limit tracking with date-based document IDs
 that automatically reset at UTC midnight.
 """
-import hashlib
 import logging
 from datetime import datetime, timezone
 from typing import Tuple, Optional, List, Dict, Any
@@ -18,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 # Firestore collection names
 RATE_LIMITS_COLLECTION = "rate_limits"
-BLOCKLISTS_COLLECTION = "blocklists"
 OVERRIDES_COLLECTION = "overrides"
 
 
@@ -37,11 +35,6 @@ def _seconds_until_midnight_utc() -> int:
     return int((next_midnight - now).total_seconds())
 
 
-def _hash_ip(ip_address: str) -> str:
-    """Hash an IP address for storage (privacy-preserving)."""
-    return hashlib.sha256(ip_address.encode()).hexdigest()[:16]
-
-
 class RateLimitService:
     """
     Service for managing rate limits across the platform.
@@ -56,9 +49,6 @@ class RateLimitService:
             self.db = firestore.Client(project=settings.google_cloud_project)
         else:
             self.db = db
-        self._blocklist_cache: Optional[Dict[str, Any]] = None
-        self._blocklist_cache_time: Optional[datetime] = None
-        self._cache_ttl_seconds = 300  # 5 minute cache
 
     # -------------------------------------------------------------------------
     # Job Rate Limiting
@@ -423,175 +413,6 @@ class RateLimitService:
         return {doc.id: doc.to_dict() for doc in docs}
 
     # -------------------------------------------------------------------------
-    # Blocklist Management
-    # -------------------------------------------------------------------------
-
-    def _load_blocklist(self, force_refresh: bool = False) -> Dict[str, Any]:
-        """
-        Load blocklist from Firestore with caching.
-
-        Returns:
-            Dict with keys: disposable_domains, blocked_emails, blocked_ips
-        """
-        now = datetime.now(timezone.utc)
-
-        # Check cache
-        if not force_refresh and self._blocklist_cache and self._blocklist_cache_time:
-            cache_age = (now - self._blocklist_cache_time).total_seconds()
-            if cache_age < self._cache_ttl_seconds:
-                return self._blocklist_cache
-
-        # Load from Firestore
-        doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document("config")
-        doc = doc_ref.get()
-
-        if not doc.exists:
-            # Initialize with empty blocklist
-            self._blocklist_cache = {
-                "disposable_domains": [],
-                "blocked_emails": [],
-                "blocked_ips": [],
-            }
-        else:
-            self._blocklist_cache = doc.to_dict()
-
-        self._blocklist_cache_time = now
-        return self._blocklist_cache
-
-    def is_disposable_domain(self, domain: str) -> bool:
-        """Check if a domain is in the disposable domains blocklist."""
-        blocklist = self._load_blocklist()
-        return domain.lower() in [d.lower() for d in blocklist.get("disposable_domains", [])]
-
-    def is_blocked_email(self, email: str) -> bool:
-        """Check if an email is explicitly blocked."""
-        blocklist = self._load_blocklist()
-        return email.lower() in [e.lower() for e in blocklist.get("blocked_emails", [])]
-
-    def is_blocked_ip(self, ip_address: str) -> bool:
-        """Check if an IP address is blocked."""
-        blocklist = self._load_blocklist()
-        return ip_address in blocklist.get("blocked_ips", [])
-
-    def get_blocklist(self) -> Dict[str, Any]:
-        """Get all blocklist data."""
-        return self._load_blocklist(force_refresh=True)
-
-    def add_disposable_domain(self, domain: str, admin_email: str) -> None:
-        """Add a domain to the disposable domains blocklist."""
-        blocklist = self._load_blocklist(force_refresh=True)
-        domains = set(blocklist.get("disposable_domains", []))
-        domains.add(domain.lower())
-
-        doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document("config")
-        doc_ref.set({
-            **blocklist,
-            "disposable_domains": list(domains),
-            "updated_at": datetime.now(timezone.utc),
-            "updated_by": admin_email,
-        }, merge=True)
-
-        self._blocklist_cache = None  # Invalidate cache
-        logger.info(f"Added disposable domain {domain} by {admin_email}")
-
-    def remove_disposable_domain(self, domain: str) -> bool:
-        """Remove a domain from the disposable domains blocklist."""
-        blocklist = self._load_blocklist(force_refresh=True)
-        domains = set(blocklist.get("disposable_domains", []))
-
-        if domain.lower() not in [d.lower() for d in domains]:
-            return False
-
-        domains = {d for d in domains if d.lower() != domain.lower()}
-
-        doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document("config")
-        doc_ref.set({
-            **blocklist,
-            "disposable_domains": list(domains),
-            "updated_at": datetime.now(timezone.utc),
-        }, merge=True)
-
-        self._blocklist_cache = None
-        logger.info(f"Removed disposable domain {domain}")
-        return True
-
-    def add_blocked_email(self, email: str, admin_email: str) -> None:
-        """Add an email to the blocked emails list."""
-        blocklist = self._load_blocklist(force_refresh=True)
-        emails = set(blocklist.get("blocked_emails", []))
-        emails.add(email.lower())
-
-        doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document("config")
-        doc_ref.set({
-            **blocklist,
-            "blocked_emails": list(emails),
-            "updated_at": datetime.now(timezone.utc),
-            "updated_by": admin_email,
-        }, merge=True)
-
-        self._blocklist_cache = None
-        logger.info(f"Added blocked email {email} by {admin_email}")
-
-    def remove_blocked_email(self, email: str) -> bool:
-        """Remove an email from the blocked emails list."""
-        blocklist = self._load_blocklist(force_refresh=True)
-        emails = set(blocklist.get("blocked_emails", []))
-
-        if email.lower() not in [e.lower() for e in emails]:
-            return False
-
-        emails = {e for e in emails if e.lower() != email.lower()}
-
-        doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document("config")
-        doc_ref.set({
-            **blocklist,
-            "blocked_emails": list(emails),
-            "updated_at": datetime.now(timezone.utc),
-        }, merge=True)
-
-        self._blocklist_cache = None
-        logger.info(f"Removed blocked email {email}")
-        return True
-
-    def add_blocked_ip(self, ip_address: str, admin_email: str) -> None:
-        """Add an IP address to the blocked IPs list."""
-        blocklist = self._load_blocklist(force_refresh=True)
-        ips = set(blocklist.get("blocked_ips", []))
-        ips.add(ip_address)
-
-        doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document("config")
-        doc_ref.set({
-            **blocklist,
-            "blocked_ips": list(ips),
-            "updated_at": datetime.now(timezone.utc),
-            "updated_by": admin_email,
-        }, merge=True)
-
-        self._blocklist_cache = None
-        logger.info(f"Added blocked IP {ip_address} by {admin_email}")
-
-    def remove_blocked_ip(self, ip_address: str) -> bool:
-        """Remove an IP address from the blocked IPs list."""
-        blocklist = self._load_blocklist(force_refresh=True)
-        ips = set(blocklist.get("blocked_ips", []))
-
-        if ip_address not in ips:
-            return False
-
-        ips.discard(ip_address)
-
-        doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document("config")
-        doc_ref.set({
-            **blocklist,
-            "blocked_ips": list(ips),
-            "updated_at": datetime.now(timezone.utc),
-        }, merge=True)
-
-        self._blocklist_cache = None
-        logger.info(f"Removed blocked IP {ip_address}")
-        return True
-
-    # -------------------------------------------------------------------------
     # Stats
     # -------------------------------------------------------------------------
 
@@ -603,9 +424,6 @@ class RateLimitService:
             Dict with current usage stats
         """
         date_str = _get_today_date_str()
-
-        # Get YouTube upload count
-        youtube_count = self.get_youtube_uploads_today()
 
         # Count unique users with jobs today
         users_with_jobs = set()
@@ -624,12 +442,9 @@ class RateLimitService:
 
         return {
             "date": date_str,
-            "youtube_uploads_today": youtube_count,
-            "youtube_uploads_limit": settings.rate_limit_youtube_uploads_per_day,
             "total_jobs_today": total_jobs_today,
             "users_with_jobs_today": len(users_with_jobs),
             "job_limit_per_user": settings.rate_limit_jobs_per_day,
-            "beta_ip_limit_per_day": settings.rate_limit_beta_ip_per_day,
             "rate_limiting_enabled": settings.enable_rate_limiting,
             "seconds_until_reset": _seconds_until_midnight_utc(),
         }

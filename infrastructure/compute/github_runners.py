@@ -1,12 +1,12 @@
 """
 GitHub Actions Self-Hosted Runners on GCP.
 
-Creates Spot/Preemptible VMs that register as self-hosted runners
-at the organization level. Uses Spot instances for 60-91% cost savings.
+Creates on-demand VMs that register as self-hosted runners
+at the organization level.
 
 Resources created:
 - Cloud Router and Cloud NAT (for outbound internet without external IPs)
-- N Compute Engine VMs (Spot instances)
+- N Compute Engine VMs (on-demand instances)
 - Each VM runs the GitHub Actions runner agent
 
 The VMs are managed by the runner_manager Cloud Function which:
@@ -17,7 +17,15 @@ The VMs are managed by the runner_manager Cloud Function which:
 import pulumi
 from pulumi_gcp import compute, secretmanager, serviceaccount
 
-from config import REGION, ZONE, MachineTypes, DiskSizes, NUM_GITHUB_RUNNERS
+from config import (
+    REGION,
+    ZONE,
+    MachineTypes,
+    DiskSizes,
+    NUM_GITHUB_RUNNERS,
+    GENERAL_RUNNER_LABELS,
+    BUILD_RUNNER_LABELS,
+)
 from .startup_scripts import read_script
 
 
@@ -66,12 +74,10 @@ def create_github_runners(
     """
     Create GitHub Actions self-hosted runner VM instances.
 
-    Creates NUM_GITHUB_RUNNERS Spot VMs, each configured as a GitHub Actions
+    Creates NUM_GITHUB_RUNNERS on-demand VMs, each configured as a GitHub Actions
     self-hosted runner for the nomadkaraoke organization (available to all repos).
 
-    Uses Spot instances (preemptible) for 60-91% cost savings.
-    VMs start in TERMINATED state and are started by the runner_manager
-    Cloud Function when CI jobs are queued.
+    VMs are started/stopped by the runner_manager Cloud Function based on CI demand.
 
     Args:
         service_account: The GitHub runner service account.
@@ -115,19 +121,17 @@ def create_github_runners(
                 email=service_account.email,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
             ),
-            # Spot/Preemptible instance configuration (60-91% cheaper)
-            # Preemptible VMs may be terminated at any time but cost much less.
-            # The startup script re-registers the runner on boot.
+            # On-demand scheduling — no preemption risk
             scheduling=compute.InstanceSchedulingArgs(
-                preemptible=True,
-                automatic_restart=False,  # Required for preemptible
-                on_host_maintenance="TERMINATE",  # Required for preemptible
+                preemptible=False,
+                automatic_restart=True,
+                on_host_maintenance="MIGRATE",
             ),
             # Metadata for startup script
             metadata={
                 "github-runner-pat-secret": "github-runner-pat",
                 "github-org": "nomadkaraoke",
-                "runner-labels": "self-hosted,linux,x64,gcp,large-disk",
+                "runner-labels": GENERAL_RUNNER_LABELS,
             },
             metadata_startup_script=startup_script,
             # Labels for organization and cost tracking
@@ -150,6 +154,78 @@ def create_github_runners(
         runner_vms.append(vm)
 
     return runner_vms
+
+
+def create_build_runner(
+    service_account: serviceaccount.Account,
+    runner_pat_secret: secretmanager.Secret,
+    nat: compute.RouterNat,
+) -> compute.Instance:
+    """
+    Create a dedicated on-demand build runner for Docker deploys.
+
+    Unlike the general runners (spot/preemptible), this runner uses on-demand
+    scheduling to avoid preemption during long Docker builds. It has more
+    CPU/RAM (8 vCPU, 32GB) and an additional 'docker-build' label so that
+    only deploy-backend jobs are routed to it.
+
+    Args:
+        service_account: The GitHub runner service account.
+        runner_pat_secret: The Secret Manager secret containing the GitHub PAT.
+        nat: Cloud NAT for outbound internet access.
+
+    Returns:
+        compute.Instance: The build runner VM instance.
+    """
+    startup_script = read_script("github_runner.sh")
+    instance_name = "github-build-runner"
+
+    return compute.Instance(
+        instance_name,
+        name=instance_name,
+        machine_type=MachineTypes.GITHUB_BUILD_RUNNER,
+        zone=ZONE,
+        boot_disk=compute.InstanceBootDiskArgs(
+            initialize_params=compute.InstanceBootDiskInitializeParamsArgs(
+                image="debian-cloud/debian-12",
+                size=DiskSizes.GITHUB_RUNNER,
+                type="pd-ssd",
+            ),
+            auto_delete=True,
+        ),
+        network_interfaces=[
+            compute.InstanceNetworkInterfaceArgs(
+                network="default",
+            )
+        ],
+        service_account=compute.InstanceServiceAccountArgs(
+            email=service_account.email,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        ),
+        # On-demand scheduling — no preemption risk during Docker builds
+        scheduling=compute.InstanceSchedulingArgs(
+            preemptible=False,
+            automatic_restart=True,
+            on_host_maintenance="MIGRATE",
+        ),
+        metadata={
+            "github-runner-pat-secret": "github-runner-pat",
+            "github-org": "nomadkaraoke",
+            "runner-labels": BUILD_RUNNER_LABELS,
+        },
+        metadata_startup_script=startup_script,
+        labels={
+            "purpose": "github-build-runner",
+            "managed-by": "pulumi",
+        },
+        tags=["github-runner"],
+        allow_stopping_for_update=True,
+        deletion_protection=False,
+        opts=pulumi.ResourceOptions(
+            depends_on=[runner_pat_secret, nat],
+            delete_before_replace=True,
+        ),
+    )
 
 
 def create_instance_group_for_restart(

@@ -6,7 +6,6 @@ Supports:
 - Credit system for karaoke generation
 - Role-based access control (user/admin)
 - Stripe integration for payments
-- Beta tester program with feedback collection
 """
 from datetime import datetime, timezone
 from enum import Enum
@@ -18,14 +17,6 @@ class UserRole(str, Enum):
     """User roles for access control."""
     USER = "user"
     ADMIN = "admin"
-
-
-class BetaTesterStatus(str, Enum):
-    """Status of beta tester participation."""
-    ACTIVE = "active"  # Enrolled, free credits available
-    PENDING_FEEDBACK = "pending_feedback"  # Job completed, awaiting feedback
-    COMPLETED = "completed"  # Feedback submitted
-    EXPIRED = "expired"  # 24hr deadline passed without feedback
 
 
 class CreditTransaction(BaseModel):
@@ -91,14 +82,6 @@ class User(BaseModel):
 
     # Optional profile fields for future use
     display_name: Optional[str] = None
-
-    # Beta tester program
-    is_beta_tester: bool = False
-    beta_tester_status: Optional[BetaTesterStatus] = None
-    beta_enrolled_at: Optional[datetime] = None
-    beta_promise_text: Optional[str] = None  # User's promise statement
-    beta_feedback_due_at: Optional[datetime] = None  # 24hr after job completion
-    beta_feedback_email_sent: bool = False
 
     # Push notification subscriptions (Web Push API)
     # Users can subscribe from multiple devices/browsers
@@ -212,87 +195,6 @@ class UserListResponse(BaseModel):
     """Response for listing users (admin only)."""
     users: List[UserPublic]
     total: int
-
-
-# ============================================================================
-# Beta Tester Program Models
-# ============================================================================
-
-class BetaTesterFeedback(BaseModel):
-    """
-    Feedback from a beta tester after using the service.
-
-    Stored in Firestore 'beta_feedback' collection.
-    """
-    id: str  # Unique feedback ID
-    user_email: str
-    job_id: Optional[str] = None  # The job they're providing feedback on
-
-    # Ratings (1-5 scale)
-    overall_rating: int = Field(ge=1, le=5)
-    ease_of_use_rating: int = Field(ge=1, le=5)
-    lyrics_accuracy_rating: int = Field(ge=1, le=5)
-    correction_experience_rating: int = Field(ge=1, le=5)
-
-    # Open-ended feedback
-    what_went_well: Optional[str] = None
-    what_could_improve: Optional[str] = None
-    additional_comments: Optional[str] = None
-
-    # Would they recommend / use again?
-    would_recommend: bool = True
-    would_use_again: bool = True
-
-    # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    submitted_via: str = "web"  # 'web' or 'email'
-
-
-class BetaTesterEnrollRequest(BaseModel):
-    """Request to enroll as a beta tester."""
-    email: str
-    promise_text: str = Field(
-        min_length=10,
-        description="User's promise to provide feedback (min 10 chars)"
-    )
-    accept_corrections_work: bool = Field(
-        description="User accepts they may need to review/correct lyrics"
-    )
-
-
-class BetaTesterEnrollResponse(BaseModel):
-    """Response after enrolling as beta tester."""
-    status: str
-    message: str
-    credits_granted: int
-    session_token: Optional[str] = None  # If new user, provide session
-
-
-class BetaFeedbackRequest(BaseModel):
-    """Request to submit beta tester feedback."""
-    job_id: Optional[str] = None
-
-    # Ratings (1-5 scale)
-    overall_rating: int = Field(ge=1, le=5)
-    ease_of_use_rating: int = Field(ge=1, le=5)
-    lyrics_accuracy_rating: int = Field(ge=1, le=5)
-    correction_experience_rating: int = Field(ge=1, le=5)
-
-    # Open-ended feedback
-    what_went_well: Optional[str] = None
-    what_could_improve: Optional[str] = None
-    additional_comments: Optional[str] = None
-
-    # Would they recommend / use again?
-    would_recommend: bool = True
-    would_use_again: bool = True
-
-
-class BetaFeedbackResponse(BaseModel):
-    """Response after submitting feedback."""
-    status: str
-    message: str
-    bonus_credits: int = 0  # Bonus credits for great feedback
 
 
 # ============================================================================

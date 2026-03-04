@@ -1102,32 +1102,6 @@ export const api = {
   },
 
   // ==========================================================================
-  // Beta Tester API endpoints
-  // ==========================================================================
-
-  /**
-   * Enroll as a beta tester to receive free credits
-   */
-  async enrollBetaTester(
-    email: string,
-    promiseText: string,
-    acceptCorrectionsWork: boolean
-  ): Promise<BetaEnrollResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/users/beta/enroll`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: email.toLowerCase(),
-        promise_text: promiseText,
-        accept_corrections_work: acceptCorrectionsWork,
-      }),
-    });
-    return handleResponse(response);
-  },
-
-  // ==========================================================================
   // Push Notifications API endpoints
   // ==========================================================================
 
@@ -1229,13 +1203,6 @@ export interface CreditPackage {
   description: string;
 }
 
-export interface BetaEnrollResponse {
-  status: string;
-  message: string;
-  credits_granted: number;
-  session_token: string | null;
-}
-
 // Types for push notifications
 export interface PushSubscriptionInfo {
   endpoint: string;
@@ -1270,7 +1237,6 @@ export interface AdminStatsOverview {
     cancelled: number;
   };
   total_credits_issued_30d: number;
-  total_beta_testers: number;
 }
 
 export interface AdminUser {
@@ -1302,8 +1268,6 @@ export interface AdminUserDetail {
   last_login_at?: string;
   total_jobs_created: number;
   total_jobs_completed: number;
-  is_beta_tester: boolean;
-  beta_tester_status?: string;
   credit_transactions: Array<{
     id: string;
     amount: number;
@@ -1320,36 +1284,6 @@ export interface AdminUserDetail {
     created_at?: string;
   }>;
   active_sessions_count: number;
-}
-
-export interface AdminBetaStats {
-  total_beta_testers: number;
-  active_testers: number;
-  pending_feedback: number;
-  completed_feedback: number;
-  total_feedback_submissions: number;
-  average_ratings: {
-    overall: number;
-    ease_of_use: number;
-    lyrics_accuracy: number;
-    correction_experience: number;
-  };
-}
-
-export interface AdminBetaFeedback {
-  id: string;
-  user_email: string;
-  job_id?: string;
-  overall_rating: number;
-  ease_of_use_rating?: number;
-  lyrics_accuracy_rating?: number;
-  correction_experience_rating?: number;
-  what_went_well?: string;
-  what_could_improve?: string;
-  additional_comments?: string;
-  would_recommend?: boolean;
-  would_use_again?: boolean;
-  created_at: string;
 }
 
 export interface AdminJobListParams {
@@ -1558,31 +1492,6 @@ export const adminApi = {
       headers: getAuthHeaders()
     });
     return handleResponse<Job[]>(response);
-  },
-
-  /**
-   * Get beta program statistics
-   */
-  async getBetaStats(params?: { exclude_test?: boolean }): Promise<AdminBetaStats> {
-    const searchParams = new URLSearchParams();
-    if (params?.exclude_test !== undefined) {
-      searchParams.set('exclude_test', String(params.exclude_test));
-    }
-    const url = `${API_BASE_URL}/api/users/admin/beta/stats${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
-  },
-
-  /**
-   * Get beta program feedback list
-   */
-  async getBetaFeedback(limit: number = 50): Promise<{ feedback: AdminBetaFeedback[]; total: number }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/beta/feedback?limit=${limit}`, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
   },
 
   /**
@@ -2006,6 +1915,111 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  // =========================================================================
+  // Payments API
+  // =========================================================================
+
+  async getPaymentSummary(params?: { days?: number; exclude_test?: boolean }): Promise<RevenueSummary> {
+    const searchParams = new URLSearchParams();
+    if (params?.days) searchParams.set('days', String(params.days));
+    if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
+    const url = `${API_BASE_URL}/api/admin/payments/summary${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async getRevenueChart(params?: { days?: number; group_by?: string; exclude_test?: boolean }): Promise<RevenueChartPoint[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.days) searchParams.set('days', String(params.days));
+    if (params?.group_by) searchParams.set('group_by', params.group_by);
+    if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
+    const url = `${API_BASE_URL}/api/admin/payments/revenue-chart${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async listPayments(params?: {
+    limit?: number;
+    offset?: number;
+    order_type?: string;
+    status?: string;
+    email?: string;
+    exclude_test?: boolean;
+  }): Promise<PaymentListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.order_type) searchParams.set('order_type', params.order_type);
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.email) searchParams.set('email', params.email);
+    if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
+    const url = `${API_BASE_URL}/api/admin/payments${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async getPaymentDetail(sessionId: string): Promise<PaymentRecord> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/payments/${encodeURIComponent(sessionId)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getStripeBalance(): Promise<StripeBalance> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/payments/balance`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getPayouts(limit: number = 20): Promise<PayoutRecord[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/payments/payouts?limit=${limit}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getDisputes(): Promise<DisputeRecord[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/payments/disputes`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getUserPayments(email: string): Promise<UserPaymentHistory> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/payments/by-user/${encodeURIComponent(email)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getWebhookEvents(params?: { limit?: number; event_type?: string; status?: string }): Promise<WebhookEvent[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.event_type) searchParams.set('event_type', params.event_type);
+    if (params?.status) searchParams.set('status', params.status);
+    const url = `${API_BASE_URL}/api/admin/payments/webhook-events${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async refundPayment(sessionId: string, request: RefundRequest): Promise<RefundResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/payments/${encodeURIComponent(sessionId)}/refund`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(request),
+      }
+    );
+    return handleResponse(response);
+  },
 };
 
 // Types for admin completion message API
@@ -2394,11 +2408,8 @@ export interface DeleteOutputsResponse {
 // Rate Limits API Types
 export interface RateLimitStatsResponse {
   jobs_per_day_limit: number;
-  youtube_uploads_per_day_limit: number;
-  beta_ip_per_day_limit: number;
   rate_limiting_enabled: boolean;
   youtube_uploads_today: number;
-  youtube_uploads_remaining: number;
   // YouTube quota (GCP Cloud Monitoring + pending buffer)
   youtube_quota_units_consumed: number;
   youtube_quota_units_remaining: number;
@@ -2505,6 +2516,132 @@ export interface FeedbackResponse {
   status: string;
   message: string;
   credits_granted: number;
+}
+
+// =============================================================================
+// Payment Admin Types
+// =============================================================================
+
+export interface RevenueSummary {
+  total_gross: number;
+  total_fees: number;
+  total_net: number;
+  total_refunds: number;
+  transaction_count: number;
+  average_order_value: number;
+  revenue_by_type: Record<string, number>;
+}
+
+export interface RevenueChartPoint {
+  date: string;
+  gross: number;
+  net: number;
+  fees: number;
+  count: number;
+}
+
+export interface PaymentRecord {
+  session_id: string;
+  payment_intent_id?: string;
+  charge_id?: string;
+  amount_total: number;
+  currency: string;
+  stripe_fee: number;
+  net_amount: number;
+  customer_email: string;
+  customer_name: string;
+  stripe_customer_id?: string;
+  payment_method_type: string;
+  card_brand: string;
+  card_last4: string;
+  order_type: string;
+  package_id?: string;
+  credits_granted: number;
+  product_description: string;
+  artist?: string;
+  title?: string;
+  job_id?: string;
+  status: string;
+  refund_amount: number;
+  refund_id?: string;
+  refunded_at?: string;
+  refund_reason?: string;
+  created_at?: string;
+  processed_at?: string;
+  is_test: boolean;
+  promotion_code?: string;
+  discount_amount: number;
+  receipt_url?: string;
+  stripe_dashboard_url?: string;
+}
+
+export interface PaymentListResponse {
+  payments: PaymentRecord[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface StripeBalance {
+  available: number;
+  pending: number;
+  currency: string;
+}
+
+export interface PayoutRecord {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  arrival_date?: number;
+  created?: number;
+  description?: string;
+  method?: string;
+}
+
+export interface DisputeRecord {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  reason: string;
+  charge_id?: string;
+  created?: number;
+  evidence_due_by?: number;
+  payment_intent_id?: string;
+}
+
+export interface UserPaymentHistory {
+  email: string;
+  payments: PaymentRecord[];
+  total_spent: number;
+  total_refunded: number;
+  net_spent: number;
+  payment_count: number;
+  first_payment_at?: string;
+  last_payment_at?: string;
+}
+
+export interface WebhookEvent {
+  event_id: string;
+  event_type: string;
+  created_at?: string;
+  processed_at?: string;
+  status: string;
+  error_message?: string;
+  session_id?: string;
+  customer_email?: string;
+  summary?: string;
+}
+
+export interface RefundRequest {
+  amount?: number;
+  reason: string;
+}
+
+export interface RefundResponse {
+  success: boolean;
+  message: string;
+  session_id: string;
 }
 
 export { ApiError };

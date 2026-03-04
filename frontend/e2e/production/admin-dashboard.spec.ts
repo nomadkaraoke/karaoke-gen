@@ -120,11 +120,6 @@ test.describe("Admin Dashboard - Production", () => {
     await expect(page).toHaveURL(/\/admin\/jobs/);
     await expect(page.locator("h1")).toContainText("Jobs");
 
-    // Click Beta Program in sidebar
-    await page.getByRole("link", { name: /Beta/i }).first().click();
-    await expect(page).toHaveURL(/\/admin\/beta/);
-    await expect(page.locator("h1")).toContainText("Beta Program");
-
     // Navigate back to dashboard
     await page.getByRole("link", { name: /Dashboard/i }).first().click();
     await expect(page).toHaveURL(/\/admin$/);
@@ -162,18 +157,6 @@ test.describe("Admin Dashboard - Production", () => {
     await expect(page.getByPlaceholder(/Filter by user/i)).toBeVisible();
   });
 
-  test("beta page loads with stats", async ({ page }) => {
-    await page.goto(`${PROD_URL}/admin/beta`);
-
-    // Wait for page to load
-    await expect(page.locator("h1")).toContainText("Beta Program", {
-      timeout: 30000,
-    });
-
-    // Check stats cards
-    await expect(page.getByText("Total Beta Testers")).toBeVisible();
-    await expect(page.getByText("Feedback Submissions")).toBeVisible();
-  });
 });
 
 test.describe("Admin API - Production", () => {
