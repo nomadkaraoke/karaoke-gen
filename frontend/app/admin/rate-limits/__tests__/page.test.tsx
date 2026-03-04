@@ -48,11 +48,8 @@ const mockAdminApi = adminApi as jest.Mocked<typeof adminApi>
 // Mock data
 const mockStats = {
   jobs_per_day_limit: 5,
-  youtube_uploads_per_day_limit: 10,
-  beta_ip_per_day_limit: 1,
   rate_limiting_enabled: true,
   youtube_uploads_today: 3,
-  youtube_uploads_remaining: 7,
   youtube_quota_units_consumed: 900,
   youtube_quota_units_remaining: 8600,
   youtube_quota_daily_limit: 10000,
@@ -62,6 +59,8 @@ const mockStats = {
   youtube_quota_seconds_until_reset: 43200,
   youtube_uploads_queued: 0,
   youtube_uploads_failed: 0,
+  gcp_quota_available: false,
+  quota_drift_alert: false,
   disposable_domains_count: 130,
   blocked_emails_count: 2,
   blocked_ips_count: 1,
@@ -166,8 +165,6 @@ describe("AdminRateLimitsPage", () => {
       // Check that stats are displayed
       expect(screen.getByText("Jobs Per Day")).toBeInTheDocument()
       expect(screen.getByText("5")).toBeInTheDocument()
-      expect(screen.getByText("YouTube Uploads")).toBeInTheDocument()
-      expect(screen.getByText("10")).toBeInTheDocument()
     })
 
     it("displays YouTube API quota section", async () => {

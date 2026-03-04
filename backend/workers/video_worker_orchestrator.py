@@ -612,16 +612,6 @@ class VideoWorkerOrchestrator:
                 except Exception as e:
                     self.job_log.warning(f"Failed to record YouTube quota usage: {e}")
 
-                # Also record in legacy rate limit service for backward compatibility
-                try:
-                    from backend.services.rate_limit_service import get_rate_limit_service
-                    rate_limit_service = get_rate_limit_service()
-                    rate_limit_service.record_youtube_upload(
-                        job_id=self.config.job_id,
-                        user_email=user_email
-                    )
-                except Exception as e:
-                    self.job_log.warning(f"Failed to record YouTube upload for legacy rate limiting: {e}")
             else:
                 self.job_log.warning("YouTube upload did not return a URL")
 

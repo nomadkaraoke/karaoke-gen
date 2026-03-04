@@ -339,12 +339,6 @@ export default function AdminUserDetailPage() {
               </Badge>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Beta Tester</span>
-              <Badge variant={user.is_beta_tester ? "default" : "secondary"}>
-                {user.is_beta_tester ? user.beta_tester_status || "Yes" : "No"}
-              </Badge>
-            </div>
-            <div className="flex justify-between">
               <span className="text-muted-foreground">Created</span>
               <span className="text-sm">{formatDate(user.created_at)}</span>
             </div>

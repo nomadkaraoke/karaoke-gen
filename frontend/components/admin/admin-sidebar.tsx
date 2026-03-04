@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Users,
   Briefcase,
-  TestTube2,
   ArrowLeft,
   Settings,
   Search,
@@ -47,11 +46,6 @@ const navItems = [
     title: "Audio Searches",
     href: "/admin/searches",
     icon: Search,
-  },
-  {
-    title: "Beta Program",
-    href: "/admin/beta",
-    icon: TestTube2,
   },
   {
     title: "Rate Limits",

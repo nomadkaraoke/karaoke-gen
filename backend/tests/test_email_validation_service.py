@@ -209,62 +209,6 @@ class TestBlocklistManagement:
         assert mock_db.collection.return_value.document.return_value.get.call_count == 1
 
 
-class TestBetaEnrollmentValidation:
-    """Test beta enrollment validation."""
-
-    @pytest.fixture
-    def mock_db(self):
-        """Create a mock Firestore client."""
-        mock = MagicMock()
-        mock_doc = Mock()
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = {
-            "disposable_domains": [],
-            "blocked_emails": ["blocked@example.com"],
-            "blocked_ips": [],
-        }
-        mock.collection.return_value.document.return_value.get.return_value = mock_doc
-        return mock
-
-    @pytest.fixture
-    def email_service(self, mock_db):
-        """Create EmailValidationService instance with mocks."""
-        from backend.services.email_validation_service import EmailValidationService
-        EmailValidationService._blocklist_cache = None
-        EmailValidationService._blocklist_cache_time = None
-        service = EmailValidationService(db=mock_db)
-        return service
-
-    def test_validate_legitimate_email(self, email_service):
-        """Test legitimate email passes validation."""
-        is_valid, error = email_service.validate_email_for_beta("user@gmail.com")
-        assert is_valid is True
-        assert error == ""
-
-    def test_validate_disposable_email_rejected(self, email_service):
-        """Test disposable email is rejected."""
-        is_valid, error = email_service.validate_email_for_beta("user@tempmail.com")
-        assert is_valid is False
-        assert "Disposable email" in error
-
-    def test_validate_blocked_email_rejected(self, email_service):
-        """Test blocked email is rejected."""
-        is_valid, error = email_service.validate_email_for_beta("blocked@example.com")
-        assert is_valid is False
-        assert "not allowed" in error
-
-    def test_validate_invalid_format_rejected(self, email_service):
-        """Test invalid email format is rejected."""
-        is_valid, error = email_service.validate_email_for_beta("notanemail")
-        assert is_valid is False
-        assert "Invalid email format" in error
-
-    def test_validate_empty_email_rejected(self, email_service):
-        """Test empty email is rejected."""
-        is_valid, error = email_service.validate_email_for_beta("")
-        assert is_valid is False
-
-
 class TestIPHashing:
     """Test IP address hashing."""
 

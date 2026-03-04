@@ -73,7 +73,6 @@ def investigate_user(
             "total_jobs_completed": user_data.get("total_jobs_completed", 0),
             "is_active": user_data.get("is_active", True),
             "email_verified": user_data.get("email_verified", False),
-            "is_beta_tester": user_data.get("is_beta_tester", False),
             "display_name": user_data.get("display_name"),
         }
         # Credit transactions (last 20)
@@ -199,8 +198,6 @@ def _print_human_readable(results: Dict[str, Any]):
         print(f"  Jobs Completed:  {user['total_jobs_completed']}")
         print(f"  Active:          {user['is_active']}")
         print(f"  Email Verified:  {user['email_verified']}")
-        if user.get('is_beta_tester'):
-            print("  Beta Tester:     Yes")
         if user.get('display_name'):
             print(f"  Display Name:    {user['display_name']}")
     else:

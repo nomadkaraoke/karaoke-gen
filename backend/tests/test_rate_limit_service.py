@@ -1,7 +1,7 @@
 """
 Unit tests for RateLimitService.
 
-Tests rate limiting logic for jobs, YouTube uploads, and beta enrollments.
+Tests rate limiting logic for job creation, user overrides, and stats.
 """
 
 import pytest
@@ -29,8 +29,6 @@ class TestRateLimitService:
         settings = Mock()
         settings.enable_rate_limiting = True
         settings.rate_limit_jobs_per_day = 5
-        settings.rate_limit_youtube_uploads_per_day = 10
-        settings.rate_limit_beta_ip_per_day = 1
         return settings
 
     @pytest.fixture
@@ -130,10 +128,6 @@ class TestRateLimitService:
         mock_override_doc.exists = True
         mock_override_doc.to_dict.return_value = {"bypass_job_limit": True}
 
-        def mock_get(*args, **kwargs):
-            # Return different docs based on collection
-            return mock_override_doc if "overrides" in str(mock_db.collection.call_args) else mock_job_doc
-
         mock_db.collection.return_value.document.return_value.get.side_effect = [mock_override_doc, mock_job_doc]
 
         with patch('backend.services.rate_limit_service.settings', mock_settings):
@@ -173,105 +167,6 @@ class TestRateLimitService:
         assert "Rate limiting disabled" in message
 
     # =========================================================================
-    # YouTube Upload Rate Limiting Tests
-    # =========================================================================
-
-    def test_check_youtube_limit_delegates_to_quota_service(self, rate_limit_service, mock_db, mock_settings):
-        """Test YouTube upload check delegates to YouTubeQuotaService."""
-        mock_quota_service = Mock()
-        mock_quota_service.check_quota_available.return_value = (True, 9500, "9500 quota units remaining")
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings), \
-             patch('backend.services.youtube_quota_service.get_youtube_quota_service', return_value=mock_quota_service):
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
-
-        assert allowed is True
-        assert remaining == 9500
-        mock_quota_service.check_quota_available.assert_called_once()
-
-    def test_check_youtube_limit_quota_exceeded(self, rate_limit_service, mock_db, mock_settings):
-        """Test YouTube upload check when quota is exceeded."""
-        mock_quota_service = Mock()
-        mock_quota_service.check_quota_available.return_value = (False, 0, "YouTube API quota exhausted")
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings), \
-             patch('backend.services.youtube_quota_service.get_youtube_quota_service', return_value=mock_quota_service):
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
-
-        assert allowed is False
-        assert remaining == 0
-        assert "quota" in message.lower()
-
-    def test_check_youtube_limit_fallback_on_quota_service_error(self, rate_limit_service, mock_db, mock_settings):
-        """Test YouTube upload falls back to legacy when quota service unavailable."""
-        mock_doc = Mock()
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = {"count": 3}
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings), \
-             patch('backend.services.youtube_quota_service.get_youtube_quota_service', side_effect=Exception("Service unavailable")):
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
-
-        assert allowed is True
-        assert remaining == 7  # 10 - 3
-
-    def test_check_youtube_limit_fallback_zero_configured(self, rate_limit_service, mock_db, mock_settings):
-        """Test that zero limit means unlimited when falling back to legacy."""
-        mock_settings.rate_limit_youtube_uploads_per_day = 0
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings), \
-             patch('backend.services.youtube_quota_service.get_youtube_quota_service', side_effect=Exception("Service unavailable")):
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
-
-        assert allowed is True
-        assert remaining == -1
-        assert "No YouTube upload limit" in message
-
-    def test_check_youtube_limit_denies_on_runtime_error(self, rate_limit_service, mock_db, mock_settings):
-        """Test YouTube upload denied when quota service check_quota_available raises."""
-        mock_quota_service = Mock()
-        mock_quota_service.check_quota_available.side_effect = Exception("Firestore timeout")
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings), \
-             patch('backend.services.youtube_quota_service.get_youtube_quota_service', return_value=mock_quota_service):
-            allowed, remaining, message = rate_limit_service.check_youtube_upload_limit()
-
-        assert allowed is False
-        assert remaining == 0
-        assert "Quota service error" in message
-
-    # =========================================================================
-    # Beta Enrollment IP Rate Limiting Tests
-    # =========================================================================
-
-    def test_check_beta_ip_limit_first_enrollment(self, rate_limit_service, mock_db, mock_settings):
-        """Test first enrollment from IP is allowed."""
-        mock_doc = Mock()
-        mock_doc.exists = False
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings):
-            allowed, remaining, message = rate_limit_service.check_beta_ip_limit("192.168.1.1")
-
-        assert allowed is True
-        assert remaining == 1
-
-    def test_check_beta_ip_limit_already_enrolled(self, rate_limit_service, mock_db, mock_settings):
-        """Test second enrollment from same IP is blocked."""
-        mock_doc = Mock()
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = {"count": 1}
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings):
-            allowed, remaining, message = rate_limit_service.check_beta_ip_limit("192.168.1.1")
-
-        assert allowed is False
-        assert remaining == 0
-        assert "Too many beta enrollments" in message
-
-    # =========================================================================
     # Recording Tests
     # =========================================================================
 
@@ -291,22 +186,6 @@ class TestRateLimitService:
                 rate_limit_service.record_job_creation("user@example.com", "job123")
 
         # Verify transaction was used
-        mock_db.transaction.assert_called()
-
-    def test_record_youtube_upload(self, rate_limit_service, mock_db, mock_settings):
-        """Test recording a YouTube upload."""
-        mock_transaction = Mock()
-        mock_db.transaction.return_value = mock_transaction
-
-        mock_doc = Mock()
-        mock_doc.exists = False
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
-
-        with patch('backend.services.rate_limit_service.settings', mock_settings):
-            with patch('backend.services.rate_limit_service.firestore') as mock_firestore:
-                mock_firestore.transactional = lambda f: f
-                rate_limit_service.record_youtube_upload("job123", "user@example.com")
-
         mock_db.transaction.assert_called()
 
     def test_record_skipped_when_disabled(self, rate_limit_service, mock_db, mock_settings):
@@ -380,6 +259,29 @@ class TestRateLimitService:
         result = rate_limit_service.remove_user_override("regular@example.com", "admin@example.com")
 
         assert result is False
+
+    # =========================================================================
+    # Stats Tests
+    # =========================================================================
+
+    def test_get_rate_limit_stats(self, rate_limit_service, mock_db, mock_settings):
+        """Test getting rate limit statistics."""
+        # Mock Firestore stream returning one user's job doc
+        mock_doc = Mock()
+        mock_doc.to_dict.return_value = {
+            "user_email": "user@example.com",
+            "count": 3,
+        }
+        mock_db.collection.return_value.where.return_value.stream.return_value = [mock_doc]
+
+        with patch('backend.services.rate_limit_service.settings', mock_settings):
+            stats = rate_limit_service.get_rate_limit_stats()
+
+        assert stats["rate_limiting_enabled"] is True
+        assert stats["job_limit_per_user"] == 5
+        assert stats["total_jobs_today"] == 3
+        assert stats["users_with_jobs_today"] == 1
+        assert "seconds_until_reset" in stats
 
 
 class TestRateLimitExceededError:

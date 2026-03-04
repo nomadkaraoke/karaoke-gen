@@ -169,6 +169,7 @@ LyricsTranscriber                 LyricsTranscriber
 | SendGrid | Email notifications | Optional |
 | Cloud Tasks | Delayed task scheduling (idle reminders, YouTube queue) | Optional |
 | Cloud Scheduler | Hourly YouTube upload queue processing | Optional |
+| Cloud Monitoring | Cross-reference YouTube API quota consumption from GCP metrics | Optional |
 | karaoke-decide | Song catalog (MusicBrainz + Spotify) for autocomplete | Optional |
 | KaraokeNerds | Community karaoke version detection | Optional |
 
@@ -186,7 +187,6 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 | `sessions` | Magic link auth sessions | user_email, token, expires_at |
 | `magic_links` | Passwordless auth tokens | email, token, expires_at, used |
 | `user_feedback` | User feedback for credits (all users) | user_email, ratings, comments, created_at |
-| `beta_feedback` | Beta program feedback (deprecated) | user_email, ratings, comments |
 | `youtube_quota` | Daily YouTube API quota tracking | date_pt, units_consumed, units_limit, operations[] |
 | `youtube_upload_queue` | Deferred YouTube uploads | job_id, status, user_email, queued_at, youtube_url |
 
@@ -238,7 +238,8 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
 | `audio_transcoding_service.py` | Transcode FLAC → OGG Opus for review UI playback |
-| `youtube_quota_service.py` | Track YouTube API quota units (Firestore, PT midnight reset) |
+| `youtube_quota_service.py` | Track YouTube API quota units (Firestore, PT midnight reset) + GCP Cloud Monitoring cross-reference |
+| `email_validation_service.py` | Email validation, disposable domain detection, blocklist management |
 | `youtube_upload_queue_service.py` | Deferred YouTube upload queue management |
 | `catalog_proxy_service.py` | Proxy to karaoke-decide catalog API (artist/track search) |
 | `karaokenerds_service.py` | Scrape karaokenerds.com for community karaoke versions |
@@ -466,7 +467,7 @@ if tenant_config and not tenant_config.features.audio_search:
 
 ### Tenant Portal Frontend (B2B Deployment)
 
-B2B tenants are served from a **separate Cloudflare Pages project** (`karaoke-gen-tenant`) built with `NEXT_PUBLIC_TENANT_PORTAL=true`. This build flag enables tree-shaking of consumer-only content (landing page, pricing, beta enrollment) at build time, keeping the bundle lean for white-label deployments.
+B2B tenants are served from a **separate Cloudflare Pages project** (`karaoke-gen-tenant`) built with `NEXT_PUBLIC_TENANT_PORTAL=true`. This build flag enables tree-shaking of consumer-only content (landing page, pricing) at build time, keeping the bundle lean for white-label deployments.
 
 **Runtime tenant injection**: A Cloudflare Pages edge function intercepts HTML responses and injects tenant-specific configuration before the page reaches the browser:
 

@@ -55,7 +55,6 @@ class AdminStatsOverview(BaseModel):
     jobs_last_30d: int
     jobs_by_status: JobsByStatusResponse
     total_credits_issued_30d: int
-    total_beta_testers: int
 
 
 class FileInfo(BaseModel):
@@ -203,8 +202,6 @@ async def get_admin_stats_overview(
             1 for u in all_users
             if u.get("last_login_at") and _normalize_datetime(u["last_login_at"]) >= thirty_days_ago
         )
-        total_beta_testers = sum(1 for u in all_users if u.get("is_beta_tester"))
-
         # Calculate credits from filtered users
         total_credits_issued_30d = 0
         for user_data in all_users:
@@ -270,10 +267,6 @@ async def get_admin_stats_overview(
         active_users_30d = get_count(
             users_collection.where(filter=FieldFilter("last_login_at", ">=", thirty_days_ago))
         )
-        total_beta_testers = get_count(
-            users_collection.where(filter=FieldFilter("is_beta_tester", "==", True))
-        )
-
         # Job statistics
         total_jobs = get_count(jobs_collection)
         jobs_last_7d = get_count(
@@ -341,7 +334,6 @@ async def get_admin_stats_overview(
         jobs_last_30d=jobs_last_30d,
         jobs_by_status=jobs_by_status,
         total_credits_issued_30d=total_credits_issued_30d,
-        total_beta_testers=total_beta_testers,
     )
 
 

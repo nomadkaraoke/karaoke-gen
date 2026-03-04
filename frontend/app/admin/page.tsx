@@ -10,7 +10,6 @@ import {
   Users,
   Briefcase,
   CreditCard,
-  TestTube2,
   Clock,
   CheckCircle,
   XCircle,
@@ -96,13 +95,6 @@ export default function AdminDashboardPage() {
           value={stats?.total_credits_issued_30d ?? 0}
           description="Credits added to accounts"
           icon={CreditCard}
-          loading={loading}
-        />
-        <StatsCard
-          title="Beta Testers"
-          value={stats?.total_beta_testers ?? 0}
-          description="Active beta participants"
-          icon={TestTube2}
           loading={loading}
         />
       </StatsGrid>

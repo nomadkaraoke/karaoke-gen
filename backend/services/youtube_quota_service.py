@@ -12,7 +12,8 @@ that reflects actual API quota costs:
 - videos.delete: 50 units
 """
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from typing import Tuple, Optional, Dict, Any
 from zoneinfo import ZoneInfo
 
@@ -22,6 +23,11 @@ from backend.config import settings
 
 
 logger = logging.getLogger(__name__)
+
+# GCP quota cache (module-level for singleton behavior)
+_gcp_quota_cache: Optional[Dict[str, Any]] = None
+_gcp_quota_cache_time: float = 0
+_GCP_CACHE_TTL_SECONDS = 300  # 5 minutes
 
 YOUTUBE_QUOTA_COLLECTION = "youtube_quota"
 PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
@@ -190,11 +196,16 @@ class YouTubeQuotaService:
                 "estimated_uploads_remaining": effective_limit // settings.youtube_quota_upload_cost if settings.youtube_quota_upload_cost > 0 else -1,
                 "seconds_until_reset": _seconds_until_midnight_pt(),
                 "operations_count": 0,
+                "upload_count": 0,
             }
 
         data = doc.to_dict()
         consumed = data.get("units_consumed", 0)
         remaining = max(0, effective_limit - consumed)
+
+        # Count videos.insert operations specifically (actual uploads)
+        operations = data.get("operations", [])
+        upload_count = sum(1 for op in operations if op.get("operation") == "videos.insert")
 
         return {
             "date_pt": date_str,
@@ -205,8 +216,109 @@ class YouTubeQuotaService:
             "upload_cost": settings.youtube_quota_upload_cost,
             "estimated_uploads_remaining": remaining // settings.youtube_quota_upload_cost if settings.youtube_quota_upload_cost > 0 else -1,
             "seconds_until_reset": _seconds_until_midnight_pt(),
-            "operations_count": len(data.get("operations", [])),
+            "operations_count": len(operations),
+            "upload_count": upload_count,
         }
+
+    def get_gcp_quota_usage(self) -> Dict[str, Any]:
+        """
+        Query GCP Cloud Monitoring for actual YouTube API quota usage.
+
+        Uses the metric serviceruntime.googleapis.com/quota/rate/net_usage
+        for youtube.googleapis.com. Results are cached for 5 minutes.
+
+        Important: GCP metrics have ~1-2 hour delay, so they cannot replace
+        Firestore tracking for real-time gating. They serve as source-of-truth
+        for dashboard display and drift detection.
+
+        Returns:
+            Dict with gcp_units_consumed, gcp_last_datapoint_time,
+            gcp_data_delay_minutes, available flag, and drift info.
+        """
+        global _gcp_quota_cache, _gcp_quota_cache_time
+
+        # Check cache
+        now = time.time()
+        if _gcp_quota_cache is not None and (now - _gcp_quota_cache_time) < _GCP_CACHE_TTL_SECONDS:
+            return _gcp_quota_cache
+
+        try:
+            from google.cloud import monitoring_v3
+
+            client = monitoring_v3.MetricServiceClient()
+            project_name = f"projects/{settings.google_cloud_project}"
+
+            # Query for today's YouTube quota usage (PT date range)
+            now_dt = datetime.now(PACIFIC_TZ)
+            start_of_day = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+            interval = monitoring_v3.TimeInterval(
+                start_time=start_of_day,
+                end_time=now_dt,
+            )
+
+            # Query the quota usage metric for YouTube Data API
+            results = client.list_time_series(
+                request={
+                    "name": project_name,
+                    "filter": (
+                        'metric.type = "serviceruntime.googleapis.com/quota/rate/net_usage" '
+                        'AND resource.labels.service = "youtube.googleapis.com"'
+                    ),
+                    "interval": interval,
+                    "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
+                    "aggregation": monitoring_v3.Aggregation(
+                        alignment_period={"seconds": 86400},  # Aggregate full day
+                        per_series_aligner=monitoring_v3.Aggregation.Aligner.ALIGN_SUM,
+                    ),
+                }
+            )
+
+            total_units = 0
+            last_datapoint_time = None
+
+            for ts in results:
+                for point in ts.points:
+                    total_units += int(point.value.int64_value)
+                    point_time = point.interval.end_time
+                    if last_datapoint_time is None or point_time > last_datapoint_time:
+                        last_datapoint_time = point_time
+
+            # Calculate data delay
+            delay_minutes = None
+            last_datapoint_str = None
+            if last_datapoint_time:
+                delay = now_dt - last_datapoint_time.astimezone(PACIFIC_TZ)
+                delay_minutes = int(delay.total_seconds() / 60)
+                last_datapoint_str = last_datapoint_time.isoformat()
+
+            # Calculate drift against Firestore tracking
+            firestore_consumed = self._get_units_consumed_today()
+            drift = abs(total_units - firestore_consumed) if total_units > 0 else None
+            drift_alert = False
+            if drift is not None and firestore_consumed > 0:
+                drift_pct = drift / firestore_consumed
+                drift_alert = drift_pct > 0.10  # Alert if >10% drift
+
+            result = {
+                "available": True,
+                "gcp_units_consumed": total_units,
+                "gcp_last_datapoint_time": last_datapoint_str,
+                "gcp_data_delay_minutes": delay_minutes,
+                "drift": drift,
+                "drift_alert": drift_alert,
+            }
+
+            _gcp_quota_cache = result
+            _gcp_quota_cache_time = now
+            return result
+
+        except ImportError:
+            logger.debug("google-cloud-monitoring not installed, GCP quota unavailable")
+            return {"available": False}
+        except Exception as e:
+            logger.warning(f"GCP quota query failed: {e}")
+            return {"available": False}
 
     def _get_units_consumed_today(self) -> int:
         """Get total quota units consumed today (Pacific Time)."""

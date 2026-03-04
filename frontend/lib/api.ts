@@ -1102,32 +1102,6 @@ export const api = {
   },
 
   // ==========================================================================
-  // Beta Tester API endpoints
-  // ==========================================================================
-
-  /**
-   * Enroll as a beta tester to receive free credits
-   */
-  async enrollBetaTester(
-    email: string,
-    promiseText: string,
-    acceptCorrectionsWork: boolean
-  ): Promise<BetaEnrollResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/users/beta/enroll`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: email.toLowerCase(),
-        promise_text: promiseText,
-        accept_corrections_work: acceptCorrectionsWork,
-      }),
-    });
-    return handleResponse(response);
-  },
-
-  // ==========================================================================
   // Push Notifications API endpoints
   // ==========================================================================
 
@@ -1229,13 +1203,6 @@ export interface CreditPackage {
   description: string;
 }
 
-export interface BetaEnrollResponse {
-  status: string;
-  message: string;
-  credits_granted: number;
-  session_token: string | null;
-}
-
 // Types for push notifications
 export interface PushSubscriptionInfo {
   endpoint: string;
@@ -1270,7 +1237,6 @@ export interface AdminStatsOverview {
     cancelled: number;
   };
   total_credits_issued_30d: number;
-  total_beta_testers: number;
 }
 
 export interface AdminUser {
@@ -1302,8 +1268,6 @@ export interface AdminUserDetail {
   last_login_at?: string;
   total_jobs_created: number;
   total_jobs_completed: number;
-  is_beta_tester: boolean;
-  beta_tester_status?: string;
   credit_transactions: Array<{
     id: string;
     amount: number;
@@ -1320,36 +1284,6 @@ export interface AdminUserDetail {
     created_at?: string;
   }>;
   active_sessions_count: number;
-}
-
-export interface AdminBetaStats {
-  total_beta_testers: number;
-  active_testers: number;
-  pending_feedback: number;
-  completed_feedback: number;
-  total_feedback_submissions: number;
-  average_ratings: {
-    overall: number;
-    ease_of_use: number;
-    lyrics_accuracy: number;
-    correction_experience: number;
-  };
-}
-
-export interface AdminBetaFeedback {
-  id: string;
-  user_email: string;
-  job_id?: string;
-  overall_rating: number;
-  ease_of_use_rating?: number;
-  lyrics_accuracy_rating?: number;
-  correction_experience_rating?: number;
-  what_went_well?: string;
-  what_could_improve?: string;
-  additional_comments?: string;
-  would_recommend?: boolean;
-  would_use_again?: boolean;
-  created_at: string;
 }
 
 export interface AdminJobListParams {
@@ -1558,31 +1492,6 @@ export const adminApi = {
       headers: getAuthHeaders()
     });
     return handleResponse<Job[]>(response);
-  },
-
-  /**
-   * Get beta program statistics
-   */
-  async getBetaStats(params?: { exclude_test?: boolean }): Promise<AdminBetaStats> {
-    const searchParams = new URLSearchParams();
-    if (params?.exclude_test !== undefined) {
-      searchParams.set('exclude_test', String(params.exclude_test));
-    }
-    const url = `${API_BASE_URL}/api/users/admin/beta/stats${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
-  },
-
-  /**
-   * Get beta program feedback list
-   */
-  async getBetaFeedback(limit: number = 50): Promise<{ feedback: AdminBetaFeedback[]; total: number }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/beta/feedback?limit=${limit}`, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
   },
 
   /**
@@ -2394,11 +2303,8 @@ export interface DeleteOutputsResponse {
 // Rate Limits API Types
 export interface RateLimitStatsResponse {
   jobs_per_day_limit: number;
-  youtube_uploads_per_day_limit: number;
-  beta_ip_per_day_limit: number;
   rate_limiting_enabled: boolean;
   youtube_uploads_today: number;
-  youtube_uploads_remaining: number;
   // YouTube quota (unit-based tracking)
   youtube_quota_units_consumed: number;
   youtube_quota_units_remaining: number;
@@ -2410,6 +2316,13 @@ export interface RateLimitStatsResponse {
   // YouTube upload queue
   youtube_uploads_queued: number;
   youtube_uploads_failed: number;
+  // GCP quota monitoring (Cloud Monitoring cross-reference)
+  gcp_quota_available: boolean;
+  gcp_quota_units_consumed?: number;
+  gcp_quota_last_datapoint?: string;
+  gcp_quota_data_delay_minutes?: number;
+  quota_drift?: number;
+  quota_drift_alert: boolean;
   disposable_domains_count: number;
   blocked_emails_count: number;
   blocked_ips_count: number;

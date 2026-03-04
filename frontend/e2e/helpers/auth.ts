@@ -87,7 +87,6 @@ export async function getUserInfo(
 ): Promise<{
   email: string;
   credits: number;
-  isBeta: boolean;
 } | null> {
   const response = await request.get(`${apiUrl}/api/users/me`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -99,7 +98,6 @@ export async function getUserInfo(
     return {
       email: data.email,
       credits: data.credits,
-      isBeta: data.is_beta || false,
     };
   }
 

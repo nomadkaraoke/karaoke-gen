@@ -324,24 +324,12 @@ export default function AdminRateLimitsPage() {
               <CardDescription>Current rate limiting settings</CardDescription>
             </CardHeader>
             <CardContent>
-              <StatsGrid columns={4}>
+              <StatsGrid columns={2}>
                 <StatsCard
                   title="Jobs Per Day"
                   value={stats?.jobs_per_day_limit ?? 0}
                   description="Per user limit"
                   icon={Briefcase}
-                />
-                <StatsCard
-                  title="YouTube Uploads"
-                  value={stats?.youtube_uploads_per_day_limit ?? 0}
-                  description="System-wide limit"
-                  icon={Youtube}
-                />
-                <StatsCard
-                  title="Beta IP Limit"
-                  value={stats?.beta_ip_per_day_limit ?? 0}
-                  description="Enrollments per IP/day"
-                  icon={Globe}
                 />
                 <StatsCard
                   title="Status"
@@ -411,6 +399,45 @@ export default function AdminRateLimitsPage() {
                   icon={UserCheck}
                 />
               </StatsGrid>
+
+              {/* GCP Quota Cross-Reference */}
+              <div className="border rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Server className="w-4 h-4" />
+                  GCP Cloud Monitoring
+                </div>
+                {stats?.gcp_quota_available ? (
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">GCP Reported:</span>
+                      <span className="font-mono">{stats.gcp_quota_units_consumed?.toLocaleString() ?? 0} units</span>
+                      {stats.gcp_quota_data_delay_minutes != null && (
+                        <span className="text-xs text-muted-foreground">
+                          ({stats.gcp_quota_data_delay_minutes}m delay)
+                        </span>
+                      )}
+                    </div>
+                    {stats.quota_drift != null && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Drift:</span>
+                        <span className={`font-mono ${stats.quota_drift_alert ? "text-red-600 font-semibold" : ""}`}>
+                          {stats.quota_drift} units
+                        </span>
+                        {stats.quota_drift_alert && (
+                          <Badge variant="destructive" className="text-xs">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            &gt;10% drift
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    GCP quota data unavailable (metrics have ~1-2h delay)
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -572,7 +599,7 @@ export default function AdminRateLimitsPage() {
                 Disposable Email Domains
               </CardTitle>
               <CardDescription>
-                Domains blocked from beta enrollment ({filteredDomains.length} of {blocklists?.disposable_domains.length || 0})
+                Blocked disposable email domains ({filteredDomains.length} of {blocklists?.disposable_domains.length || 0})
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -32,13 +32,10 @@ class RateLimitStatsResponse(BaseModel):
     """Current rate limit statistics."""
     # Configuration
     jobs_per_day_limit: int
-    youtube_uploads_per_day_limit: int
-    beta_ip_per_day_limit: int
     rate_limiting_enabled: bool
 
-    # Current usage (legacy count-based)
+    # YouTube uploads today (from quota service, PT-based)
     youtube_uploads_today: int
-    youtube_uploads_remaining: int
 
     # YouTube quota (unit-based tracking)
     youtube_quota_units_consumed: int
@@ -60,6 +57,14 @@ class RateLimitStatsResponse(BaseModel):
 
     # User override stats
     total_overrides: int
+
+    # GCP quota monitoring (Phase 3)
+    gcp_quota_available: bool = False
+    gcp_quota_units_consumed: Optional[int] = None
+    gcp_quota_last_datapoint: Optional[str] = None
+    gcp_quota_data_delay_minutes: Optional[int] = None
+    quota_drift: Optional[int] = None
+    quota_drift_alert: bool = False
 
 
 class YouTubeQueueEntry(BaseModel):
@@ -166,12 +171,7 @@ async def get_rate_limit_stats(
     rate_limit_service = get_rate_limit_service()
     email_validation = get_email_validation_service()
 
-    # Get YouTube uploads today (legacy count)
-    youtube_today = rate_limit_service.get_youtube_uploads_today()
-    youtube_limit = settings.rate_limit_youtube_uploads_per_day
-    youtube_remaining = max(0, youtube_limit - youtube_today) if youtube_limit > 0 else -1
-
-    # Get YouTube quota stats (unit-based)
+    # Get YouTube quota stats (unit-based, PT timezone)
     from backend.services.youtube_quota_service import get_youtube_quota_service
     quota_service = get_youtube_quota_service()
     quota_stats = quota_service.get_quota_stats()
@@ -187,13 +187,26 @@ async def get_rate_limit_stats(
     # Get override count
     overrides = rate_limit_service.get_all_overrides()
 
+    # Get GCP quota data if available
+    gcp_data = {}
+    try:
+        gcp_result = quota_service.get_gcp_quota_usage()
+        if gcp_result.get("available"):
+            gcp_data = {
+                "gcp_quota_available": True,
+                "gcp_quota_units_consumed": gcp_result.get("gcp_units_consumed"),
+                "gcp_quota_last_datapoint": gcp_result.get("gcp_last_datapoint_time"),
+                "gcp_quota_data_delay_minutes": gcp_result.get("gcp_data_delay_minutes"),
+                "quota_drift": gcp_result.get("drift"),
+                "quota_drift_alert": gcp_result.get("drift_alert", False),
+            }
+    except Exception:
+        pass  # GCP quota is optional, graceful fallback
+
     return RateLimitStatsResponse(
         jobs_per_day_limit=settings.rate_limit_jobs_per_day,
-        youtube_uploads_per_day_limit=settings.rate_limit_youtube_uploads_per_day,
-        beta_ip_per_day_limit=settings.rate_limit_beta_ip_per_day,
         rate_limiting_enabled=settings.enable_rate_limiting,
-        youtube_uploads_today=youtube_today,
-        youtube_uploads_remaining=youtube_remaining,
+        youtube_uploads_today=quota_stats["upload_count"],
         youtube_quota_units_consumed=quota_stats["units_consumed"],
         youtube_quota_units_remaining=quota_stats["units_remaining"],
         youtube_quota_daily_limit=quota_stats["units_limit"],
@@ -207,6 +220,7 @@ async def get_rate_limit_stats(
         blocked_emails_count=blocklist_stats["blocked_emails_count"],
         blocked_ips_count=blocklist_stats["blocked_ips_count"],
         total_overrides=len(overrides),
+        **gcp_data,
     )
 
 
