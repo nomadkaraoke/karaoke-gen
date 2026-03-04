@@ -22,7 +22,7 @@ class TestProcessYouTubeUploadQueue:
     def mock_quota_service(self):
         service = Mock()
         service.check_quota_available.return_value = (True, 9000, "9000 units remaining")
-        service.record_operation = Mock()
+        service.record_upload = Mock()
         return service
 
     @pytest.fixture

@@ -40,7 +40,7 @@ class RateLimitStatsResponse(BaseModel):
     youtube_uploads_today: int
     youtube_uploads_remaining: int
 
-    # YouTube quota (unit-based tracking)
+    # YouTube quota (GCP Cloud Monitoring + pending buffer)
     youtube_quota_units_consumed: int
     youtube_quota_units_remaining: int
     youtube_quota_daily_limit: int
@@ -48,6 +48,8 @@ class RateLimitStatsResponse(BaseModel):
     youtube_quota_upload_cost: int
     youtube_quota_estimated_uploads_remaining: int
     youtube_quota_seconds_until_reset: int
+    youtube_quota_gcp_usage: int
+    youtube_quota_pending_units: int
 
     # YouTube upload queue
     youtube_uploads_queued: int
@@ -201,6 +203,8 @@ async def get_rate_limit_stats(
         youtube_quota_upload_cost=quota_stats["upload_cost"],
         youtube_quota_estimated_uploads_remaining=quota_stats["estimated_uploads_remaining"],
         youtube_quota_seconds_until_reset=quota_stats["seconds_until_reset"],
+        youtube_quota_gcp_usage=quota_stats["gcp_usage"],
+        youtube_quota_pending_units=quota_stats["pending_units"],
         youtube_uploads_queued=queue_stats["queued"],
         youtube_uploads_failed=queue_stats["failed"],
         disposable_domains_count=blocklist_stats["disposable_domains_count"],

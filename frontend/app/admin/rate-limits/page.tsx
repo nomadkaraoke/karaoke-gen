@@ -65,7 +65,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -382,6 +381,9 @@ export default function AdminRateLimitsPage() {
                   }
                   className="h-3"
                 />
+                <div className="text-xs text-muted-foreground">
+                  GCP: {stats?.youtube_quota_gcp_usage?.toLocaleString() ?? 0} + Pending: {stats?.youtube_quota_pending_units?.toLocaleString() ?? 0}
+                </div>
               </div>
               <StatsGrid columns={4}>
                 <StatsCard

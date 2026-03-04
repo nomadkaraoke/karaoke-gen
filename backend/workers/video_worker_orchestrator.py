@@ -601,14 +601,10 @@ class VideoWorkerOrchestrator:
                 self.result.youtube_url = video_url
                 self.job_log.info(f"Uploaded to YouTube: {video_url}")
 
-                # Record quota consumption for all operations in the upload flow
+                # Record upload in pending buffer (bridges ~7min GCP monitoring delay)
                 try:
                     quota_service = get_youtube_quota_service()
-                    # search.list (duplicate check) + videos.insert + thumbnails.set
-                    quota_service.record_operation(self.config.job_id, user_email, "search.list")
-                    quota_service.record_operation(self.config.job_id, user_email, "videos.insert")
-                    if self.config.title_jpg_path and os.path.isfile(self.config.title_jpg_path):
-                        quota_service.record_operation(self.config.job_id, user_email, "thumbnails.set")
+                    quota_service.record_upload(self.config.job_id)
                 except Exception as e:
                     self.job_log.warning(f"Failed to record YouTube quota usage: {e}")
 

@@ -185,12 +185,8 @@ async def _process_single_upload(
         )
 
         if video_url:
-            # Record quota consumption
-            user_email = entry.get("user_email", "unknown")
-            quota_service.record_operation(job_id, user_email, "search.list")
-            quota_service.record_operation(job_id, user_email, "videos.insert")
-            if thumbnail_path:
-                quota_service.record_operation(job_id, user_email, "thumbnails.set")
+            # Record upload in pending buffer (bridges ~7min GCP monitoring delay)
+            quota_service.record_upload(job_id)
 
             logger.info(f"YouTube queue processor: uploaded job {job_id} -> {video_url}")
             return video_url

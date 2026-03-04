@@ -221,7 +221,7 @@ class RateLimitService:
         """
         Record a YouTube upload for rate limiting.
 
-        DEPRECATED: Use YouTubeQuotaService.record_operation() instead.
+        DEPRECATED: Use YouTubeQuotaService.record_upload() instead.
         This method still records to the legacy collection for backward compatibility.
         """
         if not settings.enable_rate_limiting:

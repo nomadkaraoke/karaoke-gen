@@ -2399,7 +2399,7 @@ export interface RateLimitStatsResponse {
   rate_limiting_enabled: boolean;
   youtube_uploads_today: number;
   youtube_uploads_remaining: number;
-  // YouTube quota (unit-based tracking)
+  // YouTube quota (GCP Cloud Monitoring + pending buffer)
   youtube_quota_units_consumed: number;
   youtube_quota_units_remaining: number;
   youtube_quota_daily_limit: number;
@@ -2407,6 +2407,8 @@ export interface RateLimitStatsResponse {
   youtube_quota_upload_cost: number;
   youtube_quota_estimated_uploads_remaining: number;
   youtube_quota_seconds_until_reset: number;
+  youtube_quota_gcp_usage: number;
+  youtube_quota_pending_units: number;
   // YouTube upload queue
   youtube_uploads_queued: number;
   youtube_uploads_failed: number;

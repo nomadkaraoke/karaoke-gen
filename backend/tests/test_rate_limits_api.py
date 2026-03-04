@@ -83,12 +83,15 @@ class TestGetRateLimitStats:
             mock_quota = Mock()
             mock_quota.get_quota_stats.return_value = {
                 "units_consumed": 900,
+                "gcp_usage": 600,
+                "pending_units": 300,
                 "units_remaining": 8600,
                 "units_limit": 10000,
                 "effective_limit": 9500,
                 "upload_cost": 300,
                 "estimated_uploads_remaining": 28,
                 "seconds_until_reset": 43200,
+                "upload_count": 1,
             }
             mock_get_qs.return_value = mock_quota
 
@@ -116,10 +119,12 @@ class TestGetRateLimitStats:
             assert data["youtube_uploads_remaining"] == 7
             assert data["disposable_domains_count"] == 100
             assert data["total_overrides"] == 1
-            # New quota fields
+            # Quota fields
             assert data["youtube_quota_units_consumed"] == 900
             assert data["youtube_quota_units_remaining"] == 8600
             assert data["youtube_quota_daily_limit"] == 10000
+            assert data["youtube_quota_gcp_usage"] == 600
+            assert data["youtube_quota_pending_units"] == 300
 
 
 class TestGetUserRateLimitStatus:
