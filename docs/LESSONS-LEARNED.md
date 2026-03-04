@@ -671,6 +671,12 @@ Use `langchain-google-genai` (REST) instead of `langchain-google-vertexai` (gRPC
 ### Pulumi CI: Skip Preview
 Use `pulumi up --skip-preview --yes` when CI service account can't run preview. Preview requires broad read permissions.
 
+### Pulumi: Always Apply Locally Before Merging PRs
+**Never rely solely on CI for Pulumi deploys.** Run `pulumi up` locally first, then merge the PR (CI re-runs as a no-op). This prevents partial state corruption when CI runners are preempted or fail mid-apply. Recovering from a partially-applied Pulumi state requires `pulumi cancel` → `pulumi refresh` → `pulumi import` → `pulumi up`, which is far more painful than just applying locally first.
+
+### Spot VMs and Long-Running CI Jobs Don't Mix
+Spot/preemptible VMs can be terminated at any time. Docker builds (10+ min) and Pulumi deploys are especially vulnerable — the PR #464 Pulumi deploy was itself preempted mid-apply, leaving state partially applied (3 runners deleted but not recreated). Fix: use a dedicated on-demand runner (`github-build-runner`) for `deploy-backend` jobs via the `docker-build` label. Recovery from interrupted Pulumi: `pulumi cancel` → `pulumi refresh` → `pulumi up` (may need `pulumi import` for resources created but not yet in state).
+
 ### Docker Disk Management
 Self-hosted runners need aggressive disk cleanup. Use threshold-based (70%) not age-based cleanup.
 
