@@ -206,7 +206,9 @@ test.describe('Production E2E - Full User Journey', () => {
         await page.getByRole('button', { name: /sign up free/i }).click();
 
         // Wait for the AuthDialog email input
-        const authEmailInput = page.getByPlaceholder('you@example.com');
+        const authDialog = page.getByRole('dialog');
+        await expect(authDialog).toBeVisible({ timeout: TIMEOUTS.expect });
+        const authEmailInput = authDialog.getByPlaceholder('you@example.com');
         await expect(authEmailInput).toBeVisible({ timeout: TIMEOUTS.expect });
 
         // Fill email and request magic link

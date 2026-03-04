@@ -287,7 +287,9 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await signUpButton.click();
 
         // Wait for the AuthDialog to appear with email input
-        const authEmailInput = page.getByPlaceholder('you@example.com');
+        const authDialog = page.getByRole('dialog');
+        await expect(authDialog).toBeVisible({ timeout: TIMEOUTS.action });
+        const authEmailInput = authDialog.getByPlaceholder('you@example.com');
         await expect(authEmailInput).toBeVisible({ timeout: TIMEOUTS.action });
         console.log('  Auth dialog visible');
 
