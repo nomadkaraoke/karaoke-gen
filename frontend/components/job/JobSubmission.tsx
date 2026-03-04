@@ -13,14 +13,16 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload, Youtube, Music, Loader2, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
+import { useToast } from "@/hooks/use-toast"
 
 interface JobSubmissionProps {
   onJobCreated: () => void
 }
 
 export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
-  const { user } = useAuth()
+  const { user, fetchUser } = useAuth()
   const { features, isDefault, tenant } = useTenant()
+  const { toast } = useToast()
   const isAdmin = user?.role === "admin"
 
   // Determine which tabs are available based on tenant features
@@ -77,6 +79,15 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
 
   // Credit enforcement
   const noCredits = !isAdmin && user?.credits === 0
+
+  async function showCreditDeductedToast() {
+    await fetchUser()
+    const remaining = useAuth.getState().user?.credits ?? 0
+    toast({
+      title: "Credit used",
+      description: `1 credit deducted. ${remaining} remaining.`,
+    })
+  }
 
   // --- Autocomplete helpers ---
 
@@ -171,6 +182,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       setUploadArtist("")
       setUploadTitle("")
       onJobCreated()
+      showCreditDeductedToast()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setIsCreditError(true)
@@ -213,6 +225,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       setYoutubeArtist("")
       setYoutubeTitle("")
       onJobCreated()
+      showCreditDeductedToast()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setIsCreditError(true)
@@ -250,6 +263,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
       setDisplayArtist("")
       setDisplayTitle("")
       onJobCreated()
+      showCreditDeductedToast()
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setIsCreditError(true)

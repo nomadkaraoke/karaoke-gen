@@ -49,7 +49,7 @@ from backend.version import VERSION
 from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.middleware.tenant import get_tenant_config_from_request
-from backend.exceptions import InsufficientCreditsError, RateLimitExceededError
+from backend.exceptions import InsufficientCreditsError
 from backend.services.firestore_service import FirestoreService
 from pathlib import Path
 
@@ -928,7 +928,7 @@ async def search_audio(
     except HTTPException:
         raise
     except Exception as e:
-        if isinstance(e, (InsufficientCreditsError, RateLimitExceededError)):
+        if isinstance(e, InsufficientCreditsError):
             raise
         logger.error(f"Error in audio search: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -1060,7 +1060,7 @@ async def search_audio_standalone(
 
     except HTTPException:
         raise
-    except (InsufficientCreditsError, RateLimitExceededError):
+    except InsufficientCreditsError:
         raise
     except Exception as e:
         logger.error(f"Error in standalone audio search: {e}", exc_info=True)

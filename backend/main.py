@@ -165,27 +165,10 @@ app.include_router(catalog.router, prefix="/api")  # Catalog proxy for song/arti
 app.include_router(tenant.router)  # Tenant/white-label configuration (no /api prefix, router has it)
 
 
-# Exception handler for rate limiting
+# Exception handlers
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from backend.exceptions import RateLimitExceededError, InsufficientCreditsError
-
-
-@app.exception_handler(RateLimitExceededError)
-async def rate_limit_exception_handler(request: Request, exc: RateLimitExceededError):
-    """Handle rate limit exceeded errors with 429 status."""
-    return JSONResponse(
-        status_code=429,
-        content={
-            "detail": exc.message,
-            "limit_type": exc.limit_type,
-            "current_count": exc.current_count,
-            "limit_value": exc.limit_value,
-        },
-        headers={
-            "Retry-After": str(exc.remaining_seconds),
-        } if exc.remaining_seconds > 0 else None,
-    )
+from backend.exceptions import InsufficientCreditsError
 
 
 @app.exception_handler(InsufficientCreditsError)

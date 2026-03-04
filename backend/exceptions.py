@@ -2,38 +2,8 @@
 Custom exceptions for the karaoke generation backend.
 
 These exceptions are used for structured error handling across the application,
-particularly for rate limiting and validation errors.
+particularly for validation errors and credit checks.
 """
-
-
-class RateLimitExceededError(Exception):
-    """
-    Raised when a rate limit is exceeded.
-
-    Includes information about when the limit will reset for client retry logic.
-
-    Attributes:
-        message: Human-readable error message
-        limit_type: Type of limit exceeded (e.g., "jobs_per_day", "youtube_uploads")
-        remaining_seconds: Seconds until the limit resets (for Retry-After header)
-        current_count: Current usage count
-        limit_value: The limit that was exceeded
-    """
-
-    def __init__(
-        self,
-        message: str,
-        limit_type: str = "unknown",
-        remaining_seconds: int = 0,
-        current_count: int = 0,
-        limit_value: int = 0
-    ):
-        self.message = message
-        self.limit_type = limit_type
-        self.remaining_seconds = remaining_seconds
-        self.current_count = current_count
-        self.limit_value = limit_value
-        super().__init__(message)
 
 
 class EmailValidationError(Exception):

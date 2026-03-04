@@ -123,11 +123,6 @@ class Settings(BaseSettings):
     default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")
     default_private_brand_prefix: Optional[str] = os.getenv("DEFAULT_PRIVATE_BRAND_PREFIX", "NOMADNP")
 
-    # Rate Limiting Configuration
-    # Enable/disable rate limiting system-wide (useful for development)
-    enable_rate_limiting: bool = os.getenv("ENABLE_RATE_LIMITING", "true").lower() in ("true", "1", "yes")
-    # Maximum jobs a user can create per day (0 = unlimited)
-    rate_limit_jobs_per_day: int = int(os.getenv("RATE_LIMIT_JOBS_PER_DAY", "5"))
     # YouTube Data API v3 Quota Configuration
     # Daily quota limit (YouTube grants 10,000 units/day by default)
     youtube_quota_daily_limit: int = int(os.getenv("YOUTUBE_QUOTA_DAILY_LIMIT", "10000"))

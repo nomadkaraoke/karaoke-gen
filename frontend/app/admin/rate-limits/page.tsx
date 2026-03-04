@@ -3,21 +3,13 @@
 import { useEffect, useState } from "react"
 import {
   adminApi,
-  RateLimitStatsResponse,
   BlocklistsResponse,
-  UserOverridesListResponse,
-  UserOverride,
   YouTubeQueueListResponse,
-  YouTubeQueueEntry,
 } from "@/lib/api"
-import { StatsCard, StatsGrid } from "@/components/admin/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
@@ -28,33 +20,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-  ShieldAlert,
-  Youtube,
-  Briefcase,
   Globe,
   Mail,
   Server,
-  UserCheck,
+  Youtube,
   RefreshCw,
   Loader2,
   Plus,
@@ -66,18 +35,15 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AdminRateLimitsPage() {
   const { toast } = useToast()
-  const [stats, setStats] = useState<RateLimitStatsResponse | null>(null)
   const [blocklists, setBlocklists] = useState<BlocklistsResponse | null>(null)
-  const [overrides, setOverrides] = useState<UserOverridesListResponse | null>(null)
   const [youtubeQueue, setYoutubeQueue] = useState<YouTubeQueueListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [processingQueue, setProcessingQueue] = useState(false)
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState("youtube-queue")
 
   // Form states
   const [newDomain, setNewDomain] = useState("")
@@ -87,25 +53,14 @@ export default function AdminRateLimitsPage() {
   const [searchEmail, setSearchEmail] = useState("")
   const [searchIP, setSearchIP] = useState("")
 
-  // Override form
-  const [overrideEmail, setOverrideEmail] = useState("")
-  const [overrideBypass, setOverrideBypass] = useState(false)
-  const [overrideCustomLimit, setOverrideCustomLimit] = useState("")
-  const [overrideReason, setOverrideReason] = useState("")
-  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false)
-
   const loadData = async () => {
     try {
       setLoading(true)
-      const [statsData, blocklistsData, overridesData, queueData] = await Promise.all([
-        adminApi.getRateLimitStats(),
+      const [blocklistsData, queueData] = await Promise.all([
         adminApi.getBlocklists(),
-        adminApi.getUserOverrides(),
         adminApi.getYouTubeQueue(),
       ])
-      setStats(statsData)
       setBlocklists(blocklistsData)
-      setOverrides(overridesData)
       setYoutubeQueue(queueData)
     } catch (err: any) {
       console.error("Failed to load rate limits data:", err)
@@ -190,40 +145,6 @@ export default function AdminRateLimitsPage() {
     }
   }
 
-  // Override actions
-  const handleAddOverride = async () => {
-    if (!overrideEmail.trim() || !overrideReason.trim()) {
-      toast({ title: "Error", description: "Email and reason are required", variant: "destructive" })
-      return
-    }
-    try {
-      await adminApi.setUserOverride(overrideEmail.trim(), {
-        bypass_job_limit: overrideBypass,
-        custom_daily_job_limit: overrideCustomLimit ? parseInt(overrideCustomLimit) : undefined,
-        reason: overrideReason.trim(),
-      })
-      toast({ title: "Success", description: `Override set for "${overrideEmail}"` })
-      setOverrideEmail("")
-      setOverrideBypass(false)
-      setOverrideCustomLimit("")
-      setOverrideReason("")
-      setOverrideDialogOpen(false)
-      loadData()
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" })
-    }
-  }
-
-  const handleRemoveOverride = async (email: string) => {
-    try {
-      await adminApi.removeUserOverride(email)
-      toast({ title: "Success", description: `Override removed for "${email}"` })
-      loadData()
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" })
-    }
-  }
-
   // YouTube queue actions
   const handleRetryUpload = async (jobId: string) => {
     try {
@@ -275,7 +196,7 @@ export default function AdminRateLimitsPage() {
     ip.includes(searchIP)
   ) || []
 
-  if (loading && !stats) {
+  if (loading && !blocklists) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -289,7 +210,7 @@ export default function AdminRateLimitsPage() {
         <div>
           <h1 className="text-3xl font-bold">Rate Limits</h1>
           <p className="text-muted-foreground">
-            Manage rate limiting, blocklists, and user overrides
+            Manage YouTube upload queue and blocklists
           </p>
         </div>
         <Button onClick={loadData} variant="outline" disabled={loading}>
@@ -300,140 +221,14 @@ export default function AdminRateLimitsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="youtube-queue">
             YouTube Queue
-            {(stats?.youtube_uploads_queued ?? 0) > 0 && (
-              <Badge variant="destructive" className="ml-2 text-xs">{stats?.youtube_uploads_queued}</Badge>
+            {(youtubeQueue?.stats?.queued ?? 0) > 0 && (
+              <Badge variant="destructive" className="ml-2 text-xs">{youtubeQueue?.stats?.queued}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="blocklists">Blocklists</TabsTrigger>
-          <TabsTrigger value="overrides">User Overrides</TabsTrigger>
         </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Configuration Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5" />
-                Rate Limit Configuration
-              </CardTitle>
-              <CardDescription>Current rate limiting settings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StatsGrid columns={2}>
-                <StatsCard
-                  title="Jobs Per Day"
-                  value={stats?.jobs_per_day_limit ?? 0}
-                  description="Per user limit"
-                  icon={Briefcase}
-                />
-                <StatsCard
-                  title="Status"
-                  value={stats?.rate_limiting_enabled ? "Enabled" : "Disabled"}
-                  description="Rate limiting"
-                  icon={ShieldAlert}
-                  valueClassName={stats?.rate_limiting_enabled ? "text-green-600" : "text-red-600"}
-                />
-              </StatsGrid>
-            </CardContent>
-          </Card>
-
-          {/* YouTube Quota & Queue Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Youtube className="w-5 h-5" />
-                YouTube API Quota
-              </CardTitle>
-              <CardDescription>
-                Daily quota usage (resets at midnight Pacific Time)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{stats?.youtube_quota_units_consumed?.toLocaleString() ?? 0} / {stats?.youtube_quota_effective_limit?.toLocaleString() ?? 0} units used</span>
-                  <span className="text-muted-foreground">
-                    {stats?.youtube_quota_seconds_until_reset
-                      ? `Resets in ${Math.floor(stats.youtube_quota_seconds_until_reset / 3600)}h ${Math.floor((stats.youtube_quota_seconds_until_reset % 3600) / 60)}m`
-                      : ""}
-                  </span>
-                </div>
-                <Progress
-                  value={stats?.youtube_quota_effective_limit
-                    ? ((stats?.youtube_quota_units_consumed ?? 0) / stats.youtube_quota_effective_limit) * 100
-                    : 0
-                  }
-                  className="h-3"
-                />
-                <div className="text-xs text-muted-foreground">
-                  GCP: {stats?.youtube_quota_gcp_usage?.toLocaleString() ?? 0} + Pending: {stats?.youtube_quota_pending_units?.toLocaleString() ?? 0}
-                </div>
-              </div>
-              <StatsGrid columns={4}>
-                <StatsCard
-                  title="Uploads Today"
-                  value={stats?.youtube_uploads_today ?? 0}
-                  description={`~${stats?.youtube_quota_estimated_uploads_remaining ?? 0} more possible`}
-                  icon={Youtube}
-                />
-                <StatsCard
-                  title="Queued"
-                  value={stats?.youtube_uploads_queued ?? 0}
-                  description="Waiting for quota"
-                  icon={Clock}
-                  valueClassName={(stats?.youtube_uploads_queued ?? 0) > 0 ? "text-yellow-600" : undefined}
-                />
-                <StatsCard
-                  title="Failed"
-                  value={stats?.youtube_uploads_failed ?? 0}
-                  description="Need manual retry"
-                  icon={XCircle}
-                  valueClassName={(stats?.youtube_uploads_failed ?? 0) > 0 ? "text-red-600" : undefined}
-                />
-                <StatsCard
-                  title="User Overrides"
-                  value={stats?.total_overrides ?? 0}
-                  description="Active whitelist entries"
-                  icon={UserCheck}
-                />
-              </StatsGrid>
-
-            </CardContent>
-          </Card>
-
-          {/* Blocklist Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="w-5 h-5" />
-                Blocklist Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatsGrid columns={3}>
-                <StatsCard
-                  title="Disposable Domains"
-                  value={stats?.disposable_domains_count ?? 0}
-                  icon={Globe}
-                />
-                <StatsCard
-                  title="Blocked Emails"
-                  value={stats?.blocked_emails_count ?? 0}
-                  icon={Mail}
-                />
-                <StatsCard
-                  title="Blocked IPs"
-                  value={stats?.blocked_ips_count ?? 0}
-                  icon={Server}
-                />
-              </StatsGrid>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* YouTube Queue Tab */}
         <TabsContent value="youtube-queue" className="space-y-6">

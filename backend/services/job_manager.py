@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from backend.config import settings
-from backend.exceptions import RateLimitExceededError, InvalidStateTransitionError, InsufficientCreditsError
+from backend.exceptions import InvalidStateTransitionError, InsufficientCreditsError
 from backend.models.job import Job, JobStatus, JobCreate, STATE_TRANSITIONS
 from backend.models.worker_log import WorkerLogEntry
 from backend.services.firestore_service import FirestoreService
@@ -51,35 +51,11 @@ class JobManager:
 
         Args:
             job_create: Job creation parameters
-            is_admin: Whether the requesting user is an admin (bypasses rate limits)
+            is_admin: Whether the requesting user is an admin (bypasses credit checks)
 
         Raises:
             ValueError: If theme_id is not provided (all jobs require a theme)
-            RateLimitExceededError: If user has exceeded their daily job limit
         """
-        # Check rate limit FIRST (before any other validation)
-        # This prevents wasted work if user is rate limited
-        if job_create.user_email:
-            from backend.services.rate_limit_service import get_rate_limit_service
-
-            rate_limit_service = get_rate_limit_service()
-            allowed, remaining, message = rate_limit_service.check_user_job_limit(
-                user_email=job_create.user_email,
-                is_admin=is_admin
-            )
-            if not allowed:
-                from backend.services.rate_limit_service import _seconds_until_midnight_utc
-
-                # Get actual current count - remaining is clamped to 0 which loses info
-                current_count = rate_limit_service.get_user_job_count_today(job_create.user_email)
-                raise RateLimitExceededError(
-                    message=message,
-                    limit_type="jobs_per_day",
-                    remaining_seconds=_seconds_until_midnight_utc(),
-                    current_count=current_count,
-                    limit_value=settings.rate_limit_jobs_per_day
-                )
-
         # Check credits (skip for admins)
         if job_create.user_email and not is_admin:
             from backend.services.user_service import get_user_service
@@ -168,16 +144,6 @@ class JobManager:
                     credits_available=0,
                     credits_required=1,
                 )
-
-        # Record job creation for rate limiting (after successful persistence)
-        if job_create.user_email:
-            try:
-                from backend.services.rate_limit_service import get_rate_limit_service
-                rate_limit_service = get_rate_limit_service()
-                rate_limit_service.record_job_creation(job_create.user_email, job_id)
-            except Exception as e:
-                # Don't fail job creation if rate limit recording fails
-                logger.warning(f"Failed to record job creation for rate limiting: {e}")
 
         return job
     
@@ -355,14 +321,20 @@ class JobManager:
     
     def delete_job(self, job_id: str, delete_files: bool = True) -> None:
         """Delete a job, its files, and its logs subcollection."""
-        if delete_files:
-            job = self.get_job(job_id)
-            if job and job.output_files:
-                for gcs_path in job.output_files.values():
-                    try:
-                        self.storage.delete_file(gcs_path)
-                    except Exception as e:
-                        logger.error(f"Error deleting file {gcs_path}: {e}")
+        job = self.get_job(job_id)
+
+        # Refund credit if job never completed (and wasn't already refunded via fail/cancel)
+        if job:
+            no_refund_statuses = [JobStatus.COMPLETE, JobStatus.PREP_COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED]
+            if job.status not in no_refund_statuses:
+                self._refund_credit_for_job(job_id, job, reason="job_deleted")
+
+        if delete_files and job and job.output_files:
+            for gcs_path in job.output_files.values():
+                try:
+                    self.storage.delete_file(gcs_path)
+                except Exception as e:
+                    logger.error(f"Error deleting file {gcs_path}: {e}")
 
         # Delete logs subcollection first (must be done before deleting parent doc)
         try:
@@ -801,6 +773,46 @@ class JobManager:
             logger.error(f"Job {job_id}: Failed to delete state_data keys {keys}: {e}")
             return []
     
+    def _refund_credit_for_job(self, job_id: str, job: Job, reason: str) -> bool:
+        """
+        Refund one credit for a job if eligible.
+
+        Skips refund if: already refunded, no user email, or admin-owned job.
+        Never raises — refund failure must not block the calling operation.
+
+        Returns:
+            True if credit was refunded, False otherwise.
+        """
+        try:
+            if job.credit_refunded:
+                logger.info(f"Credit already refunded for job {job_id}, skipping")
+                return False
+
+            if not job.user_email:
+                return False
+
+            from backend.services.auth_service import is_admin_email
+            from backend.services.user_service import get_user_service
+
+            if is_admin_email(job.user_email):
+                return False
+
+            user_service = get_user_service()
+            refund_ok, new_balance, refund_msg = user_service.refund_credit(
+                job.user_email, job_id, reason=reason
+            )
+            if refund_ok:
+                # Mark job as refunded to prevent double-refund
+                self.update_job(job_id, {'credit_refunded': True})
+                logger.info(f"Refunded credit for {reason} job {job_id} to {_mask_email(job.user_email)} (balance: {new_balance})")
+                return True
+            else:
+                logger.warning(f"Credit refund failed for job {job_id}: {refund_msg}")
+                return False
+        except Exception as e:
+            logger.warning(f"Error refunding credit for job {job_id}: {e}")
+            return False
+
     def fail_job(self, job_id: str, error_message: str, error_details: Optional[Dict[str, Any]] = None) -> bool:
         """
         Mark a job as failed with error information.
@@ -829,25 +841,10 @@ class JobManager:
             
             logger.error(f"Job {job_id} failed: {error_message}")
 
-            # Auto-refund credit on failure (skip for admin-owned jobs)
-            try:
-                job = self.get_job(job_id)
-                if job and job.user_email:
-                    from backend.services.auth_service import is_admin_email
-                    from backend.services.user_service import get_user_service
-
-                    if not is_admin_email(job.user_email):
-                        user_service = get_user_service()
-                        refund_ok, new_balance, refund_msg = user_service.refund_credit(
-                            job.user_email, job_id, reason="job_failed"
-                        )
-                        if refund_ok:
-                            logger.info(f"Refunded credit for failed job {job_id} to {_mask_email(job.user_email)} (balance: {new_balance})")
-                        else:
-                            logger.warning(f"Credit refund failed for job {job_id}: {refund_msg}")
-            except Exception as refund_err:
-                # Don't fail the fail_job call if refund fails
-                logger.warning(f"Error refunding credit for job {job_id}: {refund_err}")
+            # Auto-refund credit on failure
+            job = self.get_job(job_id)
+            if job:
+                self._refund_credit_for_job(job_id, job, reason="job_failed")
 
             return True
         except Exception as e:
@@ -1043,8 +1040,12 @@ class JobManager:
         )
         
         logger.info(f"Job {job_id} cancelled")
+
+        # Refund credit for cancelled job
+        self._refund_credit_for_job(job_id, job, reason="job_cancelled")
+
         return True
-    
+
     def mark_job_failed(
         self,
         job_id: str,

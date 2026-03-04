@@ -26,7 +26,7 @@
 | Payment flow (Stripe) | Working |
 | Feedback-for-credits | Working (2+ jobs → 2 free credits) |
 | Admin dashboard | Working |
-| Rate limiting & abuse prevention | Working (quota-aware YouTube uploads) |
+| Abuse prevention & YouTube quota | Working (blocklists, quota-aware YouTube uploads) |
 | CI/CD self-hosted runner | Working (GCP) |
 | E2E happy path test | Working (~20-25 min full pipeline) |
 | **White-label B2B portals** | Working (Vocal Star, Singa) |

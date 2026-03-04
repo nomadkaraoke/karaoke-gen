@@ -38,7 +38,7 @@ from backend.services.auth_service import AuthResult
 from backend.services.metrics import metrics
 from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
-from backend.exceptions import InsufficientCreditsError, RateLimitExceededError
+from backend.exceptions import InsufficientCreditsError
 from backend.services.firestore_service import FirestoreService
 from pydantic import BaseModel, Field, validator
 
@@ -144,7 +144,7 @@ async def create_job(
             job_id=job.job_id,
             message="Job created successfully. Processing started."
         )
-    except (InsufficientCreditsError, RateLimitExceededError):
+    except InsufficientCreditsError:
         raise
     except Exception as e:
         logger.error(f"Error creating job: {e}", exc_info=True)
@@ -2065,7 +2065,7 @@ async def create_job_from_search(
 
     except HTTPException:
         raise
-    except (InsufficientCreditsError, RateLimitExceededError):
+    except InsufficientCreditsError:
         raise
     except Exception as e:
         logger.error(f"Error creating job from search: {e}", exc_info=True)
