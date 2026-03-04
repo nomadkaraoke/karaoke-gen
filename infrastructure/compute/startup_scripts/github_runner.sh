@@ -7,6 +7,10 @@
 exec > >(tee /var/log/github-runner-startup.log) 2>&1
 echo "Starting GitHub Actions runner setup at $(date)"
 
+# ==================== Network ====================
+# Force apt to use IPv4 only — Cloud NAT doesn't support IPv6
+echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+
 # ==================== Helper ====================
 install_gpg_key() {
     local url="$1"
