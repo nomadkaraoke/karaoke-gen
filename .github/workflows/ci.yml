@@ -926,7 +926,7 @@ jobs:
   deploy-backend:
     name: "Deploy - Backend (Cloud Run)"
     needs: [package-build]
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: [self-hosted, linux, gcp, docker-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read

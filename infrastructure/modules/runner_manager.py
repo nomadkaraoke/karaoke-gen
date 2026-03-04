@@ -126,8 +126,22 @@ def create_cloud_function(
     bucket: gcp.storage.Bucket,
     source_archive: gcp.storage.BucketObject,
     permissions: dict,
+    runner_names: list[pulumi.Output] | None = None,
 ) -> gcp.cloudfunctionsv2.Function:
     """Create the Cloud Function (Gen2) for runner management."""
+    env_vars = {
+        "GCP_PROJECT": PROJECT_ID,
+        "GCP_ZONE": ZONE,
+        "WEBHOOK_SECRET_NAME": SecretNames.GITHUB_WEBHOOK_SECRET,
+        "RUNNER_PAT_SECRET_NAME": SecretNames.GITHUB_RUNNER_PAT,
+        "IDLE_TIMEOUT_HOURS": str(RunnerManagerConfig.IDLE_TIMEOUT_HOURS),
+    }
+
+    if runner_names:
+        env_vars["RUNNER_NAMES"] = pulumi.Output.all(*runner_names).apply(
+            lambda names: ",".join(names)
+        )
+
     return gcp.cloudfunctionsv2.Function(
         "runner-manager-function",
         name=RunnerManagerConfig.FUNCTION_NAME,
@@ -147,13 +161,7 @@ def create_cloud_function(
             available_memory=RunnerManagerConfig.FUNCTION_MEMORY,
             timeout_seconds=RunnerManagerConfig.FUNCTION_TIMEOUT,
             service_account_email=service_account.email,
-            environment_variables={
-                "GCP_PROJECT": PROJECT_ID,
-                "GCP_ZONE": ZONE,
-                "WEBHOOK_SECRET_NAME": SecretNames.GITHUB_WEBHOOK_SECRET,
-                "RUNNER_PAT_SECRET_NAME": SecretNames.GITHUB_RUNNER_PAT,
-                "IDLE_TIMEOUT_HOURS": str(RunnerManagerConfig.IDLE_TIMEOUT_HOURS),
-            },
+            environment_variables=env_vars,
             min_instance_count=0,  # Scale to zero when not in use
             max_instance_count=5,  # Allow some concurrency for multiple webhooks
         ),
@@ -241,6 +249,7 @@ def create_idle_check_scheduler(
 def create_runner_manager_resources(
     webhook_secret: gcp.secretmanager.Secret,
     pat_secret: gcp.secretmanager.Secret,
+    runner_names: list[pulumi.Output] | None = None,
 ) -> dict:
     """
     Create all resources for the GitHub Actions runner manager.
@@ -248,6 +257,7 @@ def create_runner_manager_resources(
     Args:
         webhook_secret: The webhook secret for signature verification.
         pat_secret: The GitHub PAT secret for API calls.
+        runner_names: List of Pulumi Output VM names for the runner manager to track.
 
     Returns:
         dict: Dictionary of all created resources.
@@ -273,6 +283,7 @@ def create_runner_manager_resources(
         bucket,
         source_archive,
         permissions,
+        runner_names,
     )
 
     # Allow unauthenticated invocation (GitHub webhooks)

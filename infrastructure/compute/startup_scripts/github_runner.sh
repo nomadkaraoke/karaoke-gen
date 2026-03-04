@@ -136,6 +136,11 @@ if [ -z "$REGISTRATION_TOKEN" ] || [ "$REGISTRATION_TOKEN" = "null" ]; then
     exit 1
 fi
 
+# Read runner labels from instance metadata (allows per-VM customization)
+RUNNER_LABELS=$(curl -s -H "Metadata-Flavor: Google" \
+    http://metadata.google.internal/computeMetadata/v1/instance/attributes/runner-labels)
+RUNNER_LABELS=${RUNNER_LABELS:-"self-hosted,linux,x64,gcp,large-disk"}
+
 # Configure runner (non-interactive) - registered at organization level
 echo "Configuring runner..."
 cd $RUNNER_DIR
@@ -143,7 +148,7 @@ sudo -u runner ./config.sh \
     --url https://github.com/nomadkaraoke \
     --token "$REGISTRATION_TOKEN" \
     --name "gcp-runner-$(hostname)" \
-    --labels "self-hosted,linux,x64,gcp,large-disk" \
+    --labels "$RUNNER_LABELS" \
     --work "_work" \
     --unattended \
     --replace
@@ -154,7 +159,7 @@ echo "Installing runner service..."
 ./svc.sh start
 
 echo "GitHub Actions runner setup complete at $(date)"
-echo "Runner registered at organization level (nomadkaraoke) with labels: self-hosted,linux,x64,gcp,large-disk"
+echo "Runner registered at organization level (nomadkaraoke) with labels: $RUNNER_LABELS"
 
 # ==================== Setup Python in tool cache ====================
 # setup-python action looks for Python in RUNNER_TOOL_CACHE/_tool/Python
