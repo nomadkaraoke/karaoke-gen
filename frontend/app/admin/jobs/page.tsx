@@ -616,12 +616,15 @@ function AdminJobsPageContent() {
     }
   }
 
-  // Determine job source
+  // Determine job source with detail data
   const getJobSource = (job: Job) => {
-    if (job?.url) return { type: "url", icon: Globe, label: "YouTube" }
-    if (job?.audio_search_artist || job?.audio_search_title) return { type: "search", icon: Search, label: "Search" }
-    if (job?.filename) return { type: "upload", icon: Upload, label: "Upload" }
-    return { type: "unknown", icon: FileText, label: "Unknown" }
+    if (job?.url) return { type: "url" as const, icon: Globe, label: "YouTube", detail: job.url }
+    if (job?.audio_search_artist || job?.audio_search_title) {
+      const parts = [job.audio_search_artist, job.audio_search_title].filter(Boolean)
+      return { type: "search" as const, icon: Search, label: "Search", detail: parts.join(" - ") }
+    }
+    if (job?.filename) return { type: "upload" as const, icon: Upload, label: "Upload", detail: job.filename }
+    return { type: "unknown" as const, icon: FileText, label: "Unknown", detail: undefined }
   }
 
   // Calculate stage durations from timeline
@@ -810,7 +813,7 @@ function AdminJobsPageContent() {
           {/* ===== HEADER ===== */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
-              <Button variant="ghost" size="icon" className="shrink-0 mt-0.5" onClick={() => router.push("/admin/jobs")}>
+              <Button variant="ghost" size="icon" className="shrink-0 mt-0.5" onClick={() => router.push("/admin/jobs")} title="Back to jobs list">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <div className="min-w-0">
@@ -1095,16 +1098,48 @@ function AdminJobsPageContent() {
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 py-3">
             <div className="space-y-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">User</p>
-              <p className="text-sm truncate" title={selectedJob.user_email || "Unknown"}>
-                {selectedJob.user_email || "Unknown"}
-              </p>
+              {selectedJob.user_email ? (
+                <p
+                  className="text-sm truncate text-primary hover:underline cursor-pointer"
+                  title="View user profile"
+                  onClick={() => router.push(`/admin/users/detail?email=${encodeURIComponent(selectedJob.user_email!)}`)}
+                >
+                  {selectedJob.user_email}
+                </p>
+              ) : (
+                <p className="text-sm truncate text-muted-foreground">Unknown</p>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Source</p>
-              <p className="text-sm flex items-center gap-1.5">
-                <SourceIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                {jobSource.label}
-              </p>
+              {jobSource.type === "url" && jobSource.detail ? (
+                <a
+                  href={jobSource.detail}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm flex items-center gap-1.5 text-primary hover:underline cursor-pointer truncate"
+                  title={`Open YouTube video: ${jobSource.detail}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <SourceIcon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{jobSource.detail.replace(/^https?:\/\/(www\.)?/, "").slice(0, 40)}</span>
+                </a>
+              ) : jobSource.type === "search" && jobSource.detail ? (
+                <p className="text-sm flex items-center gap-1.5 truncate" title={`Audio search: ${jobSource.detail}`}>
+                  <SourceIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate">{jobSource.detail}</span>
+                </p>
+              ) : jobSource.type === "upload" && jobSource.detail ? (
+                <p className="text-sm flex items-center gap-1.5 truncate" title={`Uploaded file: ${jobSource.detail}`}>
+                  <SourceIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate">{jobSource.detail}</span>
+                </p>
+              ) : (
+                <p className="text-sm flex items-center gap-1.5 text-muted-foreground">
+                  <SourceIcon className="w-3.5 h-3.5" />
+                  Unknown
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Created</p>
@@ -1203,6 +1238,7 @@ function AdminJobsPageContent() {
                               size="icon"
                               className="h-5 w-5 opacity-0 group-hover:opacity-100"
                               onClick={() => startEditing(key, value || "")}
+                              title={`Edit ${label}`}
                             >
                               <Pencil className="w-2.5 h-2.5" />
                             </Button>
@@ -1219,6 +1255,7 @@ function AdminJobsPageContent() {
                           type="checkbox"
                           id="admin-is-private"
                           checked={selectedJob.is_private || false}
+                          title="WARNING: Enabling private mode on a completed public job will delete its YouTube/GDrive outputs. This cannot be undone."
                           onChange={async (e) => {
                             const newValue = e.target.checked
                             try {
@@ -1240,7 +1277,11 @@ function AdminJobsPageContent() {
                           }}
                           className="w-3.5 h-3.5 rounded border-border accent-orange-500"
                         />
-                        <label htmlFor="admin-is-private" className="text-xs cursor-pointer">
+                        <label
+                          htmlFor="admin-is-private"
+                          className="text-xs cursor-pointer"
+                          title="WARNING: Enabling private mode on a completed public job will delete its YouTube/GDrive outputs. This cannot be undone."
+                        >
                           Non-published (Dropbox only, no YouTube/GDrive)
                         </label>
                       </div>

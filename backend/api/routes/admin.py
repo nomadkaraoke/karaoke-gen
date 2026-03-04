@@ -2973,3 +2973,65 @@ async def refund_payment(
     logger.info(f"Admin {admin_email} issued refund for {session_id}: {message}")
 
     return RefundResponse(success=True, message=message, session_id=session_id)
+
+
+@router.post("/payments/normalize-emails")
+async def normalize_payment_emails(
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """One-time backfill: lowercase all customer_email values in stripe_payments."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    return service.normalize_customer_emails()
+
+
+@router.post("/backfill/user-stats")
+async def backfill_user_stats(
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """One-time backfill: recalculate total_jobs_completed and total_spent for all users."""
+    from google.cloud import firestore as firestore_lib
+    db = firestore_lib.Client()
+
+    # Get all users
+    users_docs = list(db.collection("users").stream())
+    updated = 0
+
+    for user_doc in users_docs:
+        user_data = user_doc.to_dict()
+        email = user_data.get("email", "")
+        if not email:
+            continue
+
+        # Count completed jobs
+        completed_jobs = 0
+        jobs_query = db.collection("jobs").where("user_email", "==", email).where(
+            "status", "in", ["complete", "prep_complete"]
+        )
+        for _ in jobs_query.stream():
+            completed_jobs += 1
+
+        # Sum payments
+        total_spent = 0
+        payments_query = db.collection("stripe_payments").where(
+            "customer_email", "==", email.lower().strip()
+        )
+        for pay_doc in payments_query.stream():
+            pay_data = pay_doc.to_dict()
+            status = pay_data.get("status", "")
+            if status not in ("refunded",):
+                total_spent += pay_data.get("amount_total", 0)
+                total_spent -= pay_data.get("refund_amount", 0)
+
+        # Update user document
+        updates = {}
+        if completed_jobs != user_data.get("total_jobs_completed", 0):
+            updates["total_jobs_completed"] = completed_jobs
+        if total_spent != user_data.get("total_spent", 0):
+            updates["total_spent"] = total_spent
+
+        if updates:
+            user_doc.reference.update(updates)
+            updated += 1
+
+    return {"status": "success", "users_checked": len(users_docs), "users_updated": updated}

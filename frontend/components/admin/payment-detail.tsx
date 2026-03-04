@@ -208,6 +208,7 @@ export function PaymentDetailSheet({ payment, onClose, onRefund }: PaymentDetail
                   variant="destructive"
                   size="sm"
                   onClick={() => onRefund(data)}
+                  title="Issue a refund for this payment"
                 >
                   <Undo2 className="w-4 h-4 mr-2" />
                   Issue Refund

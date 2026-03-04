@@ -514,6 +514,7 @@ function TransactionsTab() {
                   key={payment.session_id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => setSelectedPayment(payment)}
+                  title="View payment details"
                 >
                   <TableCell className="text-sm">{formatDate(payment.created_at)}</TableCell>
                   <TableCell className="text-sm max-w-[160px] truncate">{payment.customer_email}</TableCell>

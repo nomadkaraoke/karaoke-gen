@@ -447,6 +447,97 @@ test.describe('Admin Job Detail Page', () => {
     await expect(page.getByRole('button', { name: 'Reset' })).toBeVisible();
   });
 
+  test('user email is clickable and navigates to user detail', async ({ page }) => {
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+        // Mock user detail page dependencies
+        { method: 'GET', path: '/api/users/admin/users/user@example.com', response: { body: { email: 'user@example.com', role: 'user', credits: 10 } } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // User email should be visible and clickable
+    const emailLink = page.getByText('user@example.com').first();
+    await expect(emailLink).toBeVisible();
+    await expect(emailLink).toHaveAttribute('title', 'View user profile');
+
+    // Click email should navigate to user detail
+    await emailLink.click();
+    await expect(page).toHaveURL(/\/admin\/users\/detail\/?\?email=user%40example\.com/);
+  });
+
+  test('YouTube source shows clickable external link', async ({ page }) => {
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // YouTube source should show as an external link
+    const sourceLink = page.locator('a[href*="youtube.com"]').first();
+    await expect(sourceLink).toBeVisible();
+    await expect(sourceLink).toHaveAttribute('target', '_blank');
+  });
+
+  test('search source shows artist-title text', async ({ page }) => {
+    const searchJob = {
+      ...mockJob,
+      url: undefined,
+      audio_search_artist: 'Beatles',
+      audio_search_title: 'Hey Jude',
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: searchJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Should show "Beatles - Hey Jude" in the source field
+    await expect(page.getByText('Beatles - Hey Jude')).toBeVisible();
+  });
+
+  test('upload source shows filename', async ({ page }) => {
+    const uploadJob = {
+      ...mockJob,
+      url: undefined,
+      filename: 'my-song.mp3',
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: uploadJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Should show the filename
+    await expect(page.getByText('my-song.mp3')).toBeVisible();
+  });
+
   // Note: "Clear Workers" tests removed - feature replaced by Full Restart + Regen Screens
 
   test('delete outputs button shows confirmation dialog', async ({ page }) => {

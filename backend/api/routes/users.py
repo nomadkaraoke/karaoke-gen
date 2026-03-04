@@ -886,6 +886,16 @@ async def stripe_webhook(
                     else:
                         logger.error(f"Failed to add credits: {credit_msg}")
 
+            # Update user's cached total_spent (non-blocking)
+            amount_total = session.get("amount_total", 0)
+            if amount_total > 0 and customer_email:
+                try:
+                    from google.cloud.firestore_v1 import Increment
+                    user_doc_ref = user_service.db.collection("users").document(customer_email.lower().strip())
+                    user_doc_ref.update({"total_spent": Increment(amount_total)})
+                except Exception as spend_err:
+                    logger.warning(f"Failed to update total_spent for {customer_email}: {spend_err}")
+
             # Store enriched payment data (non-blocking - failure won't break credit granting)
             try:
                 import stripe as stripe_lib
@@ -1253,6 +1263,8 @@ async def list_users(
     users_public = []
     for doc in paginated_docs:
         data = doc.to_dict()
+        created_at_val = data.get("created_at")
+        last_login_val = data.get("last_login_at")
         users_public.append(UserPublic(
             email=data.get("email", ""),
             role=data.get("role", UserRole.USER),
@@ -1260,6 +1272,9 @@ async def list_users(
             display_name=data.get("display_name"),
             total_jobs_created=data.get("total_jobs_created", 0),
             total_jobs_completed=data.get("total_jobs_completed", 0),
+            total_spent=data.get("total_spent", 0),
+            created_at=created_at_val.isoformat() if hasattr(created_at_val, 'isoformat') else str(created_at_val) if created_at_val else None,
+            last_login_at=last_login_val.isoformat() if hasattr(last_login_val, 'isoformat') else str(last_login_val) if last_login_val else None,
         ))
 
     return UserListResponsePaginated(

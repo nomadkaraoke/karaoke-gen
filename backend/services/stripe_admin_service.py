@@ -123,7 +123,7 @@ class StripeAdminService:
                     metadata.get("user_email")
                     or metadata.get("customer_email")
                     or session.get("customer_email", "")
-                ),
+                ).lower().strip(),
                 "customer_name": session.get("customer_details", {}).get("name", ""),
                 "stripe_customer_id": session.get("customer", ""),
                 # Payment method
@@ -704,6 +704,33 @@ class StripeAdminService:
         except Exception:
             logger.exception("Error listing webhook events")
             return []
+
+    def normalize_customer_emails(self) -> Dict[str, Any]:
+        """Backfill: lowercase all customer_email values in stripe_payments."""
+        try:
+            collection = self.db.collection(STRIPE_PAYMENTS_COLLECTION)
+            updated = 0
+            skipped = 0
+
+            for doc in collection.stream():
+                data = doc.to_dict()
+                email = data.get("customer_email", "")
+                normalized = email.lower().strip()
+                if email != normalized:
+                    doc.reference.update({"customer_email": normalized})
+                    updated += 1
+                else:
+                    skipped += 1
+
+            return {
+                "status": "success",
+                "updated": updated,
+                "skipped": skipped,
+                "total": updated + skipped,
+            }
+        except Exception:
+            logger.exception("Error normalizing customer emails")
+            raise
 
 
 # Global instance

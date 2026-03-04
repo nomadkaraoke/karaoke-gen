@@ -1301,6 +1301,9 @@ export interface AdminUser {
   display_name?: string;
   total_jobs_created?: number;
   total_jobs_completed?: number;
+  total_spent?: number;
+  created_at?: string;
+  last_login_at?: string;
 }
 
 export interface AdminUserListResponse {

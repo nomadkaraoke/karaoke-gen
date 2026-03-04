@@ -306,6 +306,7 @@ export default function AdminSearchesPage() {
                     <a
                       href={`/admin/jobs?id=${search.job_id}`}
                       className="text-blue-500 hover:underline"
+                      title="View job details"
                     >
                       {search.job_id.slice(0, 8)}...
                     </a>

@@ -596,7 +596,8 @@ export default function AdminRateLimitsPage() {
                       {domain}
                       <button
                         onClick={() => handleRemoveDomain(domain)}
-                        className="ml-1 hover:text-destructive"
+                        className="ml-1 hover:text-destructive cursor-pointer"
+                        title="Remove domain"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -658,7 +659,8 @@ export default function AdminRateLimitsPage() {
                         {email}
                         <button
                           onClick={() => handleRemoveEmail(email)}
-                          className="ml-1 hover:text-white"
+                          className="ml-1 hover:text-white cursor-pointer"
+                          title="Remove email"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -716,7 +718,8 @@ export default function AdminRateLimitsPage() {
                         {ip}
                         <button
                           onClick={() => handleRemoveIP(ip)}
-                          className="ml-1 hover:text-white"
+                          className="ml-1 hover:text-white cursor-pointer"
+                          title="Remove IP"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -851,7 +854,7 @@ export default function AdminRateLimitsPage() {
                         <TableCell>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-destructive">
+                              <Button variant="ghost" size="sm" className="text-destructive" title="Remove override">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </AlertDialogTrigger>

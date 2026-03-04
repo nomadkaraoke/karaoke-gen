@@ -508,6 +508,17 @@ class JobManager:
 
         logger.info(f"Job {job_id} transitioned to {new_status}")
 
+        # Increment user's completed jobs counter on terminal success states
+        if new_status in (JobStatus.COMPLETE, JobStatus.PREP_COMPLETE):
+            try:
+                job = self.get_job(job_id)
+                if job and job.user_email:
+                    from backend.services.user_service import get_user_service
+                    user_service = get_user_service()
+                    user_service.increment_jobs_completed(job.user_email)
+            except Exception:
+                logger.exception(f"Failed to increment jobs_completed for job {job_id}")
+
         # Trigger notifications asynchronously (fire-and-forget)
         self._trigger_state_notifications(job_id, new_status)
 

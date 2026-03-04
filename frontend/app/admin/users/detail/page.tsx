@@ -237,7 +237,7 @@ export default function AdminUserDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/admin/users")}>
+          <Button variant="ghost" size="icon" onClick={() => router.push("/admin/users")} title="Back to users list">
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
@@ -261,7 +261,7 @@ export default function AdminUserDetailPage() {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setCreditDialogOpen(true)} disabled={actionLoading}>
+        <Button onClick={() => setCreditDialogOpen(true)} disabled={actionLoading} title="Grant credits to this user">
           <Plus className="w-4 h-4 mr-2" />
           Add Credits
         </Button>
@@ -269,6 +269,7 @@ export default function AdminUserDetailPage() {
           variant={user.is_active ? "destructive" : "outline"}
           onClick={handleToggleStatus}
           disabled={actionLoading}
+          title={user.is_active ? "Disable this user account" : "Enable this user account"}
         >
           {user.is_active ? (
             <>
@@ -287,6 +288,7 @@ export default function AdminUserDetailPage() {
             variant="destructive"
             onClick={() => setDeleteDialogOpen(true)}
             disabled={actionLoading}
+            title="Permanently delete this user"
           >
             <Trash2 className="w-4 h-4 mr-2" />
             Delete User
@@ -506,7 +508,8 @@ export default function AdminUserDetailPage() {
                   <TableRow
                     key={job.job_id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => router.push(`/admin/jobs/detail?id=${job.job_id}`)}
+                    onClick={() => router.push(`/admin/jobs?id=${job.job_id}`)}
+                    title="View job details"
                   >
                     <TableCell className="font-mono text-sm">{job.job_id}</TableCell>
                     <TableCell>

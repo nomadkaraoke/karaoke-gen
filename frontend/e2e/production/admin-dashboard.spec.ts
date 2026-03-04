@@ -125,22 +125,63 @@ test.describe("Admin Dashboard - Production", () => {
     await expect(page).toHaveURL(/\/admin$/);
   });
 
-  test("users page loads with user list", async ({ page }) => {
+  test("users page loads with user list and new columns", async ({ page }) => {
     await page.goto(`${PROD_URL}/admin/users`);
 
     // Wait for page to load
     await expect(page.locator("h1")).toContainText("Users", { timeout: 30000 });
 
-    // Check table headers are present
-    await expect(page.getByRole("columnheader", { name: "Email" })).toBeVisible();
+    // Check table headers are present (including new Created and Last Login columns)
+    await expect(page.getByRole("columnheader", { name: /Email/ })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Role" })).toBeVisible();
-    await expect(page.getByRole("columnheader", { name: "Credits" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /Credits/ })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Spent" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /Created/ })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /Last Login/ })).toBeVisible();
 
     // Check search input is present
     await expect(page.getByPlaceholder(/Search/i)).toBeVisible();
 
     // Check pagination controls
     await expect(page.getByText(/Showing/)).toBeVisible();
+  });
+
+  test("users page row click navigates to user detail", async ({ page }) => {
+    await page.goto(`${PROD_URL}/admin/users`);
+
+    // Wait for users to load
+    await expect(page.locator("h1")).toContainText("Users", { timeout: 30000 });
+    await expect(page.getByText(/Showing/)).toBeVisible();
+
+    // Click the first user row (tbody tr)
+    const firstRow = page.locator("tbody tr").first();
+    await firstRow.click();
+
+    // Should navigate to user detail page
+    await expect(page).toHaveURL(/\/admin\/users\/detail\?email=/);
+    await expect(page.locator("h1")).toBeVisible({ timeout: 15000 });
+  });
+
+  test("user detail job links navigate to jobs page", async ({ page }) => {
+    await page.goto(`${PROD_URL}/admin/users`);
+
+    // Wait for users to load and click first user
+    await expect(page.locator("h1")).toContainText("Users", { timeout: 30000 });
+    await expect(page.getByText(/Showing/)).toBeVisible();
+    await page.locator("tbody tr").first().click();
+
+    // Wait for user detail page
+    await expect(page).toHaveURL(/\/admin\/users\/detail\?email=/);
+    await expect(page.getByText("Recent Jobs")).toBeVisible({ timeout: 15000 });
+
+    // If there are job rows, click the first one
+    const jobRow = page.locator("table").last().locator("tbody tr").first();
+    if (await jobRow.isVisible().catch(() => false)) {
+      await jobRow.click();
+      // Should navigate to /admin/jobs?id=... (NOT /admin/jobs/detail?id=...)
+      await expect(page).toHaveURL(/\/admin\/jobs\?id=/);
+      await expect(page).not.toHaveURL(/\/admin\/jobs\/detail/);
+    }
   });
 
   test("jobs page loads with job list", async ({ page }) => {
@@ -155,6 +196,28 @@ test.describe("Admin Dashboard - Production", () => {
 
     // Check filter controls
     await expect(page.getByPlaceholder(/Filter by user/i)).toBeVisible();
+  });
+
+  test("job detail shows clickable user email", async ({ page }) => {
+    await page.goto(`${PROD_URL}/admin/jobs`);
+
+    // Wait for jobs to load
+    await expect(page.locator("h1")).toContainText("Jobs", { timeout: 30000 });
+
+    // Click first job row to open detail
+    const firstRow = page.locator("tbody tr").first();
+    if (await firstRow.isVisible().catch(() => false)) {
+      await firstRow.click();
+
+      // Wait for detail panel to load
+      await page.waitForTimeout(2000);
+
+      // User email in the info grid should be clickable (has cursor-pointer)
+      const emailElements = page.locator('.cursor-pointer.text-primary');
+      if (await emailElements.first().isVisible().catch(() => false)) {
+        await expect(emailElements.first()).toHaveCSS('cursor', 'pointer');
+      }
+    }
   });
 
 });

@@ -80,6 +80,9 @@ class User(BaseModel):
     total_jobs_created: int = 0
     total_jobs_completed: int = 0
 
+    # Payment tracking (cached from stripe_payments, in cents)
+    total_spent: int = 0
+
     # Optional profile fields for future use
     display_name: Optional[str] = None
 
@@ -173,6 +176,9 @@ class UserPublic(BaseModel):
     total_jobs_completed: int = 0
     tenant_id: Optional[str] = None
     feedback_eligible: bool = False
+    total_spent: int = 0
+    created_at: Optional[str] = None
+    last_login_at: Optional[str] = None
 
 
 class AddCreditsRequest(BaseModel):

@@ -43,9 +43,37 @@ import {
   LogIn,
   UserX,
   UserCheck,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
+
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return "—"
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return "—"
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return "just now"
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 30) return `${diffDays}d ago`
+  const diffMonths = Math.floor(diffDays / 30)
+  if (diffMonths < 12) return `${diffMonths}mo ago`
+  return `${Math.floor(diffMonths / 12)}y ago`
+}
+
+function formatFullDate(dateStr?: string): string {
+  if (!dateStr) return "Never"
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return "Never"
+  return date.toLocaleString()
+}
 
 export default function AdminUsersPage() {
   const router = useRouter()
@@ -250,23 +278,62 @@ export default function AdminUsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Email</TableHead>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => { setSortBy("email"); setSortOrder(sortBy === "email" && sortOrder === "asc" ? "desc" : "asc"); setOffset(0) }}
+                title="Sort by email"
+              >
+                <span className="flex items-center gap-1">
+                  Email
+                  {sortBy === "email" ? (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
+                </span>
+              </TableHead>
               <TableHead>Role</TableHead>
-              <TableHead className="text-right">Credits</TableHead>
+              <TableHead
+                className="text-right cursor-pointer select-none"
+                onClick={() => { setSortBy("credits"); setSortOrder(sortBy === "credits" && sortOrder === "desc" ? "asc" : "desc"); setOffset(0) }}
+                title="Sort by credits"
+              >
+                <span className="flex items-center justify-end gap-1">
+                  Credits
+                  {sortBy === "credits" ? (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
+                </span>
+              </TableHead>
+              <TableHead className="text-right">Spent</TableHead>
               <TableHead className="text-right">Jobs</TableHead>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => { setSortBy("created_at"); setSortOrder(sortBy === "created_at" && sortOrder === "desc" ? "asc" : "desc"); setOffset(0) }}
+                title="Sort by creation date"
+              >
+                <span className="flex items-center gap-1">
+                  Created
+                  {sortBy === "created_at" ? (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
+                </span>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => { setSortBy("last_login_at"); setSortOrder(sortBy === "last_login_at" && sortOrder === "desc" ? "asc" : "desc"); setOffset(0) }}
+                title="Sort by last login"
+              >
+                <span className="flex items-center gap-1">
+                  Last Login
+                  {sortBy === "last_login_at" ? (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
+                </span>
+              </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No users found
                 </TableCell>
               </TableRow>
@@ -276,6 +343,7 @@ export default function AdminUsersPage() {
                   key={user.email}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => router.push(`/admin/users/detail?email=${encodeURIComponent(user.email)}`)}
+                  title="View user details"
                 >
                   <TableCell className="font-medium">
                     {user.display_name || user.email}
@@ -291,8 +359,17 @@ export default function AdminUsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">{user.credits}</TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    {(user.total_spent ?? 0) > 0 ? `$${((user.total_spent ?? 0) / 100).toFixed(2)}` : "—"}
+                  </TableCell>
                   <TableCell className="text-right">
                     {user.total_jobs_created ?? 0} / {user.total_jobs_completed ?? 0}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground" title={formatFullDate(user.created_at)}>
+                    {formatRelativeTime(user.created_at)}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground" title={formatFullDate(user.last_login_at)}>
+                    {formatRelativeTime(user.last_login_at)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
