@@ -1382,72 +1382,7 @@ jobs:
           docker pull $BASE_IMAGE
           echo "✅ Base image cached on $RUNNER_NAME"
 
-  deploy-infrastructure:
-    name: "Deploy - Infrastructure (Pulumi)"
-    runs-on: [self-hosted, linux, gcp]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud (Workload Identity)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: "latest"
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install Pulumi
-        run: |
-          curl -fsSL https://get.pulumi.com | sh
-          echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
-
-      - name: Install Python dependencies
-        working-directory: infrastructure
-        run: |
-          pip install pulumi pulumi-gcp pulumi-docker
-
-      - name: Configure Pulumi
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: |
-          pulumi login
-
-      - name: Refresh Infrastructure State
-        working-directory: infrastructure
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: |
-          echo "🔄 Refreshing Pulumi state to sync with actual cloud resources..."
-          # Refresh detects resources deleted outside of Pulumi (e.g., via gcloud CLI)
-          # This ensures Pulumi recreates missing resources
-          pulumi refresh --yes --skip-preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod || true
-
-      - name: Deploy Infrastructure
-        working-directory: infrastructure
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: |
-          echo "🚀 Deploying infrastructure changes..."
-          # Skip preview to avoid needing broad read permissions on all GCP resources
-          # Pulumi state is authoritative since infrastructure is only managed via Pulumi
-          pulumi up --yes --skip-preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod
-
-      - name: Summary
-        if: success()
-        run: |
-          echo "🎉 Infrastructure deployment successful!"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
+  # NOTE: Pulumi infrastructure deploys are done locally, not in CI.
+  # CI runners run on the infrastructure Pulumi manages, creating a circular
+  # dependency. Always run `pulumi up` locally before merging infra PRs.
+  # See docs/LESSONS-LEARNED.md for details.
