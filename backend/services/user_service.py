@@ -59,16 +59,50 @@ class UserService:
     # User CRUD Operations
     # =========================================================================
 
+    def get_user_doc_ref(self, email: str):
+        """Get the Firestore document reference for a user by email.
+
+        Handles both email-keyed docs (doc ID = email) and hash-keyed docs
+        (doc ID = hash, email stored as field). Returns None if not found.
+        """
+        try:
+            # First try direct lookup by email as doc ID
+            doc_ref = self.db.collection(USERS_COLLECTION).document(email.lower())
+            doc = doc_ref.get()
+            if doc.exists:
+                return doc_ref
+
+            # Fallback: query by email field (for hash-keyed docs)
+            query = self.db.collection(USERS_COLLECTION).where(
+                filter=FieldFilter('email', '==', email.lower())
+            ).limit(1)
+            results = list(query.stream())
+            if results:
+                return results[0].reference
+
+            return None
+        except Exception:
+            logger.exception(f"Error finding user doc ref for {email}")
+            return None
+
     def get_user(self, email: str) -> Optional[User]:
         """Get a user by email."""
         try:
             doc_ref = self.db.collection(USERS_COLLECTION).document(email.lower())
             doc = doc_ref.get()
 
-            if not doc.exists:
-                return None
+            if doc.exists:
+                return User(**doc.to_dict())
 
-            return User(**doc.to_dict())
+            # Fallback: query by email field (for hash-keyed docs)
+            query = self.db.collection(USERS_COLLECTION).where(
+                filter=FieldFilter('email', '==', email.lower())
+            ).limit(1)
+            results = list(query.stream())
+            if results:
+                return User(**results[0].to_dict())
+
+            return None
         except Exception:
             logger.exception(f"Error getting user {email}")
             return None
@@ -127,7 +161,10 @@ class UserService:
         """Update user fields."""
         try:
             updates['updated_at'] = datetime.utcnow()
-            doc_ref = self.db.collection(USERS_COLLECTION).document(email.lower())
+            doc_ref = self.get_user_doc_ref(email)
+            if not doc_ref:
+                logger.warning(f"Cannot update user {email}: doc not found")
+                return None
             doc_ref.update(updates)
             return self.get_user(email)
         except Exception:
@@ -820,12 +857,10 @@ class UserService:
     def increment_jobs_completed(self, email: str) -> bool:
         """Increment the completed jobs counter for a user using atomic increment."""
         try:
-            # Check user exists first
-            if not self.get_user(email):
+            doc_ref = self.get_user_doc_ref(email)
+            if not doc_ref:
                 return False
 
-            # Use atomic increment to prevent race conditions
-            doc_ref = self.db.collection(USERS_COLLECTION).document(email.lower())
             doc_ref.update({
                 'total_jobs_completed': Increment(1),
                 'updated_at': datetime.utcnow()

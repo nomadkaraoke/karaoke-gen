@@ -891,8 +891,11 @@ async def stripe_webhook(
             if amount_total > 0 and customer_email:
                 try:
                     from google.cloud.firestore_v1 import Increment
-                    user_doc_ref = user_service.db.collection("users").document(customer_email.lower().strip())
-                    user_doc_ref.update({"total_spent": Increment(amount_total)})
+                    user_doc_ref = user_service.get_user_doc_ref(customer_email)
+                    if user_doc_ref:
+                        user_doc_ref.update({"total_spent": Increment(amount_total)})
+                    else:
+                        logger.warning(f"No user doc found for {customer_email} to update total_spent")
                 except Exception as spend_err:
                     logger.warning(f"Failed to update total_spent for {customer_email}: {spend_err}")
 
