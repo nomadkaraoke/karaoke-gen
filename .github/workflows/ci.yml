@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, labeled]
@@ -545,6 +546,14 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-backend-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            venv-backend-${{ runner.os }}-py3.13-
+
       - name: Install dependencies
         run: poetry install
 
@@ -599,6 +608,14 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-backend-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            venv-backend-${{ runner.os }}-py3.13-
+
       - name: Set up Java 21 (required by Firestore emulator)
         uses: actions/setup-java@v4
         with:
@@ -626,27 +643,10 @@ jobs:
 
   backend-lint:
     name: "Backend - Code Quality"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.package == 'true')
     steps:
-      - name: Check disk space
-        run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
-          fi
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -657,27 +657,10 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Cache Poetry dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-lint-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            venv-lint-${{ runner.os }}-py3.13-
-
-      - name: Install dependencies
-        run: poetry install
-
       - name: Run validation (syntax check only)
         run: |
-          poetry run python -m py_compile backend/main.py backend/config.py
-          echo "✅ Basic syntax validation passed"
+          python -m py_compile backend/main.py backend/config.py
+          echo "Basic syntax validation passed"
 
   # ============================================
   # CI GATE - Required status check for PRs
@@ -1340,11 +1323,11 @@ jobs:
 
   # ============================================
   # PROPAGATE BASE IMAGE TO ALL RUNNERS
-  # When base image is rebuilt, pull it to all 20 runners
+  # When base image is rebuilt, pull it to all 3 runners
   # so subsequent app builds don't wait 8 min for the pull
   #
   # NOTE: This is best-effort distribution. GitHub Actions doesn't
-  # support targeting specific runners by name, so we spawn 20 jobs
+  # support targeting specific runners by name, so we spawn 3 jobs
   # and rely on the scheduler to distribute them across idle runners.
   # In practice, with all runners idle after deploy-backend, distribution
   # is good. Runners that miss this pull will get the image on their
@@ -1361,9 +1344,9 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        # 20 parallel jobs - GitHub distributes across available runners
-        runner_index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-      max-parallel: 20
+        # 3 parallel jobs - one per self-hosted runner
+        runner_index: [1, 2, 3]
+      max-parallel: 3
       fail-fast: false  # Don't cancel other runners if one fails
     env:
       REGISTRY: us-central1-docker.pkg.dev
