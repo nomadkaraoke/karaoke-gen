@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Job, api } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -17,6 +18,7 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
   const [isRetrying, setIsRetrying] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const { toast } = useToast()
+  const { fetchUser } = useAuth()
 
   const canRetry = job.status === "failed"
   const canDelete = !["complete", "failed", "prep_complete"].includes(job.status)
@@ -52,13 +54,26 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
   async function handleDelete() {
     if (!confirm("Are you sure you want to permanently cancel and delete this job? This cannot be undone.")) return
 
+    // Statuses where the backend does NOT refund credits
+    const noRefundStatuses = ["complete", "prep_complete", "failed", "cancelled"]
+    const willRefund = !noRefundStatuses.includes(job.status)
+
     setIsDeleting(true)
     try {
       await api.deleteJob(job.job_id)
-      toast({
-        title: "Job deleted",
-        description: "The job has been permanently deleted.",
-      })
+      if (willRefund) {
+        await fetchUser()
+        const remaining = useAuth.getState().user?.credits ?? 0
+        toast({
+          title: "Credit refunded",
+          description: `1 credit returned to your account. ${remaining} remaining.`,
+        })
+      } else {
+        toast({
+          title: "Job deleted",
+          description: "The job has been permanently deleted.",
+        })
+      }
       onRefresh()
     } catch (error: any) {
       console.error("Failed to delete job:", error)

@@ -307,6 +307,9 @@ class Job(BaseModel):
     outputs_deleted_at: Optional[datetime] = None  # Timestamp when outputs were deleted by admin
     outputs_deleted_by: Optional[str] = None       # Admin email who deleted outputs
 
+    # Credit refund tracking (prevents double-refund on cancel→delete or fail→delete)
+    credit_refunded: bool = False
+
     # Processing state
     track_output_dir: Optional[str] = None       # Local output directory (temp)
     audio_hash: Optional[str] = None             # Hash for deduplication

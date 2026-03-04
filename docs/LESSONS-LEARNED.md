@@ -818,6 +818,20 @@ When a Cloud Run poller calls a stateful GCE worker, deployments can kill the po
 
 This generalizes the preview encoding pattern (`/encode-preview` was already idempotent; `/encode` was not).
 
+### Deployment-Safe Encoding: Graceful Drain + Extended Retries (Mar 2026)
+
+Even with idempotent endpoints (PR #413) and basic retry logic (PR #242), jobs can still fail during deployments. The original retry config (3 retries, ~14s total) was insufficient — a worker restart (download wheel, install, start uvicorn) takes 30-90 seconds. Job `25173cb3` failed on 2026-03-04 because it hit the encoding stage right as CI restarted the worker.
+
+**Two-layer defense:**
+
+1. **CI-side graceful drain** — Before restarting the encoding worker, CI polls `/health` for `active_jobs`. If jobs are running, it waits up to 10 minutes for them to finish. This is the primary protection — most deployments will simply wait for active work to complete before restarting.
+
+2. **Client-side extended retries** — Increased from 3 retries / ~14s to 7 retries / ~90s with 5s initial backoff (capped at 15s). This is the safety net — if a job arrives during the brief restart window, it retries long enough for the worker to come back up.
+
+3. **Poll failure tolerance** — Status polling now tolerates up to 5 consecutive failures (same pattern as flacfetch PR #446) instead of immediately failing the job on a single network blip. The worker restart takes the health endpoint offline temporarily, which was killing the poller even though the encoding was still running.
+
+**Key insight:** Defense in depth matters. The CI drain prevents *most* conflicts, extended retries handle the *remaining edge cases*, and poll tolerance protects *jobs already in progress*. No single layer is sufficient alone.
+
 ---
 
 ## What We'd Do Differently
