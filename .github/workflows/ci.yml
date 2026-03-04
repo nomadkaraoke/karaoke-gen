@@ -940,17 +940,22 @@ jobs:
       BASE_IMAGE_NAME: karaoke-backend-base
       APP_IMAGE_NAME: karaoke-backend
     steps:
-      - name: Check disk space
+      - name: Check disk space (aggressive for Docker builds)
         run: |
           echo "Checking disk space..."
           USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
           echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
+          if [ "$USAGE" -gt 50 ]; then
+            echo "Disk usage above 50%, cleaning unused images..."
             docker system prune -af || true
+            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
+            echo "After image cleanup: ${USAGE}%"
+          fi
+          if [ "$USAGE" -gt 70 ]; then
+            echo "Still above 70%, clearing build cache..."
             docker builder prune -af || true
             USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
+            echo "After build cache cleanup: ${USAGE}%"
           fi
           if [ "$USAGE" -gt 85 ]; then
             echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
@@ -1177,6 +1182,7 @@ jobs:
 
       - name: Build and push base image (if needed)
         if: steps.check-base.outputs.needs_rebuild == 'true'
+        timeout-minutes: 20
         uses: docker/build-push-action@v6
         with:
           context: .
