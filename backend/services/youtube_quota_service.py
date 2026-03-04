@@ -258,6 +258,7 @@ class YouTubeQuotaService:
             )
 
             # Query the quota usage metric for YouTube Data API
+            # No aggregation — sum the raw per-minute datapoints directly
             results = client.list_time_series(
                 request={
                     "name": project_name,
@@ -267,10 +268,6 @@ class YouTubeQuotaService:
                     ),
                     "interval": interval,
                     "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
-                    "aggregation": monitoring_v3.Aggregation(
-                        alignment_period={"seconds": 86400},  # Aggregate full day
-                        per_series_aligner=monitoring_v3.Aggregation.Aligner.ALIGN_SUM,
-                    ),
                 }
             )
 
