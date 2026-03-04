@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -59,7 +59,10 @@ export function CustomizeStep({
   const previewArtist = displayArtist.trim() || artist
   const previewTitle = displayTitle.trim() || title
 
-  // Create stable object URLs for previews
+  // Create stable object URLs for previews and revoke on cleanup
+  const prevKaraokeBlobUrl = useRef<string>()
+  const prevIntroBlobUrl = useRef<string>()
+
   const karaokeBackgroundUrl = useMemo(
     () => karaokeBackground ? URL.createObjectURL(karaokeBackground) : undefined,
     [karaokeBackground]
@@ -68,6 +71,22 @@ export function CustomizeStep({
     () => introBackground ? URL.createObjectURL(introBackground) : undefined,
     [introBackground]
   )
+
+  useEffect(() => {
+    if (prevKaraokeBlobUrl.current && prevKaraokeBlobUrl.current !== karaokeBackgroundUrl) {
+      URL.revokeObjectURL(prevKaraokeBlobUrl.current)
+    }
+    prevKaraokeBlobUrl.current = karaokeBackgroundUrl
+    return () => { if (karaokeBackgroundUrl) URL.revokeObjectURL(karaokeBackgroundUrl) }
+  }, [karaokeBackgroundUrl])
+
+  useEffect(() => {
+    if (prevIntroBlobUrl.current && prevIntroBlobUrl.current !== introBackgroundUrl) {
+      URL.revokeObjectURL(prevIntroBlobUrl.current)
+    }
+    prevIntroBlobUrl.current = introBackgroundUrl
+    return () => { if (introBackgroundUrl) URL.revokeObjectURL(introBackgroundUrl) }
+  }, [introBackgroundUrl])
 
   return (
     <div className="space-y-5">
