@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, labeled]
@@ -545,6 +546,14 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-backend-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            venv-backend-${{ runner.os }}-py3.13-
+
       - name: Install dependencies
         run: poetry install
 
@@ -599,11 +608,22 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-backend-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            venv-backend-${{ runner.os }}-py3.13-
+
       - name: Set up Java 21 (required by Firestore emulator)
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "21"
+
+      - name: Install Firestore emulator
+        run: sudo apt-get install -y google-cloud-cli-firestore-emulator
 
       - name: Install dependencies
         run: poetry install
@@ -626,27 +646,10 @@ jobs:
 
   backend-lint:
     name: "Backend - Code Quality"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.package == 'true')
     steps:
-      - name: Check disk space
-        run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
-          fi
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -657,27 +660,10 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Cache Poetry dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-lint-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            venv-lint-${{ runner.os }}-py3.13-
-
-      - name: Install dependencies
-        run: poetry install
-
       - name: Run validation (syntax check only)
         run: |
-          poetry run python -m py_compile backend/main.py backend/config.py
-          echo "✅ Basic syntax validation passed"
+          python -m py_compile backend/main.py backend/config.py
+          echo "Basic syntax validation passed"
 
   # ============================================
   # CI GATE - Required status check for PRs
@@ -943,7 +929,7 @@ jobs:
   deploy-backend:
     name: "Deploy - Backend (Cloud Run)"
     needs: [package-build]
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: [self-hosted, linux, gcp, docker-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
@@ -957,17 +943,22 @@ jobs:
       BASE_IMAGE_NAME: karaoke-backend-base
       APP_IMAGE_NAME: karaoke-backend
     steps:
-      - name: Check disk space
+      - name: Check disk space (aggressive for Docker builds)
         run: |
           echo "Checking disk space..."
           USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
           echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
+          if [ "$USAGE" -gt 50 ]; then
+            echo "Disk usage above 50%, cleaning unused images..."
             docker system prune -af || true
+            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
+            echo "After image cleanup: ${USAGE}%"
+          fi
+          if [ "$USAGE" -gt 70 ]; then
+            echo "Still above 70%, clearing build cache..."
             docker builder prune -af || true
             USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
+            echo "After build cache cleanup: ${USAGE}%"
           fi
           if [ "$USAGE" -gt 85 ]; then
             echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
@@ -1194,6 +1185,7 @@ jobs:
 
       - name: Build and push base image (if needed)
         if: steps.check-base.outputs.needs_rebuild == 'true'
+        timeout-minutes: 20
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -1340,11 +1332,11 @@ jobs:
 
   # ============================================
   # PROPAGATE BASE IMAGE TO ALL RUNNERS
-  # When base image is rebuilt, pull it to all 20 runners
+  # When base image is rebuilt, pull it to all 3 runners
   # so subsequent app builds don't wait 8 min for the pull
   #
   # NOTE: This is best-effort distribution. GitHub Actions doesn't
-  # support targeting specific runners by name, so we spawn 20 jobs
+  # support targeting specific runners by name, so we spawn 3 jobs
   # and rely on the scheduler to distribute them across idle runners.
   # In practice, with all runners idle after deploy-backend, distribution
   # is good. Runners that miss this pull will get the image on their
@@ -1361,9 +1353,9 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        # 20 parallel jobs - GitHub distributes across available runners
-        runner_index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-      max-parallel: 20
+        # 3 parallel jobs - one per self-hosted runner
+        runner_index: [1, 2, 3]
+      max-parallel: 3
       fail-fast: false  # Don't cancel other runners if one fails
     env:
       REGISTRY: us-central1-docker.pkg.dev
@@ -1393,72 +1385,7 @@ jobs:
           docker pull $BASE_IMAGE
           echo "✅ Base image cached on $RUNNER_NAME"
 
-  deploy-infrastructure:
-    name: "Deploy - Infrastructure (Pulumi)"
-    runs-on: [self-hosted, linux, gcp]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud (Workload Identity)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: "latest"
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install Pulumi
-        run: |
-          curl -fsSL https://get.pulumi.com | sh
-          echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
-
-      - name: Install Python dependencies
-        working-directory: infrastructure
-        run: |
-          pip install pulumi pulumi-gcp pulumi-docker
-
-      - name: Configure Pulumi
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: |
-          pulumi login
-
-      - name: Refresh Infrastructure State
-        working-directory: infrastructure
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: |
-          echo "🔄 Refreshing Pulumi state to sync with actual cloud resources..."
-          # Refresh detects resources deleted outside of Pulumi (e.g., via gcloud CLI)
-          # This ensures Pulumi recreates missing resources
-          pulumi refresh --yes --skip-preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod || true
-
-      - name: Deploy Infrastructure
-        working-directory: infrastructure
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: |
-          echo "🚀 Deploying infrastructure changes..."
-          # Skip preview to avoid needing broad read permissions on all GCP resources
-          # Pulumi state is authoritative since infrastructure is only managed via Pulumi
-          pulumi up --yes --skip-preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod
-
-      - name: Summary
-        if: success()
-        run: |
-          echo "🎉 Infrastructure deployment successful!"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
+  # NOTE: Pulumi infrastructure deploys are done locally, not in CI.
+  # CI runners run on the infrastructure Pulumi manages, creating a circular
+  # dependency. Always run `pulumi up` locally before merging infra PRs.
+  # See docs/LESSONS-LEARNED.md for details.

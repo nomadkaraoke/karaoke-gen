@@ -1,8 +1,15 @@
 # Base image with all Python dependencies pre-installed
-# This image is rebuilt only when poetry.lock changes
-# 
+# This image is rebuilt only when poetry.lock or this Dockerfile changes
+#
 # Build with: gcloud builds submit --config=cloudbuild-base.yaml
 # Or manually: docker build -f backend/Dockerfile.base -t karaoke-backend-base .
+#
+# Layer caching strategy:
+# 1. System deps + fonts + ffmpeg (rarely change, always cached)
+# 2. pyproject.toml + package stubs (changes with dep updates)
+# 3. pip install (the slow part - cached unless pyproject.toml changes)
+# 4. Source code copy (changes every rebuild, but AFTER deps are installed)
+# 5. spaCy model download (cached unless pip install layer changes)
 
 FROM python:3.11-slim
 
@@ -50,15 +57,26 @@ RUN curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-stati
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files and source code needed for pip install
+# Copy ONLY dependency specification files first (changes less often than source code)
 COPY pyproject.toml README.md LICENSE /app/
+
+# Create minimal package stubs so pip can resolve the editable install
+# pip install -e . needs package directories to exist but doesn't validate content
+RUN mkdir -p /app/karaoke_gen /app/lyrics_transcriber_temp /app/backend && \
+    touch /app/karaoke_gen/__init__.py /app/lyrics_transcriber_temp/__init__.py /app/backend/__init__.py
+
+# Install all Python dependencies (the slow part)
+# BuildKit cache mount preserves downloaded wheels across builds, so partial
+# dependency updates only download changed packages instead of everything
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -e .
+
+# Now copy actual source code (AFTER deps installed, so code changes don't
+# invalidate the expensive pip install layer in registry cache)
 COPY karaoke_gen /app/karaoke_gen
 COPY lyrics_transcriber_temp /app/lyrics_transcriber_temp
 COPY backend /app/backend
-
-# Install all Python dependencies (the slow part - cached in base image)
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
 
 # Download spaCy language model for lyrics transcription
 # This must be done at build time, not runtime (Cloud Run network restrictions)

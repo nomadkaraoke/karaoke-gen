@@ -91,9 +91,9 @@ See `docs/TESTING.md` § "Ad-Hoc Production Debugging" for full details.
 
 ### Infrastructure
 - **All GCP changes via Pulumi PRs** - changes in `infrastructure/` deploy automatically on merge to main
+- **Always run `pulumi up` locally BEFORE merging PRs** - CI deploys run on spot VMs that can be preempted mid-apply, causing partial state. Apply locally first, then merge (CI re-runs as no-op)
 - Never modify GCP resources directly via console or `gcloud` CLI
 - `gcloud` CLI for reading/debugging only (e.g., checking logs, SSH to VMs)
-- Local `pulumi preview` works but `pulumi up` requires broader permissions than CI
 - Stop and notify user on auth issues
 
 ## API Authentication (for Agents)

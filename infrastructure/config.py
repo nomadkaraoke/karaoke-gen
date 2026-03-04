@@ -45,6 +45,7 @@ class MachineTypes:
     """Machine type configurations for GCE instances."""
 
     GITHUB_RUNNER = "e2-standard-4"  # 4 vCPU, 16GB RAM
+    GITHUB_BUILD_RUNNER = "e2-standard-8"  # 8 vCPU, 32GB RAM - dedicated Docker build runner
     ENCODING_WORKER = "c4d-highcpu-32"  # 32 vCPU, AMD EPYC 9B45 Turin - 4.92x faster than c4-standard-8
     FLACFETCH = "e2-small"  # 0.5 vCPU, 2GB RAM
 
@@ -90,13 +91,17 @@ class QueueConfigs:
 # Reduced from 20 to 3 - runners auto-scale with start/stop management
 NUM_GITHUB_RUNNERS = 3
 
+# Runner labels
+GENERAL_RUNNER_LABELS = "self-hosted,linux,x64,gcp,large-disk"
+BUILD_RUNNER_LABELS = "self-hosted,linux,x64,gcp,large-disk,docker-build"
+
 # Google Drive folder ID for validator (public share folder)
 GDRIVE_FOLDER_ID = "1laRKAyxo0v817SstfM5XkpbWiNKNAMSX"
 
 
 class RunnerManagerConfig:
     """Configuration for GitHub runner auto-start/stop management."""
-    # Auto-scales runners from 3 VMs (down from 20) with spot instances
+    # Auto-scales runners: starts on CI demand, stops after idle timeout
 
     FUNCTION_NAME = "github-runner-manager"
     FUNCTION_MEMORY = "512M"  # Increased from 256M due to memory usage

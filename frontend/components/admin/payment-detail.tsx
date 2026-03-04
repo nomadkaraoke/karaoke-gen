@@ -80,7 +80,7 @@ export function PaymentDetailSheet({ payment, onClose, onRefund }: PaymentDetail
 
   return (
     <Sheet open={!!payment} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="overflow-y-auto p-6">
         <SheetHeader>
           <SheetTitle>Payment Details</SheetTitle>
           <SheetDescription>

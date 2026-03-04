@@ -29,8 +29,10 @@ ZONE = os.environ.get("GCP_ZONE", "us-central1-a")
 WEBHOOK_SECRET_NAME = os.environ.get("WEBHOOK_SECRET_NAME", "github-webhook-secret")
 RUNNER_PAT_SECRET_NAME = os.environ.get("RUNNER_PAT_SECRET_NAME", "github-runner-pat")
 IDLE_TIMEOUT_HOURS = int(os.environ.get("IDLE_TIMEOUT_HOURS", "1"))
-RUNNER_PREFIX = "github-runner-"
-NUM_RUNNERS = 3
+RUNNER_NAMES = os.environ.get(
+    "RUNNER_NAMES",
+    "github-runner-1,github-runner-2,github-runner-3,github-build-runner",
+).split(",")
 
 # Lazy-loaded clients and secrets
 _compute_client = None
@@ -112,8 +114,7 @@ def get_runner_instances() -> list[compute_v1.Instance]:
     client = get_compute_client()
     instances = []
 
-    for i in range(1, NUM_RUNNERS + 1):
-        instance_name = f"{RUNNER_PREFIX}{i}"
+    for instance_name in RUNNER_NAMES:
         try:
             instance = client.get(
                 project=PROJECT_ID,
@@ -136,8 +137,7 @@ def start_runners() -> dict:
     client = get_compute_client()
     result = {"started": [], "already_running": [], "failed": []}
 
-    for i in range(1, NUM_RUNNERS + 1):
-        instance_name = f"{RUNNER_PREFIX}{i}"
+    for instance_name in RUNNER_NAMES:
         try:
             instance = client.get(
                 project=PROJECT_ID,

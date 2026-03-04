@@ -92,14 +92,33 @@ Push to `main` triggers GitHub Actions:
 
 **All infrastructure changes must go through PRs.** The CI pipeline automatically deploys Pulumi changes when PRs merge to main.
 
+**IMPORTANT: Always deploy infrastructure changes locally first.** CI deploys run on spot VMs that can be preempted mid-apply, leaving Pulumi state partially applied (e.g., resources deleted but not recreated). Running `pulumi up` locally before merging ensures changes work correctly and avoids painful state recovery.
+
 ```bash
-# Preview changes locally (requires GCP auth)
 cd infrastructure
+
+# 1. Preview changes
 pulumi preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod
 
-# DO NOT run `pulumi up` locally - let CI handle deployment
-# CI uses --skip-preview due to limited service account permissions
+# 2. Apply locally FIRST (ensures clean apply before CI)
+pulumi up --stack nomadkaraoke/karaoke-gen-infrastructure/prod
+
+# 3. Then create PR and merge (CI will run pulumi up again as a no-op)
 ```
+
+**If CI deploy fails or is interrupted:**
+```bash
+# Cancel stale lock from interrupted run
+pulumi cancel --stack nomadkaraoke/karaoke-gen-infrastructure/prod
+
+# Sync state with actual GCP resources
+pulumi refresh --stack nomadkaraoke/karaoke-gen-infrastructure/prod --yes
+
+# Re-apply (may need `pulumi import` for resources created but not in state)
+pulumi up --stack nomadkaraoke/karaoke-gen-infrastructure/prod
+```
+
+See `docs/LESSONS-LEARNED.md` for Pulumi CI gotchas and recovery examples.
 
 **What's managed by Pulumi:**
 - Firestore database and indexes
@@ -109,7 +128,7 @@ pulumi preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod
 - Secret Manager secrets
 - Service accounts and IAM bindings
 - Workload Identity Federation
-- GCE instances (GitHub runners, encoding worker)
+- GCE instances (GitHub runners x3 spot + 1 on-demand build runner, encoding worker)
 
 **Workflow:**
 1. Make changes in the appropriate module under `infrastructure/`
@@ -118,10 +137,8 @@ pulumi preview --stack nomadkaraoke/karaoke-gen-infrastructure/prod
    - `config.py` - Shared configuration constants
    - `__main__.py` - Entry point that wires modules together
 2. Run `pulumi preview` locally to verify
-3. Create PR and merge
-4. CI deploys automatically
-
-See `docs/LESSONS-LEARNED.md` for Pulumi CI gotchas.
+3. Run `pulumi up` locally to apply
+4. Create PR and merge (CI re-runs `pulumi up` as a no-op confirmation)
 
 ### Manual Frontend Deploy
 

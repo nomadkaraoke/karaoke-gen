@@ -22,7 +22,7 @@ def read_script(name: str, **substitutions) -> str:
 
     Example:
         script = read_script("github_runner.sh",
-            RUNNER_VERSION="2.321.0",
+            RUNNER_VERSION="2.332.0",
             RUNNER_LABELS="self-hosted,linux,x64"
         )
     """
