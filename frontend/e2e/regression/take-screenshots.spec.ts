@@ -1,6 +1,9 @@
 /**
- * Screenshot capture script for PR documentation.
- * Run with: npm run test:e2e -- tests/take-screenshots.spec.ts
+ * Screenshot capture helper for PR documentation.
+ *
+ * NOT a real test — requires a running dev server and local services.
+ * Skipped by default. Run explicitly with:
+ *   TAKE_SCREENSHOTS=1 npx playwright test take-screenshots.spec.ts
  */
 
 import { test, expect } from '@playwright/test';
@@ -10,6 +13,8 @@ import fs from 'fs';
 const SCREENSHOT_DIR = path.join(__dirname, '..', '..', 'public', 'screenshots');
 
 test.describe('PR Screenshots', () => {
+  test.skip(!process.env.TAKE_SCREENSHOTS, 'Set TAKE_SCREENSHOTS=1 to run');
+
   test.beforeAll(async () => {
     // Ensure screenshot directory exists
     if (!fs.existsSync(SCREENSHOT_DIR)) {
