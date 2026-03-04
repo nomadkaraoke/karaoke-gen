@@ -25,10 +25,23 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Retry configuration for handling transient failures (e.g., worker restarts)
-MAX_RETRIES = 3
-INITIAL_BACKOFF_SECONDS = 2.0
-MAX_BACKOFF_SECONDS = 10.0
+# Retry configuration for handling transient failures (e.g., worker restarts during deployments).
+#
+# During a CI deployment, the encoding worker is restarted via systemctl. The restart
+# involves downloading a new wheel from GCS, installing it, and starting uvicorn —
+# which can take 30-90 seconds. The retry window must exceed this to avoid failing
+# jobs that happen to hit the encoding stage during a deploy.
+#
+# With 7 retries and exponential backoff (5s, 10s, 15s, 15s, 15s, 15s, 15s),
+# total retry window is ~90s, sufficient to survive a full worker restart.
+MAX_RETRIES = 7
+INITIAL_BACKOFF_SECONDS = 5.0
+MAX_BACKOFF_SECONDS = 15.0
+
+# Poll failure tolerance: number of consecutive poll failures allowed before giving up.
+# This prevents a single transient network blip during status polling from killing a
+# long-running encoding job. Similar pattern to flacfetch status polling (PR #446).
+MAX_CONSECUTIVE_POLL_FAILURES = 5
 
 
 class EncodingService:
@@ -264,7 +277,12 @@ class EncodingService:
         progress_callback=None,
     ) -> Dict[str, Any]:
         """
-        Poll for encoding job completion.
+        Poll for encoding job completion with tolerance for transient failures.
+
+        During a deployment, the encoding worker may restart while we're polling.
+        Rather than failing the entire job on a single poll error, we tolerate up to
+        MAX_CONSECUTIVE_POLL_FAILURES consecutive failures before giving up. This is
+        the same pattern used in flacfetch status polling (PR #446).
 
         Args:
             job_id: Job identifier
@@ -277,19 +295,40 @@ class EncodingService:
 
         Raises:
             TimeoutError: If job doesn't complete within timeout
-            RuntimeError: If job fails
+            RuntimeError: If job fails or too many consecutive poll failures
         """
         logger.info(f"[job:{job_id}] Waiting for GCE encoding to complete...")
 
         start_time = asyncio.get_event_loop().time()
         last_progress = 0
+        consecutive_failures = 0
 
         while True:
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > timeout:
                 raise TimeoutError(f"Encoding job {job_id} timed out after {timeout}s")
 
-            status = await self.get_job_status(job_id)
+            try:
+                status = await self.get_job_status(job_id)
+                # Reset failure counter on successful poll
+                consecutive_failures = 0
+            except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError,
+                    asyncio.TimeoutError, RuntimeError) as e:
+                consecutive_failures += 1
+                if consecutive_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
+                    logger.error(
+                        f"[job:{job_id}] Status polling failed {consecutive_failures} consecutive times, giving up: {e}"
+                    )
+                    raise RuntimeError(
+                        f"Encoding job {job_id} lost contact with worker after "
+                        f"{consecutive_failures} consecutive poll failures: {e}"
+                    )
+                logger.warning(
+                    f"[job:{job_id}] Status poll failed ({consecutive_failures}/{MAX_CONSECUTIVE_POLL_FAILURES}): {e}. "
+                    f"Worker may be restarting, will retry..."
+                )
+                await asyncio.sleep(poll_interval)
+                continue
 
             # Handle case where GCE worker returns a list instead of dict
             if isinstance(status, list):
