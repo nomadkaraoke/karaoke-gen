@@ -101,7 +101,7 @@ GDRIVE_FOLDER_ID = "1laRKAyxo0v817SstfM5XkpbWiNKNAMSX"
 
 class RunnerManagerConfig:
     """Configuration for GitHub runner auto-start/stop management."""
-    # Auto-scales runners from 3 VMs (down from 20) with spot instances
+    # Auto-scales runners: starts on CI demand, stops after idle timeout
 
     FUNCTION_NAME = "github-runner-manager"
     FUNCTION_MEMORY = "512M"  # Increased from 256M due to memory usage

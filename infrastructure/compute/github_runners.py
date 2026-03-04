@@ -1,12 +1,12 @@
 """
 GitHub Actions Self-Hosted Runners on GCP.
 
-Creates Spot/Preemptible VMs that register as self-hosted runners
-at the organization level. Uses Spot instances for 60-91% cost savings.
+Creates on-demand VMs that register as self-hosted runners
+at the organization level.
 
 Resources created:
 - Cloud Router and Cloud NAT (for outbound internet without external IPs)
-- N Compute Engine VMs (Spot instances)
+- N Compute Engine VMs (on-demand instances)
 - Each VM runs the GitHub Actions runner agent
 
 The VMs are managed by the runner_manager Cloud Function which:
@@ -74,12 +74,10 @@ def create_github_runners(
     """
     Create GitHub Actions self-hosted runner VM instances.
 
-    Creates NUM_GITHUB_RUNNERS Spot VMs, each configured as a GitHub Actions
+    Creates NUM_GITHUB_RUNNERS on-demand VMs, each configured as a GitHub Actions
     self-hosted runner for the nomadkaraoke organization (available to all repos).
 
-    Uses Spot instances (preemptible) for 60-91% cost savings.
-    VMs start in TERMINATED state and are started by the runner_manager
-    Cloud Function when CI jobs are queued.
+    VMs are started/stopped by the runner_manager Cloud Function based on CI demand.
 
     Args:
         service_account: The GitHub runner service account.
@@ -123,13 +121,11 @@ def create_github_runners(
                 email=service_account.email,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
             ),
-            # Spot/Preemptible instance configuration (60-91% cheaper)
-            # Preemptible VMs may be terminated at any time but cost much less.
-            # The startup script re-registers the runner on boot.
+            # On-demand scheduling — no preemption risk
             scheduling=compute.InstanceSchedulingArgs(
-                preemptible=True,
-                automatic_restart=False,  # Required for preemptible
-                on_host_maintenance="TERMINATE",  # Required for preemptible
+                preemptible=False,
+                automatic_restart=True,
+                on_host_maintenance="MIGRATE",
             ),
             # Metadata for startup script
             metadata={
