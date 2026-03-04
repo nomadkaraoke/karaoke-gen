@@ -1570,60 +1570,17 @@ Called by Cloud Tasks 5 minutes after a job enters a blocking state (primarily `
 
 **Note**: With the combined review flow, users complete both lyrics review and instrumental selection in one session. The `awaiting_instrumental_selection` state is only used for finalise-only jobs.
 
-## Rate Limits
+## Rate Limits & Abuse Prevention
 
-### User Limits
+### Usage Control
 
-- **Jobs per day**: 5 (configurable via `RATE_LIMIT_JOBS_PER_DAY`)
-- **YouTube uploads**: Quota-aware, ~33 uploads/day within 10,000 units/day API quota (configurable via `YOUTUBE_QUOTA_DAILY_LIMIT`, `YOUTUBE_QUOTA_UPLOAD_COST`, `YOUTUBE_QUOTA_SAFETY_MARGIN`). Uploads exceeding quota are queued and processed hourly. GCP Cloud Monitoring integration provides cross-referencing of actual API quota consumption (see Admin Rate Limits API).
+Job creation is controlled by credits (purchased or earned via feedback). There is no per-user daily job limit — users can create as many jobs as their credits allow.
 
-Rate limiting can be disabled via `ENABLE_RATE_LIMITING=false`.
+### YouTube Upload Quota
 
-### 429 Response
+- **YouTube uploads**: Quota-aware, ~33 uploads/day within 10,000 units/day API quota (configurable via `YOUTUBE_QUOTA_DAILY_LIMIT`, `YOUTUBE_QUOTA_UPLOAD_COST`, `YOUTUBE_QUOTA_SAFETY_MARGIN`). Uploads exceeding quota are queued and processed hourly.
 
-When rate limit is exceeded, the API returns:
-
-```json
-{
-  "detail": "Daily job limit exceeded (5/5). Resets in 14 hours.",
-  "error_type": "rate_limit_exceeded",
-  "limit_type": "jobs_per_day",
-  "current_count": 5,
-  "limit_value": 5,
-  "remaining_seconds": 50400,
-  "retry_after": "2026-01-10T00:00:00Z"
-}
-```
-
-### Admin Override
-
-Admins can grant users bypass permissions or custom limits via the admin UI at `/admin/rate-limits`.
-
-### Admin Rate Limits API
-
-```http
-GET /api/admin/rate-limits/stats
-```
-Returns current rate limit statistics including YouTube quota usage, blocklist counts, override counts, and GCP Cloud Monitoring cross-reference data.
-
-Response fields include:
-- `jobs_per_day_limit`, `rate_limiting_enabled` - Configuration
-- `youtube_uploads_today` - Upload count from Firestore quota tracking (PT-based)
-- `youtube_quota_units_consumed`, `youtube_quota_units_remaining`, `youtube_quota_daily_limit`, `youtube_quota_effective_limit`, `youtube_quota_upload_cost`, `youtube_quota_estimated_uploads_remaining`, `youtube_quota_seconds_until_reset` - YouTube quota unit tracking
-- `youtube_uploads_queued`, `youtube_uploads_failed` - Upload queue status
-- `disposable_domains_count`, `blocked_emails_count`, `blocked_ips_count` - Blocklist stats
-- `total_overrides` - User override count
-- `gcp_quota_available` - Whether GCP Cloud Monitoring data is available
-- `gcp_quota_units_consumed` - Actual API quota units consumed per GCP (may differ from local tracking)
-- `gcp_quota_last_datapoint` - Timestamp of the most recent GCP monitoring data point
-- `gcp_quota_data_delay_minutes` - How stale the GCP data is (Cloud Monitoring has ~5 min delay)
-- `quota_drift` - Difference between local tracking and GCP-reported consumption
-- `quota_drift_alert` - Whether drift exceeds alert threshold
-
-```http
-GET /api/admin/rate-limits/users/{email}
-```
-Returns rate limit status for a specific user.
+### Admin Blocklist & Queue API
 
 ```http
 GET /api/admin/rate-limits/blocklists
@@ -1635,13 +1592,6 @@ POST /api/admin/rate-limits/blocklists/blocked-ips
 DELETE /api/admin/rate-limits/blocklists/blocked-ips/{ip}
 ```
 Manage blocklists for disposable email domains, blocked emails, and blocked IPs.
-
-```http
-GET /api/admin/rate-limits/overrides
-PUT /api/admin/rate-limits/overrides/{email}
-DELETE /api/admin/rate-limits/overrides/{email}
-```
-Manage user overrides (bypass or custom limits).
 
 ### YouTube Upload Queue
 
