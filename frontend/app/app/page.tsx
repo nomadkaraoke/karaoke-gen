@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff, Gift, X, Shield, ShieldOff } from "lucide-react"
+import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff, Gift, X, Shield, ShieldOff, HelpCircle, Mail, Phone } from "lucide-react"
 import { sortJobsByDate, getDisplayJobs } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
@@ -32,6 +32,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 function AppPageContent() {
   const router = useRouter()
@@ -234,6 +242,36 @@ function AppPageContent() {
                 </Tooltip>
               </TooltipProvider>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-[40px] px-2 sm:px-3"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-sm font-normal">
+                  Something confusing or not working? Reach out anytime!
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <a href="mailto:andrew@nomadkaraoke.com">
+                    <Mail className="w-4 h-4 mr-2" />
+                    andrew@nomadkaraoke.com
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="tel:+18036363267">
+                    <Phone className="w-4 h-4 mr-2" />
+                    +1 (803) 636-3267
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <AuthStatus />
             {mounted && (
               <TooltipProvider>

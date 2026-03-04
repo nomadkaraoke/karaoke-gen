@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { User, LogOut, Settings, Shield, Mail } from "lucide-react"
+import { User, LogOut, Settings, Shield, Mail, Phone, HelpCircle } from "lucide-react"
 import Link from "next/link"
 
 export function AppHeader() {
@@ -48,13 +48,32 @@ export function AppHeader() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <a
-            href="mailto:andrew@nomadkaraoke.com"
-            className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Mail className="w-3.5 h-3.5" />
-            <span>Need help?</span>
-          </a>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>Need help?</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="text-sm">
+                Something confusing or not working? Reach out anytime!
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <a href="mailto:andrew@nomadkaraoke.com">
+                  <Mail className="w-4 h-4 mr-2" />
+                  andrew@nomadkaraoke.com
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="tel:+18036363267">
+                  <Phone className="w-4 h-4 mr-2" />
+                  +1 (803) 636-3267
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -96,7 +115,13 @@ export function AppHeader() {
               <DropdownMenuItem asChild>
                 <a href="mailto:andrew@nomadkaraoke.com">
                   <Mail className="w-4 h-4 mr-2" />
-                  Need help? Contact us
+                  andrew@nomadkaraoke.com
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="tel:+18036363267">
+                  <Phone className="w-4 h-4 mr-2" />
+                  +1 (803) 636-3267
                 </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

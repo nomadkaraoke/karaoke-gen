@@ -813,12 +813,19 @@ export const api = {
     artist: string,
     title: string
   ): Promise<{ search_session_id: string; results: AudioSearchResult[]; results_count: number }> {
-    const response = await fetch(`${API_BASE_URL}/api/audio-search/search-standalone`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ artist, title }),
-    });
-    return handleResponse(response);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/audio-search/search-standalone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ artist, title }),
+        signal: controller.signal,
+      });
+      return handleResponse(response);
+    } finally {
+      clearTimeout(timeout);
+    }
   },
 
   /**

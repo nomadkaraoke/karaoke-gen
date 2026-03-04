@@ -120,11 +120,8 @@ export function AudioSourceStep({
   const [fallbackMode, setFallbackMode] = useState<"upload" | "url" | null>(null)
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
 
-  // Auto-trigger search on mount
-  const triggerSearch = useCallback(async () => {
-    if (searchTriggered.current) return
-    searchTriggered.current = true
-
+  // Search with retry for network failures
+  const doSearch = useCallback(async (retryCount = 0): Promise<void> => {
     setIsSearching(true)
     setError("")
     setIsCreditError(false)
@@ -139,17 +136,23 @@ export function AudioSourceStep({
         setError("You're out of credits. Buy more to continue creating karaoke videos.")
       } else if (err instanceof ApiError) {
         setError(err.message)
+      } else if (retryCount < 1) {
+        // Network errors (CORS, timeout, connection reset) - auto-retry once
+        return doSearch(retryCount + 1)
       } else {
-        setError("Failed to search for audio")
+        setError("Search failed due to a network error. Please try again.")
       }
     } finally {
       setIsSearching(false)
     }
   }, [artist, title, onSearchCompleted])
 
+  // Auto-trigger search on mount
   useEffect(() => {
-    triggerSearch()
-  }, [triggerSearch])
+    if (searchTriggered.current) return
+    searchTriggered.current = true
+    doSearch()
+  }, [doSearch])
 
   const confidence = useMemo(() => getSearchConfidence(results, title), [results, title])
   const groupedResults = useMemo(() => groupResults(results), [results])
@@ -265,6 +268,14 @@ export function AudioSourceStep({
           <p>{error}</p>
           {isCreditError && (
             <button onClick={() => setShowBuyCreditsDialog(true)} className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</button>
+          )}
+          {!isCreditError && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+              <button onClick={() => { searchTriggered.current = false; doSearch() }} className="font-medium underline" style={{ color: 'var(--brand-pink)' }}>Retry</button>
+              <span className="text-xs text-muted-foreground">
+                Still not working? <a href="mailto:andrew@nomadkaraoke.com" className="underline hover:text-foreground">Email andrew@nomadkaraoke.com</a>
+              </span>
+            </div>
           )}
         </div>
       )}
