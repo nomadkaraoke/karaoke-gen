@@ -11,7 +11,17 @@ jest.mock('@/lib/api', () => ({
   api: {
     retryJob: jest.fn(),
     deleteJob: jest.fn(),
-  }
+  },
+  getAccessToken: jest.fn(),
+}))
+
+// Mock the auth module
+jest.mock('@/lib/auth', () => ({
+  useAuth: Object.assign(jest.fn(() => ({
+    fetchUser: jest.fn(),
+  })), {
+    getState: jest.fn(() => ({ user: { credits: 5 } })),
+  }),
 }))
 
 describe('JobActions', () => {
