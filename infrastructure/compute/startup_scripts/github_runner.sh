@@ -1,11 +1,24 @@
 #!/bin/bash
-set -e
+# GitHub Actions Runner startup script
+# Designed to be IDEMPOTENT - safe to re-run on spot VM preemption/restart.
+# Software installation is skipped if already present; runner re-registration always runs.
 
 # Log to a file for debugging
 exec > >(tee /var/log/github-runner-startup.log) 2>&1
 echo "Starting GitHub Actions runner setup at $(date)"
 
-# System updates and core dependencies
+# ==================== Helper ====================
+install_gpg_key() {
+    local url="$1"
+    local dest="$2"
+    if [ -f "$dest" ]; then
+        echo "GPG key already exists: $dest"
+        return 0
+    fi
+    curl -fsSL "$url" | gpg --batch --dearmor -o "$dest"
+}
+
+# ==================== System packages ====================
 apt-get update
 apt-get install -y \
     curl \
@@ -22,28 +35,47 @@ apt-get install -y \
     lsb-release
 
 # ==================== Docker ====================
-echo "Installing Docker..."
-curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --batch --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Configure Docker for the runner user
+if ! command -v docker &>/dev/null; then
+    echo "Installing Docker..."
+    install_gpg_key \
+        "https://download.docker.com/linux/debian/gpg" \
+        "/usr/share/keyrings/docker-archive-keyring.gpg"
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+else
+    echo "Docker already installed, skipping"
+fi
 systemctl enable docker
 systemctl start docker
 
 # ==================== Python 3.13 via pyenv ====================
-# setup-python action on self-hosted runners needs Python in the tool cache
-echo "Installing Python 3.13 via pyenv..."
+if [ ! -f /opt/pyenv/versions/3.13.0/bin/python3.13 ]; then
+    echo "Installing Python 3.13 via pyenv..."
 
-# Install pyenv dependencies
-apt-get install -y make build-essential libssl-dev zlib1g-dev \
-  libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
-  libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+    apt-get install -y make build-essential libssl-dev zlib1g-dev \
+      libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+      libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 
-# Install pyenv system-wide
-export PYENV_ROOT=/opt/pyenv
-curl https://pyenv.run | bash
+    if [ ! -d /opt/pyenv ]; then
+        export PYENV_ROOT=/opt/pyenv
+        curl https://pyenv.run | bash
+    fi
+
+    export PATH="/opt/pyenv/bin:$PATH"
+    eval "$(/opt/pyenv/bin/pyenv init -)"
+
+    /opt/pyenv/bin/pyenv install 3.13.0
+    /opt/pyenv/bin/pyenv global 3.13.0
+
+    ln -sf /opt/pyenv/shims/python3.13 /usr/local/bin/python3.13
+    ln -sf /opt/pyenv/shims/python3 /usr/local/bin/python3
+    ln -sf /opt/pyenv/shims/pip3 /usr/local/bin/pip3
+else
+    echo "Python 3.13 already installed, skipping"
+    export PATH="/opt/pyenv/bin:$PATH"
+    eval "$(/opt/pyenv/bin/pyenv init -)"
+fi
 
 # Add to system profile for future sessions
 cat > /etc/profile.d/pyenv.sh << 'PYENV_PROFILE'
@@ -52,66 +84,100 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 PYENV_PROFILE
 
-# Source pyenv for current session
-export PATH="/opt/pyenv/bin:$PATH"
-eval "$(/opt/pyenv/bin/pyenv init -)"
-
-# Install Python 3.13
-/opt/pyenv/bin/pyenv install 3.13.0
-/opt/pyenv/bin/pyenv global 3.13.0
-
-# Create symlinks for system-wide access
-ln -sf /opt/pyenv/shims/python3.13 /usr/local/bin/python3.13
-ln -sf /opt/pyenv/shims/python3 /usr/local/bin/python3
-ln -sf /opt/pyenv/shims/pip3 /usr/local/bin/pip3
-
 # ==================== Node.js 20 ====================
-echo "Installing Node.js 20..."
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
+if ! command -v node &>/dev/null || ! node --version | grep -q "^v20"; then
+    echo "Installing Node.js 20..."
+    # Use NodeSource with retry and fallback
+    if ! curl -fsSL --retry 3 --retry-delay 5 https://deb.nodesource.com/setup_20.x | bash -; then
+        echo "WARNING: NodeSource setup failed, trying apt directly..."
+        apt-get install -y nodejs || true
+    else
+        apt-get install -y nodejs
+    fi
+else
+    echo "Node.js 20 already installed, skipping"
+fi
 
 # ==================== Java 21 (for Firestore emulator) ====================
-echo "Installing Java 21 via Temurin..."
-# Use Temurin (Adoptium) - more reliable than Debian repos
-curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --batch --dearmor -o /usr/share/keyrings/adoptium.gpg
-echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(lsb_release -cs) main" > /etc/apt/sources.list.d/adoptium.list
-apt-get update
-apt-get install -y temurin-21-jdk
+if ! java -version 2>&1 | grep -q "21\."; then
+    echo "Installing Java 21 via Temurin..."
+    install_gpg_key \
+        "https://packages.adoptium.net/artifactory/api/gpg/key/public" \
+        "/usr/share/keyrings/adoptium.gpg"
+    echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(lsb_release -cs) main" > /etc/apt/sources.list.d/adoptium.list
+    apt-get update
+    apt-get install -y temurin-21-jdk
+else
+    echo "Java 21 already installed, skipping"
+fi
 
 # ==================== FFmpeg ====================
-echo "Installing FFmpeg..."
-apt-get install -y ffmpeg
+if ! command -v ffmpeg &>/dev/null; then
+    echo "Installing FFmpeg..."
+    apt-get install -y ffmpeg
+else
+    echo "FFmpeg already installed, skipping"
+fi
 
 # ==================== Poetry ====================
-echo "Installing Poetry..."
-curl -sSL https://install.python-poetry.org | python3 -
-ln -sf /root/.local/bin/poetry /usr/local/bin/poetry
+if ! command -v poetry &>/dev/null; then
+    echo "Installing Poetry..."
+    curl -sSL https://install.python-poetry.org | python3 -
+    ln -sf /root/.local/bin/poetry /usr/local/bin/poetry
+else
+    echo "Poetry already installed, skipping"
+fi
 
 # ==================== Google Cloud SDK ====================
-echo "Installing Google Cloud SDK..."
-curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --batch --dearmor -o /usr/share/keyrings/cloud.google.gpg
-echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list
-apt-get update
-apt-get install -y google-cloud-cli google-cloud-cli-firestore-emulator
+if ! command -v gcloud &>/dev/null; then
+    echo "Installing Google Cloud SDK..."
+    install_gpg_key \
+        "https://packages.cloud.google.com/apt/doc/apt-key.gpg" \
+        "/usr/share/keyrings/cloud.google.gpg"
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list
+    apt-get update
+    apt-get install -y google-cloud-cli google-cloud-cli-firestore-emulator
+else
+    echo "Google Cloud SDK already installed, skipping"
+fi
 
 # ==================== Create runner user ====================
-echo "Creating runner user..."
-useradd -m -s /bin/bash runner || true
+echo "Ensuring runner user exists..."
+useradd -m -s /bin/bash runner 2>/dev/null || true
 usermod -aG docker runner
 
 # ==================== GitHub Actions Runner ====================
+# This section ALWAYS runs — it handles version upgrades and re-registration
 echo "Setting up GitHub Actions Runner..."
-RUNNER_VERSION="2.321.0"
+RUNNER_VERSION="2.332.0"
 RUNNER_DIR="/home/runner/actions-runner"
 
 mkdir -p $RUNNER_DIR
-cd $RUNNER_DIR
 
-# Download runner
-curl -o actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz -L \
-    https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
-tar xzf actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
-rm actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
+# Stop existing service if running (for upgrades/re-registration)
+if [ -f "$RUNNER_DIR/svc.sh" ]; then
+    echo "Stopping existing runner service..."
+    cd $RUNNER_DIR
+    ./svc.sh stop 2>/dev/null || true
+    ./svc.sh uninstall 2>/dev/null || true
+fi
+
+# Check if runner needs download/upgrade
+CURRENT_VERSION=""
+if [ -f "$RUNNER_DIR/bin/Runner.Listener" ]; then
+    CURRENT_VERSION=$("$RUNNER_DIR/bin/Runner.Listener" --version 2>/dev/null || echo "unknown")
+fi
+
+if [ "$CURRENT_VERSION" != "$RUNNER_VERSION" ]; then
+    echo "Upgrading runner from ${CURRENT_VERSION:-none} to ${RUNNER_VERSION}..."
+    cd $RUNNER_DIR
+    curl -sO -L \
+        https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
+    tar xzf actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
+    rm -f actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
+else
+    echo "Runner already at version ${RUNNER_VERSION}"
+fi
 
 chown -R runner:runner $RUNNER_DIR
 
@@ -167,16 +233,17 @@ echo "Setting up Python 3.13 in tool cache for setup-python action..."
 TOOL_CACHE="/home/runner/actions-runner/_work/_tool"
 mkdir -p $TOOL_CACHE/Python/3.13.0/x64
 
-# Copy pyenv Python to tool cache
-cp -r /opt/pyenv/versions/3.13.0/* $TOOL_CACHE/Python/3.13.0/x64/
-
-# Create marker file that setup-python looks for
-touch $TOOL_CACHE/Python/3.13.0/x64.complete
+# Copy pyenv Python to tool cache (only if not already there)
+if [ ! -f "$TOOL_CACHE/Python/3.13.0/x64.complete" ]; then
+    cp -r /opt/pyenv/versions/3.13.0/* $TOOL_CACHE/Python/3.13.0/x64/
+    touch $TOOL_CACHE/Python/3.13.0/x64.complete
+    echo "Python 3.13 added to tool cache"
+else
+    echo "Python 3.13 already in tool cache"
+fi
 
 # Fix permissions - must own entire _work directory, not just _tool
 chown -R runner:runner /home/runner/actions-runner/_work
-
-echo "Python 3.13 added to tool cache"
 
 # ==================== Docker cleanup cron ====================
 # Prevent disk from filling up with old Docker images

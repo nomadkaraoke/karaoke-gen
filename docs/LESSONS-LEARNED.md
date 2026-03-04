@@ -677,6 +677,13 @@ Use `pulumi up --skip-preview --yes` when CI service account can't run preview. 
 ### Spot VMs and Long-Running CI Jobs Don't Mix
 Spot/preemptible VMs can be terminated at any time. Docker builds (10+ min) and Pulumi deploys are especially vulnerable — the PR #464 Pulumi deploy was itself preempted mid-apply, leaving state partially applied (3 runners deleted but not recreated). Fix: use a dedicated on-demand runner (`github-build-runner`) for `deploy-backend` jobs via the `docker-build` label. Recovery from interrupted Pulumi: `pulumi cancel` → `pulumi refresh` → `pulumi up` (may need `pulumi import` for resources created but not yet in state).
 
+### Startup Scripts Must Be Idempotent (Mar 2026)
+**Spot/preemptible VMs re-run startup scripts on every restart.** The GitHub runner startup script used `set -e` and non-idempotent commands (e.g., `gpg --dearmor -o file` fails if file exists). When all 3 runners were preempted and restarted simultaneously, the startup script died at the Docker GPG key step, leaving zero runners registered with GitHub. All self-hosted CI jobs queued indefinitely.
+
+**Fix**: Remove `set -e`, add existence checks for all software (Docker, Python, Node, Java, Poetry, gcloud), use `install_gpg_key()` helper that skips if file exists, and always re-run the runner registration section. Also pin runner version and check for upgrades.
+
+**Also**: Keep runner version updated — GitHub enforces minimum versions (e.g., 2.329.0+). The startup script had 2.321.0 hardcoded, which was too old to register even after the idempotency fix.
+
 ### Docker Disk Management
 Self-hosted runners need aggressive disk cleanup. Use threshold-based (70%) not age-based cleanup.
 
