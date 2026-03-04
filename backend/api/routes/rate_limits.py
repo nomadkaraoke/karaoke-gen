@@ -60,13 +60,6 @@ class RateLimitStatsResponse(BaseModel):
     # User override stats
     total_overrides: int
 
-    # GCP quota monitoring (Phase 3)
-    gcp_quota_available: bool = False
-    gcp_quota_units_consumed: Optional[int] = None
-    gcp_quota_last_datapoint: Optional[str] = None
-    gcp_quota_data_delay_minutes: Optional[int] = None
-    quota_drift: Optional[int] = None
-    quota_drift_alert: bool = False
 
 
 class YouTubeQueueEntry(BaseModel):
@@ -189,22 +182,6 @@ async def get_rate_limit_stats(
     # Get override count
     overrides = rate_limit_service.get_all_overrides()
 
-    # Get GCP quota data if available
-    gcp_data = {}
-    try:
-        gcp_result = quota_service.get_gcp_quota_usage()
-        if gcp_result.get("available"):
-            gcp_data = {
-                "gcp_quota_available": True,
-                "gcp_quota_units_consumed": gcp_result.get("gcp_units_consumed"),
-                "gcp_quota_last_datapoint": gcp_result.get("gcp_last_datapoint_time"),
-                "gcp_quota_data_delay_minutes": gcp_result.get("gcp_data_delay_minutes"),
-                "quota_drift": gcp_result.get("drift"),
-                "quota_drift_alert": gcp_result.get("drift_alert", False),
-            }
-    except Exception:
-        pass  # GCP quota is optional, graceful fallback
-
     return RateLimitStatsResponse(
         jobs_per_day_limit=settings.rate_limit_jobs_per_day,
         rate_limiting_enabled=settings.enable_rate_limiting,
@@ -224,7 +201,6 @@ async def get_rate_limit_stats(
         blocked_emails_count=blocklist_stats["blocked_emails_count"],
         blocked_ips_count=blocklist_stats["blocked_ips_count"],
         total_overrides=len(overrides),
-        **gcp_data,
     )
 
 

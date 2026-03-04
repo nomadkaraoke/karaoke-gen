@@ -89,9 +89,7 @@ class TestGetRateLimitStats:
                 "upload_count": 3,
                 "estimated_uploads_remaining": 28,
                 "seconds_until_reset": 43200,
-                "upload_count": 1,
             }
-            mock_quota.get_gcp_quota_usage.return_value = {"available": False}
             mock_get_qs.return_value = mock_quota
 
             # Setup queue service mock

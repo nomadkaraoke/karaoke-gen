@@ -61,8 +61,6 @@ const mockStats = {
   youtube_quota_pending_units: 300,
   youtube_uploads_queued: 0,
   youtube_uploads_failed: 0,
-  gcp_quota_available: false,
-  quota_drift_alert: false,
   disposable_domains_count: 130,
   blocked_emails_count: 2,
   blocked_ips_count: 1,
