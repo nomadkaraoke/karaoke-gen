@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Users,
   Briefcase,
+  DollarSign,
   ArrowLeft,
   Settings,
   Search,
@@ -41,6 +42,11 @@ const navItems = [
     title: "Jobs",
     href: "/admin/jobs",
     icon: Briefcase,
+  },
+  {
+    title: "Payments",
+    href: "/admin/payments",
+    icon: DollarSign,
   },
   {
     title: "Audio Searches",

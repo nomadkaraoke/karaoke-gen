@@ -49,8 +49,14 @@ function AdminBreadcrumb() {
             breadcrumbs.push({ label: "Jobs", href: "/admin/jobs" })
             breadcrumbs.push({ label: decodeURIComponent(segments[2]) })
           }
+        } else if (segments[1] === "payments") {
+          breadcrumbs.push({ label: "Payments" })
         } else if (segments[1] === "searches") {
           breadcrumbs.push({ label: "Audio Searches" })
+        } else if (segments[1] === "payments") {
+          breadcrumbs.push({ label: "Payments" })
+        } else if (segments[1] === "rate-limits") {
+          breadcrumbs.push({ label: "Rate Limits" })
         }
       }
     }

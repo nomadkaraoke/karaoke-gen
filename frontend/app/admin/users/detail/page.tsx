@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { adminApi, AdminUserDetail } from "@/lib/api"
+import { adminApi, AdminUserDetail, UserPaymentHistory } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,6 +45,7 @@ import {
   Briefcase,
   Clock,
   Trash2,
+  DollarSign,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -57,6 +58,8 @@ export default function AdminUserDetailPage() {
   const [user, setUser] = useState<AdminUserDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  const [paymentHistory, setPaymentHistory] = useState<UserPaymentHistory | null>(null)
+  const [paymentsLoading, setPaymentsLoading] = useState(false)
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -87,8 +90,22 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  const loadPayments = async () => {
+    if (!email) return
+    try {
+      setPaymentsLoading(true)
+      const data = await adminApi.getUserPayments(email)
+      setPaymentHistory(data)
+    } catch (err) {
+      console.error("Failed to load payment history:", err)
+    } finally {
+      setPaymentsLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadUser()
+    loadPayments()
   }, [email])
 
   const handleAddCredits = async () => {
@@ -382,6 +399,88 @@ export default function AdminUserDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment History */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Payment History
+              </CardTitle>
+              <CardDescription>
+                {paymentHistory ? (
+                  <>
+                    {paymentHistory.payment_count} payment{paymentHistory.payment_count !== 1 ? "s" : ""} - Lifetime spend: ${(paymentHistory.total_spent / 100).toFixed(2)}
+                    {paymentHistory.total_refunded > 0 && (
+                      <> (${(paymentHistory.total_refunded / 100).toFixed(2)} refunded)</>
+                    )}
+                  </>
+                ) : paymentsLoading ? (
+                  "Loading..."
+                ) : (
+                  "No payment data"
+                )}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {paymentsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : !paymentHistory || paymentHistory.payments.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No payments found</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paymentHistory.payments.map((p) => (
+                  <TableRow
+                    key={p.session_id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/admin/payments?tab=transactions&email=${encodeURIComponent(p.customer_email)}`)}
+                  >
+                    <TableCell className="text-sm">
+                      {p.created_at ? new Date(p.created_at).toLocaleDateString() : "-"}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">
+                      ${(p.amount_total / 100).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {p.order_type === "made_for_you" ? "MFY" : "Credits"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm max-w-[160px] truncate">
+                      {p.product_description}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        p.status === "succeeded" ? "default" :
+                        p.status === "refunded" ? "destructive" :
+                        "secondary"
+                      }>
+                        {p.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Jobs */}
       <Card>

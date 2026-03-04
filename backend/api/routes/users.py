@@ -10,6 +10,7 @@ Handles:
 """
 import hashlib
 import logging
+from datetime import datetime
 from typing import Optional, Tuple
 
 
@@ -804,6 +805,8 @@ async def stripe_webhook(
     This endpoint receives events from Stripe about payment status.
     It verifies the webhook signature and processes the event.
     """
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+
     if not stripe_signature:
         raise HTTPException(status_code=400, detail="Missing Stripe signature")
 
@@ -819,52 +822,187 @@ async def stripe_webhook(
 
     # Handle the event
     event_type = event.get("type")
+    event_id = event.get("id", "")
     logger.info(f"Received Stripe webhook: {event_type}")
 
-    if event_type == "checkout.session.completed":
-        session = event["data"]["object"]
-        session_id = session.get("id")
-        metadata = session.get("metadata", {})
+    # Log webhook event for audit trail
+    admin_service = get_stripe_admin_service()
+    admin_service.log_webhook_event(
+        event_id=event_id,
+        event_type=event_type,
+        status="processing",
+    )
 
-        # Idempotency check: Skip if this session was already processed
-        if session_id and user_service.is_stripe_session_processed(session_id):
-            logger.info(f"Skipping already processed session: {session_id}")
-            return {"status": "received", "type": event_type, "note": "already_processed"}
-
-        # Check if this is a made-for-you order
-        if metadata.get("order_type") == "made_for_you":
-            # Handle made-for-you order - create a job
-            await _handle_made_for_you_order(
-                session_id=session_id,
-                metadata=metadata,
-                user_service=user_service,
-                email_service=email_service,
+    try:
+        if event_type == "checkout.session.completed":
+            session = event["data"]["object"]
+            session_id = session.get("id")
+            metadata = session.get("metadata", {})
+            customer_email = (
+                metadata.get("user_email")
+                or metadata.get("customer_email")
+                or session.get("customer_email", "")
             )
-        else:
-            # Handle regular credit purchase
-            success, user_email, credits, _ = stripe_service.handle_checkout_completed(session)
 
-            if success and user_email and credits > 0:
-                # Add credits to user account
-                ok, new_balance, credit_msg = user_service.add_credits(
-                    email=user_email,
-                    amount=credits,
-                    reason="stripe_purchase",
-                    stripe_session_id=session_id,
+            # Idempotency check: Skip if this session was already processed
+            if session_id and user_service.is_stripe_session_processed(session_id):
+                logger.info(f"Skipping already processed session: {session_id}")
+                admin_service.log_webhook_event(
+                    event_id=event_id,
+                    event_type=event_type,
+                    status="skipped",
+                    session_id=session_id,
+                    customer_email=customer_email,
+                    summary="Already processed (idempotency check)",
                 )
+                return {"status": "received", "type": event_type, "note": "already_processed"}
 
-                if ok:
-                    # Send confirmation email
-                    email_service.send_credits_added(user_email, credits, new_balance)
-                    logger.info(f"Added {credits} credits to {user_email}, new balance: {new_balance}")
-                else:
-                    logger.error(f"Failed to add credits: {credit_msg}")
+            # Check if this is a made-for-you order
+            if metadata.get("order_type") == "made_for_you":
+                # Handle made-for-you order - create a job
+                await _handle_made_for_you_order(
+                    session_id=session_id,
+                    metadata=metadata,
+                    user_service=user_service,
+                    email_service=email_service,
+                )
+            else:
+                # Handle regular credit purchase
+                success, user_email, credits, _ = stripe_service.handle_checkout_completed(session)
 
-    elif event_type == "checkout.session.expired":
-        logger.info(f"Checkout session expired: {event['data']['object'].get('id')}")
+                if success and user_email and credits > 0:
+                    # Add credits to user account
+                    ok, new_balance, credit_msg = user_service.add_credits(
+                        email=user_email,
+                        amount=credits,
+                        reason="stripe_purchase",
+                        stripe_session_id=session_id,
+                    )
 
-    elif event_type == "payment_intent.payment_failed":
-        logger.warning(f"Payment failed: {event['data']['object'].get('id')}")
+                    if ok:
+                        # Send confirmation email
+                        email_service.send_credits_added(user_email, credits, new_balance)
+                        logger.info(f"Added {credits} credits to {user_email}, new balance: {new_balance}")
+                    else:
+                        logger.error(f"Failed to add credits: {credit_msg}")
+
+            # Store enriched payment data (non-blocking - failure won't break credit granting)
+            try:
+                import stripe as stripe_lib
+                expanded_session = stripe_lib.checkout.Session.retrieve(
+                    session_id,
+                    expand=["payment_intent.latest_charge.balance_transaction"],
+                )
+                admin_service.store_payment(dict(expanded_session))
+            except Exception as store_err:
+                logger.warning(f"Failed to store payment data for {session_id}: {store_err}")
+
+            admin_service.log_webhook_event(
+                event_id=event_id,
+                event_type=event_type,
+                status="success",
+                session_id=session_id,
+                customer_email=customer_email,
+                summary=f"Payment ${session.get('amount_total', 0) / 100:.2f} processed",
+            )
+
+        elif event_type == "charge.refunded":
+            charge = event["data"]["object"]
+            payment_intent_id = charge.get("payment_intent")
+            refund_amount = charge.get("amount_refunded", 0)
+            original_amount = charge.get("amount", 0)
+
+            # Find the payment by payment_intent_id
+            try:
+                collection = admin_service.db.collection("stripe_payments")
+                docs = list(
+                    collection.where("payment_intent_id", "==", payment_intent_id)
+                    .limit(1)
+                    .stream()
+                )
+                if docs:
+                    doc = docs[0]
+                    status = "refunded" if refund_amount >= original_amount else "partially_refunded"
+                    admin_service.update_payment_status(doc.id, {
+                        "status": status,
+                        "refund_amount": refund_amount,
+                        "refunded_at": datetime.utcnow(),
+                    })
+                    logger.info(f"Updated payment {doc.id} to {status} (refund: ${refund_amount / 100:.2f})")
+            except Exception as e:
+                logger.warning(f"Failed to update refund status: {e}")
+
+            admin_service.log_webhook_event(
+                event_id=event_id,
+                event_type=event_type,
+                status="success",
+                summary=f"Refund ${refund_amount / 100:.2f} on {payment_intent_id}",
+            )
+
+        elif event_type in ("charge.dispute.created", "charge.dispute.closed"):
+            dispute = event["data"]["object"]
+            payment_intent_id = dispute.get("payment_intent")
+            dispute_status = dispute.get("status")
+            dispute_amount = dispute.get("amount", 0)
+
+            try:
+                collection = admin_service.db.collection("stripe_payments")
+                docs = list(
+                    collection.where("payment_intent_id", "==", payment_intent_id)
+                    .limit(1)
+                    .stream()
+                )
+                if docs:
+                    doc = docs[0]
+                    new_status = "disputed" if event_type == "charge.dispute.created" else doc.to_dict().get("status", "succeeded")
+                    if event_type == "charge.dispute.closed" and dispute_status == "won":
+                        new_status = "succeeded"
+                    admin_service.update_payment_status(doc.id, {"status": new_status})
+            except Exception as e:
+                logger.warning(f"Failed to update dispute status: {e}")
+
+            admin_service.log_webhook_event(
+                event_id=event_id,
+                event_type=event_type,
+                status="success",
+                summary=f"Dispute {dispute_status}: ${dispute_amount / 100:.2f}",
+            )
+
+        elif event_type == "checkout.session.expired":
+            logger.info(f"Checkout session expired: {event['data']['object'].get('id')}")
+            admin_service.log_webhook_event(
+                event_id=event_id,
+                event_type=event_type,
+                status="success",
+                session_id=event["data"]["object"].get("id"),
+                summary="Checkout session expired",
+            )
+
+        elif event_type == "payment_intent.payment_failed":
+            logger.warning(f"Payment failed: {event['data']['object'].get('id')}")
+            admin_service.log_webhook_event(
+                event_id=event_id,
+                event_type=event_type,
+                status="success",
+                summary=f"Payment failed: {event['data']['object'].get('id')}",
+            )
+
+        else:
+            admin_service.log_webhook_event(
+                event_id=event_id,
+                event_type=event_type,
+                status="success",
+                summary=f"Unhandled event type: {event_type}",
+            )
+
+    except Exception as e:
+        admin_service.log_webhook_event(
+            event_id=event_id,
+            event_type=event_type,
+            status="error",
+            error_message=str(e),
+        )
+        raise
 
     # Return 200 to acknowledge receipt (Stripe will retry on non-2xx)
     return {"status": "received", "type": event_type}

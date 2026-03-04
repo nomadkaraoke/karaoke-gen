@@ -2674,3 +2674,302 @@ async def override_audio_source(
         search_results_count=search_results_count,
         error=error_msg,
     )
+
+
+# =============================================================================
+# Payment Admin Endpoints
+# =============================================================================
+
+class RevenueSummaryResponse(BaseModel):
+    """Revenue summary metrics."""
+    total_gross: int
+    total_fees: int
+    total_net: int
+    total_refunds: int
+    transaction_count: int
+    average_order_value: int
+    revenue_by_type: Dict[str, int]
+
+
+class RevenueChartPoint(BaseModel):
+    """Single data point for revenue chart."""
+    date: str
+    gross: int
+    net: int
+    fees: int
+    count: int
+
+
+class PaymentSummary(BaseModel):
+    """Payment record for list view."""
+    session_id: str
+    amount_total: int = 0
+    currency: str = "usd"
+    stripe_fee: int = 0
+    net_amount: int = 0
+    customer_email: str = ""
+    customer_name: str = ""
+    payment_method_type: str = ""
+    card_brand: str = ""
+    card_last4: str = ""
+    order_type: str = ""
+    product_description: str = ""
+    status: str = ""
+    refund_amount: int = 0
+    created_at: Optional[str] = None
+    is_test: bool = False
+
+    class Config:
+        extra = "allow"
+
+
+class PaymentListResponse(BaseModel):
+    """Response for payment list."""
+    payments: List[PaymentSummary]
+    total: int
+    has_more: bool
+
+
+class StripeBalanceResponse(BaseModel):
+    """Stripe account balance."""
+    available: int
+    pending: int
+    currency: str = "usd"
+
+
+class PayoutItem(BaseModel):
+    """Payout record."""
+    id: str
+    amount: int
+    currency: str = "usd"
+    status: str = ""
+    arrival_date: Optional[int] = None
+    created: Optional[int] = None
+    description: Optional[str] = None
+    method: Optional[str] = None
+
+
+class DisputeItem(BaseModel):
+    """Dispute record."""
+    id: str
+    amount: int
+    currency: str = "usd"
+    status: str = ""
+    reason: str = ""
+    charge_id: Optional[str] = None
+    created: Optional[int] = None
+    evidence_due_by: Optional[int] = None
+    payment_intent_id: Optional[str] = None
+
+
+class RefundRequest(BaseModel):
+    """Request to issue a refund."""
+    amount: Optional[int] = None
+    reason: str = "requested_by_customer"
+
+
+class RefundResponse(BaseModel):
+    """Response from refund processing."""
+    success: bool
+    message: str
+    session_id: str
+
+
+class UserPaymentHistoryResponse(BaseModel):
+    """Payment history for a user."""
+    email: str
+    payments: List[PaymentSummary]
+    total_spent: int
+    total_refunded: int
+    net_spent: int
+    payment_count: int
+    first_payment_at: Optional[str] = None
+    last_payment_at: Optional[str] = None
+
+
+class WebhookEventItem(BaseModel):
+    """Webhook event record."""
+    event_id: str = ""
+    event_type: str = ""
+    created_at: Optional[str] = None
+    processed_at: Optional[str] = None
+    status: str = ""
+    error_message: Optional[str] = None
+    session_id: Optional[str] = None
+    customer_email: Optional[str] = None
+    summary: Optional[str] = None
+
+
+@router.get("/payments/summary", response_model=RevenueSummaryResponse)
+async def get_payment_summary(
+    days: int = 30,
+    exclude_test: bool = True,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get revenue summary metrics for the given period."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    result = service.get_revenue_summary(days=days, exclude_test=exclude_test)
+    # Remove internal cache key
+    result.pop("_key", None)
+    return RevenueSummaryResponse(**result)
+
+
+@router.get("/payments/revenue-chart", response_model=List[RevenueChartPoint])
+async def get_revenue_chart(
+    days: int = 30,
+    group_by: str = "day",
+    exclude_test: bool = True,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get revenue data grouped by time period for charting."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    return service.get_revenue_by_period(days=days, group_by=group_by, exclude_test=exclude_test)
+
+
+@router.get("/payments", response_model=PaymentListResponse)
+async def list_payments(
+    limit: int = 50,
+    offset: int = 0,
+    order_type: Optional[str] = None,
+    status: Optional[str] = None,
+    email: Optional[str] = None,
+    exclude_test: bool = True,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """List payments with pagination and filters."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    result = service.list_payments(
+        limit=limit, offset=offset, order_type=order_type,
+        status=status, email=email, exclude_test=exclude_test,
+    )
+    return PaymentListResponse(**result)
+
+
+@router.get("/payments/balance", response_model=StripeBalanceResponse)
+async def get_stripe_balance(
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get current Stripe account balance."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    return StripeBalanceResponse(**service.get_stripe_balance())
+
+
+@router.get("/payments/payouts", response_model=List[PayoutItem])
+async def get_payouts(
+    limit: int = 20,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get recent payouts."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    return service.get_recent_payouts(limit=limit)
+
+
+@router.get("/payments/disputes", response_model=List[DisputeItem])
+async def get_disputes(
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get open and recent disputes."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    return service.get_recent_disputes()
+
+
+@router.get("/payments/webhook-events", response_model=List[WebhookEventItem])
+async def get_webhook_events(
+    limit: int = 50,
+    event_type: Optional[str] = None,
+    status: Optional[str] = None,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get recent webhook events for audit trail."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    return service.list_webhook_events(limit=limit, event_type=event_type, status=status)
+
+
+@router.get("/payments/by-user/{email}")
+async def get_user_payments(
+    email: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get all payments for a specific user."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    return service.get_user_payment_history(email)
+
+
+@router.get("/payments/{session_id}")
+async def get_payment_detail(
+    session_id: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Get full details for a single payment."""
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+    result = service.get_payment_detail(session_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return result
+
+
+@router.post("/payments/{session_id}/refund", response_model=RefundResponse)
+async def refund_payment(
+    session_id: str,
+    request: RefundRequest,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    Issue a full or partial refund for a payment.
+
+    If amount is not specified, issues a full refund.
+    Automatically deducts proportional credits from user.
+    """
+    from backend.services.stripe_admin_service import get_stripe_admin_service
+    service = get_stripe_admin_service()
+
+    # Get payment details first to determine credits to deduct
+    payment = service.get_payment_detail(session_id)
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    success, message = service.process_refund(
+        session_id=session_id,
+        amount=request.amount,
+        reason=request.reason,
+    )
+
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    # Deduct proportional credits if this was a credit purchase
+    if payment.get("order_type") == "credit_purchase" and payment.get("credits_granted", 0) > 0:
+        try:
+            original_amount = payment.get("amount_total", 0)
+            refund_amount = request.amount or original_amount
+            credits_to_deduct = int(
+                payment["credits_granted"] * (refund_amount / original_amount)
+            )
+            if credits_to_deduct > 0:
+                user_email = payment.get("customer_email", "")
+                user_service = get_user_service()
+                user_service.add_credits(
+                    email=user_email,
+                    amount=-credits_to_deduct,
+                    reason=f"refund_{session_id}",
+                )
+                logger.info(
+                    f"Deducted {credits_to_deduct} credits from {user_email} "
+                    f"for refund on {session_id}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to deduct credits for refund {session_id}: {e}")
+
+    admin_email = getattr(auth_data, "user_email", None) or "unknown"
+    logger.info(f"Admin {admin_email} issued refund for {session_id}: {message}")
+
+    return RefundResponse(success=True, message=message, session_id=session_id)
