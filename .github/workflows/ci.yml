@@ -622,6 +622,9 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
+      - name: Install Firestore emulator
+        run: sudo apt-get install -y google-cloud-cli-firestore-emulator
+
       - name: Install dependencies
         run: poetry install
 
