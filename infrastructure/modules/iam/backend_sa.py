@@ -112,6 +112,14 @@ def grant_backend_permissions(
         member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
+    # Cloud Monitoring Viewer - read quota metrics for YouTube API quota tracking
+    bindings["monitoring_viewer"] = gcp.projects.IAMMember(
+        "karaoke-backend-monitoring-viewer",
+        project=PROJECT_ID,
+        role="roles/monitoring.viewer",
+        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     return bindings
 
 
