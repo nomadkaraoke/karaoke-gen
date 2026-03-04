@@ -3003,13 +3003,17 @@ async def backfill_user_stats(
         if not email:
             continue
 
-        # Count completed jobs
+        # Count completed jobs (try both original email and lowercase)
         completed_jobs = 0
-        jobs_query = db.collection("jobs").where("user_email", "==", email).where(
-            "status", "in", ["complete", "prep_complete"]
-        )
-        for _ in jobs_query.stream():
-            completed_jobs += 1
+        seen_job_ids = set()
+        for email_variant in set([email, email.lower().strip()]):
+            jobs_query = db.collection("jobs").where("user_email", "==", email_variant).where(
+                "status", "in", ["complete", "prep_complete"]
+            )
+            for job_doc in jobs_query.stream():
+                if job_doc.id not in seen_job_ids:
+                    seen_job_ids.add(job_doc.id)
+                    completed_jobs += 1
 
         # Sum payments
         total_spent = 0
