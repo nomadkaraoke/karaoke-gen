@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from backend.config import settings
-from backend.exceptions import RateLimitExceededError, InvalidStateTransitionError, InsufficientCreditsError
+from backend.exceptions import InvalidStateTransitionError, InsufficientCreditsError
 from backend.models.job import Job, JobStatus, JobCreate, STATE_TRANSITIONS
 from backend.models.worker_log import WorkerLogEntry
 from backend.services.firestore_service import FirestoreService
@@ -51,35 +51,11 @@ class JobManager:
 
         Args:
             job_create: Job creation parameters
-            is_admin: Whether the requesting user is an admin (bypasses rate limits)
+            is_admin: Whether the requesting user is an admin (bypasses credit checks)
 
         Raises:
             ValueError: If theme_id is not provided (all jobs require a theme)
-            RateLimitExceededError: If user has exceeded their daily job limit
         """
-        # Check rate limit FIRST (before any other validation)
-        # This prevents wasted work if user is rate limited
-        if job_create.user_email:
-            from backend.services.rate_limit_service import get_rate_limit_service
-
-            rate_limit_service = get_rate_limit_service()
-            allowed, remaining, message = rate_limit_service.check_user_job_limit(
-                user_email=job_create.user_email,
-                is_admin=is_admin
-            )
-            if not allowed:
-                from backend.services.rate_limit_service import _seconds_until_midnight_utc
-
-                # Get actual current count - remaining is clamped to 0 which loses info
-                current_count = rate_limit_service.get_user_job_count_today(job_create.user_email)
-                raise RateLimitExceededError(
-                    message=message,
-                    limit_type="jobs_per_day",
-                    remaining_seconds=_seconds_until_midnight_utc(),
-                    current_count=current_count,
-                    limit_value=settings.rate_limit_jobs_per_day
-                )
-
         # Check credits (skip for admins)
         if job_create.user_email and not is_admin:
             from backend.services.user_service import get_user_service
@@ -168,16 +144,6 @@ class JobManager:
                     credits_available=0,
                     credits_required=1,
                 )
-
-        # Record job creation for rate limiting (after successful persistence)
-        if job_create.user_email:
-            try:
-                from backend.services.rate_limit_service import get_rate_limit_service
-                rate_limit_service = get_rate_limit_service()
-                rate_limit_service.record_job_creation(job_create.user_email, job_id)
-            except Exception as e:
-                # Don't fail job creation if rate limit recording fails
-                logger.warning(f"Failed to record job creation for rate limiting: {e}")
 
         return job
     

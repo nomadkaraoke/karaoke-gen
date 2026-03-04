@@ -1798,28 +1798,6 @@ export const adminApi = {
   // =========================================================================
 
   /**
-   * Get rate limit statistics
-   */
-  async getRateLimitStats(): Promise<RateLimitStatsResponse> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/admin/rate-limits/stats`,
-      { headers: getAuthHeaders() }
-    );
-    return handleResponse(response);
-  },
-
-  /**
-   * Get rate limit status for a specific user
-   */
-  async getUserRateLimitStatus(email: string): Promise<UserRateLimitStatusResponse> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/admin/rate-limits/users/${encodeURIComponent(email)}`,
-      { headers: getAuthHeaders() }
-    );
-    return handleResponse(response);
-  },
-
-  /**
    * Get all blocklists
    */
   async getBlocklists(): Promise<BlocklistsResponse> {
@@ -1903,43 +1881,6 @@ export const adminApi = {
   async removeBlockedIP(ipAddress: string): Promise<SuccessResponse> {
     const response = await fetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/blocked-ips/${encodeURIComponent(ipAddress)}`,
-      { method: 'DELETE', headers: getAuthHeaders() }
-    );
-    return handleResponse(response);
-  },
-
-  /**
-   * Get all user overrides
-   */
-  async getUserOverrides(): Promise<UserOverridesListResponse> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/admin/rate-limits/overrides`,
-      { headers: getAuthHeaders() }
-    );
-    return handleResponse(response);
-  },
-
-  /**
-   * Set user override
-   */
-  async setUserOverride(email: string, override: UserOverrideRequest): Promise<SuccessResponse> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/admin/rate-limits/overrides/${encodeURIComponent(email)}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(override),
-      }
-    );
-    return handleResponse(response);
-  },
-
-  /**
-   * Remove user override
-   */
-  async removeUserOverride(email: string): Promise<SuccessResponse> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/admin/rate-limits/overrides/${encodeURIComponent(email)}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
     return handleResponse(response);
@@ -2461,29 +2402,6 @@ export interface DeleteOutputsResponse {
 }
 
 // Rate Limits API Types
-export interface RateLimitStatsResponse {
-  jobs_per_day_limit: number;
-  rate_limiting_enabled: boolean;
-  youtube_uploads_today: number;
-  // YouTube quota (GCP Cloud Monitoring + pending buffer)
-  youtube_quota_units_consumed: number;
-  youtube_quota_units_remaining: number;
-  youtube_quota_daily_limit: number;
-  youtube_quota_effective_limit: number;
-  youtube_quota_upload_cost: number;
-  youtube_quota_estimated_uploads_remaining: number;
-  youtube_quota_seconds_until_reset: number;
-  youtube_quota_gcp_usage: number;
-  youtube_quota_pending_units: number;
-  // YouTube upload queue
-  youtube_uploads_queued: number;
-  youtube_uploads_failed: number;
-  disposable_domains_count: number;
-  blocked_emails_count: number;
-  blocked_ips_count: number;
-  total_overrides: number;
-}
-
 export interface YouTubeQueueEntry {
   job_id: string;
   status: string;
@@ -2511,16 +2429,6 @@ export interface YouTubeQueueListResponse {
   };
 }
 
-export interface UserRateLimitStatusResponse {
-  email: string;
-  jobs_today: number;
-  jobs_limit: number;
-  jobs_remaining: number;
-  has_bypass: boolean;
-  custom_limit?: number;
-  bypass_reason?: string;
-}
-
 export interface BlocklistsResponse {
   disposable_domains: string[];
   blocked_emails: string[];
@@ -2532,26 +2440,6 @@ export interface BlocklistsResponse {
 export interface SuccessResponse {
   success: boolean;
   message: string;
-}
-
-export interface UserOverride {
-  email: string;
-  bypass_job_limit: boolean;
-  custom_daily_job_limit?: number;
-  reason: string;
-  created_by: string;
-  created_at: string;
-}
-
-export interface UserOverrideRequest {
-  bypass_job_limit: boolean;
-  custom_daily_job_limit?: number;
-  reason: string;
-}
-
-export interface UserOverridesListResponse {
-  overrides: UserOverride[];
-  total: number;
 }
 
 // Feedback-for-Credits types

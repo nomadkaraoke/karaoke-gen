@@ -52,21 +52,11 @@ def mock_user_service():
         yield service
 
 
-@pytest.fixture
-def mock_rate_limit_service():
-    """Mock rate limit service to always allow."""
-    service = Mock()
-    service.check_user_job_limit.return_value = (True, 5, "OK")
-    service.record_job_creation.return_value = None
-    with patch('backend.services.rate_limit_service.get_rate_limit_service', return_value=service):
-        yield service
-
-
 class TestCreditCheckOnJobCreation:
     """Test credit checks during job creation."""
 
     def test_job_creation_succeeds_with_credits(
-        self, job_manager, mock_firestore_service, mock_user_service, mock_rate_limit_service
+        self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Job creation succeeds when user has credits, and credit is deducted."""
         mock_user_service.has_credits.return_value = True
@@ -85,7 +75,7 @@ class TestCreditCheckOnJobCreation:
         assert call_args[0][0] == "user@test.com"
 
     def test_job_creation_fails_without_credits(
-        self, job_manager, mock_firestore_service, mock_user_service, mock_rate_limit_service
+        self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Job creation raises InsufficientCreditsError when user has no credits."""
         mock_user_service.has_credits.return_value = False
@@ -103,7 +93,7 @@ class TestCreditCheckOnJobCreation:
         mock_firestore_service.create_job.assert_not_called()
 
     def test_admin_bypasses_credit_check(
-        self, job_manager, mock_firestore_service, mock_user_service, mock_rate_limit_service
+        self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Admin users bypass credit check entirely."""
         job = job_manager.create_job(
@@ -116,7 +106,7 @@ class TestCreditCheckOnJobCreation:
         mock_user_service.deduct_credit.assert_not_called()
 
     def test_job_without_user_email_skips_credit_check(
-        self, job_manager, mock_firestore_service, mock_user_service, mock_rate_limit_service
+        self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Jobs without user_email (e.g., API token auth) skip credit check."""
         job = job_manager.create_job(
@@ -128,7 +118,7 @@ class TestCreditCheckOnJobCreation:
         mock_user_service.has_credits.assert_not_called()
 
     def test_deduction_failure_deletes_job_and_raises(
-        self, job_manager, mock_firestore_service, mock_user_service, mock_rate_limit_service
+        self, job_manager, mock_firestore_service, mock_user_service
     ):
         """If credit deduction fails after job creation, the job is deleted."""
         mock_user_service.has_credits.return_value = True
@@ -205,30 +195,6 @@ class TestCreditRefundOnJobFailure:
 
         assert result is True
         mock_user_service.refund_credit.assert_not_called()
-
-
-class TestCreditAndRateLimitOrdering:
-    """Test interaction between rate limit and credit checks."""
-
-    def test_rate_limited_user_not_charged_credit(
-        self, job_manager, mock_firestore_service, mock_user_service
-    ):
-        """User who is rate limited should NOT have a credit deducted."""
-        mock_rate_limit_service = Mock()
-        mock_rate_limit_service.check_user_job_limit.return_value = (False, 0, "Rate limit exceeded")
-        mock_rate_limit_service.get_user_job_count_today.return_value = 5
-
-        with patch('backend.services.rate_limit_service.get_rate_limit_service', return_value=mock_rate_limit_service):
-            from backend.exceptions import RateLimitExceededError
-            with pytest.raises(RateLimitExceededError):
-                job_manager.create_job(
-                    JobCreate(artist="Test", title="Song", theme_id="nomad", user_email="user@test.com"),
-                    is_admin=False,
-                )
-
-        # Credit check should never be called because rate limit fails first
-        mock_user_service.has_credits.assert_not_called()
-        mock_user_service.deduct_credit.assert_not_called()
 
 
 class TestWelcomeCredits:

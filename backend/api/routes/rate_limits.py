@@ -1,24 +1,21 @@
 """
-Admin API routes for rate limit management.
+Admin API routes for blocklist and YouTube queue management.
 
 Handles:
-- Rate limit statistics and monitoring
 - Blocklist management (disposable domains, blocked emails, blocked IPs)
-- User override management (whitelist/bypass permissions)
+- YouTube upload queue management
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from backend.api.dependencies import require_admin
 from backend.services.auth_service import AuthResult
-from backend.services.rate_limit_service import get_rate_limit_service, RateLimitService
 from backend.services.email_validation_service import get_email_validation_service, EmailValidationService
-from backend.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/rate-limits", tags=["admin", "rate-limits"])
@@ -27,40 +24,6 @@ router = APIRouter(prefix="/admin/rate-limits", tags=["admin", "rate-limits"])
 # =============================================================================
 # Response Models
 # =============================================================================
-
-class RateLimitStatsResponse(BaseModel):
-    """Current rate limit statistics."""
-    # Configuration
-    jobs_per_day_limit: int
-    rate_limiting_enabled: bool
-
-    # YouTube uploads today (from quota service, PT-based)
-    youtube_uploads_today: int
-
-    # YouTube quota (GCP Cloud Monitoring + pending buffer)
-    youtube_quota_units_consumed: int
-    youtube_quota_units_remaining: int
-    youtube_quota_daily_limit: int
-    youtube_quota_effective_limit: int
-    youtube_quota_upload_cost: int
-    youtube_quota_estimated_uploads_remaining: int
-    youtube_quota_seconds_until_reset: int
-    youtube_quota_gcp_usage: int
-    youtube_quota_pending_units: int
-
-    # YouTube upload queue
-    youtube_uploads_queued: int
-    youtube_uploads_failed: int
-
-    # Blocklist stats
-    disposable_domains_count: int
-    blocked_emails_count: int
-    blocked_ips_count: int
-
-    # User override stats
-    total_overrides: int
-
-
 
 class YouTubeQueueEntry(BaseModel):
     """A queued YouTube upload entry."""
@@ -83,17 +46,6 @@ class YouTubeQueueListResponse(BaseModel):
     """List of YouTube upload queue entries."""
     entries: List[YouTubeQueueEntry]
     stats: dict
-
-
-class UserRateLimitStatusResponse(BaseModel):
-    """Rate limit status for a specific user."""
-    email: str
-    jobs_today: int
-    jobs_limit: int
-    jobs_remaining: int
-    has_bypass: bool
-    custom_limit: Optional[int]
-    bypass_reason: Optional[str]
 
 
 class BlocklistsResponse(BaseModel):
@@ -120,127 +72,10 @@ class IPRequest(BaseModel):
     ip_address: str
 
 
-class UserOverride(BaseModel):
-    """User override configuration."""
-    email: str
-    bypass_job_limit: bool
-    custom_daily_job_limit: Optional[int]
-    reason: str
-    created_by: str
-    created_at: datetime
-
-
-class UserOverrideRequest(BaseModel):
-    """Request to set/update a user override."""
-    bypass_job_limit: bool = False
-    custom_daily_job_limit: Optional[int] = None
-    reason: str
-
-
-class UserOverridesListResponse(BaseModel):
-    """List of all user overrides."""
-    overrides: List[UserOverride]
-    total: int
-
-
 class SuccessResponse(BaseModel):
     """Generic success response."""
     success: bool
     message: str
-
-
-# =============================================================================
-# Statistics Endpoints
-# =============================================================================
-
-@router.get("/stats", response_model=RateLimitStatsResponse)
-async def get_rate_limit_stats(
-    auth_result: AuthResult = Depends(require_admin),
-):
-    """
-    Get current rate limit statistics.
-
-    Returns configuration values, current usage counts, quota tracking,
-    queue stats, and blocklist stats.
-    """
-    rate_limit_service = get_rate_limit_service()
-    email_validation = get_email_validation_service()
-
-    # Get YouTube quota stats (unit-based, PT timezone)
-    from backend.services.youtube_quota_service import get_youtube_quota_service
-    quota_service = get_youtube_quota_service()
-    quota_stats = quota_service.get_quota_stats()
-
-    # Get YouTube upload queue stats
-    from backend.services.youtube_upload_queue_service import get_youtube_upload_queue_service
-    queue_service = get_youtube_upload_queue_service()
-    queue_stats = queue_service.get_queue_stats()
-
-    # Get blocklist stats
-    blocklist_stats = email_validation.get_blocklist_stats()
-
-    # Get override count
-    overrides = rate_limit_service.get_all_overrides()
-
-    return RateLimitStatsResponse(
-        jobs_per_day_limit=settings.rate_limit_jobs_per_day,
-        rate_limiting_enabled=settings.enable_rate_limiting,
-        youtube_uploads_today=quota_stats["upload_count"],
-        youtube_quota_units_consumed=quota_stats["units_consumed"],
-        youtube_quota_units_remaining=quota_stats["units_remaining"],
-        youtube_quota_daily_limit=quota_stats["units_limit"],
-        youtube_quota_effective_limit=quota_stats["effective_limit"],
-        youtube_quota_upload_cost=quota_stats["upload_cost"],
-        youtube_quota_estimated_uploads_remaining=quota_stats["estimated_uploads_remaining"],
-        youtube_quota_seconds_until_reset=quota_stats["seconds_until_reset"],
-        youtube_quota_gcp_usage=quota_stats["gcp_usage"],
-        youtube_quota_pending_units=quota_stats["pending_units"],
-        youtube_uploads_queued=queue_stats["queued"],
-        youtube_uploads_failed=queue_stats["failed"],
-        disposable_domains_count=blocklist_stats["disposable_domains_count"],
-        blocked_emails_count=blocklist_stats["blocked_emails_count"],
-        blocked_ips_count=blocklist_stats["blocked_ips_count"],
-        total_overrides=len(overrides),
-    )
-
-
-@router.get("/users/{email}", response_model=UserRateLimitStatusResponse)
-async def get_user_rate_limit_status(
-    email: str,
-    auth_result: AuthResult = Depends(require_admin),
-):
-    """
-    Get rate limit status for a specific user.
-
-    Returns their current usage and any override settings.
-    """
-    rate_limit_service = get_rate_limit_service()
-
-    jobs_today = rate_limit_service.get_user_job_count_today(email)
-    override = rate_limit_service.get_user_override(email)
-
-    if override:
-        has_bypass = override.get("bypass_job_limit", False)
-        custom_limit = override.get("custom_daily_job_limit")
-        bypass_reason = override.get("reason")
-        jobs_limit = custom_limit if custom_limit is not None else settings.rate_limit_jobs_per_day
-    else:
-        has_bypass = False
-        custom_limit = None
-        bypass_reason = None
-        jobs_limit = settings.rate_limit_jobs_per_day
-
-    jobs_remaining = max(0, jobs_limit - jobs_today) if not has_bypass else -1
-
-    return UserRateLimitStatusResponse(
-        email=email,
-        jobs_today=jobs_today,
-        jobs_limit=jobs_limit,
-        jobs_remaining=jobs_remaining,
-        has_bypass=has_bypass,
-        custom_limit=custom_limit,
-        bypass_reason=bypass_reason,
-    )
 
 
 # =============================================================================
@@ -396,85 +231,6 @@ async def remove_blocked_ip(
     return SuccessResponse(
         success=True,
         message=f"IP '{ip_address}' removed from blocked IPs list"
-    )
-
-
-# =============================================================================
-# User Override Management Endpoints
-# =============================================================================
-
-@router.get("/overrides", response_model=UserOverridesListResponse)
-async def get_all_overrides(
-    auth_result: AuthResult = Depends(require_admin),
-):
-    """Get all user overrides."""
-    rate_limit_service = get_rate_limit_service()
-
-    overrides_data = rate_limit_service.get_all_overrides()
-
-    overrides = [
-        UserOverride(
-            email=email,
-            bypass_job_limit=data.get("bypass_job_limit", False),
-            custom_daily_job_limit=data.get("custom_daily_job_limit"),
-            reason=data.get("reason", ""),
-            created_by=data.get("created_by", "unknown"),
-            created_at=data.get("created_at", datetime.now(timezone.utc)),
-        )
-        for email, data in overrides_data.items()
-    ]
-
-    return UserOverridesListResponse(
-        overrides=overrides,
-        total=len(overrides),
-    )
-
-
-@router.put("/overrides/{email}", response_model=SuccessResponse)
-async def set_user_override(
-    email: str,
-    request: UserOverrideRequest,
-    auth_result: AuthResult = Depends(require_admin),
-):
-    """Set or update a user override."""
-    rate_limit_service = get_rate_limit_service()
-
-    email = email.lower().strip()
-    if not email or "@" not in email:
-        raise HTTPException(status_code=400, detail="Invalid email format")
-
-    if not request.reason or len(request.reason.strip()) < 3:
-        raise HTTPException(status_code=400, detail="Reason is required (min 3 characters)")
-
-    rate_limit_service.set_user_override(
-        user_email=email,
-        bypass_job_limit=request.bypass_job_limit,
-        custom_daily_job_limit=request.custom_daily_job_limit,
-        reason=request.reason,
-        admin_email=auth_result.user_email,
-    )
-
-    return SuccessResponse(
-        success=True,
-        message=f"Override set for user '{email}'"
-    )
-
-
-@router.delete("/overrides/{email}", response_model=SuccessResponse)
-async def remove_user_override(
-    email: str,
-    auth_result: AuthResult = Depends(require_admin),
-):
-    """Remove a user override."""
-    rate_limit_service = get_rate_limit_service()
-
-    email = email.lower().strip()
-    if not rate_limit_service.remove_user_override(email, auth_result.user_email):
-        raise HTTPException(status_code=404, detail="Override not found for user")
-
-    return SuccessResponse(
-        success=True,
-        message=f"Override removed for user '{email}'"
     )
 
 

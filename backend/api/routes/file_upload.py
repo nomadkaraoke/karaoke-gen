@@ -39,7 +39,7 @@ from backend.services.metrics import metrics
 from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.middleware.tenant import get_tenant_config_from_request
-from backend.exceptions import InsufficientCreditsError, RateLimitExceededError
+from backend.exceptions import InsufficientCreditsError
 from backend.services.youtube_download_service import (
     get_youtube_download_service,
     YouTubeDownloadError,
@@ -823,7 +823,7 @@ async def upload_and_create_job(
         
     except HTTPException:
         raise
-    except (InsufficientCreditsError, RateLimitExceededError):
+    except InsufficientCreditsError:
         raise
     except Exception as e:
         logger.error(f"Error uploading files: {e}", exc_info=True)
@@ -1219,7 +1219,7 @@ async def create_job_with_upload_urls(
         
     except HTTPException:
         raise
-    except (InsufficientCreditsError, RateLimitExceededError):
+    except InsufficientCreditsError:
         raise
     except Exception as e:
         logger.error(f"Error creating job with upload URLs: {e}", exc_info=True)
@@ -1697,7 +1697,7 @@ async def create_job_from_url(
         
     except HTTPException:
         raise
-    except (InsufficientCreditsError, RateLimitExceededError):
+    except InsufficientCreditsError:
         raise
     except Exception as e:
         logger.error(f"Error creating job from URL: {e}", exc_info=True)
@@ -1965,7 +1965,7 @@ async def create_finalise_only_job(
         
     except HTTPException:
         raise
-    except (InsufficientCreditsError, RateLimitExceededError):
+    except InsufficientCreditsError:
         raise
     except Exception as e:
         logger.error(f"Error creating finalise-only job: {e}", exc_info=True)

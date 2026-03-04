@@ -3,9 +3,9 @@
  *
  * Tests the rate limits admin page functionality including:
  * - Loading states and data fetching
- * - Tab navigation (Overview, Blocklists, User Overrides)
+ * - Tab navigation (YouTube Queue, Blocklists)
  * - Blocklist management (add, remove, search)
- * - User override management (add, remove)
+ * - YouTube queue display
  */
 
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
@@ -15,17 +15,13 @@ import AdminRateLimitsPage from "../page"
 // Mock the API module
 jest.mock("@/lib/api", () => ({
   adminApi: {
-    getRateLimitStats: jest.fn(),
     getBlocklists: jest.fn(),
-    getUserOverrides: jest.fn(),
     addDisposableDomain: jest.fn(),
     removeDisposableDomain: jest.fn(),
     addBlockedEmail: jest.fn(),
     removeBlockedEmail: jest.fn(),
     addBlockedIP: jest.fn(),
     removeBlockedIP: jest.fn(),
-    setUserOverride: jest.fn(),
-    removeUserOverride: jest.fn(),
     getYouTubeQueue: jest.fn(),
     retryYouTubeUpload: jest.fn(),
     processYouTubeQueue: jest.fn(),
@@ -46,27 +42,6 @@ import { adminApi } from "@/lib/api"
 const mockAdminApi = adminApi as jest.Mocked<typeof adminApi>
 
 // Mock data
-const mockStats = {
-  jobs_per_day_limit: 5,
-  rate_limiting_enabled: true,
-  youtube_uploads_today: 3,
-  youtube_quota_units_consumed: 900,
-  youtube_quota_units_remaining: 8600,
-  youtube_quota_daily_limit: 10000,
-  youtube_quota_effective_limit: 9500,
-  youtube_quota_upload_cost: 300,
-  youtube_quota_estimated_uploads_remaining: 28,
-  youtube_quota_seconds_until_reset: 43200,
-  youtube_quota_gcp_usage: 600,
-  youtube_quota_pending_units: 300,
-  youtube_uploads_queued: 0,
-  youtube_uploads_failed: 0,
-  disposable_domains_count: 130,
-  blocked_emails_count: 2,
-  blocked_ips_count: 1,
-  total_overrides: 1,
-}
-
 const mockBlocklists = {
   disposable_domains: ["tempmail.com", "mailinator.com", "guerrillamail.com"],
   blocked_emails: ["spammer@example.com", "abuse@test.com"],
@@ -75,44 +50,25 @@ const mockBlocklists = {
   updated_by: "admin@nomadkaraoke.com",
 }
 
-const mockOverrides = {
-  overrides: [
-    {
-      email: "vip@example.com",
-      bypass_job_limit: true,
-      custom_daily_job_limit: undefined,
-      reason: "VIP user",
-      created_by: "admin@nomadkaraoke.com",
-      created_at: "2025-01-08T15:00:00Z",
-    },
-  ],
-  total: 1,
-}
-
 const mockYouTubeQueue = {
   entries: [],
-  total: 0,
+  stats: { queued: 0, processing: 0, failed: 0, completed: 0, total: 0 },
 }
 
 describe("AdminRateLimitsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockAdminApi.getRateLimitStats.mockResolvedValue(mockStats)
     mockAdminApi.getBlocklists.mockResolvedValue(mockBlocklists)
-    mockAdminApi.getUserOverrides.mockResolvedValue(mockOverrides)
     mockAdminApi.getYouTubeQueue.mockResolvedValue(mockYouTubeQueue)
   })
 
   describe("Loading State", () => {
     it("shows loading spinner initially", () => {
       // Don't resolve the promises immediately
-      mockAdminApi.getRateLimitStats.mockImplementation(
-        () => new Promise(() => {})
-      )
       mockAdminApi.getBlocklists.mockImplementation(
         () => new Promise(() => {})
       )
-      mockAdminApi.getUserOverrides.mockImplementation(
+      mockAdminApi.getYouTubeQueue.mockImplementation(
         () => new Promise(() => {})
       )
 
@@ -131,13 +87,12 @@ describe("AdminRateLimitsPage", () => {
       })
 
       // Verify API calls were made
-      expect(mockAdminApi.getRateLimitStats).toHaveBeenCalled()
       expect(mockAdminApi.getBlocklists).toHaveBeenCalled()
-      expect(mockAdminApi.getUserOverrides).toHaveBeenCalled()
+      expect(mockAdminApi.getYouTubeQueue).toHaveBeenCalled()
     })
 
     it("shows error toast on API failure", async () => {
-      mockAdminApi.getRateLimitStats.mockRejectedValue(
+      mockAdminApi.getBlocklists.mockRejectedValue(
         new Error("Network error")
       )
 
@@ -150,51 +105,6 @@ describe("AdminRateLimitsPage", () => {
             variant: "destructive",
           })
         )
-      })
-    })
-  })
-
-  describe("Overview Tab", () => {
-    it("displays rate limit configuration stats", async () => {
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("Rate Limit Configuration")).toBeInTheDocument()
-      })
-
-      // Check that stats are displayed
-      expect(screen.getByText("Jobs Per Day")).toBeInTheDocument()
-      expect(screen.getByText("5")).toBeInTheDocument()
-    })
-
-    it("displays YouTube API quota section", async () => {
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("YouTube API Quota")).toBeInTheDocument()
-      })
-
-      expect(screen.getByText("Uploads Today")).toBeInTheDocument()
-      expect(screen.getByText("3")).toBeInTheDocument()
-    })
-
-    it("displays GCP + Pending quota breakdown", async () => {
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("YouTube API Quota")).toBeInTheDocument()
-      })
-
-      // Should show the GCP + Pending breakdown line
-      expect(screen.getByText(/GCP: 600/)).toBeInTheDocument()
-      expect(screen.getByText(/Pending: 300/)).toBeInTheDocument()
-    })
-
-    it("displays rate limiting status badge", async () => {
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("Enabled")).toBeInTheDocument()
       })
     })
   })
@@ -215,21 +125,15 @@ describe("AdminRateLimitsPage", () => {
       expect(screen.getByText("Disposable Email Domains")).toBeInTheDocument()
     })
 
-    it("switches to User Overrides tab", async () => {
-      const user = userEvent.setup()
+    it("YouTube Queue tab is default", async () => {
       render(<AdminRateLimitsPage />)
 
       await waitFor(() => {
         expect(screen.getByText("Rate Limits")).toBeInTheDocument()
       })
 
-      // Click User Overrides tab
-      await user.click(screen.getByRole("tab", { name: /user overrides/i }))
-
-      // Should show overrides content
-      expect(
-        screen.getByText("Users with custom rate limits or bypass permissions")
-      ).toBeInTheDocument()
+      // YouTube Queue should be the default tab
+      expect(screen.getByText("YouTube Upload Queue")).toBeInTheDocument()
     })
   })
 
@@ -326,106 +230,6 @@ describe("AdminRateLimitsPage", () => {
     })
   })
 
-  describe("User Overrides Tab", () => {
-    it("displays existing overrides", async () => {
-      const user = userEvent.setup()
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("Rate Limits")).toBeInTheDocument()
-      })
-
-      await user.click(screen.getByRole("tab", { name: /user overrides/i }))
-
-      // Should show override in table
-      expect(screen.getByText("vip@example.com")).toBeInTheDocument()
-      expect(screen.getByText("VIP user")).toBeInTheDocument()
-      expect(screen.getByText("Bypass All")).toBeInTheDocument()
-    })
-
-    it("opens add override dialog", async () => {
-      const user = userEvent.setup()
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("Rate Limits")).toBeInTheDocument()
-      })
-
-      await user.click(screen.getByRole("tab", { name: /user overrides/i }))
-
-      // Click Add Override button
-      await user.click(screen.getByRole("button", { name: /add override/i }))
-
-      // Should show dialog
-      expect(screen.getByText("Add User Override")).toBeInTheDocument()
-      expect(
-        screen.getByText(
-          "Grant a user custom rate limits or bypass permissions"
-        )
-      ).toBeInTheDocument()
-    })
-
-    it("creates a new override", async () => {
-      mockAdminApi.setUserOverride.mockResolvedValue({ success: true, message: "Operation successful" })
-
-      const user = userEvent.setup()
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("Rate Limits")).toBeInTheDocument()
-      })
-
-      await user.click(screen.getByRole("tab", { name: /user overrides/i }))
-
-      // Open dialog
-      await user.click(screen.getByRole("button", { name: /add override/i }))
-
-      // Fill form
-      const emailInput = screen.getByPlaceholderText("user@example.com")
-      await user.type(emailInput, "newuser@example.com")
-
-      const reasonInput = screen.getByPlaceholderText(
-        "Reason for this override..."
-      )
-      await user.type(reasonInput, "Test user needs extra access")
-
-      // Enable bypass
-      const bypassSwitch = screen.getByRole("switch")
-      await user.click(bypassSwitch)
-
-      // Submit
-      const submitButton = screen
-        .getAllByRole("button", { name: /add override/i })
-        .find((btn) => btn.closest("[role='dialog']"))!
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        expect(mockAdminApi.setUserOverride).toHaveBeenCalledWith(
-          "newuser@example.com",
-          expect.objectContaining({
-            bypass_job_limit: true,
-            reason: "Test user needs extra access",
-          })
-        )
-      })
-    })
-
-    it("shows empty state when no overrides", async () => {
-      mockAdminApi.getUserOverrides.mockResolvedValue({ overrides: [], total: 0 })
-
-      const user = userEvent.setup()
-      render(<AdminRateLimitsPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("Rate Limits")).toBeInTheDocument()
-      })
-
-      await user.click(screen.getByRole("tab", { name: /user overrides/i }))
-
-      expect(screen.getByText("No user overrides configured")).toBeInTheDocument()
-    })
-  })
-
   describe("Refresh Button", () => {
     it("reloads data when clicked", async () => {
       const user = userEvent.setup()
@@ -442,9 +246,8 @@ describe("AdminRateLimitsPage", () => {
       await user.click(screen.getByRole("button", { name: /refresh/i }))
 
       await waitFor(() => {
-        expect(mockAdminApi.getRateLimitStats).toHaveBeenCalled()
         expect(mockAdminApi.getBlocklists).toHaveBeenCalled()
-        expect(mockAdminApi.getUserOverrides).toHaveBeenCalled()
+        expect(mockAdminApi.getYouTubeQueue).toHaveBeenCalled()
       })
     })
   })

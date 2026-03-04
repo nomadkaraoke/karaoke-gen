@@ -2152,5 +2152,5 @@ class TestInsufficientCreditsErrorPropagation:
         from backend.api.routes.audio_search import search_audio
 
         source = inspect.getsource(search_audio)
-        assert 'isinstance(e, (InsufficientCreditsError, RateLimitExceededError))' in source
+        assert 'isinstance(e, InsufficientCreditsError)' in source
 
