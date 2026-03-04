@@ -90,9 +90,9 @@ tenacity = "^8.2.0"  # Retry logic for external service calls
 google-cloud-firestore = ">=2.14.0"
 google-cloud-storage = ">=2.14.0"
 google-cloud-secret-manager = ">=2.18.0"
+google-cloud-monitoring = ">=2.19.0"  # Cloud Monitoring for YouTube API quota metrics
 google-cloud-tasks = ">=2.16.0"  # Cloud Tasks for worker coordination (Phase 1 scalability)
 google-cloud-run = ">=0.10.0"  # Cloud Run Jobs for long-running video encoding (Phase 2 scalability)
-google-cloud-monitoring = ">=2.19.0"  # Cloud Monitoring for YouTube API quota metrics
 python-dotenv = ">=1.0.0"
 pydub = ">=0.25.1"
 # Payment and email services

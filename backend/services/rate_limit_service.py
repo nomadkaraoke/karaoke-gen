@@ -154,6 +154,195 @@ class RateLimitService:
         logger.info(f"Recorded job {job_id} for user {user_email} rate limiting")
 
     # -------------------------------------------------------------------------
+    # YouTube Upload Rate Limiting (DEPRECATED - use YouTubeQuotaService)
+    # -------------------------------------------------------------------------
+
+    def check_youtube_upload_limit(self) -> Tuple[bool, int, str]:
+        """
+        Check if the system can perform a YouTube upload.
+
+        DEPRECATED: Use YouTubeQuotaService.check_quota_available() instead.
+        This method now delegates to the quota service for backward compatibility.
+
+        Returns:
+            Tuple of (allowed, remaining, message)
+        """
+        try:
+            from backend.services.youtube_quota_service import get_youtube_quota_service
+            quota_service = get_youtube_quota_service()
+        except (ImportError, Exception) as e:
+            logger.warning(f"Quota service unavailable, falling back to legacy check: {e}")
+            # Fallback to legacy behavior below
+            quota_service = None
+
+        if quota_service is not None:
+            try:
+                return quota_service.check_quota_available()
+            except Exception as e:
+                logger.error(f"Quota service check failed: {e}")
+                return False, 0, f"Quota service error: {e}"
+
+        # Fallback to legacy behavior
+        if not settings.enable_rate_limiting:
+            return True, -1, "Rate limiting disabled"
+        limit = settings.rate_limit_youtube_uploads_per_day
+        if limit == 0:
+            return True, -1, "No YouTube upload limit configured"
+        current_count = self.get_youtube_uploads_today()
+        remaining = max(0, limit - current_count)
+        if current_count >= limit:
+            return False, 0, f"Daily YouTube upload limit reached ({limit} per day)"
+        return True, remaining, f"{remaining} YouTube uploads remaining today"
+
+    def get_youtube_uploads_today(self) -> int:
+        """Get the number of YouTube uploads performed today (system-wide)."""
+        date_str = _get_today_date_str()
+        doc_ref = self.db.collection(RATE_LIMITS_COLLECTION).document(
+            f"youtube_uploads_{date_str}"
+        )
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            return 0
+
+        return doc.to_dict().get("count", 0)
+
+    def record_youtube_upload(self, job_id: str, user_email: str) -> None:
+        """
+        Record a YouTube upload for rate limiting.
+
+        DEPRECATED: Use YouTubeQuotaService.record_upload() instead.
+        This method still records to the legacy collection for backward compatibility.
+        """
+        if not settings.enable_rate_limiting:
+            return
+
+        date_str = _get_today_date_str()
+        doc_ref = self.db.collection(RATE_LIMITS_COLLECTION).document(
+            f"youtube_uploads_{date_str}"
+        )
+
+        @firestore.transactional
+        def update_in_transaction(transaction, doc_ref):
+            doc = doc_ref.get(transaction=transaction)
+            if doc.exists:
+                data = doc.to_dict()
+                count = data.get("count", 0) + 1
+                uploads = data.get("uploads", [])
+            else:
+                count = 1
+                uploads = []
+
+            uploads.append({
+                "job_id": job_id,
+                "user_email": user_email,
+                "timestamp": datetime.now(timezone.utc),
+            })
+
+            transaction.set(doc_ref, {
+                "date": date_str,
+                "count": count,
+                "uploads": uploads,
+                "updated_at": datetime.now(timezone.utc),
+            })
+
+        transaction = self.db.transaction()
+        update_in_transaction(transaction, doc_ref)
+        logger.info(f"Recorded YouTube upload for job {job_id}")
+
+    # -------------------------------------------------------------------------
+    # Beta Enrollment IP Rate Limiting
+    # -------------------------------------------------------------------------
+
+    def check_beta_ip_limit(self, ip_address: str) -> Tuple[bool, int, str]:
+        """
+        Check if an IP address can enroll in the beta program.
+
+        Args:
+            ip_address: Client IP address
+
+        Returns:
+            Tuple of (allowed, remaining, message)
+        """
+        if not settings.enable_rate_limiting:
+            return True, -1, "Rate limiting disabled"
+
+        limit = settings.rate_limit_beta_ip_per_day
+        if limit == 0:
+            return True, -1, "No beta IP limit configured"
+
+        # Check today's enrollment count for this IP
+        ip_hash = _hash_ip(ip_address)
+        date_str = _get_today_date_str()
+
+        doc_ref = self.db.collection(RATE_LIMITS_COLLECTION).document(
+            f"beta_ip_{ip_hash}_{date_str}"
+        )
+        doc = doc_ref.get()
+
+        current_count = 0
+        if doc.exists:
+            current_count = doc.to_dict().get("count", 0)
+
+        remaining = max(0, limit - current_count)
+
+        if current_count >= limit:
+            seconds = _seconds_until_midnight_utc()
+            logger.warning(
+                f"Beta enrollment IP limit exceeded for {ip_hash}: {current_count}/{limit} enrollments today"
+            )
+            return (
+                False,
+                0,
+                f"Too many beta enrollments from this network today. Please try again tomorrow."
+            )
+
+        return True, remaining, f"{remaining} beta enrollments remaining from this IP today"
+
+    def record_beta_enrollment(self, ip_address: str, email: str) -> None:
+        """
+        Record a beta enrollment for IP rate limiting.
+
+        Uses Firestore transactions for atomic increment.
+        """
+        if not settings.enable_rate_limiting:
+            return
+
+        ip_hash = _hash_ip(ip_address)
+        date_str = _get_today_date_str()
+        doc_ref = self.db.collection(RATE_LIMITS_COLLECTION).document(
+            f"beta_ip_{ip_hash}_{date_str}"
+        )
+
+        @firestore.transactional
+        def update_in_transaction(transaction, doc_ref):
+            doc = doc_ref.get(transaction=transaction)
+            if doc.exists:
+                data = doc.to_dict()
+                count = data.get("count", 0) + 1
+                enrollments = data.get("enrollments", [])
+            else:
+                count = 1
+                enrollments = []
+
+            enrollments.append({
+                "email": email,
+                "timestamp": datetime.now(timezone.utc),
+            })
+
+            transaction.set(doc_ref, {
+                "ip_hash": ip_hash,
+                "date": date_str,
+                "count": count,
+                "enrollments": enrollments,
+                "updated_at": datetime.now(timezone.utc),
+            })
+
+        transaction = self.db.transaction()
+        update_in_transaction(transaction, doc_ref)
+        logger.info(f"Recorded beta enrollment from IP {ip_hash} for {email}")
+
+    # -------------------------------------------------------------------------
     # User Overrides (Whitelist)
     # -------------------------------------------------------------------------
 

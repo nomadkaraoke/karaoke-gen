@@ -65,7 +65,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -370,6 +369,9 @@ export default function AdminRateLimitsPage() {
                   }
                   className="h-3"
                 />
+                <div className="text-xs text-muted-foreground">
+                  GCP: {stats?.youtube_quota_gcp_usage?.toLocaleString() ?? 0} + Pending: {stats?.youtube_quota_pending_units?.toLocaleString() ?? 0}
+                </div>
               </div>
               <StatsGrid columns={4}>
                 <StatsCard
@@ -400,44 +402,6 @@ export default function AdminRateLimitsPage() {
                 />
               </StatsGrid>
 
-              {/* GCP Quota Cross-Reference */}
-              <div className="border rounded-lg p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Server className="w-4 h-4" />
-                  GCP Cloud Monitoring
-                </div>
-                {stats?.gcp_quota_available ? (
-                  <div className="space-y-1 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">GCP Reported:</span>
-                      <span className="font-mono">{stats.gcp_quota_units_consumed?.toLocaleString() ?? 0} units</span>
-                      {stats.gcp_quota_data_delay_minutes != null && (
-                        <span className="text-xs text-muted-foreground">
-                          ({stats.gcp_quota_data_delay_minutes}m delay)
-                        </span>
-                      )}
-                    </div>
-                    {stats.quota_drift != null && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Drift:</span>
-                        <span className={`font-mono ${stats.quota_drift_alert ? "text-red-600 font-semibold" : ""}`}>
-                          {stats.quota_drift} units
-                        </span>
-                        {stats.quota_drift_alert && (
-                          <Badge variant="destructive" className="text-xs">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            &gt;10% drift
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    GCP quota data unavailable (metrics have ~1-2h delay)
-                  </p>
-                )}
-              </div>
             </CardContent>
           </Card>
 

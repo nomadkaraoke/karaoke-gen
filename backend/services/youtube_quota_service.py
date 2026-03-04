@@ -1,15 +1,11 @@
 """
 YouTube Data API v3 quota tracking service.
 
-Tracks quota unit consumption in Firestore with daily documents keyed by
-Pacific Time date (YouTube quota resets at midnight PT).
+Uses GCP Cloud Monitoring as the single source of truth for quota usage,
+with a lightweight Firestore pending buffer for the ~7-minute delay before
+GCP reflects newly completed uploads.
 
-Replaces the old hard-coded upload count limit with unit-based tracking
-that reflects actual API quota costs:
-- videos.insert: 100 units
-- search.list: 100 units
-- thumbnails.set: 50 units
-- videos.delete: 50 units
+Formula: current_usage = gcp_reported + pending_buffer
 """
 import logging
 import time
@@ -24,22 +20,18 @@ from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
-# GCP quota cache (module-level for singleton behavior)
-_gcp_quota_cache: Optional[Dict[str, Any]] = None
-_gcp_quota_cache_time: float = 0
-_GCP_CACHE_TTL_SECONDS = 300  # 5 minutes
-
-YOUTUBE_QUOTA_COLLECTION = "youtube_quota"
+YOUTUBE_QUOTA_PENDING_COLLECTION = "youtube_quota_pending"
 PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
 
-# Known quota costs per YouTube Data API v3 operation
-QUOTA_COSTS = {
-    "videos.insert": 100,
-    "search.list": 100,
-    "thumbnails.set": 50,
-    "videos.delete": 50,
-    "channels.list": 1,
+# Pending entries older than this are ignored (GCP should have caught up)
+PENDING_EXPIRY_MINUTES = 10
+
+# In-memory cache for GCP usage to avoid hammering Cloud Monitoring
+_gcp_cache: Dict[str, Any] = {
+    "value": None,
+    "timestamp": 0.0,
 }
+GCP_CACHE_TTL_SECONDS = 60
 
 
 def _get_today_date_pt() -> str:
@@ -49,7 +41,6 @@ def _get_today_date_pt() -> str:
 
 def _seconds_until_midnight_pt() -> int:
     """Calculate seconds until Pacific Time midnight (when YouTube quota resets)."""
-    from datetime import timedelta
     now = datetime.now(PACIFIC_TZ)
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
     next_midnight = midnight + timedelta(days=1)
@@ -60,8 +51,8 @@ class YouTubeQuotaService:
     """
     Service for tracking YouTube Data API v3 quota consumption.
 
-    Uses Firestore for distributed tracking with daily documents
-    that automatically correspond to YouTube's quota reset at midnight PT.
+    Uses GCP Cloud Monitoring as the primary data source, with a Firestore
+    pending buffer for recent uploads not yet reflected in GCP metrics.
     """
 
     def __init__(self, db: Optional[firestore.Client] = None):
@@ -90,7 +81,9 @@ class YouTubeQuotaService:
         if limit == 0:
             return True, -1, "No YouTube quota limit configured"
 
-        consumed = self._get_units_consumed_today()
+        gcp_usage = self._get_gcp_usage()
+        pending = self._get_pending_units()
+        consumed = gcp_usage + pending
         remaining = max(0, effective_limit - consumed)
 
         if consumed + estimated_units > effective_limit:
@@ -99,7 +92,8 @@ class YouTubeQuotaService:
             minutes = (seconds % 3600) // 60
             logger.warning(
                 f"YouTube quota insufficient: {consumed}/{effective_limit} units used "
-                f"(need {estimated_units} more), resets in {hours}h {minutes}m"
+                f"(GCP: {gcp_usage}, pending: {pending}, need {estimated_units} more), "
+                f"resets in {hours}h {minutes}m"
             )
             return (
                 False,
@@ -110,64 +104,55 @@ class YouTubeQuotaService:
 
         return True, remaining, f"{remaining} quota units remaining today"
 
-    def record_operation(
-        self,
-        job_id: str,
-        user_email: str,
-        operation: str,
-        units: Optional[int] = None,
-    ) -> None:
+    def record_upload(self, job_id: str, units: Optional[int] = None) -> None:
         """
-        Record a YouTube API operation for quota tracking.
+        Record a YouTube upload in the pending buffer.
 
-        Uses Firestore transactions for atomic updates.
+        Called once after a successful upload. The pending buffer bridges
+        the ~7-minute gap before GCP Cloud Monitoring reflects the usage.
 
         Args:
-            job_id: Job ID that triggered the operation
-            user_email: User who owns the job
-            operation: API operation name (e.g., "videos.insert")
-            units: Quota units consumed. If None, looks up from QUOTA_COSTS.
+            job_id: Job ID that triggered the upload
+            units: Quota units consumed. Defaults to settings.youtube_quota_upload_cost.
         """
         if units is None:
-            units = QUOTA_COSTS.get(operation, 0)
-            if units == 0:
-                logger.warning(f"Unknown YouTube API operation: {operation}, recording 0 units")
+            units = settings.youtube_quota_upload_cost
 
         date_str = _get_today_date_pt()
-        doc_ref = self.db.collection(YOUTUBE_QUOTA_COLLECTION).document(date_str)
+        doc_ref = self.db.collection(YOUTUBE_QUOTA_PENDING_COLLECTION).document(date_str)
 
         @firestore.transactional
         def update_in_transaction(transaction, doc_ref):
             doc = doc_ref.get(transaction=transaction)
             if doc.exists:
                 data = doc.to_dict()
-                units_consumed = data.get("units_consumed", 0) + units
-                operations = data.get("operations", [])
+                pending_uploads = data.get("pending_uploads", [])
             else:
-                units_consumed = units
-                operations = []
+                pending_uploads = []
 
-            operations.append({
+            pending_uploads.append({
                 "job_id": job_id,
-                "operation": operation,
                 "units": units,
-                "user_email": user_email,
-                "timestamp": datetime.now(PACIFIC_TZ),
+                "recorded_at": datetime.now(PACIFIC_TZ),
             })
 
+            # Recalculate pending_units from non-expired entries
+            cutoff = datetime.now(PACIFIC_TZ) - timedelta(minutes=PENDING_EXPIRY_MINUTES)
+            active_units = sum(
+                e.get("units", 0) for e in pending_uploads
+                if e.get("recorded_at") and e["recorded_at"] >= cutoff
+            )
+
             transaction.set(doc_ref, {
-                "date_pt": date_str,
-                "units_consumed": units_consumed,
-                "units_limit": settings.youtube_quota_daily_limit,
-                "operations": operations,
+                "pending_units": active_units,
+                "pending_uploads": pending_uploads,
                 "updated_at": datetime.now(PACIFIC_TZ),
             })
 
         transaction = self.db.transaction()
         update_in_transaction(transaction, doc_ref)
         logger.info(
-            f"Recorded YouTube quota: {operation}={units} units for job {job_id} "
-            f"(user: {user_email})"
+            f"Recorded YouTube upload pending: {units} units for job {job_id}"
         )
 
     def get_quota_stats(self) -> Dict[str, Any]:
@@ -175,158 +160,150 @@ class YouTubeQuotaService:
         Get current quota statistics for admin dashboard.
 
         Returns:
-            Dict with quota usage stats
+            Dict with quota usage stats including GCP and pending breakdown.
         """
         date_str = _get_today_date_pt()
-        doc_ref = self.db.collection(YOUTUBE_QUOTA_COLLECTION).document(date_str)
-        doc = doc_ref.get()
 
         limit = settings.youtube_quota_daily_limit
         safety_margin = settings.youtube_quota_safety_margin
         effective_limit = limit - safety_margin
 
-        if not doc.exists:
-            return {
-                "date_pt": date_str,
-                "units_consumed": 0,
-                "units_limit": limit,
-                "effective_limit": effective_limit,
-                "units_remaining": effective_limit,
-                "upload_cost": settings.youtube_quota_upload_cost,
-                "estimated_uploads_remaining": effective_limit // settings.youtube_quota_upload_cost if settings.youtube_quota_upload_cost > 0 else -1,
-                "seconds_until_reset": _seconds_until_midnight_pt(),
-                "operations_count": 0,
-                "upload_count": 0,
-            }
-
-        data = doc.to_dict()
-        consumed = data.get("units_consumed", 0)
+        gcp_usage = self._get_gcp_usage()
+        pending = self._get_pending_units()
+        consumed = gcp_usage + pending
         remaining = max(0, effective_limit - consumed)
 
-        # Count videos.insert operations specifically (actual uploads)
-        operations = data.get("operations", [])
-        upload_count = sum(1 for op in operations if op.get("operation") == "videos.insert")
+        upload_cost = settings.youtube_quota_upload_cost
+        estimated_uploads = remaining // upload_cost if upload_cost > 0 else -1
+
+        upload_count = self._get_pending_upload_count()
 
         return {
             "date_pt": date_str,
             "units_consumed": consumed,
+            "gcp_usage": gcp_usage,
+            "pending_units": pending,
             "units_limit": limit,
             "effective_limit": effective_limit,
             "units_remaining": remaining,
-            "upload_cost": settings.youtube_quota_upload_cost,
-            "estimated_uploads_remaining": remaining // settings.youtube_quota_upload_cost if settings.youtube_quota_upload_cost > 0 else -1,
+            "upload_cost": upload_cost,
+            "estimated_uploads_remaining": estimated_uploads,
             "seconds_until_reset": _seconds_until_midnight_pt(),
-            "operations_count": len(operations),
             "upload_count": upload_count,
         }
 
-    def get_gcp_quota_usage(self) -> Dict[str, Any]:
+    def _get_gcp_usage(self) -> int:
         """
-        Query GCP Cloud Monitoring for actual YouTube API quota usage.
+        Query GCP Cloud Monitoring for today's YouTube API quota usage.
 
-        Uses the metric serviceruntime.googleapis.com/quota/rate/net_usage
-        for youtube.googleapis.com. Results are cached for 5 minutes.
-
-        Important: GCP metrics have ~1-2 hour delay, so they cannot replace
-        Firestore tracking for real-time gating. They serve as source-of-truth
-        for dashboard display and drift detection.
-
-        Returns:
-            Dict with gcp_units_consumed, gcp_last_datapoint_time,
-            gcp_data_delay_minutes, available flag, and drift info.
+        Uses a 60-second in-memory cache. Falls back to stale cache on error,
+        or 0 if no cache exists.
         """
-        global _gcp_quota_cache, _gcp_quota_cache_time
+        global _gcp_cache
 
-        # Check cache
         now = time.time()
-        if _gcp_quota_cache is not None and (now - _gcp_quota_cache_time) < _GCP_CACHE_TTL_SECONDS:
-            return _gcp_quota_cache
+        cache_age = now - _gcp_cache["timestamp"]
+
+        # Return cached value if fresh
+        if _gcp_cache["value"] is not None and cache_age < GCP_CACHE_TTL_SECONDS:
+            return _gcp_cache["value"]
 
         try:
             from google.cloud import monitoring_v3
+            from google.protobuf.timestamp_pb2 import Timestamp
 
             client = monitoring_v3.MetricServiceClient()
             project_name = f"projects/{settings.google_cloud_project}"
 
-            # Query for today's YouTube quota usage (PT date range)
-            now_dt = datetime.now(PACIFIC_TZ)
-            start_of_day = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            # Query from midnight PT today
+            now_utc = datetime.now(PACIFIC_TZ).astimezone(ZoneInfo("UTC"))
+            midnight_pt = datetime.now(PACIFIC_TZ).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ).astimezone(ZoneInfo("UTC"))
+
+            start_time = Timestamp()
+            start_time.FromDatetime(midnight_pt)
+            end_time = Timestamp()
+            end_time.FromDatetime(now_utc)
 
             interval = monitoring_v3.TimeInterval(
-                start_time=start_of_day,
-                end_time=now_dt,
+                start_time=start_time,
+                end_time=end_time,
             )
 
-            # Query the quota usage metric for YouTube Data API
-            # No aggregation — sum the raw per-minute datapoints directly
             results = client.list_time_series(
                 request={
                     "name": project_name,
                     "filter": (
-                        'metric.type = "serviceruntime.googleapis.com/quota/rate/net_usage" '
-                        'AND resource.labels.service = "youtube.googleapis.com"'
+                        'metric.type = "serviceruntime.googleapis.com/quota/rate/net_usage"'
+                        ' AND resource.labels.service = "youtube.googleapis.com"'
                     ),
                     "interval": interval,
                     "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 }
             )
 
-            total_units = 0
-            last_datapoint_time = None
-
+            # Sum all datapoints (no aggregation — raw per-minute values)
+            total = 0
             for ts in results:
                 for point in ts.points:
-                    total_units += int(point.value.int64_value)
-                    point_time = point.interval.end_time
-                    if last_datapoint_time is None or point_time > last_datapoint_time:
-                        last_datapoint_time = point_time
+                    total += int(point.value.int64_value)
 
-            # Calculate data delay
-            delay_minutes = None
-            last_datapoint_str = None
-            if last_datapoint_time:
-                delay = now_dt - last_datapoint_time.astimezone(PACIFIC_TZ)
-                delay_minutes = int(delay.total_seconds() / 60)
-                last_datapoint_str = last_datapoint_time.isoformat()
+            _gcp_cache["value"] = total
+            _gcp_cache["timestamp"] = now
+            return total
 
-            # Calculate drift against Firestore tracking
-            firestore_consumed = self._get_units_consumed_today()
-            drift = abs(total_units - firestore_consumed) if total_units > 0 else None
-            drift_alert = False
-            if drift is not None and firestore_consumed > 0:
-                drift_pct = drift / firestore_consumed
-                drift_alert = drift_pct > 0.10  # Alert if >10% drift
-
-            result = {
-                "available": True,
-                "gcp_units_consumed": total_units,
-                "gcp_last_datapoint_time": last_datapoint_str,
-                "gcp_data_delay_minutes": delay_minutes,
-                "drift": drift,
-                "drift_alert": drift_alert,
-            }
-
-            _gcp_quota_cache = result
-            _gcp_quota_cache_time = now
-            return result
-
-        except ImportError:
-            logger.debug("google-cloud-monitoring not installed, GCP quota unavailable")
-            return {"available": False}
         except Exception as e:
-            logger.warning(f"GCP quota query failed: {e}")
-            return {"available": False}
+            logger.warning(f"Failed to query GCP Cloud Monitoring: {e}")
+            # Fallback to stale cache if available
+            if _gcp_cache["value"] is not None:
+                logger.info(f"Using stale GCP cache (age: {cache_age:.0f}s)")
+                return _gcp_cache["value"]
+            return 0
 
-    def _get_units_consumed_today(self) -> int:
-        """Get total quota units consumed today (Pacific Time)."""
+    def _get_pending_units(self) -> int:
+        """
+        Get pending quota units from Firestore (entries < PENDING_EXPIRY_MINUTES old).
+        """
         date_str = _get_today_date_pt()
-        doc_ref = self.db.collection(YOUTUBE_QUOTA_COLLECTION).document(date_str)
+        doc_ref = self.db.collection(YOUTUBE_QUOTA_PENDING_COLLECTION).document(date_str)
         doc = doc_ref.get()
 
         if not doc.exists:
             return 0
 
-        return doc.to_dict().get("units_consumed", 0)
+        data = doc.to_dict()
+        pending_uploads = data.get("pending_uploads", [])
+        cutoff = datetime.now(PACIFIC_TZ) - timedelta(minutes=PENDING_EXPIRY_MINUTES)
+
+        total = 0
+        for entry in pending_uploads:
+            recorded_at = entry.get("recorded_at")
+            if recorded_at and recorded_at >= cutoff:
+                total += entry.get("units", 0)
+
+        return total
+
+    def _get_pending_upload_count(self) -> int:
+        """Get count of pending uploads (non-expired) for today."""
+        date_str = _get_today_date_pt()
+        doc_ref = self.db.collection(YOUTUBE_QUOTA_PENDING_COLLECTION).document(date_str)
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            return 0
+
+        data = doc.to_dict()
+        pending_uploads = data.get("pending_uploads", [])
+        cutoff = datetime.now(PACIFIC_TZ) - timedelta(minutes=PENDING_EXPIRY_MINUTES)
+
+        count = 0
+        for entry in pending_uploads:
+            recorded_at = entry.get("recorded_at")
+            if recorded_at and recorded_at >= cutoff:
+                count += 1
+
+        return count
 
 
 # Singleton instance

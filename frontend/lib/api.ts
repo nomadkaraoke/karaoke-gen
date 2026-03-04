@@ -2458,7 +2458,7 @@ export interface RateLimitStatsResponse {
   jobs_per_day_limit: number;
   rate_limiting_enabled: boolean;
   youtube_uploads_today: number;
-  // YouTube quota (unit-based tracking)
+  // YouTube quota (GCP Cloud Monitoring + pending buffer)
   youtube_quota_units_consumed: number;
   youtube_quota_units_remaining: number;
   youtube_quota_daily_limit: number;
@@ -2466,16 +2466,11 @@ export interface RateLimitStatsResponse {
   youtube_quota_upload_cost: number;
   youtube_quota_estimated_uploads_remaining: number;
   youtube_quota_seconds_until_reset: number;
+  youtube_quota_gcp_usage: number;
+  youtube_quota_pending_units: number;
   // YouTube upload queue
   youtube_uploads_queued: number;
   youtube_uploads_failed: number;
-  // GCP quota monitoring (Cloud Monitoring cross-reference)
-  gcp_quota_available: boolean;
-  gcp_quota_units_consumed?: number;
-  gcp_quota_last_datapoint?: string;
-  gcp_quota_data_delay_minutes?: number;
-  quota_drift?: number;
-  quota_drift_alert: boolean;
   disposable_domains_count: number;
   blocked_emails_count: number;
   blocked_ips_count: number;

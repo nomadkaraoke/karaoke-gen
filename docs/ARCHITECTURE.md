@@ -187,7 +187,8 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 | `sessions` | Magic link auth sessions | user_email, token, expires_at |
 | `magic_links` | Passwordless auth tokens | email, token, expires_at, used |
 | `user_feedback` | User feedback for credits (all users) | user_email, ratings, comments, created_at |
-| `youtube_quota` | Daily YouTube API quota tracking | date_pt, units_consumed, units_limit, operations[] |
+| `beta_feedback` | Beta program feedback (deprecated) | user_email, ratings, comments |
+| `youtube_quota_pending` | Pending YouTube API quota buffer (~7min GCP delay) | pending_units, pending_uploads[], updated_at |
 | `youtube_upload_queue` | Deferred YouTube uploads | job_id, status, user_email, queued_at, youtube_url |
 
 **Note**: The `users` collection in the same Firestore instance belongs to karaoke-decide (different schema: user_id, is_guest, quiz_* fields). Don't use it for karaoke-gen.
@@ -238,7 +239,7 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
 | `audio_transcoding_service.py` | Transcode FLAC → OGG Opus for review UI playback |
-| `youtube_quota_service.py` | Track YouTube API quota units (Firestore, PT midnight reset) + GCP Cloud Monitoring cross-reference |
+| `youtube_quota_service.py` | Track YouTube API quota (GCP Cloud Monitoring + Firestore pending buffer) |
 | `email_validation_service.py` | Email validation, disposable domain detection, blocklist management |
 | `youtube_upload_queue_service.py` | Deferred YouTube upload queue management |
 | `catalog_proxy_service.py` | Proxy to karaoke-decide catalog API (artist/track search) |

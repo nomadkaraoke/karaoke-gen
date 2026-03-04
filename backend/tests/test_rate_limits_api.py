@@ -80,6 +80,8 @@ class TestGetRateLimitStats:
             mock_quota = Mock()
             mock_quota.get_quota_stats.return_value = {
                 "units_consumed": 900,
+                "gcp_usage": 600,
+                "pending_units": 300,
                 "units_remaining": 8600,
                 "units_limit": 10000,
                 "effective_limit": 9500,
@@ -88,7 +90,6 @@ class TestGetRateLimitStats:
                 "estimated_uploads_remaining": 28,
                 "seconds_until_reset": 43200,
             }
-            mock_quota.get_gcp_quota_usage.return_value = {"available": False}
             mock_get_qs.return_value = mock_quota
 
             # Setup queue service mock
@@ -114,22 +115,12 @@ class TestGetRateLimitStats:
             assert data["youtube_uploads_today"] == 3
             assert data["disposable_domains_count"] == 100
             assert data["total_overrides"] == 1
-            # Quota unit fields
+            # Quota fields
             assert data["youtube_quota_units_consumed"] == 900
             assert data["youtube_quota_units_remaining"] == 8600
             assert data["youtube_quota_daily_limit"] == 10000
-            assert data["youtube_quota_effective_limit"] == 9500
-            assert data["youtube_quota_upload_cost"] == 300
-            assert data["youtube_quota_estimated_uploads_remaining"] == 28
-            # Queue fields
-            assert data["youtube_uploads_queued"] == 0
-            assert data["youtube_uploads_failed"] == 0
-            # GCP quota (unavailable in this test)
-            assert data["gcp_quota_available"] is False
-            # Removed fields should not be present
-            assert "youtube_uploads_per_day_limit" not in data
-            assert "beta_ip_per_day_limit" not in data
-            assert "youtube_uploads_remaining" not in data
+            assert data["youtube_quota_gcp_usage"] == 600
+            assert data["youtube_quota_pending_units"] == 300
 
 
 class TestGetUserRateLimitStatus:

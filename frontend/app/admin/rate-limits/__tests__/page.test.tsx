@@ -57,10 +57,10 @@ const mockStats = {
   youtube_quota_upload_cost: 300,
   youtube_quota_estimated_uploads_remaining: 28,
   youtube_quota_seconds_until_reset: 43200,
+  youtube_quota_gcp_usage: 600,
+  youtube_quota_pending_units: 300,
   youtube_uploads_queued: 0,
   youtube_uploads_failed: 0,
-  gcp_quota_available: false,
-  quota_drift_alert: false,
   disposable_domains_count: 130,
   blocked_emails_count: 2,
   blocked_ips_count: 1,
@@ -176,6 +176,18 @@ describe("AdminRateLimitsPage", () => {
 
       expect(screen.getByText("Uploads Today")).toBeInTheDocument()
       expect(screen.getByText("3")).toBeInTheDocument()
+    })
+
+    it("displays GCP + Pending quota breakdown", async () => {
+      render(<AdminRateLimitsPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("YouTube API Quota")).toBeInTheDocument()
+      })
+
+      // Should show the GCP + Pending breakdown line
+      expect(screen.getByText(/GCP: 600/)).toBeInTheDocument()
+      expect(screen.getByText(/Pending: 300/)).toBeInTheDocument()
     })
 
     it("displays rate limiting status badge", async () => {
