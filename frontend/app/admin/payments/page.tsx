@@ -266,7 +266,7 @@ function RevenueOverviewTab() {
               <Skeleton className="h-[250px] w-full" />
             ) : chart.length > 0 ? (
               <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                <AreaChart data={chart}>
+                <AreaChart data={chart} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
@@ -291,6 +291,7 @@ function RevenueOverviewTab() {
                     fill="var(--color-gross)"
                     fillOpacity={0.2}
                     name="Gross"
+                    dot={chart.length === 1}
                   />
                   <Area
                     type="monotone"
@@ -299,6 +300,7 @@ function RevenueOverviewTab() {
                     fill="var(--color-net)"
                     fillOpacity={0.2}
                     name="Net"
+                    dot={chart.length === 1}
                   />
                 </AreaChart>
               </ChartContainer>

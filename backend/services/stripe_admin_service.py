@@ -146,7 +146,7 @@ class StripeAdminService:
                 "refunded_at": None,
                 "refund_reason": None,
                 # Timestamps
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.utcfromtimestamp(session["created"]) if session.get("created") else datetime.utcnow(),
                 "processed_at": datetime.utcnow(),
                 # Metadata
                 "is_test": is_test,
