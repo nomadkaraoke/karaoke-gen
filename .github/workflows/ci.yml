@@ -1053,6 +1053,47 @@ jobs:
 
           echo "✅ GCS deployment complete"
 
+      - name: Drain active encoding jobs before restart
+        run: |
+          # Graceful drain: wait for any active encoding jobs to finish before
+          # restarting the worker. This prevents killing in-flight FFmpeg encodes.
+          #
+          # The /health endpoint returns active_jobs count. We poll until it's 0
+          # or until the drain timeout expires (10 minutes — well within the
+          # longest encoding time of ~5 min for a full 4-format encode).
+
+          WORKER_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key --project=nomadkaraoke)
+          WORKER_URL=$(gcloud secrets versions access latest --secret=encoding-worker-url --project=nomadkaraoke)
+          DRAIN_TIMEOUT=600  # 10 minutes
+          POLL_INTERVAL=15
+          ELAPSED=0
+
+          echo "🔍 Checking for active encoding jobs before restart..."
+
+          while [ $ELAPSED -lt $DRAIN_TIMEOUT ]; do
+            HEALTH=$(curl -sf -H "X-API-Key: $WORKER_KEY" "$WORKER_URL/health" 2>/dev/null || echo '{"active_jobs": -1}')
+            ACTIVE=$(echo "$HEALTH" | grep -o '"active_jobs":[0-9]*' | cut -d: -f2)
+
+            if [ -z "$ACTIVE" ] || [ "$ACTIVE" = "-1" ]; then
+              echo "⚠️ Could not reach health endpoint (worker may already be down). Proceeding with restart."
+              break
+            fi
+
+            if [ "$ACTIVE" = "0" ]; then
+              echo "✅ No active encoding jobs. Safe to restart."
+              break
+            fi
+
+            echo "⏳ $ACTIVE active encoding job(s) running. Waiting ${POLL_INTERVAL}s... (${ELAPSED}s/${DRAIN_TIMEOUT}s)"
+            sleep $POLL_INTERVAL
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+
+          if [ $ELAPSED -ge $DRAIN_TIMEOUT ]; then
+            echo "⚠️ Drain timeout reached (${DRAIN_TIMEOUT}s) with jobs still active. Proceeding with restart."
+            echo "   Active jobs will be recoverable via idempotent /encode endpoint (PR #413)."
+          fi
+
       - name: Restart GCE Encoding Worker
         run: |
           VERSION="${{ steps.version_check.outputs.version }}"

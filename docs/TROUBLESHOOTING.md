@@ -31,6 +31,8 @@ curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/video" \
 
 **Note:** SSH-restarting the encoding worker is **not needed** since v0.119.6 (PR #413). The `/encode` endpoint is now idempotent — re-triggering the video worker is sufficient.
 
+**Prevention (since v0.126.2):** CI now performs a graceful drain before restarting the encoding worker — it waits for active jobs to finish (up to 10 min). Additionally, the encoding client retries for ~90s (up from ~14s), and status polling tolerates up to 5 consecutive failures. These three layers together should prevent this issue from recurring.
+
 ---
 
 ## CDG/TXT packages missing from completed job
