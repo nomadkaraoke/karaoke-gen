@@ -2994,7 +2994,7 @@ async def backfill_user_stats(
     db = firestore_lib.Client()
 
     # Get all users
-    users_docs = list(db.collection("users").stream())
+    users_docs = list(db.collection(USERS_COLLECTION).stream())
     updated = 0
 
     for user_doc in users_docs:
