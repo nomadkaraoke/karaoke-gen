@@ -10,6 +10,7 @@ import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 import { SongInfoStep } from "./steps/SongInfoStep"
 import { AudioSourceStep } from "./steps/AudioSourceStep"
 import { CustomizeStep } from "./steps/CustomizeStep"
+import type { ColorOverrides } from "./steps/CustomizeStep"
 
 interface GuidedJobFlowProps {
   onJobCreated: () => void
@@ -18,6 +19,73 @@ interface GuidedJobFlowProps {
 type Step = 1 | 2 | 3
 
 const STEP_LABELS = ["Song Info", "Choose Audio", "Customize & Create"]
+
+/**
+ * Upload custom style assets to an already-created job.
+ * Runs in the background after the success screen is shown — failures are logged but don't block.
+ */
+async function uploadStyleAssets(
+  jobId: string,
+  karaokeBackground: File | null,
+  introBackground: File | null,
+  colorOverrides: ColorOverrides,
+) {
+  const filesToUpload: Array<{ file: File; file_type: string; content_type: string }> = []
+
+  if (karaokeBackground) {
+    filesToUpload.push({
+      file: karaokeBackground,
+      file_type: "style_karaoke_background",
+      content_type: karaokeBackground.type,
+    })
+  }
+  if (introBackground) {
+    filesToUpload.push({
+      file: introBackground,
+      file_type: "style_intro_background",
+      content_type: introBackground.type,
+    })
+  }
+
+  if (filesToUpload.length === 0 && !colorOverrides.artist_color && !colorOverrides.title_color) {
+    return // Nothing to upload
+  }
+
+  try {
+    // Step 1: Get signed upload URLs (if there are files)
+    if (filesToUpload.length > 0) {
+      const { upload_urls } = await api.getStyleUploadUrls(
+        jobId,
+        filesToUpload.map((f) => ({
+          filename: f.file.name,
+          content_type: f.content_type,
+          file_type: f.file_type,
+        }))
+      )
+
+      // Step 2: Upload files to GCS in parallel
+      await Promise.all(
+        upload_urls.map((urlInfo) => {
+          const fileInfo = filesToUpload.find((f) => f.file_type === urlInfo.file_type)
+          if (!fileInfo) return Promise.resolve()
+          return api.uploadFileToSignedUrl(urlInfo.upload_url, fileInfo.file, urlInfo.content_type)
+        })
+      )
+    }
+
+    // Step 3: Finalize with uploaded file types + color overrides
+    const uploadedFileTypes = filesToUpload.map((f) => f.file_type)
+    const hasColorOverrides = colorOverrides.artist_color || colorOverrides.title_color
+    await api.completeStyleUploads(
+      jobId,
+      uploadedFileTypes,
+      hasColorOverrides ? colorOverrides : undefined
+    )
+  } catch (err) {
+    // Log but don't block — the job will fall back to the default theme
+    console.error("Failed to upload custom style assets:", err)
+  }
+}
 
 export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   const { user } = useAuth()
@@ -35,6 +103,11 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   const [displayArtist, setDisplayArtist] = useState("")
   const [displayTitle, setDisplayTitle] = useState("")
   const [isPrivate, setIsPrivate] = useState(false)
+
+  // Custom style state
+  const [karaokeBackground, setKaraokeBackground] = useState<File | null>(null)
+  const [introBackground, setIntroBackground] = useState<File | null>(null)
+  const [colorOverrides, setColorOverrides] = useState<ColorOverrides>({})
 
   // Job tracking
   const [jobId, setJobId] = useState<string | null>(null)
@@ -87,6 +160,13 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
       setJobId(response.job_id)
       onJobCreated()
       setShowSuccess(true)
+
+      // Upload style assets in the background (non-blocking)
+      const hasStyleCustomizations = karaokeBackground || introBackground ||
+        colorOverrides.artist_color || colorOverrides.title_color
+      if (isPrivate && hasStyleCustomizations) {
+        uploadStyleAssets(response.job_id, karaokeBackground, introBackground, colorOverrides)
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
@@ -114,6 +194,9 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setDisplayArtist("")
     setDisplayTitle("")
     setIsPrivate(false)
+    setKaraokeBackground(null)
+    setIntroBackground(null)
+    setColorOverrides({})
     setJobId(null)
     setAudioSource("search")
     setSelectedResultIndex(null)
@@ -361,6 +444,12 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           onDisplayTitleChange={setDisplayTitle}
           isPrivate={isPrivate}
           onPrivateChange={setIsPrivate}
+          karaokeBackground={karaokeBackground}
+          onKaraokeBackgroundChange={setKaraokeBackground}
+          introBackground={introBackground}
+          onIntroBackgroundChange={setIntroBackground}
+          colorOverrides={colorOverrides}
+          onColorOverridesChange={setColorOverrides}
           onConfirm={handleConfirm}
           onBack={() => setStep(2)}
           isSubmitting={isSubmitting}

@@ -5,6 +5,9 @@ import { useRef, useEffect, useCallback } from "react"
 interface TitleCardPreviewProps {
   artist: string
   title: string
+  customBackgroundUrl?: string  // Object URL from File for custom background
+  titleColor?: string           // Hex color override (default #ffffff)
+  artistColor?: string          // Hex color override (default #ffdf6b)
 }
 
 // Matches the Nomad theme title card (style_params.json from GCS):
@@ -118,8 +121,11 @@ function drawTextBlock(
   }
 }
 
-export function TitleCardPreview({ artist, title }: TitleCardPreviewProps) {
+export function TitleCardPreview({ artist, title, customBackgroundUrl, titleColor, artistColor }: TitleCardPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const effectiveTitleColor = titleColor || TITLE_COLOR
+  const effectiveArtistColor = artistColor || ARTIST_COLOR
 
   const draw = useCallback(async () => {
     const canvas = canvasRef.current
@@ -127,10 +133,20 @@ export function TitleCardPreview({ artist, title }: TitleCardPreviewProps) {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // Draw background image (or black fallback)
+    // Draw background image (custom or default)
     try {
-      const bgImg = await loadBgImage()
-      ctx.drawImage(bgImg, 0, 0, CANVAS_W, CANVAS_H)
+      if (customBackgroundUrl) {
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const el = new Image()
+          el.onload = () => resolve(el)
+          el.onerror = reject
+          el.src = customBackgroundUrl
+        })
+        ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H)
+      } else {
+        const bgImg = await loadBgImage()
+        ctx.drawImage(bgImg, 0, 0, CANVAS_W, CANVAS_H)
+      }
     } catch {
       ctx.fillStyle = "#000000"
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
@@ -155,24 +171,24 @@ export function TitleCardPreview({ artist, title }: TitleCardPreviewProps) {
     const titleText = (title || "Song Title").toUpperCase()
     const artistText = (artist || "Artist").toUpperCase()
 
-    // Draw title (white)
+    // Draw title
     drawTextBlock(
       ctx,
       titleText,
       TITLE_X, TITLE_Y, TITLE_W, TITLE_H,
-      title ? TITLE_COLOR : "rgba(255,255,255,0.25)",
+      title ? effectiveTitleColor : "rgba(255,255,255,0.25)",
       fontFamily,
     )
 
-    // Draw artist (golden yellow)
+    // Draw artist
     drawTextBlock(
       ctx,
       artistText,
       ARTIST_X, ARTIST_Y, ARTIST_W, ARTIST_H,
-      artist ? ARTIST_COLOR : "rgba(255,223,107,0.25)",
+      artist ? effectiveArtistColor : "rgba(255,223,107,0.25)",
       fontFamily,
     )
-  }, [artist, title])
+  }, [artist, title, customBackgroundUrl, effectiveTitleColor, effectiveArtistColor])
 
   useEffect(() => {
     draw()

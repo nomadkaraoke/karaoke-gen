@@ -201,6 +201,17 @@ class UploadsCompleteRequest(BaseModel):
     """Request to mark uploads as complete and start processing."""
     uploaded_files: List[str] = Field(..., description="List of file_types that were successfully uploaded")
 
+
+class StyleUploadUrlsRequest(BaseModel):
+    """Request to get signed upload URLs for style assets on an existing job."""
+    files: List[FileUploadRequest] = Field(..., description="List of style files to upload")
+
+
+class StyleUploadsCompleteRequest(BaseModel):
+    """Request to finalize style asset uploads on an existing job."""
+    uploaded_files: List[str] = Field(..., description="List of style file_types that were successfully uploaded (e.g. 'style_karaoke_background')")
+    color_overrides: Optional[Dict[str, str]] = Field(None, description="Color overrides: artist_color, title_color (hex #RRGGBB)")
+
 # Initialize services
 job_manager = JobManager()
 storage_service = StorageService()
@@ -836,6 +847,35 @@ VALID_FILE_TYPES = {
     'style_cdg_outro_background': ALLOWED_IMAGE_EXTENSIONS,
     'lyrics_file': {'.txt', '.docx', '.rtf'},
     'existing_instrumental': ALLOWED_AUDIO_EXTENSIONS,  # Batch 3: user-provided instrumental
+}
+
+# Style-only file types (subset allowed for post-creation style uploads)
+STYLE_FILE_TYPES = {
+    'style_intro_background': ALLOWED_IMAGE_EXTENSIONS,
+    'style_karaoke_background': ALLOWED_IMAGE_EXTENSIONS,
+    'style_end_background': ALLOWED_IMAGE_EXTENSIONS,
+}
+
+# Statuses at or past which style uploads are no longer accepted
+# (style assets must be uploaded before screen generation begins)
+STYLE_UPLOAD_CUTOFF_STATUSES = {
+    JobStatus.GENERATING_SCREENS,
+    JobStatus.APPLYING_PADDING,
+    JobStatus.AWAITING_REVIEW,
+    JobStatus.IN_REVIEW,
+    JobStatus.REVIEW_COMPLETE,
+    JobStatus.RENDERING_VIDEO,
+    JobStatus.AWAITING_INSTRUMENTAL_SELECTION,
+    JobStatus.INSTRUMENTAL_SELECTED,
+    JobStatus.GENERATING_VIDEO,
+    JobStatus.ENCODING,
+    JobStatus.PACKAGING,
+    JobStatus.UPLOADING,
+    JobStatus.NOTIFYING,
+    JobStatus.COMPLETE,
+    JobStatus.PREP_COMPLETE,
+    JobStatus.FAILED,
+    JobStatus.CANCELLED,
 }
 
 # Valid file types for finalise-only mode (Batch 6)
@@ -2151,4 +2191,193 @@ async def mark_finalise_uploads_complete(
         raise
     except Exception as e:
         logger.error(f"Error completing finalise-only uploads for job {job_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ============================================================================
+# Post-creation style asset upload endpoints (for private/custom branding)
+# ============================================================================
+
+@router.post("/jobs/{job_id}/style-upload-urls")
+async def get_style_upload_urls(
+    job_id: str,
+    body: StyleUploadUrlsRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Get signed GCS upload URLs for style assets on an already-created job.
+
+    Used by the guided flow to upload custom backgrounds/images after job creation.
+    Only accepts style file types (backgrounds). The job must not have progressed
+    past the screen generation stage.
+    """
+    try:
+        # Get job and verify it exists
+        job = job_manager.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+        # Verify ownership (non-admin users can only modify their own jobs)
+        if auth_result.user_type != UserType.ADMIN:
+            if job.user_email != auth_result.user_email:
+                raise HTTPException(status_code=403, detail="Not authorized to modify this job")
+
+        # Check cutoff - reject if job is too far along
+        try:
+            current_status = JobStatus(job.status)
+        except ValueError:
+            current_status = None
+        if current_status in STYLE_UPLOAD_CUTOFF_STATUSES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Job {job_id} is past the style upload cutoff (status: {job.status}). "
+                        "Style assets must be uploaded before screen generation begins."
+            )
+
+        # Validate file types - only style files allowed
+        upload_urls = []
+        for file_info in body.files:
+            if file_info.file_type not in STYLE_FILE_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid file_type for style upload: '{file_info.file_type}'. "
+                           f"Allowed: {list(STYLE_FILE_TYPES.keys())}"
+                )
+
+            ext = Path(file_info.filename).suffix.lower()
+            allowed_extensions = STYLE_FILE_TYPES[file_info.file_type]
+            if ext not in allowed_extensions:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid extension '{ext}' for {file_info.file_type}. Allowed: {allowed_extensions}"
+                )
+
+            gcs_path = _get_gcs_path_for_file(job_id, file_info.file_type, file_info.filename)
+            signed_url = storage_service.generate_signed_upload_url(
+                gcs_path, file_info.content_type
+            )
+
+            upload_urls.append({
+                "file_type": file_info.file_type,
+                "gcs_path": gcs_path,
+                "upload_url": signed_url,
+                "content_type": file_info.content_type,
+            })
+
+        logger.info(f"Generated {len(upload_urls)} style upload URLs for job {job_id}")
+        return {
+            "status": "success",
+            "job_id": job_id,
+            "upload_urls": upload_urls,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating style upload URLs for job {job_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/jobs/{job_id}/style-uploads-complete")
+async def complete_style_uploads(
+    job_id: str,
+    body: StyleUploadsCompleteRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Finalize style asset uploads on an existing job.
+
+    Verifies uploaded files exist in GCS, merges them into the job's style_assets,
+    and re-generates style_params.json with any color overrides applied.
+    """
+    try:
+        # Get job and verify it exists
+        job = job_manager.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+        # Verify ownership
+        if auth_result.user_type != UserType.ADMIN:
+            if job.user_email != auth_result.user_email:
+                raise HTTPException(status_code=403, detail="Not authorized to modify this job")
+
+        # Check cutoff
+        try:
+            current_status = JobStatus(job.status)
+        except ValueError:
+            current_status = None
+        if current_status in STYLE_UPLOAD_CUTOFF_STATUSES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Job {job_id} is past the style upload cutoff (status: {job.status})."
+            )
+
+        # Verify uploaded files exist in GCS and build asset mapping
+        new_style_assets = {}
+        for file_type in body.uploaded_files:
+            if file_type not in STYLE_FILE_TYPES:
+                logger.warning(f"Unknown style file_type: {file_type}")
+                continue
+
+            asset_key = file_type.replace('style_', '')
+            prefix = f"uploads/{job_id}/style/{asset_key}"
+            files = storage_service.list_files(prefix)
+            if not files:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File for '{file_type}' was not uploaded to GCS. Expected prefix: {prefix}"
+                )
+            new_style_assets[asset_key] = files[0]
+
+        # Merge with existing style_assets (preserve font, other theme assets)
+        existing_assets = dict(job.style_assets) if job.style_assets else {}
+        existing_assets.update(new_style_assets)
+
+        update_data: Dict[str, Any] = {"style_assets": existing_assets}
+
+        # If the job has a theme, reload its style_params, apply overrides + custom paths
+        theme_id = getattr(job, 'theme_id', None)
+        if theme_id:
+            theme_service = get_theme_service()
+            style_params = theme_service.get_theme_style_params(theme_id)
+            if style_params:
+                # Apply color overrides if provided
+                if body.color_overrides:
+                    color_overrides_model = ColorOverrides(**body.color_overrides)
+                    style_params = theme_service.apply_color_overrides(style_params, color_overrides_model)
+
+                # Update asset paths in style_params to use theme paths first
+                style_params = theme_service._update_asset_paths_in_style(theme_id, style_params)
+
+                # Overwrite background paths with custom uploads
+                for asset_key, gcs_path in new_style_assets.items():
+                    bucket_name = storage_service.bucket_name
+                    gcs_uri = f"gs://{bucket_name}/{gcs_path}"
+                    if asset_key == "intro_background" and "intro" in style_params:
+                        style_params["intro"]["background_image"] = gcs_uri
+                    elif asset_key == "karaoke_background" and "karaoke" in style_params:
+                        style_params["karaoke"]["background_image"] = gcs_uri
+                    elif asset_key == "end_background" and "end" in style_params:
+                        style_params["end"]["background_image"] = gcs_uri
+
+                # Upload updated style_params.json
+                style_params_path = f"uploads/{job_id}/style/style_params.json"
+                storage_service.upload_json(style_params_path, style_params)
+                update_data["style_params_gcs_path"] = style_params_path
+
+        # Update job in Firestore
+        job_manager.update_job(job_id, update_data)
+
+        logger.info(f"Completed style uploads for job {job_id}: {list(new_style_assets.keys())}")
+        return {
+            "status": "success",
+            "job_id": job_id,
+            "message": "Style assets applied successfully.",
+            "assets_updated": list(new_style_assets.keys()),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error completing style uploads for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

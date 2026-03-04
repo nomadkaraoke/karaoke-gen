@@ -26,6 +26,9 @@ jest.mock('@/lib/api', () => ({
     getJob: jest.fn(),
     selectAudioResult: jest.fn(),
     pollAudioSearchResults: jest.fn(),
+    getStyleUploadUrls: jest.fn(),
+    uploadFileToSignedUrl: jest.fn(),
+    completeStyleUploads: jest.fn(),
   },
   ApiError: class ApiError extends Error {
     status: number
@@ -258,5 +261,92 @@ describe('GuidedJobFlow — component interface', () => {
   it('exports GuidedJobFlow as a named export', async () => {
     const mod = await import('@/components/job/GuidedJobFlow')
     expect(typeof mod.GuidedJobFlow).toBe('function')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Style upload API methods — contract tests for custom video styling
+// ---------------------------------------------------------------------------
+
+describe('api module — style upload methods', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('exports getStyleUploadUrls function', () => {
+    expect(typeof api.getStyleUploadUrls).toBe('function')
+  })
+
+  it('exports uploadFileToSignedUrl function', () => {
+    expect(typeof api.uploadFileToSignedUrl).toBe('function')
+  })
+
+  it('exports completeStyleUploads function', () => {
+    expect(typeof api.completeStyleUploads).toBe('function')
+  })
+
+  it('getStyleUploadUrls returns upload_urls for style files', async () => {
+    mockApi.getStyleUploadUrls.mockResolvedValue({
+      status: 'success',
+      job_id: 'job-abc',
+      upload_urls: [
+        {
+          file_type: 'style_karaoke_background',
+          gcs_path: 'uploads/job-abc/style/karaoke_background.png',
+          upload_url: 'https://storage.googleapis.com/signed-url',
+          content_type: 'image/png',
+        },
+      ],
+    })
+
+    const result = await api.getStyleUploadUrls('job-abc', [
+      { filename: 'bg.png', content_type: 'image/png', file_type: 'style_karaoke_background' },
+    ])
+
+    expect(result.upload_urls).toHaveLength(1)
+    expect(result.upload_urls[0].file_type).toBe('style_karaoke_background')
+    expect(mockApi.getStyleUploadUrls).toHaveBeenCalledWith('job-abc', [
+      { filename: 'bg.png', content_type: 'image/png', file_type: 'style_karaoke_background' },
+    ])
+  })
+
+  it('completeStyleUploads sends uploaded_files and color_overrides', async () => {
+    mockApi.completeStyleUploads.mockResolvedValue({
+      status: 'success',
+      job_id: 'job-abc',
+      message: 'Style assets applied successfully.',
+      assets_updated: ['karaoke_background'],
+    })
+
+    const result = await api.completeStyleUploads(
+      'job-abc',
+      ['style_karaoke_background'],
+      { artist_color: '#ff0000' }
+    )
+
+    expect(result.status).toBe('success')
+    expect(result.assets_updated).toContain('karaoke_background')
+    expect(mockApi.completeStyleUploads).toHaveBeenCalledWith(
+      'job-abc',
+      ['style_karaoke_background'],
+      { artist_color: '#ff0000' }
+    )
+  })
+
+  it('completeStyleUploads works without color overrides', async () => {
+    mockApi.completeStyleUploads.mockResolvedValue({
+      status: 'success',
+      job_id: 'job-abc',
+      message: 'Style assets applied.',
+      assets_updated: ['intro_background'],
+    })
+
+    await api.completeStyleUploads('job-abc', ['style_intro_background'], undefined)
+
+    expect(mockApi.completeStyleUploads).toHaveBeenCalledWith(
+      'job-abc',
+      ['style_intro_background'],
+      undefined
+    )
   })
 })

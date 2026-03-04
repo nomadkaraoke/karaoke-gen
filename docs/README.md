@@ -31,6 +31,7 @@
 | E2E happy path test | Working (~20-25 min full pipeline) |
 | **White-label B2B portals** | Working (Vocal Star, Singa) |
 | **Private (non-published) tracks** | Working |
+| **Custom video styling (private jobs)** | Working |
 | **Song lookup autocomplete** | Working (via karaoke-decide catalog) |
 | **Community version detection** | Working (via karaokenerds.com) |
 
@@ -43,6 +44,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Custom Video Styling for Private Jobs** (2026-03-04): Users who select "Private (no YouTube upload)" can now customize their karaoke video styling. New options in the guided flow's customize step: upload a custom **karaoke background image** (replaces the starfield behind lyrics), upload a custom **title card background image**, and change **artist/title text colors** via color pickers. Both backgrounds show accurate canvas-based live previews. Style assets are uploaded to GCS via signed URLs after job creation (non-blocking — job falls back to default theme on upload failure). Backend: 2 new endpoints (`style-upload-urls`, `style-uploads-complete`) that validate ownership, cutoff status, and merge custom assets into the theme's `style_params.json`. See [API.md](API.md#get-style-upload-urls).
 
 - **Tenant Portal Frontend Separation** (2026-03-03): B2B tenants now served from a dedicated Cloudflare Pages project (`karaoke-gen-tenant`) built with `NEXT_PUBLIC_TENANT_PORTAL=true` to tree-shake consumer content. A Cloudflare edge function injects `window.__TENANT_CONFIG__` and CSS variables into HTML at the edge, eliminating the initial API round-trip for tenant config. Magic link emails now use tenant-specific URLs (e.g., `vocalstar.nomadkaraoke.com/auth/verify`). Admins can preview any tenant's branding via `?preview_tenant=<id>`. See [ARCHITECTURE.md](ARCHITECTURE.md#tenant-portal-frontend-b2b-deployment).
 

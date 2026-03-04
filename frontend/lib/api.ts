@@ -843,6 +843,54 @@ export const api = {
   },
 
   /**
+   * Get signed upload URLs for style assets on an existing job.
+   */
+  async getStyleUploadUrls(
+    jobId: string,
+    files: Array<{ filename: string; content_type: string; file_type: string }>
+  ): Promise<{ status: string; job_id: string; upload_urls: SignedUploadUrl[] }> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/style-upload-urls`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ files }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Upload a file directly to a GCS signed URL.
+   */
+  async uploadFileToSignedUrl(url: string, file: File, contentType: string): Promise<void> {
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: file,
+    });
+    if (!response.ok) {
+      throw new ApiError(`Upload failed: ${response.statusText}`, response.status);
+    }
+  },
+
+  /**
+   * Finalize style asset uploads on an existing job.
+   */
+  async completeStyleUploads(
+    jobId: string,
+    uploadedFiles: string[],
+    colorOverrides?: { artist_color?: string; title_color?: string }
+  ): Promise<{ status: string; job_id: string; message: string; assets_updated: string[] }> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/style-uploads-complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({
+        uploaded_files: uploadedFiles,
+        color_overrides: colorOverrides,
+      }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Get audio search results for a job
    */
   async getAudioSearchResults(jobId: string): Promise<AudioSearchResponse> {

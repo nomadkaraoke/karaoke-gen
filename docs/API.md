@@ -264,6 +264,70 @@ Error (duration mismatch):
 }
 ```
 
+#### Get Style Upload URLs
+
+```http
+POST /api/jobs/{job_id}/style-upload-urls
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "files": [
+    {
+      "filename": "bg.png",
+      "content_type": "image/png",
+      "file_type": "style_karaoke_background"
+    }
+  ]
+}
+```
+
+Returns signed GCS upload URLs for custom style assets (backgrounds). Only available for private jobs before the `GENERATING_SCREENS` pipeline stage. Valid `file_type` values: `style_intro_background`, `style_karaoke_background`, `style_end_background`. Only PNG and JPG images are accepted.
+
+Response:
+```json
+{
+  "status": "success",
+  "job_id": "job-abc",
+  "upload_urls": [
+    {
+      "file_type": "style_karaoke_background",
+      "gcs_path": "uploads/job-abc/style/karaoke_background.png",
+      "upload_url": "https://storage.googleapis.com/...",
+      "content_type": "image/png"
+    }
+  ]
+}
+```
+
+#### Complete Style Uploads
+
+```http
+POST /api/jobs/{job_id}/style-uploads-complete
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "uploaded_files": ["style_karaoke_background"],
+  "color_overrides": {
+    "artist_color": "#ff0000",
+    "title_color": "#00ff00"
+  }
+}
+```
+
+Finalizes style asset uploads. Verifies files exist in GCS, merges into `job.style_assets`, reloads the theme's `style_params.json` with color overrides and custom background paths. The `color_overrides` field is optional — omit it to keep default theme colors.
+
+Response:
+```json
+{
+  "status": "success",
+  "job_id": "job-abc",
+  "message": "Style assets applied successfully.",
+  "assets_updated": ["karaoke_background"]
+}
+```
+
 #### Submit Edit Log
 
 ```http

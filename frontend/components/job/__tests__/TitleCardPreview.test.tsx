@@ -144,4 +144,76 @@ describe("TitleCardPreview", () => {
     const texts = state.fillTextCalls.map((c) => c.text)
     expect(texts).toContain("FALLBACK")
   })
+
+  it("uses custom colors when provided", async () => {
+    state.fillStyleCalls = []
+
+    // Override the mock to track fillStyle assignments
+    const fillStyles: string[] = []
+    HTMLCanvasElement.prototype.getContext = jest.fn(() => {
+      let _fillStyle = ""
+      let _font = ""
+      return {
+        drawImage: jest.fn(),
+        fillRect: jest.fn(),
+        fillText: jest.fn((text: string) => {
+          state.fillTextCalls.push({ text, font: _font })
+          fillStyles.push(_fillStyle)
+        }),
+        measureText: jest.fn(() => ({ width: 100 })),
+        get font() { return _font },
+        set font(v: string) { _font = v; state.currentFont = v },
+        get fillStyle() { return _fillStyle },
+        set fillStyle(v: string) { _fillStyle = v },
+        textAlign: "",
+        textBaseline: "",
+      }
+    }) as unknown as typeof HTMLCanvasElement.prototype.getContext
+
+    await act(async () => {
+      render(
+        <TitleCardPreview
+          title="Custom"
+          artist="Colors"
+          titleColor="#ff0000"
+          artistColor="#00ff00"
+        />
+      )
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    // The fillStyle should include our custom colors
+    expect(fillStyles).toContain("#ff0000")
+    expect(fillStyles).toContain("#00ff00")
+  })
+
+  it("loads custom background image when customBackgroundUrl is provided", async () => {
+    const loadedSrcs: string[] = []
+    global.Image = class MockImageCustom {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      _src = ""
+      complete = true
+      get src() { return this._src }
+      set src(v: string) {
+        this._src = v
+        loadedSrcs.push(v)
+        Promise.resolve().then(() => this.onload?.())
+      }
+    } as unknown as typeof Image
+
+    await act(async () => {
+      render(
+        <TitleCardPreview
+          title="Test"
+          artist="Artist"
+          customBackgroundUrl="blob:http://localhost/custom-bg"
+        />
+      )
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    // Should load the custom background URL instead of the default
+    expect(loadedSrcs).toContain("blob:http://localhost/custom-bg")
+  })
 })
