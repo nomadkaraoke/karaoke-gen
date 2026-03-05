@@ -143,6 +143,7 @@ domain_mapping = cloud_run.create_domain_mapping()
 video_encoding_job = cloud_run.create_video_encoding_job(bucket, backend_service_account)
 lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
 audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
+audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account, vpc_connector)
 
 # ==================== Monitoring ====================
 
@@ -302,6 +303,30 @@ youtube_queue_scheduler = cloudscheduler.Job(
     ),
 )
 
+# ==================== Stuck Job Recovery ====================
+
+# Cloud Scheduler job to detect and recover stuck audio downloads
+recover_stuck_downloads_scheduler = cloudscheduler.Job(
+    "recover-stuck-downloads-scheduler",
+    name="recover-stuck-downloads",
+    description="Detect and recover jobs stuck in downloading_audio status",
+    region=REGION,
+    schedule="*/5 * * * *",  # Every 5 minutes
+    time_zone="America/Los_Angeles",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/recover-stuck-jobs",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Compute VMs ====================
 
 # Encoding Worker VM (video encoding service)
@@ -379,6 +404,7 @@ pulumi.export("video_worker_queue", queues["video-worker-queue"].name)
 pulumi.export("video_encoding_job", video_encoding_job.name)
 pulumi.export("lyrics_transcription_job", lyrics_transcription_job.name)
 pulumi.export("audio_separation_job", audio_separation_job.name)
+pulumi.export("audio_download_job", audio_download_job.name)
 pulumi.export("backend_url", "https://api.nomadkaraoke.com")
 pulumi.export("backend_default_url", "https://karaoke-backend-ipzqd2k4yq-uc.a.run.app")
 
@@ -407,6 +433,7 @@ pulumi.export("youtube_queue_scheduler_name", youtube_queue_scheduler.name)
 pulumi.export("gdrive_validator_function_url", gdrive_validator_function.url)
 pulumi.export("gdrive_validator_function_name", gdrive_validator_function.name)
 pulumi.export("gdrive_validator_scheduler_name", gdrive_validator_scheduler.name)
+pulumi.export("recover_stuck_downloads_scheduler_name", recover_stuck_downloads_scheduler.name)
 pulumi.export("gdrive_validator_service_account", gdrive_validator_sa.email)
 
 # VPC networking

@@ -149,6 +149,7 @@ STATE_TRANSITIONS = {
     JobStatus.PREP_COMPLETE: [JobStatus.AWAITING_REVIEW, JobStatus.FAILED],  # Continue from combined review
     JobStatus.FAILED: [
         JobStatus.DOWNLOADING,            # Retry from beginning (if input audio exists)
+        JobStatus.DOWNLOADING_AUDIO,      # Retry audio download (audio search flow)
         JobStatus.INSTRUMENTAL_SELECTED,  # Retry from video generation
         JobStatus.REVIEW_COMPLETE,        # Retry from render stage
         JobStatus.LYRICS_COMPLETE,        # Retry from screens generation
@@ -156,6 +157,7 @@ STATE_TRANSITIONS = {
     ],
     JobStatus.CANCELLED: [
         JobStatus.DOWNLOADING,            # Retry from beginning (if input audio exists)
+        JobStatus.DOWNLOADING_AUDIO,      # Retry audio download (audio search flow)
         JobStatus.INSTRUMENTAL_SELECTED,  # Retry from video generation
         JobStatus.REVIEW_COMPLETE,        # Retry from render stage
         JobStatus.LYRICS_COMPLETE,        # Retry from screens generation

@@ -361,7 +361,24 @@ class WorkerService:
     
     # Convenience methods for specific workers
     # These provide a cleaner API and better IDE autocomplete
-    
+
+    async def trigger_audio_download_worker(self, job_id: str) -> bool:
+        """
+        Trigger audio download worker.
+
+        Downloads audio from the selected source (Spotify, YouTube, RED, OPS)
+        and then triggers audio separation + lyrics workers.
+
+        Uses Cloud Run Jobs to avoid instance termination during long-running
+        downloads. This replaces the BackgroundTasks approach that caused
+        jobs to get stuck when Cloud Run scaled down instances.
+        """
+        return await self._trigger_worker_cloud_run_job(
+            job_id=job_id,
+            cloud_run_job_name="audio-download-job",
+            worker_module="audio_download_worker",
+        )
+
     async def trigger_audio_worker(self, job_id: str) -> bool:
         """
         Trigger audio separation worker.

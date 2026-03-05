@@ -1474,16 +1474,6 @@ async def retry_job(
                 f"source_name={job.source_name}, source_id={job.source_id}"
             )
 
-            # Import needed services
-            from backend.services.audio_search_service import get_audio_search_service
-            from backend.services.youtube_download_service import (
-                get_youtube_download_service,
-                YouTubeDownloadError
-            )
-            from backend.services.audio_search_service import DownloadError
-            import tempfile
-            import os
-
             # Clear error state
             job_manager.update_job(job_id, {
                 'error_message': None,
@@ -1502,107 +1492,23 @@ async def retry_job(
                     detail="Failed to transition job status for retry"
                 )
 
-            # Retry download using saved params
-            # This is similar to the logic in audio_search.py:_download_and_start_processing
-            audio_search_service = get_audio_search_service()
-
-            try:
-                if job.source_name == 'YouTube':
-                    # Use YouTubeDownloadService
-                    youtube_service = get_youtube_download_service()
-                    video_id = job.source_id
-
-                    try:
-                        audio_gcs_path = await youtube_service.download_by_id(
-                            video_id=video_id,
-                            job_id=job_id,
-                            artist=job.artist,
-                            title=job.title,
-                        )
-                        filename = os.path.basename(audio_gcs_path)
-                    except YouTubeDownloadError as e:
-                        job_manager.fail_job(job_id, f"Audio download retry failed: YouTube download failed: {e}")
-                        raise HTTPException(status_code=500, detail=f"YouTube download failed: {e}")
-
-                elif job.source_name in ['RED', 'OPS', 'Spotify']:
-                    # Use audio search service for torrent/Spotify sources
-                    if not audio_search_service.is_remote_enabled():
-                        job_manager.fail_job(
-                            job_id,
-                            f"Cannot retry: flacfetch service not configured for {job.source_name}"
-                        )
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"Cannot download from {job.source_name} without remote flacfetch service."
-                        )
-
-                    gcs_destination = f"uploads/{job_id}/audio/"
-
-                    try:
-                        result = audio_search_service.download_by_id(
-                            source_name=job.source_name,
-                            source_id=job.source_id,
-                            output_dir="",
-                            target_file=job.target_file,
-                            download_url=job.download_url,
-                            gcs_path=gcs_destination,
-                        )
-
-                        audio_gcs_path = result.filepath
-                        if audio_gcs_path.startswith('gs://'):
-                            audio_gcs_path = audio_gcs_path.replace('gs://karaoke-gen-storage/', '', 1)
-                        filename = os.path.basename(result.filepath)
-
-                    except DownloadError as e:
-                        job_manager.fail_job(job_id, f"Audio download retry failed: {e}")
-                        raise HTTPException(status_code=500, detail=f"Download failed: {e}")
-                else:
-                    job_manager.fail_job(
-                        job_id,
-                        f"Cannot retry: unknown source type {job.source_name}"
-                    )
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Unknown source type: {job.source_name}"
-                    )
-
-                # Update job with GCS path
-                job_manager.update_job(job_id, {
-                    'input_media_gcs_path': audio_gcs_path,
-                    'filename': filename,
-                })
-
-                # Transition to DOWNLOADING and trigger workers
-                job_manager.transition_to_state(
-                    job_id=job_id,
-                    new_status=JobStatus.DOWNLOADING,
-                    progress=15,
-                    message="Audio downloaded, starting processing"
+            # Trigger audio download via Cloud Run Job (runs to completion,
+            # immune to HTTP instance termination)
+            triggered = await worker_service.trigger_audio_download_worker(job_id)
+            if not triggered:
+                job_manager.fail_job(job_id, "Failed to trigger audio download worker")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to trigger audio download worker"
                 )
 
-                # Trigger workers in background
-                async def trigger_workers():
-                    await asyncio.gather(
-                        worker_service.trigger_audio_worker(job_id),
-                        worker_service.trigger_lyrics_worker(job_id)
-                    )
-
-                background_tasks.add_task(trigger_workers)
-
-                return {
-                    "status": "success",
-                    "job_id": job_id,
-                    "job_status": "downloading",
-                    "message": f"Job retry started: re-downloading from {job.source_name}",
-                    "retry_stage": "audio_download"
-                }
-
-            except HTTPException:
-                raise
-            except Exception as e:
-                logger.error(f"Error retrying audio download for job {job_id}: {e}", exc_info=True)
-                job_manager.fail_job(job_id, f"Audio download retry failed: {e}")
-                raise HTTPException(status_code=500, detail=f"Download retry failed: {e}")
+            return {
+                "status": "success",
+                "job_id": job_id,
+                "job_status": "downloading_audio",
+                "message": f"Job retry started: re-downloading from {job.source_name}",
+                "retry_stage": "audio_download"
+            }
 
         else:
             # No input audio available - job needs to be resubmitted
@@ -1908,10 +1814,8 @@ async def create_job_from_search(
     # Lazy imports from audio_search to avoid circular imports at module level
     from backend.api.routes.audio_search import (
         _validate_and_prepare_selection,
-        _download_audio_and_trigger_workers,
         extract_request_metadata,
     )
-    from backend.services.audio_search_service import get_audio_search_service
     from backend.middleware.tenant import get_tenant_config_from_request
 
     try:
@@ -2062,14 +1966,9 @@ async def create_job_from_search(
             selection_index=body.selection_index,
         )
 
-        # Trigger audio download as a background task
-        audio_search_service = get_audio_search_service()
-        background_tasks.add_task(
-            _download_audio_and_trigger_workers,
-            job_id,
-            body.selection_index,
-            audio_search_service,
-        )
+        # Trigger audio download as a Cloud Run Job (survives instance shutdown)
+        worker_service = get_worker_service()
+        await worker_service.trigger_audio_download_worker(job_id)
 
         return JobResponse(
             status="success",

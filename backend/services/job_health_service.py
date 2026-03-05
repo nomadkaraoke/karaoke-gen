@@ -120,6 +120,21 @@ def check_job_consistency(job: Job) -> List[str]:
                 f"encoding_stuck: status=encoding for {minutes} min without update (updated_at={updated_at.isoformat()})"
             )
 
+    # Check: job stuck in downloading_audio status beyond 10 minutes
+    # Audio downloads typically complete in 30s-5min. If stuck longer,
+    # the Cloud Run Job likely failed silently.
+    if status == JobStatus.DOWNLOADING_AUDIO and job.updated_at:
+        now = datetime.now(timezone.utc)
+        updated_at = job.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        download_age = now - updated_at
+        if download_age > timedelta(minutes=10):
+            minutes = int(download_age.total_seconds() / 60)
+            issues.append(
+                f"downloading_audio_stuck: status=downloading_audio for {minutes} min without update (updated_at={updated_at.isoformat()})"
+            )
+
     return issues
 
 

@@ -252,6 +252,125 @@ def create_audio_separation_job(
     return audio_separation_job
 
 
+def create_audio_download_job(
+    bucket: gcp.storage.Bucket,
+    service_account: gcp.serviceaccount.Account,
+    vpc_connector: object = None,
+) -> cloudrunv2.Job:
+    """
+    Create the Cloud Run Job for audio downloading.
+
+    Downloads audio from Spotify/YouTube/RED/OPS via the flacfetch VM,
+    then triggers audio separation and lyrics workers.
+
+    Requires VPC access to reach the flacfetch VM on its internal IP.
+
+    Typical duration: 30s-5 minutes (depending on source)
+
+    Args:
+        bucket: The GCS bucket for job artifacts.
+        service_account: The service account to run the job.
+        vpc_connector: VPC connector for accessing flacfetch VM (optional).
+
+    Returns:
+        cloudrunv2.Job: The Cloud Run Job resource.
+    """
+    # Build VPC access config if connector provided
+    vpc_access = None
+    if vpc_connector:
+        vpc_access = cloudrunv2.JobTemplateTemplateVpcAccessArgs(
+            connector=vpc_connector.id,
+            egress="PRIVATE_RANGES_ONLY",
+        )
+
+    audio_download_job = cloudrunv2.Job(
+        "audio-download-job",
+        name="audio-download-job",
+        location=REGION,
+        template=cloudrunv2.JobTemplateArgs(
+            template=cloudrunv2.JobTemplateTemplateArgs(
+                containers=[
+                    cloudrunv2.JobTemplateTemplateContainerArgs(
+                        image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+                        args=["python", "-m", "backend.workers.audio_download_worker"],
+                        resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
+                            limits={
+                                "cpu": "1",
+                                "memory": "1Gi",
+                            },
+                        ),
+                        envs=[
+                            # Basic configuration
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GOOGLE_CLOUD_PROJECT",
+                                value=PROJECT_ID,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCS_BUCKET_NAME",
+                                value=bucket.name,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENVIRONMENT",
+                                value="production",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCP_REGION",
+                                value=REGION,
+                            ),
+                            # Flacfetch API URL (internal VPC address)
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="FLACFETCH_API_URL",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-url",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            # Flacfetch API key
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="FLACFETCH_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            # Cloud Run service URL for triggering workers
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="CLOUD_RUN_SERVICE_URL",
+                                value="https://api.nomadkaraoke.com",
+                            ),
+                            # Enable Cloud Tasks mode for worker triggers
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENABLE_CLOUD_TASKS",
+                                value="true",
+                            ),
+                            # Admin token for worker auth
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ADMIN_TOKENS",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                        ],
+                    )
+                ],
+                service_account=service_account.email,
+                timeout="600s",  # 10 minutes max (downloads typically < 5 min)
+                max_retries=2,
+                vpc_access=vpc_access,
+            ),
+        ),
+    )
+
+    return audio_download_job
+
+
 def create_video_encoding_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,

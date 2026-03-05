@@ -501,6 +501,64 @@ async def trigger_gdrive_validation_endpoint(
         return {"status": "error", "message": str(e)}
 
 
+@router.post("/recover-stuck-jobs")
+async def recover_stuck_jobs(
+    http_request: Request,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """
+    Detect and recover jobs stuck in downloading_audio status.
+
+    Called by Cloud Scheduler (every 5 minutes) or manually from admin.
+    Finds jobs stuck in DOWNLOADING_AUDIO for >10 minutes and fails them
+    so they can be retried.
+    """
+    from backend.services.job_health_service import check_job_consistency
+
+    trace_context = extract_trace_context(dict(http_request.headers))
+    logger.info("RECOVER_STUCK_JOBS starting")
+    add_span_attribute("operation", "recover_stuck_jobs")
+
+    job_manager = JobManager()
+
+    # Query jobs in downloading_audio status
+    from google.cloud.firestore_v1 import FieldFilter
+    jobs_ref = job_manager.firestore.db.collection("jobs")
+    stuck_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", "downloading_audio")
+    ).stream()
+
+    recovered = []
+    for doc in stuck_query:
+        job_data = doc.to_dict()
+        job_id = job_data.get("job_id", doc.id)
+
+        # Use the health service to check if actually stuck
+        job = job_manager.get_job(job_id)
+        if not job:
+            continue
+
+        issues = check_job_consistency(job)
+        stuck_issues = [i for i in issues if "downloading_audio_stuck" in i]
+
+        if stuck_issues:
+            logger.warning(f"[job:{job_id}] Recovering stuck download: {stuck_issues[0]}")
+            job_manager.fail_job(
+                job_id,
+                "Audio download timed out (stuck >10 minutes). Use retry to re-attempt."
+            )
+            recovered.append(job_id)
+
+    logger.info(f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} jobs")
+    add_span_event("recovery_complete", {"recovered_count": len(recovered)})
+
+    return {
+        "status": "success",
+        "recovered_jobs": recovered,
+        "recovered_count": len(recovered),
+    }
+
+
 @router.get("/health")
 async def internal_health(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
