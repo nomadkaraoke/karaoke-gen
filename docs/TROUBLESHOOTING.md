@@ -4,6 +4,31 @@ Operational runbooks for known production issues.
 
 ---
 
+## Job stuck at `downloading_audio` status
+
+**Cause:** Before v0.130.0, audio downloads ran as FastAPI BackgroundTasks. Cloud Run would terminate "idle" instances mid-download. Since v0.130.0, downloads use a Cloud Run Job (`audio-download-job`) and a Cloud Scheduler recovery job runs every 5 minutes to fail stuck downloads automatically.
+
+**Auto-recovery:** The `recover-stuck-downloads` scheduler detects jobs stuck in `downloading_audio` for >10 minutes and fails them. Use the admin retry button to re-attempt.
+
+**Manual recovery:**
+
+```bash
+# 1. Check for stuck downloads
+curl -s "https://api.nomadkaraoke.com/api/health/job-consistency" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)" \
+  | python3 -m json.tool | grep -A3 "downloading_audio_stuck"
+
+# 2. Trigger recovery manually (if scheduler hasn't run yet)
+curl -X POST "https://api.nomadkaraoke.com/api/internal/recover-stuck-jobs" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)"
+
+# 3. Retry the failed job via admin dashboard or API
+curl -X POST "https://api.nomadkaraoke.com/api/jobs/YOUR_JOB_ID/retry" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)"
+```
+
+---
+
 ## Job stuck at `encoding` status
 
 **Cause:** A Cloud Run deployment killed the poller mid-encoding. The GCE worker finished but nobody received the result. The health service will flag this as `encoding_stuck` after 50 minutes.

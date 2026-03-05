@@ -302,6 +302,7 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 ┌─────────────────────────────────────────────────────────────────┐
 │  Cloud Run Jobs (via WorkerService)                             │
 │                                                                 │
+│  audio-download-job          - 30s-5 min (flacfetch/YouTube)     │
 │  lyrics-transcription-job    - 5-15 min (AudioShake + correction)│
 │  audio-separation-job        - 10-20 min (Modal API)            │
 │  video-encoding-job          - up to 60 min (optional)          │
@@ -311,9 +312,10 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Why Cloud Run Jobs**: When using FastAPI BackgroundTasks, Cloud Run would terminate instances when HTTP requests completed, even if background work was still running. Job c94cc9d6 failed because the lyrics worker was killed mid-processing after AudioShake completed. Cloud Run Jobs solve this by running workers as standalone processes that complete naturally.
+**Why Cloud Run Jobs**: When using FastAPI BackgroundTasks, Cloud Run would terminate instances when HTTP requests completed, even if background work was still running. Cloud Run Jobs solve this by running workers as standalone processes that complete naturally. This applies to audio downloads (jobs 51b8231d, 89e497b1 were killed mid-download), lyrics transcription (job c94cc9d6 killed mid-processing), and audio separation.
 
 **CLI Entry Points**: Each worker has a `main()` function for Cloud Run Job execution:
+- `python -m backend.workers.audio_download_worker --job-id abc123`
 - `python -m backend.workers.lyrics_worker --job-id abc123`
 - `python -m backend.workers.audio_worker --job-id abc123`
 - `python -m backend.workers.video_worker --job-id abc123`
