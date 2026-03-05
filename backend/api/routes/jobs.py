@@ -1213,9 +1213,9 @@ async def download_file(
         storage = StorageService()
         with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{ext}') as tmp:
             tmp_path = tmp.name
-        
+
         storage.download_file(gcs_path, tmp_path)
-        
+
         def file_iterator():
             try:
                 with open(tmp_path, 'rb') as f:
@@ -1224,12 +1224,23 @@ async def download_file(
             finally:
                 import os
                 os.unlink(tmp_path)
-        
+
+        # Build Content-Disposition header with RFC 5987 encoding for non-ASCII filenames
+        # (e.g. Chinese, Japanese, Korean characters that can't be encoded in latin-1)
+        from urllib.parse import quote
+        try:
+            filename.encode('latin-1')
+            content_disposition = f'attachment; filename="{filename}"'
+        except UnicodeEncodeError:
+            ascii_filename = filename.encode('ascii', 'replace').decode('ascii')
+            utf8_filename = quote(filename)
+            content_disposition = f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{utf8_filename}"
+
         return StreamingResponse(
             file_iterator(),
             media_type=content_type,
             headers={
-                'Content-Disposition': f'attachment; filename="{filename}"'
+                'Content-Disposition': content_disposition
             }
         )
     except Exception as e:

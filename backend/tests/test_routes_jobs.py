@@ -603,3 +603,68 @@ class TestScreensWorkerBackingVocalsAnalysis:
         analysis = job.state_data.get('backing_vocals_analysis', {})
         assert analysis.get('recommended_selection') is not None
 
+
+class TestContentDispositionHeader:
+    """Tests for Content-Disposition header building in download_file.
+
+    Verifies that filenames with non-latin-1 characters (CJK, Cyrillic, etc.)
+    use RFC 5987 filename*=UTF-8'' encoding instead of crashing.
+    """
+
+    def _build_content_disposition(self, filename: str) -> str:
+        """Replicate the Content-Disposition logic from download_file."""
+        from urllib.parse import quote
+        try:
+            filename.encode('latin-1')
+            return f'attachment; filename="{filename}"'
+        except UnicodeEncodeError:
+            ascii_filename = filename.encode('ascii', 'replace').decode('ascii')
+            utf8_filename = quote(filename)
+            return f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{utf8_filename}"
+
+    def test_ascii_filename_uses_simple_header(self):
+        header = self._build_content_disposition("Artist - Song (Final Karaoke).mp4")
+        assert header == 'attachment; filename="Artist - Song (Final Karaoke).mp4"'
+        assert "filename*" not in header
+
+    def test_latin1_accented_filename_uses_simple_header(self):
+        header = self._build_content_disposition("Café - Señorita.mp4")
+        assert header == 'attachment; filename="Café - Señorita.mp4"'
+        assert "filename*" not in header
+
+    def test_chinese_filename_uses_rfc5987(self):
+        header = self._build_content_disposition("周杰倫 - 青花瓷 (Final Karaoke).mp4")
+        assert "filename*=UTF-8''" in header
+        # ASCII fallback should be present
+        assert 'filename="' in header
+        # Should be encodable as latin-1 (the whole header)
+        # The ASCII fallback part is safe; the UTF-8 part is percent-encoded
+        assert "%E5%91%A8" in header  # 周 percent-encoded
+
+    def test_japanese_filename_uses_rfc5987(self):
+        header = self._build_content_disposition("宇多田ヒカル - First Love.mp4")
+        assert "filename*=UTF-8''" in header
+
+    def test_korean_filename_uses_rfc5987(self):
+        header = self._build_content_disposition("방탄소년단 - Dynamite.mp4")
+        assert "filename*=UTF-8''" in header
+
+    def test_cyrillic_filename_uses_rfc5987(self):
+        header = self._build_content_disposition("Тату - Нас не догонят.mp4")
+        assert "filename*=UTF-8''" in header
+
+    def test_rfc5987_header_is_latin1_safe(self):
+        """The entire header string must be encodable as latin-1 for HTTP."""
+        header = self._build_content_disposition("周杰倫 - 青花瓷.mp4")
+        # The header uses percent-encoding for non-ASCII, so it should be ASCII-safe
+        header.encode('latin-1')  # Should not raise
+
+    def test_rfc5987_preserves_original_filename(self):
+        """The UTF-8 encoded filename should decode back to the original."""
+        from urllib.parse import unquote
+        header = self._build_content_disposition("周杰倫 - 青花瓷.mp4")
+        # Extract the filename* value
+        utf8_part = header.split("filename*=UTF-8''")[1]
+        decoded = unquote(utf8_part)
+        assert decoded == "周杰倫 - 青花瓷.mp4"
+

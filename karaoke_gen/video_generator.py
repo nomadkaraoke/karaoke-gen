@@ -2,7 +2,49 @@ import os
 import logging
 import importlib.resources as pkg_resources
 import shutil
+import subprocess
 from PIL import Image, ImageDraw, ImageFont
+
+
+def _find_cjk_font() -> str | None:
+    """Find a system CJK font using fontconfig (fc-match)."""
+    try:
+        result = subprocess.run(
+            ["fc-match", "--format=%{file}", ":lang=zh"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0 and result.stdout and os.path.exists(result.stdout):
+            return result.stdout
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    # Fallback: common paths for Noto Sans CJK
+    for path in [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
+    ]:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def _text_needs_cjk_font(text: str) -> bool:
+    """Check if text contains CJK characters that need a CJK-capable font."""
+    if not text:
+        return False
+    for ch in text:
+        cp = ord(ch)
+        # CJK Unified Ideographs, CJK Extension A/B, CJK Compatibility
+        # Hangul Syllables, Katakana, Hiragana
+        if (0x4E00 <= cp <= 0x9FFF or   # CJK Unified Ideographs
+            0x3400 <= cp <= 0x4DBF or   # CJK Extension A
+            0x20000 <= cp <= 0x2A6DF or # CJK Extension B
+            0xAC00 <= cp <= 0xD7AF or   # Hangul Syllables
+            0x3040 <= cp <= 0x309F or   # Hiragana
+            0x30A0 <= cp <= 0x30FF or   # Katakana
+            0xF900 <= cp <= 0xFAFF):    # CJK Compatibility Ideographs
+            return True
+    return False
 
 
 # Placeholder class or functions for video/image generation
@@ -13,6 +55,7 @@ class VideoGenerator:
         self.render_bounding_boxes = render_bounding_boxes
         self.output_png = output_png
         self.output_jpg = output_jpg
+        self._cjk_font_path = None  # Lazy-loaded
 
     def parse_region(self, region_str):
         if region_str:
@@ -322,31 +365,60 @@ class VideoGenerator:
 
         return background.resize(resolution)
 
+    def _get_font_path_for_text(self, font_path, text):
+        """Return an appropriate font path for the given text.
+
+        If the text contains CJK characters and the current font is a bundled
+        Latin-only font, switch to a system CJK font so glyphs render correctly.
+        """
+        if not text or not _text_needs_cjk_font(text):
+            return font_path
+
+        # If font_path is already a CJK-capable system font, keep it
+        if font_path and ("noto" in font_path.lower() or "cjk" in font_path.lower()):
+            return font_path
+
+        # Lazy-load CJK font path
+        if self._cjk_font_path is None:
+            self._cjk_font_path = _find_cjk_font() or ""
+            if self._cjk_font_path:
+                self.logger.info(f"Found CJK fallback font: {self._cjk_font_path}")
+            else:
+                self.logger.warning("No CJK font found on system - CJK characters may not render correctly")
+
+        if self._cjk_font_path:
+            self.logger.info(f"Using CJK font for text with CJK characters: {text[:30]}...")
+            return self._cjk_font_path
+        return font_path
+
     def _render_all_text(self, draw, font_path, title_text, artist_text, format, render_bounding_boxes):
         """Render all text elements on the image."""
         # Render title
         if format["title_region"]:
+            title_font_path = self._get_font_path_for_text(font_path, title_text)
             region_parsed = self.parse_region(format["title_region"])
             region = self._render_text_in_region(
-                draw, title_text, font_path, region_parsed, format["title_color"], gradient=format.get("title_gradient")
+                draw, title_text, title_font_path, region_parsed, format["title_color"], gradient=format.get("title_gradient")
             )
             if render_bounding_boxes:
                 self._draw_bounding_box(draw, region, format["title_color"])
 
         # Render artist
         if format["artist_region"]:
+            artist_font_path = self._get_font_path_for_text(font_path, artist_text)
             region_parsed = self.parse_region(format["artist_region"])
             region = self._render_text_in_region(
-                draw, artist_text, font_path, region_parsed, format["artist_color"], gradient=format.get("artist_gradient")
+                draw, artist_text, artist_font_path, region_parsed, format["artist_color"], gradient=format.get("artist_gradient")
             )
             if render_bounding_boxes:
                 self._draw_bounding_box(draw, region, format["artist_color"])
 
         # Render extra text if provided
         if format["extra_text"]:
+            extra_font_path = self._get_font_path_for_text(font_path, format["extra_text"])
             region_parsed = self.parse_region(format["extra_text_region"])
             region = self._render_text_in_region(
-                draw, format["extra_text"], font_path, region_parsed, format["extra_text_color"], gradient=format.get("extra_text_gradient")
+                draw, format["extra_text"], extra_font_path, region_parsed, format["extra_text_color"], gradient=format.get("extra_text_gradient")
             )
             if render_bounding_boxes:
                 self._draw_bounding_box(draw, region, format["extra_text_color"])

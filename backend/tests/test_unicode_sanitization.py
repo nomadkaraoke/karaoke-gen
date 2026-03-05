@@ -209,6 +209,39 @@ class TestSanitizationInContext:
         # Note: The test above with 'é' passes latin-1; smart quotes do not
         assert can_encode
 
+    def test_content_disposition_cjk_uses_rfc5987(self):
+        """Verify CJK filenames use RFC 5987 encoding in Content-Disposition.
+
+        Chinese/Japanese/Korean characters can't be encoded in latin-1,
+        so the download endpoint must use filename*=UTF-8'' encoding.
+        """
+        from urllib.parse import quote
+
+        artist = "周杰倫"
+        title = "青花瓷"
+
+        safe_artist = sanitize_filename(artist) if artist else None
+        safe_title = sanitize_filename(title) if title else None
+        filename = f"{safe_artist} - {safe_title} (Final Karaoke).mp4"
+
+        # CJK characters cannot be encoded as latin-1
+        with pytest.raises(UnicodeEncodeError):
+            filename.encode('latin-1')
+
+        # The download endpoint should fall back to RFC 5987 encoding
+        ascii_filename = filename.encode('ascii', 'replace').decode('ascii')
+        utf8_filename = quote(filename)
+        content_disposition = f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{utf8_filename}"
+
+        # ASCII fallback should be safe
+        ascii_filename.encode('latin-1')
+
+        # UTF-8 encoded filename should contain the original characters when decoded
+        from urllib.parse import unquote
+        decoded = unquote(utf8_filename)
+        assert "周杰倫" in decoded
+        assert "青花瓷" in decoded
+
     def test_google_drive_query_safe(self):
         """Verify filenames don't break Google Drive API queries."""
         base_name = "Artist\u2019s \u201cSong\u201d"
