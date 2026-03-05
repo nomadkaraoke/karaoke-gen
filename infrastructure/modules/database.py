@@ -192,6 +192,20 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # Stripe Payments: query by customer_email, order by created_at
+    # Used for admin user detail page payment history
+    resources["firestore_index_stripe_payments_email"] = firestore.Index(
+        "firestore-index-stripe-payments-email",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="stripe_payments",
+        fields=[
+            firestore.IndexFieldArgs(field_path="customer_email", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="created_at", order="DESCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
+    )
+
     # ==================== Firestore TTL Field Configuration ====================
     # TTL policies automatically delete documents after expiration.
 

@@ -449,16 +449,27 @@ class StripeAdminService:
         """Get all payments for a user with total_spent."""
         try:
             collection = self.db.collection(STRIPE_PAYMENTS_COLLECTION)
-            query = (
-                collection.where("customer_email", "==", email.lower())
-                .order_by("created_at", direction=firestore.Query.DESCENDING)
-            )
+            # Try with order_by first (requires composite index on customer_email + created_at)
+            try:
+                query = (
+                    collection.where("customer_email", "==", email.lower())
+                    .order_by("created_at", direction=firestore.Query.DESCENDING)
+                )
+                docs = list(query.stream())
+            except Exception:
+                # Fallback: query without order_by if composite index doesn't exist yet
+                logger.warning(
+                    f"Composite index missing for stripe_payments(customer_email, created_at). "
+                    f"Falling back to unordered query for {email}"
+                )
+                query = collection.where("customer_email", "==", email.lower())
+                docs = list(query.stream())
 
             payments = []
             total_spent = 0
             total_refunded = 0
 
-            for doc in query.stream():
+            for doc in docs:
                 data = doc.to_dict()
                 data["session_id"] = doc.id
                 total_spent += data.get("amount_total", 0)
@@ -469,6 +480,9 @@ class StripeAdminService:
                         data[key] = data[key].isoformat()
 
                 payments.append(data)
+
+            # Sort by created_at descending (handles both indexed and fallback paths)
+            payments.sort(key=lambda p: p.get("created_at", ""), reverse=True)
 
             first_payment = payments[-1]["created_at"] if payments else None
             last_payment = payments[0]["created_at"] if payments else None

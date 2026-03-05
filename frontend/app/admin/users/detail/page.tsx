@@ -46,14 +46,18 @@ import {
   Clock,
   Trash2,
   DollarSign,
+  LogIn,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth"
 
 export default function AdminUserDetailPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { toast } = useToast()
+  const { user: currentUser, startImpersonation } = useAuth()
   const email = searchParams.get("email") || ""
+  const [impersonating, setImpersonating] = useState(false)
 
   const [user, setUser] = useState<AdminUserDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -173,6 +177,32 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  const handleImpersonate = async () => {
+    if (!email || email === currentUser?.email) return
+    try {
+      setImpersonating(true)
+      const success = await startImpersonation(email)
+      if (success) {
+        router.push("/dashboard")
+      } else {
+        const authError = useAuth.getState().error
+        toast({
+          title: "Impersonation Failed",
+          description: authError || "Unable to impersonate user",
+          variant: "destructive",
+        })
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to impersonate user",
+        variant: "destructive",
+      })
+    } finally {
+      setImpersonating(false)
+    }
+  }
+
   const handleDeleteUser = async () => {
     if (!user) return
 
@@ -261,6 +291,21 @@ export default function AdminUserDetailPage() {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
+        {email !== currentUser?.email && (
+          <Button
+            variant="outline"
+            onClick={handleImpersonate}
+            disabled={impersonating || actionLoading}
+            title="View the app as this user"
+          >
+            {impersonating ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <LogIn className="w-4 h-4 mr-2" />
+            )}
+            Impersonate User
+          </Button>
+        )}
         <Button onClick={() => setCreditDialogOpen(true)} disabled={actionLoading} title="Grant credits to this user">
           <Plus className="w-4 h-4 mr-2" />
           Add Credits
