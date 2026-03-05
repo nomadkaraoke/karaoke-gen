@@ -151,6 +151,7 @@ class TestUserEmailExtraction:
             # Mock YouTube download service to return a GCS path
             from unittest.mock import AsyncMock
             mock_yt_service = Mock()
+            mock_yt_service.check_availability = AsyncMock(return_value=None)
             mock_yt_service.download = AsyncMock(return_value="uploads/test-job-456/audio/test.webm")
             mock_yt.return_value = mock_yt_service
 
