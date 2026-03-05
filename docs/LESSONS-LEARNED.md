@@ -301,7 +301,18 @@ Escape special chars in Google Drive API queries: `'` → `\'`, `\` → `\\\\`.
 For subprocess without shell, FFmpeg filter paths need: apostrophes escaped as `'\\''`, special chars as `\\[char]`.
 
 ### Unicode in HTTP Headers
-Sanitize user input (artist/title) to ASCII for HTTP headers. Smart quotes, em dashes from copy/paste cause encoding errors.
+Sanitize user input (artist/title) to ASCII for HTTP headers. Smart quotes, em dashes from copy/paste cause encoding errors. For CJK characters (Chinese, Japanese, Korean) that can't be replaced with ASCII equivalents, use RFC 5987 `filename*=UTF-8''` encoding in Content-Disposition headers instead of trying to force latin-1.
+
+### CJK Characters in Title Cards (Mar 2026)
+**What happened**: Job `f8a36b60` with Chinese artist/title rendered question marks on the title card, and download links failed with `'latin-1' codec can't encode characters`.
+
+**Root cause (title card)**: The title screen uses `Montserrat-Bold.ttf` which has no CJK glyphs. PIL renders missing glyphs as question marks. The karaoke subtitle renderer already uses Noto Sans (with `fonts-noto-cjk` installed in Docker), but the title card `VideoGenerator` had no font fallback.
+
+**Root cause (downloads)**: `sanitize_filename()` correctly preserves CJK characters (they're valid in filenames), but the `Content-Disposition` header used simple `filename="..."` which requires latin-1 encoding. CJK characters can't be encoded in latin-1.
+
+**Fix**: (1) Added CJK font fallback in `VideoGenerator._render_all_text()` - detects CJK characters per text element and uses system Noto Sans CJK font via `fontconfig` (`fc-match`). (2) Added RFC 5987 encoding for Content-Disposition headers when filename contains non-latin-1 characters.
+
+**Pattern**: When rendering text with PIL, the configured font may not support all scripts. Check if text contains characters outside the font's coverage and fall back to a system font with broader Unicode support (Noto Sans CJK). For HTTP headers, always handle the case where filenames contain characters beyond latin-1.
 
 ### Unicode in File Paths (Feb 2026)
 **What happened**: Job `1eab1172` with Russian title "я куплю тебе дом" (Cyrillic) failed with FFmpeg exit code 183. The temp subtitle file path contained Unicode characters: `temp_subtitles_zivert___я_куплю_тебе_дом_1770150285852.ass`.
