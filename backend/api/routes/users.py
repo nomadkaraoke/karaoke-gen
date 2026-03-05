@@ -57,6 +57,7 @@ from backend.services.job_defaults_service import (
     resolve_cdg_txt_defaults,
 )
 from backend.api.dependencies import require_admin
+from backend.services.auth_service import AuthResult
 from backend.api.routes.file_upload import _prepare_theme_for_job
 from backend.services.auth_service import UserType
 from backend.utils.test_data import is_test_email
@@ -1370,7 +1371,7 @@ async def get_user_detail(
 @router.post("/admin/credits", response_model=AddCreditsResponse)
 async def add_credits_to_user(
     request: AddCreditsRequest,
-    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
     email_service: EmailService = Depends(get_email_service),
 ):
@@ -1379,12 +1380,7 @@ async def add_credits_to_user(
 
     Use this to grant free credits to users, e.g., for beta testers or promotions.
     """
-    admin_token, _, _ = auth_data
-
-    # TODO: Enhance auth system to track admin email identity for better audit trails.
-    # Current token-based admin auth doesn't include email identity.
-    # For now, we log the token prefix for traceability.
-    admin_id = f"admin:{admin_token[:8]}..." if admin_token else "admin:unknown"
+    admin_id = auth_data.user_email or "admin:unknown"
 
     success, new_balance, message = user_service.add_credits(
         email=request.email,
@@ -1412,14 +1408,13 @@ async def add_credits_to_user(
 @router.post("/admin/users/{email}/disable")
 async def disable_user(
     email: str,
-    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Disable a user account (admin only).
     """
-    admin_token, _, _ = auth_data
-    admin_id = f"admin:{admin_token[:8]}..." if admin_token else "admin:unknown"
+    admin_id = auth_data.user_email or "admin:unknown"
 
     success = user_service.disable_user(email, admin_email=admin_id)
 
@@ -1432,14 +1427,13 @@ async def disable_user(
 @router.post("/admin/users/{email}/enable")
 async def enable_user(
     email: str,
-    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Enable a user account (admin only).
     """
-    admin_token, _, _ = auth_data
-    admin_id = f"admin:{admin_token[:8]}..." if admin_token else "admin:unknown"
+    admin_id = auth_data.user_email or "admin:unknown"
 
     success = user_service.enable_user(email, admin_email=admin_id)
 
@@ -1452,7 +1446,7 @@ async def enable_user(
 @router.delete("/admin/users/{email}")
 async def delete_user(
     email: str,
-    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
@@ -1460,8 +1454,7 @@ async def delete_user(
 
     Jobs are NOT deleted - they remain as historical records.
     """
-    admin_token, _, _ = auth_data
-    admin_id = f"admin:{admin_token[:8]}..." if admin_token else "admin:unknown"
+    admin_id = auth_data.user_email or "admin:unknown"
 
     try:
         success = user_service.delete_user(email, admin_email=admin_id)
@@ -1478,14 +1471,13 @@ async def delete_user(
 async def set_user_role(
     email: str,
     role: UserRole,
-    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Set a user's role (admin only).
     """
-    admin_token, _, _ = auth_data
-    admin_id = f"admin:{admin_token[:8]}..." if admin_token else "admin:unknown"
+    admin_id = auth_data.user_email or "admin:unknown"
 
     success = user_service.set_user_role(email, role, admin_email=admin_id)
 
