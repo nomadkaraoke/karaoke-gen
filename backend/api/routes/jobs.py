@@ -1968,7 +1968,10 @@ async def create_job_from_search(
 
         # Trigger audio download as a Cloud Run Job (survives instance shutdown)
         worker_service = get_worker_service()
-        await worker_service.trigger_audio_download_worker(job_id)
+        triggered = await worker_service.trigger_audio_download_worker(job_id)
+        if not triggered:
+            job_manager.fail_job(job_id, "Failed to trigger audio download worker")
+            raise HTTPException(status_code=500, detail="Failed to trigger audio download worker")
 
         return JobResponse(
             status="success",

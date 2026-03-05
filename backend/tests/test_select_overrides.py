@@ -103,8 +103,11 @@ class TestSelectEndpointAppliesOverrides:
         bg_tasks = Mock(spec=BackgroundTasks)
         auth_result = Mock()
 
-        # Mock the audio search service
-        with patch('backend.api.routes.audio_search.get_audio_search_service'):
+        # Mock the audio search service and worker service
+        mock_worker_service = AsyncMock()
+        mock_worker_service.trigger_audio_download_worker.return_value = True
+        with patch('backend.api.routes.audio_search.get_audio_search_service'), \
+             patch('backend.api.routes.audio_search.get_worker_service', return_value=mock_worker_service):
             from backend.api.routes.audio_search import select_audio_source
             loop = asyncio.new_event_loop()
             try:
@@ -156,7 +159,10 @@ class TestSelectEndpointAppliesOverrides:
         bg_tasks = Mock(spec=BackgroundTasks)
         auth_result = Mock()
 
-        with patch('backend.api.routes.audio_search.get_audio_search_service'):
+        mock_worker_service = AsyncMock()
+        mock_worker_service.trigger_audio_download_worker.return_value = True
+        with patch('backend.api.routes.audio_search.get_audio_search_service'), \
+             patch('backend.api.routes.audio_search.get_worker_service', return_value=mock_worker_service):
             from backend.api.routes.audio_search import select_audio_source
             loop = asyncio.new_event_loop()
             try:
@@ -207,7 +213,10 @@ class TestSelectEndpointAppliesOverrides:
         bg_tasks = Mock(spec=BackgroundTasks)
         auth_result = Mock()
 
-        with patch('backend.api.routes.audio_search.get_audio_search_service'):
+        mock_worker_service = AsyncMock()
+        mock_worker_service.trigger_audio_download_worker.return_value = True
+        with patch('backend.api.routes.audio_search.get_audio_search_service'), \
+             patch('backend.api.routes.audio_search.get_worker_service', return_value=mock_worker_service):
             from backend.api.routes.audio_search import select_audio_source
             loop = asyncio.new_event_loop()
             try:
