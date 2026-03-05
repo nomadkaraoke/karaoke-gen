@@ -117,6 +117,10 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   const [selectedResultIndex, setSelectedResultIndex] = useState<number | null>(null)
   const [searchSessionId, setSearchSessionId] = useState<string | null>(null)
 
+  // Pending fallback data (URL/upload stored until after Steps 3-4)
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -126,9 +130,16 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setAudioSource("search")
   }
 
-  function handleJobCreated(id: string, source: "upload" | "url") {
-    setJobId(id)
-    setAudioSource(source)
+  function handleUrlReady(url: string) {
+    setPendingUrl(url)
+    setAudioSource("url")
+    setStep(3)
+  }
+
+  function handleFileReady(file: File) {
+    setPendingFile(file)
+    setAudioSource("upload")
+    setStep(3)
   }
 
   function handleSearchResultChosen(resultIndex: number) {
@@ -137,29 +148,46 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setStep(3)
   }
 
-  function handleFallbackComplete() {
-    // Upload/URL jobs are already processing — show success directly
-    onJobCreated()
-    setShowSuccess(true)
-  }
-
   async function handleConfirm() {
-    if (!searchSessionId || selectedResultIndex === null) return
-
     setIsSubmitting(true)
     setSubmitError("")
     try {
-      // Create the job now with all final values from Steps 1+3
-      const response = await api.createJobFromSearch({
-        search_session_id: searchSessionId,
-        selection_index: selectedResultIndex,
-        artist: artist,
-        title: title,
-        display_artist: displayArtist.trim() || undefined,
-        display_title: displayTitle.trim() || undefined,
-        is_private: isPrivate,
-      })
-      setJobId(response.job_id)
+      let createdJobId: string
+      // For URL/upload, the artist/title params ARE the display values
+      const effectiveArtist = displayArtist.trim() || artist.trim()
+      const effectiveTitle = displayTitle.trim() || title.trim()
+
+      if (audioSource === "url" && pendingUrl) {
+        // URL fallback path — create job now with visibility from Step 3
+        const response = await api.createJobFromUrl(pendingUrl, effectiveArtist, effectiveTitle, {
+          is_private: isPrivate,
+        })
+        createdJobId = response.job_id
+      } else if (audioSource === "upload" && pendingFile) {
+        // Upload fallback path — upload and create job now with visibility from Step 3
+        const response = await api.uploadJobSmart(
+          pendingFile, effectiveArtist, effectiveTitle,
+          { is_private: isPrivate },
+        )
+        createdJobId = response.job_id
+      } else if (searchSessionId && selectedResultIndex !== null) {
+        // Search path — create job from search session
+        const response = await api.createJobFromSearch({
+          search_session_id: searchSessionId,
+          selection_index: selectedResultIndex,
+          artist: artist,
+          title: title,
+          display_artist: displayArtist.trim() || undefined,
+          display_title: displayTitle.trim() || undefined,
+          is_private: isPrivate,
+        })
+        createdJobId = response.job_id
+      } else {
+        setSubmitError("Missing audio source. Please go back and try again.")
+        return
+      }
+
+      setJobId(createdJobId)
       onJobCreated()
       setShowSuccess(true)
 
@@ -168,7 +196,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         colorOverrides.artist_color || colorOverrides.title_color ||
         colorOverrides.sung_lyrics_color || colorOverrides.unsung_lyrics_color
       if (isPrivate && hasStyleCustomizations) {
-        uploadStyleAssets(response.job_id, karaokeBackground, introBackground, colorOverrides)
+        uploadStyleAssets(createdJobId, karaokeBackground, introBackground, colorOverrides)
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -186,6 +214,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setSearchSessionId(null)
     setAudioSource("search")
     setSelectedResultIndex(null)
+    setPendingUrl(null)
+    setPendingFile(null)
     setStep(1)
   }
 
@@ -204,6 +234,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setAudioSource("search")
     setSelectedResultIndex(null)
     setSearchSessionId(null)
+    setPendingUrl(null)
+    setPendingFile(null)
     setSubmitError("")
   }
 
@@ -425,13 +457,10 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         <AudioSourceStep
           artist={artist}
           title={title}
-          displayArtist={displayArtist}
-          displayTitle={displayTitle}
-          isPrivate={isPrivate}
           onSearchCompleted={handleSearchCompleted}
-          onJobCreated={handleJobCreated}
           onSearchResultChosen={handleSearchResultChosen}
-          onFallbackComplete={handleFallbackComplete}
+          onUrlReady={handleUrlReady}
+          onFileReady={handleFileReady}
           onBack={handleBackFromAudio}
           noCredits={noCredits}
         />

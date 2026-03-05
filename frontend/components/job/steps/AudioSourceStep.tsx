@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import { api, ApiError, type UploadProgress } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import {
   ExtendedAudioSearchResult,
   groupResults,
@@ -16,19 +16,16 @@ import {
 } from "@/lib/audio-search-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Music2, ChevronDown, ChevronUp, Upload, Youtube, ArrowLeft, Check, AlertTriangle, CheckCircle2, Lightbulb, Info } from "lucide-react"
+import { Loader2, ChevronDown, ChevronUp, Upload, Youtube, ArrowLeft, Check, AlertTriangle, CheckCircle2, Lightbulb, Info } from "lucide-react"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 
 interface AudioSourceStepProps {
   artist: string
   title: string
-  displayArtist: string
-  displayTitle: string
-  isPrivate: boolean
   onSearchCompleted: (searchSessionId: string) => void
-  onJobCreated: (jobId: string, source: "upload" | "url") => void
   onSearchResultChosen: (resultIndex: number) => void
-  onFallbackComplete: () => void
+  onUrlReady: (url: string) => void
+  onFileReady: (file: File) => void
   onBack: () => void
   noCredits: boolean
 }
@@ -93,13 +90,10 @@ function MismatchBadge({ searchTitle, result }: { searchTitle: string; result: E
 export function AudioSourceStep({
   artist,
   title,
-  displayArtist,
-  displayTitle,
-  isPrivate,
   onSearchCompleted,
-  onJobCreated,
   onSearchResultChosen,
-  onFallbackComplete,
+  onUrlReady,
+  onFileReady,
   onBack,
   noCredits,
 }: AudioSourceStepProps) {
@@ -116,9 +110,7 @@ export function AudioSourceStep({
   // Fallback form state
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [youtubeUrl, setYoutubeUrl] = useState("")
-  const [isSubmittingFallback, setIsSubmittingFallback] = useState(false)
   const [fallbackMode, setFallbackMode] = useState<"upload" | "url" | null>(null)
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
 
   // Search with retry for network failures
   const doSearch = useCallback(async (retryCount = 0): Promise<void> => {
@@ -180,63 +172,16 @@ export function AudioSourceStep({
     })
   }
 
-  async function handleUploadSubmit(e: React.FormEvent) {
+  function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!uploadFile) return
-
-    setIsSubmittingFallback(true)
-    setError("")
-    setIsCreditError(false)
-    setIsTimeoutError(false)
-    setUploadProgress(null)
-    try {
-      const response = await api.uploadJobSmart(
-        uploadFile, artist.trim(), title.trim(),
-        { is_private: isPrivate },
-        (progress) => setUploadProgress(progress),
-      )
-      onJobCreated(response.job_id, "upload" as const)
-      onFallbackComplete()
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 402) {
-        setIsCreditError(true)
-        setError("You're out of credits. Buy more to continue creating karaoke videos.")
-      } else if (err instanceof ApiError) {
-        setError(err.message)
-      } else {
-        setError("Failed to upload file")
-      }
-    } finally {
-      setIsSubmittingFallback(false)
-      setUploadProgress(null)
-    }
+    onFileReady(uploadFile)
   }
 
-  async function handleUrlSubmit(e: React.FormEvent) {
+  function handleUrlSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!youtubeUrl.trim()) return
-
-    setIsSubmittingFallback(true)
-    setError("")
-    setIsCreditError(false)
-    try {
-      const response = await api.createJobFromUrl(youtubeUrl.trim(), artist.trim(), title.trim(), {
-        is_private: isPrivate,
-      })
-      onJobCreated(response.job_id, "url" as const)
-      onFallbackComplete()
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 402) {
-        setIsCreditError(true)
-        setError("You're out of credits. Buy more to continue creating karaoke videos.")
-      } else if (err instanceof ApiError) {
-        setError(err.message)
-      } else {
-        setError("Failed to create job from URL")
-      }
-    } finally {
-      setIsSubmittingFallback(false)
-    }
+    onUrlReady(youtubeUrl.trim())
   }
 
   const isLossyBest = confidence.bestCategory === 'YOUTUBE'
@@ -254,7 +199,6 @@ export function AudioSourceStep({
           variant="ghost"
           size="sm"
           onClick={handleBack}
-          disabled={isSubmittingFallback}
           style={{ color: 'var(--text-muted)' }}
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
@@ -328,11 +272,9 @@ export function AudioSourceStep({
             setYoutubeUrl={setYoutubeUrl}
             uploadFile={uploadFile}
             setUploadFile={setUploadFile}
-            isSubmittingFallback={isSubmittingFallback}
             noCredits={noCredits}
             onUrlSubmit={handleUrlSubmit}
             onUploadSubmit={handleUploadSubmit}
-            uploadProgress={uploadProgress}
           />
         </>
       )}
@@ -369,11 +311,9 @@ export function AudioSourceStep({
           setYoutubeUrl={setYoutubeUrl}
           uploadFile={uploadFile}
           setUploadFile={setUploadFile}
-          isSubmittingFallback={isSubmittingFallback}
           noCredits={noCredits}
           onUrlSubmit={handleUrlSubmit}
           onUploadSubmit={handleUploadSubmit}
-          uploadProgress={uploadProgress}
         />
       )}
     </div>
@@ -871,11 +811,9 @@ function FallbackSection({
   setYoutubeUrl,
   uploadFile,
   setUploadFile,
-  isSubmittingFallback,
   noCredits,
   onUrlSubmit,
   onUploadSubmit,
-  uploadProgress,
 }: {
   tier: number
   hasResults: boolean
@@ -885,11 +823,9 @@ function FallbackSection({
   setYoutubeUrl: (url: string) => void
   uploadFile: File | null
   setUploadFile: (file: File | null) => void
-  isSubmittingFallback: boolean
   noCredits: boolean
   onUrlSubmit: (e: React.FormEvent) => void
   onUploadSubmit: (e: React.FormEvent) => void
-  uploadProgress: UploadProgress | null
 }) {
   const isTier3WithResults = tier === 3 && hasResults
   const largeButtons = !hasResults
@@ -942,21 +878,16 @@ function FallbackSection({
               onChange={(e) => setYoutubeUrl(e.target.value)}
               className="pl-10 text-xs"
               style={{ backgroundColor: 'var(--background)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
-              disabled={isSubmittingFallback}
               autoFocus
             />
           </div>
           <Button
             type="submit"
             size="sm"
-            disabled={!youtubeUrl.trim() || isSubmittingFallback || noCredits}
+            disabled={!youtubeUrl.trim() || noCredits}
             className="w-full bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white"
           >
-            {isSubmittingFallback ? (
-              <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Creating...</>
-            ) : (
-              "Use This URL"
-            )}
+            Use This URL
           </Button>
         </form>
       )}
@@ -979,7 +910,6 @@ function FallbackSection({
                 if (file) setUploadFile(file)
               }}
               className="sr-only"
-              disabled={isSubmittingFallback}
             />
             {uploadFile ? (
               <div>
@@ -996,52 +926,20 @@ function FallbackSection({
           </label>
 
           {/* Large file warning */}
-          {uploadFile && uploadFile.size > 100 * 1024 * 1024 && !isSubmittingFallback && (
+          {uploadFile && uploadFile.size > 100 * 1024 * 1024 && (
             <div className="flex items-start gap-2 rounded p-2 text-[10px] text-amber-400 bg-amber-500/10">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>Large file ({(uploadFile.size / 1024 / 1024).toFixed(0)} MB) — upload may take a while depending on your connection.</span>
             </div>
           )}
 
-          {/* Upload progress bar */}
-          {uploadProgress && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                <span>
-                  {uploadProgress.phase === 'creating' && 'Preparing upload...'}
-                  {uploadProgress.phase === 'uploading' && `Uploading... ${(uploadProgress.loaded / 1024 / 1024).toFixed(1)} / ${(uploadProgress.total / 1024 / 1024).toFixed(1)} MB`}
-                  {uploadProgress.phase === 'finalizing' && 'Finalizing...'}
-                </span>
-                {uploadProgress.phase === 'uploading' && uploadProgress.total > 0 && (
-                  <span>{Math.round((uploadProgress.loaded / uploadProgress.total) * 100)}%</span>
-                )}
-              </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--card-border)' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{
-                    backgroundColor: 'var(--brand-pink)',
-                    width: uploadProgress.phase === 'creating' ? '5%'
-                      : uploadProgress.phase === 'finalizing' ? '95%'
-                      : uploadProgress.total > 0 ? `${Math.round((uploadProgress.loaded / uploadProgress.total) * 90) + 5}%`
-                      : '5%',
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
           <Button
             type="submit"
             size="sm"
-            disabled={!uploadFile || isSubmittingFallback || noCredits}
+            disabled={!uploadFile || noCredits}
             className="w-full bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white"
           >
-            {isSubmittingFallback ? (
-              <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading...</>
-            ) : (
-              "Upload & Create"
-            )}
+            Use This File
           </Button>
         </form>
       )}
