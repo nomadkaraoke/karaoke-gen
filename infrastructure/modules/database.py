@@ -61,6 +61,39 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # Jobs: query by tenant_id, order by created_at (for tenant portal job lists)
+    resources["firestore_index_jobs_tenant"] = firestore.Index(
+        "firestore-index-jobs-tenant",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="jobs",
+        fields=[
+            firestore.IndexFieldArgs(field_path="tenant_id", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="created_at", order="DESCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(
+            depends_on=[firestore_db],
+            import_="projects/nomadkaraoke/databases/(default)/collectionGroups/jobs/indexes/CICAgJjUo5EK",
+        ),
+    )
+
+    # Jobs: query by user_email + tenant_id, order by created_at (for tenant user job lists)
+    resources["firestore_index_jobs_user_tenant"] = firestore.Index(
+        "firestore-index-jobs-user-tenant",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="jobs",
+        fields=[
+            firestore.IndexFieldArgs(field_path="user_email", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="tenant_id", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="created_at", order="DESCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(
+            depends_on=[firestore_db],
+            import_="projects/nomadkaraoke/databases/(default)/collectionGroups/jobs/indexes/CICAgJjFx5sK",
+        ),
+    )
+
     # Jobs: query by customer_email + made_for_you, order by created_at
     # Used for finding existing made-for-you orders for a customer
     resources["firestore_index_jobs_customer_mfy"] = firestore.Index(

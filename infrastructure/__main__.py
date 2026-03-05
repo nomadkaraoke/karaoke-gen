@@ -346,6 +346,8 @@ pulumi.export("firestore_database", db_resources["firestore_db"].name)
 # Firestore indexes
 pulumi.export("firestore_index_jobs_user_email", db_resources["firestore_index_jobs_user_email"].name)
 pulumi.export("firestore_index_jobs_status", db_resources["firestore_index_jobs_status"].name)
+pulumi.export("firestore_index_jobs_tenant", db_resources["firestore_index_jobs_tenant"].name)
+pulumi.export("firestore_index_jobs_user_tenant", db_resources["firestore_index_jobs_user_tenant"].name)
 pulumi.export("firestore_index_sessions_active", db_resources["firestore_index_sessions_active"].name)
 pulumi.export("firestore_index_magic_links", db_resources["firestore_index_magic_links"].name)
 pulumi.export("firestore_index_gen_users_active_created", db_resources["firestore_index_gen_users_active_created"].name)
