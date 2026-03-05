@@ -71,7 +71,7 @@ export function TenantLandingPage() {
           className="px-8 py-3 rounded-lg text-lg font-semibold transition-all hover:opacity-90 cursor-pointer"
           style={{
             backgroundColor: primaryColor,
-            color: branding.background_color || '#000000',
+            color: 'var(--primary-foreground)',
           }}
         >
           Sign In

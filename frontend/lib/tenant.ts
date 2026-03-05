@@ -294,6 +294,23 @@ useTenant.setState = useTenantStore.setState
 useTenant.subscribe = useTenantStore.subscribe
 
 /**
+ * Compute a contrasting foreground color (black or white) for a given hex color.
+ * Uses WCAG relative luminance to determine which provides better contrast.
+ */
+export function getContrastColor(hexColor: string): string {
+  const hex = hexColor.replace("#", "")
+  const r = parseInt(hex.slice(0, 2), 16) / 255
+  const g = parseInt(hex.slice(2, 4), 16) / 255
+  const b = parseInt(hex.slice(4, 6), 16) / 255
+
+  // sRGB to linear
+  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
+  const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+
+  return luminance > 0.179 ? "#000000" : "#ffffff"
+}
+
+/**
  * Apply tenant branding by setting CSS custom properties.
  * This allows dynamic theming without changing the stylesheet.
  */
@@ -305,6 +322,9 @@ function applyTenantBranding(branding: TenantBranding) {
   // Set CSS custom properties for tenant colors
   root.style.setProperty("--tenant-primary", branding.primary_color)
   root.style.setProperty("--tenant-secondary", branding.secondary_color)
+
+  // Compute accessible foreground color for primary
+  root.style.setProperty("--primary-foreground", getContrastColor(branding.primary_color))
 
   if (branding.accent_color) {
     root.style.setProperty("--tenant-accent", branding.accent_color)

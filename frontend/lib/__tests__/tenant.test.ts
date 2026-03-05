@@ -11,6 +11,7 @@ import {
   isFeatureEnabled,
   isPreviewingTenant,
   getPreviewTenantId,
+  getContrastColor,
   TenantConfig,
 } from "../tenant"
 
@@ -223,6 +224,8 @@ describe("useTenant store", () => {
 
       expect(mockSetProperty).toHaveBeenCalledWith("--tenant-primary", "#ffff00")
       expect(mockSetProperty).toHaveBeenCalledWith("--tenant-secondary", "#006CF9")
+      // Yellow is light, so foreground should be black for contrast
+      expect(mockSetProperty).toHaveBeenCalledWith("--primary-foreground", "#000000")
     })
 
     it("should handle fetch error gracefully", async () => {
@@ -416,6 +419,7 @@ describe("edge-injected config (window.__TENANT_CONFIG__)", () => {
 
     expect(mockSetProperty).toHaveBeenCalledWith("--tenant-primary", "#ffff00")
     expect(mockSetProperty).toHaveBeenCalledWith("--tenant-secondary", "#006CF9")
+    expect(mockSetProperty).toHaveBeenCalledWith("--primary-foreground", "#000000")
   })
 
   it("should fall back to API when no edge-injected config", async () => {
@@ -489,5 +493,31 @@ describe("admin preview (preview_tenant param)", () => {
       writable: true,
     })
     expect(getPreviewTenantId()).toBe("singa")
+  })
+})
+
+describe("getContrastColor", () => {
+  it("returns black for light colors (yellow)", () => {
+    expect(getContrastColor("#ffff00")).toBe("#000000")
+  })
+
+  it("returns black for bright green (Singa)", () => {
+    expect(getContrastColor("#17E87A")).toBe("#000000")
+  })
+
+  it("returns white for dark colors (black)", () => {
+    expect(getContrastColor("#000000")).toBe("#ffffff")
+  })
+
+  it("returns white for dark blue", () => {
+    expect(getContrastColor("#006CF9")).toBe("#ffffff")
+  })
+
+  it("returns black for brand pink (light enough to need dark text)", () => {
+    expect(getContrastColor("#ff7acc")).toBe("#000000")
+  })
+
+  it("returns black for white input", () => {
+    expect(getContrastColor("#ffffff")).toBe("#000000")
   })
 })

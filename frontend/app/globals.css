@@ -78,8 +78,8 @@
   --text: #1e293b;
   --text-muted: #64748b;
   --text-subtle: #94a3b8;
-  --primary: var(--brand-pink);
-  --primary-hover: var(--brand-pink-hover);
+  --primary: var(--tenant-primary);
+  --primary-hover: color-mix(in srgb, var(--tenant-primary) 80%, black 20%);
   --secondary: #f1f5f9;
   --secondary-hover: #e2e8f0;
   --success: #22c55e;

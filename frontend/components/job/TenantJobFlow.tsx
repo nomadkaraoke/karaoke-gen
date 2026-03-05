@@ -345,7 +345,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
         className="w-full"
         style={{
           backgroundColor: canSubmit ? "var(--tenant-primary, var(--brand-pink))" : undefined,
-          color: canSubmit ? "white" : undefined,
+          color: canSubmit ? "var(--primary-foreground)" : undefined,
         }}
       >
         <Upload className="w-4 h-4 mr-2" />
