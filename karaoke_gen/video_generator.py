@@ -7,21 +7,32 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 def _find_cjk_font() -> str | None:
-    """Find a system CJK font using fontconfig (fc-match)."""
-    try:
-        result = subprocess.run(
-            ["fc-match", "--format=%{file}", ":lang=zh"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if result.returncode == 0 and result.stdout and os.path.exists(result.stdout):
-            return result.stdout
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-    # Fallback: common paths for Noto Sans CJK
+    """Find a system CJK font using fontconfig (fc-match).
+
+    fc-match :lang=zh can return a non-CJK font (e.g. NotoSans-Regular.ttf)
+    that claims Chinese support but lacks CJK glyphs. We explicitly request
+    "Noto Sans CJK" and fall back to known filesystem paths.
+    """
+    # Try fc-match with explicit CJK font family name
+    for query in ["Noto Sans CJK", "Noto Sans CJK SC"]:
+        try:
+            result = subprocess.run(
+                ["fc-match", "--format=%{file}", query],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout and os.path.exists(result.stdout):
+                # Verify the result is actually a CJK font (not a fallback to a Latin font)
+                if "CJK" in result.stdout or "cjk" in result.stdout.lower():
+                    return result.stdout
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+    # Fallback: known paths for Noto Sans CJK (fonts-noto-cjk package on Debian/Ubuntu)
     for path in [
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
         "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
     ]:
         if os.path.exists(path):
             return path
