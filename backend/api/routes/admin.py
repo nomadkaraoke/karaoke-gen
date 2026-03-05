@@ -2089,15 +2089,19 @@ async def regenerate_screens(
     db = job_manager.firestore.db
     job_ref = db.collection("jobs").document(job_id)
 
-    # Update state to allow screens worker to run
+    # Set status to lyrics_complete so screens worker can transition to generating_screens.
+    # Store original status so the worker can restore it after regen instead of going to awaiting_review.
+    original_status = job.status
     job_ref.update({
+        "status": JobStatus.LYRICS_COMPLETE.value,
         "state_data.screens_progress": DELETE_FIELD,
         "state_data.audio_complete": True,
         "state_data.lyrics_complete": True,
+        "state_data.regen_restore_status": original_status,
         "timeline": ArrayUnion([{
-            "status": job.status,
+            "status": original_status,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "message": f"Admin {admin_email} triggered screen regeneration"
+            "message": f"Admin {admin_email} triggered screen regeneration (will restore to {original_status})"
         }])
     })
 
