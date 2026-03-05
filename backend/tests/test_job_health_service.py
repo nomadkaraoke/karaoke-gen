@@ -172,6 +172,36 @@ class TestCheckJobConsistency:
         issues = check_job_consistency(job)
         assert any("encoding_stuck" in i for i in issues)
 
+    def test_downloading_audio_recently_started_not_flagged(self):
+        """Download started 3 minutes ago should not be flagged."""
+        job = create_test_job(status=JobStatus.DOWNLOADING_AUDIO)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=3)
+        issues = check_job_consistency(job)
+        assert not any("downloading_audio_stuck" in i for i in issues)
+
+    def test_downloading_audio_stuck_15_min_flagged(self):
+        """Download stuck for 15 minutes should be flagged."""
+        job = create_test_job(status=JobStatus.DOWNLOADING_AUDIO)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=15)
+        issues = check_job_consistency(job)
+        assert any("downloading_audio_stuck" in i for i in issues)
+        stuck_issue = [i for i in issues if "downloading_audio_stuck" in i][0]
+        assert "15 min" in stuck_issue
+
+    def test_downloading_audio_at_9_min_not_flagged(self):
+        """Download at 9 minutes should not be flagged (must exceed 10)."""
+        job = create_test_job(status=JobStatus.DOWNLOADING_AUDIO)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=9)
+        issues = check_job_consistency(job)
+        assert not any("downloading_audio_stuck" in i for i in issues)
+
+    def test_non_downloading_audio_not_affected(self):
+        """Non-downloading_audio job should not trigger this check."""
+        job = create_test_job(status=JobStatus.DOWNLOADING)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=120)
+        issues = check_job_consistency(job)
+        assert not any("downloading_audio_stuck" in i for i in issues)
+
 
 class TestCheckJobConsistencyDetailed:
     """Tests for check_job_consistency_detailed function."""
