@@ -70,7 +70,10 @@ function AppPageContent() {
     if (typeof window === "undefined") return false
     return localStorage.getItem("nomad-karaoke-admin-controls") === "true"
   })
-  const [feedbackBannerDismissed, setFeedbackBannerDismissed] = useState(false)
+  const [feedbackBannerDismissed, setFeedbackBannerDismissed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("nomad-feedback-banner-dismissed") === "true"
+  })
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
 
   // Check if user is admin (for exclude_test parameter)
@@ -348,7 +351,10 @@ function AppPageContent() {
                 Give Feedback
               </Button>
               <button
-                onClick={() => setFeedbackBannerDismissed(true)}
+                onClick={() => {
+                  localStorage.setItem("nomad-feedback-banner-dismissed", "true")
+                  setFeedbackBannerDismissed(true)
+                }}
                 className="p-1 rounded hover:bg-secondary transition-colors"
                 style={{ color: 'var(--text-muted)' }}
               >
