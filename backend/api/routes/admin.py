@@ -3121,18 +3121,29 @@ def list_edit_reviews(
         created_at = data.get("created_at")
         updated_at = data.get("updated_at")
 
-        reviews.append(EditReviewSummary(
-            job_id=doc.id,
-            artist=artist or "",
-            title=title or "",
-            user_email=email or "",
-            status=data.get("status", ""),
-            created_at=created_at.isoformat() if created_at else None,
-            updated_at=updated_at.isoformat() if updated_at else None,
-            edit_log_session=state_data.get("last_edit_log_session"),
-            edit_log_path=edit_log_path,
-            has_corrections_updated=has_corrections_updated,
-        ))
+        def _to_iso(val) -> Optional[str]:
+            if val is None:
+                return None
+            if hasattr(val, 'isoformat'):
+                return val.isoformat()
+            return str(val)
+
+        try:
+            reviews.append(EditReviewSummary(
+                job_id=doc.id,
+                artist=artist or "",
+                title=title or "",
+                user_email=email or "",
+                status=data.get("status", ""),
+                created_at=_to_iso(created_at),
+                updated_at=_to_iso(updated_at),
+                edit_log_session=state_data.get("last_edit_log_session"),
+                edit_log_path=edit_log_path,
+                has_corrections_updated=has_corrections_updated,
+            ))
+        except Exception as e:
+            logger.warning(f"Job {doc.id}: Error building edit review summary: {e}")
+            continue
 
     if streamed >= STREAM_LIMIT:
         logger.warning(f"Edit reviews stream hit limit ({STREAM_LIMIT}), results may be incomplete")
