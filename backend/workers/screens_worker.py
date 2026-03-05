@@ -190,15 +190,28 @@ async def generate_screens(job_id: str) -> bool:
                     job_log.info("Transcoding review audio to OGG Opus...")
                     await _transcode_review_audio(job_id, job_manager, job_log)
 
-                # Transition to AWAITING_REVIEW (combined lyrics + instrumental review)
-                # Human must review lyrics AND select instrumental before video can be rendered
-                logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
-                job_manager.transition_to_state(
-                    job_id=job_id,
-                    new_status=JobStatus.AWAITING_REVIEW,
-                    progress=55,
-                    message="Ready for review. Please review lyrics and select your instrumental."
-                )
+                # Check if this is an admin screen regeneration (restore original status)
+                state_data = job_manager.get_job(job_id).state_data or {}
+                regen_restore_status = state_data.get('regen_restore_status')
+
+                if regen_restore_status:
+                    # Admin-triggered regen: restore original status instead of going to review
+                    logger.info(f"[job:{job_id}] Admin screen regen complete, restoring status to {regen_restore_status}")
+                    from google.cloud.firestore_v1 import DELETE_FIELD as _DEL
+                    db = job_manager.firestore.db
+                    db.collection("jobs").document(job_id).update({
+                        "status": regen_restore_status,
+                        "state_data.regen_restore_status": _DEL,
+                    })
+                else:
+                    # Normal flow: transition to combined review
+                    logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
+                    job_manager.transition_to_state(
+                        job_id=job_id,
+                        new_status=JobStatus.AWAITING_REVIEW,
+                        progress=55,
+                        message="Ready for review. Please review lyrics and select your instrumental."
+                    )
                 
                 duration = time.time() - start_time
                 root_span.set_attribute("duration_seconds", duration)
