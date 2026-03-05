@@ -153,7 +153,8 @@ class FirestoreService:
                 query = query.where(filter=FieldFilter('user_email', '==', user_email.lower()))
 
             # Filter by tenant_id (white-label portal scoping)
-            if tenant_id:
+            # Always filter: "" for consumer jobs, "vocalstar"/etc for tenant jobs
+            if tenant_id is not None:
                 query = query.where(filter=FieldFilter('tenant_id', '==', tenant_id))
 
             # Date range filters
@@ -225,7 +226,8 @@ class FirestoreService:
             if user_email:
                 query = query.where(filter=FieldFilter('user_email', '==', user_email.lower()))
 
-            if tenant_id:
+            # Always filter: "" for consumer jobs, "vocalstar"/etc for tenant jobs
+            if tenant_id is not None:
                 query = query.where(filter=FieldFilter('tenant_id', '==', tenant_id))
 
             if created_after:

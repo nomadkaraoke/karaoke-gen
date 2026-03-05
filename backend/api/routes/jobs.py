@@ -294,9 +294,12 @@ async def list_jobs(
                 logger.warning("Non-admin auth without user_email, returning empty job list")
                 return []
 
-        # Get tenant_id from request for portal scoping
-        # Tenant users only see jobs from their tenant
+        # Get tenant_id from request for portal scoping.
+        # Tenant portal: filters to that tenant's jobs.
+        # Consumer portal (no tenant): filters to tenant_id="" (consumer jobs only).
+        # All jobs have tenant_id set: "" for consumer, "vocalstar"/etc for tenants.
         tenant_id = get_tenant_from_request(request)
+        effective_tenant_id = tenant_id if tenant_id else ""
 
         # --- Summary mode: field-projected query returning dicts ---
         if fields == "summary":
@@ -309,7 +312,7 @@ async def list_jobs(
                 created_after=created_after_dt,
                 created_before=created_before_dt,
                 user_email=user_email_filter,
-                tenant_id=tenant_id,
+                tenant_id=effective_tenant_id,
                 limit=limit,
             )
 
@@ -331,7 +334,7 @@ async def list_jobs(
             created_after=created_after_dt,
             created_before=created_before_dt,
             user_email=user_email_filter,
-            tenant_id=tenant_id,
+            tenant_id=effective_tenant_id,
             limit=limit
         )
 
@@ -1973,7 +1976,7 @@ async def create_job_from_search(
         effective_display_artist = body.display_artist or session_artist
         effective_display_title = body.display_title or session_title
 
-        tenant_id = session.get('tenant_id')
+        tenant_id = session.get('tenant_id') or ""
 
         request_metadata = extract_request_metadata(request, created_from="guided_flow")
 

@@ -282,6 +282,46 @@ class TestRequireAuthTenantOverride:
         assert request.state.tenant_id == "token-tenant"
 
     @pytest.mark.asyncio
+    async def test_auth_result_with_tenant_id_loads_tenant_config(self):
+        """When auth_result has tenant_id and tenant_config is missing, it loads the config."""
+        from backend.api.dependencies import require_auth
+
+        request = self._make_request(initial_tenant_id=None)
+        request.state.tenant_config = None
+
+        mock_auth_result = AuthResult(
+            is_valid=True,
+            user_type=UserType.UNLIMITED,
+            remaining_uses=-1,
+            message="ok",
+            tenant_id="vocalstar",
+        )
+        mock_auth_service = MagicMock()
+        mock_auth_service.validate_token_full.return_value = mock_auth_result
+
+        mock_tenant_config = TenantConfig(
+            id="vocalstar",
+            name="Vocal Star",
+            subdomain="vocalstar.nomadkaraoke.com",
+            is_active=True,
+        )
+        mock_tenant_service = MagicMock()
+        mock_tenant_service.get_tenant_config.return_value = mock_tenant_config
+
+        with patch("backend.api.dependencies.get_auth_service", return_value=mock_auth_service), \
+             patch("backend.services.tenant_service.get_tenant_service", return_value=mock_tenant_service):
+            result = await require_auth(
+                request=request,
+                auth_service=mock_auth_service,
+                credentials=MagicMock(credentials="valid-token"),
+                token=None,
+            )
+
+        assert request.state.tenant_id == "vocalstar"
+        assert request.state.tenant_config == mock_tenant_config
+        mock_tenant_service.get_tenant_config.assert_called_once_with("vocalstar")
+
+    @pytest.mark.asyncio
     async def test_auth_result_without_tenant_id_leaves_request_state_unchanged(self):
         """When auth_result has no tenant_id, request.state.tenant_id is not changed."""
         from backend.api.dependencies import require_auth

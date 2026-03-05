@@ -115,8 +115,16 @@ async def require_auth(
 
     # If token has a tenant_id, override the hostname-based tenant detection.
     # This allows tenant-scoped tokens to enforce tenant context regardless of domain.
+    # We must also load tenant_config so downstream handlers (e.g. job creation)
+    # that rely on tenant_config for setting tenant_id on jobs work correctly.
     if auth_result.tenant_id:
         request.state.tenant_id = auth_result.tenant_id
+        if not getattr(request.state, "tenant_config", None):
+            from backend.services.tenant_service import get_tenant_service
+            tenant_service = get_tenant_service()
+            tenant_config = tenant_service.get_tenant_config(auth_result.tenant_id)
+            if tenant_config and tenant_config.is_active:
+                request.state.tenant_config = tenant_config
 
     # Log successful auth with request_id for correlation with request audit
     logger.info(

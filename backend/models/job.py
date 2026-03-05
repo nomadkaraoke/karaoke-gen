@@ -223,8 +223,8 @@ class Job(BaseModel):
     user_email: Optional[str] = None             # Email for notifications
     non_interactive: bool = False                # Skip interactive steps (lyrics review, instrumental selection)
 
-    # Multi-tenant support (None = default Nomad Karaoke)
-    tenant_id: Optional[str] = None              # Tenant ID for white-label portal scoping
+    # Multi-tenant support ("" = consumer portal, "vocalstar"/etc = tenant portal)
+    tenant_id: str = ""                          # Tenant ID for white-label portal scoping
     
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")
@@ -528,8 +528,8 @@ class JobCreate(BaseModel):
     - custom_headers: All X-* headers
     """
 
-    # Tenant scoping for white-label portals
-    tenant_id: Optional[str] = None              # Tenant ID for job scoping
+    # Tenant scoping for white-label portals ("" = consumer, "vocalstar"/etc = tenant)
+    tenant_id: str = ""                          # Tenant ID for job scoping
 
     @validator('url')
     def validate_url(cls, v):

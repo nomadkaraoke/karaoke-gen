@@ -652,7 +652,7 @@ async def upload_and_create_job(
             # Private (non-published) track mode
             is_private=is_private,
             # Tenant scoping
-            tenant_id=tenant_config.id if tenant_config else None,
+            tenant_id=tenant_config.id if tenant_config else "",
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
@@ -1225,7 +1225,7 @@ async def create_job_with_upload_urls(
             non_interactive=body.non_interactive,
             is_private=effective_is_private,
             # Tenant scoping
-            tenant_id=tenant_config.id if tenant_config else None,
+            tenant_id=tenant_config.id if tenant_config else "",
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
@@ -1669,7 +1669,7 @@ async def create_job_from_url(
             non_interactive=body.non_interactive,
             is_private=body.is_private,
             # Tenant scoping
-            tenant_id=tenant_config.id if tenant_config else None,
+            tenant_id=tenant_config.id if tenant_config else "",
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
@@ -1971,7 +1971,7 @@ async def create_finalise_only_job(
             request_metadata=request_metadata,
             is_private=body.is_private,
             # Tenant scoping
-            tenant_id=tenant_config.id if tenant_config else None,
+            tenant_id=tenant_config.id if tenant_config else "",
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id

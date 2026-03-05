@@ -687,7 +687,7 @@ async def search_audio(
             non_interactive=body.non_interactive,
             is_private=body.is_private,
             # Tenant scoping
-            tenant_id=tenant_config.id if tenant_config else None,
+            tenant_id=tenant_config.id if tenant_config else "",
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
