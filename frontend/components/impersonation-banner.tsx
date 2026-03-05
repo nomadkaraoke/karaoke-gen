@@ -1,36 +1,43 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { X, Eye } from "lucide-react"
+import { Eye, Shield } from "lucide-react"
 
 /**
  * Banner shown when admin is impersonating another user.
- * Displays prominently at the top of the page with option to stop impersonating.
+ * Compact strip at the top of the page with clear identity and quick exit.
  */
 export function ImpersonationBanner() {
   const { isImpersonating, impersonatedUserEmail, endImpersonation } = useAuth()
+  const router = useRouter()
 
   if (!isImpersonating) {
     return null
   }
 
+  const handleBackToAdmin = () => {
+    endImpersonation()
+    router.push("/admin")
+  }
+
   return (
-    <div className="bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between gap-4 text-sm font-medium">
-      <div className="flex items-center gap-2">
-        <Eye className="w-4 h-4" />
+    <div className="border-b border-purple-500/30 bg-purple-950/60 px-4 py-1.5 flex items-center justify-between gap-4 text-xs">
+      <div className="flex items-center gap-2 text-purple-300">
+        <Eye className="w-3.5 h-3.5 shrink-0" />
         <span>
-          Viewing as <strong>{impersonatedUserEmail}</strong>
+          Viewing as <strong className="text-purple-100">{impersonatedUserEmail}</strong>
         </span>
       </div>
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
-        onClick={endImpersonation}
-        className="bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-600 h-7 px-3"
+        onClick={handleBackToAdmin}
+        className="h-6 px-2.5 text-xs gap-1.5 text-purple-200 hover:text-white hover:bg-purple-800/50"
       >
-        <X className="w-3 h-3 mr-1" />
-        Stop Impersonating
+        <Shield className="w-3 h-3" />
+        Back to Admin
       </Button>
     </div>
   )

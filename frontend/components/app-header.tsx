@@ -12,16 +12,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { User, LogOut, Settings, Shield, Mail, Phone, HelpCircle } from "lucide-react"
+import { User, LogOut, Settings, Shield, Mail, Phone, HelpCircle, Eye } from "lucide-react"
 import Link from "next/link"
 
 export function AppHeader() {
-  const { user, logout } = useAuth()
+  const { user, logout, isImpersonating, impersonatedUserEmail, endImpersonation } = useAuth()
   const router = useRouter()
 
   const handleLogout = () => {
     logout()
     router.push("/")
+  }
+
+  const handleBackToAdmin = () => {
+    endImpersonation()
+    router.push("/admin")
   }
 
   if (!user) return null
@@ -48,6 +53,18 @@ export function AppHeader() {
         </nav>
 
         <div className="flex items-center gap-4">
+          {isImpersonating && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBackToAdmin}
+              className="h-8 gap-1.5 border-purple-500/40 text-purple-300 hover:text-white hover:bg-purple-800/40"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Back to Admin
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
