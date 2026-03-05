@@ -1048,3 +1048,101 @@ class TestWaitForDownloadRetryTolerance:
                 "dl_test", timeout=10, poll_interval=0.01,
             )
 
+
+class TestCheckYoutube:
+    """Tests for FlacfetchClient.check_youtube()."""
+
+    @pytest.mark.asyncio
+    async def test_check_youtube_available(self):
+        """Should return availability info for available video."""
+        client = FlacfetchClient(base_url="http://test:8080", api_key="key")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "available": True,
+            "video_id": "dQw4w9WgXcQ",
+            "title": "Rick Astley - Never Gonna Give You Up",
+            "error": None,
+            "is_geo_restricted": False,
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as mock_class:
+            mock_http = AsyncMock()
+            mock_http.post = AsyncMock(return_value=mock_response)
+            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+            mock_http.__aexit__ = AsyncMock(return_value=None)
+            mock_class.return_value = mock_http
+
+            result = await client.check_youtube("https://youtube.com/watch?v=dQw4w9WgXcQ")
+
+            assert result["available"] is True
+            assert result["video_id"] == "dQw4w9WgXcQ"
+            mock_http.post.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_check_youtube_geo_restricted(self):
+        """Should return geo-restriction info for blocked video."""
+        client = FlacfetchClient(base_url="http://test:8080", api_key="key")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "available": False,
+            "video_id": "-yV25PrHglw",
+            "title": None,
+            "error": "This YouTube video is unavailable.",
+            "is_geo_restricted": True,
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as mock_class:
+            mock_http = AsyncMock()
+            mock_http.post = AsyncMock(return_value=mock_response)
+            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+            mock_http.__aexit__ = AsyncMock(return_value=None)
+            mock_class.return_value = mock_http
+
+            result = await client.check_youtube("-yV25PrHglw")
+
+            assert result["available"] is False
+            assert result["is_geo_restricted"] is True
+
+    @pytest.mark.asyncio
+    async def test_check_youtube_network_error(self):
+        """Should raise FlacfetchServiceError on network error."""
+        client = FlacfetchClient(base_url="http://test:8080", api_key="key")
+
+        with patch("httpx.AsyncClient") as mock_class:
+            mock_http = AsyncMock()
+            mock_http.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
+            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+            mock_http.__aexit__ = AsyncMock(return_value=None)
+            mock_class.return_value = mock_http
+
+            with pytest.raises(FlacfetchServiceError, match="YouTube availability check failed"):
+                await client.check_youtube("some-id")
+
+    @pytest.mark.asyncio
+    async def test_check_youtube_http_error(self):
+        """Should raise FlacfetchServiceError on HTTP error."""
+        client = FlacfetchClient(base_url="http://test:8080", api_key="key")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Server Error", request=MagicMock(), response=mock_response
+        )
+
+        with patch("httpx.AsyncClient") as mock_class:
+            mock_http = AsyncMock()
+            mock_http.post = AsyncMock(return_value=mock_response)
+            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+            mock_http.__aexit__ = AsyncMock(return_value=None)
+            mock_class.return_value = mock_http
+
+            with pytest.raises(FlacfetchServiceError, match="YouTube availability check failed"):
+                await client.check_youtube("some-id")
+

@@ -1572,6 +1572,32 @@ async def create_job_from_url(
                 detail="Invalid URL. Please provide a valid YouTube, Vimeo, SoundCloud, or other supported video URL."
             )
 
+        # For YouTube URLs, check availability before creating the job
+        # This catches geo-restricted, private, and removed videos early
+        if _is_youtube_url(body.url):
+            youtube_service = get_youtube_download_service()
+            availability = await youtube_service.check_availability(body.url)
+
+            if availability and not availability.get("available"):
+                error_msg = availability.get("error", "This video is not available")
+
+                if availability.get("is_geo_restricted"):
+                    detail = (
+                        "This YouTube video is not available in our server's region. "
+                        "Videos that are restricted to certain countries cannot be downloaded. "
+                        "Try using a different source for this song."
+                    )
+                elif availability.get("is_private"):
+                    detail = "This YouTube video is private and cannot be downloaded."
+                elif availability.get("is_removed"):
+                    detail = "This YouTube video has been removed and cannot be downloaded."
+                elif availability.get("is_age_restricted"):
+                    detail = "This YouTube video is age-restricted and cannot be downloaded."
+                else:
+                    detail = f"This YouTube video is unavailable: {error_msg}"
+
+                raise HTTPException(status_code=400, detail=detail)
+
         # Apply default distribution settings from environment if not provided
         dist = get_effective_distribution_settings(
             dropbox_path=body.dropbox_path,

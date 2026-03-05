@@ -68,6 +68,36 @@ class YouTubeDownloadService:
         """Check if remote flacfetch is configured."""
         return self._flacfetch_client is not None
 
+    async def check_availability(self, url: str) -> Optional[dict]:
+        """
+        Check if a YouTube video is available for download.
+
+        Uses the flacfetch /check-youtube endpoint to detect geo-restrictions,
+        private/removed videos, etc. before creating a job.
+
+        Returns:
+            Check result dict if check succeeds, None if check can't be
+            performed (no remote configured, network error, etc.).
+            Callers should treat None as "unknown, proceed anyway".
+        """
+        if not self._flacfetch_client:
+            return None
+
+        video_id = self._extract_video_id(url)
+        if not video_id:
+            return None
+
+        try:
+            result = await self._flacfetch_client.check_youtube(url)
+            logger.info(
+                f"YouTube availability check for {video_id}: "
+                f"available={result.get('available')}"
+            )
+            return result
+        except FlacfetchServiceError as e:
+            logger.warning(f"YouTube availability check failed for {video_id}, proceeding anyway: {e}")
+            return None
+
     async def download(
         self,
         url: str,

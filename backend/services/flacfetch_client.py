@@ -664,6 +664,49 @@ class FlacfetchClient:
                 f"Clear all cache failed: {e.response.status_code} - {e.response.text}"
             )
 
+    # =========================================================================
+    # YouTube Availability Check
+    # =========================================================================
+
+    async def check_youtube(self, url: str) -> Dict[str, Any]:
+        """
+        Check if a YouTube video is available for download from this server's location.
+
+        Calls the flacfetch /check-youtube endpoint which uses yt-dlp to detect
+        geo-restrictions, private/removed videos, and other unavailability reasons.
+
+        Args:
+            url: YouTube video URL or video ID
+
+        Returns:
+            Dict with keys: available, video_id, title, error,
+            is_geo_restricted, is_age_restricted, is_private, is_removed
+
+        Raises:
+            FlacfetchServiceError: On request failure
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    f"{self.base_url}/check-youtube",
+                    headers=self._headers(),
+                    json={"url": url},
+                    timeout=15,
+                )
+                resp.raise_for_status()
+                return resp.json()
+
+        except httpx.RequestError as e:
+            raise FlacfetchServiceError(f"YouTube availability check failed: {_format_httpx_error(e)}")
+        except httpx.HTTPStatusError as e:
+            raise FlacfetchServiceError(
+                f"YouTube availability check failed: {e.response.status_code} - {e.response.text}"
+            )
+
+    # =========================================================================
+    # Cache Management
+    # =========================================================================
+
     async def get_cache_stats(self) -> Dict[str, Any]:
         """
         Get statistics about the cache.

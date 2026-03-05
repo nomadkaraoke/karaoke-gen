@@ -8,6 +8,7 @@ import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from backend.services.flacfetch_client import FlacfetchServiceError
 from backend.services.youtube_download_service import (
     YouTubeDownloadService,
     YouTubeDownloadError,
@@ -375,3 +376,82 @@ class TestYouTubeDownloadServiceIntegration:
             # Should contain artist and title parts
             assert 'Artist' in output_filename
             assert 'Title' in output_filename
+
+
+class TestCheckAvailability:
+    """Tests for YouTubeDownloadService.check_availability()."""
+
+    def setup_method(self):
+        """Reset singleton before each test."""
+        reset_youtube_download_service()
+
+    @pytest.mark.asyncio
+    async def test_returns_result_when_available(self):
+        """Should return availability result for available video."""
+        mock_client = AsyncMock()
+        mock_client.check_youtube = AsyncMock(return_value={
+            "available": True,
+            "video_id": "dQw4w9WgXcQ",
+            "title": "Test Video",
+        })
+
+        with patch("backend.services.youtube_download_service.get_flacfetch_client", return_value=mock_client):
+            service = YouTubeDownloadService()
+            result = await service.check_availability("https://youtube.com/watch?v=dQw4w9WgXcQ")
+
+        assert result is not None
+        assert result["available"] is True
+
+    @pytest.mark.asyncio
+    async def test_returns_result_when_geo_restricted(self):
+        """Should return availability result for geo-restricted video."""
+        mock_client = AsyncMock()
+        mock_client.check_youtube = AsyncMock(return_value={
+            "available": False,
+            "video_id": "-yV25PrHglw",
+            "is_geo_restricted": True,
+            "error": "Not available in your region",
+        })
+
+        with patch("backend.services.youtube_download_service.get_flacfetch_client", return_value=mock_client):
+            service = YouTubeDownloadService()
+            result = await service.check_availability("https://youtube.com/watch?v=-yV25PrHglw")
+
+        assert result is not None
+        assert result["available"] is False
+        assert result["is_geo_restricted"] is True
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_remote_not_configured(self):
+        """Should return None when no remote flacfetch configured."""
+        with patch("backend.services.youtube_download_service.get_flacfetch_client", return_value=None):
+            service = YouTubeDownloadService()
+            result = await service.check_availability("https://youtube.com/watch?v=dQw4w9WgXcQ")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_network_error(self):
+        """Should return None on network error (graceful degradation)."""
+        mock_client = AsyncMock()
+        mock_client.check_youtube = AsyncMock(
+            side_effect=FlacfetchServiceError("Connection refused")
+        )
+
+        with patch("backend.services.youtube_download_service.get_flacfetch_client", return_value=mock_client):
+            service = YouTubeDownloadService()
+            result = await service.check_availability("https://youtube.com/watch?v=dQw4w9WgXcQ")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_invalid_url(self):
+        """Should return None for URLs that don't parse as YouTube."""
+        mock_client = AsyncMock()
+
+        with patch("backend.services.youtube_download_service.get_flacfetch_client", return_value=mock_client):
+            service = YouTubeDownloadService()
+            result = await service.check_availability("https://not-youtube.com/video")
+
+        assert result is None
+        mock_client.check_youtube.assert_not_called()
