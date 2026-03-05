@@ -448,9 +448,13 @@ def create_from_search_client(mock_job_manager_cfs):
     def mock_jm_factory(*args, **kwargs):
         return mock_job_manager_cfs
 
+    mock_worker_service = AsyncMock()
+    mock_worker_service.trigger_audio_download_worker.return_value = True
+
     with patch("backend.api.routes.jobs.job_manager", mock_job_manager_cfs), \
          patch("backend.api.routes.jobs.FirestoreService", return_value=mock_firestore), \
          patch("backend.api.routes.jobs.get_theme_service", return_value=mock_theme_service), \
+         patch("backend.api.routes.jobs.get_worker_service", return_value=mock_worker_service), \
          patch("backend.api.routes.audio_search._validate_and_prepare_selection"), \
          patch("backend.api.routes.audio_search._download_audio_and_trigger_workers"), \
          patch("backend.api.routes.audio_search.extract_request_metadata", return_value={}), \
@@ -820,9 +824,13 @@ class TestCreateJobFromSearch:
         def mock_jm_factory(*args, **kwargs):
             return mock_job_manager_cfs
 
+        mock_worker_service = AsyncMock()
+        mock_worker_service.trigger_audio_download_worker.return_value = True
+
         with patch("backend.api.routes.jobs.job_manager", mock_job_manager_cfs), \
              patch("backend.api.routes.jobs.FirestoreService", return_value=mock_firestore), \
              patch("backend.api.routes.jobs.get_theme_service", return_value=mock_theme_service), \
+             patch("backend.api.routes.jobs.get_worker_service", return_value=mock_worker_service), \
              patch("backend.api.routes.audio_search._validate_and_prepare_selection"), \
              patch("backend.api.routes.audio_search._download_audio_and_trigger_workers"), \
              patch("backend.api.routes.audio_search.extract_request_metadata", return_value={}), \
