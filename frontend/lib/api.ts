@@ -2022,7 +2022,92 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  async listEditReviews(params?: {
+    limit?: number;
+    offset?: number;
+    exclude_test?: boolean;
+    search?: string;
+  }): Promise<EditReviewListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
+    if (params?.search) searchParams.set('search', params.search);
+    const url = `${API_BASE_URL}/api/admin/edit-reviews${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async getEditReview(jobId: string): Promise<EditReviewDetail> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/edit-reviews/${encodeURIComponent(jobId)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
 };
+
+export interface EditReviewSummary {
+  job_id: string;
+  artist: string;
+  title: string;
+  user_email: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+  edit_log_session?: string;
+  edit_log_path?: string;
+  has_corrections_updated: boolean;
+}
+
+export interface EditReviewListResponse {
+  reviews: EditReviewSummary[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface AdminEditLogEntry {
+  id: string;
+  timestamp: string;
+  operation: string;
+  segment_id?: string;
+  segment_index?: number;
+  word_ids_before?: string[];
+  word_ids_after?: string[];
+  text_before: string;
+  text_after: string;
+  details?: Record<string, unknown>;
+  feedback?: {
+    reason: string;
+    timestamp: string;
+  };
+}
+
+export interface AdminEditLog {
+  session_id: string;
+  job_id: string;
+  audio_hash?: string;
+  started_at?: string;
+  entries: AdminEditLogEntry[];
+}
+
+export interface EditReviewDetail {
+  job: {
+    job_id: string;
+    artist: string;
+    title: string;
+    user_email: string;
+    status: string;
+    created_at?: string;
+    updated_at?: string;
+  };
+  original_corrections: Record<string, unknown> | null;
+  updated_corrections: Record<string, unknown> | null;
+  edit_log: AdminEditLog | null;
+  annotations: Record<string, unknown> | null;
+  audio_url: string | null;
+}
 
 // Types for admin completion message API
 export interface CompletionMessageResponse {

@@ -11,6 +11,7 @@ import {
   Settings,
   Search,
   ShieldAlert,
+  BookOpenCheck,
 } from "lucide-react"
 
 import {
@@ -57,6 +58,11 @@ const navItems = [
     title: "Rate Limits",
     href: "/admin/rate-limits",
     icon: ShieldAlert,
+  },
+  {
+    title: "Edit Reviews",
+    href: "/admin/edit-reviews",
+    icon: BookOpenCheck,
   },
 ]
 

@@ -3043,3 +3043,199 @@ async def backfill_user_stats(
             updated += 1
 
     return {"status": "success", "users_checked": len(users_docs), "users_updated": updated}
+
+
+# =============================================================================
+# Edit Review Endpoints
+# =============================================================================
+
+class EditReviewSummary(BaseModel):
+    job_id: str
+    artist: str
+    title: str
+    user_email: str
+    status: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    edit_log_session: Optional[str] = None
+    edit_log_path: Optional[str] = None
+    has_corrections_updated: bool = False
+
+
+class EditReviewListResponse(BaseModel):
+    reviews: List[EditReviewSummary]
+    total: int
+    has_more: bool
+
+
+@router.get("/edit-reviews", response_model=EditReviewListResponse)
+def list_edit_reviews(
+    limit: int = 50,
+    offset: int = 0,
+    exclude_test: bool = False,
+    search: Optional[str] = None,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """List jobs that have completed lyrics review with edit log data."""
+    user_service = get_user_service()
+    db = user_service.db
+
+    STREAM_LIMIT = 10000
+    reviews = []
+    streamed = 0
+
+    for doc in db.collection("jobs").limit(STREAM_LIMIT).stream():
+        streamed += 1
+        data = doc.to_dict()
+
+        # Must have an edit log path
+        state_data = data.get("state_data") or {}
+        edit_log_path = state_data.get("last_edit_log_path")
+        if not edit_log_path:
+            continue
+
+        email = data.get("user_email", "")
+
+        # Filter test emails
+        if exclude_test and is_test_email(email):
+            continue
+
+        artist = data.get("artist", "")
+        title = data.get("title", "")
+
+        # Search filter
+        if search:
+            search_lower = search.lower()
+            if (
+                search_lower not in (artist or "").lower()
+                and search_lower not in (title or "").lower()
+                and search_lower not in (email or "").lower()
+            ):
+                continue
+
+        file_urls = data.get("file_urls") or {}
+        has_corrections_updated = bool(
+            file_urls.get("lyrics", {}).get("corrections_updated")
+        )
+
+        created_at = data.get("created_at")
+        updated_at = data.get("updated_at")
+
+        reviews.append(EditReviewSummary(
+            job_id=doc.id,
+            artist=artist or "",
+            title=title or "",
+            user_email=email or "",
+            status=data.get("status", ""),
+            created_at=created_at.isoformat() if created_at else None,
+            updated_at=updated_at.isoformat() if updated_at else None,
+            edit_log_session=state_data.get("last_edit_log_session"),
+            edit_log_path=edit_log_path,
+            has_corrections_updated=has_corrections_updated,
+        ))
+
+    if streamed >= STREAM_LIMIT:
+        logger.warning(f"Edit reviews stream hit limit ({STREAM_LIMIT}), results may be incomplete")
+
+    # Sort by most recently updated (or created) descending
+    reviews.sort(
+        key=lambda r: r.updated_at or r.created_at or "",
+        reverse=True,
+    )
+
+    total = len(reviews)
+    paginated = reviews[offset : offset + limit]
+
+    return EditReviewListResponse(
+        reviews=paginated,
+        total=total,
+        has_more=(offset + limit) < total,
+    )
+
+
+@router.get("/edit-reviews/{job_id}")
+async def get_edit_review_detail(
+    job_id: str,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Get full immutable review snapshot for one job. Read-only, no state mutations."""
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    storage = StorageService()
+
+    # Job metadata
+    job_meta = {
+        "job_id": job.job_id,
+        "artist": job.artist,
+        "title": job.title,
+        "user_email": job.user_email,
+        "status": job.status.value if hasattr(job.status, "value") else str(job.status),
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+    }
+
+    # Load corrections.json (original)
+    original_corrections = None
+    corrections_path = (job.file_urls.get("lyrics") or {}).get("corrections")
+    if corrections_path:
+        try:
+            original_corrections = storage.download_json(corrections_path)
+        except Exception as e:
+            logger.warning(f"Job {job_id}: Could not load original corrections from {corrections_path}: {e}")
+
+    # Load corrections_updated.json
+    updated_corrections = None
+    corrections_updated_path = (job.file_urls.get("lyrics") or {}).get("corrections_updated")
+    if corrections_updated_path:
+        try:
+            updated_corrections = storage.download_json(corrections_updated_path)
+        except Exception as e:
+            logger.warning(f"Job {job_id}: Could not load updated corrections from {corrections_updated_path}: {e}")
+
+    # Load edit log from GCS
+    edit_log = None
+    edit_log_path = (job.state_data or {}).get("last_edit_log_path")
+    if edit_log_path:
+        try:
+            edit_log = storage.download_json(edit_log_path)
+        except Exception as e:
+            logger.warning(f"Job {job_id}: Could not load edit log from {edit_log_path}: {e}")
+
+    # Load annotations
+    annotations = None
+    annotations_path = f"jobs/{job_id}/lyrics/annotations.json"
+    try:
+        if storage.file_exists(annotations_path):
+            annotations = storage.download_json(annotations_path)
+    except Exception as e:
+        logger.warning(f"Job {job_id}: Could not load annotations from {annotations_path}: {e}")
+
+    # Generate signed audio URL
+    audio_url = None
+    audio_gcs_path = (
+        (job.file_urls.get("lyrics") or {}).get("audio")
+        or (job.file_urls.get("stems") or {}).get("lead_vocals")
+        or job.input_media_gcs_path
+    )
+    if audio_gcs_path:
+        try:
+            transcoding = AudioTranscodingService(storage_service=storage)
+            audio_url = await transcoding.get_review_audio_url_async(
+                audio_gcs_path, expiration_minutes=120
+            )
+        except Exception as e:
+            logger.warning(f"Job {job_id}: Could not generate audio URL for {audio_gcs_path}: {e}")
+
+    return {
+        "job": job_meta,
+        "original_corrections": original_corrections,
+        "updated_corrections": updated_corrections,
+        "edit_log": edit_log,
+        "annotations": annotations,
+        "audio_url": audio_url,
+    }
