@@ -851,6 +851,74 @@ class TestStartJobProcessing:
             assert any('lyrics_start' in str(c) for c in call_order)
 
 
+    @pytest.mark.asyncio
+    async def test_skips_audio_worker_when_existing_instrumental(self, job_manager, mock_firestore_service):
+        """Test that audio separation is skipped when job has existing instrumental.
+
+        Jobs with existing_instrumental_gcs_path (e.g. tenant uploads) don't need
+        GPU-powered audio separation. Only lyrics worker should be triggered.
+        """
+        mock_firestore_service.get_job.return_value = Job(
+            job_id="test123",
+            status=JobStatus.PENDING,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            input_media_gcs_path="gs://bucket/audio.mp3",
+            existing_instrumental_gcs_path="uploads/test123/audio/existing_instrumental.mp3"
+        )
+
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+            mock_worker = Mock()
+            mock_worker.trigger_audio_worker = AsyncMock()
+            mock_worker.trigger_lyrics_worker = AsyncMock()
+            mock_get_worker.return_value = mock_worker
+
+            await job_manager.start_job_processing("test123")
+
+            # Audio worker should NOT be triggered
+            mock_worker.trigger_audio_worker.assert_not_called()
+
+            # Lyrics worker should still be triggered
+            mock_worker.trigger_lyrics_worker.assert_called_once_with("test123")
+
+            # audio_complete should be set via update_job (update_state_data calls update_job)
+            update_calls = mock_firestore_service.update_job.call_args_list
+            audio_complete_set = any(
+                call.args[1].get('state_data', {}).get('audio_complete') is True
+                for call in update_calls
+                if len(call.args) > 1 and isinstance(call.args[1], dict)
+            )
+            assert audio_complete_set, "audio_complete should be set to True in state_data"
+
+    @pytest.mark.asyncio
+    async def test_triggers_both_workers_when_no_existing_instrumental(self, job_manager, mock_firestore_service):
+        """Test that both workers are triggered when no existing instrumental.
+
+        Normal jobs (without existing_instrumental_gcs_path) should trigger
+        both audio and lyrics workers in parallel.
+        """
+        mock_firestore_service.get_job.return_value = Job(
+            job_id="test123",
+            status=JobStatus.PENDING,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            input_media_gcs_path="gs://bucket/audio.mp3",
+            existing_instrumental_gcs_path=None  # No existing instrumental
+        )
+
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+            mock_worker = Mock()
+            mock_worker.trigger_audio_worker = AsyncMock()
+            mock_worker.trigger_lyrics_worker = AsyncMock()
+            mock_get_worker.return_value = mock_worker
+
+            await job_manager.start_job_processing("test123")
+
+            # Both workers should be triggered
+            mock_worker.trigger_audio_worker.assert_called_once_with("test123")
+            mock_worker.trigger_lyrics_worker.assert_called_once_with("test123")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 

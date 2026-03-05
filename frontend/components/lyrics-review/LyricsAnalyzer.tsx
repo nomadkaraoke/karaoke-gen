@@ -21,6 +21,7 @@ import {
 } from '@/lib/lyrics-review/types'
 import type { EditLog, EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
 import type { InstrumentalSelectionType } from '@/lib/api'
+import { lyricsReviewApi } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import ReferenceView from './ReferenceView'
 import TranscriptionView from './TranscriptionView'
@@ -87,6 +88,7 @@ export interface LyricsAnalyzerProps {
   audioHash: string
   isLocalMode?: boolean
   jobId?: string
+  hasExistingInstrumental?: boolean
 }
 
 export default function LyricsAnalyzer({
@@ -97,6 +99,7 @@ export default function LyricsAnalyzer({
   audioHash,
   isLocalMode = false,
   jobId,
+  hasExistingInstrumental = false,
 }: LyricsAnalyzerProps) {
   const router = useRouter()
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
@@ -791,8 +794,21 @@ export default function LyricsAnalyzer({
       setIsReviewModalOpen(false)
       setIsSubmitting(false)
 
-      // 4. Navigate to instrumental review
-      if (isLocalMode) {
+      // 4. Navigate to instrumental review (or skip if existing instrumental uploaded)
+      if (hasExistingInstrumental && jobId) {
+        // Job has an instrumental uploaded at creation time — skip instrumental review
+        // Submit with "custom" selection (maps to the uploaded instrumental)
+        toast.success('Lyrics saved! Using uploaded instrumental, generating video...')
+        try {
+          const correctionData = await lyricsReviewApi.getCorrectionData(jobId)
+          await lyricsReviewApi.completeReview(jobId, correctionData, 'custom')
+          setShowSuccess(true)
+          setCountdown(3)
+        } catch (err) {
+          console.error('Failed to complete review with uploaded instrumental:', err)
+          toast.error('Failed to start video generation. Please try again.')
+        }
+      } else if (isLocalMode) {
         // Local mode: Show transition message, navigation handled by browser/server
         toast.success('Lyrics saved! Loading instrumental review...')
         setShowInstrumentalReview(true)
@@ -811,7 +827,7 @@ export default function LyricsAnalyzer({
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId])
+  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental])
 
   // Play segment handler
   const handlePlaySegment = useCallback(

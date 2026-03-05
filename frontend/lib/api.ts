@@ -75,6 +75,7 @@ export interface Job {
   user_email?: string;
   outputs_deleted_at?: string;
   outputs_deleted_by?: string;
+  existing_instrumental_gcs_path?: string;
   // Audio search fields
   audio_search_artist?: string;
   audio_search_title?: string;

@@ -947,14 +947,24 @@ class JobManager:
             message=message
         )
 
-        # Trigger both workers in parallel
+        # Check if audio separation can be skipped
+        # Jobs with an existing instrumental (e.g. tenant uploads) don't need
+        # GPU-powered audio separation — saves 5-10 minutes of processing time
         worker_service = get_worker_service()
-        await asyncio.gather(
-            worker_service.trigger_audio_worker(job_id),
-            worker_service.trigger_lyrics_worker(job_id)
-        )
 
-        logger.info(f"Job {job_id}: Started processing (audio + lyrics workers triggered)")
+        if job.existing_instrumental_gcs_path:
+            logger.info(f"Job {job_id}: Skipping audio separation (existing instrumental provided)")
+            # Mark audio as immediately complete and only trigger lyrics worker
+            self.update_state_data(job_id, 'audio_complete', True)
+            await worker_service.trigger_lyrics_worker(job_id)
+            logger.info(f"Job {job_id}: Started processing (lyrics worker only, audio separation skipped)")
+        else:
+            # Trigger both workers in parallel
+            await asyncio.gather(
+                worker_service.trigger_audio_worker(job_id),
+                worker_service.trigger_lyrics_worker(job_id)
+            )
+            logger.info(f"Job {job_id}: Started processing (audio + lyrics workers triggered)")
 
     def mark_audio_complete(self, job_id: str) -> None:
         """

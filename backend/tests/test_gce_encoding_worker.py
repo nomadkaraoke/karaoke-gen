@@ -163,6 +163,58 @@ class TestInstrumentalSelection:
             assert result.name == "instrumental.flac"
 
 
+class TestExistingInstrumental:
+    """Test that existing (user-uploaded) instrumentals are found correctly."""
+
+    def test_existing_instrumental_found_by_pattern(self, tmp_path):
+        """Test that existing_instrumental file is found when present."""
+        existing = tmp_path / "existing_instrumental.mp3"
+        existing.touch()
+
+        result = find_file(tmp_path, "*existing_instrumental*", "*Instrumental User*")
+        assert result is not None
+        assert "existing_instrumental" in result.name
+
+    def test_instrumental_user_found_by_pattern(self, tmp_path):
+        """Test that Instrumental User file is found when present."""
+        user_file = tmp_path / "Artist - Title (Instrumental User).mp3"
+        user_file.touch()
+
+        result = find_file(tmp_path, "*existing_instrumental*", "*Instrumental User*")
+        assert result is not None
+        assert "Instrumental User" in result.name
+
+    def test_existing_instrumental_takes_priority_over_separated(self, tmp_path):
+        """When existing instrumental is present alongside separated stems,
+        the existing_instrumental config should cause it to be found first.
+
+        This tests the logic flow: if config has existing_instrumental,
+        we search for *existing_instrumental* patterns BEFORE checking
+        instrumental_selection.
+        """
+        # Create both types
+        existing = tmp_path / "existing_instrumental.flac"
+        separated = tmp_path / "instrumental_clean.flac"
+        custom = tmp_path / "custom_instrumental.flac"
+        existing.touch()
+        separated.touch()
+        custom.touch()
+
+        # existing_instrumental pattern should find the right file
+        result = find_file(tmp_path, "*existing_instrumental*", "*Instrumental User*")
+        assert result is not None
+        assert "existing_instrumental" in result.name
+
+    def test_existing_instrumental_not_found_returns_none(self, tmp_path):
+        """When no existing instrumental file exists, find_file returns None."""
+        # Only separated stems exist
+        tmp_path_file = tmp_path / "instrumental_clean.flac"
+        tmp_path_file.touch()
+
+        result = find_file(tmp_path, "*existing_instrumental*", "*Instrumental User*")
+        assert result is None
+
+
 class TestInstrumentalSelectionRegression:
     """Regression tests for instrumental selection bug.
 

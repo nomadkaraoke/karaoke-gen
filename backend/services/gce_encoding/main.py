@@ -370,10 +370,20 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
 
         # Instrumental audio - respect user's selection from encoding config
         instrumental_selection = config.get("instrumental_selection", "clean")
+        existing_instrumental = config.get("existing_instrumental")
         logger.info(f"Instrumental selection from config: {instrumental_selection}")
+        if existing_instrumental:
+            logger.info(f"Existing instrumental from config: {existing_instrumental}")
 
-        if instrumental_selection == "custom":
-            # User uploaded a custom instrumental or created one via mute-region editing
+        if existing_instrumental:
+            # User-provided instrumental uploaded at job creation
+            # Downloaded to work_dir by process_job before run_encoding is called
+            instrumental = find_file(
+                work_dir,
+                "*existing_instrumental*", "*Instrumental User*",
+            )
+        elif instrumental_selection == "custom":
+            # Custom instrumental created via mute-region editing in review UI
             instrumental = find_file(
                 work_dir,
                 "*custom_instrumental*.flac", "*Instrumental Custom*.flac",
@@ -491,6 +501,17 @@ async def process_job(job_id: str, request: EncodeRequest):
             jobs[job_id]["progress"] = 5
             logger.info(f"Downloading from {request.input_gcs_path}")
             download_from_gcs(request.input_gcs_path, work_dir)
+
+            # Download existing instrumental if present (stored under uploads/, not jobs/)
+            existing_instrumental = request.encoding_config.get("existing_instrumental") if request.encoding_config else None
+            if existing_instrumental:
+                # Extract bucket name from input_gcs_path (gs://bucket/jobs/...)
+                bucket_name = request.input_gcs_path.replace("gs://", "").split("/", 1)[0]
+                ext = Path(existing_instrumental).suffix.lower()
+                dest = work_dir / f"existing_instrumental{ext}"
+                gcs_uri = f"gs://{bucket_name}/{existing_instrumental}"
+                logger.info(f"Downloading existing instrumental: {gcs_uri} -> {dest}")
+                download_single_file_from_gcs(gcs_uri, dest)
 
             # Run encoding in thread pool (CPU-bound)
             loop = asyncio.get_event_loop()

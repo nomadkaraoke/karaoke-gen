@@ -421,6 +421,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
           audioHash={correctionData.metadata?.audio_hash || job.audio_hash || job.job_id}
           isLocalMode={isLocalMode}
           jobId={job.job_id}
+          hasExistingInstrumental={!!job.existing_instrumental_gcs_path}
         />
       </main>
     </div>
