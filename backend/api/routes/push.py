@@ -11,7 +11,7 @@ Provides endpoints for managing Web Push notification subscriptions:
 import logging
 from typing import Optional, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.config import get_settings
@@ -37,6 +37,7 @@ class SubscribeRequest(BaseModel):
     endpoint: str
     keys: Dict[str, str]  # p256dh and auth
     device_name: Optional[str] = None
+    tenant_id: Optional[str] = None  # Tenant scope for notification isolation
 
 
 class SubscribeResponse(BaseModel):
@@ -111,7 +112,8 @@ async def get_vapid_public_key():
 
 @router.post("/subscribe", response_model=SubscribeResponse)
 async def subscribe_push(
-    request: SubscribeRequest,
+    subscribe_request: SubscribeRequest,
+    http_request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ):
     """
@@ -119,6 +121,11 @@ async def subscribe_push(
 
     Requires authentication. Users can have up to 5 subscriptions
     (configurable via MAX_PUSH_SUBSCRIPTIONS_PER_USER).
+
+    Subscriptions are scoped by tenant_id to prevent cross-tenant
+    notification leakage. The tenant is resolved from:
+    1. Request body tenant_id field (explicit from frontend)
+    2. Tenant middleware (X-Tenant-ID header or subdomain detection)
     """
     settings = get_settings()
     if not settings.enable_push_notifications:
@@ -130,14 +137,20 @@ async def subscribe_push(
     push_service = get_push_notification_service()
 
     # Validate keys
-    if "p256dh" not in request.keys or "auth" not in request.keys:
+    if "p256dh" not in subscribe_request.keys or "auth" not in subscribe_request.keys:
         raise HTTPException(status_code=400, detail="Missing required keys (p256dh, auth)")
+
+    # Resolve tenant_id: prefer explicit from body, fall back to middleware
+    tenant_id = subscribe_request.tenant_id
+    if tenant_id is None:
+        tenant_id = getattr(http_request.state, "tenant_id", None)
 
     success = await push_service.add_subscription(
         user_email=auth_result.user_email,
-        endpoint=request.endpoint,
-        keys=request.keys,
-        device_name=request.device_name
+        endpoint=subscribe_request.endpoint,
+        keys=subscribe_request.keys,
+        device_name=subscribe_request.device_name,
+        tenant_id=tenant_id or None,
     )
 
     if not success:

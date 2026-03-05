@@ -1178,7 +1178,8 @@ export const api = {
   async subscribePush(
     endpoint: string,
     keys: { p256dh: string; auth: string },
-    deviceName?: string
+    deviceName?: string,
+    tenantId?: string | null
   ): Promise<{ status: string; message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/push/subscribe`, {
       method: 'POST',
@@ -1190,6 +1191,7 @@ export const api = {
         endpoint,
         keys,
         device_name: deviceName,
+        tenant_id: tenantId || null,
       }),
     });
     return handleResponse(response);

@@ -1,10 +1,10 @@
 """
 Tests for whitelabel tenant separation (magic link redirect fix, frontend URL, verify response,
-tenant-scoped tokens).
+tenant-scoped tokens, push notification isolation).
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch, AsyncMock
 
 from backend.models.tenant import TenantConfig, TenantAuth, TenantBranding
 from backend.models.user import VerifyMagicLinkResponse, UserPublic
@@ -348,3 +348,151 @@ class TestRequireAuthTenantOverride:
 
         assert result.tenant_id is None
         assert request.state.tenant_id == "hostname-tenant"
+
+
+class TestPushNotificationTenantIsolation:
+    """Tests that push notifications respect tenant boundaries end-to-end.
+
+    These tests verify the full flow from job_manager -> push_notification_service,
+    ensuring that tenant_id is correctly propagated and used for filtering.
+    """
+
+    @pytest.fixture
+    def push_service(self):
+        """Create PushNotificationService with mocked dependencies."""
+        mock_settings = Mock()
+        mock_settings.enable_push_notifications = True
+        mock_settings.max_push_subscriptions_per_user = 5
+        mock_settings.vapid_subject = "mailto:test@example.com"
+        mock_settings.get_secret = Mock(side_effect=lambda x: {
+            "vapid-public-key": "test-public-key",
+            "vapid-private-key": "test-private-key"
+        }.get(x))
+
+        mock_db = Mock()
+
+        with patch('backend.services.push_notification_service.get_settings', return_value=mock_settings):
+            from backend.services.push_notification_service import PushNotificationService
+            service = PushNotificationService(db=mock_db)
+            return service
+
+    def _setup_multi_tenant_user(self, push_service):
+        """Set up a user with subscriptions across multiple tenants."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/consumer",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": None,
+                },
+                {
+                    "endpoint": "https://push.example.com/vocalstar",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "vocalstar",
+                },
+                {
+                    "endpoint": "https://push.example.com/singa",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "singa",
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+    @pytest.mark.asyncio
+    async def test_job_manager_passes_tenant_id_in_job_dict(self):
+        """JobManager._send_push_notification includes tenant_id in job dict."""
+        from backend.services.job_manager import JobManager
+
+        job = Mock()
+        job.job_id = "job-123"
+        job.user_email = "user@test.com"
+        job.artist = "Artist"
+        job.title = "Song"
+        job.tenant_id = "vocalstar"
+
+        captured_job_dict = {}
+
+        async def capture_completion(job_dict):
+            captured_job_dict.update(job_dict)
+            return 1
+
+        with patch('backend.services.push_notification_service.get_push_notification_service') as mock_get:
+            mock_service = Mock()
+            mock_service.is_enabled.return_value = True
+            mock_service.send_completion_notification = AsyncMock(side_effect=capture_completion)
+            mock_get.return_value = mock_service
+
+            manager = JobManager.__new__(JobManager)
+            manager._send_push_notification(job, "complete")
+
+            # Give the async task a moment to execute
+            import asyncio
+            await asyncio.sleep(0.1)
+
+            assert captured_job_dict.get("tenant_id") == "vocalstar"
+
+    @pytest.mark.asyncio
+    async def test_consumer_job_never_notifies_tenant_subscriptions(self, push_service):
+        """A consumer portal job must never trigger notifications on tenant subscriptions."""
+        self._setup_multi_tenant_user(push_service)
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            job = {
+                "job_id": "consumer-job-1",
+                "user_email": "user@test.com",
+                "artist": "Artist",
+                "title": "Song",
+                # No tenant_id = consumer job
+            }
+
+            await push_service.send_completion_notification(job)
+
+            # Should only send to consumer endpoint
+            assert mock_webpush.call_count == 1
+            sent_endpoint = mock_webpush.call_args[1]["subscription_info"]["endpoint"]
+            assert sent_endpoint == "https://push.example.com/consumer"
+
+    @pytest.mark.asyncio
+    async def test_tenant_job_never_notifies_consumer_subscriptions(self, push_service):
+        """A tenant job must never trigger notifications on consumer subscriptions."""
+        self._setup_multi_tenant_user(push_service)
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            job = {
+                "job_id": "vocalstar-job-1",
+                "user_email": "user@test.com",
+                "artist": "Artist",
+                "title": "Song",
+                "tenant_id": "vocalstar",
+            }
+
+            await push_service.send_completion_notification(job)
+
+            # Should only send to vocalstar endpoint
+            assert mock_webpush.call_count == 1
+            sent_endpoint = mock_webpush.call_args[1]["subscription_info"]["endpoint"]
+            assert sent_endpoint == "https://push.example.com/vocalstar"
+
+    @pytest.mark.asyncio
+    async def test_tenant_a_never_notifies_tenant_b(self, push_service):
+        """Tenant A job must never trigger notifications on Tenant B subscriptions."""
+        self._setup_multi_tenant_user(push_service)
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            job = {
+                "job_id": "singa-job-1",
+                "user_email": "user@test.com",
+                "artist": "Artist",
+                "title": "Song",
+                "tenant_id": "singa",
+            }
+
+            await push_service.send_blocking_notification(job, "lyrics")
+
+            # Should only send to singa endpoint, never vocalstar or consumer
+            assert mock_webpush.call_count == 1
+            sent_endpoint = mock_webpush.call_args[1]["subscription_info"]["endpoint"]
+            assert sent_endpoint == "https://push.example.com/singa"

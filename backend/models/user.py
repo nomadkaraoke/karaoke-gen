@@ -36,10 +36,15 @@ class PushSubscription(BaseModel):
 
     Stores the push subscription endpoint and encryption keys needed
     to send push notifications to the user's browser/device.
+
+    Subscriptions are scoped by tenant_id to prevent cross-tenant
+    notification leakage (e.g., a consumer job notification appearing
+    on a tenant portal's service worker).
     """
     endpoint: str  # Push service endpoint URL
     keys: Dict[str, str]  # p256dh and auth keys for encryption
     device_name: Optional[str] = None  # e.g., "iPhone", "Chrome on Windows"
+    tenant_id: Optional[str] = None  # Tenant scope (None = consumer/default portal)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_used_at: Optional[datetime] = None  # Last time a notification was sent
 

@@ -341,6 +341,404 @@ class TestSubscriptionManagement:
         assert "keys" not in result[0]
 
 
+class TestTenantIsolation:
+    """Tests for tenant-scoped push notification isolation."""
+
+    @pytest.mark.asyncio
+    async def test_send_push_filters_by_tenant(self, push_service):
+        """send_push only sends to subscriptions matching the target tenant."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/consumer",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": None,
+                },
+                {
+                    "endpoint": "https://push.example.com/vocalstar",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "vocalstar",
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            # Send to consumer portal (tenant_id=None)
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id=None
+            )
+            assert result == 1
+            assert mock_webpush.call_args[1]["subscription_info"]["endpoint"] == \
+                "https://push.example.com/consumer"
+
+    @pytest.mark.asyncio
+    async def test_send_push_filters_by_tenant_name(self, push_service):
+        """send_push only sends to subscriptions for the specified tenant."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/consumer",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": None,
+                },
+                {
+                    "endpoint": "https://push.example.com/vocalstar",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "vocalstar",
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            # Send to vocalstar tenant
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id="vocalstar"
+            )
+            assert result == 1
+            assert mock_webpush.call_args[1]["subscription_info"]["endpoint"] == \
+                "https://push.example.com/vocalstar"
+
+    @pytest.mark.asyncio
+    async def test_send_push_no_cross_tenant_leakage(self, push_service):
+        """send_push never sends consumer notifications to tenant subscriptions."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/vocalstar",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "vocalstar",
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            # Consumer job should NOT send to vocalstar subscription
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id=None
+            )
+            assert result == 0
+            mock_webpush.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_send_push_legacy_subscriptions_for_consumer(self, push_service):
+        """Legacy subscriptions (no tenant_id) are used for consumer notifications."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/legacy",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    # No tenant_id field at all (legacy)
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id=None
+            )
+            assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_send_push_legacy_subscriptions_not_for_tenant(self, push_service):
+        """Legacy subscriptions (no tenant_id) are NOT used for tenant notifications."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/legacy",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    # No tenant_id field (legacy)
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id="vocalstar"
+            )
+            assert result == 0
+            mock_webpush.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_send_push_empty_string_tenant_matches_none(self, push_service):
+        """Empty string tenant_id is treated as None (consumer portal)."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/consumer",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": None,
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            # Empty string tenant_id should match None
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id=""
+            )
+            assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_add_subscription_stores_tenant_id(self, push_service):
+        """add_subscription stores tenant_id on the subscription."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {"push_subscriptions": []}
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        result = await push_service.add_subscription(
+            "test@example.com",
+            "https://push.example.com/endpoint",
+            {"p256dh": "key", "auth": "auth"},
+            "Test Device",
+            tenant_id="vocalstar"
+        )
+
+        assert result is True
+        update_call = push_service.db.collection.return_value.document.return_value.update.call_args
+        subs = update_call[0][0]["push_subscriptions"]
+        assert len(subs) == 1
+        assert subs[0]["tenant_id"] == "vocalstar"
+
+    @pytest.mark.asyncio
+    async def test_completion_notification_uses_job_tenant(self, push_service):
+        """send_completion_notification passes job's tenant_id to send_push."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [{
+                "endpoint": "https://push.example.com/endpoint",
+                "keys": {"p256dh": "key", "auth": "auth"},
+                "tenant_id": "vocalstar",
+            }]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        job = {
+            "job_id": "test-job-123",
+            "user_email": "test@example.com",
+            "artist": "Test Artist",
+            "title": "Test Song",
+            "tenant_id": "vocalstar",
+        }
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            result = await push_service.send_completion_notification(job)
+            assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_blocking_notification_uses_job_tenant(self, push_service):
+        """send_blocking_notification passes job's tenant_id to send_push."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [{
+                "endpoint": "https://push.example.com/endpoint",
+                "keys": {"p256dh": "key", "auth": "auth"},
+                "tenant_id": "vocalstar",
+            }]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        job = {
+            "job_id": "test-job-123",
+            "user_email": "test@example.com",
+            "artist": "Test Artist",
+            "title": "Test Song",
+            "tenant_id": "vocalstar",
+        }
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            result = await push_service.send_blocking_notification(job, "lyrics")
+            assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_multi_tenant_user_receives_correct_notifications(self, push_service):
+        """User subscribed on both consumer and tenant portals gets isolated notifications."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/consumer-device",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": None,
+                },
+                {
+                    "endpoint": "https://push.example.com/vocalstar-device",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "vocalstar",
+                },
+                {
+                    "endpoint": "https://push.example.com/singa-device",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "singa",
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            # Consumer job -> only consumer device
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id=None
+            )
+            assert result == 1
+            assert mock_webpush.call_args[1]["subscription_info"]["endpoint"] == \
+                "https://push.example.com/consumer-device"
+
+            mock_webpush.reset_mock()
+
+            # Vocalstar job -> only vocalstar device
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id="vocalstar"
+            )
+            assert result == 1
+            assert mock_webpush.call_args[1]["subscription_info"]["endpoint"] == \
+                "https://push.example.com/vocalstar-device"
+
+            mock_webpush.reset_mock()
+
+            # Singa job -> only singa device
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id="singa"
+            )
+            assert result == 1
+            assert mock_webpush.call_args[1]["subscription_info"]["endpoint"] == \
+                "https://push.example.com/singa-device"
+
+    @pytest.mark.asyncio
+    async def test_add_subscription_replaces_endpoint_updates_tenant(self, push_service):
+        """Re-subscribing same endpoint with different tenant_id updates the tenant."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [{
+                "endpoint": "https://push.example.com/endpoint",
+                "keys": {"p256dh": "old-key", "auth": "old-auth"},
+                "tenant_id": None,
+                "device_name": "Chrome",
+                "created_at": "2024-01-01T00:00:00Z",
+            }]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        result = await push_service.add_subscription(
+            "test@example.com",
+            "https://push.example.com/endpoint",
+            {"p256dh": "new-key", "auth": "new-auth"},
+            "Chrome",
+            tenant_id="vocalstar"
+        )
+
+        assert result is True
+        update_call = push_service.db.collection.return_value.document.return_value.update.call_args
+        subs = update_call[0][0]["push_subscriptions"]
+        assert len(subs) == 1
+        assert subs[0]["tenant_id"] == "vocalstar"
+
+    @pytest.mark.asyncio
+    async def test_add_subscription_without_tenant_stores_none(self, push_service):
+        """add_subscription with no tenant_id stores None (consumer portal)."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {"push_subscriptions": []}
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        result = await push_service.add_subscription(
+            "test@example.com",
+            "https://push.example.com/endpoint",
+            {"p256dh": "key", "auth": "auth"},
+            "Test Device"
+        )
+
+        assert result is True
+        update_call = push_service.db.collection.return_value.document.return_value.update.call_args
+        subs = update_call[0][0]["push_subscriptions"]
+        assert subs[0]["tenant_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_completion_notification_consumer_job_no_tenant(self, push_service):
+        """Consumer job (no tenant_id) only notifies consumer subscriptions."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/consumer",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": None,
+                },
+                {
+                    "endpoint": "https://push.example.com/vocalstar",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "vocalstar",
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        job = {
+            "job_id": "job-456",
+            "user_email": "test@example.com",
+            "artist": "Artist",
+            "title": "Song",
+            # No tenant_id -> consumer job
+        }
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            result = await push_service.send_completion_notification(job)
+            assert result == 1
+            assert mock_webpush.call_args[1]["subscription_info"]["endpoint"] == \
+                "https://push.example.com/consumer"
+
+    @pytest.mark.asyncio
+    async def test_send_push_unknown_tenant_sends_nothing(self, push_service):
+        """Sending to a tenant with no matching subscriptions returns 0."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [
+                {
+                    "endpoint": "https://push.example.com/consumer",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": None,
+                },
+                {
+                    "endpoint": "https://push.example.com/vocalstar",
+                    "keys": {"p256dh": "key", "auth": "auth"},
+                    "tenant_id": "vocalstar",
+                },
+            ]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            result = await push_service.send_push(
+                "test@example.com", "Title", "Body", tenant_id="unknown-tenant"
+            )
+            assert result == 0
+            mock_webpush.assert_not_called()
+
+
 class TestNotificationFormatting:
     """Tests for blocking and completion notification formatting."""
 
@@ -352,7 +750,8 @@ class TestNotificationFormatting:
         mock_doc.to_dict.return_value = {
             "push_subscriptions": [{
                 "endpoint": "https://push.example.com/endpoint",
-                "keys": {"p256dh": "key", "auth": "auth"}
+                "keys": {"p256dh": "key", "auth": "auth"},
+                "tenant_id": None,
             }]
         }
         push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
@@ -361,7 +760,7 @@ class TestNotificationFormatting:
             "job_id": "test-job-123",
             "user_email": "test@example.com",
             "artist": "Test Artist",
-            "title": "Test Song"
+            "title": "Test Song",
         }
 
         with patch('backend.services.push_notification_service.webpush') as mock_webpush:
@@ -383,7 +782,8 @@ class TestNotificationFormatting:
         mock_doc.to_dict.return_value = {
             "push_subscriptions": [{
                 "endpoint": "https://push.example.com/endpoint",
-                "keys": {"p256dh": "key", "auth": "auth"}
+                "keys": {"p256dh": "key", "auth": "auth"},
+                "tenant_id": None,
             }]
         }
         push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
@@ -392,7 +792,7 @@ class TestNotificationFormatting:
             "job_id": "test-job-123",
             "user_email": "test@example.com",
             "artist": "Test Artist",
-            "title": "Test Song"
+            "title": "Test Song",
         }
 
         with patch('backend.services.push_notification_service.webpush') as mock_webpush:
@@ -412,7 +812,8 @@ class TestNotificationFormatting:
         mock_doc.to_dict.return_value = {
             "push_subscriptions": [{
                 "endpoint": "https://push.example.com/endpoint",
-                "keys": {"p256dh": "key", "auth": "auth"}
+                "keys": {"p256dh": "key", "auth": "auth"},
+                "tenant_id": None,
             }]
         }
         push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
@@ -421,7 +822,7 @@ class TestNotificationFormatting:
             "job_id": "test-job-123",
             "user_email": "test@example.com",
             "artist": "Test Artist",
-            "title": "Test Song"
+            "title": "Test Song",
         }
 
         with patch('backend.services.push_notification_service.webpush') as mock_webpush:

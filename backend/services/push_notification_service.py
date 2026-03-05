@@ -85,10 +85,14 @@ class PushNotificationService:
         title: str,
         body: str,
         url: str = "/app/",
-        tag: Optional[str] = None
+        tag: Optional[str] = None,
+        tenant_id: Optional[str] = None
     ) -> int:
         """
-        Send a push notification to all of a user's subscribed devices.
+        Send a push notification to a user's subscribed devices for a specific tenant.
+
+        Only sends to subscriptions matching the given tenant_id to prevent
+        cross-tenant notification leakage.
 
         Args:
             user_email: The user's email address
@@ -96,6 +100,8 @@ class PushNotificationService:
             body: Notification body text
             url: URL to open when notification is clicked
             tag: Optional tag for notification grouping (replaces notifications with same tag)
+            tenant_id: Tenant scope - only send to subscriptions for this tenant
+                       (None or "" = consumer/default portal)
 
         Returns:
             Number of notifications successfully sent
@@ -111,7 +117,30 @@ class PushNotificationService:
             return 0
 
         user_data = user_doc.to_dict()
-        subscriptions = user_data.get("push_subscriptions", [])
+        all_subscriptions = user_data.get("push_subscriptions", [])
+
+        # Filter subscriptions to only those matching the target tenant
+        # Normalize: None and "" both mean "consumer/default portal"
+        target_tenant = tenant_id or None
+        subscriptions = [
+            sub for sub in all_subscriptions
+            if (sub.get("tenant_id") or None) == target_tenant
+        ]
+
+        if not subscriptions and all_subscriptions:
+            # Migration path: if no subscriptions match and none have tenant_id set,
+            # it means they're legacy subscriptions created before tenant scoping.
+            # Send to legacy subscriptions (those without tenant_id) only if
+            # the target is the consumer portal (no tenant).
+            has_any_tenant_scoped = any(sub.get("tenant_id") for sub in all_subscriptions)
+            if not has_any_tenant_scoped and target_tenant is None:
+                subscriptions = all_subscriptions
+                logger.debug(f"Using legacy unscoped subscriptions for {user_email}")
+            else:
+                logger.debug(
+                    f"No matching subscriptions for tenant={target_tenant} "
+                    f"(user has {len(all_subscriptions)} total subscriptions)"
+                )
 
         if not subscriptions:
             logger.debug(f"User {user_email} has no push subscriptions")
@@ -196,7 +225,7 @@ class PushNotificationService:
         Send notification when a job enters a blocking state requiring user action.
 
         Args:
-            job: Job dictionary with job_id, user_email, artist, title
+            job: Job dictionary with job_id, user_email, artist, title, tenant_id
             action_type: Type of action needed ("lyrics" or "instrumental")
 
         Returns:
@@ -209,6 +238,7 @@ class PushNotificationService:
         job_id = job.get("job_id", "unknown")
         artist = job.get("artist", "Unknown Artist")
         title = job.get("title", "Unknown Title")
+        tenant_id = job.get("tenant_id") or None
 
         if action_type == "lyrics":
             notif_title = "Review Lyrics"
@@ -226,7 +256,8 @@ class PushNotificationService:
             title=notif_title,
             body=notif_body,
             url=url,
-            tag=tag
+            tag=tag,
+            tenant_id=tenant_id,
         )
 
     async def send_completion_notification(self, job: dict) -> int:
@@ -234,7 +265,7 @@ class PushNotificationService:
         Send notification when a job completes successfully.
 
         Args:
-            job: Job dictionary with job_id, user_email, artist, title
+            job: Job dictionary with job_id, user_email, artist, title, tenant_id
 
         Returns:
             Number of notifications sent
@@ -246,13 +277,15 @@ class PushNotificationService:
         job_id = job.get("job_id", "unknown")
         artist = job.get("artist", "Unknown Artist")
         title = job.get("title", "Unknown Title")
+        tenant_id = job.get("tenant_id") or None
 
         return await self.send_push(
             user_email=user_email,
             title="Video Ready!",
             body=f'Your karaoke video for "{title}" by {artist} is ready to download',
             url=f"/app/?job={job_id}",
-            tag=f"complete-{job_id}"
+            tag=f"complete-{job_id}",
+            tenant_id=tenant_id,
         )
 
     async def add_subscription(
@@ -260,10 +293,11 @@ class PushNotificationService:
         user_email: str,
         endpoint: str,
         keys: dict,
-        device_name: Optional[str] = None
+        device_name: Optional[str] = None,
+        tenant_id: Optional[str] = None
     ) -> bool:
         """
-        Add a push subscription for a user.
+        Add a push subscription for a user, scoped to a tenant.
 
         Enforces max subscriptions per user - oldest removed if limit exceeded.
 
@@ -272,6 +306,7 @@ class PushNotificationService:
             endpoint: Push service endpoint URL
             keys: Encryption keys (p256dh, auth)
             device_name: Optional device identifier
+            tenant_id: Tenant scope (None = consumer/default portal)
 
         Returns:
             True if subscription was added successfully
@@ -298,6 +333,7 @@ class PushNotificationService:
                 "endpoint": endpoint,
                 "keys": keys,
                 "device_name": device_name,
+                "tenant_id": tenant_id or None,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "last_used_at": None
             }

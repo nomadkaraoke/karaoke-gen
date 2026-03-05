@@ -678,6 +678,7 @@ class JobManager:
                 "user_email": job.user_email,
                 "artist": job.artist,
                 "title": job.title,
+                "tenant_id": job.tenant_id or None,
             }
 
             async def send_notification():

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api'
+import { useTenant } from '@/lib/tenant'
 
 // LocalStorage key for tracking prompt dismissal
 const PUSH_PROMPT_DISMISSED_KEY = 'karaoke_push_prompt_dismissed'
@@ -164,6 +165,9 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const vapidPublicKeyRef = useRef<string | null>(null)
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
 
+  // Get tenant context for scoping push subscriptions
+  const { tenantId } = useTenant()
+
   // Check browser support and initial state
   useEffect(() => {
     const checkSupport = async () => {
@@ -272,9 +276,9 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         })
       }
 
-      // Send subscription to backend
+      // Send subscription to backend with tenant scope
       const { endpoint, keys } = subscriptionToApiFormat(subscription)
-      await api.subscribePush(endpoint, keys, getDeviceName())
+      await api.subscribePush(endpoint, keys, getDeviceName(), tenantId)
 
       setIsSubscribed(true)
       return true
@@ -283,7 +287,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       setError(err instanceof Error ? err.message : 'Failed to subscribe')
       return false
     }
-  }, [isSupported, isPushEnabled])
+  }, [isSupported, isPushEnabled, tenantId])
 
   /**
    * Unsubscribe from push notifications

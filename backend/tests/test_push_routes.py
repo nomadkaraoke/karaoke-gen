@@ -171,8 +171,72 @@ class TestSubscribe:
                     user_email="test@example.com",
                     endpoint="https://push.example.com/endpoint",
                     keys={"p256dh": "key1", "auth": "key2"},
-                    device_name="Test Device"
+                    device_name="Test Device",
+                    tenant_id=None,
                 )
+        finally:
+            app.dependency_overrides.clear()
+
+
+    def test_successful_subscription_with_tenant_id(self, client, mock_auth_result):
+        """Subscribe with explicit tenant_id passes it to add_subscription."""
+        async def override_auth():
+            return mock_auth_result
+
+        app.dependency_overrides[require_auth] = override_auth
+
+        try:
+            with patch('backend.api.routes.push.get_settings') as mock_settings, \
+                 patch('backend.api.routes.push.get_push_notification_service') as mock_service:
+                mock_settings.return_value.enable_push_notifications = True
+                mock_service.return_value.add_subscription = AsyncMock(return_value=True)
+
+                response = client.post(
+                    "/api/push/subscribe",
+                    json={
+                        "endpoint": "https://push.example.com/endpoint",
+                        "keys": {"p256dh": "key1", "auth": "key2"},
+                        "device_name": "Test Device",
+                        "tenant_id": "vocalstar"
+                    }
+                )
+
+                assert response.status_code == 200
+                mock_service.return_value.add_subscription.assert_called_once_with(
+                    user_email="test@example.com",
+                    endpoint="https://push.example.com/endpoint",
+                    keys={"p256dh": "key1", "auth": "key2"},
+                    device_name="Test Device",
+                    tenant_id="vocalstar",
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_subscribe_empty_tenant_id_normalized_to_none(self, client, mock_auth_result):
+        """Subscribe with empty string tenant_id normalizes to None."""
+        async def override_auth():
+            return mock_auth_result
+
+        app.dependency_overrides[require_auth] = override_auth
+
+        try:
+            with patch('backend.api.routes.push.get_settings') as mock_settings, \
+                 patch('backend.api.routes.push.get_push_notification_service') as mock_service:
+                mock_settings.return_value.enable_push_notifications = True
+                mock_service.return_value.add_subscription = AsyncMock(return_value=True)
+
+                response = client.post(
+                    "/api/push/subscribe",
+                    json={
+                        "endpoint": "https://push.example.com/endpoint",
+                        "keys": {"p256dh": "key1", "auth": "key2"},
+                        "tenant_id": ""
+                    }
+                )
+
+                assert response.status_code == 200
+                call_kwargs = mock_service.return_value.add_subscription.call_args[1]
+                assert call_kwargs["tenant_id"] is None
         finally:
             app.dependency_overrides.clear()
 
