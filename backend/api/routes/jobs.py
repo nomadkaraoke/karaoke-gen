@@ -208,6 +208,273 @@ def _check_job_ownership(job: Job, auth_result: AuthResult) -> bool:
     return True
 
 
+class EditTrackRequest(BaseModel):
+    """Request body for editing a completed track."""
+    artist: Optional[str] = None
+    title: Optional[str] = None
+
+
+class EditTrackResponse(BaseModel):
+    """Response from editing a completed track."""
+    status: str
+    job_id: str
+    message: str
+    review_url: str
+    review_token: str
+    metadata_updated: bool
+    cleanup_results: Dict[str, Any]
+
+
+@router.post("/{job_id}/edit", response_model=EditTrackResponse)
+async def edit_completed_track(
+    job_id: str,
+    request: EditTrackRequest,
+    background_tasks: BackgroundTasks,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Edit a completed track by cleaning up distributed outputs and reopening review.
+
+    This allows users to correct lyrics, change instrumental selection, or update
+    artist/title metadata on a completed job. The existing outputs (YouTube, Dropbox,
+    GDrive, GCS finals) are deleted, the brand code is recycled, and the job is
+    reset to AWAITING_REVIEW so the user can make changes and re-submit.
+
+    No additional credits are consumed — the original credit covers re-edits.
+    """
+    import re
+    from datetime import timezone
+    from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Check ownership
+    if not _check_job_ownership(job, auth_result):
+        raise HTTPException(status_code=403, detail="You don't have permission to edit this job")
+
+    # Only completed jobs can be edited
+    if job.status != JobStatus.COMPLETE.value and job.status != "complete":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only completed jobs can be edited. Current status: {job.status}"
+        )
+
+    # Prevent editing if outputs already deleted (edit already in progress)
+    if job.outputs_deleted_at:
+        raise HTTPException(
+            status_code=400,
+            detail="This job is already being edited (outputs were already deleted)"
+        )
+
+    user_email = auth_result.user_email or "unknown"
+    state_data = job.state_data or {}
+    cleanup_results = {}
+
+    # --- Phase 1: Clean up distributed outputs ---
+
+    # Delete YouTube video
+    youtube_url = state_data.get('youtube_url')
+    if youtube_url:
+        try:
+            video_id_match = re.search(r'(?:youtu\.be/|youtube\.com/watch\?v=)([^&\s]+)', youtube_url)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+                from karaoke_gen.karaoke_finalise.karaoke_finalise import KaraokeFinalise
+                from backend.services.youtube_service import get_youtube_service
+                youtube_service = get_youtube_service()
+                if youtube_service.is_configured:
+                    finalise = KaraokeFinalise(
+                        dry_run=False,
+                        non_interactive=True,
+                        user_youtube_credentials=youtube_service.get_credentials_dict()
+                    )
+                    success = finalise.delete_youtube_video(video_id)
+                    cleanup_results["youtube"] = {"status": "success" if success else "failed", "video_id": video_id}
+                else:
+                    cleanup_results["youtube"] = {"status": "skipped", "reason": "YouTube not configured"}
+            else:
+                cleanup_results["youtube"] = {"status": "failed", "reason": f"Could not extract video ID from {youtube_url}"}
+        except Exception as e:
+            logger.error(f"Error deleting YouTube video for job {job_id}: {e}", exc_info=True)
+            cleanup_results["youtube"] = {"status": "error", "error": str(e)}
+    else:
+        cleanup_results["youtube"] = {"status": "skipped", "reason": "no youtube_url"}
+
+    # Delete Dropbox folder
+    brand_code = state_data.get('brand_code')
+    dropbox_path = getattr(job, 'dropbox_path', None)
+    if brand_code and dropbox_path:
+        try:
+            from backend.services.dropbox_service import get_dropbox_service
+            dropbox = get_dropbox_service()
+            if dropbox.is_configured:
+                base_name = f"{job.artist} - {job.title}"
+                folder_name = f"{brand_code} - {base_name}"
+                full_path = f"{dropbox_path}/{folder_name}"
+                success = dropbox.delete_folder(full_path)
+                cleanup_results["dropbox"] = {"status": "success" if success else "failed", "path": full_path}
+            else:
+                cleanup_results["dropbox"] = {"status": "skipped", "reason": "Dropbox not configured"}
+        except Exception as e:
+            logger.error(f"Error deleting Dropbox folder for job {job_id}: {e}", exc_info=True)
+            cleanup_results["dropbox"] = {"status": "error", "error": str(e)}
+    else:
+        cleanup_results["dropbox"] = {"status": "skipped", "reason": "no brand_code or dropbox_path"}
+
+    # Delete Google Drive files
+    gdrive_files = state_data.get('gdrive_files')
+    if gdrive_files:
+        try:
+            from backend.services.gdrive_service import get_gdrive_service
+            gdrive = get_gdrive_service()
+            if gdrive.is_configured:
+                file_ids = list(gdrive_files.values()) if isinstance(gdrive_files, dict) else []
+                delete_results = gdrive.delete_files(file_ids)
+                all_success = all(delete_results.values())
+                cleanup_results["gdrive"] = {"status": "success" if all_success else "partial", "files": delete_results}
+            else:
+                cleanup_results["gdrive"] = {"status": "skipped", "reason": "Google Drive not configured"}
+        except Exception as e:
+            logger.error(f"Error deleting Google Drive files for job {job_id}: {e}", exc_info=True)
+            cleanup_results["gdrive"] = {"status": "error", "error": str(e)}
+    else:
+        cleanup_results["gdrive"] = {"status": "skipped", "reason": "no gdrive_files"}
+
+    # Delete GCS finals folder
+    try:
+        storage = StorageService()
+        finals_prefix = f"jobs/{job_id}/finals/"
+        deleted_count = storage.delete_folder(finals_prefix)
+        cleanup_results["gcs_finals"] = {"status": "success", "deleted_count": deleted_count}
+    except Exception as e:
+        logger.error(f"Error deleting GCS finals for job {job_id}: {e}", exc_info=True)
+        cleanup_results["gcs_finals"] = {"status": "error", "error": str(e)}
+
+    # Recycle brand code if Dropbox + GDrive cleanup both succeeded
+    dropbox_ok = cleanup_results.get("dropbox", {}).get("status") in ("success", "skipped")
+    gdrive_ok = cleanup_results.get("gdrive", {}).get("status") in ("success", "skipped")
+    if brand_code and dropbox_ok and gdrive_ok:
+        try:
+            from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
+            prefix, number = BrandCodeService.parse_brand_code(brand_code)
+            get_brand_code_service().recycle_brand_code(prefix, number)
+            cleanup_results["brand_code"] = {"status": "recycled", "code": brand_code}
+            logger.info(f"Recycled brand code {brand_code} during edit for job {job_id}")
+        except (ValueError, Exception) as e:
+            logger.warning(f"Failed to recycle brand code {brand_code}: {e}")
+            cleanup_results["brand_code"] = {"status": "failed", "error": str(e)}
+
+    # Check for critical cleanup failures before proceeding
+    critical_failures = [
+        svc for svc in ["dropbox", "gdrive"]
+        if cleanup_results.get(svc, {}).get("status") == "error"
+    ]
+    if critical_failures:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Cleanup failed for {', '.join(critical_failures)}. "
+            f"Job not modified. Please try again or contact support."
+        )
+
+    # --- Phase 2: Update job record ---
+
+    db = FirestoreService().db
+    job_ref = db.collection("jobs").document(job_id)
+    now = datetime.now(timezone.utc)
+
+    update_payload: Dict[str, Any] = {
+        "outputs_deleted_at": now,
+        "outputs_deleted_by": user_email,
+        "updated_at": now,
+        "edit_count": (job.edit_count if hasattr(job, 'edit_count') else 0) + 1,
+    }
+
+    # Clear distribution state_data keys
+    output_keys = ["youtube_url", "youtube_video_id", "dropbox_link", "brand_code", "gdrive_files"]
+    for key in output_keys:
+        if key in state_data:
+            update_payload[f"state_data.{key}"] = DELETE_FIELD
+
+    # Clear processing state so workers re-run from scratch
+    processing_keys = ["render_progress", "video_progress", "encoding_progress", "review_complete"]
+    for key in processing_keys:
+        if key in state_data:
+            update_payload[f"state_data.{key}"] = DELETE_FIELD
+
+    # --- Phase 3: Update metadata if provided ---
+
+    metadata_updated = False
+    if request.artist and request.artist != job.artist:
+        update_payload["artist"] = request.artist
+        metadata_updated = True
+    if request.title and request.title != job.title:
+        update_payload["title"] = request.title
+        metadata_updated = True
+
+    # If metadata changed, delete screens so they get regenerated
+    if metadata_updated:
+        try:
+            screens_prefix = f"jobs/{job_id}/screens/"
+            storage = StorageService()
+            storage.delete_folder(screens_prefix)
+            logger.info(f"Deleted screens for job {job_id} due to metadata change")
+        except Exception as e:
+            logger.warning(f"Failed to delete screens for job {job_id}: {e}")
+
+        # Clear screens progress so screens worker re-runs
+        if "screens_progress" in state_data:
+            update_payload[f"state_data.screens_progress"] = DELETE_FIELD
+
+    # Add timeline event
+    edit_number = (job.edit_count if hasattr(job, 'edit_count') else 0) + 1
+    timeline_event = {
+        "status": "complete",
+        "timestamp": now.isoformat(),
+        "message": f"Track edit initiated by {user_email} (edit #{edit_number})",
+    }
+    update_payload["timeline"] = ArrayUnion([timeline_event])
+
+    # Apply Firestore update
+    job_ref.update(update_payload)
+
+    # --- Phase 4: Transition state to AWAITING_REVIEW ---
+    # This auto-generates a review token via transition_to_state
+    job_manager.transition_to_state(
+        job_id,
+        JobStatus.AWAITING_REVIEW,
+        progress=60,
+        message="Track reopened for editing",
+    )
+
+    # If metadata changed, trigger screens worker in background
+    if metadata_updated:
+        background_tasks.add_task(worker_service.trigger_screens_worker, job_id)
+
+    # Fetch updated job to get the review token
+    updated_job = job_manager.get_job(job_id)
+    review_token = updated_job.review_token if updated_job else ""
+
+    logger.info(
+        f"User {user_email} initiated edit #{edit_number} for job {job_id}. "
+        f"Metadata updated: {metadata_updated}. "
+        f"Cleanup: YouTube={cleanup_results.get('youtube', {}).get('status')}, "
+        f"Dropbox={cleanup_results.get('dropbox', {}).get('status')}, "
+        f"GDrive={cleanup_results.get('gdrive', {}).get('status')}"
+    )
+
+    return EditTrackResponse(
+        status="success",
+        job_id=job_id,
+        message="Track reopened for editing. Previous outputs have been removed.",
+        review_url=f"/app/jobs#{job_id}/review",
+        review_token=review_token,
+        metadata_updated=metadata_updated,
+        cleanup_results=cleanup_results,
+    )
+
+
 _SUMMARY_STATE_DATA_KEYS = {
     'brand_code', 'youtube_url', 'dropbox_link',
     'audio_progress', 'lyrics_progress',

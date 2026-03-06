@@ -75,6 +75,7 @@ export interface Job {
   user_email?: string;
   outputs_deleted_at?: string;
   outputs_deleted_by?: string;
+  edit_count?: number;
   existing_instrumental_gcs_path?: string;
   // Audio search fields
   audio_search_artist?: string;
@@ -96,6 +97,16 @@ export interface UploadJobResponse {
   style_assets_uploaded?: string[];
   server_version?: string;
   distribution_services?: Record<string, any>;
+}
+
+export interface EditTrackResponse {
+  status: string;
+  job_id: string;
+  message: string;
+  review_url: string;
+  review_token: string;
+  metadata_updated: boolean;
+  cleanup_results: Record<string, any>;
 }
 
 export interface InstrumentalOption {
@@ -1261,6 +1272,18 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ target_visibility: targetVisibility }),
+    });
+    return handleResponse(response);
+  },
+
+  async editCompletedTrack(jobId: string, updates?: { artist?: string; title?: string }): Promise<EditTrackResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/edit`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates || {}),
     });
     return handleResponse(response);
   },

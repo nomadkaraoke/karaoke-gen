@@ -142,10 +142,10 @@ STATE_TRANSITIONS = {
     JobStatus.UPLOADING: [JobStatus.NOTIFYING, JobStatus.COMPLETE, JobStatus.FAILED],
     JobStatus.NOTIFYING: [JobStatus.COMPLETE, JobStatus.FAILED],
 
-    # Terminal states - COMPLETE allows visibility change re-processing
+    # Terminal states - COMPLETE allows edit (reopen review) and visibility change
     # FAILED and CANCELLED allow retry transitions to resume from checkpoints
     # PREP_COMPLETE allows continuation from combined review
-    JobStatus.COMPLETE: [JobStatus.LYRICS_COMPLETE],  # Visibility change: private->public re-processing
+    JobStatus.COMPLETE: [JobStatus.AWAITING_REVIEW, JobStatus.LYRICS_COMPLETE],  # Edit track or visibility change
     JobStatus.PREP_COMPLETE: [JobStatus.AWAITING_REVIEW, JobStatus.FAILED],  # Continue from combined review
     JobStatus.FAILED: [
         JobStatus.DOWNLOADING,            # Retry from beginning (if input audio exists)
@@ -314,6 +314,9 @@ class Job(BaseModel):
 
     # Credit refund tracking (prevents double-refund on cancel→delete or fail→delete)
     credit_refunded: bool = False
+
+    # Edit tracking (how many times a completed track has been re-edited)
+    edit_count: int = 0
 
     # Processing state
     track_output_dir: Optional[str] = None       # Local output directory (temp)

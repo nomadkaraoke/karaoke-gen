@@ -4,7 +4,7 @@ import { useRef, useCallback, useEffect, useState } from "react"
 import { api, adminApi, Job } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
-import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe } from "lucide-react"
+import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import {
   Dialog,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { EditTrackModal } from "./EditTrackModal"
 
 interface OutputLinksProps {
   job: Job
@@ -48,6 +49,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   const [emailSent, setEmailSent] = useState(false)
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false)
   const [isChangingVisibility, setIsChangingVisibility] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -352,6 +354,19 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                 </div>
           )}
 
+          {/* Edit Track (visible when job is complete and outputs exist) */}
+          {job.status === "complete" && !outputsDeleted && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setShowEditModal(true) }}
+                  className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                  title="Edit lyrics, instrumental, or metadata"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Edit
+                </button>
+          )}
+
           {/* Admin Link (always visible for admins) */}
           {isAdmin && (
                 <a
@@ -478,6 +493,14 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Track Modal */}
+      <EditTrackModal
+        job={job}
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onEditStarted={onJobUpdated}
+      />
     </div>
   )
 }
