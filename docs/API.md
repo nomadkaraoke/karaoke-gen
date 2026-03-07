@@ -295,6 +295,43 @@ Error (duration mismatch):
 }
 ```
 
+#### Edit Completed Track
+
+```http
+POST /api/jobs/{job_id}/edit
+Content-Type: application/json
+
+{
+  "artist": "Updated Artist",  // optional, only if changing
+  "title": "Updated Title"     // optional, only if changing
+}
+```
+
+Reopens a completed track for editing. Cleans up all distributed outputs (YouTube, Dropbox, GDrive, GCS finals), recycles the brand code, and resets the job to `awaiting_review`. A new review token is issued automatically. No additional credits consumed.
+
+If `artist` or `title` are provided and differ from current values, title/end screens are deleted and the screens worker is triggered to regenerate them in the background.
+
+Response:
+```json
+{
+  "status": "success",
+  "job_id": "abc123",
+  "message": "Track reopened for editing. Previous outputs have been removed.",
+  "review_url": "/app/jobs#abc123/review",
+  "review_token": "...",
+  "metadata_updated": true,
+  "cleanup_results": {
+    "youtube": {"status": "success", "video_id": "xyz"},
+    "dropbox": {"status": "success", "path": "/Karaoke/..."},
+    "gdrive": {"status": "success"},
+    "gcs_finals": {"status": "success", "deleted_count": 4},
+    "brand_code": {"status": "recycled", "code": "NOMAD-1234"}
+  }
+}
+```
+
+**Requirements:** Job must be in `complete` state with `outputs_deleted_at` not set. User must own the job or be admin.
+
 #### Get Style Upload URLs
 
 ```http
