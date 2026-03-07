@@ -873,3 +873,15 @@ Even with idempotent endpoints (PR #413) and basic retry logic (PR #242), jobs c
 3. **Cloud Run service naming matters for debugging** — The service is `karaoke-backend`, not `karaoke-gen-api`. Wrong name returns empty logs, wasting investigation time.
 4. **Cross-folder gap detection needs global context** — Per-folder max misses trailing gaps when folders have different highest numbers. Use the global max across all folders as the upper bound.
 
+### Verifying Request Bodies via Cloud Trace Request Size (2026-03-07)
+
+**Problem:** A job was created with `is_private=true` but the user believed they selected "Published." No request body logging existed to prove what the frontend actually sent.
+
+**Solution:** Cloud Trace captures `/http/request/size` on every span. By computing the exact byte length of the JSON body with `is_private: true` vs `is_private: false` (compact serialization, no spaces), the sizes matched exactly — 143 bytes for `true`, confirming the frontend sent `is_private: true`.
+
+**Prevention:** Added two observability mechanisms:
+1. **`creation_params`** — A dict stored on the job Firestore document capturing the user's original choices (`is_private`, `is_admin`, `created_from`). Persists forever, no log retention concerns.
+2. **OTel span attributes** — `job.is_private`, `job.source`, `job_id` added to all 4 job creation endpoint spans. Searchable in Cloud Trace for 30 days.
+
+**Key insight:** When investigating "what did the client send?", Cloud Trace request size can serve as a forensic tool even without request body logging. Compact JSON serialization (`JSON.stringify` with no spaces) is deterministic, so byte-level size matching is reliable.
+
