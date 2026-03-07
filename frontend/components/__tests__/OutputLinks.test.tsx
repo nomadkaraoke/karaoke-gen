@@ -219,6 +219,36 @@ describe('OutputLinks', () => {
       expect(screen.getByText('No outputs available yet')).toBeInTheDocument()
     })
 
+    it('shows Edit button for completed jobs with outputs', () => {
+      render(<OutputLinks job={baseJob} />)
+
+      expect(screen.getByText('Edit')).toBeInTheDocument()
+    })
+
+    it('hides Edit button when outputs are deleted', () => {
+      const deletedJob: Job = {
+        ...baseJob,
+        outputs_deleted_at: '2026-01-15T10:00:00Z',
+      }
+
+      render(<OutputLinks job={deletedJob} />)
+
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument()
+    })
+
+    it('hides Edit button for non-complete jobs', () => {
+      const pendingJob: Job = {
+        ...baseJob,
+        status: 'pending',
+      }
+
+      render(<OutputLinks job={pendingJob} />)
+
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('edge cases', () => {
     it('handles partial file_urls gracefully', () => {
       // Reset to non-admin user
       const { useAuth } = require('@/lib/auth')
