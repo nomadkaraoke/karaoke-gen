@@ -33,6 +33,7 @@ from backend.services.worker_service import get_worker_service
 from backend.services.storage_service import StorageService
 from backend.services.theme_service import get_theme_service
 from backend.config import get_settings
+from backend.services.tracing import add_span_attribute
 from backend.api.dependencies import require_admin, require_auth
 from backend.services.auth_service import AuthResult
 from backend.services.metrics import metrics
@@ -131,9 +132,14 @@ async def create_job(
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
 
+        # Trace attributes for observability
+        add_span_attribute("job_id", job.job_id)
+        add_span_attribute("job.source", "url")
+        add_span_attribute("job.is_private", job_create.is_private)
+
         # Record job creation metric
         metrics.record_job_created(job.job_id, source="url")
-        
+
         # Trigger both workers in parallel using asyncio.gather
         # (FastAPI's BackgroundTasks runs async tasks sequentially)
         background_tasks.add_task(_trigger_workers_parallel, job.job_id)
@@ -1931,6 +1937,11 @@ async def create_job_from_search(
         job_id = job.job_id
 
         logger.info(f"Created job {job_id} from search session {body.search_session_id}")
+
+        # Trace attributes for observability
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("job.source", "guided_search")
+        add_span_attribute("job.is_private", body.is_private)
 
         metrics.record_job_created(job_id, source="guided_search")
 

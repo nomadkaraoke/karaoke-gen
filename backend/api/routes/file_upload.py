@@ -40,6 +40,7 @@ from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.middleware.tenant import get_tenant_config_from_request
 from backend.exceptions import InsufficientCreditsError
+from backend.services.tracing import add_span_attribute
 from backend.services.youtube_download_service import (
     get_youtube_download_service,
     YouTubeDownloadError,
@@ -657,6 +658,11 @@ async def upload_and_create_job(
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
 
+        # Trace attributes for observability
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("job.source", "upload")
+        add_span_attribute("job.is_private", is_private)
+
         # Record job creation metric
         metrics.record_job_created(job_id, source="upload")
 
@@ -1229,6 +1235,11 @@ async def create_job_with_upload_urls(
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
+
+        # Trace attributes for observability
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("job.source", "signed_url_upload")
+        add_span_attribute("job.is_private", effective_is_private)
 
         # Record job creation metric
         metrics.record_job_created(job_id, source="upload")

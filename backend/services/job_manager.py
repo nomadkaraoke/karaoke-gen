@@ -120,8 +120,14 @@ class JobManager:
             customer_notes=job_create.customer_notes,
             # Private (non-published) track mode
             is_private=job_create.is_private,
+            # Capture creation-time decision params for observability
+            creation_params={
+                "is_private": job_create.is_private,
+                "is_admin": is_admin,
+                "created_from": job_create.request_metadata.get("created_from", "unknown"),
+            },
         )
-        
+
         self.firestore.create_job(job)
         logger.info(f"Created new job {job_id} with status PENDING")
 

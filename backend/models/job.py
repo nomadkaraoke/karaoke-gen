@@ -305,6 +305,9 @@ class Job(BaseModel):
     # Private (non-published) track mode
     is_private: bool = False                     # Private tracks: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive
 
+    # Creation-time decision params (for observability — what did the user actually choose?)
+    creation_params: Dict[str, Any] = Field(default_factory=dict)
+
     # Output deletion tracking (for admin cleanup without deleting job)
     outputs_deleted_at: Optional[datetime] = None  # Timestamp when outputs were deleted by admin
     outputs_deleted_by: Optional[str] = None       # Admin email who deleted outputs
