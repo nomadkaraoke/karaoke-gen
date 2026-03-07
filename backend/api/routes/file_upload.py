@@ -1711,6 +1711,11 @@ async def create_job_from_url(
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
 
+        # Trace attributes for observability
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("job.source", "url")
+        add_span_attribute("job.is_private", body.is_private)
+
         # Record job creation metric
         metrics.record_job_created(job_id, source="url")
 
@@ -2012,6 +2017,11 @@ async def create_finalise_only_job(
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
+
+        # Trace attributes for observability
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("job.source", "finalise")
+        add_span_attribute("job.is_private", body.is_private)
 
         # Record job creation metric
         metrics.record_job_created(job_id, source="finalise")

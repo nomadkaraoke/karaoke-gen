@@ -50,6 +50,7 @@ from backend.api.dependencies import require_auth
 from backend.services.auth_service import UserType, AuthResult
 from backend.middleware.tenant import get_tenant_config_from_request
 from backend.exceptions import InsufficientCreditsError
+from backend.services.tracing import add_span_attribute
 from backend.services.firestore_service import FirestoreService
 from pathlib import Path
 
@@ -691,6 +692,11 @@ async def search_audio(
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
+
+        # Trace attributes for observability
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("job.source", "audio_search")
+        add_span_attribute("job.is_private", body.is_private)
 
         logger.info(f"Created job {job_id} for audio search: {body.artist} - {body.title}")
         

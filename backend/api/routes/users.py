@@ -66,6 +66,7 @@ from backend.services.youtube_download_service import (
     YouTubeDownloadError,
 )
 from backend.exceptions import InvalidStateTransitionError
+from backend.services.tracing import add_span_attribute
 
 
 logger = logging.getLogger(__name__)
@@ -577,6 +578,11 @@ async def _handle_made_for_you_order(
         # Made-for-you jobs are created by admin (via Stripe webhook) - bypass rate limits
         job = job_manager.create_job(job_create, is_admin=True)
         job_id = job.job_id
+
+        # Trace attributes for observability
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("job.source", "made_for_you")
+        add_span_attribute("job.is_private", False)
 
         logger.info(f"Created made-for-you job {job_id} for {_mask_email(customer_email)} (owned by {_mask_email(ADMIN_EMAIL)})")
 
