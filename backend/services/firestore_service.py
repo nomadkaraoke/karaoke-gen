@@ -177,11 +177,11 @@ class FirestoreService:
     # Fields needed by the dashboard summary view
     SUMMARY_FIELD_PATHS = [
         'job_id', 'status', 'progress', 'created_at', 'artist', 'title',
-        'error_message', 'non_interactive', 'outputs_deleted_at', 'user_email',
+        'error_message', 'non_interactive', 'outputs_deleted_at', 'user_email', 'is_private',
         'state_data.brand_code', 'state_data.youtube_url', 'state_data.dropbox_link',
         'state_data.audio_progress', 'state_data.lyrics_progress',
         'state_data.audio_complete', 'state_data.lyrics_complete',
-        'state_data.backing_vocals_analysis',
+        'state_data.backing_vocals_analysis', 'state_data.visibility_change_in_progress',
         'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
     ]
 

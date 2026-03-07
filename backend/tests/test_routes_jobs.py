@@ -382,6 +382,27 @@ class TestSummaryEndpoint:
     reduces payload size for the dashboard polling use case.
     """
 
+    def test_summary_projection_includes_visibility_fields(self):
+        """Verify SUMMARY_FIELD_PATHS includes is_private and visibility_change_in_progress.
+
+        These fields are required for the Change Visibility button on the dashboard.
+        Without them, the button shows incorrect state (always 'Make Private').
+        """
+        from backend.services.firestore_service import FirestoreService
+        paths = FirestoreService.SUMMARY_FIELD_PATHS
+        assert 'is_private' in paths, "is_private must be in summary projection for visibility button"
+        assert 'state_data.visibility_change_in_progress' in paths, \
+            "visibility_change_in_progress must be in summary projection to prevent concurrent changes"
+
+    def test_prune_state_data_keeps_visibility_change_key(self):
+        """Verify _prune_state_data preserves visibility_change_in_progress."""
+        from backend.api.routes.jobs import _prune_state_data
+
+        data = {'state_data': {'visibility_change_in_progress': True, 'corrected_lyrics': 'strip me'}}
+        result = _prune_state_data(data)
+        assert 'visibility_change_in_progress' in result['state_data']
+        assert 'corrected_lyrics' not in result['state_data']
+
     def test_prune_state_data_keeps_allowed_keys(self):
         """Verify _prune_state_data keeps only dashboard-required keys."""
         from backend.api.routes.jobs import _prune_state_data
