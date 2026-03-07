@@ -152,15 +152,21 @@ class VisibilityChangeService:
         except Exception:
             pass
 
-        # Step 3: Reset styles and update job fields
-        # Step 4: Set status to LYRICS_COMPLETE with regen_restore_status
-        # Step 5: Clear progress keys and set guard flag
+        # Step 3: Prepare nomad theme style files for the job
+        from backend.api.routes.file_upload import _prepare_theme_for_job
+        style_params_path, style_assets_dict, _youtube_desc = _prepare_theme_for_job(
+            job_id=job_id, theme_id="nomad"
+        )
+
+        # Step 4: Reset styles and update job fields
+        # Step 5: Set status to LYRICS_COMPLETE with regen_restore_status
+        # Step 6: Clear progress keys and set guard flag
         update_payload = {
             "is_private": False,
             "theme_id": "nomad",
             "color_overrides": {},
-            "style_assets": {},
-            "style_params_gcs_path": None,
+            "style_assets": style_assets_dict,
+            "style_params_gcs_path": style_params_path,
             "status": JobStatus.LYRICS_COMPLETE.value,
             "state_data.visibility_change_in_progress": True,
             "state_data.regen_restore_status": "review_complete",

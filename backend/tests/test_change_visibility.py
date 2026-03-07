@@ -163,6 +163,7 @@ class TestChangeToPublic:
 
         with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)) as mock_theme, \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
 
             mock_storage = MagicMock()
@@ -176,6 +177,7 @@ class TestChangeToPublic:
             assert result["status"] == "processing"
             assert result["reprocessing_required"] is True
             mock_worker.trigger_screens_worker.assert_called_once_with("test-123")
+            mock_theme.assert_called_once_with(job_id="test-123", theme_id="nomad")
 
     @pytest.mark.asyncio
     async def test_resets_styles_to_nomad_theme(self):
@@ -188,6 +190,7 @@ class TestChangeToPublic:
 
         with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
 
             mock_storage_cls.return_value = MagicMock()
@@ -210,7 +213,8 @@ class TestChangeToPublic:
             assert style_update is not None
             assert style_update["theme_id"] == "nomad"
             assert style_update["color_overrides"] == {}
-            assert style_update["style_assets"] == {}
+            assert style_update["style_assets"] == {"bg": "bg.png"}
+            assert style_update["style_params_gcs_path"] == "jobs/test-123/style/style_params.json"
             assert style_update["is_private"] is False
             assert style_update["status"] == "lyrics_complete"
 
@@ -225,6 +229,7 @@ class TestChangeToPublic:
 
         with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
 
             mock_storage_cls.return_value = MagicMock()
