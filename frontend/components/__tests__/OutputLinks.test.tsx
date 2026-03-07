@@ -134,6 +134,72 @@ describe('OutputLinks', () => {
     })
   })
 
+  describe('visibility change button', () => {
+    it('shows "Make Public" for private complete jobs', () => {
+      const privateJob: Job = {
+        ...baseJob,
+        is_private: true,
+      }
+
+      render(<OutputLinks job={privateJob} />)
+
+      expect(screen.getByText('Make Public')).toBeInTheDocument()
+      expect(screen.queryByText('Make Private')).not.toBeInTheDocument()
+    })
+
+    it('shows "Make Private" for public complete jobs', () => {
+      const publicJob: Job = {
+        ...baseJob,
+        is_private: false,
+      }
+
+      render(<OutputLinks job={publicJob} />)
+
+      expect(screen.getByText('Make Private')).toBeInTheDocument()
+      expect(screen.queryByText('Make Public')).not.toBeInTheDocument()
+    })
+
+    it('hides button when visibility change is in progress', () => {
+      const inProgressJob: Job = {
+        ...baseJob,
+        state_data: {
+          ...baseJob.state_data,
+          visibility_change_in_progress: true,
+        },
+      }
+
+      render(<OutputLinks job={inProgressJob} />)
+
+      expect(screen.queryByText('Make Public')).not.toBeInTheDocument()
+      expect(screen.queryByText('Make Private')).not.toBeInTheDocument()
+    })
+
+    it('hides button for non-complete jobs', () => {
+      const pendingJob: Job = {
+        ...baseJob,
+        status: 'generating_video',
+      }
+
+      render(<OutputLinks job={pendingJob} />)
+
+      expect(screen.queryByText('Make Public')).not.toBeInTheDocument()
+      expect(screen.queryByText('Make Private')).not.toBeInTheDocument()
+    })
+
+    it('hides button for tenant jobs', () => {
+      const { useTenant } = require('@/lib/tenant')
+      useTenant.mockReturnValue({
+        tenantId: 'vocalstar',
+        features: { youtube_upload: true, dropbox_upload: true },
+      })
+
+      render(<OutputLinks job={baseJob} />)
+
+      expect(screen.queryByText('Make Public')).not.toBeInTheDocument()
+      expect(screen.queryByText('Make Private')).not.toBeInTheDocument()
+    })
+  })
+
   describe('edge cases', () => {
     it('shows nothing when job has no file_urls and no state_data (non-admin)', () => {
       // Reset to non-admin user

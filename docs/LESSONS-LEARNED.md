@@ -453,6 +453,9 @@ except Exception as e:
 
 ## Testing Insights
 
+### New Features Must Test the Summary Projection (Mar 2026)
+When adding new fields that the dashboard needs, you must add them to **both** `SUMMARY_FIELD_PATHS` (Firestore projection) and `_SUMMARY_STATE_DATA_KEYS` (Python prune allowlist). The dashboard uses `fields=summary` which projects only listed fields — any unlisted field comes back as `undefined`. Unit tests that mock the job object directly won't catch this because they bypass the projection layer entirely. **Always add a regression test** asserting the field is in `SUMMARY_FIELD_PATHS` when introducing new fields the frontend depends on. The Change Visibility feature shipped with `is_private` missing from the projection, causing the button to always show "Make Private".
+
 ### Test Webhook Handlers with Unit Tests
 Webhook handlers contain critical business logic. Test exact parameters passed to service methods, not just that "something happened."
 
