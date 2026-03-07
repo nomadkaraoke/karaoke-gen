@@ -85,6 +85,50 @@ class TestJobModelIsPrivate:
 
         assert job.is_private is False
 
+    def test_create_job_stores_creation_params(self):
+        """JobManager.create_job should store creation_params for observability."""
+        from backend.services.job_manager import JobManager
+
+        manager = JobManager()
+        manager.firestore = Mock()
+        manager.firestore.create_job = Mock()
+
+        job_create = JobCreate(
+            artist="Test",
+            title="Song",
+            theme_id="nomad",
+            is_private=True,
+            request_metadata={"created_from": "guided_flow"},
+        )
+
+        job = manager.create_job(job_create, is_admin=False)
+
+        assert job.creation_params == {
+            "is_private": True,
+            "is_admin": False,
+            "created_from": "guided_flow",
+        }
+
+    def test_creation_params_defaults_created_from_unknown(self):
+        """creation_params should default created_from to 'unknown' when not in metadata."""
+        from backend.services.job_manager import JobManager
+
+        manager = JobManager()
+        manager.firestore = Mock()
+        manager.firestore.create_job = Mock()
+
+        job_create = JobCreate(
+            artist="Test",
+            title="Song",
+            theme_id="nomad",
+        )
+
+        job = manager.create_job(job_create, is_admin=True)
+
+        assert job.creation_params["created_from"] == "unknown"
+        assert job.creation_params["is_private"] is False
+        assert job.creation_params["is_admin"] is True
+
 
 class TestGetEffectiveDistributionForJob:
     """Tests for get_effective_distribution_for_job() helper."""
