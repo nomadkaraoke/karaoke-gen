@@ -354,8 +354,8 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                 </div>
           )}
 
-          {/* Edit Track (visible when job is complete and outputs exist) */}
-          {job.status === "complete" && !outputsDeleted && (
+          {/* Edit Track (visible when job is complete and has outputs) */}
+          {job.status === "complete" && !outputsDeleted && hasOutputs && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setShowEditModal(true) }}

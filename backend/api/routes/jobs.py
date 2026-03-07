@@ -454,7 +454,10 @@ async def edit_completed_track(
 
     # Fetch updated job to get the review token
     updated_job = job_manager.get_job(job_id)
-    review_token = updated_job.review_token if updated_job else ""
+    if not updated_job:
+        logger.error(f"Job {job_id} not found after state transition to AWAITING_REVIEW")
+        raise HTTPException(status_code=500, detail="Job state update failed unexpectedly")
+    review_token = updated_job.review_token or ""
 
     logger.info(
         f"User {user_email} initiated edit #{edit_number} for job {job_id}. "

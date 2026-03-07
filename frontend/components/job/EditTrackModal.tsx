@@ -36,16 +36,22 @@ export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditT
     try {
       const updates: { artist?: string; title?: string } = {}
       if (updateMetadata) {
-        if (artist && artist !== job.artist) updates.artist = artist
-        if (title && title !== job.title) updates.title = title
+        const trimmedArtist = artist?.trim()
+        const trimmedTitle = title?.trim()
+        if (trimmedArtist && trimmedArtist !== job.artist) updates.artist = trimmedArtist
+        if (trimmedTitle && trimmedTitle !== job.title) updates.title = trimmedTitle
       }
 
       const result = await api.editCompletedTrack(job.job_id, updates)
 
       onOpenChange(false)
 
-      // Navigate to review screen
-      window.location.hash = `/${job.job_id}/review`
+      // Navigate to review screen using server-provided URL
+      if (result.review_url) {
+        window.location.hash = result.review_url.replace(/^\/app\/jobs#/, '')
+      } else {
+        window.location.hash = `/${job.job_id}/review`
+      }
 
       onEditStarted?.()
     } catch (err: any) {
