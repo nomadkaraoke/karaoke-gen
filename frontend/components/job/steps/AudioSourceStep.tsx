@@ -118,6 +118,7 @@ export function AudioSourceStep({
 
   // Fuzzy "Did you mean?" state
   const [fuzzySuggestion, setFuzzySuggestion] = useState<CatalogTrackResult | null>(null)
+  const [fuzzyAlternatives, setFuzzyAlternatives] = useState<CatalogTrackResult[]>([])
   const [fuzzyDismissed, setFuzzyDismissed] = useState(false)
   const fuzzyTriggered = useRef(false)
 
@@ -190,23 +191,37 @@ export function AudioSourceStep({
     if (confidence.tier <= 2) return // Audio search found good results — no typo likely
 
     fuzzyTriggered.current = true
-    // Fetch the artist's top tracks (broader search — artist name as general query, no artist filter)
+    // Try artist name as query first, fall back to title if that returns nothing
     api.searchCatalogTracks(artist, undefined, 20)
       .then((tracks) => {
-        const best = findBestFuzzyMatch(title, tracks)
-        if (best) setFuzzySuggestion(best)
+        const matches = findFuzzyMatches(title, tracks)
+        if (matches.length > 0) {
+          setFuzzySuggestion(matches[0])
+          setFuzzyAlternatives(matches.slice(1))
+          return
+        }
+        // Fallback: search by title (handles case where artist field has garbage like "fox stevenson bruises")
+        return api.searchCatalogTracks(title, undefined, 20).then((titleTracks) => {
+          const titleMatches = findFuzzyMatches(title, titleTracks, 0.6, true, artist)
+          if (titleMatches.length > 0) {
+            setFuzzySuggestion(titleMatches[0])
+            setFuzzyAlternatives(titleMatches.slice(1))
+          }
+        })
       })
       .catch(() => {
         // Silently fail
       })
   }, [isSearching, catalogResults, confidence.tier, artist, title])
 
-  function handleFuzzyAccept() {
-    if (!fuzzySuggestion) return
+  function handleFuzzyAccept(track?: CatalogTrackResult) {
+    const chosen = track || fuzzySuggestion
+    if (!chosen) return
     // Update parent's artist/title
-    onArtistTitleCorrection(fuzzySuggestion.artist_name, fuzzySuggestion.track_name)
+    onArtistTitleCorrection(chosen.artist_name, chosen.track_name)
     // Reset and restart search with corrected name
     setFuzzySuggestion(null)
+    setFuzzyAlternatives([])
     setFuzzyDismissed(true)
     setResults([])
     setIsSearching(true)
@@ -223,7 +238,7 @@ export function AudioSourceStep({
     // let the parent re-render us with new props first. Use a microtask.
     Promise.resolve().then(() => {
       searchTriggered.current = true
-      api.searchStandalone(fuzzySuggestion.artist_name, fuzzySuggestion.track_name)
+      api.searchStandalone(chosen.artist_name, chosen.track_name)
         .then((response) => {
           onSearchCompleted(response.search_session_id)
           setResults(response.results as ExtendedAudioSearchResult[])
@@ -234,10 +249,10 @@ export function AudioSourceStep({
         })
         .finally(() => setIsSearching(false))
       // Also re-run catalog + community check with corrected name
-      api.searchCatalogTracks(fuzzySuggestion.track_name, fuzzySuggestion.artist_name, 5)
+      api.searchCatalogTracks(chosen.track_name, chosen.artist_name, 5)
         .then((tracks) => setCatalogResults(tracks))
         .catch(() => {})
-      api.checkCommunityVersions(fuzzySuggestion.artist_name, fuzzySuggestion.track_name)
+      api.checkCommunityVersions(chosen.artist_name, chosen.track_name)
         .then((data) => setCommunityData(data))
         .catch(() => {})
     })
@@ -325,6 +340,7 @@ export function AudioSourceStep({
       {fuzzySuggestion && !fuzzyDismissed && (
         <DidYouMeanBanner
           suggestion={fuzzySuggestion}
+          alternatives={fuzzyAlternatives}
           onAccept={handleFuzzyAccept}
           onDismiss={() => setFuzzyDismissed(true)}
         />
@@ -1091,38 +1107,43 @@ function stringSimilarity(a: string, b: string): number {
   return (2 * lcsLen) / (m + n)
 }
 
-/** Find the best fuzzy match for a title among catalog tracks */
-function findBestFuzzyMatch(
+/** Find fuzzy matches for a title among catalog tracks, sorted by relevance.
+ *  When userArtist is provided, uses artist similarity as a tiebreaker
+ *  (e.g. user typed "fox stevenson bruises" as artist — prefer Fox Stevenson over Lewis Capaldi). */
+function findFuzzyMatches(
   userTitle: string,
   tracks: CatalogTrackResult[],
-  threshold = 0.6
-): CatalogTrackResult | null {
-  let bestScore = 0
-  let bestTrack: CatalogTrackResult | null = null
-  for (const track of tracks) {
-    const score = stringSimilarity(userTitle, track.track_name)
-    if (score > bestScore) {
-      bestScore = score
-      bestTrack = track
-    }
-  }
-  // Only suggest if above threshold and not an exact match (exact matches are handled by catalog panel)
-  if (bestTrack && bestScore >= threshold && bestTrack.track_name.toLowerCase() !== userTitle.toLowerCase()) {
-    return bestTrack
-  }
-  return null
+  threshold = 0.6,
+  allowExactTitle = false,
+  userArtist?: string,
+): CatalogTrackResult[] {
+  const scored = tracks.map((track) => {
+    const titleScore = stringSimilarity(userTitle, track.track_name)
+    const artistBonus = userArtist ? stringSimilarity(userArtist, track.artist_name) * 0.2 : 0
+    return { track, titleScore, totalScore: titleScore + artistBonus }
+  })
+  return scored
+    .filter((s) => s.titleScore >= threshold)
+    .filter((s) => allowExactTitle || s.track.track_name.toLowerCase() !== userTitle.toLowerCase())
+    .sort((a, b) => b.totalScore - a.totalScore)
+    .map((s) => s.track)
+    // Deduplicate by artist+track name
+    .filter((t, i, arr) => arr.findIndex((x) => x.artist_name === t.artist_name && x.track_name === t.track_name) === i)
 }
 
 /** "Did you mean?" banner for typo correction */
 function DidYouMeanBanner({
   suggestion,
+  alternatives,
   onAccept,
   onDismiss,
 }: {
   suggestion: CatalogTrackResult
-  onAccept: () => void
+  alternatives: CatalogTrackResult[]
+  onAccept: (track?: CatalogTrackResult) => void
   onDismiss: () => void
 }) {
+  const [showAlternatives, setShowAlternatives] = useState(false)
   return (
     <div
       className="border rounded-lg overflow-hidden border-amber-500/40 bg-amber-500/5"
@@ -1149,7 +1170,7 @@ function DidYouMeanBanner({
           We couldn&apos;t find great audio sources. Did you mean:
         </p>
         <button
-          onClick={onAccept}
+          onClick={() => onAccept()}
           className="mt-2 w-full text-left px-3 py-2.5 rounded-md flex items-center justify-between gap-2 transition-colors border border-amber-500/30 hover:bg-amber-500/10"
         >
           <span className="text-sm" style={{ color: 'var(--text)' }}>
@@ -1161,6 +1182,38 @@ function DidYouMeanBanner({
             Yes, search again
           </span>
         </button>
+        {alternatives.length > 0 && (
+          <div className="mt-2">
+            <button
+              onClick={() => setShowAlternatives(!showAlternatives)}
+              className="text-[11px] flex items-center gap-1 hover:opacity-80"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <ChevronDown className={`w-3 h-3 transition-transform ${showAlternatives ? 'rotate-180' : ''}`} />
+              {showAlternatives ? 'Hide' : 'Show'} {alternatives.length} other match{alternatives.length > 1 ? 'es' : ''}
+            </button>
+            {showAlternatives && (
+              <div className="mt-1.5 space-y-1">
+                {alternatives.slice(0, 5).map((alt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => onAccept(alt)}
+                    className="w-full text-left px-3 py-2 rounded-md flex items-center justify-between gap-2 transition-colors border border-[var(--card-border)] hover:bg-amber-500/10 hover:border-amber-500/30"
+                  >
+                    <span className="text-xs" style={{ color: 'var(--text)' }}>
+                      <span className="font-medium">{alt.artist_name}</span>
+                      <span style={{ color: 'var(--text-muted)' }}> — </span>
+                      <span className="font-medium">{alt.track_name}</span>
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 shrink-0">
+                      Search
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
