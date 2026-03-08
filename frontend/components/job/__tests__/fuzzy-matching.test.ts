@@ -28,7 +28,7 @@ describe("stringSimilarity", () => {
     expect(stringSimilarity("hello", "")).toBe(0)
   })
 
-  it("returns 0 for both empty strings (handled by identity check)", () => {
+  it("returns 1 for both empty strings (handled by identity check)", () => {
     // Both empty => al === bl => returns 1
     expect(stringSimilarity("", "")).toBe(1)
   })

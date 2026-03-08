@@ -26,10 +26,12 @@ jest.mock("@/lib/api", () => ({
   },
   ApiError: class ApiError extends Error {
     status: number
-    constructor(status: number, message: string) {
+    data?: any
+    constructor(message: string, status: number, data?: any) {
       super(message)
       this.name = "ApiError"
       this.status = status
+      this.data = data
     }
   },
 }))
@@ -186,7 +188,7 @@ describe("AudioSourceStep", () => {
 
   it("shows error message when search fails with ApiError", async () => {
     mockApi.searchStandalone.mockRejectedValue(
-      new ApiError(500, "Internal server error")
+      new ApiError("Internal server error", 500)
     )
 
     render(<AudioSourceStep {...defaultProps} />)
@@ -198,7 +200,7 @@ describe("AudioSourceStep", () => {
 
   it("shows credit error with Buy Credits link on 402", async () => {
     mockApi.searchStandalone.mockRejectedValue(
-      new ApiError(402, "No credits")
+      new ApiError("No credits", 402)
     )
 
     render(<AudioSourceStep {...defaultProps} />)
