@@ -18,6 +18,8 @@ jest.mock('@/lib/api', () => ({
   api: {
     searchStandalone: jest.fn(),
     searchAudio: jest.fn(),
+    searchCatalogTracks: jest.fn(),
+    checkCommunityVersions: jest.fn(),
     createJobFromSearch: jest.fn(),
     createJobFromUrl: jest.fn(),
     uploadJobSmart: jest.fn(),

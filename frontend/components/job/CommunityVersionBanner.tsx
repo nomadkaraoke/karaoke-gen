@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ExternalLink } from "lucide-react"
+import { X, ExternalLink, Youtube } from "lucide-react"
 import type { CommunityCheckResponse } from "@/lib/api"
 
 interface CommunityVersionBannerProps {
@@ -72,7 +72,8 @@ export function CommunityVersionBanner({ data, onDismiss }: CommunityVersionBann
                   </span>
                 )}
               </span>
-              <span className="ml-auto shrink-0 text-[10px]" style={{ color: "var(--text-muted)" }}>
+              <span className="ml-auto shrink-0 text-[10px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+                <Youtube className="w-3 h-3 text-red-500" />
                 Watch on YouTube
               </span>
             </a>

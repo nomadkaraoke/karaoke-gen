@@ -142,6 +142,11 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setStep(3)
   }
 
+  function handleArtistTitleCorrection(newArtist: string, newTitle: string) {
+    setArtist(newArtist)
+    setTitle(newTitle)
+  }
+
   function handleSearchResultChosen(resultIndex: number) {
     // Just store the choice — job is created at Step 3 confirm
     setSelectedResultIndex(resultIndex)
@@ -467,6 +472,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           title={title}
           onSearchCompleted={handleSearchCompleted}
           onSearchResultChosen={handleSearchResultChosen}
+          onArtistTitleCorrection={handleArtistTitleCorrection}
           onUrlReady={handleUrlReady}
           onFileReady={handleFileReady}
           onBack={handleBackFromAudio}

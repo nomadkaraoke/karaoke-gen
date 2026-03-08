@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, Globe, Lock, ExternalLink, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowRight, Globe, Lock, ExternalLink, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface VisibilityStepProps {
@@ -41,12 +41,64 @@ export function VisibilityStep({
         </Button>
       </div>
 
-      {/* Published option */}
+      {/* Action buttons — select and continue in one click */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          type="button"
+          onClick={() => { onPrivateChange(false); onNext(); }}
+          disabled={disabled}
+          className={`flex-1 rounded-lg border-2 p-4 transition-all text-center ${
+            !isPrivate
+              ? 'border-[var(--brand-pink)] shadow-[0_0_12px_rgba(255,122,204,0.2)]'
+              : 'border-[var(--card-border)] hover:border-[var(--text-muted)]'
+          }`}
+          style={{ backgroundColor: !isPrivate ? 'rgba(255,122,204,0.05)' : 'transparent' }}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Globe className="w-5 h-5" style={{ color: !isPrivate ? 'var(--brand-pink)' : 'var(--text-muted)' }} />
+            <span className="font-semibold" style={{ color: 'var(--text)' }}>Publish & Share</span>
+            <ArrowRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          </div>
+          <span
+            className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+            style={{ backgroundColor: 'rgba(255,122,204,0.15)', color: 'var(--brand-pink)' }}
+          >
+            Recommended
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { onPrivateChange(true); onNext(); }}
+          disabled={disabled}
+          className={`flex-1 rounded-lg border-2 p-4 transition-all text-center ${
+            isPrivate
+              ? 'border-[var(--brand-pink)] shadow-[0_0_12px_rgba(255,122,204,0.2)]'
+              : 'border-[var(--card-border)] hover:border-[var(--text-muted)]'
+          }`}
+          style={{ backgroundColor: isPrivate ? 'rgba(255,122,204,0.05)' : 'transparent' }}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Lock className="w-5 h-5" style={{ color: isPrivate ? 'var(--brand-pink)' : 'var(--text-muted)' }} />
+            <span className="font-semibold" style={{ color: 'var(--text)' }}>Keep Private</span>
+            <ArrowRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          </div>
+        </button>
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px" style={{ backgroundColor: 'var(--card-border)' }} />
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>What&apos;s the difference?</span>
+        <div className="flex-1 h-px" style={{ backgroundColor: 'var(--card-border)' }} />
+      </div>
+
+      {/* Published detail card */}
       <button
         type="button"
         onClick={() => onPrivateChange(false)}
         disabled={disabled}
-        className={`w-full text-left rounded-lg border-2 p-4 transition-all ${
+        className={`w-full text-left rounded-lg border-2 p-3 transition-all ${
           !isPrivate
             ? 'border-[var(--brand-pink)] shadow-[0_0_12px_rgba(255,122,204,0.2)]'
             : 'border-[var(--card-border)] hover:border-[var(--text-muted)]'
@@ -126,12 +178,12 @@ export function VisibilityStep({
         </div>
       </button>
 
-      {/* Private option */}
+      {/* Private detail card */}
       <button
         type="button"
         onClick={() => onPrivateChange(true)}
         disabled={disabled}
-        className={`w-full text-left rounded-lg border-2 p-4 transition-all ${
+        className={`w-full text-left rounded-lg border-2 p-3 transition-all ${
           isPrivate
             ? 'border-[var(--brand-pink)] shadow-[0_0_12px_rgba(255,122,204,0.2)]'
             : 'border-[var(--card-border)] hover:border-[var(--text-muted)]'
@@ -192,14 +244,6 @@ export function VisibilityStep({
         </div>
       </button>
 
-      {/* Continue button */}
-      <Button
-        onClick={onNext}
-        disabled={disabled}
-        className="w-full bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white shadow-[0_0_15px_rgba(255,122,204,0.3)] hover:shadow-[0_0_20px_rgba(255,122,204,0.5)] h-11 text-base"
-      >
-        Continue
-      </Button>
     </div>
   )
 }
