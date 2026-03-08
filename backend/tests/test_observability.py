@@ -91,11 +91,11 @@ class TestTimelineEventMetadata:
 class TestLogToJob:
     """Tests for the log_to_job helper function."""
 
-    @patch('backend.services.firestore_service.FirestoreService')
-    def test_log_to_job_writes_to_subcollection(self, MockFirestoreService):
+    @patch('backend.services.firestore_service._get_log_service')
+    def test_log_to_job_writes_to_subcollection(self, mock_get_service):
         """log_to_job creates a WorkerLogEntry and writes to Firestore."""
         mock_service = MagicMock()
-        MockFirestoreService.return_value = mock_service
+        mock_get_service.return_value = mock_service
 
         from backend.services.firestore_service import log_to_job
         log_to_job("job123", "edit", "INFO", "Edit started", {"key": "value"})
@@ -109,20 +109,20 @@ class TestLogToJob:
         assert entry.message == "Edit started"
         assert entry.metadata == {"key": "value"}
 
-    @patch('backend.services.firestore_service.FirestoreService')
-    def test_log_to_job_suppresses_errors(self, MockFirestoreService):
+    @patch('backend.services.firestore_service._get_log_service')
+    def test_log_to_job_suppresses_errors(self, mock_get_service):
         """log_to_job should never raise — logging failures must be silent."""
-        MockFirestoreService.side_effect = Exception("Firestore down")
+        mock_get_service.side_effect = Exception("Firestore down")
 
         from backend.services.firestore_service import log_to_job
         # Should not raise
         log_to_job("job123", "edit", "INFO", "Edit started")
 
-    @patch('backend.services.firestore_service.FirestoreService')
-    def test_log_to_job_without_metadata(self, MockFirestoreService):
+    @patch('backend.services.firestore_service._get_log_service')
+    def test_log_to_job_without_metadata(self, mock_get_service):
         """log_to_job works without metadata."""
         mock_service = MagicMock()
-        MockFirestoreService.return_value = mock_service
+        mock_get_service.return_value = mock_service
 
         from backend.services.firestore_service import log_to_job
         log_to_job("job123", "admin", "WARNING", "Something happened")

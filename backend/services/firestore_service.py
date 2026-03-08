@@ -713,6 +713,17 @@ def get_firestore_client() -> firestore.Client:
     return _firestore_client
 
 
+_log_service: Optional["FirestoreService"] = None
+
+
+def _get_log_service() -> "FirestoreService":
+    """Return a cached FirestoreService instance for log_to_job."""
+    global _log_service
+    if _log_service is None:
+        _log_service = FirestoreService()
+    return _log_service
+
+
 def log_to_job(job_id: str, worker: str, level: str, message: str, metadata: Optional[Dict[str, Any]] = None) -> None:
     """
     Write a log entry to a job's Firestore log subcollection.
@@ -729,7 +740,7 @@ def log_to_job(job_id: str, worker: str, level: str, message: str, metadata: Opt
     """
     try:
         entry = WorkerLogEntry.create(job_id, worker, level, message, metadata)
-        FirestoreService().append_log_to_subcollection(job_id, entry)
+        _get_log_service().append_log_to_subcollection(job_id, entry)
     except Exception as e:
         logger.debug(f"Failed to write job log for {job_id}: {e}")
 
