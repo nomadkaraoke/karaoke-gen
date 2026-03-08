@@ -481,7 +481,7 @@ function PickCard({
           <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
         ) : null}
         <span className={`text-xs font-semibold ${isPerfect ? 'text-green-400' : 'text-amber-400'}`}>
-          {isPerfect ? 'Perfect match found' : 'Recommended'}
+          {isPerfect ? 'Perfect match found' : 'Recommended Audio'}
         </span>
         {bestResult.is_lossless && (
           <span className="text-[8px] px-1 py-0.5 rounded bg-green-600/20 text-green-400 font-medium">
