@@ -101,20 +101,21 @@ export function useReviewSessionAutoSave({
     return () => clearInterval(timer)
   }, [saveSession, isReadOnly])
 
-  // beforeunload save
+  // Save on page hide (more reliable than beforeunload for async saves)
   useEffect(() => {
     if (isReadOnly) return
 
     const handler = () => {
-      // Use sendBeacon for reliability during page unload
-      if (historyLength > 1 && historyLength !== lastBackupHistoryLength.current) {
-        // Fire-and-forget: we can't await during unload
+      if (document.visibilityState === 'hidden' &&
+          historyLength > 1 &&
+          historyLength !== lastBackupHistoryLength.current) {
+        // Fire-and-forget: we can't await during page hide
         saveSession('auto')
       }
     }
 
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
+    document.addEventListener('visibilitychange', handler)
+    return () => document.removeEventListener('visibilitychange', handler)
   }, [saveSession, isReadOnly, historyLength])
 
   return { saveSession }
