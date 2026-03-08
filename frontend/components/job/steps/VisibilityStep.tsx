@@ -1,11 +1,14 @@
 "use client"
 
-import { ArrowLeft, ArrowRight, Globe, Lock, ExternalLink, Sparkles } from "lucide-react"
+import { useState } from "react"
+import { ArrowLeft, ArrowRight, Globe, Lock, ExternalLink, Sparkles, Scissors, ChevronRight, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface VisibilityStepProps {
   isPrivate: boolean
   onPrivateChange: (value: boolean) => void
+  requiresAudioEdit: boolean
+  onAudioEditChange: (value: boolean) => void
   onNext: () => void
   onBack: () => void
   disabled?: boolean
@@ -14,10 +17,14 @@ interface VisibilityStepProps {
 export function VisibilityStep({
   isPrivate,
   onPrivateChange,
+  requiresAudioEdit,
+  onAudioEditChange,
   onNext,
   onBack,
   disabled,
 }: VisibilityStepProps) {
+  const [showEditOption, setShowEditOption] = useState(requiresAudioEdit)
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -241,6 +248,61 @@ export function VisibilityStep({
           </div>
         </div>
       </button>
+
+      {/* Audio edit toggle — collapsed by default */}
+      <div className="pt-1">
+        <button
+          type="button"
+          onClick={() => setShowEditOption(!showEditOption)}
+          className="flex items-center gap-1.5 text-xs transition-colors hover:opacity-80"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <Scissors className="w-3.5 h-3.5" />
+          <span>Need to trim or edit the audio first?</span>
+          {showEditOption
+            ? <ChevronDown className="w-3.5 h-3.5" />
+            : <ChevronRight className="w-3.5 h-3.5" />
+          }
+        </button>
+
+        {showEditOption && (
+          <div
+            className="mt-2 rounded-lg border p-3 space-y-3"
+            style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}
+          >
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              If this is a live recording with talking or an intro you want to skip, you can edit the audio after it&apos;s downloaded &mdash; before lyrics are transcribed.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => onAudioEditChange(false)}
+                disabled={disabled}
+                className={`flex-1 rounded-md border px-3 py-2 text-sm transition-all ${
+                  !requiresAudioEdit
+                    ? 'border-[var(--brand-pink)] bg-[rgba(255,122,204,0.05)]'
+                    : 'border-[var(--card-border)] hover:border-[var(--text-muted)]'
+                }`}
+              >
+                <span style={{ color: 'var(--text)' }}>No, use as-is</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onAudioEditChange(true)}
+                disabled={disabled}
+                className={`flex-1 rounded-md border px-3 py-2 text-sm transition-all ${
+                  requiresAudioEdit
+                    ? 'border-[var(--brand-pink)] bg-[rgba(255,122,204,0.05)]'
+                    : 'border-[var(--card-border)] hover:border-[var(--text-muted)]'
+                }`}
+              >
+                <span style={{ color: 'var(--text)' }}>Yes, I&apos;ll edit it first</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
     </div>
   )

@@ -393,6 +393,7 @@ export const api = {
       color_overrides?: ColorOverrides;
       non_interactive?: boolean;
       is_private?: boolean;
+      requires_audio_edit?: boolean;
     }
   ): Promise<UploadJobResponse> {
     const formData = new FormData();
@@ -424,6 +425,9 @@ export const api = {
     if (options?.is_private !== undefined) {
       formData.append('is_private', String(options.is_private));
     }
+    if (options?.requires_audio_edit) {
+      formData.append('requires_audio_edit', String(options.requires_audio_edit));
+    }
 
     const response = await fetch(`${API_BASE_URL}/api/jobs/upload`, {
       method: 'POST',
@@ -445,11 +449,13 @@ export const api = {
     options?: {
       is_private?: boolean;
       existing_instrumental?: boolean;
+      requires_audio_edit?: boolean;
     }
   ): Promise<CreateJobWithUploadUrlsResponse> {
     const body: Record<string, any> = { artist, title, files };
     if (options?.is_private !== undefined) body.is_private = options.is_private;
     if (options?.existing_instrumental !== undefined) body.existing_instrumental = options.existing_instrumental;
+    if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
 
     const response = await fetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
       method: 'POST',
@@ -526,7 +532,7 @@ export const api = {
     file: File,
     artist: string,
     title: string,
-    options?: { is_private?: boolean },
+    options?: { is_private?: boolean; requires_audio_edit?: boolean },
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<UploadJobResponse> {
     const SIGNED_URL_THRESHOLD = 25 * 1024 * 1024; // 25MB
@@ -590,6 +596,7 @@ export const api = {
       color_overrides?: ColorOverrides;
       non_interactive?: boolean;
       is_private?: boolean;
+      requires_audio_edit?: boolean;
     }
   ): Promise<{ status: string; job_id: string; message: string }> {
     const body: Record<string, any> = { url };
@@ -603,6 +610,7 @@ export const api = {
     if (options?.color_overrides) body.color_overrides = options.color_overrides;
     if (options?.non_interactive !== undefined) body.non_interactive = options.non_interactive;
     if (options?.is_private !== undefined) body.is_private = options.is_private;
+    if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
 
     const response = await fetch(`${API_BASE_URL}/api/jobs/create-from-url`, {
       method: 'POST',
@@ -868,6 +876,7 @@ export const api = {
     display_artist?: string;
     display_title?: string;
     is_private?: boolean;
+    requires_audio_edit?: boolean;
   }): Promise<{ status: string; job_id: string; message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/jobs/create-from-search`, {
       method: 'POST',

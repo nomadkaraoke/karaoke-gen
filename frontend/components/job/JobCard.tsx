@@ -84,7 +84,8 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
   const isInteractive = job.status === "awaiting_review" ||
                         job.status === "in_review" ||
                         job.status === "awaiting_instrumental_selection" ||
-                        job.status === "awaiting_audio_selection"
+                        job.status === "awaiting_audio_selection" ||
+                        job.status === "awaiting_audio_edit"
   const isComplete = job.status === "complete"
   const isFailed = job.status === "failed"
 
@@ -110,6 +111,17 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
           Review Lyrics
+        </a>
+      )
+    }
+
+    if (job.status === "awaiting_audio_edit") {
+      return (
+        <a
+          href={`/app/jobs#/${job.job_id}/audio-edit`}
+          className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
+        >
+          Edit Audio
         </a>
       )
     }

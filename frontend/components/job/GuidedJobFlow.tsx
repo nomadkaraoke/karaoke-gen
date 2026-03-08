@@ -105,6 +105,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   const [displayArtist, setDisplayArtist] = useState("")
   const [displayTitle, setDisplayTitle] = useState("")
   const [isPrivate, setIsPrivate] = useState(false)
+  const [requiresAudioEdit, setRequiresAudioEdit] = useState(false)
 
   // Custom style state
   const [karaokeBackground, setKaraokeBackground] = useState<File | null>(null)
@@ -166,13 +167,14 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         // URL fallback path — create job now with visibility from Step 3
         const response = await api.createJobFromUrl(pendingUrl, effectiveArtist, effectiveTitle, {
           is_private: isPrivate,
+          requires_audio_edit: requiresAudioEdit || undefined,
         })
         createdJobId = response.job_id
       } else if (audioSource === "upload" && pendingFile) {
         // Upload fallback path — upload and create job now with visibility from Step 3
         const response = await api.uploadJobSmart(
           pendingFile, effectiveArtist, effectiveTitle,
-          { is_private: isPrivate },
+          { is_private: isPrivate, requires_audio_edit: requiresAudioEdit || undefined },
         )
         createdJobId = response.job_id
       } else if (searchSessionId && selectedResultIndex !== null) {
@@ -185,6 +187,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           display_artist: displayArtist.trim() || undefined,
           display_title: displayTitle.trim() || undefined,
           is_private: isPrivate,
+          requires_audio_edit: requiresAudioEdit || undefined,
         })
         createdJobId = response.job_id
       } else {
@@ -240,6 +243,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setDisplayArtist("")
     setDisplayTitle("")
     setIsPrivate(false)
+    setRequiresAudioEdit(false)
     setKaraokeBackground(null)
     setIntroBackground(null)
     setColorOverrides({})
@@ -305,6 +309,39 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
               </span>
             </div>
           </div>
+
+          {/* Step 1.5: Audio editing (conditional) */}
+          {requiresAudioEdit && (
+            <div className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(255, 122, 204, 0.15)' }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--brand-pink)' }}>
+                    <path d="M13.5 3.5l-1-1L8 7l-1.5-1.5-1 1L8 9l5.5-5.5Z" fill="currentColor" opacity="0.85"/>
+                    <path d="M2 12h12v1.5H2z" fill="currentColor" opacity="0.5"/>
+                  </svg>
+                </div>
+                <div className="w-px flex-1 min-h-[20px]" style={{ backgroundColor: 'var(--card-border)' }} />
+              </div>
+              <div className="pb-4 pt-1">
+                <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>You edit the audio</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Trim, cut, or mute sections of the downloaded audio before processing begins.
+                </p>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(255, 122, 204, 0.15)', color: 'var(--brand-pink)' }}>
+                    You
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                      <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v.401a1 1 0 0 1-.373.78L8.707 8.79a1 1 0 0 1-1.414 0L2.373 4.68A1 1 0 0 1 2 3.9V3.5Z" fill="currentColor" opacity="0.7"/>
+                      <path d="M2 6.12l4.586 3.59a2 2 0 0 0 2.828 0L14 6.12V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5V6.12Z" fill="currentColor" opacity="0.5"/>
+                    </svg>
+                    Email + chime when ready
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Step 2: User review */}
           <div className="flex gap-3">
@@ -484,6 +521,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         <VisibilityStep
           isPrivate={isPrivate}
           onPrivateChange={setIsPrivate}
+          requiresAudioEdit={requiresAudioEdit}
+          onAudioEditChange={setRequiresAudioEdit}
           onNext={() => setStep(4)}
           onBack={() => setStep(2)}
         />

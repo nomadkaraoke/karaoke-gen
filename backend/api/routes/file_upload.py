@@ -162,6 +162,9 @@ class CreateJobFromUrlRequest(BaseModel):
     # Private (non-published) track mode
     is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
 
+    # Audio editing
+    requires_audio_edit: bool = Field(False, description="Pause after download for user to edit input audio")
+
 
 class CreateJobFromUrlResponse(BaseModel):
     """Response from creating a job from URL."""
@@ -428,6 +431,8 @@ async def upload_and_create_job(
     non_interactive: bool = Form(False, description="Skip interactive steps (lyrics review, instrumental selection)"),
     # Private (non-published) track mode
     is_private: bool = Form(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive"),
+    # Audio editing
+    requires_audio_edit: bool = Form(False, description="Pause after download for user to edit input audio"),
 ):
     """
     Upload an audio file and create a karaoke generation job with full style configuration.
@@ -667,6 +672,10 @@ async def upload_and_create_job(
         metrics.record_job_created(job_id, source="upload")
 
         logger.info(f"Created job {job_id} for {artist} - {title}")
+
+        # Store requires_audio_edit flag in state_data
+        if requires_audio_edit:
+            job_manager.update_state_data(job_id, 'requires_audio_edit', True)
 
         # If theme is set and no custom style files are being uploaded, prepare theme style now
         # This copies the theme's style_params.json to the job folder so LyricsTranscriber
@@ -1733,6 +1742,10 @@ async def create_job_from_url(
                 update_data['youtube_description_template'] = youtube_desc
             job_manager.update_job(job_id, update_data)
             logger.info(f"Applied theme '{effective_theme_id}' to job {job_id}")
+
+        # Store requires_audio_edit flag in state_data
+        if body.requires_audio_edit:
+            job_manager.update_state_data(job_id, 'requires_audio_edit', True)
 
         logger.info(f"Created URL-based job {job_id} for URL: {body.url}")
         if artist:

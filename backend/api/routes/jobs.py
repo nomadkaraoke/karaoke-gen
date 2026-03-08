@@ -2085,6 +2085,7 @@ class CreateFromSearchRequest(BaseModel):
     display_artist: Optional[str] = Field(None, description="Display artist override for title screens/filenames")
     display_title: Optional[str] = Field(None, description="Display title override for title screens/filenames")
     is_private: bool = Field(False, description="Private track: Dropbox only, no YouTube/GDrive")
+    requires_audio_edit: bool = Field(False, description="Pause after download for user to edit input audio")
 
     @validator('display_artist', 'display_title')
     def strip_whitespace(cls, v):
@@ -2267,6 +2268,8 @@ async def create_job_from_search(
         }
         if session.get('remote_search_id'):
             state_data_update['remote_search_id'] = session['remote_search_id']
+        if body.requires_audio_edit:
+            state_data_update['requires_audio_edit'] = True
         job_manager.update_job(job_id, {'state_data': state_data_update})
 
         # Transition to DOWNLOADING_AUDIO (skips AWAITING_AUDIO_SELECTION entirely)
