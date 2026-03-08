@@ -11,6 +11,7 @@ from backend.config import settings
 from backend.models.job import Job, JobStatus, TimelineEvent
 from backend.models.worker_log import WorkerLogEntry
 from backend.models.review_session import ReviewSession
+from backend.models.audio_edit_session import AudioEditSession
 
 
 logger = logging.getLogger(__name__)
@@ -886,6 +887,115 @@ class FirestoreService:
         except Exception as e:
             logger.error(f"Error searching review sessions: {e}")
             return []
+
+    # ---- Audio Edit Sessions ----
+
+    def save_audio_edit_session(self, job_id: str, session: AudioEditSession) -> str:
+        """Save an audio edit session to the subcollection."""
+        try:
+            session.job_id = job_id
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("audio_edit_sessions")
+            doc_ref = sessions_ref.document(session.session_id)
+            doc_ref.set(session.to_dict())
+            logger.info(f"Saved audio edit session {session.session_id} for job {job_id}")
+            return session.session_id
+        except Exception as e:
+            logger.error(f"Error saving audio edit session for job {job_id}: {e}")
+            raise
+
+    def list_audio_edit_sessions(self, job_id: str) -> List[AudioEditSession]:
+        """List all audio edit sessions for a job, ordered by updated_at descending."""
+        try:
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("audio_edit_sessions")
+            query = sessions_ref.order_by("updated_at", direction=firestore.Query.DESCENDING)
+            docs = query.stream()
+            return [AudioEditSession.from_dict(doc.to_dict()) for doc in docs]
+        except Exception as e:
+            logger.error(f"Error listing audio edit sessions for job {job_id}: {e}")
+            return []
+
+    def get_audio_edit_session(self, job_id: str, session_id: str) -> Optional[AudioEditSession]:
+        """Get a single audio edit session by ID."""
+        try:
+            doc_ref = (
+                self.db.collection(self.collection)
+                .document(job_id)
+                .collection("audio_edit_sessions")
+                .document(session_id)
+            )
+            doc = doc_ref.get()
+            if not doc.exists:
+                return None
+            return AudioEditSession.from_dict(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Error getting audio edit session {session_id} for job {job_id}: {e}")
+            raise
+
+    def delete_audio_edit_session(self, job_id: str, session_id: str) -> None:
+        """Delete a single audio edit session."""
+        try:
+            doc_ref = (
+                self.db.collection(self.collection)
+                .document(job_id)
+                .collection("audio_edit_sessions")
+                .document(session_id)
+            )
+            doc_ref.delete()
+            logger.info(f"Deleted audio edit session {session_id} for job {job_id}")
+        except Exception as e:
+            logger.error(f"Error deleting audio edit session {session_id} for job {job_id}: {e}")
+            raise
+
+    def delete_audio_edit_sessions_subcollection(self, job_id: str, batch_size: int = 500) -> int:
+        """Delete all audio edit sessions for a job (used when deleting a job)."""
+        try:
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("audio_edit_sessions")
+            deleted_count = 0
+
+            while True:
+                docs = sessions_ref.limit(batch_size).stream()
+                deleted_in_batch = 0
+
+                batch = self.db.batch()
+                for doc in docs:
+                    batch.delete(doc.reference)
+                    deleted_in_batch += 1
+
+                if deleted_in_batch == 0:
+                    break
+
+                batch.commit()
+                deleted_count += deleted_in_batch
+
+                if deleted_in_batch < batch_size:
+                    break
+
+            if deleted_count > 0:
+                logger.info(f"Deleted {deleted_count} audio edit sessions for job {job_id}")
+
+            return deleted_count
+
+        except Exception as e:
+            logger.error(f"Error deleting audio edit sessions subcollection for job {job_id}: {e}")
+            return 0
+
+    def get_latest_audio_edit_session_hash(self, job_id: str) -> Optional[str]:
+        """Get the data_hash of the most recent audio edit session for deduplication."""
+        try:
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("audio_edit_sessions")
+            query = (
+                sessions_ref
+                .order_by("updated_at", direction=firestore.Query.DESCENDING)
+                .limit(1)
+                .select(["data_hash"])
+            )
+            docs = list(query.stream())
+            if docs:
+                return docs[0].to_dict().get("data_hash", "")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting latest audio edit session hash for job {job_id}: {e}")
+            return None
 
     def delete_search_session(self, session_id: str) -> None:
         """Delete a search session after it has been consumed by job creation.

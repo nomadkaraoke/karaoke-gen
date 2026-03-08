@@ -1114,6 +1114,138 @@ async def delete_review_session(
 
 
 # ============================================
+# Audio Edit Session Endpoints (backup/restore)
+# ============================================
+
+
+@router.post("/{job_id}/audio-edit-sessions")
+async def save_audio_edit_session(
+    job_id: str,
+    data: Dict[str, Any],
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """Save an audio edit session snapshot."""
+    import hashlib
+    import json as json_mod
+    from backend.models.audio_edit_session import AudioEditSession, AudioEditSessionSummary
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    user_email = auth_info[0] if isinstance(auth_info, tuple) else ""
+    edit_data = data.get("edit_data", {})
+
+    # Compute hash for deduplication
+    data_json = json_mod.dumps(edit_data, sort_keys=True, default=str)
+    data_hash = hashlib.sha256(data_json.encode()).hexdigest()
+
+    # Skip if identical to most recent
+    firestore_svc = FirestoreService()
+    latest_hash = firestore_svc.get_latest_audio_edit_session_hash(job_id)
+    if latest_hash == data_hash:
+        return {"status": "skipped", "reason": "identical_data"}
+
+    # Build session
+    summary_data = data.get("summary", {})
+    session = AudioEditSession(
+        job_id=job_id,
+        user_email=user_email,
+        edit_count=data.get("edit_count", 0),
+        trigger=data.get("trigger", "auto"),
+        audio_duration_seconds=summary_data.get("net_duration_seconds"),
+        original_duration_seconds=data.get("original_duration_seconds"),
+        artist=job.artist,
+        title=job.title,
+        summary=AudioEditSessionSummary.from_dict(summary_data),
+        data_hash=data_hash,
+    )
+
+    # Upload edit_data to GCS
+    storage = StorageService()
+    gcs_path = f"jobs/{job_id}/audio_edit_sessions/{session.session_id}.json"
+    storage.upload_json(edit_data, gcs_path)
+    session.edit_data_gcs_path = gcs_path
+
+    # Save metadata to Firestore
+    firestore_svc.save_audio_edit_session(job_id, session)
+
+    return {
+        "status": "saved",
+        "session_id": session.session_id,
+        "created_at": session.created_at.isoformat(),
+    }
+
+
+@router.get("/{job_id}/audio-edit-sessions")
+async def list_audio_edit_sessions(
+    job_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """List all audio edit sessions for a job (metadata only)."""
+    firestore_svc = FirestoreService()
+    sessions = firestore_svc.list_audio_edit_sessions(job_id)
+    return {
+        "sessions": [s.to_dict() for s in sessions]
+    }
+
+
+@router.get("/{job_id}/audio-edit-sessions/{session_id}")
+async def get_audio_edit_session(
+    job_id: str,
+    session_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """Get a single audio edit session with full edit_data loaded from GCS."""
+    firestore_svc = FirestoreService()
+    session = firestore_svc.get_audio_edit_session(job_id, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    result = session.to_dict()
+
+    # Load edit data from GCS
+    if session.edit_data_gcs_path:
+        try:
+            storage = StorageService()
+            result["edit_data"] = storage.download_json(session.edit_data_gcs_path)
+        except Exception as e:
+            logger.warning(f"Could not load audio edit data from GCS for session {session_id}: {e}")
+            result["edit_data"] = None
+    else:
+        result["edit_data"] = None
+
+    return result
+
+
+@router.delete("/{job_id}/audio-edit-sessions/{session_id}")
+async def delete_audio_edit_session(
+    job_id: str,
+    session_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """Delete an audio edit session (metadata + GCS data)."""
+    firestore_svc = FirestoreService()
+    session = firestore_svc.get_audio_edit_session(job_id, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Delete GCS data
+    if session.edit_data_gcs_path:
+        try:
+            storage = StorageService()
+            storage.delete_file(session.edit_data_gcs_path)
+        except Exception:
+            logger.warning(f"Could not delete GCS file for audio edit session {session_id}")
+
+    # Delete Firestore doc
+    firestore_svc.delete_audio_edit_session(job_id, session_id)
+
+    return {"status": "deleted", "session_id": session_id}
+
+
+# ============================================
 # Audio Edit Endpoints
 # ============================================
 

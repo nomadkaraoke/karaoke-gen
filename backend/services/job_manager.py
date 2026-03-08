@@ -350,6 +350,14 @@ class JobManager:
         except Exception as e:
             logger.warning(f"Error deleting logs subcollection for job {job_id}: {e}")
 
+        # Delete audio edit sessions subcollection
+        try:
+            deleted_sessions = self.firestore.delete_audio_edit_sessions_subcollection(job_id)
+            if deleted_sessions > 0:
+                logger.info(f"Deleted {deleted_sessions} audio edit sessions for job {job_id}")
+        except Exception as e:
+            logger.warning(f"Error deleting audio edit sessions for job {job_id}: {e}")
+
         self.firestore.delete_job(job_id)
         logger.info(f"Deleted job {job_id}")
     

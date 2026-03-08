@@ -30,6 +30,29 @@ def _job(**kwargs):
 
 # --- Fixtures ---
 
+@pytest.fixture(autouse=True)
+def _ensure_auth_overrides():
+    """Ensure auth overrides are set for every test, even when conftest autouse is fragile."""
+    from backend.api.dependencies import require_auth, require_admin, require_review_auth
+    from backend.services.auth_service import UserType, AuthResult
+    from backend.main import app
+
+    async def mock_require_review_auth(job_id: str = "test123"):
+        return (job_id, "full")
+
+    async def mock_require_auth():
+        return AuthResult(is_valid=True, user_type=UserType.ADMIN, remaining_uses=999,
+                          message="Test", is_admin=True, user_email="test@example.com")
+
+    app.dependency_overrides[require_review_auth] = mock_require_review_auth
+    app.dependency_overrides[require_auth] = mock_require_auth
+    app.dependency_overrides[require_admin] = mock_require_auth
+    yield
+    app.dependency_overrides.pop(require_review_auth, None)
+    app.dependency_overrides.pop(require_auth, None)
+    app.dependency_overrides.pop(require_admin, None)
+
+
 @pytest.fixture
 def mock_job_manager():
     with patch(PATCH_JM) as MockJM:
