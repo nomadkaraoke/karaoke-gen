@@ -921,7 +921,7 @@ class TestJobMonitor:
         mock_open_browser.assert_called_once()
         call_url = mock_open_browser.call_args[0][0]
         # New consolidated frontend URL format
-        assert call_url == "https://review.example.com/app/jobs/job-123/review"
+        assert call_url == "https://review.example.com/app/jobs#/job-123/review"
     
     def test_log_timeline_updates(self, monitor):
         """Test logging timeline events."""

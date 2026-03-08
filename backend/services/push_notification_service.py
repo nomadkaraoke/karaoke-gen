@@ -243,12 +243,12 @@ class PushNotificationService:
         if action_type == "lyrics":
             notif_title = "Review Lyrics"
             notif_body = f'"{title}" by {artist} needs lyrics review'
-            url = f"/review/{job_id}"
+            url = f"/app/jobs#/{job_id}/review"
             tag = f"lyrics-{job_id}"
         else:  # instrumental
             notif_title = "Select Instrumental"
             notif_body = f'"{title}" by {artist} needs instrumental selection'
-            url = f"/instrumental/{job_id}"
+            url = f"/app/jobs#/{job_id}/instrumental"
             tag = f"instrumental-{job_id}"
 
         return await self.send_push(

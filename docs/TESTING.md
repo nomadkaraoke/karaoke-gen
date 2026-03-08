@@ -495,7 +495,7 @@ async function debug() {
   const page = await browser.newContext().then(c => c.newPage());
 
   await page.addInitScript(t => localStorage.setItem('karaoke_access_token', t), TOKEN);
-  await page.goto(`https://gen.nomadkaraoke.com/app/jobs/${JOB_ID}/review/`);
+  await page.goto(`https://gen.nomadkaraoke.com/app/jobs#/${JOB_ID}/review`);
 
   // Debug interactively - the browser stays open
   await page.pause(); // Opens Playwright inspector

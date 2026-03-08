@@ -1508,7 +1508,7 @@ class JobMonitor:
         """Open the lyrics review UI in browser."""
         # Build the review URL using the consolidated frontend route
         frontend_base = self.config.review_ui_url.rstrip('/')
-        url = f"{frontend_base}/app/jobs/{job_id}/review"
+        url = f"{frontend_base}/app/jobs#/{job_id}/review"
 
         self.logger.info(f"Opening lyrics review UI: {url}")
         self.open_browser(url)
@@ -1900,7 +1900,7 @@ class JobMonitor:
         """Open browser to instrumental review UI and wait for selection."""
         # Build the review URL using the consolidated frontend route
         frontend_base = self.config.review_ui_url.rstrip('/')
-        review_url = f"{frontend_base}/app/jobs/{job_id}/instrumental"
+        review_url = f"{frontend_base}/app/jobs#/{job_id}/instrumental"
 
         self.logger.info("")
         self.logger.info("=" * 60)

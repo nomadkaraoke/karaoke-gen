@@ -772,7 +772,7 @@ class TestNotificationFormatting:
             assert payload["title"] == "Review Lyrics"
             assert "Test Song" in payload["body"]
             assert "Test Artist" in payload["body"]
-            assert "/review/test-job-123" in payload["url"]
+            assert "/app/jobs#/test-job-123/review" in payload["url"]
 
     @pytest.mark.asyncio
     async def test_send_blocking_notification_instrumental(self, push_service):
@@ -802,7 +802,7 @@ class TestNotificationFormatting:
             import json
             payload = json.loads(call_args[1]["data"])
             assert payload["title"] == "Select Instrumental"
-            assert "/instrumental/test-job-123" in payload["url"]
+            assert "/app/jobs#/test-job-123/instrumental" in payload["url"]
 
     @pytest.mark.asyncio
     async def test_send_completion_notification(self, push_service):

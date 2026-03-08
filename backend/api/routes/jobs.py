@@ -471,7 +471,7 @@ async def edit_completed_track(
         status="success",
         job_id=job_id,
         message="Track reopened for editing. Previous outputs have been removed.",
-        review_url=f"/app/jobs#{job_id}/review",
+        review_url=f"/app/jobs#/{job_id}/review",
         review_token=review_token,
         metadata_updated=metadata_updated,
         cleanup_results=cleanup_results,

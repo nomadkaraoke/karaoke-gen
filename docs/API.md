@@ -317,7 +317,7 @@ Response:
   "status": "success",
   "job_id": "abc123",
   "message": "Track reopened for editing. Previous outputs have been removed.",
-  "review_url": "/app/jobs#abc123/review",
+  "review_url": "/app/jobs#/abc123/review",
   "review_token": "...",
   "metadata_updated": true,
   "cleanup_results": {

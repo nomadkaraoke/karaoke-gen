@@ -378,7 +378,7 @@ def create_parser(prog: str = "karaoke-gen") -> argparse.ArgumentParser:
         "--review-ui-url",
         default=os.environ.get('REVIEW_UI_URL', os.environ.get('LYRICS_REVIEW_UI_URL', 'https://gen.nomadkaraoke.com')),
         help="Frontend base URL for remote mode. Defaults to 'https://gen.nomadkaraoke.com'. "
-             "Review UIs are at /app/jobs/{id}/review and /app/jobs/{id}/instrumental. "
+             "Review UIs are at /app/jobs#/{id}/review and /app/jobs#/{id}/instrumental. "
              "For local mode: defaults to bundled frontend (from lyrics_transcriber/frontend/). "
              "(env: REVIEW_UI_URL or LYRICS_REVIEW_UI_URL)",
     )
