@@ -9,11 +9,12 @@ import { ArrowLeft, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { LyricsAnalyzer } from "@/components/lyrics-review"
 import { InstrumentalSelector } from "@/components/instrumental-review"
+import { AudioEditor } from "@/components/audio-editor/AudioEditor"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import type { CorrectionData } from "@/lib/lyrics-review/types"
 import { isLocalMode, createLocalModeJob } from "@/lib/local-mode"
 
-type RouteType = "review" | "instrumental" | "unknown"
+type RouteType = "review" | "instrumental" | "audio-edit" | "unknown"
 
 type AccessState =
   | { status: "loading" }
@@ -34,7 +35,7 @@ function parseRouteFromPathname(pathname: string): { jobId: string | null; route
 
   // Expected format: /app/jobs/{jobId}/{action}
   // e.g., /app/jobs/local/review or /app/jobs/local/instrumental
-  const match = pathname.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental)\/?$/)
+  const match = pathname.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental|audio-edit)\/?$/)
 
   if (match) {
     const [, jobId, action] = match
@@ -54,7 +55,7 @@ function parseRouteFromHash(hash: string): { jobId: string | null; routeType: Ro
   // Remove the leading '#' and parse
   const hashPath = hash.substring(1)
   // Support BOTH review and instrumental routes
-  const match = hashPath.match(/^\/?([^/]+)\/(review|instrumental)\/?$/)
+  const match = hashPath.match(/^\/?([^/]+)\/(review|instrumental|audio-edit)\/?$/)
 
   if (match) {
     const [, jobId, action] = match
@@ -69,6 +70,8 @@ function getExpectedStates(routeType: RouteType): string[] {
       return ["awaiting_review", "in_review"]
     case "instrumental":
       return ["awaiting_review", "in_review"] // Same states for now
+    case "audio-edit":
+      return ["awaiting_audio_edit", "in_audio_edit"]
     default:
       return []
   }
@@ -304,6 +307,10 @@ export function JobRouterClient() {
   const currentRouteType = accessState.status === "authorized" || accessState.status === "local_mode"
     ? accessState.routeType
     : "review" // Fallback (shouldn't happen since we return early for other statuses)
+
+  if (currentRouteType === "audio-edit") {
+    return <AudioEditor job={job} />
+  }
 
   if (currentRouteType === "instrumental") {
     return <InstrumentalReviewWrapper job={job} isLocalMode={inLocalMode} />

@@ -166,6 +166,43 @@ export interface WaveformData {
   sample_rate?: number;
 }
 
+export interface AudioEditEntry {
+  edit_id: string;
+  operation: string;
+  params: Record<string, unknown>;
+  duration_before: number;
+  duration_after: number;
+  timestamp: string;
+}
+
+export interface AudioEditInfo {
+  job_id: string;
+  artist?: string;
+  title?: string;
+  original_duration_seconds: number;
+  current_duration_seconds: number;
+  original_audio_url: string;
+  current_audio_url: string;
+  waveform_data: { amplitudes: number[] };
+  original_waveform_data: { amplitudes: number[] };
+  edit_stack: AudioEditEntry[];
+  can_undo: boolean;
+  can_redo: boolean;
+}
+
+export interface AudioEditResponse {
+  status: string;
+  edit_id?: string;
+  operation?: string;
+  duration_before: number;
+  duration_after: number;
+  current_audio_url: string;
+  waveform_data: { amplitudes: number[] };
+  edit_stack: AudioEditEntry[];
+  can_undo: boolean;
+  can_redo: boolean;
+}
+
 export type InstrumentalSelectionType = 'clean' | 'with_backing' | 'custom' | 'uploaded' | 'original';
 
 export interface DownloadUrlsResponse {
@@ -682,6 +719,64 @@ export const api = {
    * Submit audio edit (finalize and continue processing).
    * For auto-processor: submits with no edits to skip the audio edit phase.
    */
+  /**
+   * Get input audio info for the audio editor.
+   */
+  async getInputAudioInfo(jobId: string): Promise<AudioEditInfo> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/input-audio-info`, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Apply an audio edit operation (trim, cut, mute, join).
+   */
+  async applyAudioEdit(jobId: string, operation: string, params: Record<string, unknown>): Promise<AudioEditResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ operation, params }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Undo the last audio edit operation.
+   */
+  async undoAudioEdit(jobId: string): Promise<AudioEditResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/undo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Redo a previously undone audio edit.
+   */
+  async redoAudioEdit(jobId: string): Promise<AudioEditResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/redo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Upload an audio file for join operations.
+   */
+  async uploadAudioForJoin(jobId: string, file: File): Promise<{ upload_id: string; duration_seconds: number; filename: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/upload`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
   async submitAudioEdit(jobId: string, editLog?: unknown): Promise<{ status: string; message: string; job_id: string }> {
     const body = editLog ? { edit_log: editLog } : {};
     const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/submit`, {

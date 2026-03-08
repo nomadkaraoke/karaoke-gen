@@ -89,7 +89,7 @@ export const LOCAL_MODE_USER = {
  * Mock job object for local mode
  */
 export function createLocalModeJob(options: {
-  routeType: 'review' | 'instrumental'
+  routeType: 'review' | 'instrumental' | 'audio-edit'
   artist?: string
   title?: string
 }) {
