@@ -190,6 +190,31 @@ export interface AudioEditInfo {
   can_redo: boolean;
 }
 
+export interface AudioEditSessionSummary {
+  total_operations: number;
+  operations_breakdown: Record<string, number>;
+  duration_change_seconds: number;
+  net_duration_seconds: number;
+}
+
+export interface AudioEditSessionMeta {
+  session_id: string;
+  job_id: string;
+  user_email?: string;
+  edit_count: number;
+  trigger: string;
+  summary?: AudioEditSessionSummary;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AudioEditSessionWithData extends AudioEditSessionMeta {
+  edit_data?: {
+    entries: AudioEditEntry[];
+    [key: string]: unknown;
+  };
+}
+
 export interface AudioEditResponse {
   status: string;
   edit_id?: string;
@@ -783,6 +808,51 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(body),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Save an audio edit session snapshot.
+   */
+  async saveAudioEditSession(
+    jobId: string,
+    data: {
+      edit_data: unknown;
+      edit_count: number;
+      trigger: string;
+      summary?: AudioEditSessionSummary;
+    }
+  ): Promise<{ status: string; session_id?: string; reason?: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * List audio edit sessions for a job.
+   */
+  async listAudioEditSessions(
+    jobId: string
+  ): Promise<{ sessions: AudioEditSessionMeta[] }> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get a single audio edit session with full edit_data.
+   */
+  async getAudioEditSession(
+    jobId: string,
+    sessionId: string
+  ): Promise<AudioEditSessionWithData> {
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions/${sessionId}`, {
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },

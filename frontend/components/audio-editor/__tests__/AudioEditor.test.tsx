@@ -27,6 +27,11 @@ jest.mock("@/components/ThemeToggle", () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
 }))
 
+// Mock auto-save hook
+jest.mock("@/hooks/use-audio-edit-autosave", () => ({
+  useAudioEditAutoSave: () => ({ saveSession: jest.fn() }),
+}))
+
 // Mock canvas
 HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
   fillRect: jest.fn(),
@@ -56,6 +61,9 @@ jest.mock("@/lib/api", () => {
       redoAudioEdit: jest.fn(),
       uploadAudioForJoin: jest.fn(),
       submitAudioEdit: jest.fn(),
+      listAudioEditSessions: jest.fn(),
+      saveAudioEditSession: jest.fn(),
+      getAudioEditSession: jest.fn(),
     },
   }
 })
@@ -115,6 +123,9 @@ describe("AudioEditor", () => {
     // Mock localStorage
     Storage.prototype.getItem = jest.fn(() => null)
     Storage.prototype.setItem = jest.fn()
+    // Default: no saved sessions
+    mockApi.listAudioEditSessions.mockResolvedValue({ sessions: [] })
+    mockApi.saveAudioEditSession.mockResolvedValue({ status: "saved", session_id: "s1" })
   })
 
   it("shows loading state initially", () => {
@@ -323,5 +334,85 @@ describe("AudioEditor", () => {
       expect(screen.getByTitle("Back 5s")).toBeInTheDocument()
       expect(screen.getByTitle("Forward 5s")).toBeInTheDocument()
     })
+  })
+
+  it("shows restore dialog when saved sessions exist", async () => {
+    const sessions = [{
+      session_id: "s1",
+      job_id: "test-job-123",
+      edit_count: 2,
+      trigger: "auto",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }]
+    mockApi.listAudioEditSessions.mockResolvedValue({ sessions })
+    mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+    mockApi.getAudioEditSession.mockResolvedValue({
+      ...sessions[0],
+      edit_data: { entries: mockEditResponse.edit_stack },
+    })
+
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Saved Audio Edit Sessions")).toBeInTheDocument()
+    })
+  })
+
+  it("does not show restore dialog when no sessions exist", async () => {
+    mockApi.listAudioEditSessions.mockResolvedValue({ sessions: [] })
+    mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Audio Editor")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Saved Audio Edit Sessions")).not.toBeInTheDocument()
+  })
+
+  it("does not show restore dialog when edits already applied", async () => {
+    const sessions = [{
+      session_id: "s1",
+      job_id: "test-job-123",
+      edit_count: 2,
+      trigger: "auto",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }]
+    mockApi.listAudioEditSessions.mockResolvedValue({ sessions })
+    const infoWithEdits = {
+      ...mockAudioInfo,
+      edit_stack: mockEditResponse.edit_stack,
+      can_undo: true,
+    }
+    mockApi.getInputAudioInfo.mockResolvedValue(infoWithEdits)
+
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Audio Editor")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Saved Audio Edit Sessions")).not.toBeInTheDocument()
+  })
+
+  it("shows Save button when there are edits", async () => {
+    const infoWithEdits = {
+      ...mockAudioInfo,
+      current_duration_seconds: 180,
+      edit_stack: mockEditResponse.edit_stack,
+      can_undo: true,
+    }
+    mockApi.getInputAudioInfo.mockResolvedValue(infoWithEdits)
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Save")).toBeInTheDocument()
+    })
+  })
+
+  it("does not show Save button when no edits", async () => {
+    mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Audio Editor")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Save")).not.toBeInTheDocument()
   })
 })

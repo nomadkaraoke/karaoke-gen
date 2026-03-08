@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { api, Job, AudioEditInfo, AudioEditResponse, AudioEditEntry } from "@/lib/api"
+import { api, Job, AudioEditInfo, AudioEditResponse, AudioEditEntry, AudioEditSessionMeta } from "@/lib/api"
+import { useAudioEditAutoSave } from "@/hooks/use-audio-edit-autosave"
+import { AudioEditRestoreDialog } from "./AudioEditRestoreDialog"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ThemeToggle"
@@ -357,6 +359,11 @@ export function AudioEditor({ job }: AudioEditorProps) {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [redirectCountdown, setRedirectCountdown] = useState(3)
 
+  // Session restore state
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false)
+  const [savedSessions, setSavedSessions] = useState<AudioEditSessionMeta[]>([])
+  const [isRestoringSession, setIsRestoringSession] = useState(false)
+
   // Current waveform and audio URL
   const currentAmplitudes = activeTab === "original"
     ? (audioInfo?.original_waveform_data?.amplitudes ?? [])
@@ -370,6 +377,15 @@ export function AudioEditor({ job }: AudioEditorProps) {
     ? (audioInfo?.original_duration_seconds ?? 0)
     : (audioInfo?.current_duration_seconds ?? 0)
 
+  // ─── Auto-save ─────────────────────────────────────────────────
+
+  const { saveSession } = useAudioEditAutoSave({
+    jobId: job.job_id,
+    editStack,
+    originalDuration: audioInfo?.original_duration_seconds ?? 0,
+    currentDuration: audioInfo?.current_duration_seconds ?? 0,
+  })
+
   // ─── Load initial data ─────────────────────────────────────────
 
   useEffect(() => {
@@ -377,11 +393,23 @@ export function AudioEditor({ job }: AudioEditorProps) {
       try {
         setIsLoading(true)
         setError(null)
-        const info = await api.getInputAudioInfo(job.job_id)
+
+        // Load audio info and check for saved sessions in parallel
+        const [info, sessionsResult] = await Promise.all([
+          api.getInputAudioInfo(job.job_id),
+          api.listAudioEditSessions(job.job_id).catch(() => ({ sessions: [] })),
+        ])
+
         setAudioInfo(info)
         setEditStack(info.edit_stack || [])
         setCanUndo(info.can_undo)
         setCanRedo(info.can_redo)
+
+        // If no edits applied yet but saved sessions exist, offer restore
+        if (info.edit_stack.length === 0 && sessionsResult.sessions.length > 0) {
+          setSavedSessions(sessionsResult.sessions)
+          setShowRestoreDialog(true)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load audio data")
       } finally {
@@ -605,9 +633,33 @@ export function AudioEditor({ job }: AudioEditorProps) {
     }
   }
 
+  // ─── Session restore ────────────────────────────────────────────
+
+  async function handleRestoreSession(entries: AudioEditEntry[]) {
+    setIsRestoringSession(true)
+    setShowRestoreDialog(false)
+    setOperationError(null)
+
+    try {
+      // Replay each edit sequentially
+      for (const entry of entries) {
+        const resp = await api.applyAudioEdit(job.job_id, entry.operation, entry.params as Record<string, unknown>)
+        updateFromResponse(resp)
+      }
+    } catch (err) {
+      setOperationError(err instanceof Error ? err.message : "Restore failed — some edits may not have been applied")
+    } finally {
+      setIsRestoringSession(false)
+    }
+  }
+
   // ─── Submit ────────────────────────────────────────────────────
 
   async function handleSubmit() {
+    // Save session before submit
+    if (editStack.length > 0) {
+      await saveSession("submit")
+    }
     setIsSubmitting(true)
     try {
       await api.submitAudioEdit(job.job_id, editStack.length > 0 ? editStack : undefined)
@@ -884,6 +936,20 @@ export function AudioEditor({ job }: AudioEditorProps) {
             Join
           </Button>
 
+          {/* Save progress */}
+          {hasEdits && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => saveSession("manual")}
+              disabled={isOperating}
+              className="text-xs h-7"
+              title="Save progress"
+            >
+              Save
+            </Button>
+          )}
+
           <div className="w-px h-6" style={{ backgroundColor: "var(--card-border)" }} />
 
           {/* Submit */}
@@ -1050,6 +1116,31 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 {isSubmitting ? <Spinner className="w-4 h-4" /> : "Submit"}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore dialog */}
+      {showRestoreDialog && (
+        <AudioEditRestoreDialog
+          jobId={job.job_id}
+          onRestore={handleRestoreSession}
+          onStartFresh={() => setShowRestoreDialog(false)}
+        />
+      )}
+
+      {/* Restoring indicator */}
+      {isRestoringSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className="rounded-lg border p-6 text-center"
+            style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
+          >
+            <Spinner className="w-8 h-8 mx-auto mb-3" />
+            <p className="font-medium" style={{ color: "var(--text)" }}>Restoring session...</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Replaying {editStack.length} edit{editStack.length !== 1 ? "s" : ""}
+            </p>
           </div>
         </div>
       )}
