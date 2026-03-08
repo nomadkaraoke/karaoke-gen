@@ -1044,9 +1044,13 @@ function CatalogTrackList({
   tracks: CatalogTrackResult[]
   onSelect: (track: CatalogTrackResult) => void
 }) {
+  // Deduplicate by artist + track name (Spotify often returns the same song from different albums)
+  const uniqueTracks = tracks.filter((t, i, arr) =>
+    arr.findIndex((x) => x.artist_name === t.artist_name && x.track_name === t.track_name) === i
+  )
   return (
     <div className="space-y-1">
-      {tracks.map((track, i) => {
+      {uniqueTracks.map((track, i) => {
         const duration = track.duration_ms
           ? `${Math.floor(track.duration_ms / 60000)}:${Math.floor((track.duration_ms % 60000) / 1000).toString().padStart(2, "0")}`
           : null
