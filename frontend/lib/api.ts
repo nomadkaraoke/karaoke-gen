@@ -2279,6 +2279,32 @@ export interface OverrideAudioSourceResponse {
 /**
  * API client interface for LyricsAnalyzer component
  */
+// Review Session types (backup/restore)
+export interface ReviewSessionSummary {
+  total_segments: number
+  total_words: number
+  corrections_made: number
+  changed_words: Array<{ original: string; corrected: string; segment_index: number }>
+}
+
+export interface ReviewSession {
+  session_id: string
+  job_id: string
+  user_email: string
+  created_at: string | null
+  updated_at: string | null
+  edit_count: number
+  trigger: 'auto' | 'preview' | 'manual'
+  audio_duration_seconds: number | null
+  artist: string | null
+  title: string | null
+  summary: ReviewSessionSummary
+}
+
+export interface ReviewSessionWithData extends ReviewSession {
+  correction_data: CorrectionData | null
+}
+
 export interface LyricsReviewApiClient {
   submitCorrections: (data: CorrectionData) => Promise<void>
   submitAnnotations: (annotations: Omit<CorrectionAnnotation, 'annotation_id' | 'timestamp'>[]) => Promise<void>
@@ -2293,6 +2319,11 @@ export interface LyricsReviewApiClient {
   }>
   getPreviewVideoUrl: (hash: string) => string
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
+  // Review session methods
+  saveReviewSession: (data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) => Promise<{ status: string; session_id?: string; reason?: string }>
+  listReviewSessions: () => Promise<{ sessions: ReviewSession[] }>
+  getReviewSession: (sessionId: string) => Promise<ReviewSessionWithData>
+  deleteReviewSession: (sessionId: string) => Promise<{ status: string }>
 }
 
 /**
@@ -2433,6 +2464,46 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
         headers: getAuthHeaders()
       })
       return handleResponse(response)
+    },
+
+    // Review session methods
+    async saveReviewSession(data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          correction_data: data,
+          edit_count: editCount,
+          trigger,
+          summary,
+        }),
+      })
+      return handleResponse<{ status: string; session_id?: string; reason?: string }>(response)
+    },
+
+    async listReviewSessions() {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions`, {
+        headers: getAuthHeaders()
+      })
+      return handleResponse<{ sessions: ReviewSession[] }>(response)
+    },
+
+    async getReviewSession(sessionId: string) {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions/${sessionId}`, {
+        headers: getAuthHeaders()
+      })
+      return handleResponse<ReviewSessionWithData>(response)
+    },
+
+    async deleteReviewSession(sessionId: string) {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+      return handleResponse<{ status: string }>(response)
     },
   }
 }

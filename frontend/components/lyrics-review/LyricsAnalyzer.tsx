@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, memo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Video, Check, CheckCircle2 } from 'lucide-react'
@@ -20,7 +20,7 @@ import {
   ModalContent,
 } from '@/lib/lyrics-review/types'
 import type { EditLog, EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
-import type { InstrumentalSelectionType } from '@/lib/api'
+import type { InstrumentalSelectionType, LyricsReviewApiClient } from '@/lib/api'
 import { lyricsReviewApi } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import ReferenceView from './ReferenceView'
@@ -48,6 +48,8 @@ import {
   getModalState,
 } from '@/lib/lyrics-review/utils/keyboardHandlers'
 import { createEditLog, addEditEntry, attachFeedback } from '@/lib/lyrics-review/utils/editLog'
+import { useReviewSessionAutoSave } from '@/hooks/use-review-session-autosave'
+import SessionRestoreDialog from './SessionRestoreDialog'
 import Header from './Header'
 import GapNavigator from './GapNavigator'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
@@ -77,6 +79,11 @@ interface ApiClient {
   }>
   getPreviewVideoUrl: (hash: string) => string
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
+  // Review session methods (optional - available in cloud mode)
+  saveReviewSession?: LyricsReviewApiClient['saveReviewSession']
+  listReviewSessions?: LyricsReviewApiClient['listReviewSessions']
+  getReviewSession?: LyricsReviewApiClient['getReviewSession']
+  deleteReviewSession?: LyricsReviewApiClient['deleteReviewSession']
 }
 
 export interface LyricsAnalyzerProps {
@@ -150,6 +157,11 @@ export default function LyricsAnalyzer({
   // Stats panel visibility
   const [statsVisible, setStatsVisible] = useState(false)
 
+  // Session restore state
+  const [sessionRestoreOpen, setSessionRestoreOpen] = useState(false)
+  const [savedSessions, setSavedSessions] = useState<import('@/lib/api').ReviewSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+
   // Advanced mode for transcription view (Simple/Advanced toggle)
   const [advancedMode, setAdvancedMode] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -197,21 +209,85 @@ export default function LyricsAnalyzer({
     setHistoryIndex(0)
   }, [initialData])
 
-  // Load saved data
+  // Load saved sessions on mount - check server first, fall back to localStorage
   useEffect(() => {
-    const savedData = loadSavedData(initialData)
-    if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
-      setHistory([savedData])
-      setHistoryIndex(0)
+    if (isReadOnly || !apiClient?.listReviewSessions) {
+      // Local mode or read-only: use localStorage fallback
+      const savedData = loadSavedData(initialData)
+      if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
+        setHistory([savedData])
+        setHistoryIndex(0)
+      }
+      return
     }
-  }, [initialData])
 
-  // Save data
+    // Cloud mode: check for server-side sessions
+    let cancelled = false
+    setSessionsLoading(true)
+    apiClient.listReviewSessions().then(result => {
+      if (cancelled) return
+      setSessionsLoading(false)
+      if (result.sessions.length > 0) {
+        setSavedSessions(result.sessions)
+        setSessionRestoreOpen(true)
+      } else {
+        // Fall back to localStorage if no server sessions
+        const savedData = loadSavedData(initialData)
+        if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
+          setHistory([savedData])
+          setHistoryIndex(0)
+        }
+      }
+    }).catch(() => {
+      if (cancelled) return
+      setSessionsLoading(false)
+      // Fall back to localStorage on error
+      const savedData = loadSavedData(initialData)
+      if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
+        setHistory([savedData])
+        setHistoryIndex(0)
+      }
+    })
+
+    return () => { cancelled = true }
+  }, [initialData, isReadOnly]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handler for restoring a session from the dialog
+  const handleSessionRestore = useCallback((correctionData: CorrectionData) => {
+    setHistory([correctionData])
+    setHistoryIndex(0)
+  }, [])
+
+  // Handler to open session browser from toolbar
+  const handleOpenSessionBrowser = useCallback(async () => {
+    if (!apiClient?.listReviewSessions) return
+    setSessionsLoading(true)
+    try {
+      const result = await apiClient.listReviewSessions()
+      setSavedSessions(result.sessions)
+    } catch {
+      setSavedSessions([])
+    }
+    setSessionsLoading(false)
+    setSessionRestoreOpen(true)
+  }, [apiClient])
+
+  // Save data (localStorage - instant crash recovery)
   useEffect(() => {
     if (!isReadOnly) {
       saveData(data, initialData)
     }
   }, [data, isReadOnly, initialData])
+
+  // Server-side session auto-save (periodic backup)
+  const { saveSession } = useReviewSessionAutoSave({
+    jobId: jobId ?? '',
+    data,
+    initialData,
+    historyLength: history.length,
+    isReadOnly: isReadOnly || !apiClient?.saveReviewSession,
+    apiClient: apiClient as LyricsReviewApiClient,
+  })
 
   // Flash handler (defined early so gap navigation can use it)
   const handleFlash = useCallback((type: FlashType, info?: HighlightInfo) => {
@@ -766,8 +842,10 @@ export default function LyricsAnalyzer({
     if (typeof window !== 'undefined' && window.isAudioPlaying && window.toggleAudioPlayback) {
       window.toggleAudioPlayback()
     }
+    // Trigger server-side session save on preview (signals completion milestone)
+    saveSession('preview')
     setIsReviewModalOpen(true)
-  }, [])
+  }, [saveSession])
 
   // Submit to server (save corrections, don't complete review yet)
   const handleSubmitToServer = useCallback(async () => {
@@ -1191,6 +1269,25 @@ export default function LyricsAnalyzer({
               )}
             </div>
           )}
+          {apiClient?.saveReviewSession && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => saveSession('manual')}
+                disabled={history.length <= 1}
+              >
+                Save Progress
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenSessionBrowser}
+              >
+                Session History
+              </Button>
+            </>
+          )}
           <span className="text-sm text-muted-foreground">Lyrics look good?</span>
           <Button onClick={handleFinishReview} disabled={isReviewComplete}>
             {isReviewComplete ? 'Review Complete' : 'Preview Video'}
@@ -1321,6 +1418,17 @@ export default function LyricsAnalyzer({
             setCorrectionDetailOpen(false)
             setSelectedCorrection(null)
           }}
+        />
+      )}
+
+      {apiClient?.saveReviewSession && (
+        <SessionRestoreDialog
+          open={sessionRestoreOpen}
+          onClose={() => setSessionRestoreOpen(false)}
+          onRestore={handleSessionRestore}
+          sessions={savedSessions}
+          apiClient={apiClient as LyricsReviewApiClient}
+          isLoading={sessionsLoading}
         />
       )}
     </div>

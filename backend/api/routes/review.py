@@ -26,7 +26,9 @@ from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
 from backend.models.job import JobStatus
+from backend.models.review_session import ReviewSession, ReviewSessionSummary
 from backend.services.job_manager import JobManager
+from backend.services.firestore_service import FirestoreService
 from backend.services.storage_service import StorageService
 from backend.services.job_logging import job_log_context, JobLogger
 from backend.services.tracing import create_span, add_span_attribute, add_span_event
@@ -61,6 +63,27 @@ _background_tasks: Set[asyncio.Task] = set()
 def _get_audio_hash(job_id: str) -> str:
     """Generate a consistent audio hash for a job."""
     return hashlib.md5(job_id.encode()).hexdigest()
+
+
+# Cross-job search endpoint MUST be registered before {job_id} routes
+# to avoid FastAPI matching "sessions" as a job_id path parameter.
+@router.get("/sessions/search")
+async def search_review_sessions(
+    q: str = "",
+    limit: int = 20,
+    auth_info: Tuple[str, str] = Depends(require_auth)
+):
+    """
+    Search review sessions across all jobs (admin only).
+
+    Query params:
+    - q: Search text (matches artist, title, or job_id)
+    - limit: Max results (default 20)
+    """
+    firestore_svc = FirestoreService()
+    results = firestore_svc.search_review_sessions(query_text=q, limit=limit)
+
+    return {"sessions": results}
 
 
 @router.get("/{job_id}/ping")
@@ -905,3 +928,188 @@ async def get_waveform_data(
     except Exception as e:
         logger.error(f"Job {job_id}: Error generating waveform data: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating waveform: {str(e)}")
+
+
+# ============================================
+# Review Session Endpoints (backup/restore)
+# ============================================
+
+
+@router.post("/{job_id}/sessions")
+async def save_review_session(
+    job_id: str,
+    data: Dict[str, Any],
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """
+    Save a review session snapshot for backup/restore.
+
+    Stores correction data in GCS and metadata in Firestore subcollection.
+    Skips save if the data is identical to the most recent session (deduplication).
+
+    Request body:
+    - correction_data: Full CorrectionData object
+    - edit_count: Number of edits in this session
+    - trigger: "auto" | "preview" | "manual"
+    - summary: { total_segments, total_words, corrections_made, changed_words[] }
+    """
+    job_manager = JobManager()
+    firestore_svc = FirestoreService()
+    storage = StorageService()
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    correction_data = data.get("correction_data")
+    if not correction_data:
+        raise HTTPException(status_code=400, detail="correction_data is required")
+
+    # Compute hash for deduplication
+    data_json = json.dumps(correction_data, sort_keys=True, default=str)
+    data_hash = hashlib.sha256(data_json.encode()).hexdigest()
+
+    # Check if identical to most recent session
+    latest_hash = firestore_svc.get_latest_review_session_hash(job_id)
+    if latest_hash == data_hash:
+        logger.info(f"Job {job_id}: Skipping duplicate review session save")
+        return {"status": "skipped", "reason": "identical_data"}
+
+    # Get audio duration from backing_vocals_analysis if available
+    audio_duration = None
+    backing_analysis = job.state_data.get("backing_vocals_analysis", {})
+    if backing_analysis:
+        audio_duration = backing_analysis.get("total_duration_seconds")
+
+    # Build session
+    user_email = auth_info[0] if auth_info else ""
+    summary_data = data.get("summary", {})
+
+    session = ReviewSession(
+        job_id=job_id,
+        user_email=user_email,
+        edit_count=data.get("edit_count", 0),
+        trigger=data.get("trigger", "auto"),
+        audio_duration_seconds=audio_duration,
+        artist=job.artist,
+        title=job.title,
+        summary=ReviewSessionSummary.from_dict(summary_data),
+        data_hash=data_hash,
+    )
+
+    # Upload correction data to GCS
+    gcs_path = f"jobs/{job_id}/review_sessions/{session.session_id}.json"
+    storage.upload_json(gcs_path, correction_data)
+    session.correction_data_gcs_path = gcs_path
+
+    # Save metadata to Firestore
+    firestore_svc.save_review_session(job_id, session)
+
+    logger.info(f"Job {job_id}: Saved review session {session.session_id} (trigger={session.trigger}, edits={session.edit_count})")
+    return {
+        "status": "saved",
+        "session_id": session.session_id,
+        "created_at": session.created_at.isoformat(),
+    }
+
+
+@router.get("/{job_id}/sessions")
+async def list_review_sessions(
+    job_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """
+    List all review sessions for a job (metadata only, no correction_data).
+    Ordered by updated_at descending (most recent first).
+    """
+    firestore_svc = FirestoreService()
+    sessions = firestore_svc.list_review_sessions(job_id)
+
+    return {
+        "sessions": [
+            {
+                "session_id": s.session_id,
+                "job_id": s.job_id,
+                "user_email": s.user_email,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+                "edit_count": s.edit_count,
+                "trigger": s.trigger,
+                "audio_duration_seconds": s.audio_duration_seconds,
+                "artist": s.artist,
+                "title": s.title,
+                "summary": s.summary.to_dict(),
+            }
+            for s in sessions
+        ]
+    }
+
+
+@router.get("/{job_id}/sessions/{session_id}")
+async def get_review_session(
+    job_id: str,
+    session_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """
+    Get a single review session with full correction_data loaded from GCS.
+    """
+    firestore_svc = FirestoreService()
+    storage = StorageService()
+
+    session = firestore_svc.get_review_session(job_id, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Review session not found")
+
+    # Load correction data from GCS
+    correction_data = None
+    if session.correction_data_gcs_path:
+        try:
+            correction_data = storage.download_json(session.correction_data_gcs_path)
+        except Exception as e:
+            logger.error(f"Job {job_id}: Error loading correction data for session {session_id}: {e}")
+            raise HTTPException(status_code=500, detail="Error loading session correction data")
+
+    return {
+        "session_id": session.session_id,
+        "job_id": session.job_id,
+        "user_email": session.user_email,
+        "created_at": session.created_at.isoformat() if session.created_at else None,
+        "updated_at": session.updated_at.isoformat() if session.updated_at else None,
+        "edit_count": session.edit_count,
+        "trigger": session.trigger,
+        "audio_duration_seconds": session.audio_duration_seconds,
+        "artist": session.artist,
+        "title": session.title,
+        "summary": session.summary.to_dict(),
+        "correction_data": correction_data,
+    }
+
+
+@router.delete("/{job_id}/sessions/{session_id}")
+async def delete_review_session(
+    job_id: str,
+    session_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """Delete a review session (metadata + GCS data)."""
+    firestore_svc = FirestoreService()
+    storage = StorageService()
+
+    session = firestore_svc.get_review_session(job_id, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Review session not found")
+
+    # Delete GCS data
+    if session.correction_data_gcs_path:
+        try:
+            storage.delete_file(session.correction_data_gcs_path)
+        except Exception:
+            logger.warning(f"Job {job_id}: Could not delete GCS file for session {session_id}")
+
+    # Delete Firestore doc
+    firestore_svc.delete_review_session(job_id, session_id)
+
+    return {"status": "deleted", "session_id": session_id}
+
+

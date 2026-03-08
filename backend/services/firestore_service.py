@@ -10,6 +10,7 @@ from google.cloud.firestore_v1 import FieldFilter
 from backend.config import settings
 from backend.models.job import Job, JobStatus, TimelineEvent
 from backend.models.worker_log import WorkerLogEntry
+from backend.models.review_session import ReviewSession
 
 
 logger = logging.getLogger(__name__)
@@ -674,6 +675,217 @@ class FirestoreService:
 
         transaction = self.db.transaction()
         return _read_and_delete(transaction, doc_ref)
+
+    # ============================================
+    # Review Session Subcollection Methods
+    # ============================================
+    # These methods store review session snapshots in a subcollection
+    # (jobs/{job_id}/review_sessions) for lyrics review backup/restore.
+
+    def save_review_session(self, job_id: str, session: ReviewSession) -> str:
+        """
+        Save a review session to the subcollection.
+
+        Stores at: jobs/{job_id}/review_sessions/{session_id}
+
+        Args:
+            job_id: Job ID
+            session: ReviewSession instance
+
+        Returns:
+            session_id
+        """
+        try:
+            session.job_id = job_id
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("review_sessions")
+            doc_ref = sessions_ref.document(session.session_id)
+            doc_ref.set(session.to_dict())
+            logger.info(f"Saved review session {session.session_id} for job {job_id}")
+            return session.session_id
+        except Exception as e:
+            logger.error(f"Error saving review session for job {job_id}: {e}")
+            raise
+
+    def list_review_sessions(self, job_id: str) -> List[ReviewSession]:
+        """
+        List all review sessions for a job, ordered by updated_at descending.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            List of ReviewSession instances (metadata only, no correction_data)
+        """
+        try:
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("review_sessions")
+            query = sessions_ref.order_by("updated_at", direction=firestore.Query.DESCENDING)
+            docs = query.stream()
+            return [ReviewSession.from_dict(doc.to_dict()) for doc in docs]
+        except Exception as e:
+            logger.error(f"Error listing review sessions for job {job_id}: {e}")
+            return []
+
+    def get_review_session(self, job_id: str, session_id: str) -> Optional[ReviewSession]:
+        """
+        Get a single review session by ID.
+
+        Args:
+            job_id: Job ID
+            session_id: Session ID
+
+        Returns:
+            ReviewSession or None
+        """
+        try:
+            doc_ref = (
+                self.db.collection(self.collection)
+                .document(job_id)
+                .collection("review_sessions")
+                .document(session_id)
+            )
+            doc = doc_ref.get()
+            if not doc.exists:
+                return None
+            return ReviewSession.from_dict(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Error getting review session {session_id} for job {job_id}: {e}")
+            raise
+
+    def delete_review_session(self, job_id: str, session_id: str) -> None:
+        """
+        Delete a review session.
+
+        Args:
+            job_id: Job ID
+            session_id: Session ID
+        """
+        try:
+            doc_ref = (
+                self.db.collection(self.collection)
+                .document(job_id)
+                .collection("review_sessions")
+                .document(session_id)
+            )
+            doc_ref.delete()
+            logger.info(f"Deleted review session {session_id} for job {job_id}")
+        except Exception as e:
+            logger.error(f"Error deleting review session {session_id} for job {job_id}: {e}")
+            raise
+
+    def delete_review_sessions_subcollection(self, job_id: str, batch_size: int = 500) -> int:
+        """
+        Delete all review sessions for a job (used when deleting a job).
+
+        Args:
+            job_id: Job ID
+            batch_size: Number of documents to delete per batch
+
+        Returns:
+            Number of sessions deleted
+        """
+        try:
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("review_sessions")
+            deleted_count = 0
+
+            while True:
+                docs = sessions_ref.limit(batch_size).stream()
+                deleted_in_batch = 0
+
+                batch = self.db.batch()
+                for doc in docs:
+                    batch.delete(doc.reference)
+                    deleted_in_batch += 1
+
+                if deleted_in_batch == 0:
+                    break
+
+                batch.commit()
+                deleted_count += deleted_in_batch
+
+                if deleted_in_batch < batch_size:
+                    break
+
+            if deleted_count > 0:
+                logger.info(f"Deleted {deleted_count} review sessions for job {job_id}")
+
+            return deleted_count
+
+        except Exception as e:
+            logger.error(f"Error deleting review sessions subcollection for job {job_id}: {e}")
+            return 0
+
+    def get_latest_review_session_hash(self, job_id: str) -> Optional[str]:
+        """
+        Get the data_hash of the most recent review session for deduplication.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            data_hash string or None if no sessions exist
+        """
+        try:
+            sessions_ref = self.db.collection(self.collection).document(job_id).collection("review_sessions")
+            query = (
+                sessions_ref
+                .order_by("updated_at", direction=firestore.Query.DESCENDING)
+                .limit(1)
+                .select(["data_hash"])
+            )
+            docs = list(query.stream())
+            if docs:
+                return docs[0].to_dict().get("data_hash", "")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting latest review session hash for job {job_id}: {e}")
+            return None
+
+    def search_review_sessions(
+        self,
+        query_text: str = "",
+        job_id: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """
+        Search review sessions across all jobs using collection group query.
+
+        Args:
+            query_text: Search text (prefix-matched against artist_lower or title_lower)
+            job_id: If provided, search only within this job
+            limit: Maximum results
+
+        Returns:
+            List of session dicts with job context
+        """
+        try:
+            if job_id:
+                # Search within a specific job
+                sessions_ref = self.db.collection(self.collection).document(job_id).collection("review_sessions")
+                query = sessions_ref.order_by("updated_at", direction=firestore.Query.DESCENDING).limit(limit)
+                docs = query.stream()
+                return [doc.to_dict() for doc in docs]
+
+            # Collection group query across all jobs
+            sessions_ref = self.db.collection_group("review_sessions")
+            query = sessions_ref.order_by("updated_at", direction=firestore.Query.DESCENDING).limit(limit)
+            docs = query.stream()
+            results = [doc.to_dict() for doc in docs]
+
+            # Filter in Python for text search (Firestore doesn't support LIKE)
+            if query_text:
+                q_lower = query_text.lower()
+                results = [
+                    r for r in results
+                    if q_lower in (r.get("artist") or "").lower()
+                    or q_lower in (r.get("title") or "").lower()
+                    or q_lower in (r.get("job_id") or "").lower()
+                ]
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error searching review sessions: {e}")
+            return []
 
     def delete_search_session(self, session_id: str) -> None:
         """Delete a search session after it has been consumed by job creation.
