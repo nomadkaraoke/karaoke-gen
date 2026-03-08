@@ -32,7 +32,7 @@
 | **White-label B2B portals** | Working (Vocal Star, Singa) |
 | **Private (non-published) tracks** | Working |
 | **Custom video styling (private jobs)** | Working |
-| **Song lookup autocomplete** | Working (via karaoke-decide catalog) |
+| **Song suggestions & fuzzy correction** | Working (catalog lookup on Step 2 + "Did you mean?" typo correction) |
 | **Community version detection** | Working (via karaokenerds.com) |
 | **Review session backup/restore** | Working (auto-save + restore UI) |
 
@@ -45,6 +45,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Step 2 Song Suggestions & Fuzzy Correction** (2026-03-08): Replaced the Step 1 autocomplete with a simpler approach: plain text inputs on Step 1, then catalog lookup + community version check fire in parallel with the audio search on Step 2. Results appear as a "Song found in our database" panel (exact match) or correction suggestion panel while the user waits. Added fuzzy "Did you mean?" correction — when audio search returns poor results (Tier 3) and catalog has no exact title match, fetches the artist's discography and fuzzy-matches against the user's title using LCS similarity. Shows an amber banner with one-click correction + expandable alternatives list. Handles garbled artist fields via title-based fallback with artist tiebreaker. Visibility step reworked with action buttons at top for one-click select+continue. See [archive/2026-03-08-step2-song-suggestions.plan.md](archive/2026-03-08-step2-song-suggestions.plan.md) and [archive/2026-03-08-fuzzy-did-you-mean.plan.md](archive/2026-03-08-fuzzy-did-you-mean.plan.md).
 
 - **Review Session Backup/Restore** (2026-03-08): Server-side auto-save of lyrics review sessions replaces fragile localStorage-only mechanism. Sessions auto-save every 60s (if dirty), on preview video generation, and on page unload. Deduplication via SHA-256 hash prevents redundant saves. Correction data stored in GCS (can exceed Firestore's 1MB doc limit); metadata in Firestore subcollection (`jobs/{jobId}/review_sessions/{sessionId}`). Restore UI shows split-pane session browser with edit diff preview. Cross-job session search allows reusing edits across different jobs (with duration mismatch warning). On load, automatically prompts to restore if saved sessions exist. See [archive/2026-03-07-lyrics-review-sessions-plan.md](archive/2026-03-07-lyrics-review-sessions-plan.md).
 

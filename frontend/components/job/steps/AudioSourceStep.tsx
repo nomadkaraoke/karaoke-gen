@@ -1078,7 +1078,7 @@ function CatalogTrackList({
 }
 
 /** Compute similarity between two strings using longest common subsequence ratio */
-function stringSimilarity(a: string, b: string): number {
+export function stringSimilarity(a: string, b: string): number {
   const al = a.toLowerCase()
   const bl = b.toLowerCase()
   if (al === bl) return 1
@@ -1110,7 +1110,7 @@ function stringSimilarity(a: string, b: string): number {
 /** Find fuzzy matches for a title among catalog tracks, sorted by relevance.
  *  When userArtist is provided, uses artist similarity as a tiebreaker
  *  (e.g. user typed "fox stevenson bruises" as artist — prefer Fox Stevenson over Lewis Capaldi). */
-function findFuzzyMatches(
+export function findFuzzyMatches(
   userTitle: string,
   tracks: CatalogTrackResult[],
   threshold = 0.6,

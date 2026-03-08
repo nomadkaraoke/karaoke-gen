@@ -14,8 +14,11 @@ For UI that renders differently based on data (e.g., audio search result tiers),
 ### Filename Matching Normalization
 When comparing filenames to search titles, treat underscores/hyphens/dots as word separators BEFORE stripping non-alphanumeric chars. Also require a minimum substring length (3 chars) to prevent false matches like filename "K" matching title "KoREH". For non-Latin scripts (Hebrew, etc.), return an indeterminate result rather than a false match or false mismatch.
 
-### Autocomplete UX: Less Is More (Mar 2026)
-When adding autocomplete to a multi-field form (artist + title), a single autocomplete on the **primary search field** (title) that overwrites both fields on selection is better than separate autocompletes on each field. Two autocompletes feel "janky" — they compete for attention, spam the backend with double the requests, and confuse users about which one to interact with first. Instead: plain text input for the first field (artist), autocomplete on the second field (title) that only activates when the first field is filled, and selection overwrites both fields with canonical values.
+### Song Suggestions: Don't Block Input, Enhance Later (Mar 2026)
+Autocomplete on the artist/title input fields confused users — it wasn't clear why they should wait for results or what selecting one would do. Better approach: let users type freely on Step 1, then show catalog suggestions **in parallel with the audio search** on Step 2 (while they're already waiting). This way suggestions feel like a helpful enhancement rather than an obstacle. Two modes work well: (1) exact match → green "Song found" panel for formatting correction, (2) no match + poor audio results → amber "Did you mean?" fuzzy correction banner.
+
+### Fuzzy Search: Artist Tiebreaker for Title-Based Fallback (Mar 2026)
+When fuzzy-matching by title returns multiple artists with the same song name (e.g. "Bruises" by Lewis Capaldi vs Fox Stevenson), use the user's garbled artist input as a tiebreaker — `stringSimilarity(userInput, track.artist_name) * 0.2` as a bonus score. Also: Spotify's `q` parameter searches track names, not artist names, so `searchCatalogTracks(artist, artist, 20)` (artist as both query and filter) returns nothing. Use `searchCatalogTracks(artist, undefined, 20)` to get the artist's tracks via general search.
 
 ---
 
