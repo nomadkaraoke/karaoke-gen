@@ -441,6 +441,65 @@ Content-Type: application/json
 
 Stores annotations to `jobs/{job_id}/lyrics/annotations.json`. Merges with existing annotations if present.
 
+#### Review Sessions
+
+Server-side backup/restore of lyrics review editing sessions. Correction data is stored in GCS; metadata in Firestore subcollection `jobs/{job_id}/review_sessions/{session_id}`.
+
+##### Save Review Session
+
+```http
+POST /api/review/{job_id}/sessions
+Content-Type: application/json
+
+{
+  "correction_data": { "corrected_segments": [...], "original_segments": [...] },
+  "edit_count": 5,
+  "trigger": "auto",  // "auto" | "preview" | "manual"
+  "summary": {
+    "total_segments": 10,
+    "total_words": 100,
+    "corrections_made": 5,
+    "changed_words": [{"original": "hello", "corrected": "hallo", "segment_index": 0}]
+  }
+}
+```
+
+Deduplicates via SHA-256 hash of correction_data. Returns `{"status": "skipped", "reason": "identical_data"}` if data hasn't changed since last save.
+
+Auth: Review token (same as correction data access).
+
+##### List Review Sessions
+
+```http
+GET /api/review/{job_id}/sessions
+```
+
+Returns session metadata (no correction_data). Ordered by most recent first.
+
+##### Get Review Session
+
+```http
+GET /api/review/{job_id}/sessions/{session_id}
+```
+
+Returns full session including correction_data downloaded from GCS.
+
+##### Delete Review Session
+
+```http
+DELETE /api/review/{job_id}/sessions/{session_id}
+```
+
+Deletes both GCS data and Firestore metadata.
+
+##### Search Review Sessions (Cross-Job)
+
+```http
+GET /api/review/sessions/search?q=artist+name&limit=20
+```
+
+Searches across all jobs. Requires admin auth. Matches against artist, title, and job_id fields.
+
 ### Instrumental Selection (Finalise-Only Jobs)
 
 For finalise-only jobs (where audio prep was done externally), instrumental selection is handled separately:

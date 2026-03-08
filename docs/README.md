@@ -34,6 +34,7 @@
 | **Custom video styling (private jobs)** | Working |
 | **Song lookup autocomplete** | Working (via karaoke-decide catalog) |
 | **Community version detection** | Working (via karaokenerds.com) |
+| **Review session backup/restore** | Working (auto-save + restore UI) |
 
 ## Known Issues
 
@@ -44,6 +45,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Review Session Backup/Restore** (2026-03-08): Server-side auto-save of lyrics review sessions replaces fragile localStorage-only mechanism. Sessions auto-save every 60s (if dirty), on preview video generation, and on page unload. Deduplication via SHA-256 hash prevents redundant saves. Correction data stored in GCS (can exceed Firestore's 1MB doc limit); metadata in Firestore subcollection (`jobs/{jobId}/review_sessions/{sessionId}`). Restore UI shows split-pane session browser with edit diff preview. Cross-job session search allows reusing edits across different jobs (with duration mismatch warning). On load, automatically prompts to restore if saved sessions exist. See [archive/2026-03-07-lyrics-review-sessions-plan.md](archive/2026-03-07-lyrics-review-sessions-plan.md).
 
 - **Job Observability Improvements** (2026-03-07): Enhanced timeline events with a `metadata` field to capture structured output details (brand codes, YouTube video IDs, Dropbox paths, GDrive file IDs) at key moments — job completion, edit initiation, and admin output deletion. Added `log_to_job()` helper for API endpoints to write to Firestore job log subcollections (previously only workers logged there). Edit and admin-delete endpoints now snapshot previous outputs before cleanup and log each cleanup step. Distribution logging enhanced with video IDs, folder paths, and file IDs. See [plans/improve-job-observability.plan.md](../.claude/plans/improve-job-observability.plan.md).
 
