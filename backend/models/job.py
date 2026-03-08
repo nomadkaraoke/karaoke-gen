@@ -16,8 +16,9 @@ class JobStatus(str, Enum):
     """
     Job status enumeration - Complete state machine.
 
-    The workflow has 7 main stages with 2 human interaction points:
+    The workflow has 8 main stages with up to 3 human interaction points:
     1. Input & Setup (may include audio source selection)
+    1b. Optional Audio Editing (BLOCKING) - trim/cut/mute/join input audio
     2. Parallel Processing (audio + lyrics)
     3. Title/End Screen Generation + Backing Vocals Analysis
     4. Countdown Padding Synchronization
@@ -38,6 +39,11 @@ class JobStatus(str, Enum):
     DOWNLOADING_AUDIO = "downloading_audio"       # Downloading selected audio from source
 
     DOWNLOADING = "downloading"                   # Downloading from URL or processing upload
+
+    # Optional: Audio editing (before processing begins)
+    AWAITING_AUDIO_EDIT = "awaiting_audio_edit"  # ⚠️ WAITING FOR USER - edit input audio
+    IN_AUDIO_EDIT = "in_audio_edit"              # User is actively editing audio
+    AUDIO_EDIT_COMPLETE = "audio_edit_complete"  # User submitted edited audio
 
     # Stage 2a: Audio separation (parallel track 1)
     SEPARATING_STAGE1 = "separating_stage1"      # Clean instrumental separation (Modal API)
@@ -103,7 +109,13 @@ STATE_TRANSITIONS = {
     JobStatus.DOWNLOADING_AUDIO: [JobStatus.DOWNLOADING, JobStatus.FAILED],
 
     # DOWNLOADING allows parallel processing (audio + lyrics) and then screens when both complete
-    JobStatus.DOWNLOADING: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.FAILED],
+    # Can also enter optional audio edit phase if requires_audio_edit flag is set
+    JobStatus.DOWNLOADING: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.AWAITING_AUDIO_EDIT, JobStatus.FAILED],
+
+    # Optional audio edit phase (trim, cut, mute, join input audio before processing)
+    JobStatus.AWAITING_AUDIO_EDIT: [JobStatus.IN_AUDIO_EDIT, JobStatus.AUDIO_EDIT_COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED],
+    JobStatus.IN_AUDIO_EDIT: [JobStatus.AWAITING_AUDIO_EDIT, JobStatus.AUDIO_EDIT_COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED],
+    JobStatus.AUDIO_EDIT_COMPLETE: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.FAILED],
 
     # Audio separation flow
     JobStatus.SEPARATING_STAGE1: [JobStatus.SEPARATING_STAGE2, JobStatus.FAILED],

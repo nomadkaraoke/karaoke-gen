@@ -67,6 +67,12 @@ export function AutoProcessor({ jobs, onJobsChanged }: AutoProcessorProps) {
           await api.selectAudioResult(job.job_id, 0)
           console.log(`[AutoProcessor] Auto-selected first audio result for job ${job.job_id}`)
           break
+
+        case 'audio_edit':
+          // Auto-submit audio edit with no changes (skip editing)
+          await api.submitAudioEdit(job.job_id)
+          console.log(`[AutoProcessor] Auto-submitted audio edit (no changes) for job ${job.job_id}`)
+          break
       }
 
       // Refresh jobs to reflect the change
@@ -97,6 +103,9 @@ export function AutoProcessor({ jobs, onJobsChanged }: AutoProcessorProps) {
           break
         case 'awaiting_audio_selection':
           processJob(job, 'audio')
+          break
+        case 'awaiting_audio_edit':
+          processJob(job, 'audio_edit')
           break
       }
     }

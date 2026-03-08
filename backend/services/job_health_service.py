@@ -22,6 +22,9 @@ STATUSES_BEFORE_AUDIO_START = {
     JobStatus.PENDING,
     JobStatus.SEARCHING_AUDIO,
     JobStatus.AWAITING_AUDIO_SELECTION,
+    JobStatus.AWAITING_AUDIO_EDIT,
+    JobStatus.IN_AUDIO_EDIT,
+    JobStatus.AUDIO_EDIT_COMPLETE,
 }
 
 # Jobs in these statuses should NOT have lyrics_complete flag set
@@ -29,6 +32,9 @@ STATUSES_BEFORE_LYRICS_START = {
     JobStatus.PENDING,
     JobStatus.SEARCHING_AUDIO,
     JobStatus.AWAITING_AUDIO_SELECTION,
+    JobStatus.AWAITING_AUDIO_EDIT,
+    JobStatus.IN_AUDIO_EDIT,
+    JobStatus.AUDIO_EDIT_COMPLETE,
 }
 
 # Statuses where screens_progress.stage='complete' is valid

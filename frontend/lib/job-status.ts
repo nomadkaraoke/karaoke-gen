@@ -45,6 +45,11 @@ const STATUS_CONFIG: Record<
   downloading_audio: { step: 3, label: "Downloading audio", isBlocking: false, color: "text-blue-400" },
   downloading: { step: 3, label: "Downloading", isBlocking: false, color: "text-blue-400" },
 
+  // Step 3.5: Audio Editing (optional, BLOCKING)
+  awaiting_audio_edit: { step: 3, label: "Edit audio", isBlocking: true, color: "text-amber-400" },
+  in_audio_edit: { step: 3, label: "Editing audio", isBlocking: true, color: "text-blue-400" },
+  audio_edit_complete: { step: 3, label: "Audio edited", isBlocking: false, color: "text-teal-400" },
+
   // Step 4: Parallel Processing (Audio + Lyrics)
   separating_stage1: { step: 4, label: "Separating audio (1/2)", isBlocking: false, color: "text-purple-400" },
   separating_stage2: { step: 4, label: "Separating audio (2/2)", isBlocking: false, color: "text-purple-400" },

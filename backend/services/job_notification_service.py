@@ -61,6 +61,10 @@ class JobNotificationService:
         # Use hash-based routing for static hosting compatibility
         return f"{self.frontend_url}/app/jobs#/{job_id}/instrumental"
 
+    def _build_audio_edit_url(self, job_id: str) -> str:
+        """Build the audio edit URL for a job."""
+        return f"{self.frontend_url}/app/jobs#/{job_id}/audio-edit"
+
     async def send_job_completion_email(
         self,
         job_id: str,
@@ -213,6 +217,7 @@ class JobNotificationService:
             action_type: Type of action needed:
                 - "lyrics": Combined review (lyrics + instrumental selection) for normal jobs
                 - "instrumental": Instrumental-only selection for finalise-only jobs
+                - "audio_edit": Audio editing before processing begins
             user_name: User's display name
             artist: Artist name
             title: Song title
@@ -248,6 +253,15 @@ class JobNotificationService:
                     artist=artist,
                     title=title,
                     instrumental_url=instrumental_url,
+                )
+            elif action_type == "audio_edit":
+                audio_edit_url = self._build_audio_edit_url(job_id)
+                # Reuse the lyrics template but with the audio edit URL and different subject
+                message_content = self.template_service.render_action_needed_lyrics(
+                    name=user_name,
+                    artist=artist,
+                    title=title,
+                    review_url=audio_edit_url,
                 )
             else:
                 logger.error(f"Unknown action type: {action_type}")

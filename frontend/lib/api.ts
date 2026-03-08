@@ -671,6 +671,20 @@ export const api = {
   },
 
   /**
+   * Submit audio edit (finalize and continue processing).
+   * For auto-processor: submits with no edits to skip the audio edit phase.
+   */
+  async submitAudioEdit(jobId: string, editLog?: unknown): Promise<{ status: string; message: string; job_id: string }> {
+    const body = editLog ? { edit_log: editLog } : {};
+    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(body),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Get instrumental analysis data for review
    */
   async getInstrumentalAnalysis(jobId: string): Promise<InstrumentalAnalysis> {

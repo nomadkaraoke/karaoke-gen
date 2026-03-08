@@ -1113,3 +1113,517 @@ async def delete_review_session(
     return {"status": "deleted", "session_id": session_id}
 
 
+# ============================================
+# Audio Edit Endpoints
+# ============================================
+
+
+def _get_current_audio_gcs_path(job) -> str:
+    """Get the GCS path of the current audio (latest edit or original)."""
+    state_data = job.state_data or {}
+    edit_stack = state_data.get('audio_edit_stack', [])
+    if edit_stack:
+        return edit_stack[-1]['gcs_path']
+    return job.input_media_gcs_path
+
+
+def _build_audio_edit_response(
+    job_id: str,
+    gcs_path: str,
+    edit_stack: list,
+    redo_stack: list,
+    edit_id: str | None = None,
+) -> dict:
+    """Build a standard response for audio edit operations."""
+    from backend.services.audio_analysis_service import AudioAnalysisService
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+    from backend.services.audio_edit_service import AudioEditService
+
+    analysis_service = AudioAnalysisService()
+    transcoding_service = AudioTranscodingService()
+    edit_service = AudioEditService()
+
+    # Get waveform data
+    amplitudes, duration = analysis_service.get_waveform_data(
+        gcs_audio_path=gcs_path,
+        job_id=job_id,
+        num_points=1000,
+    )
+
+    # Get playback URL (OGG Opus)
+    playback_url = transcoding_service.get_review_audio_url(gcs_path)
+
+    response = {
+        "status": "success",
+        "edited_audio": {
+            "duration_seconds": duration,
+            "waveform_data": {
+                "amplitudes": amplitudes,
+                "duration": duration,
+            },
+            "playback_url": playback_url,
+        },
+        "edit_stack_size": len(edit_stack),
+        "can_undo": len(edit_stack) > 0,
+        "can_redo": len(redo_stack) > 0,
+    }
+    if edit_id is not None:
+        response["edit_id"] = edit_id
+    return response
+
+
+@router.get("/{job_id}/input-audio-info")
+async def get_input_audio_info(
+    job_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """
+    Get metadata about the input audio for the audio editor UI.
+
+    Returns duration, waveform data, playback URL, and edit state.
+    """
+    from backend.services.audio_analysis_service import AudioAnalysisService
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+    from backend.services.audio_edit_service import AudioEditService
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not job.input_media_gcs_path:
+        raise HTTPException(status_code=404, detail="No input audio available")
+
+    try:
+        edit_service = AudioEditService()
+        analysis_service = AudioAnalysisService()
+        transcoding_service = AudioTranscodingService()
+
+        state_data = job.state_data or {}
+        edit_stack = state_data.get('audio_edit_stack', [])
+
+        # Get metadata for the original audio
+        metadata = edit_service.get_metadata_from_gcs(job.input_media_gcs_path)
+
+        # Waveform for original audio
+        orig_amplitudes, orig_duration = analysis_service.get_waveform_data(
+            gcs_audio_path=job.input_media_gcs_path,
+            job_id=job_id,
+            num_points=1000,
+        )
+        original_playback_url = transcoding_service.get_review_audio_url(job.input_media_gcs_path)
+
+        result = {
+            "duration_seconds": metadata.duration_seconds,
+            "sample_rate": metadata.sample_rate,
+            "channels": metadata.channels,
+            "format": metadata.format,
+            "file_size_bytes": metadata.file_size_bytes,
+            "original_audio": {
+                "waveform_data": {
+                    "amplitudes": orig_amplitudes,
+                    "duration": orig_duration,
+                },
+                "playback_url": original_playback_url,
+            },
+            "has_edits": len(edit_stack) > 0,
+            "edit_count": len(edit_stack),
+            "can_undo": len(edit_stack) > 0,
+            "can_redo": len(state_data.get('audio_edit_redo_stack', [])) > 0,
+        }
+
+        # If there are edits, also include current edited audio info
+        if edit_stack:
+            current_gcs_path = edit_stack[-1]['gcs_path']
+            edited_amplitudes, edited_duration = analysis_service.get_waveform_data(
+                gcs_audio_path=current_gcs_path,
+                job_id=job_id,
+                num_points=1000,
+            )
+            edited_playback_url = transcoding_service.get_review_audio_url(current_gcs_path)
+            result["edited_audio"] = {
+                "duration_seconds": edited_duration,
+                "waveform_data": {
+                    "amplitudes": edited_amplitudes,
+                    "duration": edited_duration,
+                },
+                "playback_url": edited_playback_url,
+            }
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error getting input audio info: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error getting audio info: {str(e)}")
+
+
+@router.post("/{job_id}/audio-edit/apply")
+async def apply_audio_edit(
+    job_id: str,
+    request: Request,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """
+    Apply an edit operation to the input audio.
+
+    Supported operations: trim_start, trim_end, cut, mute, join_start, join_end.
+    Returns updated waveform data and playback URL.
+    """
+    import uuid
+    from backend.services.audio_edit_service import AudioEditService
+
+    body = await request.json()
+    operation = body.get("operation")
+    params = body.get("params", {})
+    edit_id = body.get("edit_id") or str(uuid.uuid4())
+
+    if not operation:
+        raise HTTPException(status_code=400, detail="Missing 'operation' field")
+
+    valid_operations = {"trim_start", "trim_end", "cut", "mute", "join_start", "join_end"}
+    if operation not in valid_operations:
+        raise HTTPException(status_code=400, detail=f"Invalid operation: {operation}. Valid: {valid_operations}")
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
+        raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
+
+    # Transition to IN_AUDIO_EDIT if not already
+    if job.status == JobStatus.AWAITING_AUDIO_EDIT:
+        job_manager.transition_to_state(
+            job_id=job_id,
+            new_status=JobStatus.IN_AUDIO_EDIT,
+            progress=15,
+            message="Audio editing in progress"
+        )
+
+    # Resolve upload_id to GCS path for join operations
+    if operation in ("join_start", "join_end"):
+        upload_id = params.get("upload_id")
+        if not upload_id:
+            raise HTTPException(status_code=400, detail="Missing 'upload_id' for join operation")
+        state_data = job.state_data or {}
+        uploads = state_data.get('audio_edit_uploads', {})
+        upload_info = uploads.get(upload_id)
+        if not upload_info:
+            raise HTTPException(status_code=404, detail=f"Upload {upload_id} not found")
+        params["upload_gcs_path"] = upload_info["gcs_path"]
+
+    try:
+        edit_service = AudioEditService()
+
+        # Get current audio path
+        current_gcs_path = _get_current_audio_gcs_path(job)
+        output_gcs_path = f"jobs/{job_id}/audio_edit/edit_{edit_id}.flac"
+
+        # Apply the edit
+        metadata, result_path = edit_service.apply_edit(
+            input_gcs_path=current_gcs_path,
+            operation=operation,
+            params=params,
+            output_gcs_path=output_gcs_path,
+            job_id=job_id,
+        )
+
+        # Update edit stack in state_data
+        state_data = job.state_data or {}
+        edit_stack = list(state_data.get('audio_edit_stack', []))
+        edit_stack.append({
+            "edit_id": edit_id,
+            "operation": operation,
+            "params": {k: v for k, v in params.items() if k != "upload_gcs_path"},
+            "gcs_path": result_path,
+            "duration_seconds": metadata.duration_seconds,
+            "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
+        })
+
+        # Clear redo stack on new edit
+        updated_state_data = {
+            **state_data,
+            'audio_edit_stack': edit_stack,
+            'audio_edit_redo_stack': [],
+        }
+        job_manager.update_job(job_id, {'state_data': updated_state_data})
+
+        return _build_audio_edit_response(
+            job_id=job_id,
+            gcs_path=result_path,
+            edit_stack=edit_stack,
+            redo_stack=[],
+            edit_id=edit_id,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error applying audio edit: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error applying edit: {str(e)}")
+
+
+@router.post("/{job_id}/audio-edit/undo")
+async def undo_audio_edit(
+    job_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """Undo the last audio edit operation."""
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
+        raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
+
+    state_data = job.state_data or {}
+    edit_stack = list(state_data.get('audio_edit_stack', []))
+    redo_stack = list(state_data.get('audio_edit_redo_stack', []))
+
+    if not edit_stack:
+        raise HTTPException(status_code=400, detail="Nothing to undo")
+
+    # Pop from edit stack, push to redo stack
+    undone_edit = edit_stack.pop()
+    redo_stack.append(undone_edit)
+
+    updated_state_data = {
+        **state_data,
+        'audio_edit_stack': edit_stack,
+        'audio_edit_redo_stack': redo_stack,
+    }
+    job_manager.update_job(job_id, {'state_data': updated_state_data})
+
+    # Get the now-current audio (previous edit or original)
+    current_gcs_path = edit_stack[-1]['gcs_path'] if edit_stack else job.input_media_gcs_path
+
+    try:
+        return _build_audio_edit_response(
+            job_id=job_id,
+            gcs_path=current_gcs_path,
+            edit_stack=edit_stack,
+            redo_stack=redo_stack,
+        )
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error building undo response: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error during undo: {str(e)}")
+
+
+@router.post("/{job_id}/audio-edit/redo")
+async def redo_audio_edit(
+    job_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """Redo a previously undone audio edit."""
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
+        raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
+
+    state_data = job.state_data or {}
+    edit_stack = list(state_data.get('audio_edit_stack', []))
+    redo_stack = list(state_data.get('audio_edit_redo_stack', []))
+
+    if not redo_stack:
+        raise HTTPException(status_code=400, detail="Nothing to redo")
+
+    # Pop from redo stack, push to edit stack
+    redone_edit = redo_stack.pop()
+    edit_stack.append(redone_edit)
+
+    updated_state_data = {
+        **state_data,
+        'audio_edit_stack': edit_stack,
+        'audio_edit_redo_stack': redo_stack,
+    }
+    job_manager.update_job(job_id, {'state_data': updated_state_data})
+
+    current_gcs_path = edit_stack[-1]['gcs_path']
+
+    try:
+        return _build_audio_edit_response(
+            job_id=job_id,
+            gcs_path=current_gcs_path,
+            edit_stack=edit_stack,
+            redo_stack=redo_stack,
+        )
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error building redo response: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error during redo: {str(e)}")
+
+
+@router.post("/{job_id}/audio-edit/upload")
+async def upload_audio_for_join(
+    job_id: str,
+    request: Request,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """
+    Upload additional audio for join operations.
+
+    Accepts multipart form upload. Returns upload_id and metadata.
+    """
+    import uuid
+    from fastapi import UploadFile
+    from backend.services.audio_edit_service import AudioEditService
+    from backend.services.audio_analysis_service import AudioAnalysisService
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
+        raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
+
+    # Parse multipart form
+    form = await request.form()
+    file = form.get("file")
+    if not file:
+        raise HTTPException(status_code=400, detail="Missing 'file' in form data")
+
+    # Validate file extension
+    filename = getattr(file, 'filename', 'unknown')
+    valid_extensions = {'.flac', '.wav', '.mp3', '.m4a', '.ogg'}
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in valid_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type '{ext}'. Accepted: {', '.join(valid_extensions)}"
+        )
+
+    upload_id = str(uuid.uuid4())
+    gcs_path = f"jobs/{job_id}/audio_edit/upload_{upload_id}{ext}"
+
+    try:
+        storage = StorageService()
+        edit_service = AudioEditService()
+        analysis_service = AudioAnalysisService()
+
+        # Save uploaded file to GCS
+        content = await file.read()
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        try:
+            storage.upload_file(tmp_path, gcs_path)
+
+            # Get metadata
+            metadata = edit_service.get_metadata(tmp_path)
+
+            # Get waveform data
+            from karaoke_gen.instrumental_review import WaveformGenerator
+            waveform_gen = WaveformGenerator()
+            amplitudes, duration = waveform_gen.generate_data_only(
+                audio_path=tmp_path,
+                num_points=1000,
+            )
+        finally:
+            os.unlink(tmp_path)
+
+        # Store upload info in state_data
+        state_data = job.state_data or {}
+        uploads = dict(state_data.get('audio_edit_uploads', {}))
+        uploads[upload_id] = {
+            "gcs_path": gcs_path,
+            "duration_seconds": metadata.duration_seconds,
+            "filename": filename,
+        }
+        updated_state_data = {**state_data, 'audio_edit_uploads': uploads}
+        job_manager.update_job(job_id, {'state_data': updated_state_data})
+
+        return {
+            "upload_id": upload_id,
+            "duration_seconds": metadata.duration_seconds,
+            "waveform_data": {
+                "amplitudes": amplitudes,
+                "duration": duration,
+            },
+        }
+
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error uploading audio for join: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error uploading audio: {str(e)}")
+
+
+@router.post("/{job_id}/audio-edit/submit")
+async def submit_audio_edit(
+    job_id: str,
+    request: Request,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """
+    Finalize the audio edit and continue processing.
+
+    Copies the current edited audio to the job's input path,
+    then triggers audio separation and lyrics transcription workers.
+    """
+    from backend.services.worker_service import get_worker_service
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
+        raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
+
+    state_data = job.state_data or {}
+    edit_stack = state_data.get('audio_edit_stack', [])
+
+    storage = StorageService()
+
+    # Save edit log if provided
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    edit_log = body.get("edit_log")
+    if edit_log:
+        edit_log_path = f"jobs/{job_id}/audio_edit/edit_log.json"
+        storage.upload_json(edit_log, edit_log_path)
+        logger.info(f"Job {job_id}: Saved audio edit log to {edit_log_path}")
+
+    if edit_stack:
+        # Copy the latest edited audio to the canonical input path
+        current_edited_path = edit_stack[-1]['gcs_path']
+        edited_input_path = f"jobs/{job_id}/input/edited.flac"
+
+        # Download and re-upload to canonical path
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local_path = os.path.join(temp_dir, "edited.flac")
+            storage.download_file(current_edited_path, local_path)
+            storage.upload_file(local_path, edited_input_path)
+
+        # Update job to use edited audio as input
+        job_manager.update_job(job_id, {
+            'input_media_gcs_path': edited_input_path,
+        })
+        logger.info(f"Job {job_id}: Audio edit submitted, using edited audio: {edited_input_path}")
+    else:
+        logger.info(f"Job {job_id}: Audio edit submitted with no edits, using original audio")
+
+    # Transition state
+    job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.AUDIO_EDIT_COMPLETE,
+        progress=18,
+        message="Audio edit complete, starting processing"
+    )
+
+    # Trigger parallel workers (same as normal post-download flow)
+    worker_service = get_worker_service()
+    await asyncio.gather(
+        worker_service.trigger_audio_worker(job_id),
+        worker_service.trigger_lyrics_worker(job_id),
+    )
+
+    return {
+        "status": "success",
+        "message": "Audio edit saved. Processing will continue with edited audio.",
+        "job_id": job_id,
+        "edits_applied": len(edit_stack),
+    }

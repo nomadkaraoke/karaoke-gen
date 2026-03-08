@@ -1046,6 +1046,7 @@ class TriggerWorkerResponse(BaseModel):
 ALLOWED_RESET_STATES = {
     "pending",
     "awaiting_audio_selection",
+    "awaiting_audio_edit",  # Re-enter audio editing phase
     "awaiting_review",  # Combined review (lyrics + instrumental selection)
     # Note: awaiting_instrumental_selection removed - deprecated by combined review flow (Jan 2026)
     "instrumental_selected",  # Re-run video generation with same settings
@@ -1074,6 +1075,22 @@ STATE_DATA_CLEAR_KEYS = {
     ],
     "awaiting_audio_selection": [
         "audio_selection",
+        "review_complete",
+        "corrected_lyrics",
+        "instrumental_selection",
+        "video_progress",
+        "render_progress",
+        "screens_progress",
+        "encoding_progress",
+    ],
+    "awaiting_audio_edit": [
+        # Clear edit state so user starts fresh
+        "audio_edit_stack",
+        "audio_edit_redo_stack",
+        "audio_edit_uploads",
+        # Clear downstream processing flags
+        "audio_complete",
+        "lyrics_complete",
         "review_complete",
         "corrected_lyrics",
         "instrumental_selection",

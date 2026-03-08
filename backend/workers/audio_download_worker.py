@@ -135,6 +135,20 @@ async def process_audio_download(job_id: str) -> bool:
             message="Audio downloaded, starting processing"
         )
 
+        # Check if audio editing was requested — enter blocking state instead of processing
+        job = job_manager.get_job(job_id)
+        if job and job.state_data.get('requires_audio_edit'):
+            # Preserve the original input path before any edits
+            job_manager.update_state_data(job_id, 'original_input_media_gcs_path', audio_gcs_path)
+            job_manager.transition_to_state(
+                job_id=job_id,
+                new_status=JobStatus.AWAITING_AUDIO_EDIT,
+                progress=15,
+                message="Audio downloaded. Please review and edit the audio before processing."
+            )
+            logger.info(f"[job:{job_id}] Audio download complete, awaiting audio edit")
+            return True
+
         # Trigger audio separation and lyrics workers
         worker_service = get_worker_service()
         await asyncio.gather(

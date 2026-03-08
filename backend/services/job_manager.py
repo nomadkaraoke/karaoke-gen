@@ -446,9 +446,9 @@ class JobManager:
         if progress is not None:
             updates['progress'] = progress
 
-        # Generate review token when entering AWAITING_REVIEW state
+        # Generate review token when entering blocking states that need user action
         # Tokens don't expire - they're job-scoped so low risk, and natural expiry happens when job completes
-        if new_status == JobStatus.AWAITING_REVIEW:
+        if new_status in (JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_AUDIO_EDIT):
             from backend.api.dependencies import generate_review_token
             review_token = generate_review_token()
             updates['review_token'] = review_token
@@ -531,10 +531,15 @@ class JobManager:
                 self._send_push_notification(job, "complete")
 
             # Idle reminder scheduling for blocking states
-            elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION]:
+            elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.AWAITING_AUDIO_EDIT]:
                 self._schedule_idle_reminder(job, new_status)
                 # Send push notification for blocking states
-                action_type = "lyrics" if new_status == JobStatus.AWAITING_REVIEW else "instrumental"
+                if new_status == JobStatus.AWAITING_AUDIO_EDIT:
+                    action_type = "audio_edit"
+                elif new_status == JobStatus.AWAITING_REVIEW:
+                    action_type = "lyrics"
+                else:
+                    action_type = "instrumental"
                 self._send_push_notification(job, action_type)
 
         except Exception as e:
@@ -621,7 +626,12 @@ class JobManager:
             # Record when we entered blocking state (for idle detection)
             blocking_entered_at = datetime.utcnow().isoformat()
 
-            action_type = "lyrics" if new_status == JobStatus.AWAITING_REVIEW else "instrumental"
+            if new_status == JobStatus.AWAITING_AUDIO_EDIT:
+                action_type = "audio_edit"
+            elif new_status == JobStatus.AWAITING_REVIEW:
+                action_type = "lyrics"
+            else:
+                action_type = "instrumental"
 
             # Update state_data with blocking state info (handle None state_data)
             existing_state_data = job.state_data or {}
