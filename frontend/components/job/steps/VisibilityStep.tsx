@@ -59,12 +59,6 @@ export function VisibilityStep({
             <span className="font-semibold" style={{ color: 'var(--text)' }}>Publish & Share</span>
             <ArrowRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </div>
-          <span
-            className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-            style={{ backgroundColor: 'rgba(255,122,204,0.15)', color: 'var(--brand-pink)' }}
-          >
-            Recommended
-          </span>
         </button>
 
         <button
@@ -85,6 +79,10 @@ export function VisibilityStep({
           </div>
         </button>
       </div>
+
+      <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+        You can change the visibility anytime after the video is produced.
+      </p>
 
       {/* Divider */}
       <div className="flex items-center gap-3">
