@@ -48,6 +48,8 @@ function computeSummary(initialData: CorrectionData, currentData: CorrectionData
   }
 }
 
+const AUTO_SAVE_EVERY_N_EDITS = 3
+
 export function useReviewSessionAutoSave({
   jobId,
   data,
@@ -58,27 +60,35 @@ export function useReviewSessionAutoSave({
 }: UseReviewSessionAutoSaveOptions) {
   const lastBackupHistoryLength = useRef(0)
   const isSaving = useRef(false)
+  // Store latest values in refs so visibilitychange handler always has current data
+  const dataRef = useRef(data)
+  const initialDataRef = useRef(initialData)
+  const historyLengthRef = useRef(historyLength)
+  dataRef.current = data
+  initialDataRef.current = initialData
+  historyLengthRef.current = historyLength
 
-  const saveSession = useCallback(
+  const doSave = useCallback(
     async (trigger: 'auto' | 'preview' | 'manual') => {
+      const currentHistoryLength = historyLengthRef.current
       // No edits yet (only initial state in history)
-      if (historyLength <= 1) return
+      if (currentHistoryLength <= 1) return
       // No new edits since last backup
-      if (historyLength === lastBackupHistoryLength.current) return
+      if (currentHistoryLength === lastBackupHistoryLength.current) return
       // Already saving
       if (isSaving.current) return
 
       isSaving.current = true
       try {
-        const summary = computeSummary(initialData, data)
+        const summary = computeSummary(initialDataRef.current, dataRef.current)
         const result = await apiClient.saveReviewSession(
-          data,
-          historyLength - 1,
+          dataRef.current,
+          currentHistoryLength - 1,
           trigger,
           summary
         )
         if (result.status === 'saved' || result.status === 'skipped') {
-          lastBackupHistoryLength.current = historyLength
+          lastBackupHistoryLength.current = currentHistoryLength
         }
       } catch (err) {
         // Don't break the editing experience on backup failure
@@ -87,36 +97,37 @@ export function useReviewSessionAutoSave({
         isSaving.current = false
       }
     },
-    [data, historyLength, initialData, apiClient, jobId]
+    [apiClient]
   )
 
-  // 60-second interval auto-save
+  // Auto-save every N edits
   useEffect(() => {
-    if (isReadOnly) return
+    if (isReadOnly || historyLength <= 1) return
+    const editsSinceBackup = historyLength - lastBackupHistoryLength.current
+    if (editsSinceBackup >= AUTO_SAVE_EVERY_N_EDITS) {
+      doSave('auto')
+    }
+  }, [historyLength, isReadOnly, doSave])
 
-    const timer = setInterval(() => {
-      saveSession('auto')
-    }, 60_000)
-
-    return () => clearInterval(timer)
-  }, [saveSession, isReadOnly])
-
-  // Save on page hide (more reliable than beforeunload for async saves)
+  // Save on page hide
   useEffect(() => {
     if (isReadOnly) return
 
     const handler = () => {
-      if (document.visibilityState === 'hidden' &&
-          historyLength > 1 &&
-          historyLength !== lastBackupHistoryLength.current) {
-        // Fire-and-forget: we can't await during page hide
-        saveSession('auto')
+      if (document.visibilityState === 'hidden') {
+        doSave('auto')
       }
     }
 
     document.addEventListener('visibilitychange', handler)
     return () => document.removeEventListener('visibilitychange', handler)
-  }, [saveSession, isReadOnly, historyLength])
+  }, [isReadOnly, doSave])
+
+  // Expose saveSession that uses current refs
+  const saveSession = useCallback(
+    (trigger: 'auto' | 'preview' | 'manual') => doSave(trigger),
+    [doSave]
+  )
 
   return { saveSession }
 }

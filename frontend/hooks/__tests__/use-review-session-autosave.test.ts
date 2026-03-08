@@ -62,14 +62,6 @@ function makeMockApiClient(overrides: Partial<LyricsReviewApiClient> = {}): Lyri
 }
 
 describe('useReviewSessionAutoSave', () => {
-  beforeEach(() => {
-    jest.useFakeTimers()
-  })
-
-  afterEach(() => {
-    jest.useRealTimers()
-  })
-
   it('does not save when historyLength <= 1 (no edits)', async () => {
     const apiClient = makeMockApiClient()
     const { result } = renderHook(() =>
@@ -92,12 +84,13 @@ describe('useReviewSessionAutoSave', () => {
 
   it('saves when historyLength > 1 and trigger is manual', async () => {
     const apiClient = makeMockApiClient()
+    // Use historyLength=2 (below auto-save threshold of 3)
     const { result } = renderHook(() =>
       useReviewSessionAutoSave({
         jobId: 'job-1',
         data: makeCorrectionData(),
         initialData: makeCorrectionData(),
-        historyLength: 5,
+        historyLength: 2,
         isReadOnly: false,
         apiClient,
       })
@@ -110,7 +103,7 @@ describe('useReviewSessionAutoSave', () => {
     expect(apiClient.saveReviewSession).toHaveBeenCalledTimes(1)
     expect(apiClient.saveReviewSession).toHaveBeenCalledWith(
       expect.any(Object),
-      4, // historyLength - 1
+      1, // historyLength - 1
       'manual',
       expect.objectContaining({
         total_segments: expect.any(Number),
@@ -126,7 +119,7 @@ describe('useReviewSessionAutoSave', () => {
         jobId: 'job-1',
         data: makeCorrectionData(),
         initialData: makeCorrectionData(),
-        historyLength: 3,
+        historyLength: 2,
         isReadOnly: false,
         apiClient,
       })
@@ -144,52 +137,91 @@ describe('useReviewSessionAutoSave', () => {
     expect(apiClient.saveReviewSession).toHaveBeenCalledTimes(1)
   })
 
-  it('does not save in read-only mode (no interval set)', () => {
+  it('does not auto-save in read-only mode', async () => {
     const apiClient = makeMockApiClient()
+    // historyLength=4 would trigger auto-save (4 >= 3 edits threshold) but read-only prevents it
     renderHook(() =>
       useReviewSessionAutoSave({
         jobId: 'job-1',
         data: makeCorrectionData(),
         initialData: makeCorrectionData(),
-        historyLength: 5,
+        historyLength: 4,
         isReadOnly: true,
         apiClient,
       })
     )
 
-    // Advance timer past 60s
-    act(() => {
-      jest.advanceTimersByTime(120_000)
-    })
-
     expect(apiClient.saveReviewSession).not.toHaveBeenCalled()
   })
 
-  it('auto-saves on 60-second interval', async () => {
+  it('auto-saves after 3 edits since last backup', async () => {
     const apiClient = makeMockApiClient()
-    renderHook(() =>
-      useReviewSessionAutoSave({
-        jobId: 'job-1',
-        data: makeCorrectionData(),
-        initialData: makeCorrectionData(),
-        historyLength: 5,
-        isReadOnly: false,
-        apiClient,
-      })
+    const props = {
+      jobId: 'job-1',
+      data: makeCorrectionData(),
+      initialData: makeCorrectionData(),
+      historyLength: 1,
+      isReadOnly: false,
+      apiClient,
+    }
+
+    const { rerender } = renderHook(
+      (p) => useReviewSessionAutoSave(p),
+      { initialProps: props }
     )
 
-    // Advance to 60s
+    // 1 edit (historyLength 2) — no save yet
     await act(async () => {
-      jest.advanceTimersByTime(60_000)
+      rerender({ ...props, historyLength: 2 })
     })
+    expect(apiClient.saveReviewSession).not.toHaveBeenCalled()
 
+    // 2 edits (historyLength 3) — auto-save fires (3 - 0 >= 3)
+    await act(async () => {
+      rerender({ ...props, historyLength: 3 })
+    })
     expect(apiClient.saveReviewSession).toHaveBeenCalledTimes(1)
     expect(apiClient.saveReviewSession).toHaveBeenCalledWith(
       expect.any(Object),
-      4,
+      2,
       'auto',
       expect.any(Object)
     )
+  })
+
+  it('auto-saves again after another 3 edits', async () => {
+    const apiClient = makeMockApiClient()
+    const props = {
+      jobId: 'job-1',
+      data: makeCorrectionData(),
+      initialData: makeCorrectionData(),
+      historyLength: 1,
+      isReadOnly: false,
+      apiClient,
+    }
+
+    const { rerender } = renderHook(
+      (p) => useReviewSessionAutoSave(p),
+      { initialProps: props }
+    )
+
+    // First auto-save at historyLength 3
+    await act(async () => {
+      rerender({ ...props, historyLength: 3 })
+    })
+    expect(apiClient.saveReviewSession).toHaveBeenCalledTimes(1)
+
+    // 3 more edits from lastBackup=3: fires at historyLength 6
+    await act(async () => {
+      rerender({ ...props, historyLength: 4 })
+    })
+    await act(async () => {
+      rerender({ ...props, historyLength: 5 })
+    })
+    await act(async () => {
+      rerender({ ...props, historyLength: 6 })
+    })
+    expect(apiClient.saveReviewSession).toHaveBeenCalledTimes(2)
   })
 
   it('handles save failure gracefully without throwing', async () => {
@@ -202,7 +234,7 @@ describe('useReviewSessionAutoSave', () => {
         jobId: 'job-1',
         data: makeCorrectionData(),
         initialData: makeCorrectionData(),
-        historyLength: 3,
+        historyLength: 2,
         isReadOnly: false,
         apiClient,
       })
@@ -233,7 +265,7 @@ describe('useReviewSessionAutoSave', () => {
         jobId: 'job-1',
         data: currentData,
         initialData,
-        historyLength: 3,
+        historyLength: 2,
         isReadOnly: false,
         apiClient,
       })
@@ -287,12 +319,13 @@ describe('useReviewSessionAutoSave', () => {
 
   it('saves with preview trigger', async () => {
     const apiClient = makeMockApiClient()
+    // Use historyLength=2 so auto-save doesn't fire first (threshold is 3)
     const { result } = renderHook(() =>
       useReviewSessionAutoSave({
         jobId: 'job-1',
         data: makeCorrectionData(),
         initialData: makeCorrectionData(),
-        historyLength: 10,
+        historyLength: 2,
         isReadOnly: false,
         apiClient,
       })
@@ -304,7 +337,7 @@ describe('useReviewSessionAutoSave', () => {
 
     expect(apiClient.saveReviewSession).toHaveBeenCalledWith(
       expect.any(Object),
-      9,
+      1,
       'preview',
       expect.any(Object)
     )
@@ -314,12 +347,13 @@ describe('useReviewSessionAutoSave', () => {
     const apiClient = makeMockApiClient({
       saveReviewSession: jest.fn().mockResolvedValue({ status: 'error' }),
     })
+    // Use historyLength=2 so auto-save doesn't fire
     const { result } = renderHook(() =>
       useReviewSessionAutoSave({
         jobId: 'job-1',
         data: makeCorrectionData(),
         initialData: makeCorrectionData(),
-        historyLength: 5,
+        historyLength: 2,
         isReadOnly: false,
         apiClient,
       })
