@@ -75,18 +75,20 @@ class FirestoreService:
         status: JobStatus,
         progress: Optional[int] = None,
         message: Optional[str] = None,
+        timeline_metadata: Optional[Dict[str, Any]] = None,
         **additional_fields
     ) -> None:
         """Update job status and add timeline event."""
         try:
             doc_ref = self.db.collection(self.collection).document(job_id)
-            
+
             # Create timeline event
             timeline_event = TimelineEvent(
                 status=status.value,
                 timestamp=datetime.utcnow().isoformat(),
                 progress=progress,
-                message=message
+                message=message,
+                metadata=timeline_metadata,
             )
             
             # Prepare updates
@@ -709,4 +711,25 @@ def get_firestore_client() -> firestore.Client:
     if _firestore_client is None:
         _firestore_client = firestore.Client(project=settings.google_cloud_project)
     return _firestore_client
+
+
+def log_to_job(job_id: str, worker: str, level: str, message: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    """
+    Write a log entry to a job's Firestore log subcollection.
+
+    This is a convenience function for API endpoints that need to log
+    to a job's log history (workers already have JobLogAdapter for this).
+
+    Args:
+        job_id: Job ID to log to
+        worker: Worker/source name (e.g., "api", "edit", "admin")
+        level: Log level (INFO, WARNING, ERROR)
+        message: Log message
+        metadata: Optional structured metadata dict
+    """
+    try:
+        entry = WorkerLogEntry.create(job_id, worker, level, message, metadata)
+        FirestoreService().append_log_to_subcollection(job_id, entry)
+    except Exception as e:
+        logger.debug(f"Failed to write job log for {job_id}: {e}")
 

@@ -22,6 +22,7 @@ from backend.services.flacfetch_client import get_flacfetch_client, FlacfetchSer
 from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import get_audio_search_service, NoResultsError, AudioSearchError
 from backend.models.job import JobStatus
+from backend.services.firestore_service import log_to_job
 from backend.utils.test_data import is_test_email
 from karaoke_gen.utils import sanitize_filename
 
@@ -1591,6 +1592,19 @@ async def delete_job_outputs(
         "gdrive": {"status": "skipped", "reason": "no gdrive_files in state_data"},
     }
 
+    # Snapshot current outputs before cleanup (preserved in timeline metadata)
+    deleted_outputs = {}
+    if state_data.get('youtube_url'):
+        deleted_outputs['youtube_url'] = state_data['youtube_url']
+    if state_data.get('dropbox_link'):
+        deleted_outputs['dropbox_link'] = state_data['dropbox_link']
+    if state_data.get('brand_code'):
+        deleted_outputs['brand_code'] = state_data['brand_code']
+    if state_data.get('gdrive_files'):
+        deleted_outputs['gdrive_files'] = state_data['gdrive_files']
+
+    log_to_job(job_id, "admin", "INFO", f"Output deletion initiated by {admin_email}", {"deleted_outputs": deleted_outputs})
+
     # Clean up YouTube
     youtube_url = state_data.get('youtube_url')
     if youtube_url:
@@ -1717,11 +1731,17 @@ async def delete_job_outputs(
             update_payload[f"state_data.{key}"] = DELETE_FIELD
             cleared_keys.append(key)
 
-    # Add timeline event
+    # Add timeline event with structured metadata
     timeline_event = {
         "status": job.status,  # Keep current status
         "timestamp": deletion_timestamp.isoformat(),
         "message": f"Outputs deleted by admin ({admin_email})",
+        "metadata": {
+            "action": "outputs_deleted",
+            "deleted_by": admin_email,
+            "deleted_outputs": deleted_outputs,
+            "cleanup_results": results,
+        },
     }
     update_payload["timeline"] = ArrayUnion([timeline_event])
 
@@ -1755,6 +1775,10 @@ async def delete_job_outputs(
         f"Brand Code: {brand_code_status}. "
         f"Cleared state_data keys: {cleared_keys}"
     )
+    log_to_job(job_id, "admin", "INFO", f"Outputs deleted by {admin_email}: {overall_status}", {
+        "cleanup_results": results,
+        "cleared_keys": cleared_keys,
+    })
 
     return DeleteOutputsResponse(
         status=overall_status,

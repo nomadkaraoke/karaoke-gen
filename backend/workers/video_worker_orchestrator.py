@@ -638,7 +638,7 @@ class VideoWorkerOrchestrator:
 
             if video_url:
                 self.result.youtube_url = video_url
-                self.job_log.info(f"Uploaded to YouTube: {video_url}")
+                self.job_log.info(f"Uploaded to YouTube: {video_url} (video_id={video_id})")
 
                 # Record upload in pending buffer (bridges ~7min GCP monitoring delay)
                 try:
@@ -715,7 +715,7 @@ class VideoWorkerOrchestrator:
             except Exception as e:
                 self.job_log.warning(f"Failed to create Dropbox sharing link: {e}")
 
-            self.job_log.info("Dropbox upload complete")
+            self.job_log.info(f"Dropbox upload complete: {remote_folder}")
 
         except Exception as e:
             self.job_log.error(f"Dropbox upload failed: {e}")
@@ -752,7 +752,7 @@ class VideoWorkerOrchestrator:
             )
 
             self.result.gdrive_files = uploaded
-            self.job_log.info(f"Google Drive upload complete: {len(uploaded)} files")
+            self.job_log.info(f"Google Drive upload complete: {len(uploaded)} files (ids={uploaded})")
 
         except Exception as e:
             self.job_log.error(f"Google Drive upload failed: {e}")

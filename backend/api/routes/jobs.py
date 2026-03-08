@@ -40,7 +40,7 @@ from backend.services.metrics import metrics
 from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
 from backend.exceptions import InsufficientCreditsError
-from backend.services.firestore_service import FirestoreService
+from backend.services.firestore_service import FirestoreService, log_to_job
 from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityResponse
 from pydantic import BaseModel, Field, validator
 
@@ -272,6 +272,19 @@ async def edit_completed_track(
     state_data = job.state_data or {}
     cleanup_results = {}
 
+    # Snapshot current outputs before cleanup (preserved in timeline metadata)
+    previous_outputs = {}
+    if state_data.get('youtube_url'):
+        previous_outputs['youtube_url'] = state_data['youtube_url']
+    if state_data.get('dropbox_link'):
+        previous_outputs['dropbox_link'] = state_data['dropbox_link']
+    if state_data.get('brand_code'):
+        previous_outputs['brand_code'] = state_data['brand_code']
+    if state_data.get('gdrive_files'):
+        previous_outputs['gdrive_files'] = state_data['gdrive_files']
+
+    log_to_job(job_id, "edit", "INFO", f"Edit initiated by {user_email}", {"previous_outputs": previous_outputs})
+
     # --- Phase 1: Clean up distributed outputs ---
 
     # Delete YouTube video
@@ -301,6 +314,7 @@ async def edit_completed_track(
             cleanup_results["youtube"] = {"status": "error", "error": str(e)}
     else:
         cleanup_results["youtube"] = {"status": "skipped", "reason": "no youtube_url"}
+    log_to_job(job_id, "edit", "INFO", f"YouTube cleanup: {cleanup_results['youtube'].get('status')}", cleanup_results["youtube"])
 
     # Delete Dropbox folder
     brand_code = state_data.get('brand_code')
@@ -322,6 +336,7 @@ async def edit_completed_track(
             cleanup_results["dropbox"] = {"status": "error", "error": str(e)}
     else:
         cleanup_results["dropbox"] = {"status": "skipped", "reason": "no brand_code or dropbox_path"}
+    log_to_job(job_id, "edit", "INFO", f"Dropbox cleanup: {cleanup_results['dropbox'].get('status')}", cleanup_results["dropbox"])
 
     # Delete Google Drive files
     gdrive_files = state_data.get('gdrive_files')
@@ -341,6 +356,7 @@ async def edit_completed_track(
             cleanup_results["gdrive"] = {"status": "error", "error": str(e)}
     else:
         cleanup_results["gdrive"] = {"status": "skipped", "reason": "no gdrive_files"}
+    log_to_job(job_id, "edit", "INFO", f"GDrive cleanup: {cleanup_results['gdrive'].get('status')}", cleanup_results["gdrive"])
 
     # Delete GCS finals folder
     try:
@@ -427,12 +443,19 @@ async def edit_completed_track(
         if "screens_progress" in state_data:
             update_payload[f"state_data.screens_progress"] = DELETE_FIELD
 
-    # Add timeline event
+    # Add timeline event with structured metadata
     edit_number = (job.edit_count if hasattr(job, 'edit_count') else 0) + 1
     timeline_event = {
         "status": "complete",
         "timestamp": now.isoformat(),
         "message": f"Track edit initiated by {user_email} (edit #{edit_number})",
+        "metadata": {
+            "action": "edit_initiated",
+            "initiated_by": user_email,
+            "edit_number": edit_number,
+            "previous_outputs": previous_outputs,
+            "cleanup_results": cleanup_results,
+        },
     }
     update_payload["timeline"] = ArrayUnion([timeline_event])
 
@@ -466,6 +489,10 @@ async def edit_completed_track(
         f"Dropbox={cleanup_results.get('dropbox', {}).get('status')}, "
         f"GDrive={cleanup_results.get('gdrive', {}).get('status')}"
     )
+    log_to_job(job_id, "edit", "INFO", f"Edit #{edit_number} complete: reopened for review", {
+        "cleanup_results": cleanup_results,
+        "metadata_updated": metadata_updated,
+    })
 
     return EditTrackResponse(
         status="success",

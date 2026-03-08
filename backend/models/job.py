@@ -179,6 +179,7 @@ class TimelineEvent(BaseModel):
     timestamp: str
     progress: Optional[int] = None
     message: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class LogEntry(BaseModel):

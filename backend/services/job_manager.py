@@ -413,7 +413,8 @@ class JobManager:
         progress: Optional[int] = None,
         message: Optional[str] = None,
         state_data_updates: Optional[Dict[str, Any]] = None,
-        raise_on_invalid: bool = True
+        raise_on_invalid: bool = True,
+        timeline_metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Transition job to new state with validation.
@@ -426,6 +427,7 @@ class JobManager:
             state_data_updates: Updates to state_data field
             raise_on_invalid: If True (default), raise InvalidStateTransitionError
                               on invalid transitions. If False, return False silently.
+            timeline_metadata: Optional structured metadata to attach to the timeline event
 
         Returns:
             True if transition succeeded, False if failed (only when raise_on_invalid=False)
@@ -435,15 +437,15 @@ class JobManager:
         """
         if not self.validate_state_transition(job_id, new_status, raise_on_invalid=raise_on_invalid):
             return False
-        
+
         updates = {
             'status': new_status,
             'updated_at': datetime.utcnow()
         }
-        
+
         if progress is not None:
             updates['progress'] = progress
-        
+
         # Generate review token when entering AWAITING_REVIEW state
         # Tokens don't expire - they're job-scoped so low risk, and natural expiry happens when job completes
         if new_status == JobStatus.AWAITING_REVIEW:
@@ -452,14 +454,14 @@ class JobManager:
             updates['review_token'] = review_token
             updates['review_token_expires_at'] = None  # No expiry - token is job-scoped
             logger.info(f"Generated review token for job {job_id} (no expiry)")
-        
+
         # If we have state_data_updates, merge them with existing state_data
         merged_state_data = None
         if state_data_updates:
             job = self.get_job(job_id)
             if job:
                 merged_state_data = {**job.state_data, **state_data_updates}
-        
+
         # Update job status (includes timeline event), passing state_data if present
         if merged_state_data is not None:
             self.update_job_status(
@@ -467,6 +469,7 @@ class JobManager:
                 status=new_status,
                 progress=progress,
                 message=message,
+                timeline_metadata=timeline_metadata,
                 state_data=merged_state_data
             )
         else:
@@ -474,7 +477,8 @@ class JobManager:
                 job_id=job_id,
                 status=new_status,
                 progress=progress,
-                message=message
+                message=message,
+                timeline_metadata=timeline_metadata,
             )
         
         # Apply review token update separately if generated

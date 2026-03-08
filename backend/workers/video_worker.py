@@ -364,14 +364,27 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 )
 
             # Mark job as complete (triggers completion email with youtube_url now available)
+            duration = time.time() - start_time
+            completion_metadata = {
+                "action": "completed",
+                "brand_code": result.brand_code,
+                "youtube_url": result.youtube_url,
+                "youtube_upload_queued": result.youtube_upload_queued,
+                "dropbox_link": result.dropbox_link,
+                "gdrive_file_ids": result.gdrive_files,
+                "edit_count": getattr(job, 'edit_count', 0),
+                "duration_seconds": round(duration, 1),
+            }
+            if result.distribution_warnings:
+                completion_metadata["distribution_warnings"] = result.distribution_warnings
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.COMPLETE,
                 progress=100,
-                message="Karaoke generation complete!"
+                message="Karaoke generation complete!",
+                timeline_metadata=completion_metadata,
             )
 
-            duration = time.time() - start_time
             root_span.set_attribute("duration_seconds", duration)
             root_span.set_attribute("brand_code", result.brand_code or '')
             logger.info(f"[job:{job_id}] WORKER_END worker=video orchestrator=true status=success duration={duration:.1f}s")
@@ -859,14 +872,24 @@ async def generate_video_legacy(job_id: str) -> bool:
             })
 
             # Mark job as complete (triggers completion email with youtube_url now available)
+            duration = time.time() - start_time
+            completion_metadata = {
+                "action": "completed",
+                "brand_code": result.get('brand_code'),
+                "youtube_url": result.get('youtube_url'),
+                "dropbox_link": result.get('dropbox_link'),
+                "gdrive_file_ids": result.get('gdrive_files'),
+                "edit_count": getattr(job, 'edit_count', 0),
+                "duration_seconds": round(duration, 1),
+            }
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.COMPLETE,
                 progress=100,
-                message="Karaoke generation complete!"
+                message="Karaoke generation complete!",
+                timeline_metadata=completion_metadata,
             )
 
-            duration = time.time() - start_time
             root_span.set_attribute("duration_seconds", duration)
             root_span.set_attribute("brand_code", result.get('brand_code', ''))
             logger.info(f"[job:{job_id}] WORKER_END worker=video status=success duration={duration:.1f}s")
