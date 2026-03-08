@@ -885,3 +885,14 @@ Even with idempotent endpoints (PR #413) and basic retry logic (PR #242), jobs c
 
 **Key insight:** When investigating "what did the client send?", Cloud Trace request size can serve as a forensic tool even without request body logging. Compact JSON serialization (`JSON.stringify` with no spaces) is deterministic, so byte-level size matching is reliable.
 
+### Timeline Metadata for Job Traceability (2026-03-07)
+
+**Problem:** After shipping the "edit completed tracks" feature, tracing what happened to edited jobs was very difficult. Timeline events only had `status`, `timestamp`, `progress`, `message` — no output details. Cleanup operations (YouTube deletion, Dropbox removal) weren't logged to Firestore. Previous outputs were overwritten in `state_data` with no history. API endpoints (edit, admin-delete) logged to Cloud Run stdout but not to the job's Firestore log subcollection.
+
+**Solution:**
+1. **`TimelineEvent.metadata`** — Optional `Dict[str, Any]` field on timeline events. Completion events now capture `brand_code`, `youtube_url`, `dropbox_link`, `gdrive_file_ids`, `duration_seconds`. Edit/delete events capture `previous_outputs` and `cleanup_results`.
+2. **`log_to_job()` helper** — Module-level function in `firestore_service.py` that writes to the job's Firestore log subcollection. Wraps errors silently so logging never breaks the caller. Used by API endpoints that previously only logged to stdout.
+3. **Plumbed `timeline_metadata`** through `job_manager.transition_to_state()` → `firestore_service.update_job_status()`.
+
+**Key insight:** The job's Firestore document (timeline + log subcollection) should be the single source of truth for "what happened to this job." Cloud Logging has retention limits and requires knowing which service to search. Timeline metadata makes the job self-documenting — any agent or human can read the timeline and understand the full lifecycle without cross-referencing logs.
+
