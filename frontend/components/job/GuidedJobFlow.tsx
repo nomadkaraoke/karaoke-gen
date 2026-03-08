@@ -462,7 +462,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
                   {isCompleted ? "\u2713" : stepNum}
                 </div>
                 <span
-                  className={`text-[10px] whitespace-nowrap transition-colors ${
+                  className={`text-[10px] transition-colors hidden sm:inline ${
                     isActive ? 'font-medium' : ''
                   }`}
                   style={{ color: isActive ? 'var(--text)' : 'var(--text-muted)' }}

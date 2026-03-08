@@ -122,16 +122,23 @@ test.describe('Step 1: Song Info', () => {
     await expect(page.getByRole('button', { name: /choose audio/i })).toBeVisible();
   });
 
-  test('shows step indicator with 3 steps', async ({ page }) => {
+  test('shows step indicator with 4 steps', async ({ page }) => {
     await setupApiFixtures(page, { mocks: APP_PAGE_MOCKS });
     await page.goto('/app');
     await page.waitForLoadState('networkidle');
 
-    // Step indicator should show 3 labels (use navigation region to avoid matching headings/buttons)
+    // Step indicator should show 4 numbered circles (labels hidden on mobile, visible on sm+)
     const stepNav = page.getByLabel('Progress');
-    await expect(stepNav.getByText('Song Info')).toBeVisible();
-    await expect(stepNav.getByText('Choose Audio')).toBeVisible();
-    await expect(stepNav.getByText('Customize & Create')).toBeVisible();
+    await expect(stepNav).toBeVisible();
+
+    // On larger viewports, check step labels
+    const viewportWidth = page.viewportSize()?.width ?? 1280;
+    if (viewportWidth >= 640) {
+      await expect(stepNav.getByText('Song Info')).toBeVisible();
+      await expect(stepNav.getByText('Choose Audio')).toBeVisible();
+      await expect(stepNav.getByText('Visibility')).toBeVisible();
+      await expect(stepNav.getByText('Customize & Create')).toBeVisible();
+    }
   });
 
   test('Choose Audio button is disabled without inputs', async ({ page }) => {
@@ -309,7 +316,7 @@ test.describe('Step 2: Choose Audio - Search Results', () => {
 
     // Should show file upload area
     await expect(page.locator('input[type="file"]')).toBeAttached();
-    await expect(page.getByRole('button', { name: /upload.*create/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /use this file/i })).toBeVisible();
   });
 
   test('Back button returns to Step 1', async ({ page }) => {
@@ -362,12 +369,13 @@ test.describe('Step 2: Choose Audio - Search Results', () => {
   });
 });
 
-test.describe('Step 2 → Step 3: Audio Selection to Customize', () => {
+test.describe('Step 2 → Step 3 → Step 4: Audio Selection to Visibility to Customize', () => {
   test.beforeEach(async ({ page }) => {
     await setAuthToken(page, 'test-token');
   });
 
-  test('selecting pick card advances to Step 3', async ({ page }) => {
+  // Helper: navigate from Step 1 through Step 2 (search + select) to Step 3 (Visibility)
+  async function navigateToVisibilityStep(page: import('@playwright/test').Page) {
     await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
     await page.goto('/app');
     await page.waitForLoadState('networkidle');
@@ -377,79 +385,61 @@ test.describe('Step 2 → Step 3: Audio Selection to Customize', () => {
     await page.getByRole('button', { name: /choose audio/i }).click();
 
     await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
-
-    // Click "Use This Audio"
     await page.getByRole('button', { name: /use this audio/i }).click();
+  }
 
-    // Should advance to Step 3 - Customize & Create
-    await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible();
-    await expect(page.getByText('Title Card Preview')).toBeVisible();
+  test('selecting pick card advances to Step 3 (Visibility)', async ({ page }) => {
+    await navigateToVisibilityStep(page);
+
+    // Should advance to Step 3 - Visibility
+    await expect(page.getByText('How should your video be shared?')).toBeVisible();
+    await expect(page.getByText('Publish & Share')).toBeVisible();
+    await expect(page.getByText('Keep Private')).toBeVisible();
   });
 
-  test('Step 3 shows display override fields pre-filled from search', async ({ page }) => {
-    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
-    await page.goto('/app');
-    await page.waitForLoadState('networkidle');
+  test('Step 3 shows visibility options with detail cards', async ({ page }) => {
+    await navigateToVisibilityStep(page);
 
-    await page.getByTestId('guided-artist-input').fill('Queen');
-    await page.getByTestId('guided-title-input').fill('Bohemian Rhapsody');
-    await page.getByRole('button', { name: /choose audio/i }).click();
+    // Should show both Published and Private detail cards
+    await expect(page.getByText('Published')).toBeVisible();
+    await expect(page.getByText('Recommended')).toBeVisible();
+    await expect(page.getByText('Keep Private')).toBeVisible();
+  });
 
-    await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /use this audio/i }).click();
+  test('clicking Publish & Share advances to Step 4 (Customize & Create)', async ({ page }) => {
+    await navigateToVisibilityStep(page);
 
-    // Should show display override fields with placeholders matching search values
+    // Click "Publish & Share" — this selects visibility and auto-advances
+    await page.getByText('Publish & Share').click();
+
+    // Should advance to Step 4 - Customize & Create
+    await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible();
+    await expect(page.getByText('Title Card Artist')).toBeVisible();
+  });
+
+  test('Step 4 shows display override fields pre-filled from search', async ({ page }) => {
+    await navigateToVisibilityStep(page);
+    await page.getByText('Publish & Share').click();
+
+    // Should show display override fields
     await expect(page.locator('#guided-display-artist')).toBeVisible();
     await expect(page.locator('#guided-display-title')).toBeVisible();
 
-    // Labels should indicate "same as above"
+    // Labels should indicate title card fields
     await expect(page.getByText('Title Card Artist')).toBeVisible();
     await expect(page.getByText('Title Card Title')).toBeVisible();
   });
 
-  test('Step 3 shows privacy toggle', async ({ page }) => {
-    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
-    await page.goto('/app');
-    await page.waitForLoadState('networkidle');
-
-    await page.getByTestId('guided-artist-input').fill('Queen');
-    await page.getByTestId('guided-title-input').fill('Bohemian Rhapsody');
-    await page.getByRole('button', { name: /choose audio/i }).click();
-
-    await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /use this audio/i }).click();
-
-    // Privacy toggle should be visible
-    await expect(page.getByText(/private.*no youtube/i)).toBeVisible();
-    await expect(page.locator('#guided-private')).toBeVisible();
-  });
-
-  test('Step 3 shows "Create Karaoke Video" button', async ({ page }) => {
-    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
-    await page.goto('/app');
-    await page.waitForLoadState('networkidle');
-
-    await page.getByTestId('guided-artist-input').fill('Queen');
-    await page.getByTestId('guided-title-input').fill('Bohemian Rhapsody');
-    await page.getByRole('button', { name: /choose audio/i }).click();
-
-    await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /use this audio/i }).click();
+  test('Step 4 shows "Create Karaoke Video" button', async ({ page }) => {
+    await navigateToVisibilityStep(page);
+    await page.getByText('Publish & Share').click();
 
     await expect(page.getByRole('button', { name: /create karaoke video/i })).toBeVisible();
   });
 
-  test('submitting Step 3 calls selectAudioResult and shows success', async ({ page }) => {
-    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
-    await page.goto('/app');
-    await page.waitForLoadState('networkidle');
-
-    await page.getByTestId('guided-artist-input').fill('Queen');
-    await page.getByTestId('guided-title-input').fill('Bohemian Rhapsody');
-    await page.getByRole('button', { name: /choose audio/i }).click();
-
-    await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /use this audio/i }).click();
+  test('submitting Step 4 creates job and shows success', async ({ page }) => {
+    await navigateToVisibilityStep(page);
+    await page.getByText('Publish & Share').click();
 
     // Click create
     await page.getByRole('button', { name: /create karaoke video/i }).click();
@@ -461,16 +451,8 @@ test.describe('Step 2 → Step 3: Audio Selection to Customize', () => {
   });
 
   test('success state shows Create Another button', async ({ page }) => {
-    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
-    await page.goto('/app');
-    await page.waitForLoadState('networkidle');
-
-    await page.getByTestId('guided-artist-input').fill('Queen');
-    await page.getByTestId('guided-title-input').fill('Bohemian Rhapsody');
-    await page.getByRole('button', { name: /choose audio/i }).click();
-
-    await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /use this audio/i }).click();
+    await navigateToVisibilityStep(page);
+    await page.getByText('Publish & Share').click();
     await page.getByRole('button', { name: /create karaoke video/i }).click();
 
     await expect(page.getByText('Job Created')).toBeVisible({ timeout: 5000 });
@@ -480,22 +462,13 @@ test.describe('Step 2 → Step 3: Audio Selection to Customize', () => {
     await expect(page.getByTestId('guided-artist-input')).toBeVisible();
   });
 
-  test('Back from Step 3 returns to Step 2', async ({ page }) => {
-    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
-    await page.goto('/app');
-    await page.waitForLoadState('networkidle');
+  test('Back from Step 3 (Visibility) returns to Step 2', async ({ page }) => {
+    await navigateToVisibilityStep(page);
 
-    await page.getByTestId('guided-artist-input').fill('Queen');
-    await page.getByTestId('guided-title-input').fill('Bohemian Rhapsody');
-    await page.getByRole('button', { name: /choose audio/i }).click();
+    await expect(page.getByText('How should your video be shared?')).toBeVisible();
 
-    await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /use this audio/i }).click();
-
-    await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible();
-
-    // Click Back
-    await page.getByRole('button', { name: /back/i }).click();
+    // Click Back (use exact match to avoid matching "background" text in detail cards)
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
 
     // Should return to Step 2 with results still visible
     await expect(page.getByText('Perfect match found')).toBeVisible();
@@ -507,7 +480,7 @@ test.describe('Fallback Paths: YouTube URL and Upload', () => {
     await setAuthToken(page, 'test-token');
   });
 
-  test('YouTube URL path creates job and shows success', async ({ page }) => {
+  test('YouTube URL path goes through Visibility and Customize then creates job', async ({ page }) => {
     await setupApiFixtures(page, {
       mocks: [
         ...SEARCH_FLOW_MOCKS,
@@ -538,7 +511,15 @@ test.describe('Fallback Paths: YouTube URL and Upload', () => {
     await page.locator('input[type="url"]').fill('https://youtube.com/watch?v=test');
     await page.getByRole('button', { name: /use this url/i }).click();
 
-    // Should show success directly (skip Step 3 for fallback paths)
+    // Should advance to Visibility step
+    await expect(page.getByText('How should your video be shared?')).toBeVisible({ timeout: 5000 });
+    await page.getByText('Publish & Share').click();
+
+    // Should advance to Customize & Create step
+    await expect(page.getByRole('button', { name: /create karaoke video/i })).toBeVisible();
+    await page.getByRole('button', { name: /create karaoke video/i }).click();
+
+    // Should show success
     await expect(page.getByText('Job Created')).toBeVisible({ timeout: 10000 });
   });
 });
