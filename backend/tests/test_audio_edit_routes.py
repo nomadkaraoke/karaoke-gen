@@ -69,6 +69,11 @@ def mock_services():
          patch(PATCH_TRANSCODE_SVC) as MockTS:
         es = Mock()
         MockES.return_value = es
+        # Default metadata for duration_before lookups
+        es.get_metadata_from_gcs.return_value = AudioMetadata(
+            duration_seconds=200.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=30000000,
+        )
         as_inst = Mock()
         MockAS.return_value = as_inst
         as_inst.get_waveform_data.return_value = ([0.1, 0.5, 0.3], 200.0)
@@ -188,7 +193,11 @@ class TestApplyAudioEdit:
         assert data["status"] == "success"
         assert data["edit_id"] == "abc"
         assert data["can_undo"] is True
-        assert data["edit_stack_size"] == 1
+        assert len(data["edit_stack"]) == 1
+        assert data["edit_stack"][0]["operation"] == "trim_start"
+        assert "current_audio_url" in data
+        assert "waveform_data" in data
+        assert "duration_after" in data
 
         # Should transition to IN_AUDIO_EDIT
         mock_job_manager.transition_to_state.assert_called_once()
@@ -311,7 +320,7 @@ class TestUndoAudioEdit:
         resp = test_client.post("/api/review/edit-job-2/audio-edit/undo")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["edit_stack_size"] == 0
+        assert len(data["edit_stack"]) == 0
         assert data["can_undo"] is False
         assert data["can_redo"] is True
 
@@ -361,7 +370,7 @@ class TestRedoAudioEdit:
         resp = test_client.post("/api/review/redo-job/audio-edit/redo")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["edit_stack_size"] == 1
+        assert len(data["edit_stack"]) == 1
         assert data["can_undo"] is True
         assert data["can_redo"] is False
 

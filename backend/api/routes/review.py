@@ -1266,16 +1266,14 @@ def _build_audio_edit_response(
     redo_stack: list,
     edit_id: str | None = None,
 ) -> dict:
-    """Build a standard response for audio edit operations."""
+    """Build a standard response for audio edit operations matching AudioEditResponse interface."""
     from backend.services.audio_analysis_service import AudioAnalysisService
     from backend.services.audio_transcoding_service import AudioTranscodingService
-    from backend.services.audio_edit_service import AudioEditService
 
     analysis_service = AudioAnalysisService()
     transcoding_service = AudioTranscodingService()
-    edit_service = AudioEditService()
 
-    # Get waveform data
+    # Get waveform data for current audio
     amplitudes, duration = analysis_service.get_waveform_data(
         gcs_audio_path=gcs_path,
         job_id=job_id,
@@ -1285,17 +1283,23 @@ def _build_audio_edit_response(
     # Get playback URL (OGG Opus)
     playback_url = transcoding_service.get_review_audio_url(gcs_path)
 
+    # Build flat response matching frontend AudioEditResponse interface
     response = {
         "status": "success",
-        "edited_audio": {
-            "duration_seconds": duration,
-            "waveform_data": {
-                "amplitudes": amplitudes,
-                "duration": duration,
-            },
-            "playback_url": playback_url,
-        },
-        "edit_stack_size": len(edit_stack),
+        "duration_after": duration,
+        "current_audio_url": playback_url,
+        "waveform_data": {"amplitudes": list(amplitudes)},
+        "edit_stack": [
+            {
+                "edit_id": entry.get("edit_id", ""),
+                "operation": entry.get("operation", ""),
+                "params": entry.get("params", {}),
+                "duration_before": entry.get("duration_before", 0),
+                "duration_after": entry.get("duration_after", entry.get("duration_seconds", 0)),
+                "timestamp": entry.get("timestamp", ""),
+            }
+            for entry in edit_stack
+        ],
         "can_undo": len(edit_stack) > 0,
         "can_redo": len(redo_stack) > 0,
     }
@@ -1450,8 +1454,18 @@ async def apply_audio_edit(
     try:
         edit_service = AudioEditService()
 
-        # Get current audio path
+        # Get current audio path and duration before edit
+        state_data = job.state_data or {}
+        existing_stack = state_data.get('audio_edit_stack', [])
         current_gcs_path = _get_current_audio_gcs_path(job)
+
+        # Determine duration before this edit
+        if existing_stack:
+            duration_before = existing_stack[-1].get('duration_seconds', 0)
+        else:
+            before_metadata = edit_service.get_metadata_from_gcs(current_gcs_path)
+            duration_before = before_metadata.duration_seconds
+
         output_gcs_path = f"jobs/{job_id}/audio_edit/edit_{edit_id}.flac"
 
         # Apply the edit
@@ -1464,13 +1478,14 @@ async def apply_audio_edit(
         )
 
         # Update edit stack in state_data
-        state_data = job.state_data or {}
-        edit_stack = list(state_data.get('audio_edit_stack', []))
+        edit_stack = list(existing_stack)
         edit_stack.append({
             "edit_id": edit_id,
             "operation": operation,
             "params": {k: v for k, v in params.items() if k != "upload_gcs_path"},
             "gcs_path": result_path,
+            "duration_before": duration_before,
+            "duration_after": metadata.duration_seconds,
             "duration_seconds": metadata.duration_seconds,
             "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
         })
