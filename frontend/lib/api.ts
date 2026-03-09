@@ -2271,6 +2271,30 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  async listAudioEditReviews(params?: {
+    limit?: number;
+    offset?: number;
+    exclude_test?: boolean;
+    search?: string;
+  }): Promise<AudioEditReviewListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
+    if (params?.search) searchParams.set('search', params.search);
+    const url = `${API_BASE_URL}/api/admin/audio-edit-reviews${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async getAudioEditReview(jobId: string): Promise<AudioEditReviewDetail> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/audio-edit-reviews/${encodeURIComponent(jobId)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
 };
 
 export interface EditReviewSummary {
@@ -2332,6 +2356,68 @@ export interface EditReviewDetail {
   edit_log: AdminEditLog | null;
   annotations: Record<string, unknown> | null;
   audio_url: string | null;
+}
+
+// Types for admin audio edit reviews
+export interface AudioEditReviewSummary {
+  job_id: string;
+  artist: string;
+  title: string;
+  user_email: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+  session_count: number;
+  total_edits: number;
+  original_duration?: number;
+  current_duration?: number;
+  latest_trigger?: string;
+}
+
+export interface AudioEditReviewListResponse {
+  reviews: AudioEditReviewSummary[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface AudioEditReviewDetail {
+  job: {
+    job_id: string;
+    artist: string;
+    title: string;
+    user_email: string;
+    status: string;
+    created_at?: string;
+    updated_at?: string;
+  };
+  sessions: Array<{
+    session_id: string;
+    job_id: string;
+    user_email: string;
+    created_at: string;
+    updated_at: string;
+    edit_count: number;
+    trigger: string;
+    audio_duration_seconds?: number;
+    original_duration_seconds?: number;
+    artist?: string;
+    title?: string;
+    summary: AudioEditSessionSummary;
+    edit_data_gcs_path: string;
+    data_hash: string;
+  }>;
+  edit_stack: Array<{
+    edit_id: string;
+    operation: string;
+    params: Record<string, unknown>;
+    gcs_path: string;
+    duration_before?: number;
+    duration_after?: number;
+    timestamp: string;
+  }>;
+  edit_log: unknown;
+  original_audio_url: string | null;
+  current_audio_url: string | null;
 }
 
 // Types for admin completion message API

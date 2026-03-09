@@ -1220,6 +1220,18 @@ async def reset_job(
     # Add timeline event
     clear_updates["timeline"] = ArrayUnion([timeline_event])
 
+    # Special handling for awaiting_audio_edit: restore original input audio
+    # The submit endpoint copies edited audio to input_media_gcs_path,
+    # so we must restore the original path so the user starts fresh.
+    if target_state == "awaiting_audio_edit":
+        original_path = current_state_data.get("original_input_media_gcs_path")
+        if original_path:
+            clear_updates["input_media_gcs_path"] = original_path
+            logger.info(
+                f"Admin reset job {job_id}: Restoring input_media_gcs_path "
+                f"to original: {original_path}"
+            )
+
     # Execute the update
     job_ref.update(clear_updates)
 
@@ -3290,4 +3302,229 @@ async def get_edit_review_detail(
         "edit_log": edit_log,
         "annotations": annotations,
         "audio_url": audio_url,
+    }
+
+
+# ─── Audio Edit Reviews ─────────────────────────────────────────────────────
+
+
+class AudioEditReviewSummary(BaseModel):
+    job_id: str
+    artist: str
+    title: str
+    user_email: str
+    status: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    session_count: int = 0
+    total_edits: int = 0
+    original_duration: Optional[float] = None
+    current_duration: Optional[float] = None
+    latest_trigger: Optional[str] = None
+
+
+class AudioEditReviewListResponse(BaseModel):
+    reviews: List[AudioEditReviewSummary]
+    total: int
+    has_more: bool
+
+
+@router.get("/audio-edit-reviews", response_model=AudioEditReviewListResponse)
+def list_audio_edit_reviews(
+    limit: int = 50,
+    offset: int = 0,
+    exclude_test: bool = False,
+    search: Optional[str] = None,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """List jobs that have audio edit sessions."""
+    from backend.services.firestore_service import FirestoreService
+
+    user_service = get_user_service()
+    db = user_service.db
+    fs = FirestoreService()
+
+    STREAM_LIMIT = 10000
+    reviews = []
+    streamed = 0
+
+    for doc in db.collection("jobs").limit(STREAM_LIMIT).stream():
+        streamed += 1
+        data = doc.to_dict()
+        state_data = data.get("state_data") or {}
+
+        # Only include jobs that have been through audio edit
+        # (have edit stack or have audio edit sessions)
+        has_edit_stack = bool(state_data.get("audio_edit_stack"))
+        status = data.get("status", "")
+        is_in_audio_edit = status in (
+            "awaiting_audio_edit", "in_audio_edit", "audio_edit_complete"
+        )
+
+        if not has_edit_stack and not is_in_audio_edit:
+            # Quick check: does this job have any audio edit sessions subcollection?
+            sessions_ref = db.collection("jobs").document(doc.id).collection("audio_edit_sessions")
+            if not next(sessions_ref.limit(1).stream(), None):
+                continue
+
+        email = data.get("user_email", "")
+        if exclude_test and is_test_email(email):
+            continue
+
+        artist = data.get("artist", "")
+        title = data.get("title", "")
+
+        if search:
+            search_lower = search.lower()
+            if (
+                search_lower not in (artist or "").lower()
+                and search_lower not in (title or "").lower()
+                and search_lower not in (email or "").lower()
+            ):
+                continue
+
+        # Get session summary info
+        sessions = fs.list_audio_edit_sessions(doc.id)
+        session_count = len(sessions)
+        total_edits = 0
+        latest_trigger = None
+        current_duration = None
+        original_duration = None
+
+        if sessions:
+            latest = sessions[0]  # Already sorted by updated_at DESC
+            total_edits = latest.edit_count
+            latest_trigger = latest.trigger
+            current_duration = latest.audio_duration_seconds
+            original_duration = latest.original_duration_seconds
+
+        created_at = data.get("created_at")
+        updated_at = data.get("updated_at")
+
+        def _to_iso(val) -> Optional[str]:
+            if val is None:
+                return None
+            if hasattr(val, 'isoformat'):
+                return val.isoformat()
+            return str(val)
+
+        try:
+            reviews.append(AudioEditReviewSummary(
+                job_id=doc.id,
+                artist=artist or "",
+                title=title or "",
+                user_email=email or "",
+                status=status,
+                created_at=_to_iso(created_at),
+                updated_at=_to_iso(updated_at),
+                session_count=session_count,
+                total_edits=total_edits,
+                original_duration=original_duration,
+                current_duration=current_duration,
+                latest_trigger=latest_trigger,
+            ))
+        except Exception as e:
+            logger.warning(f"Job {doc.id}: Error building audio edit review summary: {e}")
+            continue
+
+    if streamed >= STREAM_LIMIT:
+        logger.warning(f"Audio edit reviews stream hit limit ({STREAM_LIMIT}), results may be incomplete")
+
+    reviews.sort(
+        key=lambda r: r.updated_at or r.created_at or "",
+        reverse=True,
+    )
+
+    total = len(reviews)
+    paginated = reviews[offset : offset + limit]
+
+    return AudioEditReviewListResponse(
+        reviews=paginated,
+        total=total,
+        has_more=(offset + limit) < total,
+    )
+
+
+@router.get("/audio-edit-reviews/{job_id}")
+async def get_audio_edit_review_detail(
+    job_id: str,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Get full audio edit review detail for one job, including all sessions."""
+    from backend.services.firestore_service import FirestoreService
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    storage = StorageService()
+    fs = FirestoreService()
+
+    job_meta = {
+        "job_id": job.job_id,
+        "artist": job.artist,
+        "title": job.title,
+        "user_email": job.user_email,
+        "status": job.status.value if hasattr(job.status, "value") else str(job.status),
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+    }
+
+    # Get all sessions
+    sessions = fs.list_audio_edit_sessions(job_id)
+    sessions_data = []
+    for session in sessions:
+        session_dict = session.to_dict()
+        # Convert datetimes to ISO strings
+        for key in ("created_at", "updated_at"):
+            val = session_dict.get(key)
+            if hasattr(val, "isoformat"):
+                session_dict[key] = val.isoformat()
+        sessions_data.append(session_dict)
+
+    # Get current edit stack from state_data
+    state_data = job.state_data or {}
+    edit_stack = state_data.get("audio_edit_stack", [])
+
+    # Generate signed URLs for original and current audio
+    original_audio_url = None
+    current_audio_url = None
+    transcoding = AudioTranscodingService(storage_service=storage)
+
+    if job.input_media_gcs_path:
+        try:
+            current_audio_url = await transcoding.get_review_audio_url_async(
+                job.input_media_gcs_path, expiration_minutes=120
+            )
+        except Exception as e:
+            logger.warning(f"Job {job_id}: Could not generate current audio URL: {e}")
+
+    # Original audio (before edits)
+    original_path = state_data.get("original_input_media_gcs_path") or job.input_media_gcs_path
+    if original_path and original_path != job.input_media_gcs_path:
+        try:
+            original_audio_url = await transcoding.get_review_audio_url_async(
+                original_path, expiration_minutes=120
+            )
+        except Exception as e:
+            logger.warning(f"Job {job_id}: Could not generate original audio URL: {e}")
+
+    # Load edit log if it exists
+    edit_log = None
+    edit_log_path = f"jobs/{job_id}/audio_edit/edit_log.json"
+    try:
+        if storage.file_exists(edit_log_path):
+            edit_log = storage.download_json(edit_log_path)
+    except Exception as e:
+        logger.warning(f"Job {job_id}: Could not load audio edit log: {e}")
+
+    return {
+        "job": job_meta,
+        "sessions": sessions_data,
+        "edit_stack": edit_stack,
+        "edit_log": edit_log,
+        "original_audio_url": original_audio_url,
+        "current_audio_url": current_audio_url,
     }

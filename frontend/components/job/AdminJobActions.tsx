@@ -12,6 +12,7 @@ import {
   CloudOff,
   Music,
   Mic,
+  Scissors,
 } from "lucide-react"
 
 interface AdminJobActionsProps {
@@ -106,6 +107,13 @@ export function AdminJobActions({ job, onRefresh }: AdminJobActionsProps) {
       >
         {isLoading("reset-awaiting_audio_selection") ? <Loader2 className="w-3 h-3 animate-spin" /> : <Music className="w-3 h-3 mr-0.5" />}
         Audio
+      </Button>
+      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] text-blue-400 hover:text-blue-300"
+        onClick={() => handleReset("awaiting_audio_edit", "Audio Edit")}
+        disabled={loading !== null}
+      >
+        {isLoading("reset-awaiting_audio_edit") ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scissors className="w-3 h-3 mr-0.5" />}
+        Audio Edit
       </Button>
       <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] text-blue-400 hover:text-blue-300"
         onClick={() => handleReset("awaiting_review", "Review")}

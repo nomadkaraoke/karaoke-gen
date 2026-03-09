@@ -12,6 +12,7 @@ import {
   Search,
   ShieldAlert,
   BookOpenCheck,
+  Scissors,
 } from "lucide-react"
 
 import {
@@ -63,6 +64,11 @@ const navItems = [
     title: "Edit Reviews",
     href: "/admin/edit-reviews",
     icon: BookOpenCheck,
+  },
+  {
+    title: "Audio Edits",
+    href: "/admin/audio-edits",
+    icon: Scissors,
   },
 ]
 
