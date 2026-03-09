@@ -514,6 +514,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           onFileReady={handleFileReady}
           onBack={handleBackFromAudio}
           noCredits={noCredits}
+          onAudioEditChange={setRequiresAudioEdit}
         />
       )}
 
@@ -521,8 +522,6 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         <VisibilityStep
           isPrivate={isPrivate}
           onPrivateChange={setIsPrivate}
-          requiresAudioEdit={requiresAudioEdit}
-          onAudioEditChange={setRequiresAudioEdit}
           onNext={() => setStep(4)}
           onBack={() => setStep(2)}
         />

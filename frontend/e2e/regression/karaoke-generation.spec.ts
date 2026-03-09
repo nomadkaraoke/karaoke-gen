@@ -374,7 +374,7 @@ test.describe('Step 2 → Step 3 → Step 4: Audio Selection to Visibility to Cu
     await setAuthToken(page, 'test-token');
   });
 
-  // Helper: navigate from Step 1 through Step 2 (search + select) to Step 3 (Visibility)
+  // Helper: navigate from Step 1 through Step 2 (search + select + audio edit question) to Step 3 (Visibility)
   async function navigateToVisibilityStep(page: import('@playwright/test').Page) {
     await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
     await page.goto('/app');
@@ -386,9 +386,31 @@ test.describe('Step 2 → Step 3 → Step 4: Audio Selection to Visibility to Cu
 
     await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /use this audio/i }).click();
+
+    // Answer the audio edit question (skip editing)
+    await expect(page.getByText('Do you want to review and edit this audio')).toBeVisible();
+    await page.getByText('No, use as-is').click();
   }
 
-  test('selecting pick card advances to Step 3 (Visibility)', async ({ page }) => {
+  test('selecting pick card shows audio edit question', async ({ page }) => {
+    await setupApiFixtures(page, { mocks: SEARCH_FLOW_MOCKS });
+    await page.goto('/app');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('guided-artist-input').fill('Queen');
+    await page.getByTestId('guided-title-input').fill('Bohemian Rhapsody');
+    await page.getByRole('button', { name: /choose audio/i }).click();
+
+    await expect(page.getByText('Perfect match found')).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: /use this audio/i }).click();
+
+    // Should show audio edit question
+    await expect(page.getByText('Do you want to review and edit this audio')).toBeVisible();
+    await expect(page.getByText('No, use as-is')).toBeVisible();
+    await expect(page.getByText("Yes, I'll edit it first")).toBeVisible();
+  });
+
+  test('answering "No" to audio edit advances to Visibility step', async ({ page }) => {
     await navigateToVisibilityStep(page);
 
     // Should advance to Step 3 - Visibility
@@ -510,6 +532,10 @@ test.describe('Fallback Paths: YouTube URL and Upload', () => {
     await page.getByRole('button', { name: /youtube url/i }).click();
     await page.locator('input[type="url"]').fill('https://youtube.com/watch?v=test');
     await page.getByRole('button', { name: /use this url/i }).click();
+
+    // Answer the audio edit question
+    await expect(page.getByText('Do you want to review and edit this audio')).toBeVisible({ timeout: 5000 });
+    await page.getByText('No, use as-is').click();
 
     // Should advance to Visibility step
     await expect(page.getByText('How should your video be shared?')).toBeVisible({ timeout: 5000 });

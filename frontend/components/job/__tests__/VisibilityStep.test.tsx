@@ -15,8 +15,6 @@ import { VisibilityStep } from "../steps/VisibilityStep"
 const defaultProps = {
   isPrivate: false,
   onPrivateChange: jest.fn(),
-  requiresAudioEdit: false,
-  onAudioEditChange: jest.fn(),
   onNext: jest.fn(),
   onBack: jest.fn(),
   disabled: false,
@@ -126,41 +124,5 @@ describe("VisibilityStep", () => {
     expect(publishButton).toBeDisabled()
     expect(privateButton).toBeDisabled()
     expect(backButton).toBeDisabled()
-  })
-
-  describe("Audio edit toggle", () => {
-    it("renders collapsed audio edit link", () => {
-      renderStep()
-      expect(screen.getByText("Need to trim or edit the audio first?")).toBeInTheDocument()
-    })
-
-    it("expands panel when clicking the link", () => {
-      renderStep()
-      fireEvent.click(screen.getByText("Need to trim or edit the audio first?"))
-      expect(screen.getByText(/If this is a live recording/)).toBeInTheDocument()
-      expect(screen.getByText("No, use as-is")).toBeInTheDocument()
-      expect(screen.getByText("Yes, I'll edit it first")).toBeInTheDocument()
-    })
-
-    it("calls onAudioEditChange(true) when selecting yes", () => {
-      const onAudioEditChange = jest.fn()
-      renderStep({ onAudioEditChange })
-      fireEvent.click(screen.getByText("Need to trim or edit the audio first?"))
-      fireEvent.click(screen.getByText("Yes, I'll edit it first"))
-      expect(onAudioEditChange).toHaveBeenCalledWith(true)
-    })
-
-    it("calls onAudioEditChange(false) when selecting no", () => {
-      const onAudioEditChange = jest.fn()
-      renderStep({ onAudioEditChange, requiresAudioEdit: true })
-      // Panel starts expanded when requiresAudioEdit is true
-      fireEvent.click(screen.getByText("No, use as-is"))
-      expect(onAudioEditChange).toHaveBeenCalledWith(false)
-    })
-
-    it("starts expanded when requiresAudioEdit is true", () => {
-      renderStep({ requiresAudioEdit: true })
-      expect(screen.getByText("No, use as-is")).toBeInTheDocument()
-    })
   })
 })

@@ -30,7 +30,13 @@ interface AudioSourceStepProps {
   onFileReady: (file: File) => void
   onBack: () => void
   noCredits: boolean
+  onAudioEditChange: (value: boolean) => void
 }
+
+type PendingChoice =
+  | { type: "search"; index: number }
+  | { type: "url"; url: string }
+  | { type: "file"; file: File }
 
 /** Render an availability badge with tooltip */
 function AvailabilityBadge({ seeders }: { seeders: number | undefined | null }) {
@@ -99,10 +105,12 @@ export function AudioSourceStep({
   onFileReady,
   onBack,
   noCredits,
+  onAudioEditChange,
 }: AudioSourceStepProps) {
   const [results, setResults] = useState<ExtendedAudioSearchResult[]>([])
   const [isSearching, setIsSearching] = useState(true)
   const [error, setError] = useState("")
+  const [pendingChoice, setPendingChoice] = useState<PendingChoice | null>(null)
   const [isCreditError, setIsCreditError] = useState(false)
   const [showOtherOptions, setShowOtherOptions] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
@@ -259,9 +267,8 @@ export function AudioSourceStep({
   }
 
   function handleSelect(index: number) {
-    // Don't call the API here — defer selectAudioResult to the Customize & Create step
-    // so the job stays in awaiting_audio_selection (hidden from Recent Jobs) until confirmed
-    onSearchResultChosen(index)
+    // Show audio edit question before advancing
+    setPendingChoice({ type: "search", index })
   }
 
   function handleBack() {
@@ -283,16 +290,85 @@ export function AudioSourceStep({
   function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!uploadFile) return
-    onFileReady(uploadFile)
+    setPendingChoice({ type: "file", file: uploadFile })
   }
 
   function handleUrlSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!youtubeUrl.trim()) return
-    onUrlReady(youtubeUrl.trim())
+    setPendingChoice({ type: "url", url: youtubeUrl.trim() })
+  }
+
+  function handleAudioEditAnswer(wantsEdit: boolean) {
+    if (!pendingChoice) return
+    onAudioEditChange(wantsEdit)
+    // Now advance to the next step
+    if (pendingChoice.type === "search") {
+      onSearchResultChosen(pendingChoice.index)
+    } else if (pendingChoice.type === "url") {
+      onUrlReady(pendingChoice.url)
+    } else if (pendingChoice.type === "file") {
+      onFileReady(pendingChoice.file)
+    }
   }
 
   const isLossyBest = confidence.bestCategory === 'YOUTUBE'
+
+  // Audio edit question — shown after user selects audio, before advancing
+  if (pendingChoice) {
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Audio selected for <span className="font-medium" style={{ color: 'var(--text)' }}>{artist} - {title}</span>
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPendingChoice(null)}
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
+        </div>
+
+        <div
+          className="rounded-lg border p-5 space-y-4"
+          style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}
+        >
+          <h3 className="text-base font-semibold" style={{ color: 'var(--text)' }}>
+            Do you want to review and edit this audio before it gets transcribed?
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Trim, cut, mute, or join sections of the downloaded audio before lyrics are transcribed and synced.
+            Useful for trimming intro/outro from a live version, shortening a lengthy outro, etc.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => handleAudioEditAnswer(false)}
+              className="flex-1 rounded-lg border-2 p-4 transition-all text-center border-[var(--card-border)] hover:border-[var(--text-muted)]"
+            >
+              <span className="font-semibold" style={{ color: 'var(--text)' }}>No, use as-is</span>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Proceed directly to transcription</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAudioEditAnswer(true)}
+              className="flex-1 rounded-lg border-2 p-4 transition-all text-center border-[var(--card-border)] hover:border-[var(--brand-pink)]"
+            >
+              <span className="font-semibold" style={{ color: 'var(--text)' }}>Yes, I&apos;ll edit it first</span>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Trim, cut, or mute before processing</p>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -952,6 +1028,20 @@ function SongSuggestionPanel({
     return null
   }
 
+  // Find the exact case-insensitive match (for casing correction)
+  const exactCaseInsensitiveMatch = hasExactMatch
+    ? results.find(
+        (t) => t.artist_name.toLowerCase() === artist.toLowerCase() && t.track_name.toLowerCase() === title.toLowerCase()
+      )
+    : null
+  const hasCasingDifference = exactCaseInsensitiveMatch && (
+    exactCaseInsensitiveMatch.artist_name !== artist || exactCaseInsensitiveMatch.track_name !== title
+  )
+  // "Other" corrections excludes the exact case-insensitive match
+  const otherCorrections = corrections.filter(
+    (t) => !exactCaseInsensitiveMatch || t.artist_name !== exactCaseInsensitiveMatch.artist_name || t.track_name !== exactCaseInsensitiveMatch.track_name
+  )
+
   // Mode 1: User's input matches a song (case-insensitive) — show confirmation with optional alternatives
   if (hasExactMatch) {
     return (
@@ -976,10 +1066,19 @@ function SongSuggestionPanel({
           </button>
         </div>
         <div className="px-3 py-2">
-          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            Your artist and title matched a song in our database — looking good!
-          </p>
-          {corrections.length > 0 && (
+          {hasCasingDifference && exactCaseInsensitiveMatch ? (
+            <div>
+              <p className="text-[10px] mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                Use the official formatting?
+              </p>
+              <CatalogTrackList tracks={[exactCaseInsensitiveMatch]} onSelect={onSelect} />
+            </div>
+          ) : (
+            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              Your artist and title matched a song in our database — looking good!
+            </p>
+          )}
+          {otherCorrections.length > 0 && (
             <div className="mt-2">
               <button
                 onClick={() => setShowOthers(!showOthers)}
@@ -989,12 +1088,12 @@ function SongSuggestionPanel({
                 {showOthers ? (
                   <><ChevronUp className="w-3 h-3" /> Hide other matches</>
                 ) : (
-                  <><ChevronDown className="w-3 h-3" /> Show {corrections.length} other match{corrections.length !== 1 ? 'es' : ''}</>
+                  <><ChevronDown className="w-3 h-3" /> Show {otherCorrections.length} other match{otherCorrections.length !== 1 ? 'es' : ''}</>
                 )}
               </button>
               {showOthers && (
                 <div className="mt-1.5 space-y-1">
-                  <CatalogTrackList tracks={corrections} onSelect={onSelect} />
+                  <CatalogTrackList tracks={otherCorrections} onSelect={onSelect} />
                 </div>
               )}
             </div>
