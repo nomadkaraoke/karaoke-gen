@@ -1345,42 +1345,44 @@ async def get_input_audio_info(
         )
         original_playback_url = transcoding_service.get_review_audio_url(job.input_media_gcs_path)
 
-        result = {
-            "duration_seconds": metadata.duration_seconds,
-            "sample_rate": metadata.sample_rate,
-            "channels": metadata.channels,
-            "format": metadata.format,
-            "file_size_bytes": metadata.file_size_bytes,
-            "original_audio": {
-                "waveform_data": {
-                    "amplitudes": orig_amplitudes,
-                    "duration": orig_duration,
-                },
-                "playback_url": original_playback_url,
-            },
-            "has_edits": len(edit_stack) > 0,
-            "edit_count": len(edit_stack),
-            "can_undo": len(edit_stack) > 0,
-            "can_redo": len(state_data.get('audio_edit_redo_stack', [])) > 0,
-        }
-
-        # If there are edits, also include current edited audio info
+        # Determine current audio state
+        current_duration = orig_duration
+        current_audio_url = original_playback_url
+        current_waveform = orig_amplitudes
         if edit_stack:
             current_gcs_path = edit_stack[-1]['gcs_path']
-            edited_amplitudes, edited_duration = analysis_service.get_waveform_data(
+            current_waveform, current_duration = analysis_service.get_waveform_data(
                 gcs_audio_path=current_gcs_path,
                 job_id=job_id,
                 num_points=1000,
             )
-            edited_playback_url = transcoding_service.get_review_audio_url(current_gcs_path)
-            result["edited_audio"] = {
-                "duration_seconds": edited_duration,
-                "waveform_data": {
-                    "amplitudes": edited_amplitudes,
-                    "duration": edited_duration,
-                },
-                "playback_url": edited_playback_url,
-            }
+            current_audio_url = transcoding_service.get_review_audio_url(current_gcs_path)
+
+        # Return flat structure matching AudioEditInfo frontend interface
+        result = {
+            "job_id": job_id,
+            "artist": job.artist,
+            "title": job.title,
+            "original_duration_seconds": orig_duration,
+            "current_duration_seconds": current_duration,
+            "original_audio_url": original_playback_url,
+            "current_audio_url": current_audio_url,
+            "waveform_data": {"amplitudes": list(current_waveform)},
+            "original_waveform_data": {"amplitudes": list(orig_amplitudes)},
+            "edit_stack": [
+                {
+                    "edit_id": entry.get("edit_id", ""),
+                    "operation": entry.get("operation", ""),
+                    "params": entry.get("params", {}),
+                    "duration_before": entry.get("duration_before", 0),
+                    "duration_after": entry.get("duration_after", 0),
+                    "timestamp": entry.get("timestamp", ""),
+                }
+                for entry in edit_stack
+            ],
+            "can_undo": len(edit_stack) > 0,
+            "can_redo": len(state_data.get('audio_edit_redo_stack', [])) > 0,
+        }
 
         return result
 

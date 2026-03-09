@@ -128,16 +128,15 @@ class TestGetInputAudioInfo:
         resp = test_client.get("/api/review/edit-job-1/input-audio-info")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["duration_seconds"] == 200.0
-        assert data["sample_rate"] == 44100
-        assert data["channels"] == 2
-        assert data["format"] == "flac"
-        assert data["has_edits"] is False
-        assert data["edit_count"] == 0
+        assert data["job_id"] == "edit-job-1"
+        assert data["original_duration_seconds"] > 0
+        assert data["current_duration_seconds"] > 0
+        assert data["original_audio_url"] == "https://example.com/audio.ogg"
+        assert data["current_audio_url"] == "https://example.com/audio.ogg"
+        assert data["edit_stack"] == []
         assert data["can_undo"] is False
-        assert "original_audio" in data
-        assert data["original_audio"]["playback_url"] == "https://example.com/audio.ogg"
-        assert "edited_audio" not in data
+        assert "waveform_data" in data
+        assert "original_waveform_data" in data
 
     def test_returns_edited_audio_when_edits_exist(self, test_client, mock_job_manager, mock_services, audio_edit_job_with_edits):
         mock_job_manager.get_job.return_value = audio_edit_job_with_edits
@@ -149,10 +148,10 @@ class TestGetInputAudioInfo:
         resp = test_client.get("/api/review/edit-job-2/input-audio-info")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["has_edits"] is True
-        assert data["edit_count"] == 1
+        assert len(data["edit_stack"]) == 1
         assert data["can_undo"] is True
-        assert "edited_audio" in data
+        assert data["edit_stack"][0]["edit_id"] == "aaa"
+        assert data["edit_stack"][0]["operation"] == "trim_start"
 
     def test_404_when_job_not_found(self, test_client, mock_job_manager):
         mock_job_manager.get_job.return_value = None
