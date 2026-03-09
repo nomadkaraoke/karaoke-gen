@@ -1763,12 +1763,21 @@ async def submit_audio_edit(
         message="Audio edit complete, starting processing"
     )
 
-    # Trigger parallel workers (same as normal post-download flow)
+    # Trigger parallel workers in background so the HTTP response returns immediately.
+    # The worker triggers involve Cloud Run Job calls that can take 30+ seconds;
+    # waiting synchronously causes the browser request to time out.
     worker_service = get_worker_service()
-    await asyncio.gather(
-        worker_service.trigger_audio_worker(job_id),
-        worker_service.trigger_lyrics_worker(job_id),
-    )
+
+    async def _trigger_workers():
+        try:
+            await asyncio.gather(
+                worker_service.trigger_audio_worker(job_id),
+                worker_service.trigger_lyrics_worker(job_id),
+            )
+        except Exception as e:
+            logger.error(f"Job {job_id}: Failed to trigger workers after audio edit: {e}")
+
+    asyncio.create_task(_trigger_workers())
 
     return {
         "status": "success",
