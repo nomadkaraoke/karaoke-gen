@@ -271,19 +271,69 @@ class TestWorkerService:
         with patch('backend.services.worker_service.httpx.AsyncClient') as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = Mock()
             mock_response.status_code = 200
             mock_client.post.return_value = mock_response
-            
+
             worker_service = get_worker_service()
-            
+
             await worker_service.trigger_video_worker("test123")
-            
+
             # Verify HTTP POST was made
             mock_client.post.assert_called_once()
             call_args = mock_client.post.call_args
             assert "/api/internal/workers/video" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_trigger_video_worker_routes_to_cloud_run_job(self):
+        """Test that video worker routes to Cloud Run Jobs when enabled.
+
+        When USE_CLOUD_RUN_JOBS_FOR_VIDEO=true and ENABLE_CLOUD_TASKS=true,
+        trigger_video_worker should dispatch a Cloud Run Job instead of
+        posting to the internal HTTP endpoint. This ensures the encoding
+        orchestrator runs to completion, immune to Cloud Run Service
+        deployment rollouts (see incident 2026-03-08, job 43c0d519).
+        """
+        from backend.services.worker_service import WorkerService, reset_worker_service
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings:
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = True
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_video = True
+
+            mock_jobs_client = MagicMock()
+            mock_operation = MagicMock()
+            mock_operation.metadata = "test-metadata"
+            mock_jobs_client.run_job.return_value = mock_operation
+
+            mock_run_v2 = MagicMock()
+            mock_run_v2.JobsClient.return_value = mock_jobs_client
+            mock_run_v2.RunJobRequest = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides.ContainerOverride = MagicMock()
+
+            import google.cloud
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
+                service = WorkerService()
+                result = await service.trigger_video_worker("test123")
+
+                assert result is True
+                mock_jobs_client.run_job.assert_called_once()
+
+                # Verify correct Cloud Run Job name
+                call_args = mock_run_v2.RunJobRequest.call_args
+                assert call_args is not None
+                assert "video-encoding-job" in str(call_args)
+
+                # Verify job_id is passed via container args override
+                override_args = mock_run_v2.RunJobRequest.Overrides.ContainerOverride.call_args
+                assert "--job-id" in str(override_args)
+                assert "test123" in str(override_args)
 
 
 class TestWorkerServiceCloudTasks:
