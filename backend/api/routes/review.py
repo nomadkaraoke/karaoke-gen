@@ -1165,7 +1165,7 @@ async def save_audio_edit_session(
     # Upload edit_data to GCS
     storage = StorageService()
     gcs_path = f"jobs/{job_id}/audio_edit_sessions/{session.session_id}.json"
-    storage.upload_json(edit_data, gcs_path)
+    storage.upload_json(gcs_path, edit_data)
     session.edit_data_gcs_path = gcs_path
 
     # Save metadata to Firestore
@@ -1733,7 +1733,7 @@ async def submit_audio_edit(
     edit_log = body.get("edit_log")
     if edit_log:
         edit_log_path = f"jobs/{job_id}/audio_edit/edit_log.json"
-        storage.upload_json(edit_log, edit_log_path)
+        storage.upload_json(edit_log_path, edit_log)
         logger.info(f"Job {job_id}: Saved audio edit log to {edit_log_path}")
 
     if edit_stack:
