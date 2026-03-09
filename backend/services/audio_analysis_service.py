@@ -5,6 +5,7 @@ This service wraps the shared karaoke_gen.instrumental_review module
 to provide GCS-integrated audio analysis capabilities.
 """
 
+import json
 import logging
 import os
 import tempfile
@@ -187,7 +188,78 @@ class AudioAnalysisService:
             )
             
             return amplitudes, duration
-    
+
+    def cache_waveform_data(
+        self,
+        gcs_audio_path: str,
+        job_id: str,
+        cache_gcs_path: str,
+        num_points: int = 1000,
+    ) -> tuple[list[float], float]:
+        """
+        Generate waveform data and cache it as JSON in GCS.
+
+        Args:
+            gcs_audio_path: Path to the audio file in GCS
+            job_id: Job ID for logging
+            cache_gcs_path: GCS path to store the cached waveform JSON
+            num_points: Number of data points to generate
+
+        Returns:
+            Tuple of (amplitude_values, duration_seconds)
+        """
+        logger.info(f"[{job_id}] Generating and caching waveform data: {gcs_audio_path}")
+
+        amplitudes, duration = self.get_waveform_data(
+            gcs_audio_path=gcs_audio_path,
+            job_id=job_id,
+            num_points=num_points,
+        )
+
+        cache_data = {
+            "amplitudes": list(amplitudes),
+            "duration_seconds": duration,
+            "num_points": num_points,
+            "source_gcs_path": gcs_audio_path,
+        }
+        self.storage_service.upload_json(cache_gcs_path, cache_data)
+        logger.info(f"[{job_id}] Waveform data cached at {cache_gcs_path}")
+
+        return amplitudes, duration
+
+    def load_cached_waveform(
+        self,
+        cache_gcs_path: str,
+    ) -> Optional[tuple[list[float], float]]:
+        """
+        Load cached waveform data from GCS.
+
+        Args:
+            cache_gcs_path: GCS path to the cached waveform JSON
+
+        Returns:
+            Tuple of (amplitude_values, duration_seconds) or None if not found
+        """
+        try:
+            if not self.storage_service.file_exists(cache_gcs_path):
+                return None
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                local_path = os.path.join(temp_dir, "waveform.json")
+                self.storage_service.download_file(cache_gcs_path, local_path)
+                with open(local_path) as f:
+                    data = json.load(f)
+
+            amplitudes = data.get("amplitudes", [])
+            duration = data.get("duration_seconds", 0.0)
+            if not amplitudes:
+                return None
+
+            return amplitudes, duration
+        except Exception as e:
+            logger.warning(f"Failed to load cached waveform from {cache_gcs_path}: {e}")
+            return None
+
     def generate_waveform_with_mutes(
         self,
         gcs_audio_path: str,

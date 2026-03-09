@@ -140,6 +140,26 @@ async def process_audio_download(job_id: str) -> bool:
         if job and job.state_data.get('requires_audio_edit'):
             # Preserve the original input path before any edits
             job_manager.update_state_data(job_id, 'original_input_media_gcs_path', audio_gcs_path)
+
+            # Pre-generate audio editor assets (OGG transcode + waveform data)
+            # so the editor UI loads instantly. Non-fatal if this fails.
+            waveform_cache_path = f"jobs/{job_id}/audio_edit/waveform_original.json"
+            try:
+                from backend.services.audio_transcoding_service import AudioTranscodingService
+                from backend.services.audio_analysis_service import AudioAnalysisService
+
+                transcoding = AudioTranscodingService()
+                transcoding.transcode_if_needed(audio_gcs_path)
+                logger.info(f"[job:{job_id}] Pre-transcoded input audio to OGG for editor")
+
+                analysis = AudioAnalysisService()
+                analysis.cache_waveform_data(audio_gcs_path, job_id, waveform_cache_path)
+                logger.info(f"[job:{job_id}] Pre-generated waveform data for editor")
+
+                job_manager.update_state_data(job_id, 'audio_edit_waveform_cache_path', waveform_cache_path)
+            except Exception as e:
+                logger.warning(f"[job:{job_id}] Failed to pre-generate editor assets (non-fatal): {e}")
+
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.AWAITING_AUDIO_EDIT,

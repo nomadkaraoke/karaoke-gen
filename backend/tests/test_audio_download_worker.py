@@ -183,6 +183,85 @@ class TestProcessAudioDownload:
             assert call_kwargs['source_id'] == 'spotify123'
 
 
+class TestAudioEditPreGeneration:
+    """Tests for pre-generation of editor assets when requires_audio_edit is set."""
+
+    @pytest.mark.asyncio
+    async def test_pregenerates_assets_when_audio_edit_requested(self):
+        """Should transcode OGG + cache waveform before transitioning to awaiting_audio_edit."""
+        job = _make_job(state_data={'requires_audio_edit': True})
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.services.audio_transcoding_service.AudioTranscodingService") as MockTS, \
+             patch("backend.services.audio_analysis_service.AudioAnalysisService") as MockAS:
+
+            mock_jm = MagicMock()
+            # First get_job returns the initial job, second returns the one with requires_audio_edit
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.flac", "song.flac")
+
+            mock_ts = MagicMock()
+            MockTS.return_value = mock_ts
+
+            mock_as = MagicMock()
+            mock_as.cache_waveform_data.return_value = ([0.1, 0.5], 200.0)
+            MockAS.return_value = mock_as
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            # Should have transcoded OGG
+            mock_ts.transcode_if_needed.assert_called_once_with("uploads/test-job-123/audio/song.flac")
+            # Should have cached waveform
+            mock_as.cache_waveform_data.assert_called_once_with(
+                "uploads/test-job-123/audio/song.flac",
+                "test-job-123",
+                "jobs/test-job-123/audio_edit/waveform_original.json",
+            )
+            # Should have stored cache path in state_data
+            mock_jm.update_state_data.assert_any_call(
+                "test-job-123", "audio_edit_waveform_cache_path",
+                "jobs/test-job-123/audio_edit/waveform_original.json",
+            )
+            # Should have transitioned to awaiting_audio_edit
+            calls = mock_jm.transition_to_state.call_args_list
+            assert any(c.kwargs.get('new_status') == JobStatus.AWAITING_AUDIO_EDIT for c in calls)
+
+    @pytest.mark.asyncio
+    async def test_pregeneration_failure_is_nonfatal(self):
+        """Pre-generation failure should not prevent the job from reaching awaiting_audio_edit."""
+        job = _make_job(state_data={'requires_audio_edit': True})
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.services.audio_transcoding_service.AudioTranscodingService") as MockTS:
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.flac", "song.flac")
+
+            # Transcoding fails
+            mock_ts = MagicMock()
+            mock_ts.transcode_if_needed.side_effect = RuntimeError("ffmpeg not found")
+            MockTS.return_value = mock_ts
+
+            result = await process_audio_download("test-job-123")
+
+            # Should still succeed and transition to awaiting_audio_edit
+            assert result is True
+            calls = mock_jm.transition_to_state.call_args_list
+            assert any(c.kwargs.get('new_status') == JobStatus.AWAITING_AUDIO_EDIT for c in calls)
+
+
 class TestDownloadAudio:
     """Tests for _download_audio routing."""
 

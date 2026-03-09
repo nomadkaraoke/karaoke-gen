@@ -170,6 +170,66 @@ class TestGetInputAudioInfo:
         resp = test_client.get("/api/review/no-audio/input-audio-info")
         assert resp.status_code == 404
 
+    def test_uses_cached_waveform_when_available(self, test_client, mock_job_manager, mock_services):
+        """When waveform cache exists, should use it instead of on-demand generation."""
+        job = _job(
+            job_id="cached-job",
+            status=JobStatus.AWAITING_AUDIO_EDIT,
+            input_media_gcs_path="jobs/cached-job/input/song.flac",
+            state_data={"audio_edit_waveform_cache_path": "jobs/cached-job/audio_edit/waveform_original.json"},
+        )
+        mock_job_manager.get_job.return_value = job
+        mock_services["analysis"].load_cached_waveform.return_value = ([0.2, 0.6, 0.4], 180.0)
+        mock_services["edit"].get_metadata_from_gcs.return_value = AudioMetadata(
+            duration_seconds=180.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=30000000,
+        )
+
+        resp = test_client.get("/api/review/cached-job/input-audio-info")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["original_duration_seconds"] == 180.0
+        assert data["original_waveform_data"]["amplitudes"] == [0.2, 0.6, 0.4]
+        # Should have used cache, not on-demand generation
+        mock_services["analysis"].load_cached_waveform.assert_called_once_with(
+            "jobs/cached-job/audio_edit/waveform_original.json"
+        )
+        mock_services["analysis"].get_waveform_data.assert_not_called()
+
+    def test_falls_back_to_on_demand_when_cache_missing(self, test_client, mock_job_manager, mock_services):
+        """When waveform cache path is set but cache doesn't exist, should fall back."""
+        job = _job(
+            job_id="no-cache-job",
+            status=JobStatus.AWAITING_AUDIO_EDIT,
+            input_media_gcs_path="jobs/no-cache-job/input/song.flac",
+            state_data={"audio_edit_waveform_cache_path": "jobs/no-cache-job/audio_edit/waveform_original.json"},
+        )
+        mock_job_manager.get_job.return_value = job
+        mock_services["analysis"].load_cached_waveform.return_value = None
+        mock_services["edit"].get_metadata_from_gcs.return_value = AudioMetadata(
+            duration_seconds=200.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=30000000,
+        )
+
+        resp = test_client.get("/api/review/no-cache-job/input-audio-info")
+        assert resp.status_code == 200
+        # Should have fallen back to on-demand
+        mock_services["analysis"].get_waveform_data.assert_called_once()
+
+    def test_on_demand_when_no_cache_path_in_state(self, test_client, mock_job_manager, mock_services, audio_edit_job):
+        """Jobs without cache path in state_data should use on-demand generation."""
+        mock_job_manager.get_job.return_value = audio_edit_job
+        mock_services["edit"].get_metadata_from_gcs.return_value = AudioMetadata(
+            duration_seconds=200.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=30000000,
+        )
+
+        resp = test_client.get("/api/review/edit-job-1/input-audio-info")
+        assert resp.status_code == 200
+        # No cache path → should not attempt to load cache
+        mock_services["analysis"].load_cached_waveform.assert_not_called()
+        mock_services["analysis"].get_waveform_data.assert_called_once()
+
 
 # --- POST /audio-edit/apply ---
 
