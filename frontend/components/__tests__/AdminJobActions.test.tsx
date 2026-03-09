@@ -40,6 +40,7 @@ describe('AdminJobActions', () => {
 
     // Reset buttons
     expect(screen.getByText('Audio')).toBeInTheDocument()
+    expect(screen.getByText('Audio Edit')).toBeInTheDocument()
     expect(screen.getByText('Review')).toBeInTheDocument()
     expect(screen.getByText('Reprocess')).toBeInTheDocument()
 
