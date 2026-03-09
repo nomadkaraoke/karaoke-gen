@@ -216,6 +216,10 @@ test.describe('Demo Video Recording', () => {
       await page.getByRole('button', { name: /^select$/i }).first().click();
     }
     await page.waitForTimeout(PACE.afterAction);
+
+    // Audio edit question — choose "Use audio as-is"
+    await page.getByText('Use audio as-is').click({ timeout: TIMEOUTS.action });
+    await page.waitForTimeout(PACE.afterAction);
     marker('SCENE_4_END: Audio Selection');
 
     // =========================================================================

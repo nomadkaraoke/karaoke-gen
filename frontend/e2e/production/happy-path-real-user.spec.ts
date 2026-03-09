@@ -429,6 +429,11 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       console.log('  Audio source selected');
 
+      // --- Audio edit question (appears after selecting audio) ---
+      console.log('  Answering audio edit question...');
+      await page.getByText('Use audio as-is').click({ timeout: TIMEOUTS.action });
+      console.log('  Selected "Use audio as-is"');
+
       // --- Guided Step 3: Visibility ---
       console.log('  Waiting for Visibility step...');
       await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });

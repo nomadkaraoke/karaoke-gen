@@ -167,6 +167,10 @@ test.describe('Guided Job Creation Flow', () => {
     await page.getByRole('button', { name: /use this audio/i }).click();
     console.log('  Step 2 complete: selected pick card');
 
+    // Audio edit question — choose "Use audio as-is"
+    await page.getByText('Use audio as-is').click({ timeout: TIMEOUTS.action });
+    console.log('  Selected "Use audio as-is"');
+
     // Step 3: Visibility — choose "Publish & Share" (default, not private)
     await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
     await page.getByRole('button', { name: /publish & share/i }).click();
@@ -245,6 +249,10 @@ test.describe('Guided Job Creation Flow', () => {
     const hasPickCard = await waitForPickCard(page);
     test.skip(!hasPickCard, 'Search returned Tier 3 — skipping pick card test');
     await page.getByRole('button', { name: /use this audio/i }).click();
+
+    // Audio edit question — choose "Use audio as-is"
+    await page.getByText('Use audio as-is').click({ timeout: TIMEOUTS.action });
+    console.log('  Selected "Use audio as-is"');
 
     // Step 3: Visibility — choose "Keep Private"
     await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
@@ -342,6 +350,10 @@ test.describe('Guided Job Creation Flow', () => {
     await page.locator('input[type="url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     await page.getByRole('button', { name: /use this url/i }).click();
 
+    // Audio edit question — choose "Use audio as-is"
+    await page.getByText('Use audio as-is').click({ timeout: TIMEOUTS.action });
+    console.log('  Selected "Use audio as-is"');
+
     // Step 3: Visibility — choose "Publish & Share"
     await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
     await page.getByRole('button', { name: /publish & share/i }).click();
@@ -416,6 +428,10 @@ test.describe('Guided Job Creation Flow', () => {
 
     // Click upload submit button
     await page.getByRole('button', { name: /use this file/i }).click();
+
+    // Audio edit question — choose "Use audio as-is"
+    await page.getByText('Use audio as-is').click({ timeout: TIMEOUTS.action });
+    console.log('  Selected "Use audio as-is"');
 
     // Step 3: Visibility — choose "Publish & Share"
     await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
