@@ -48,9 +48,11 @@ function formatTime(seconds: number): string {
 
 function formatTimePrecise(seconds: number): string {
   if (!Number.isFinite(seconds)) return "0:00.0"
-  const mins = Math.floor(seconds / 60)
-  const secs = (seconds % 60).toFixed(1)
-  return `${mins}:${secs.padStart(4, "0")}`
+  const sign = seconds < 0 ? "-" : ""
+  const abs = Math.abs(seconds)
+  const mins = Math.floor(abs / 60)
+  const secs = (abs % 60).toFixed(1)
+  return `${sign}${mins}:${secs.padStart(4, "0")}`
 }
 
 const RULER_HEIGHT = 20

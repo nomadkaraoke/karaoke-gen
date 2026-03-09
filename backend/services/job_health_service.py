@@ -191,11 +191,13 @@ def get_worker_valid_statuses() -> Dict[str, List[JobStatus]]:
         "audio_worker": [
             JobStatus.DOWNLOADING,
             JobStatus.DOWNLOADING_AUDIO,
+            JobStatus.AUDIO_EDIT_COMPLETE,
             JobStatus.SEPARATING_STAGE1,
             JobStatus.SEPARATING_STAGE2,
         ],
         "lyrics_worker": [
             JobStatus.DOWNLOADING,
+            JobStatus.AUDIO_EDIT_COMPLETE,
             JobStatus.TRANSCRIBING,
             JobStatus.CORRECTING,
         ],
