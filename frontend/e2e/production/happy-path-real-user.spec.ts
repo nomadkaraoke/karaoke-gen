@@ -429,18 +429,21 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       console.log('  Audio source selected');
 
-      // --- Guided Step 3: Customize & Create ---
+      // --- Guided Step 3: Visibility ---
+      console.log('  Waiting for Visibility step...');
+      await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
+
+      // Click "Keep Private" — test jobs should never consume public NOMAD brand codes
+      await page.getByRole('button', { name: /keep private/i }).click();
+      console.log('  Selected "Keep Private" (NOMADNP prefix, no GDrive/YouTube)');
+
+      // --- Guided Step 4: Customize & Create ---
       console.log('  Waiting for Customize & Create step...');
       await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
 
       // Wait for Title Card Preview to render (it starts blank)
       await page.waitForTimeout(3000);
       await page.screenshot({ path: 'test-results/05b-customize-step.png' });
-
-      // Enable private mode - test jobs should never consume public NOMAD brand codes
-      const privateCheckbox = page.locator('#guided-private');
-      await privateCheckbox.check();
-      console.log('  Enabled private mode (NOMADNP prefix, no GDrive/YouTube)');
 
       // Accept defaults and create
       await page.getByRole('button', { name: /create karaoke video/i }).click();

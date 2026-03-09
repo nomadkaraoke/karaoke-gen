@@ -219,9 +219,23 @@ test.describe('Demo Video Recording', () => {
     marker('SCENE_4_END: Audio Selection');
 
     // =========================================================================
-    // SCENE 5: Customize & Create (Guided Step 3)
+    // SCENE 5: Visibility (Guided Step 3)
     // =========================================================================
-    marker('SCENE_5_START: Customize & Create');
+    marker('SCENE_5_START: Visibility');
+
+    await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
+    await page.waitForTimeout(PACE.beforeImportant);
+    await page.screenshot({ path: 'test-results/demo-04b-visibility.png' });
+
+    // Choose "Publish & Share" for the demo
+    await page.getByRole('button', { name: /publish & share/i }).click();
+    await page.waitForTimeout(PACE.afterAction);
+    marker('SCENE_5_END: Visibility');
+
+    // =========================================================================
+    // SCENE 6: Customize & Create (Guided Step 4)
+    // =========================================================================
+    marker('SCENE_6_START: Customize & Create');
 
     await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
 
@@ -248,12 +262,12 @@ test.describe('Demo Video Recording', () => {
     }
 
     await page.screenshot({ path: 'test-results/demo-06-job-created.png' });
-    marker('SCENE_5_END: Customize & Create');
+    marker('SCENE_6_END: Customize & Create');
 
     // =========================================================================
-    // SCENE 6: Processing Wait (will be sped up in post-processing)
+    // SCENE 7: Processing Wait (will be sped up in post-processing)
     // =========================================================================
-    marker('SCENE_6_START: Processing Wait (SPEED_UP)');
+    marker('SCENE_7_START: Processing Wait (SPEED_UP)');
 
     // Find job card
     await page.waitForTimeout(3000);
@@ -295,12 +309,12 @@ test.describe('Demo Video Recording', () => {
 
     await page.screenshot({ path: 'test-results/demo-07-ready-for-review.png' });
     await page.waitForTimeout(PACE.afterStepComplete);
-    marker('SCENE_6_END: Processing Wait (SPEED_UP)');
+    marker('SCENE_7_END: Processing Wait (SPEED_UP)');
 
     // =========================================================================
-    // SCENE 7: Lyrics Review
+    // SCENE 8: Lyrics Review
     // =========================================================================
-    marker('SCENE_7_START: Lyrics Review');
+    marker('SCENE_8_START: Lyrics Review');
 
     // Open review page
     const reviewLink = jobCard.getByRole('link', { name: /review lyrics/i });
@@ -366,12 +380,12 @@ test.describe('Demo Video Recording', () => {
     await proceedBtn.click();
     await reviewPage.waitForTimeout(3000);
 
-    marker('SCENE_7_END: Lyrics Review');
+    marker('SCENE_8_END: Lyrics Review');
 
     // =========================================================================
-    // SCENE 8: Instrumental Selection
+    // SCENE 9: Instrumental Selection
     // =========================================================================
-    marker('SCENE_8_START: Instrumental Selection');
+    marker('SCENE_9_START: Instrumental Selection');
 
     // Wait for instrumental UI
     try {
@@ -415,12 +429,12 @@ test.describe('Demo Video Recording', () => {
       }
     }
 
-    marker('SCENE_8_END: Instrumental Selection');
+    marker('SCENE_9_END: Instrumental Selection');
 
     // =========================================================================
-    // SCENE 9: Wait for Completion (will be sped up in post-processing)
+    // SCENE 10: Wait for Completion (will be sped up in post-processing)
     // =========================================================================
-    marker('SCENE_9_START: Final Rendering (SPEED_UP)');
+    marker('SCENE_10_START: Final Rendering (SPEED_UP)');
 
     await page.bringToFront();
     if (await refreshBtn.isVisible().catch(() => false)) {
@@ -455,18 +469,18 @@ test.describe('Demo Video Recording', () => {
 
     await page.waitForTimeout(PACE.afterStepComplete);
     await page.screenshot({ path: 'test-results/demo-14-complete.png' });
-    marker('SCENE_9_END: Final Rendering (SPEED_UP)');
+    marker('SCENE_10_END: Final Rendering (SPEED_UP)');
 
     // =========================================================================
-    // SCENE 10: Show Completed Job
+    // SCENE 11: Show Completed Job
     // =========================================================================
-    marker('SCENE_10_START: Completion');
+    marker('SCENE_11_START: Completion');
 
     // Let the viewer see the completed state with all download badges
     await page.waitForTimeout(5000);
     await page.screenshot({ path: 'test-results/demo-15-final.png' });
 
-    marker('SCENE_10_END: Completion');
+    marker('SCENE_11_END: Completion');
 
     // =========================================================================
     // DONE

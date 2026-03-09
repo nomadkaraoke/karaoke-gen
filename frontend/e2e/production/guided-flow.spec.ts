@@ -7,7 +7,7 @@ import { TEST_SONG, URLS, TIMEOUTS } from '../helpers/constants';
 /**
  * Production E2E Tests: Guided Job Creation Flow
  *
- * Tests the 3-step guided job creation flow (Song Info → Choose Audio → Customize & Create)
+ * Tests the 4-step guided job creation flow (Song Info → Choose Audio → Visibility → Customize & Create)
  * against the real production backend. Uses route interception to capture outgoing
  * request bodies while still letting them hit the real API.
  *
@@ -167,13 +167,18 @@ test.describe('Guided Job Creation Flow', () => {
     await page.getByRole('button', { name: /use this audio/i }).click();
     console.log('  Step 2 complete: selected pick card');
 
-    // Step 3: Click "Create Karaoke Video" with defaults (no overrides, not private)
+    // Step 3: Visibility — choose "Publish & Share" (default, not private)
+    await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
+    await page.getByRole('button', { name: /publish & share/i }).click();
+    console.log('  Step 3 complete: selected Publish & Share');
+
+    // Step 4: Click "Create Karaoke Video" with defaults (no overrides)
     await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
     await page.getByRole('button', { name: /create karaoke video/i }).click();
 
     // Wait for success
     await expect(page.getByText('Job Created')).toBeVisible({ timeout: TIMEOUTS.action });
-    console.log('  Step 3 complete: job created');
+    console.log('  Step 4 complete: job created');
 
     // Assert: search body has correct params
     expect(searchBody).toBeTruthy();
@@ -241,13 +246,17 @@ test.describe('Guided Job Creation Flow', () => {
     test.skip(!hasPickCard, 'Search returned Tier 3 — skipping pick card test');
     await page.getByRole('button', { name: /use this audio/i }).click();
 
-    // Step 3: Fill display overrides, check private, and confirm
+    // Step 3: Visibility — choose "Keep Private"
+    await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
+    await page.getByRole('button', { name: /keep private/i }).click();
+    console.log('  Selected Keep Private');
+
+    // Step 4: Fill display overrides and confirm
     await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
 
     await page.locator('#guided-display-artist').fill('PIRI (Display)');
     await page.locator('#guided-display-title').fill('DOG (Display)');
-    await page.locator('#guided-private').check();
-    console.log('  Filled display overrides and checked Private');
+    console.log('  Filled display overrides');
 
     await page.getByRole('button', { name: /create karaoke video/i }).click();
 
@@ -333,6 +342,15 @@ test.describe('Guided Job Creation Flow', () => {
     await page.locator('input[type="url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     await page.getByRole('button', { name: /use this url/i }).click();
 
+    // Step 3: Visibility — choose "Publish & Share"
+    await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
+    await page.getByRole('button', { name: /publish & share/i }).click();
+    console.log('  Selected Publish & Share');
+
+    // Step 4: Customize & Create — click create
+    await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
+    await page.getByRole('button', { name: /create karaoke video/i }).click();
+
     // Wait for success
     await expect(page.getByText('Job Created')).toBeVisible({ timeout: TIMEOUTS.action });
     console.log('  Job created via YouTube URL');
@@ -397,7 +415,16 @@ test.describe('Guided Job Creation Flow', () => {
     await fileInput.setInputFiles(UPLOAD_FIXTURE_PATH);
 
     // Click upload submit button
-    await page.getByRole('button', { name: /upload.*create/i }).click();
+    await page.getByRole('button', { name: /use this file/i }).click();
+
+    // Step 3: Visibility — choose "Publish & Share"
+    await expect(page.getByRole('heading', { name: 'How should your video be shared?' })).toBeVisible({ timeout: TIMEOUTS.action });
+    await page.getByRole('button', { name: /publish & share/i }).click();
+    console.log('  Selected Publish & Share');
+
+    // Step 4: Customize & Create — click create
+    await expect(page.getByRole('heading', { name: 'Customize & Create' })).toBeVisible({ timeout: TIMEOUTS.action });
+    await page.getByRole('button', { name: /create karaoke video/i }).click();
 
     // Wait for success
     await expect(page.getByText('Job Created')).toBeVisible({ timeout: TIMEOUTS.action });
