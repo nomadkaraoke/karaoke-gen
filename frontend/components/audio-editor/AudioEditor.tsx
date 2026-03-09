@@ -406,7 +406,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
         setCanRedo(info.can_redo)
 
         // If no edits applied yet but saved sessions exist, offer restore
-        if (info.edit_stack.length === 0 && sessionsResult.sessions.length > 0) {
+        if ((info.edit_stack || []).length === 0 && sessionsResult.sessions.length > 0) {
           setSavedSessions(sessionsResult.sessions)
           setShowRestoreDialog(true)
         }
