@@ -56,7 +56,7 @@ curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/video" \
 
 **Note:** SSH-restarting the encoding worker is **not needed** since v0.119.6 (PR #413). The `/encode` endpoint is now idempotent — re-triggering the video worker is sufficient.
 
-**Prevention (since v0.126.2):** CI now performs a graceful drain before restarting the encoding worker — it waits for active jobs to finish (up to 10 min). Additionally, the encoding client retries for ~90s (up from ~14s), and status polling tolerates up to 5 consecutive failures. These three layers together should prevent this issue from recurring.
+**Prevention:** The video worker now runs as a **Cloud Run Job** (`USE_CLOUD_RUN_JOBS_FOR_VIDEO=true`), which runs to completion and is immune to Cloud Run Service deployment rollouts. This replaces the `BackgroundTask` pattern that was vulnerable to instance termination during deployments. Additionally, CI performs a graceful drain before restarting the GCE encoding worker, the encoding client retries for ~90s, and status polling tolerates up to 5 consecutive failures.
 
 ---
 

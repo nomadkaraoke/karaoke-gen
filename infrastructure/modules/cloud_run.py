@@ -378,8 +378,13 @@ def create_video_encoding_job(
     """
     Create the Cloud Run Job for video encoding.
 
-    Cloud Run Jobs provide up to 24-hour execution time for long-running video encoding.
-    This is used when video encoding might exceed the 30-minute Cloud Tasks timeout.
+    Cloud Run Jobs run to completion (up to 1 hour), immune to Cloud Run Service
+    deployment rollouts. This prevents the BackgroundTask termination issue where
+    a deployment kills the encoding orchestrator mid-flight (see incident 2026-03-08).
+
+    The video worker orchestrates: CDG/TXT packaging, GCE encoding submission/polling,
+    file download from GCS, YouTube/Dropbox/GDrive upload, and Discord notification.
+    It needs the same env vars and secrets as the Cloud Run Service for these features.
 
     Args:
         bucket: The GCS bucket for job artifacts.
@@ -405,6 +410,7 @@ def create_video_encoding_job(
                             },
                         ),
                         envs=[
+                            # Core configuration
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="GOOGLE_CLOUD_PROJECT",
                                 value=PROJECT_ID,
@@ -412,6 +418,101 @@ def create_video_encoding_job(
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="GCS_BUCKET_NAME",
                                 value=bucket.name,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENVIRONMENT",
+                                value="production",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCP_REGION",
+                                value=REGION,
+                            ),
+                            # GCE encoding worker
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="USE_GCE_ENCODING",
+                                value="true",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENCODING_WORKER_URL",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/encoding-worker-url",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENCODING_WORKER_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/encoding-worker-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            # Distribution defaults
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_ENABLE_YOUTUBE_UPLOAD",
+                                value="true",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_BRAND_PREFIX",
+                                value="NOMAD",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_PRIVATE_BRAND_PREFIX",
+                                value="NOMADNP",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_DROPBOX_PATH",
+                                value="/MediaUnsynced/Karaoke/Tracks-Organized",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_PRIVATE_DROPBOX_PATH",
+                                value="/MediaUnsynced/Karaoke/Tracks-NonPublished",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_GDRIVE_FOLDER_ID",
+                                value="1laRKAyxo0v817SstfM5XkpbWiNKNAMSX",
+                            ),
+                            # Discord webhook for release notifications
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_DISCORD_WEBHOOK_URL",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/discord-releases-webhook",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            # Admin token for worker-to-service auth
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ADMIN_TOKENS",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            # Cloud Run service URL for triggering downstream workers
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="CLOUD_RUN_SERVICE_URL",
+                                value="https://api.nomadkaraoke.com",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENABLE_CLOUD_TASKS",
+                                value="true",
+                            ),
+                            # SendGrid for completion emails
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="SENDGRID_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/sendgrid-api-key",
+                                        version="latest",
+                                    ),
+                                ),
                             ),
                         ],
                     )

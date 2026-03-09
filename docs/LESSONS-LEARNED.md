@@ -855,6 +855,16 @@ Even with idempotent endpoints (PR #413) and basic retry logic (PR #242), jobs c
 
 **Key insight:** Defense in depth matters. The CI drain prevents *most* conflicts, extended retries handle the *remaining edge cases*, and poll tolerance protects *jobs already in progress*. No single layer is sufficient alone.
 
+### Deployment-Safe Encoding: Cloud Run Jobs (Mar 2026)
+
+The three-layer defense above protects against the **GCE encoding worker** being restarted, but not against the **Cloud Run orchestrator** being killed. Job `43c0d519` (2026-03-08) got stuck because a Cloud Run Service deployment rolled out a new revision while the video worker was running as a `BackgroundTask`. Since the HTTP response had already been sent, Cloud Run treated the request as complete and killed the old instance — terminating the encoding orchestration mid-flight.
+
+**Root cause:** `BackgroundTask` work runs after the HTTP response, so Cloud Run can kill it during deployment drain. The three-layer defense only protects the GCE worker connection, not the orchestrator's lifecycle.
+
+**Fix:** Re-enabled Cloud Run Jobs for video encoding (`USE_CLOUD_RUN_JOBS_FOR_VIDEO=true`). This was built in PR #155 (Dec 2025) but the env var was dropped during the CI migration from `cloudbuild.yaml` to GitHub Actions. Cloud Run Jobs run to completion (up to 24h), immune to Service deployment rollouts.
+
+**Key insight:** When migrating CI systems (cloudbuild.yaml → GitHub Actions), audit env vars carefully. A missing feature flag can silently disable critical protections. The infrastructure (Pulumi) and code existed but were inert without the env var.
+
 ---
 
 ## What We'd Do Differently
