@@ -17,7 +17,7 @@ import {
 } from "@/lib/audio-search-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, ChevronDown, ChevronUp, Upload, Youtube, ArrowLeft, Check, AlertTriangle, CheckCircle2, Lightbulb, Info, Search, X } from "lucide-react"
+import { Loader2, ChevronDown, ChevronUp, Upload, Youtube, ArrowLeft, Check, AlertTriangle, CheckCircle2, Lightbulb, Info, Search, X, Scissors, Zap } from "lucide-react"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 
 interface AudioSourceStepProps {
@@ -335,36 +335,50 @@ export function AudioSourceStep({
           </Button>
         </div>
 
-        <div
-          className="rounded-lg border p-5 space-y-4"
-          style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}
-        >
-          <h3 className="text-base font-semibold" style={{ color: 'var(--text)' }}>
-            Do you want to review and edit this audio before it gets transcribed?
-          </h3>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Trim, cut, mute, or join sections of the downloaded audio before lyrics are transcribed and synced.
-            Useful for trimming intro/outro from a live version, shortening a lengthy outro, etc.
-          </p>
+        <div className="flex flex-col gap-3">
+          {/* Default: use as-is (recommended for most users) */}
+          <button
+            type="button"
+            onClick={() => handleAudioEditAnswer(false)}
+            className="group rounded-lg border-2 p-4 transition-all text-left flex items-start gap-4 border-[var(--success)] hover:bg-[rgba(34,197,94,0.06)]"
+            style={{ backgroundColor: 'rgba(34, 197, 94, 0.03)' }}
+          >
+            <div className="mt-0.5 flex-shrink-0 rounded-full p-1.5" style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)' }}>
+              <Zap className="w-5 h-5" style={{ color: 'var(--success)' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold" style={{ color: 'var(--text)' }}>Use audio as-is</span>
+                <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)' }}>
+                  Recommended
+                </span>
+              </div>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                Start processing right away — best for most tracks
+              </p>
+            </div>
+          </button>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => handleAudioEditAnswer(false)}
-              className="flex-1 rounded-lg border-2 p-4 transition-all text-center border-[var(--card-border)] hover:border-[var(--text-muted)]"
-            >
-              <span className="font-semibold" style={{ color: 'var(--text)' }}>No, use as-is</span>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Proceed directly to transcription</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleAudioEditAnswer(true)}
-              className="flex-1 rounded-lg border-2 p-4 transition-all text-center border-[var(--card-border)] hover:border-[var(--brand-pink)]"
-            >
-              <span className="font-semibold" style={{ color: 'var(--text)' }}>Yes, I&apos;ll edit it first</span>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Trim, cut, or mute before processing</p>
-            </button>
-          </div>
+          {/* Optional: edit first */}
+          <button
+            type="button"
+            onClick={() => handleAudioEditAnswer(true)}
+            className="group rounded-lg border-2 p-4 transition-all text-left flex items-start gap-4 border-[var(--card-border)] hover:border-[var(--brand-purple)]"
+          >
+            <div className="mt-0.5 flex-shrink-0 rounded-full p-1.5" style={{ backgroundColor: 'rgba(139, 92, 246, 0.12)' }}>
+              <Scissors className="w-5 h-5" style={{ color: 'var(--brand-purple)' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold" style={{ color: 'var(--text)' }}>Edit audio first</span>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                Trim, cut, or mute sections before processing
+              </p>
+              <p className="text-xs mt-2 flex items-start gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                <Lightbulb className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: 'var(--brand-gold)' }} />
+                <span>Great for live recordings with intros to skip, or tracks with sections you want to remove</span>
+              </p>
+            </div>
+          </button>
         </div>
       </div>
     )
