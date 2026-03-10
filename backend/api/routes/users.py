@@ -1244,6 +1244,7 @@ async def list_users(
         query = query.where(filter=FieldFilter('is_active', '==', True))
 
     # Search by email prefix (case-insensitive via range query)
+    search = search.strip() if search else None
     if search:
         search_lower = search.lower()
         # Use range query for prefix matching
@@ -1251,15 +1252,22 @@ async def list_users(
         query = query.where(filter=FieldFilter('email', '<', search_lower + '\uffff'))
 
     # Sorting
-    direction = firestore.Query.DESCENDING if sort_order == "desc" else firestore.Query.ASCENDING
-    if sort_by in ["created_at", "last_login_at", "credits", "email"]:
-        query = query.order_by(sort_by, direction=direction)
-    else:
-        query = query.order_by("created_at", direction=direction)
+    # When search is active, Firestore range filters on 'email' conflict with
+    # order_by on a different field (requires composite index). Since we already
+    # fetch all docs and paginate in Python, just sort in Python when searching.
+    sort_field = sort_by if sort_by in ["created_at", "last_login_at", "credits", "email"] else "created_at"
+    if not search:
+        direction = firestore.Query.DESCENDING if sort_order == "desc" else firestore.Query.ASCENDING
+        query = query.order_by(sort_field, direction=direction)
 
     # Get all docs and filter in Python
     # Note: This is expensive for large datasets, consider caching
     all_docs = list(query.stream())
+
+    # Sort in Python when search is active (can't use Firestore order_by with range filter)
+    if search:
+        reverse = sort_order == "desc"
+        all_docs.sort(key=lambda d: (d.to_dict().get(sort_field) is None, d.to_dict().get(sort_field)), reverse=reverse)
 
     # Filter out test users if exclude_test is True
     if exclude_test:
