@@ -182,7 +182,7 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 | Collection | Purpose | Key Fields |
 |------------|---------|------------|
 | `gen_users` | karaoke-gen user accounts | email, credits, role, is_active |
-| `jobs` | Karaoke generation jobs | job_id, user_email, status, state_data |
+| `jobs` | Karaoke generation jobs | job_id, user_email, status, state_data, processing_metadata |
 | `jobs/{job_id}/logs` | Worker log entries (subcollection) | timestamp, level, worker, message, ttl_expiry |
 | `sessions` | Magic link auth sessions | user_email, token, expires_at |
 | `magic_links` | Passwordless auth tokens | email, token, expires_at, used |

@@ -912,3 +912,11 @@ The three-layer defense above protects against the **GCE encoding worker** being
 
 **Key insight:** The job's Firestore document (timeline + log subcollection) should be the single source of truth for "what happened to this job." Cloud Logging has retention limits and requires knowing which service to search. Timeline metadata makes the job self-documenting — any agent or human can read the timeline and understand the full lifecycle without cross-referencing logs.
 
+### Store Processing Metadata When You Have It (Mar 2026)
+
+**Problem:** During a data export for AudioShake lyrics correction feedback, we discovered that AudioShake `task_id` and `asset_id` were only held in memory during processing and never persisted. Recovery required paginating the AudioShake API and cross-referencing Cloud Logging — a multi-hour effort for data that was trivially available during processing.
+
+**Solution:** Added `processing_metadata` as a top-level dict on the Job model, separate from `state_data` (mutable workflow state). Each worker writes its own section (transcription, separation, rendering, etc.) via `job_manager.update_processing_metadata(job_id, section, data)`, which uses Firestore dot-notation to atomically update one section without overwriting others. All metadata writes are wrapped in try/except — failures are logged but never fail jobs.
+
+**Key insight:** "Store it when you have it." The cost of persisting a few extra fields is negligible; the cost of not having them later (log spelunking, API pagination, one-off recovery scripts) is enormous. When data flows through a worker during processing, capture the provenance metadata before it's lost. See `docs/archive/2026-03-10-store-job-processing-metadata.md` for the full design.
+
