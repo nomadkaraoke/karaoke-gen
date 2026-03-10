@@ -446,6 +446,20 @@ class TestSummaryEndpoint:
         assert _prune_state_data({}) == {}
         assert _prune_state_data({'state_data': None}) == {'state_data': None}
 
+    def test_summary_projection_includes_source_fields(self):
+        """Verify SUMMARY_FIELD_PATHS includes audio source tracking fields.
+
+        These fields are required for the Source column in the admin dashboard
+        and the source details modal. Without them, the dashboard incorrectly
+        shows audio search jobs as file uploads when audio_search_artist/title
+        are null.
+        """
+        from backend.services.firestore_service import FirestoreService
+        paths = FirestoreService.SUMMARY_FIELD_PATHS
+        for field in ['url', 'filename', 'audio_search_artist', 'audio_search_title',
+                      'audio_source_type', 'source_name', 'source_id', 'target_file', 'download_url']:
+            assert field in paths, f"{field} must be in summary projection for source details modal"
+
     def test_prune_file_urls_keeps_allowed_keys(self):
         """Verify _prune_file_urls keeps only dashboard-required keys."""
         from backend.api.routes.jobs import _prune_file_urls

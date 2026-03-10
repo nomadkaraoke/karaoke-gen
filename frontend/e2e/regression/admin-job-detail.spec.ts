@@ -472,7 +472,7 @@ test.describe('Admin Job Detail Page', () => {
     await expect(page).toHaveURL(/\/admin\/users\/detail\/?\?email=user%40example\.com/);
   });
 
-  test('YouTube source shows clickable external link', async ({ page }) => {
+  test('YouTube source opens modal with clickable link', async ({ page }) => {
     await setupApiFixtures(page, {
       mocks: [
         { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
@@ -485,8 +485,15 @@ test.describe('Admin Job Detail Page', () => {
     await page.goto('/admin/jobs?id=test-job-123');
     await page.waitForLoadState('networkidle');
 
-    // YouTube source should show as an external link
-    const sourceLink = page.locator('a[href*="youtube.com"]').first();
+    // Source should be a clickable button
+    const sourceButton = page.locator('button').filter({ hasText: /youtube\.com/ });
+    await expect(sourceButton).toBeVisible();
+
+    // Click to open modal, which should contain the clickable YouTube link
+    await sourceButton.click();
+    const modal = page.getByLabel('Audio Source Details');
+    await expect(modal).toBeVisible();
+    const sourceLink = modal.locator('a[href*="youtube.com"]');
     await expect(sourceLink).toBeVisible();
     await expect(sourceLink).toHaveAttribute('target', '_blank');
   });
@@ -713,5 +720,104 @@ test.describe('Admin Job Detail Page', () => {
 
     // Button should have disabled styling (opacity-50 class applied by shadcn)
     await expect(delOutputsButton).toHaveClass(/disabled:opacity-50/);
+  });
+
+  test('shows source details modal for audio search job', async ({ page }) => {
+    const audioSearchJob = {
+      ...mockJob,
+      url: undefined,
+      audio_source_type: 'audio_search',
+      source_name: 'RED',
+      source_id: '26048',
+      target_file: '04 - Living in a Bubble.flac',
+      filename: '04 - Living in a Bubble.flac',
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: audioSearchJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Source should show as search with provider name
+    const sourceButton = page.locator('button').filter({ hasText: /Living in a Bubble/ });
+    await expect(sourceButton).toBeVisible();
+
+    // Click to open source modal
+    await sourceButton.click();
+
+    // Modal should display source details
+    const modal = page.getByLabel('Audio Source Details');
+    await expect(modal).toBeVisible();
+    await expect(modal.getByText('audio search', { exact: true })).toBeVisible();
+    await expect(modal.getByText('RED', { exact: true })).toBeVisible();
+    await expect(modal.getByText('26048')).toBeVisible();
+    await expect(modal.getByText('04 - Living in a Bubble.flac')).toBeVisible();
+  });
+
+  test('shows source details modal for YouTube job', async ({ page }) => {
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Source should be clickable
+    const sourceButton = page.locator('button').filter({ hasText: /youtube\.com/ });
+    await expect(sourceButton).toBeVisible();
+
+    // Click to open source modal
+    await sourceButton.click();
+
+    // Modal should show YouTube URL
+    const modal = page.getByLabel('Audio Source Details');
+    await expect(modal).toBeVisible();
+    await expect(modal.getByText('https://youtube.com/watch?v=abc123')).toBeVisible();
+  });
+
+  test('shows source details modal for file upload job', async ({ page }) => {
+    const uploadJob = {
+      ...mockJob,
+      url: undefined,
+      audio_source_type: 'file_upload',
+      filename: 'my-song.mp3',
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: uploadJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // Source should show filename
+    const sourceButton = page.locator('button').filter({ hasText: /my-song\.mp3/ });
+    await expect(sourceButton).toBeVisible();
+
+    // Click to open source modal
+    await sourceButton.click();
+
+    // Modal should show upload details
+    const modal = page.getByLabel('Audio Source Details');
+    await expect(modal).toBeVisible();
+    await expect(modal.getByText('file upload')).toBeVisible();
+    await expect(modal.getByText('my-song.mp3')).toBeVisible();
   });
 });
