@@ -187,6 +187,7 @@ class FirestoreService:
         'state_data.audio_complete', 'state_data.lyrics_complete',
         'state_data.backing_vocals_analysis', 'state_data.visibility_change_in_progress',
         'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
+        'processing_metadata',
     ]
 
     def list_jobs_summary(

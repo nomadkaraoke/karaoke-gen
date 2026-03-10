@@ -293,6 +293,9 @@ class AudioShakeTranscriber(BaseTranscriber):
             asset_id = self.api.upload_file(upload_filepath)
             self.logger.debug(f"File uploaded successfully. Asset ID: {asset_id}")
 
+            # Store asset_id for later retrieval in metadata
+            self._last_asset_id = asset_id
+
             task_id = self.api.create_task(asset_id)
             self.logger.debug(f"Task created successfully. Task ID: {task_id}")
 
@@ -378,6 +381,7 @@ class AudioShakeTranscriber(BaseTranscriber):
             metadata={
                 "language": transcription_data.get("metadata", {}).get("language"),
                 "task_id": task_data["id"],
+                "asset_id": task_data.get("assetId") or getattr(self, '_last_asset_id', None),
                 "duration": task_data.get("duration"),
             },
         )

@@ -421,6 +421,43 @@ class Job(BaseModel):
     }
     """
     
+    # Processing metadata (immutable provenance data written by workers during processing)
+    processing_metadata: Dict[str, Any] = Field(default_factory=dict)
+    """
+    Immutable processing provenance data. Written once by each worker during processing.
+    Never modified after initial write. Used for analytics, debugging, and data export.
+
+    Structure:
+    {
+        "transcription": {
+            "provider": "audioshake",
+            "audioshake_task_id": "...",
+            "audioshake_asset_id": "...",
+            "language_detected": "en",
+            "word_count": 358,
+            "segment_count": 42,
+        },
+        "correction": {
+            "handlers_applied": [...],
+            "corrections_made": 12,
+            "correction_ratio": 0.034,
+            "reference_sources_found": ["genius", "spotify"],
+            "agentic_routing": "rule-based",
+            "duration_seconds": 33.2,
+        },
+        "separation": {
+            "provider": "modal",
+            "clean_model": "...",
+            "duration_seconds": 420.5,
+        },
+        "timing": {
+            "lyrics_worker_seconds": 125.3,
+            "audio_worker_seconds": 420.5,
+            ...
+        },
+    }
+    """
+
     # Request metadata (captured at job creation for tracking and filtering)
     request_metadata: Dict[str, Any] = Field(default_factory=dict)
     """

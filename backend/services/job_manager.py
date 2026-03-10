@@ -748,6 +748,27 @@ class JobManager:
         self.update_job(job_id, {'state_data': state_data})
         logger.debug(f"Job {job_id} state_data updated: {key} = {value}")
 
+    def update_processing_metadata(self, job_id: str, section: str, data: dict) -> None:
+        """
+        Write data into processing_metadata[section] using Firestore dot-notation.
+
+        Each worker writes its own section once. This uses Firestore's nested
+        field update to avoid overwriting other workers' sections.
+
+        Args:
+            job_id: Job ID
+            section: Metadata section (e.g., 'transcription', 'separation', 'timing')
+            data: Dict of metadata to store in that section
+        """
+        try:
+            self.firestore.update_job(job_id, {
+                f"processing_metadata.{section}": data,
+            })
+            logger.debug(f"Job {job_id} processing_metadata.{section} updated")
+        except Exception as e:
+            # Log but don't raise - metadata storage should never fail a job
+            logger.warning(f"Job {job_id}: Failed to update processing_metadata.{section}: {e}")
+
     def delete_state_data_key(self, job_id: str, key: str) -> bool:
         """
         Delete a specific key from the job's state_data field.

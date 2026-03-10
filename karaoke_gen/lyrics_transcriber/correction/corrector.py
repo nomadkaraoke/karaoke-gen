@@ -188,6 +188,21 @@ class LyricsCorrector:
                 span.set_attribute("correction_ratio", correction_ratio)
                 span.set_attribute("duration_seconds", time.time() - start_time)
 
+            # Build metadata dict, including primary transcription metadata for provenance
+            result_metadata = {
+                    "anchor_sequences_count": len(anchor_sequences),
+                    "gap_sequences_count": len(gap_sequences),
+                    "total_words": total_words,
+                    "correction_ratio": correction_ratio,
+                    "available_handlers": self.all_handlers,
+                    "enabled_handlers": enabled_handlers,
+                    "agentic_routing": "agentic" if agentic_enabled else "rule-based",
+            }
+
+            # Pass through primary transcription metadata (e.g., AudioShake task_id, asset_id)
+            if primary_transcription.metadata:
+                result_metadata["transcription_metadata"] = primary_transcription.metadata
+
             result = CorrectionResult(
                 original_segments=primary_transcription.segments,
                 corrected_segments=corrected_segments,
@@ -198,15 +213,7 @@ class LyricsCorrector:
                 anchor_sequences=anchor_sequences,
                 resized_segments=[],
                 gap_sequences=gap_sequences,
-                metadata={
-                    "anchor_sequences_count": len(anchor_sequences),
-                    "gap_sequences_count": len(gap_sequences),
-                    "total_words": total_words,
-                    "correction_ratio": correction_ratio,
-                    "available_handlers": self.all_handlers,
-                    "enabled_handlers": enabled_handlers,
-                    "agentic_routing": "agentic" if agentic_enabled else "rule-based",
-                },
+                metadata=result_metadata,
                 correction_steps=correction_steps,
                 word_id_map=word_id_map,
                 segment_id_map=segment_id_map,
