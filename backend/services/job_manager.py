@@ -748,17 +748,21 @@ class JobManager:
         self.update_job(job_id, {'state_data': state_data})
         logger.debug(f"Job {job_id} state_data updated: {key} = {value}")
 
-    def update_processing_metadata(self, job_id: str, section: str, data: dict) -> None:
+    def update_processing_metadata(self, job_id: str, section: str, data) -> None:
         """
         Write data into processing_metadata[section] using Firestore dot-notation.
 
         Each worker writes its own section once. This uses Firestore's nested
         field update to avoid overwriting other workers' sections.
 
+        The section can use dot-notation for deeper nesting, e.g.
+        'timing.lyrics_worker_seconds' writes to processing_metadata.timing.lyrics_worker_seconds
+        without overwriting other timing entries.
+
         Args:
             job_id: Job ID
-            section: Metadata section (e.g., 'transcription', 'separation', 'timing')
-            data: Dict of metadata to store in that section
+            section: Metadata section path (e.g., 'transcription', 'timing.audio_worker_seconds')
+            data: Value to store (dict for sections, scalar for individual fields)
         """
         try:
             self.firestore.update_job(job_id, {

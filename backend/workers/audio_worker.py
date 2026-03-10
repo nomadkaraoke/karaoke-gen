@@ -427,9 +427,7 @@ async def process_audio_separation(job_id: str) -> bool:
                     "stems_generated": list(separation_result.keys()),
                     "duration_seconds": round(sep_duration, 1),
                 })
-                job_manager.update_processing_metadata(job_id, "timing", {
-                    "audio_worker_seconds": round(duration, 1),
-                })
+                job_manager.update_processing_metadata(job_id, "timing.audio_worker_seconds", round(duration, 1))
 
                 # Mark audio processing complete
                 # This will check if lyrics are also complete and transition to next stage if so

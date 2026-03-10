@@ -465,9 +465,7 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 
                 duration = time.time() - start_time
                 # Store worker-level timing
-                job_manager.update_processing_metadata(job_id, "timing", {
-                    "lyrics_worker_seconds": round(duration, 1),
-                })
+                job_manager.update_processing_metadata(job_id, "timing.lyrics_worker_seconds", round(duration, 1))
                 root_span.set_attribute("duration_seconds", duration)
                 logger.info(f"[job:{job_id}] WORKER_END worker=lyrics status=success duration={duration:.1f}s")
                 return True

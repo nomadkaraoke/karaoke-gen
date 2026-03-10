@@ -1189,9 +1189,7 @@ def _store_video_processing_metadata(
             job_manager.update_processing_metadata(job_id, "distribution", distribution_data)
 
         # Worker timing
-        job_manager.update_processing_metadata(job_id, "timing", {
-            "video_worker_seconds": round(total_duration, 1),
-        })
+        job_manager.update_processing_metadata(job_id, "timing.video_worker_seconds", round(total_duration, 1))
 
     except Exception as e:
         logger.warning(f"Job {job_id}: Failed to store video processing metadata (non-fatal): {e}")

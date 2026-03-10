@@ -326,9 +326,7 @@ async def process_render_video(job_id: str) -> bool:
                         "countdown_padding_added": padding_added,
                         "countdown_padding_seconds": padding_seconds if padding_added else 0,
                     })
-                    job_manager.update_processing_metadata(job_id, "timing", {
-                        "render_video_worker_seconds": round(render_duration, 1),
-                    })
+                    job_manager.update_processing_metadata(job_id, "timing.render_video_worker_seconds", round(render_duration, 1))
 
                     # 13. Transition based on prep_only flag
                     # Note: Instrumental selection was already made during combined review

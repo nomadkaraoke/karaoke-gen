@@ -105,6 +105,23 @@ class TestUpdateProcessingMetadata:
 
     @patch('backend.services.job_manager.FirestoreService')
     @patch('backend.services.job_manager.StorageService')
+    def test_update_processing_metadata_deep_dot_notation(self, mock_storage_cls, mock_firestore_cls):
+        """Deeper dot-notation paths (e.g. timing.worker_seconds) avoid overwriting sibling fields."""
+        from backend.services.job_manager import JobManager
+
+        mock_firestore = MagicMock()
+        mock_firestore_cls.return_value = mock_firestore
+
+        jm = JobManager()
+        jm.update_processing_metadata("job-123", "timing.lyrics_worker_seconds", 42.5)
+
+        call_args = mock_firestore.update_job.call_args
+        updates = call_args[0][1]
+        assert "processing_metadata.timing.lyrics_worker_seconds" in updates
+        assert updates["processing_metadata.timing.lyrics_worker_seconds"] == 42.5
+
+    @patch('backend.services.job_manager.FirestoreService')
+    @patch('backend.services.job_manager.StorageService')
     def test_update_processing_metadata_swallows_errors(self, mock_storage_cls, mock_firestore_cls):
         """update_processing_metadata should not raise on failure."""
         from backend.services.job_manager import JobManager
@@ -569,9 +586,9 @@ class TestStoreVideoProcessingMetadata:
         assert calls["distribution"]["brand_code"] == "NOMAD0001"
         assert calls["distribution"]["gdrive_file_count"] == 1
 
-        # Check timing
-        assert "timing" in calls
-        assert calls["timing"]["video_worker_seconds"] == 300.0
+        # Check timing (uses deep dot-notation to avoid overwriting other workers' timing)
+        assert "timing.video_worker_seconds" in calls
+        assert calls["timing.video_worker_seconds"] == 300.0
 
     def test_swallows_exceptions(self):
         """Should not raise on errors."""
