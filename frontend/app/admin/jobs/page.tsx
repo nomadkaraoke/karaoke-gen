@@ -42,6 +42,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -158,6 +159,9 @@ function AdminJobsPageContent() {
   const [logsModalOpen, setLogsModalOpen] = useState(false)
   const [logFilter, setLogFilter] = useState<string>("all")
   const [logSearch, setLogSearch] = useState("")
+
+  // Source info modal
+  const [sourceModalOpen, setSourceModalOpen] = useState(false)
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -618,12 +622,24 @@ function AdminJobsPageContent() {
 
   // Determine job source with detail data
   const getJobSource = (job: Job) => {
-    if (job?.url) return { type: "url" as const, icon: Globe, label: "YouTube", detail: job.url }
+    // Check audio_source_type first (most reliable)
+    if (job?.audio_source_type === "youtube_url" || job?.url) {
+      return { type: "url" as const, icon: Globe, label: "YouTube", detail: job.url || "YouTube URL" }
+    }
+    if (job?.audio_source_type === "audio_search") {
+      const parts = [job.audio_search_artist, job.audio_search_title].filter(Boolean)
+      const detail = parts.length > 0 ? parts.join(" - ") : (job.target_file || job.filename || "Audio search")
+      const label = job.source_name ? `Search (${job.source_name})` : "Search"
+      return { type: "search" as const, icon: Search, label, detail }
+    }
+    if (job?.audio_source_type === "file_upload" || job?.filename) {
+      return { type: "upload" as const, icon: Upload, label: "Upload", detail: job.filename || "Uploaded file" }
+    }
+    // Fallback: check fields without audio_source_type (older jobs)
     if (job?.audio_search_artist || job?.audio_search_title) {
       const parts = [job.audio_search_artist, job.audio_search_title].filter(Boolean)
       return { type: "search" as const, icon: Search, label: "Search", detail: parts.join(" - ") }
     }
-    if (job?.filename) return { type: "upload" as const, icon: Upload, label: "Upload", detail: job.filename }
     return { type: "unknown" as const, icon: FileText, label: "Unknown", detail: undefined }
   }
 
@@ -1112,34 +1128,18 @@ function AdminJobsPageContent() {
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Source</p>
-              {jobSource.type === "url" && jobSource.detail ? (
-                <a
-                  href={jobSource.detail}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm flex items-center gap-1.5 text-primary hover:underline cursor-pointer truncate"
-                  title={`Open YouTube video: ${jobSource.detail}`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <SourceIcon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{jobSource.detail.replace(/^https?:\/\/(www\.)?/, "").slice(0, 40)}</span>
-                </a>
-              ) : jobSource.type === "search" && jobSource.detail ? (
-                <p className="text-sm flex items-center gap-1.5 truncate" title={`Audio search: ${jobSource.detail}`}>
-                  <SourceIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">{jobSource.detail}</span>
-                </p>
-              ) : jobSource.type === "upload" && jobSource.detail ? (
-                <p className="text-sm flex items-center gap-1.5 truncate" title={`Uploaded file: ${jobSource.detail}`}>
-                  <SourceIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">{jobSource.detail}</span>
-                </p>
-              ) : (
-                <p className="text-sm flex items-center gap-1.5 text-muted-foreground">
-                  <SourceIcon className="w-3.5 h-3.5" />
-                  Unknown
-                </p>
-              )}
+              <button
+                className="text-sm flex items-center gap-1.5 text-primary hover:underline cursor-pointer truncate text-left"
+                title="Click for source details"
+                onClick={() => setSourceModalOpen(true)}
+              >
+                <SourceIcon className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">
+                  {jobSource.type === "url" && jobSource.detail
+                    ? jobSource.detail.replace(/^https?:\/\/(www\.)?/, "").slice(0, 40)
+                    : jobSource.detail || "Unknown"}
+                </span>
+              </button>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Created</p>
@@ -1427,6 +1427,91 @@ function AdminJobsPageContent() {
               </Accordion>
             </TabsContent>
           </Tabs>
+
+          {/* ===== SOURCE INFO MODAL ===== */}
+          <Dialog open={sourceModalOpen} onOpenChange={setSourceModalOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <SourceIcon className="w-4 h-4" />
+                  Audio Source Details
+                </DialogTitle>
+                <DialogDescription>
+                  {jobSource.label} — {selectedJob.artist} - {selectedJob.title}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                {selectedJob.audio_source_type && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Source Type</span>
+                    <span className="font-medium">{selectedJob.audio_source_type.replace(/_/g, " ")}</span>
+                  </div>
+                )}
+                {selectedJob.source_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Provider</span>
+                    <span className="font-medium">{selectedJob.source_name}</span>
+                  </div>
+                )}
+                {selectedJob.source_id && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Source ID</span>
+                    <span className="font-mono text-xs">{selectedJob.source_id}</span>
+                  </div>
+                )}
+                {selectedJob.url && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground shrink-0">URL</span>
+                    <a
+                      href={selectedJob.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline truncate font-mono text-xs"
+                    >
+                      {selectedJob.url}
+                    </a>
+                  </div>
+                )}
+                {selectedJob.filename && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground shrink-0">Filename</span>
+                    <span className="truncate font-mono text-xs">{selectedJob.filename}</span>
+                  </div>
+                )}
+                {selectedJob.target_file && selectedJob.target_file !== selectedJob.filename && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground shrink-0">Target File</span>
+                    <span className="truncate font-mono text-xs">{selectedJob.target_file}</span>
+                  </div>
+                )}
+                {(selectedJob.audio_search_artist || selectedJob.audio_search_title) && (
+                  <>
+                    {selectedJob.audio_search_artist && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Search Artist</span>
+                        <span>{selectedJob.audio_search_artist}</span>
+                      </div>
+                    )}
+                    {selectedJob.audio_search_title && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Search Title</span>
+                        <span>{selectedJob.audio_search_title}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {selectedJob.download_url && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground shrink-0">Download URL</span>
+                    <span className="truncate font-mono text-xs">{selectedJob.download_url}</span>
+                  </div>
+                )}
+                {!selectedJob.audio_source_type && !selectedJob.url && !selectedJob.filename && (
+                  <p className="text-muted-foreground italic">No source information available for this job.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* ===== LOGS MODAL ===== */}
           <Dialog open={logsModalOpen} onOpenChange={setLogsModalOpen}>

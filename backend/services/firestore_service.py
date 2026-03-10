@@ -182,6 +182,8 @@ class FirestoreService:
     SUMMARY_FIELD_PATHS = [
         'job_id', 'status', 'progress', 'created_at', 'artist', 'title',
         'error_message', 'non_interactive', 'outputs_deleted_at', 'user_email', 'is_private',
+        'url', 'filename', 'audio_search_artist', 'audio_search_title',
+        'audio_source_type', 'source_name', 'source_id', 'target_file', 'download_url',
         'state_data.brand_code', 'state_data.youtube_url', 'state_data.dropbox_link',
         'state_data.audio_progress', 'state_data.lyrics_progress',
         'state_data.audio_complete', 'state_data.lyrics_complete',

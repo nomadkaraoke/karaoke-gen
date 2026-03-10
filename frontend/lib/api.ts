@@ -80,6 +80,12 @@ export interface Job {
   // Audio search fields
   audio_search_artist?: string;
   audio_search_title?: string;
+  // Audio source tracking
+  audio_source_type?: string;
+  source_name?: string;
+  source_id?: string;
+  target_file?: string;
+  download_url?: string;
   // Theme and branding
   theme_id?: string;
   brand_prefix?: string;
