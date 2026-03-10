@@ -222,6 +222,8 @@ async def generate_screens(job_id: str) -> bool:
                     )
                 
                 duration = time.time() - start_time
+                # Store worker-level timing
+                job_manager.update_processing_metadata(job_id, "timing.screens_worker_seconds", round(duration, 1))
                 root_span.set_attribute("duration_seconds", duration)
                 logger.info(f"[job:{job_id}] WORKER_END worker=screens status=success duration={duration:.1f}s")
 

@@ -319,6 +319,15 @@ async def process_render_video(job_id: str) -> bool:
                         job_log.info("Uploaded corrected.txt")
                         logger.info(f"Job {job_id}: Uploaded corrected.txt")
 
+                    # Store render timing in processing metadata
+                    render_duration = time.time() - start_time
+                    job_manager.update_processing_metadata(job_id, "rendering", {
+                        "render_duration_seconds": round(render_duration, 1),
+                        "countdown_padding_added": padding_added,
+                        "countdown_padding_seconds": padding_seconds if padding_added else 0,
+                    })
+                    job_manager.update_processing_metadata(job_id, "timing.render_video_worker_seconds", round(render_duration, 1))
+
                     # 13. Transition based on prep_only flag
                     # Note: Instrumental selection was already made during combined review
                     # (stored in state_data['instrumental_selection'])

@@ -363,8 +363,11 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                     settings=settings,
                 )
 
-            # Mark job as complete (triggers completion email with youtube_url now available)
+            # Store video processing metadata
             duration = time.time() - start_time
+            _store_video_processing_metadata(job_manager, job_id, result, duration)
+
+            # Mark job as complete (triggers completion email with youtube_url now available)
             completion_metadata = {
                 "action": "completed",
                 "brand_code": result.brand_code,
@@ -1139,6 +1142,57 @@ def _send_distribution_warning_notification(
             logger.warning(f"[job:{job_id}] Pushbullet notification failed: {resp.status_code} {resp.text}")
     except Exception as e:
         logger.warning(f"[job:{job_id}] Failed to send Pushbullet notification: {e}")
+
+
+def _store_video_processing_metadata(
+    job_manager: JobManager,
+    job_id: str,
+    result,
+    total_duration: float,
+) -> None:
+    """Store encoding, distribution, and output metadata in processing_metadata."""
+    try:
+        # Encoding metadata
+        encoding_data = {
+            "encoding_time_seconds": round(result.encoding_time_seconds, 1) if result.encoding_time_seconds else None,
+            "output_formats": [],
+        }
+        # Track which output formats were generated and their sizes
+        output_sizes = {}
+        for attr, fmt_name in [
+            ("final_video", "lossless_4k_mp4"),
+            ("final_video_mkv", "lossless_4k_mkv"),
+            ("final_video_lossy", "lossy_4k_mp4"),
+            ("final_video_720p", "lossy_720p_mp4"),
+        ]:
+            path = getattr(result, attr, None)
+            if path and os.path.exists(path):
+                encoding_data["output_formats"].append(fmt_name)
+                output_sizes[fmt_name] = os.path.getsize(path)
+        if output_sizes:
+            encoding_data["output_sizes_bytes"] = output_sizes
+        job_manager.update_processing_metadata(job_id, "encoding", encoding_data)
+
+        # Distribution metadata
+        distribution_data = {}
+        if result.youtube_url:
+            distribution_data["youtube_video_url"] = result.youtube_url
+        if result.youtube_upload_queued:
+            distribution_data["youtube_upload_queued"] = True
+        if result.dropbox_link:
+            distribution_data["dropbox_link"] = result.dropbox_link
+        if result.gdrive_files:
+            distribution_data["gdrive_file_count"] = len(result.gdrive_files)
+        if result.brand_code:
+            distribution_data["brand_code"] = result.brand_code
+        if distribution_data:
+            job_manager.update_processing_metadata(job_id, "distribution", distribution_data)
+
+        # Worker timing
+        job_manager.update_processing_metadata(job_id, "timing.video_worker_seconds", round(total_duration, 1))
+
+    except Exception as e:
+        logger.warning(f"Job {job_id}: Failed to store video processing metadata (non-fatal): {e}")
 
 
 def _validate_prerequisites(job) -> bool:

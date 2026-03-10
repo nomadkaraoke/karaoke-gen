@@ -330,6 +330,9 @@ async def process_audio_separation(job_id: str) -> bool:
                     download_span.set_attribute("audio_file", os.path.basename(audio_path))
                     download_span.set_attribute("source", "url" if job.url else "gcs")
                 
+                # Capture input audio properties via ffprobe (before any processing)
+                _store_audio_source_metadata(job_manager, job_id, audio_path, job_log)
+
                 # Update progress using state_data (don't change status during parallel processing)
                 # The status is managed at a higher level - workers just track their progress
                 job_manager.update_state_data(job_id, 'audio_progress', {
@@ -414,11 +417,22 @@ async def process_audio_separation(job_id: str) -> bool:
                 
                 logger.info(f"[job:{job_id}] All stems uploaded successfully")
                 
+                # Store processing metadata for separation provenance
+                duration = time.time() - start_time
+                job_manager.update_processing_metadata(job_id, "separation", {
+                    "provider": "modal",
+                    "clean_model": effective_model_names['clean_instrumental_model'],
+                    "backing_models": effective_model_names['backing_vocals_models'],
+                    "other_models": effective_model_names['other_stems_models'],
+                    "stems_generated": list(separation_result.keys()),
+                    "duration_seconds": round(sep_duration, 1),
+                })
+                job_manager.update_processing_metadata(job_id, "timing.audio_worker_seconds", round(duration, 1))
+
                 # Mark audio processing complete
                 # This will check if lyrics are also complete and transition to next stage if so
                 job_manager.mark_audio_complete(job_id)
-                
-                duration = time.time() - start_time
+
                 root_span.set_attribute("duration_seconds", duration)
                 logger.info(f"[job:{job_id}] WORKER_END worker=audio status=success duration={duration:.1f}s")
                 return True
@@ -666,6 +680,67 @@ async def upload_separation_results(
     if instrumental_options:
         job_manager.update_state_data(job_id, 'instrumental_options', instrumental_options)
         logger.info(f"Job {job_id}: Stored instrumental options: {list(instrumental_options.keys())}")
+
+
+def _store_audio_source_metadata(
+    job_manager: JobManager,
+    job_id: str,
+    audio_path: str,
+    job_log,
+) -> None:
+    """Run ffprobe on input audio and store properties in processing_metadata.
+
+    Captures format, codec, sample rate, channels, duration, file size, and bitrate.
+    Non-fatal: failures are logged but don't stop the job.
+    """
+    import subprocess
+    import json as _json
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "quiet", "-print_format", "json",
+                "-show_format", "-show_streams", audio_path,
+            ],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            job_log.warning(f"ffprobe failed (rc={result.returncode}): {result.stderr[:200]}")
+            return
+
+        probe = _json.loads(result.stdout)
+        fmt = probe.get("format", {})
+        # Find audio stream
+        audio_stream = None
+        for stream in probe.get("streams", []):
+            if stream.get("codec_type") == "audio":
+                audio_stream = stream
+                break
+
+        metadata = {
+            "input_format": fmt.get("format_name", "").split(",")[0],
+            "input_duration_seconds": round(float(fmt.get("duration", 0)), 1),
+            "input_file_size_bytes": int(fmt.get("size", 0)),
+            "input_bitrate_kbps": round(int(fmt.get("bit_rate", 0)) / 1000) if fmt.get("bit_rate") else None,
+        }
+
+        if audio_stream:
+            metadata.update({
+                "input_codec": audio_stream.get("codec_name"),
+                "input_sample_rate": int(audio_stream.get("sample_rate", 0)) or None,
+                "input_channels": audio_stream.get("channels"),
+                "input_bit_depth": int(audio_stream.get("bits_per_raw_sample", 0)) or None,
+            })
+
+        job_manager.update_processing_metadata(job_id, "audio_source", metadata)
+        job_log.info(f"Audio source: {metadata.get('input_codec', '?')} "
+                     f"{metadata.get('input_sample_rate', '?')}Hz "
+                     f"{metadata.get('input_channels', '?')}ch "
+                     f"{metadata.get('input_duration_seconds', '?')}s")
+
+    except Exception as e:
+        job_log.warning(f"Failed to capture audio source metadata (non-fatal): {e}")
+        logger.warning(f"Job {job_id}: ffprobe metadata capture failed: {e}")
 
 
 # ==================== CLI Entry Point for Cloud Run Jobs ====================

@@ -268,10 +268,10 @@ storage_service = StorageService()
 worker_service = get_worker_service()
 
 
-def extract_request_metadata(request: Request, created_from: str = "upload") -> Dict[str, Any]:
+def extract_request_metadata(request: Request, created_from: str = "upload", auth_result=None) -> Dict[str, Any]:
     """
     Extract metadata from a FastAPI Request for job tracking.
-    
+
     Captures:
     - Client IP address (handles X-Forwarded-For for proxies)
     - User-Agent header
@@ -280,34 +280,36 @@ def extract_request_metadata(request: Request, created_from: str = "upload") -> 
     - All custom X-* headers
     - Server version
     - Creation source (upload/url)
-    
+    - Auth context (method, user type) if auth_result provided
+
     Args:
         request: FastAPI Request object
         created_from: How the job was created ("upload" or "url")
-        
+        auth_result: Optional AuthResult from authentication
+
     Returns:
         Dict with metadata fields for storage in job.request_metadata
     """
     headers = dict(request.headers)
-    
+
     # Extract client IP (check X-Forwarded-For for proxy scenarios)
     client_ip = headers.get('x-forwarded-for', '').split(',')[0].strip()
     if not client_ip and request.client:
         client_ip = request.client.host
-    
+
     # Extract standard headers
     user_agent = headers.get('user-agent', '')
     environment = headers.get('x-environment', '')  # test, production, development
     client_id = headers.get('x-client-id', '')  # Customer/user identifier
-    
+
     # Collect all X-* custom headers (excluding standard ones we already captured)
     custom_headers = {}
     for key, value in headers.items():
         if key.lower().startswith('x-') and key.lower() not in ('x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host'):
             # Normalize header name to original casing if possible
             custom_headers[key] = value
-    
-    return {
+
+    metadata = {
         'client_ip': client_ip,
         'user_agent': user_agent,
         'environment': environment,
@@ -316,6 +318,17 @@ def extract_request_metadata(request: Request, created_from: str = "upload") -> 
         'created_from': created_from,
         'custom_headers': custom_headers,
     }
+
+    # Add auth context for abuse investigation and analytics
+    if auth_result is not None:
+        metadata['auth_method'] = getattr(auth_result, 'auth_method', None)
+        user_type = getattr(auth_result, 'user_type', None)
+        metadata['user_type'] = user_type.value if hasattr(user_type, 'value') else str(user_type) if user_type else None
+        remaining = getattr(auth_result, 'remaining_uses', None)
+        if remaining is not None:
+            metadata['credits_at_creation'] = remaining
+
+    return metadata
 
 
 # File extension validation
@@ -564,7 +577,7 @@ async def upload_and_create_job(
             )
 
         # Extract request metadata for tracking and filtering
-        request_metadata = extract_request_metadata(request, created_from="upload")
+        request_metadata = extract_request_metadata(request, created_from="upload", auth_result=auth_result)
 
         # Parse color_overrides from JSON if provided
         parsed_color_overrides: Dict[str, str] = {}
@@ -1195,7 +1208,7 @@ async def create_job_with_upload_urls(
             )
 
         # Extract request metadata for tracking
-        request_metadata = extract_request_metadata(request, created_from="signed_url_upload")
+        request_metadata = extract_request_metadata(request, created_from="signed_url_upload", auth_result=auth_result)
 
         # Get original audio filename
         audio_file = audio_files[0]
@@ -1663,7 +1676,7 @@ async def create_job_from_url(
             )
 
         # Extract request metadata for tracking
-        request_metadata = extract_request_metadata(request, created_from="url")
+        request_metadata = extract_request_metadata(request, created_from="url", auth_result=auth_result)
 
         # Use provided artist/title or leave as None (will be auto-detected by audio worker)
         artist = body.artist
@@ -1983,7 +1996,7 @@ async def create_finalise_only_job(
             )
 
         # Extract request metadata
-        request_metadata = extract_request_metadata(request, created_from="finalise_only_upload")
+        request_metadata = extract_request_metadata(request, created_from="finalise_only_upload", auth_result=auth_result)
 
         # Apply default theme if none specified
         # This ensures all karaoke videos use the Nomad theme by default

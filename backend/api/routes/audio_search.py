@@ -240,24 +240,24 @@ class AudioSelectResponse(BaseModel):
     selected_provider: str
 
 
-def extract_request_metadata(request: Request, created_from: str = "audio_search") -> Dict[str, Any]:
+def extract_request_metadata(request: Request, created_from: str = "audio_search", auth_result=None) -> Dict[str, Any]:
     """Extract metadata from request for job tracking."""
     headers = dict(request.headers)
-    
+
     client_ip = headers.get('x-forwarded-for', '').split(',')[0].strip()
     if not client_ip and request.client:
         client_ip = request.client.host
-    
+
     user_agent = headers.get('user-agent', '')
     environment = headers.get('x-environment', '')
     client_id = headers.get('x-client-id', '')
-    
+
     custom_headers = {}
     for key, value in headers.items():
         if key.lower().startswith('x-') and key.lower() not in ('x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host'):
             custom_headers[key] = value
-    
-    return {
+
+    metadata = {
         'client_ip': client_ip,
         'user_agent': user_agent,
         'environment': environment,
@@ -266,6 +266,17 @@ def extract_request_metadata(request: Request, created_from: str = "audio_search
         'created_from': created_from,
         'custom_headers': custom_headers,
     }
+
+    # Add auth context for abuse investigation and analytics
+    if auth_result is not None:
+        metadata['auth_method'] = getattr(auth_result, 'auth_method', None)
+        user_type = getattr(auth_result, 'user_type', None)
+        metadata['user_type'] = user_type.value if hasattr(user_type, 'value') else str(user_type) if user_type else None
+        remaining = getattr(auth_result, 'remaining_uses', None)
+        if remaining is not None:
+            metadata['credits_at_creation'] = remaining
+
+    return metadata
 
 
 def _extract_gcs_path(filepath: str) -> str:
@@ -633,8 +644,9 @@ async def search_audio(
                 }
             )
         
-        # Extract request metadata
-        request_metadata = extract_request_metadata(request, created_from="audio_search")
+        # Extract request metadata (includes auth context + search query info)
+        request_metadata = extract_request_metadata(request, created_from="audio_search", auth_result=auth_result)
+        request_metadata['search_query'] = {'artist': body.artist, 'title': body.title}
 
         # Apply default theme if none specified
         # This ensures all karaoke videos use the Nomad theme by default

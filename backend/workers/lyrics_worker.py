@@ -420,6 +420,12 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 
                 job_log.info("Transcription processing complete")
                 logger.info(f"[job:{job_id}] Transcription complete, uploading results")
+
+                # Store processing metadata for transcription + correction provenance
+                _store_lyrics_processing_metadata(
+                    job_manager, job_id, result, trans_duration,
+                    cache_stats if 'cache_stats' in locals() else None, job_log
+                )
                 
                 # Upload lyrics results to GCS
                 with job_span("upload-lyrics-results", job_id):
@@ -458,6 +464,8 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 job_manager.mark_lyrics_complete(job_id)
                 
                 duration = time.time() - start_time
+                # Store worker-level timing
+                job_manager.update_processing_metadata(job_id, "timing.lyrics_worker_seconds", round(duration, 1))
                 root_span.set_attribute("duration_seconds", duration)
                 logger.info(f"[job:{job_id}] WORKER_END worker=lyrics status=success duration={duration:.1f}s")
                 return True
@@ -697,6 +705,104 @@ async def upload_lyrics_results(
         logger.info(f"Job {job_id}: Uploaded uncorrected transcription: {uncorrected_filename}")
     
     logger.info(f"Job {job_id}: All lyrics results uploaded successfully")
+
+
+def _store_lyrics_processing_metadata(
+    job_manager: JobManager,
+    job_id: str,
+    transcription_result: Dict[str, Any],
+    transcription_duration: float,
+    cache_stats: Optional[Dict[str, Any]],
+    job_log,
+) -> None:
+    """Store transcription and correction provenance in processing_metadata.
+
+    Extracts AudioShake task_id/asset_id, correction stats, reference sources,
+    and cache hit/miss info from the transcription result and stores them
+    permanently for future analytics, debugging, and data export.
+    """
+    try:
+        # Load the corrections.json data from the result to get metadata
+        # The transcription_result is the dict returned by LyricsProcessor.transcribe_lyrics()
+        # which contains file paths, not the corrections data directly.
+        # We need to find and read the corrections JSON from the output directory.
+        corrections_metadata = {}
+        transcription_metadata = {}
+
+        # Try to find corrections file in the result's output directory
+        lyrics_dir = transcription_result.get("lyrics_dir") or ""
+        corrections_file = None
+
+        # Check common paths for corrections JSON
+        if lyrics_dir:
+            for fname in os.listdir(lyrics_dir) if os.path.isdir(lyrics_dir) else []:
+                if fname.endswith("(Lyrics Corrections).json") or fname == "corrections.json":
+                    corrections_file = os.path.join(lyrics_dir, fname)
+                    break
+
+        if corrections_file and os.path.exists(corrections_file):
+            with open(corrections_file, 'r', encoding='utf-8') as f:
+                corrections_data = json.load(f)
+
+            metadata = corrections_data.get("metadata", {})
+
+            # Extract AudioShake IDs from transcription_metadata passthrough
+            trans_meta = metadata.get("transcription_metadata", {})
+            if trans_meta:
+                transcription_metadata = {
+                    "provider": "audioshake",
+                    "audioshake_task_id": trans_meta.get("task_id"),
+                    "audioshake_asset_id": trans_meta.get("asset_id"),
+                    "language_detected": trans_meta.get("language"),
+                }
+
+            # Extract correction stats
+            corrections_metadata = {
+                "handlers_applied": metadata.get("enabled_handlers", []),
+                "corrections_made": corrections_data.get("corrections_made", 0),
+                "correction_ratio": metadata.get("correction_ratio"),
+                "agentic_routing": metadata.get("agentic_routing"),
+                "total_words": metadata.get("total_words"),
+                "anchor_sequences_count": metadata.get("anchor_sequences_count"),
+                "gap_sequences_count": metadata.get("gap_sequences_count"),
+            }
+
+            # Count segments and words from corrected_segments
+            corrected_segments = corrections_data.get("corrected_segments", [])
+            transcription_metadata["segment_count"] = len(corrected_segments)
+            transcription_metadata["word_count"] = sum(
+                len(seg.get("words", [])) for seg in corrected_segments
+            )
+
+            # Determine which reference sources were found
+            reference_lyrics = corrections_data.get("reference_lyrics", {})
+            if reference_lyrics:
+                corrections_metadata["reference_sources_found"] = list(reference_lyrics.keys())
+
+        # Add transcription duration
+        transcription_metadata["duration_seconds"] = round(transcription_duration, 1)
+
+        # Store transcription metadata
+        if transcription_metadata:
+            job_manager.update_processing_metadata(job_id, "transcription", transcription_metadata)
+
+        # Store correction metadata
+        if corrections_metadata:
+            job_manager.update_processing_metadata(job_id, "correction", corrections_metadata)
+
+        # Store cache stats
+        if cache_stats:
+            job_manager.update_processing_metadata(job_id, "cache", {
+                "transcription_cache_downloaded": cache_stats.get("downloaded", 0),
+                "transcription_cache_not_found": cache_stats.get("not_found", 0),
+            })
+
+        job_log.info("Stored processing metadata (transcription + correction provenance)")
+
+    except Exception as e:
+        # Never fail a job because metadata storage failed
+        job_log.warning(f"Failed to store lyrics processing metadata (non-fatal): {e}")
+        logger.warning(f"Job {job_id}: Failed to store lyrics processing metadata: {e}")
 
 
 # ==================== CLI Entry Point for Cloud Run Jobs ====================
