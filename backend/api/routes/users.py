@@ -1267,7 +1267,7 @@ async def list_users(
     # Sort in Python when search is active (can't use Firestore order_by with range filter)
     if search:
         reverse = sort_order == "desc"
-        all_docs.sort(key=lambda d: d.to_dict().get(sort_field) or "", reverse=reverse)
+        all_docs.sort(key=lambda d: (d.to_dict().get(sort_field) is None, d.to_dict().get(sort_field)), reverse=reverse)
 
     # Filter out test users if exclude_test is True
     if exclude_test:
