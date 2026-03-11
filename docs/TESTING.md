@@ -182,6 +182,36 @@ mock_service.update_job.return_value = None  # Match real API
 
 **Before writing a mock**, check the actual method's return type. Void methods should mock `return_value = None`. Methods that raise on error (rather than returning False) should have mocks that raise exceptions for error cases. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#mocks-must-match-real-return-values-feb-2026) for a production bug caused by this.
 
+**Critical: Test the Contract Between Caller and Callee**
+
+When function A calls function B, it's not enough to test B with hand-crafted ideal inputs. You must also verify A actually produces those inputs. This is a "contract test."
+
+```python
+# ❌ BAD: Tests _store_metadata in isolation with hand-crafted input
+# If transcribe_lyrics() never includes "lyrics_dir", this test still passes
+# but production silently loses all metadata
+def test_stores_audioshake_ids(tmp_path):
+    _store_lyrics_processing_metadata(
+        transcription_result={"lyrics_dir": str(tmp_path)},  # Too helpful!
+        ...
+    )
+    assert call_args["audioshake_task_id"] == "task-abc"  # ✅ passes, but useless
+
+# ✅ GOOD: Also test that the caller produces the expected input
+def test_transcribe_lyrics_returns_lyrics_dir(tmp_path):
+    result = processor.transcribe_lyrics(audio, artist, title, tmp_path)
+    assert "lyrics_dir" in result  # Catches the actual bug
+```
+
+**When to write contract tests:**
+- Function A builds a dict/object and passes it to function B
+- Function B reads specific keys/fields from that dict/object
+- The dict/object shape is implicit (no schema, no TypedDict, no dataclass)
+
+**Especially dangerous:** Non-fatal code paths (try/except that swallows errors). If the function is designed to never crash, a test that only checks "didn't raise" provides zero signal. Assert on the *positive outcome* (data was stored, value was returned) not just the absence of exceptions.
+
+See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#test-the-contract-not-just-the-function-mar-2026) for the production bug this pattern caused.
+
 ### Integration Tests (`tests/integration/`)
 
 **Purpose:** Test CLI workflows and component interactions.
