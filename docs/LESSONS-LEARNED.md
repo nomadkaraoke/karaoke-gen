@@ -920,3 +920,17 @@ The three-layer defense above protects against the **GCE encoding worker** being
 
 **Key insight:** "Store it when you have it." The cost of persisting a few extra fields is negligible; the cost of not having them later (log spelunking, API pagination, one-off recovery scripts) is enormous. When data flows through a worker during processing, capture the provenance metadata before it's lost. See `docs/archive/2026-03-10-store-job-processing-metadata.md` for the full design.
 
+### Test the Contract, Not Just the Function (Mar 2026)
+
+**Problem:** The processing metadata feature shipped with a silent bug: `_store_lyrics_processing_metadata()` expected `result["lyrics_dir"]` but `transcribe_lyrics()` never included `lyrics_dir` in its return dict. AudioShake IDs and correction stats were silently lost in production. The test suite had 24 passing tests and didn't catch it.
+
+**Root cause (testing):** The test for `_store_lyrics_processing_metadata` hand-crafted its input: `transcription_result={"lyrics_dir": str(lyrics_dir)}`. This tested the function in isolation — proving it works *if given correct input* — but never verified the actual caller provides that input. The mock was "too helpful."
+
+**Pattern — Contract tests:** When function A calls function B with data, test both:
+1. **Unit test B** with controlled input (existing approach — still valuable)
+2. **Contract test** verifying A's output contains the keys B expects
+
+For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_dir`?" — a one-line assertion that would have caught the bug before merge.
+
+**Broader principle:** Non-fatal code paths (try/except that swallows errors) are especially dangerous. The metadata storage was designed to never fail jobs, which is correct — but it also meant the bug was completely silent. When testing non-fatal paths, assert on the *positive outcome* (metadata was stored), not just the absence of exceptions. A test that only checks "didn't crash" provides false confidence when the code is designed to never crash.
+

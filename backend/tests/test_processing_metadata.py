@@ -456,6 +456,161 @@ class TestStoreLyricsProcessingMetadata:
         )
         job_log.warning.assert_called()
 
+    def test_no_audioshake_ids_when_lyrics_dir_missing(self):
+        """Without lyrics_dir, corrections.json can't be found — only duration is stored.
+
+        This is the exact bug that shipped in v0.142.0: transcribe_lyrics() didn't
+        include lyrics_dir in its return dict, so _store_lyrics_processing_metadata
+        could never find the corrections file and AudioShake IDs were silently lost.
+        """
+        from backend.workers.lyrics_worker import _store_lyrics_processing_metadata
+
+        job_manager = MagicMock()
+        job_log = MagicMock()
+
+        # Simulate the pre-fix result dict — no lyrics_dir key at all
+        _store_lyrics_processing_metadata(
+            job_manager=job_manager,
+            job_id="test-job",
+            transcription_result={"lrc_filepath": "/tmp/output.lrc"},  # no lyrics_dir!
+            transcription_duration=45.0,
+            cache_stats=None,
+            job_log=job_log,
+        )
+
+        # Only duration should be stored — no AudioShake IDs, no correction stats
+        transcription_call = [
+            c for c in job_manager.update_processing_metadata.call_args_list
+            if c[0][1] == "transcription"
+        ]
+        assert len(transcription_call) == 1
+        trans_data = transcription_call[0][0][2]
+        assert trans_data["duration_seconds"] == 45.0
+        assert "audioshake_task_id" not in trans_data
+        assert "provider" not in trans_data
+
+        # No correction metadata should be stored
+        correction_calls = [
+            c for c in job_manager.update_processing_metadata.call_args_list
+            if c[0][1] == "correction"
+        ]
+        assert len(correction_calls) == 0
+
+
+class TestTranscribeLyricsReturnsLyricsDir:
+    """Contract test: transcribe_lyrics() must include lyrics_dir in its return dict.
+
+    This is the test that would have caught the v0.142.0 bug. The previous test suite
+    only tested _store_lyrics_processing_metadata in isolation with a hand-crafted input
+    that included lyrics_dir — it never verified the actual caller provides that key.
+
+    Testing lesson: When function A calls function B, don't just test B with ideal inputs.
+    Also verify A actually produces those inputs. Test the contract between caller and callee.
+    """
+
+    @patch('karaoke_gen.lyrics_processor.LyricsTranscriber')
+    @patch('karaoke_gen.lyrics_processor.load_dotenv')
+    def test_transcribe_lyrics_returns_lyrics_dir(self, mock_dotenv, mock_transcriber_cls, tmp_path):
+        """transcribe_lyrics() result must contain lyrics_dir pointing to the lyrics subdirectory."""
+        from karaoke_gen.lyrics_processor import LyricsProcessor
+
+        # Set up mock transcriber result
+        mock_results = MagicMock()
+        mock_results.lrc_filepath = str(tmp_path / "lyrics" / "output.lrc")
+        mock_results.ass_filepath = str(tmp_path / "lyrics" / "output.ass")
+        mock_results.video_filepath = str(tmp_path / "lyrics" / "output.mkv")
+        mock_results.transcription_corrected = None  # skip correction output
+        mock_results.countdown_padding_added = False
+        mock_results.countdown_padding_seconds = 0.0
+        mock_results.padded_audio_filepath = None
+
+        mock_transcriber_cls.return_value.process.return_value = mock_results
+
+        # Create necessary dirs and a dummy audio file
+        lyrics_dir = tmp_path / "lyrics"
+        lyrics_dir.mkdir(exist_ok=True)
+        (tmp_path / "lyrics" / "output.lrc").write_text("[00:00.00] test")
+        (tmp_path / "lyrics" / "output.mkv").write_bytes(b"fake")
+        lrc_dest = tmp_path / "Artist - Title (Karaoke).lrc"
+        mkv_dest = tmp_path / "Artist - Title (With Vocals).mkv"
+
+        processor = LyricsProcessor.__new__(LyricsProcessor)
+        processor.logger = MagicMock()
+        processor.lyrics_file = None
+        processor.render_video = False
+        processor.skip_transcription = False
+        processor.skip_transcription_review = True
+        processor.style_params_json = None
+        processor.subtitle_offset_ms = 0
+
+        with patch.dict('os.environ', {
+            'AUDIOSHAKE_API_TOKEN': 'fake-token',
+        }):
+            result = processor.transcribe_lyrics(
+                input_audio_wav=str(tmp_path / "audio.wav"),
+                artist="Artist",
+                title="Title",
+                track_output_dir=str(tmp_path),
+            )
+
+        # THE KEY ASSERTION: lyrics_dir must be in the result
+        assert "lyrics_dir" in result, (
+            "transcribe_lyrics() must return lyrics_dir so _store_lyrics_processing_metadata "
+            "can find corrections.json. This was the v0.142.0 bug."
+        )
+        assert result["lyrics_dir"] == str(tmp_path / "lyrics")
+
+    def test_lyrics_dir_matches_corrections_file_location(self, tmp_path):
+        """The lyrics_dir returned by transcribe_lyrics must be where corrections.json lives.
+
+        This verifies the contract: _store_lyrics_processing_metadata looks for corrections
+        files in result['lyrics_dir'], and transcribe_lyrics writes them to {track_output_dir}/lyrics.
+        """
+        import json
+        from backend.workers.lyrics_worker import _store_lyrics_processing_metadata
+
+        # Simulate a result dict with lyrics_dir set correctly
+        lyrics_dir = tmp_path / "lyrics"
+        lyrics_dir.mkdir()
+
+        # Write a corrections file in the same location transcribe_lyrics would
+        corrections_file = lyrics_dir / "Artist - Title (Lyrics Corrections).json"
+        corrections_file.write_text(json.dumps({
+            "metadata": {
+                "transcription_metadata": {"task_id": "t1", "asset_id": "a1"},
+                "enabled_handlers": [],
+            },
+            "corrections_made": 0,
+            "corrected_segments": [],
+        }))
+
+        job_manager = MagicMock()
+        job_log = MagicMock()
+
+        # Use the result dict shape that transcribe_lyrics now produces
+        _store_lyrics_processing_metadata(
+            job_manager=job_manager,
+            job_id="test-job",
+            transcription_result={
+                "lyrics_dir": str(lyrics_dir),
+                "lrc_filepath": str(tmp_path / "output.lrc"),
+            },
+            transcription_duration=30.0,
+            cache_stats=None,
+            job_log=job_log,
+        )
+
+        # AudioShake IDs should be extracted successfully
+        transcription_call = [
+            c for c in job_manager.update_processing_metadata.call_args_list
+            if c[0][1] == "transcription"
+        ]
+        assert len(transcription_call) == 1
+        trans_data = transcription_call[0][0][2]
+        assert trans_data["provider"] == "audioshake"
+        assert trans_data["audioshake_task_id"] == "t1"
+        assert trans_data["audioshake_asset_id"] == "a1"
+
 
 class TestStoreAudioSourceMetadata:
     """Test the _store_audio_source_metadata helper function."""

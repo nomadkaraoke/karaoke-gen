@@ -474,6 +474,10 @@ class LyricsProcessor:
             
             self.logger.info(f"Saved correction data to {corrections_filepath}")
 
+        # Include lyrics_dir so downstream consumers (e.g. _store_lyrics_processing_metadata)
+        # can find corrections.json and other artifacts
+        transcriber_outputs["lyrics_dir"] = lyrics_dir
+
         # Capture countdown padding information for syncing with instrumental audio
         transcriber_outputs["countdown_padding_added"] = getattr(results, "countdown_padding_added", False)
         transcriber_outputs["countdown_padding_seconds"] = getattr(results, "countdown_padding_seconds", 0.0)
