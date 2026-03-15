@@ -368,7 +368,6 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                     artist=job.artist,
                     title=job.title,
                     warnings=result.distribution_warnings,
-                    settings=settings,
                 )
 
             # Store video processing metadata
