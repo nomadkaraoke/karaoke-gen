@@ -180,8 +180,8 @@ class TestStyleHelper:
             # Mock job with style assets
             job = Mock()
             job.job_id = "test-123"
-            job.style_assets = {"style_params": "uploads/test/style_params.json"}
-            job.style_params_gcs_path = "uploads/test/style_params.json"
+            job.style_assets = {"style_params": "jobs/test/style_params.json"}
+            job.style_params_gcs_path = "jobs/test/style_params.json"
 
             # Mock storage to "download" the file
             storage = Mock()

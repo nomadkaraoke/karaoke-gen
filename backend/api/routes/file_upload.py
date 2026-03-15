@@ -722,7 +722,7 @@ async def upload_and_create_job(
         
         # Upload style files if provided
         if style_params:
-            style_gcs_path = f"uploads/{job_id}/style/style_params.json"
+            style_gcs_path = f"jobs/{job_id}/style/style_params.json"
             logger.info(f"Uploading style params to GCS: {style_gcs_path}")
             storage_service.upload_fileobj(
                 style_params.file,
@@ -741,7 +741,7 @@ async def upload_and_create_job(
             (style_cdg_outro_background, "cdg_outro_background"),
         ]:
             if img_file:
-                gcs_path = f"uploads/{job_id}/style/{asset_key}{Path(img_file.filename).suffix.lower()}"
+                gcs_path = f"jobs/{job_id}/style/{asset_key}{Path(img_file.filename).suffix.lower()}"
                 logger.info(f"Uploading {asset_key} to GCS: {gcs_path}")
                 storage_service.upload_fileobj(
                     img_file.file,
@@ -752,7 +752,7 @@ async def upload_and_create_job(
         
         # Upload font file
         if style_font:
-            font_gcs_path = f"uploads/{job_id}/style/font{Path(style_font.filename).suffix.lower()}"
+            font_gcs_path = f"jobs/{job_id}/style/font{Path(style_font.filename).suffix.lower()}"
             logger.info(f"Uploading font to GCS: {font_gcs_path}")
             storage_service.upload_fileobj(
                 style_font.file,
@@ -1076,11 +1076,11 @@ def _get_gcs_path_for_file(job_id: str, file_type: str, filename: str) -> str:
     if file_type == 'audio':
         return f"uploads/{job_id}/audio/{filename}"
     elif file_type == 'style_params':
-        return f"uploads/{job_id}/style/style_params.json"
+        return f"jobs/{job_id}/style/style_params.json"
     elif file_type.startswith('style_'):
         # Map style_intro_background -> intro_background, etc.
         asset_key = file_type.replace('style_', '')
-        return f"uploads/{job_id}/style/{asset_key}{ext}"
+        return f"jobs/{job_id}/style/{asset_key}{ext}"
     elif file_type == 'lyrics_file':
         return f"uploads/{job_id}/lyrics/user_lyrics{ext}"
     elif file_type == 'existing_instrumental':
@@ -1373,10 +1373,10 @@ async def mark_uploads_complete(
             if file_type == 'audio':
                 prefix = f"uploads/{job_id}/audio/"
             elif file_type == 'style_params':
-                prefix = f"uploads/{job_id}/style/style_params"
+                prefix = f"jobs/{job_id}/style/style_params"
             elif file_type.startswith('style_'):
                 asset_key = file_type.replace('style_', '')
-                prefix = f"uploads/{job_id}/style/{asset_key}"
+                prefix = f"jobs/{job_id}/style/{asset_key}"
             elif file_type == 'lyrics_file':
                 prefix = f"uploads/{job_id}/lyrics/user_lyrics"
             elif file_type == 'existing_instrumental':
@@ -1870,7 +1870,7 @@ def _get_gcs_path_for_finalise_file(job_id: str, file_type: str, filename: str) 
     elif file_type == 'corrections':
         return f"jobs/{job_id}/lyrics/corrections.json"
     elif file_type == 'style_params':
-        return f"uploads/{job_id}/style/style_params.json"
+        return f"jobs/{job_id}/style/style_params.json"
     else:
         return f"uploads/{job_id}/other/{filename}"
 
@@ -2202,7 +2202,7 @@ async def mark_finalise_uploads_complete(
             elif file_type == 'corrections':
                 prefix = f"jobs/{job_id}/lyrics/corrections"
             elif file_type == 'style_params':
-                prefix = f"uploads/{job_id}/style/style_params"
+                prefix = f"jobs/{job_id}/style/style_params"
             else:
                 continue
             
@@ -2455,7 +2455,7 @@ async def complete_style_uploads(
                 continue
 
             asset_key = file_type.replace('style_', '')
-            prefix = f"uploads/{job_id}/style/{asset_key}"
+            prefix = f"jobs/{job_id}/style/{asset_key}"
             files = storage_service.list_files(prefix)
             if not files:
                 raise HTTPException(
@@ -2496,7 +2496,7 @@ async def complete_style_uploads(
                         style_params["end"]["background_image"] = gcs_uri
 
                 # Upload updated style_params.json
-                style_params_path = f"uploads/{job_id}/style/style_params.json"
+                style_params_path = f"jobs/{job_id}/style/style_params.json"
                 storage_service.upload_json(style_params_path, style_params)
                 update_data["style_params_gcs_path"] = style_params_path
 

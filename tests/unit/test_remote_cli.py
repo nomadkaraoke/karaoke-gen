@@ -696,7 +696,7 @@ class TestRemoteKaraokeClient:
                 },
                 {
                     "file_type": "style_params",
-                    "gcs_path": "uploads/new-job-456/style/style_params.json",
+                    "gcs_path": "jobs/new-job-456/style/style_params.json",
                     "upload_url": "https://storage.googleapis.com/signed-url-2",
                     "content_type": "application/json"
                 }
@@ -2559,7 +2559,7 @@ class TestSearchAudioWithStyleFiles:
             "style_upload_urls": [
                 {
                     "file_type": "style_params",
-                    "gcs_path": "uploads/test-job-123/style/style_params.json",
+                    "gcs_path": "jobs/test-job-123/style/style_params.json",
                     "upload_url": "https://storage.googleapis.com/signed-url-1"
                 }
             ]
@@ -2641,7 +2641,7 @@ class TestSearchAudioWithStyleFiles:
             "style_upload_urls": [
                 {
                     "file_type": "style_params",
-                    "gcs_path": "uploads/test-job-123/style/style_params.json",
+                    "gcs_path": "jobs/test-job-123/style/style_params.json",
                     "upload_url": "https://storage.googleapis.com/signed-url-1"
                 }
             ]

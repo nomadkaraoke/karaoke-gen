@@ -328,13 +328,13 @@ class TestPreviewStyleLoading:
         
         # Call the unified style loader function
         style_assets = {
-            "style_params": "uploads/test123/style/style_params.json",
-            "karaoke_background": "uploads/test123/style/karaoke_background.png",
-            "font": "uploads/test123/style/font.ttf",
+            "style_params": "jobs/test123/style/style_params.json",
+            "karaoke_background": "jobs/test123/style/karaoke_background.png",
+            "font": "jobs/test123/style/font.ttf",
         }
         
         styles_path, result_styles = load_styles_from_gcs(
-            style_params_gcs_path="uploads/test123/style/style_params.json",
+            style_params_gcs_path="jobs/test123/style/style_params.json",
             style_assets=style_assets,
             temp_dir=str(tmp_path / "workdir"),
             download_func=mock_download,

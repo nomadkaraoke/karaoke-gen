@@ -251,7 +251,7 @@ class TestCompleteStyleUploads:
         self, mock_job_manager, mock_storage_service, admin_auth, pending_job
     ):
         mock_job_manager.get_job.return_value = pending_job
-        mock_storage_service.list_files.return_value = ["uploads/job-abc/style/karaoke_background.png"]
+        mock_storage_service.list_files.return_value = ["jobs/job-abc/style/karaoke_background.png"]
 
         # Mock theme service
         with patch('backend.api.routes.file_upload.get_theme_service') as mock_get_ts:
@@ -287,7 +287,7 @@ class TestCompleteStyleUploads:
         self, mock_job_manager, mock_storage_service, admin_auth, pending_job
     ):
         mock_job_manager.get_job.return_value = pending_job
-        mock_storage_service.list_files.return_value = ["uploads/job-abc/style/intro_background.png"]
+        mock_storage_service.list_files.return_value = ["jobs/job-abc/style/intro_background.png"]
 
         with patch('backend.api.routes.file_upload.get_theme_service') as mock_get_ts:
             mock_ts = Mock()

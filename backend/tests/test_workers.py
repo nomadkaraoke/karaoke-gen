@@ -1395,3 +1395,103 @@ class TestLyricsWorkerCountdownState:
         assert lyrics_metadata['has_countdown_padding'] is True
         assert lyrics_metadata['countdown_padding_seconds'] == 3.0
 
+
+class TestVideoWorkerStateGuard:
+    """Tests for video worker state validation."""
+
+    @pytest.fixture
+    def failed_job(self):
+        return Job(
+            job_id="test-failed",
+            status=JobStatus.FAILED,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+            state_data={"instrumental_selection": "clean"},
+            file_urls={
+                "stems": {"instrumental_clean": "gs://test"},
+                "screens": {"title": "gs://t", "end": "gs://e"},
+                "videos": {"with_vocals": "gs://v"},
+                "lyrics": {"lrc": "gs://lrc"},
+            },
+        )
+
+    def test_validate_worker_can_run_rejects_failed_job(self, failed_job):
+        """validate_worker_can_run returns error for failed jobs."""
+        from backend.services.job_health_service import validate_worker_can_run
+        result = validate_worker_can_run("video_worker", failed_job)
+        assert result is not None
+        assert "failed" in result.lower()
+
+    def test_validate_worker_can_run_accepts_instrumental_selected(self):
+        """validate_worker_can_run allows instrumental_selected jobs."""
+        from backend.services.job_health_service import validate_worker_can_run
+        job = Job(
+            job_id="test-ok",
+            status=JobStatus.INSTRUMENTAL_SELECTED,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+        )
+        result = validate_worker_can_run("video_worker", job)
+        assert result is None
+
+
+class TestWorkerIdempotencyTerminalState:
+    """Tests for _check_worker_idempotency terminal state handling."""
+
+    def test_idempotency_rejects_failed_job(self):
+        """Idempotency check returns skip response for failed jobs."""
+        from backend.api.routes.internal import _check_worker_idempotency
+        failed_job = Job(
+            job_id="test-failed",
+            status=JobStatus.FAILED,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+        )
+        with patch("backend.api.routes.internal.JobManager") as MockJM:
+            MockJM.return_value.get_job.return_value = failed_job
+            result = _check_worker_idempotency("test-failed", "video")
+        assert result is not None
+        assert result.status == "skipped"
+        assert "terminal state" in result.message.lower()
+
+    def test_idempotency_rejects_cancelled_job(self):
+        """Idempotency check returns skip response for cancelled jobs."""
+        from backend.api.routes.internal import _check_worker_idempotency
+        cancelled_job = Job(
+            job_id="test-cancelled",
+            status=JobStatus.CANCELLED,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+        )
+        with patch("backend.api.routes.internal.JobManager") as MockJM:
+            MockJM.return_value.get_job.return_value = cancelled_job
+            result = _check_worker_idempotency("test-cancelled", "video")
+        assert result is not None
+        assert result.status == "skipped"
+
+    def test_idempotency_allows_instrumental_selected_job(self):
+        """Idempotency check allows jobs in non-terminal states."""
+        from backend.api.routes.internal import _check_worker_idempotency
+        job = Job(
+            job_id="test-ok",
+            status=JobStatus.INSTRUMENTAL_SELECTED,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+        )
+        with patch("backend.api.routes.internal.JobManager") as MockJM:
+            mock_jm = MockJM.return_value
+            mock_jm.get_job.return_value = job
+            mock_jm.update_state_data.return_value = None
+            result = _check_worker_idempotency("test-ok", "video")
+        assert result is None
+

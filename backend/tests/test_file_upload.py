@@ -698,21 +698,21 @@ class TestSignedUrlGCSPathGeneration:
         from backend.api.routes.file_upload import _get_gcs_path_for_file
         
         path = _get_gcs_path_for_file("test123", "style_params", "style.json")
-        assert path == "uploads/test123/style/style_params.json"
+        assert path == "jobs/test123/style/style_params.json"
     
     def test_style_background_gcs_path(self):
         """Test GCS path generation for style background images."""
         from backend.api.routes.file_upload import _get_gcs_path_for_file
         
         path = _get_gcs_path_for_file("test123", "style_intro_background", "bg.png")
-        assert path == "uploads/test123/style/intro_background.png"
+        assert path == "jobs/test123/style/intro_background.png"
     
     def test_style_font_gcs_path(self):
         """Test GCS path generation for font file."""
         from backend.api.routes.file_upload import _get_gcs_path_for_file
         
         path = _get_gcs_path_for_file("test123", "style_font", "font.ttf")
-        assert path == "uploads/test123/style/font.ttf"
+        assert path == "jobs/test123/style/font.ttf"
     
     def test_lyrics_file_gcs_path(self):
         """Test GCS path generation for lyrics file."""

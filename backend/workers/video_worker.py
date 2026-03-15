@@ -226,6 +226,14 @@ async def generate_video_orchestrated(job_id: str) -> bool:
         logger.error(f"[job:{job_id}] Prerequisites not met for video generation")
         return False
 
+    # Validate job status is appropriate for video worker
+    from backend.services.job_health_service import validate_worker_can_run
+    status_error = validate_worker_can_run("video_worker", job)
+    if status_error:
+        logger.warning(f"[job:{job_id}] {status_error}")
+        job_log.warning(status_error)
+        return False
+
     # Create temporary working directory
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_video_{job_id}_")
     original_cwd = os.getcwd()
@@ -637,11 +645,19 @@ async def generate_video_legacy(job_id: str) -> bool:
     if not _validate_prerequisites(job):
         logger.error(f"[job:{job_id}] Prerequisites not met for video generation")
         return False
-    
+
+    # Validate job status is appropriate for video worker
+    from backend.services.job_health_service import validate_worker_can_run
+    status_error = validate_worker_can_run("video_worker", job)
+    if status_error:
+        logger.warning(f"[job:{job_id}] {status_error}")
+        job_log.warning(status_error)
+        return False
+
     # Create temporary working directory
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_video_{job_id}_")
     original_cwd = os.getcwd()
-    
+
     # Set up rclone config if needed for Dropbox upload
     rclone_service = None
     if getattr(job, 'organised_dir_rclone_root', None):

@@ -171,20 +171,55 @@ class CDGGenerator:
         self._write_toml_file(toml_data, output_file)
 
     def _validate_and_setup_font(self, cdg_styles: dict) -> None:
-        """Validate and set up font path in CDG styles."""
+        """Validate and set up font path in CDG styles.
+
+        Resolution order:
+        1. Use font_path as-is if it's an absolute path that exists
+        2. Use font_path as-is if it exists as a relative path
+        3. Try full relative path inside bundled fonts directory
+        4. Try just the filename inside bundled fonts directory
+        5. Fall back to arial.ttf from bundled fonts
+        """
         if not cdg_styles.get("font_path"):
             return
 
-        if not os.path.isabs(cdg_styles["font_path"]) and not os.path.exists(cdg_styles["font_path"]):
-            package_font_path = os.path.join(os.path.dirname(__file__), "fonts", cdg_styles["font_path"])
-            if os.path.exists(package_font_path):
-                cdg_styles["font_path"] = package_font_path
-                self.logger.debug(f"Found font in package fonts directory: {cdg_styles['font_path']}")
-            else:
-                self.logger.warning(
-                    f"Font file {cdg_styles['font_path']} not found in package fonts directory {package_font_path}, will use default font"
-                )
-                cdg_styles["font_path"] = None
+        fonts_dir = os.path.join(os.path.dirname(__file__), "fonts")
+        font_path = cdg_styles["font_path"]
+
+        # Already exists (absolute or relative to cwd)
+        if os.path.isfile(font_path):
+            return
+
+        # Try full relative path in bundled fonts dir
+        package_font_path = os.path.join(fonts_dir, font_path)
+        if os.path.isfile(package_font_path):
+            cdg_styles["font_path"] = package_font_path
+            self.logger.debug(f"Found font in package fonts directory: {package_font_path}")
+            return
+
+        # Try just the filename in bundled fonts dir
+        font_filename = os.path.basename(font_path)
+        package_font_by_name = os.path.join(fonts_dir, font_filename)
+        if os.path.isfile(package_font_by_name):
+            cdg_styles["font_path"] = package_font_by_name
+            self.logger.warning(
+                f"Font file {font_path} not found, using bundled font: {font_filename}"
+            )
+            return
+
+        # Last resort: fall back to arial.ttf
+        fallback_font = os.path.join(fonts_dir, "arial.ttf")
+        if os.path.isfile(fallback_font):
+            cdg_styles["font_path"] = fallback_font
+            self.logger.warning(
+                f"Font file {font_path} not found, falling back to bundled arial.ttf"
+            )
+            return
+
+        self.logger.error(
+            f"Font file {font_path} not found and no bundled fonts available in {fonts_dir}"
+        )
+        cdg_styles["font_path"] = None
 
     def _compose_cdg(self, toml_file: str) -> None:
         """Compose CDG using KaraokeComposer."""
@@ -387,6 +422,11 @@ class CDGGenerator:
         cdg_styles: dict,
     ) -> dict:
         """Create TOML data structure."""
+        if not cdg_styles.get("font_path"):
+            raise RuntimeError(
+                "CDG font_path is None — cannot generate CDG without a font. "
+                "Check that the font file exists and was downloaded correctly."
+            )
         safe_output_name = self._get_safe_filename(artist, title, "Karaoke")
         return {
             "title": title,

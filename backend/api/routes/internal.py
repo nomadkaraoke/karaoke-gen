@@ -76,6 +76,18 @@ def _check_worker_idempotency(job_id: str, worker_name: str) -> Optional[WorkerR
             message=f"Job {job_id} not found"
         )
     
+    # Reject workers for jobs in terminal states (failed, cancelled, complete)
+    # This prevents Cloud Tasks retries from triggering workers on dead jobs
+    terminal_statuses = {'failed', 'cancelled', 'complete', 'error'}
+    job_status = job.status.value if hasattr(job.status, 'value') else str(job.status)
+    if job_status in terminal_statuses:
+        logger.info(f"[job:{job_id}] Job in terminal state '{job_status}', skipping {worker_name} worker")
+        return WorkerResponse(
+            status="skipped",
+            job_id=job_id,
+            message=f"Job is in terminal state '{job_status}', {worker_name} worker not needed"
+        )
+
     # Check worker-specific progress in state_data
     progress_key = f"{worker_name}_progress"
     worker_progress = job.state_data.get(progress_key, {})

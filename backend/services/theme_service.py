@@ -334,7 +334,8 @@ class ThemeService:
         style_params = self._update_asset_paths_in_style(theme_id, style_params)
 
         # Upload modified style_params.json to job's style folder
-        job_style_path = f"uploads/{job_id}/style/style_params.json"
+        # Uses jobs/ prefix (not uploads/) to avoid GCS lifecycle deletion rule
+        job_style_path = f"jobs/{job_id}/style/style_params.json"
         self.storage.upload_json(job_style_path, style_params)
 
         logger.info(f"Prepared job {job_id} style from theme {theme_id}")

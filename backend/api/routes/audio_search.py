@@ -766,11 +766,11 @@ async def search_audio(
                 
                 # Generate GCS path
                 if file_info.file_type == 'style_params':
-                    gcs_path = f"uploads/{job_id}/style/style_params.json"
+                    gcs_path = f"jobs/{job_id}/style/style_params.json"
                 else:
                     # style_intro_background -> intro_background, etc.
                     asset_key = file_info.file_type.replace('style_', '')
-                    gcs_path = f"uploads/{job_id}/style/{asset_key}{ext}"
+                    gcs_path = f"jobs/{job_id}/style/{asset_key}{ext}"
                 
                 # Generate signed upload URL
                 signed_url = storage_service.generate_signed_upload_url(

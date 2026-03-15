@@ -336,7 +336,7 @@ class TestThemeService:
 
         # Should upload modified style_params.json
         mock_storage.upload_json.assert_called_once()
-        assert style_path == "uploads/job123/style/style_params.json"
+        assert style_path == "jobs/job123/style/style_params.json"
 
     def test_prepare_job_style_with_overrides(self, mock_storage, sample_metadata, sample_style_params):
         """Test prepare_job_style applies color overrides."""
@@ -355,7 +355,7 @@ class TestThemeService:
         uploaded_path = call_args[0][0]  # First positional arg is the path
         uploaded_style = call_args[0][1]  # Second positional arg is the data
 
-        assert uploaded_path == "uploads/job123/style/style_params.json"
+        assert uploaded_path == "jobs/job123/style/style_params.json"
         # Check that artist_color override was applied
         assert uploaded_style["intro"]["artist_color"] == "#FF0000"
         assert uploaded_style["end"]["artist_color"] == "#FF0000"

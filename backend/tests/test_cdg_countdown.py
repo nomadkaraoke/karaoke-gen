@@ -7,6 +7,8 @@ Tests cover:
 - Timestamp adjustment for instrumental audio sync
 """
 
+import os
+
 import pytest
 from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
 
@@ -247,3 +249,77 @@ class TestCDGGenerateFromLRCWithCountdown:
 
         # Verify _remove_countdown_from_lyrics was NOT called
         mock_remove.assert_not_called()
+
+
+class TestCDGFontFallback:
+    """Test font resolution and fallback behavior in _validate_and_setup_font."""
+
+    @pytest.fixture
+    def generator(self, tmp_path):
+        return CDGGenerator(output_dir=str(tmp_path))
+
+    def test_absolute_path_that_exists_is_unchanged(self, generator, tmp_path):
+        """An absolute path to an existing font is used as-is."""
+        font_file = tmp_path / "myfont.ttf"
+        font_file.write_bytes(b"fake font")
+        cdg_styles = {"font_path": str(font_file)}
+        generator._validate_and_setup_font(cdg_styles)
+        assert cdg_styles["font_path"] == str(font_file)
+
+    def test_nonexistent_path_falls_back_to_bundled_by_filename(self, generator):
+        """A path like 'themes/nomad/assets/AvenirNext-Bold.ttf' should resolve
+        to the bundled AvenirNext-Bold.ttf by filename."""
+        cdg_styles = {"font_path": "themes/nomad/assets/AvenirNext-Bold.ttf"}
+        generator._validate_and_setup_font(cdg_styles)
+        assert cdg_styles["font_path"] is not None
+        assert cdg_styles["font_path"].endswith("AvenirNext-Bold.ttf")
+        assert os.path.isfile(cdg_styles["font_path"])
+
+    def test_totally_unknown_font_falls_back_to_arial(self, generator):
+        """A completely unknown font name falls back to bundled arial.ttf."""
+        cdg_styles = {"font_path": "nonexistent/path/SuperRareFont.ttf"}
+        generator._validate_and_setup_font(cdg_styles)
+        assert cdg_styles["font_path"] is not None
+        assert cdg_styles["font_path"].endswith("arial.ttf")
+        assert os.path.isfile(cdg_styles["font_path"])
+
+    def test_none_font_path_is_left_alone(self, generator):
+        """If font_path is already None, _validate_and_setup_font returns early."""
+        cdg_styles = {"font_path": None}
+        generator._validate_and_setup_font(cdg_styles)
+        assert cdg_styles["font_path"] is None
+
+    def test_create_toml_data_raises_on_none_font(self, generator):
+        """_create_toml_data raises RuntimeError if font_path is None."""
+        cdg_styles = {
+            "font_path": None,
+            "clear_mode": "eager",
+            "sync_offset": 0,
+            "background_color": "#000000",
+            "border_color": "#000000",
+            "font_size": 18,
+            "stroke_width": 0,
+            "stroke_style": "octagon",
+            "active_fill": "#ffffff",
+            "active_stroke": "#000000",
+            "inactive_fill": "#888888",
+            "inactive_stroke": "#000000",
+            "title_color": "#ffffff",
+            "artist_color": "#ffffff",
+            "title_screen_background": "/tmp/fake.png",
+            "title_screen_transition": "centertexttoplogobottomtext",
+            "row": 4,
+            "line_tile_height": 3,
+            "lines_per_page": 4,
+        }
+        with pytest.raises(RuntimeError, match="CDG font_path is None"):
+            generator._create_toml_data(
+                title="Test",
+                artist="Artist",
+                audio_file="/tmp/audio.flac",
+                output_name="output",
+                sync_times=[100, 200],
+                instrumentals=[],
+                formatted_lyrics=["HELLO", "WORLD"],
+                cdg_styles=cdg_styles,
+            )

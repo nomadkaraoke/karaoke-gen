@@ -150,15 +150,15 @@ class TestStyleLoadingFix:
         }
         
         # Upload style JSON to GCS (the CORRECT location)
-        style_gcs_path = f"uploads/{job_id}/style/style_params.json"
+        style_gcs_path = f"jobs/{job_id}/style/style_params.json"
         self.storage.upload_string(json.dumps(style_json), style_gcs_path)
         
         # Upload mock assets
         assets = {
-            "intro_background": f"uploads/{job_id}/style/intro_background.png",
-            "karaoke_background": f"uploads/{job_id}/style/karaoke_background.png",
-            "end_background": f"uploads/{job_id}/style/end_background.png",
-            "font": f"uploads/{job_id}/style/font.ttf",
+            "intro_background": f"jobs/{job_id}/style/intro_background.png",
+            "karaoke_background": f"jobs/{job_id}/style/karaoke_background.png",
+            "end_background": f"jobs/{job_id}/style/end_background.png",
+            "font": f"jobs/{job_id}/style/font.ttf",
         }
         
         for asset_key, gcs_path in assets.items():
@@ -255,7 +255,7 @@ class TestStyleLoadingFix:
         job_id = f"test-bug-{int(time.time() * 1000)}"
         
         # Upload style to CORRECT location
-        style_gcs_path = f"uploads/{job_id}/style/style_params.json"
+        style_gcs_path = f"jobs/{job_id}/style/style_params.json"
         self.storage.upload_string('{"karaoke": {"font_size": 100}}', style_gcs_path)
         
         # Create job with styles in CORRECT location
