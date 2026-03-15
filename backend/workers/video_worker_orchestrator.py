@@ -287,7 +287,9 @@ class VideoWorkerOrchestrator:
             self.job_log.warning("No LRC file available, skipping CDG/TXT packaging")
             return
 
-        base_name = f"{self.config.artist} - {self.config.title}"
+        safe_artist = sanitize_filename(self.config.artist) if self.config.artist else "Unknown"
+        safe_title = sanitize_filename(self.config.title) if self.config.title else "Unknown"
+        base_name = f"{safe_artist} - {safe_title}"
         packaging_service = self._get_packaging_service()
 
         # Generate CDG package
