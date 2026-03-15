@@ -329,7 +329,10 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         # Get artist/title from config for proper naming
         artist = config.get("artist", "Unknown Artist")
         title = config.get("title", "Unknown Title")
-        base_name = f"{artist} - {title}"
+        # Sanitize for use in file paths (e.g., title "PORTRAIT/WALK/BORN" → "PORTRAIT_WALK_BORN")
+        safe_artist = re.sub(r'[<>:"/\\|?*]', '_', artist)
+        safe_title = re.sub(r'[<>:"/\\|?*]', '_', title)
+        base_name = f"{safe_artist} - {safe_title}"
         logger.info(f"Encoding for: {base_name}")
 
         # Find input files in work_dir
