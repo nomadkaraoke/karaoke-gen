@@ -186,14 +186,15 @@ class CDGGenerator:
         fonts_dir = os.path.join(os.path.dirname(__file__), "fonts")
         font_path = cdg_styles["font_path"]
 
-        # Already exists (absolute or relative to cwd)
+        # Already exists (absolute or relative to cwd) — absolutize to avoid CWD issues
         if os.path.isfile(font_path):
+            cdg_styles["font_path"] = os.path.abspath(font_path)
             return
 
         # Try full relative path in bundled fonts dir
         package_font_path = os.path.join(fonts_dir, font_path)
         if os.path.isfile(package_font_path):
-            cdg_styles["font_path"] = package_font_path
+            cdg_styles["font_path"] = os.path.abspath(package_font_path)
             self.logger.debug(f"Found font in package fonts directory: {package_font_path}")
             return
 
@@ -201,7 +202,7 @@ class CDGGenerator:
         font_filename = os.path.basename(font_path)
         package_font_by_name = os.path.join(fonts_dir, font_filename)
         if os.path.isfile(package_font_by_name):
-            cdg_styles["font_path"] = package_font_by_name
+            cdg_styles["font_path"] = os.path.abspath(package_font_by_name)
             self.logger.warning(
                 f"Font file {font_path} not found, using bundled font: {font_filename}"
             )
@@ -210,7 +211,7 @@ class CDGGenerator:
         # Last resort: fall back to arial.ttf
         fallback_font = os.path.join(fonts_dir, "arial.ttf")
         if os.path.isfile(fallback_font):
-            cdg_styles["font_path"] = fallback_font
+            cdg_styles["font_path"] = os.path.abspath(fallback_font)
             self.logger.warning(
                 f"Font file {font_path} not found, falling back to bundled arial.ttf"
             )
