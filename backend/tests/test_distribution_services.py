@@ -869,3 +869,47 @@ class TestVideoWorkerDistribution:
 
         # Should log warning about import error
         mock_job_log.warning.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_handle_native_distribution_with_warnings_does_not_crash(self):
+        """Test that distribution_warnings path doesn't raise NameError.
+
+        Regression test: _handle_native_distribution used to reference
+        undefined 'settings' variable when distribution_warnings were present.
+        """
+        from backend.workers.video_worker import _handle_native_distribution
+
+        mock_job = MagicMock()
+        mock_job.dropbox_path = None
+        mock_job.gdrive_folder_id = None
+        mock_job.is_private = False
+        mock_job.artist = "Test Artist"
+        mock_job.title = "Test Song"
+        mock_job.state_data = {}
+
+        mock_job_log = MagicMock()
+        mock_job_manager = MagicMock()
+
+        # Result with distribution_warnings triggers the notification path
+        result_with_warnings = {
+            'distribution_warnings': ['Dropbox upload failed: timeout'],
+        }
+
+        # Should NOT raise NameError for undefined 'settings'
+        with patch('backend.workers.video_worker._send_distribution_warning_notification') as mock_notify:
+            await _handle_native_distribution(
+                job_id="test-warnings",
+                job=mock_job,
+                job_log=mock_job_log,
+                job_manager=mock_job_manager,
+                temp_dir="/tmp/test",
+                result=result_with_warnings,
+            )
+
+            # Verify notification was called (proving the code path was exercised)
+            mock_notify.assert_called_once_with(
+                job_id="test-warnings",
+                artist="Test Artist",
+                title="Test Song",
+                warnings=['Dropbox upload failed: timeout'],
+            )

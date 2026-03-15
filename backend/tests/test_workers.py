@@ -1495,3 +1495,58 @@ class TestWorkerIdempotencyTerminalState:
             result = _check_worker_idempotency("test-ok", "video")
         assert result is None
 
+
+class TestDistributionWarningsContract:
+    """Contract tests verifying distribution_warnings code paths don't crash.
+
+    Regression: generate_video_orchestrated() and _handle_native_distribution()
+    both called _send_distribution_warning_notification(settings=settings) but
+    never defined 'settings' in their scope. These tests ensure the notification
+    call site works without NameError.
+    """
+
+    def test_send_distribution_warning_notification_works_without_settings(self):
+        """_send_distribution_warning_notification handles settings=None."""
+        from backend.workers.video_worker import _send_distribution_warning_notification
+
+        # Should not crash — settings defaults to None and is fetched internally
+        with patch('backend.workers.video_worker.get_settings') as mock_settings:
+            mock_settings.return_value.get_secret.return_value = None  # No pushbullet key
+            _send_distribution_warning_notification(
+                job_id="test-123",
+                artist="Test",
+                title="Song",
+                warnings=["Dropbox failed"],
+            )
+            mock_settings.assert_called_once()
+
+    def test_generate_video_orchestrated_no_settings_reference(self):
+        """Verify generate_video_orchestrated doesn't reference undefined 'settings'.
+
+        Static analysis: scan the function source for 'settings=settings' which
+        would indicate a NameError if settings is not defined in scope.
+        """
+        import inspect
+        from backend.workers.video_worker import generate_video_orchestrated
+
+        source = inspect.getsource(generate_video_orchestrated)
+        assert "settings=settings" not in source, (
+            "generate_video_orchestrated references 'settings=settings' but never defines 'settings'. "
+            "Use settings=None or omit the argument — _send_distribution_warning_notification "
+            "handles settings=None internally via get_settings()."
+        )
+
+    def test_handle_native_distribution_no_settings_reference(self):
+        """Verify _handle_native_distribution doesn't reference undefined 'settings'.
+
+        Static analysis: same check as above for the other call site.
+        """
+        import inspect
+        from backend.workers.video_worker import _handle_native_distribution
+
+        source = inspect.getsource(_handle_native_distribution)
+        assert "settings=settings" not in source, (
+            "_handle_native_distribution references 'settings=settings' but never defines 'settings'. "
+            "Use settings=None or omit the argument."
+        )
+

@@ -1119,7 +1119,6 @@ async def _handle_native_distribution(
             artist=job.artist,
             title=job.title,
             warnings=result['distribution_warnings'],
-            settings=settings,
         )
 
 
