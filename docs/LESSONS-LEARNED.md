@@ -773,6 +773,9 @@ Firestore returns timezone-aware datetimes. Compare with `datetime.now(timezone.
 ### GCS Blob Paths vs URIs
 Methods that accept paths typically want `bucket/path`, not `gs://bucket/path`.
 
+### GCS Lifecycle Rules Can Delete Job Data
+The GCS bucket has a lifecycle rule deleting objects under `uploads/` and `temp/` prefixes after 7 days. Style configuration (`style_params.json`) was stored under `uploads/{job_id}/style/` and silently disappeared for jobs not completed within a week. Fix: store job-scoped data under `jobs/` prefix (not subject to lifecycle rules), keeping `uploads/` only for genuinely temporary staging files.
+
 ### Library Caches Need GCS Sync
 External library caches (like LyricsTranscriber) need explicit sync to GCS for persistence across Cloud Run instances.
 
