@@ -336,7 +336,7 @@ echo "Docker images pre-warmed"
 
 # ==================== Audio separator model pre-download ====================
 # Pre-download ML models used by python-audio-separator integration tests.
-# These models total ~2GB and would otherwise be downloaded on every CI run.
+# These models total ~14GB and would otherwise be downloaded on every CI run.
 # Stored in /opt/audio-separator-models/ which persists across job runs.
 echo "Pre-downloading audio separator integration test models..."
 
@@ -372,9 +372,9 @@ download_model "$META_URL/filelists/download_checks.json" "$MODEL_DIR/download_c
 download_model "$META_URL/vr_model_data/model_data_new.json" "$MODEL_DIR/vr_model_data.json"
 download_model "$META_URL/mdx_model_data/model_data_new.json" "$MODEL_DIR/mdx_model_data.json"
 
-# Integration test models (8 models, ~2GB total)
+# === Core integration test models (8 models) ===
 download_model "$BASE_URL/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt" "$MODEL_DIR/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
-download_model "$CONFIG_URL/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml" "$MODEL_DIR/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml" "$FALLBACK_URL/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml"
+download_model "$FALLBACK_URL/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml" "$MODEL_DIR/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml"
 download_model "$BASE_URL/kuielab_b_vocals.onnx" "$MODEL_DIR/kuielab_b_vocals.onnx"
 download_model "$BASE_URL/MGM_MAIN_v4.pth" "$MODEL_DIR/MGM_MAIN_v4.pth"
 download_model "$BASE_URL/UVR-MDX-NET-Inst_HQ_4.onnx" "$MODEL_DIR/UVR-MDX-NET-Inst_HQ_4.onnx"
@@ -385,6 +385,37 @@ download_model "$BASE_URL/model_bs_roformer_ep_937_sdr_10.5309.ckpt" "$MODEL_DIR
 download_model "$CONFIG_URL/model_bs_roformer_ep_937_sdr_10.5309.yaml" "$MODEL_DIR/model_bs_roformer_ep_937_sdr_10.5309.yaml"
 download_model "$BASE_URL/model_bs_roformer_ep_317_sdr_12.9755.ckpt" "$MODEL_DIR/model_bs_roformer_ep_317_sdr_12.9755.ckpt"
 download_model "$CONFIG_URL/model_bs_roformer_ep_317_sdr_12.9755.yaml" "$MODEL_DIR/model_bs_roformer_ep_317_sdr_12.9755.yaml"
+
+# === Ensemble preset models (15 models, ~12GB) ===
+# Model weights — hosted on nomadkaraoke releases (not available on TRvlvr)
+download_model "$FALLBACK_URL/bs_roformer_instrumental_resurrection_unwa.ckpt" "$MODEL_DIR/bs_roformer_instrumental_resurrection_unwa.ckpt"
+download_model "$FALLBACK_URL/bs_roformer_vocals_resurrection_unwa.ckpt" "$MODEL_DIR/bs_roformer_vocals_resurrection_unwa.ckpt"
+download_model "$FALLBACK_URL/bs_roformer_vocals_revive_v2_unwa.ckpt" "$MODEL_DIR/bs_roformer_vocals_revive_v2_unwa.ckpt"
+download_model "$FALLBACK_URL/bs_roformer_vocals_revive_v3e_unwa.ckpt" "$MODEL_DIR/bs_roformer_vocals_revive_v3e_unwa.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_instrumental_becruily.ckpt" "$MODEL_DIR/mel_band_roformer_instrumental_becruily.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_instrumental_fv7z_gabox.ckpt" "$MODEL_DIR/mel_band_roformer_instrumental_fv7z_gabox.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_instrumental_instv8_gabox.ckpt" "$MODEL_DIR/mel_band_roformer_instrumental_instv8_gabox.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_karaoke_becruily.ckpt" "$MODEL_DIR/mel_band_roformer_karaoke_becruily.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_karaoke_gabox_v2.ckpt" "$MODEL_DIR/mel_band_roformer_karaoke_gabox_v2.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_kim_ft2_bleedless_unwa.ckpt" "$MODEL_DIR/mel_band_roformer_kim_ft2_bleedless_unwa.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_vocals_becruily.ckpt" "$MODEL_DIR/mel_band_roformer_vocals_becruily.ckpt"
+download_model "$FALLBACK_URL/mel_band_roformer_vocals_fv4_gabox.ckpt" "$MODEL_DIR/mel_band_roformer_vocals_fv4_gabox.ckpt"
+download_model "$FALLBACK_URL/melband_roformer_big_beta6x.ckpt" "$MODEL_DIR/melband_roformer_big_beta6x.ckpt"
+download_model "$FALLBACK_URL/melband_roformer_inst_v1e_plus.ckpt" "$MODEL_DIR/melband_roformer_inst_v1e_plus.ckpt"
+download_model "$FALLBACK_URL/UVR-MDX-NET-Inst_HQ_5.onnx" "$MODEL_DIR/UVR-MDX-NET-Inst_HQ_5.onnx"
+# YAML configs for ensemble models
+download_model "$FALLBACK_URL/config_bs_roformer_instrumental_resurrection_unwa.yaml" "$MODEL_DIR/config_bs_roformer_instrumental_resurrection_unwa.yaml"
+download_model "$FALLBACK_URL/config_bs_roformer_vocals_resurrection_unwa.yaml" "$MODEL_DIR/config_bs_roformer_vocals_resurrection_unwa.yaml"
+download_model "$FALLBACK_URL/config_bs_roformer_vocals_revive_unwa.yaml" "$MODEL_DIR/config_bs_roformer_vocals_revive_unwa.yaml"
+download_model "$FALLBACK_URL/config_mel_band_roformer_instrumental_becruily.yaml" "$MODEL_DIR/config_mel_band_roformer_instrumental_becruily.yaml"
+download_model "$FALLBACK_URL/config_mel_band_roformer_instrumental_gabox.yaml" "$MODEL_DIR/config_mel_band_roformer_instrumental_gabox.yaml"
+download_model "$FALLBACK_URL/config_mel_band_roformer_karaoke_becruily.yaml" "$MODEL_DIR/config_mel_band_roformer_karaoke_becruily.yaml"
+download_model "$FALLBACK_URL/config_mel_band_roformer_karaoke_gabox.yaml" "$MODEL_DIR/config_mel_band_roformer_karaoke_gabox.yaml"
+download_model "$FALLBACK_URL/config_mel_band_roformer_kim_ft_unwa.yaml" "$MODEL_DIR/config_mel_band_roformer_kim_ft_unwa.yaml"
+download_model "$FALLBACK_URL/config_mel_band_roformer_vocals_becruily.yaml" "$MODEL_DIR/config_mel_band_roformer_vocals_becruily.yaml"
+download_model "$FALLBACK_URL/config_mel_band_roformer_vocals_gabox.yaml" "$MODEL_DIR/config_mel_band_roformer_vocals_gabox.yaml"
+download_model "$FALLBACK_URL/config_melbandroformer_big_beta6x.yaml" "$MODEL_DIR/config_melbandroformer_big_beta6x.yaml"
+download_model "$FALLBACK_URL/config_melbandroformer_inst.yaml" "$MODEL_DIR/config_melbandroformer_inst.yaml"
 
 chown -R runner:runner "$MODEL_DIR"
 echo "Audio separator models pre-download complete ($(du -sh $MODEL_DIR | cut -f1))"
