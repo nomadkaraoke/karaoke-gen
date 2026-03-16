@@ -89,40 +89,34 @@ else
     echo "FFmpeg already installed, skipping"
 fi
 
-# ==================== Python 3.13 via pyenv ====================
-if [ ! -f /opt/pyenv/versions/3.13.0/bin/python3.13 ]; then
-    echo "Installing Python 3.13 via pyenv..."
+# ==================== Python 3.13 from source ====================
+# Compile Python 3.13 directly (pyenv is unreliable on Debian 12 with CUDA).
+# setup-python@v5 doesn't have prebuilt Debian 12 binaries, so we must
+# provide Python in the tool cache for it to find.
+PYTHON_PREFIX="/opt/python-3.13"
+if [ ! -f "$PYTHON_PREFIX/bin/python3.13" ]; then
+    echo "Building Python 3.13 from source..."
 
     apt-get install -y make build-essential libssl-dev zlib1g-dev \
       libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
       libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 
-    if [ ! -d /opt/pyenv ]; then
-        export PYENV_ROOT=/opt/pyenv
-        curl https://pyenv.run | bash
-    fi
+    cd /tmp
+    curl -sSL https://www.python.org/ftp/python/3.13.0/Python-3.13.0.tgz -o Python-3.13.0.tgz
+    tar xzf Python-3.13.0.tgz
+    cd Python-3.13.0
+    ./configure --prefix="$PYTHON_PREFIX" --enable-optimizations --with-ensurepip=install
+    make -j$(nproc)
+    make install
+    rm -rf /tmp/Python-3.13.0*
 
-    export PATH="/opt/pyenv/bin:$PATH"
-    eval "$(/opt/pyenv/bin/pyenv init -)"
-
-    /opt/pyenv/bin/pyenv install 3.13.0
-    /opt/pyenv/bin/pyenv global 3.13.0
-
-    ln -sf /opt/pyenv/shims/python3.13 /usr/local/bin/python3.13
-    ln -sf /opt/pyenv/shims/python3 /usr/local/bin/python3
-    ln -sf /opt/pyenv/shims/pip3 /usr/local/bin/pip3
+    # Create convenience symlinks
+    ln -sf "$PYTHON_PREFIX/bin/python3.13" /usr/local/bin/python3.13
+    ln -sf "$PYTHON_PREFIX/bin/python3" /usr/local/bin/python3
+    ln -sf "$PYTHON_PREFIX/bin/pip3" /usr/local/bin/pip3
 else
-    echo "Python 3.13 already installed, skipping"
-    export PATH="/opt/pyenv/bin:$PATH"
-    eval "$(/opt/pyenv/bin/pyenv init -)"
+    echo "Python 3.13 already installed at $PYTHON_PREFIX, skipping"
 fi
-
-# Add to system profile for future sessions
-cat > /etc/profile.d/pyenv.sh << 'PYENV_PROFILE'
-export PYENV_ROOT=/opt/pyenv
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
-PYENV_PROFILE
 
 # ==================== Poetry ====================
 if ! command -v poetry &>/dev/null; then
@@ -233,13 +227,19 @@ echo "Setting up Python 3.13 in tool cache for setup-python action..."
 TOOL_CACHE="/home/runner/actions-runner/_work/_tool"
 mkdir -p $TOOL_CACHE/Python/3.13.0/x64
 
-# Copy pyenv Python to tool cache (only if not already there)
-if [ ! -f "$TOOL_CACHE/Python/3.13.0/x64.complete" ]; then
-    cp -r /opt/pyenv/versions/3.13.0/* $TOOL_CACHE/Python/3.13.0/x64/
+# Copy compiled Python to tool cache (only if build succeeded and not already cached)
+if [ -f "$PYTHON_PREFIX/bin/python3.13" ] && [ ! -f "$TOOL_CACHE/Python/3.13.0/x64.complete" ]; then
+    cp -r "$PYTHON_PREFIX"/* $TOOL_CACHE/Python/3.13.0/x64/
+    # Ensure python and python3 symlinks exist (setup-python expects them)
+    cd $TOOL_CACHE/Python/3.13.0/x64/bin
+    [ ! -f python ] && ln -s python3.13 python
+    [ ! -f python3 ] && ln -s python3.13 python3
     touch $TOOL_CACHE/Python/3.13.0/x64.complete
     echo "Python 3.13 added to tool cache"
-else
+elif [ -f "$TOOL_CACHE/Python/3.13.0/x64.complete" ]; then
     echo "Python 3.13 already in tool cache"
+else
+    echo "ERROR: Python 3.13 build failed — setup-python will not find Python"
 fi
 
 # Fix permissions - must own entire _work directory, not just _tool
