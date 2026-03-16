@@ -287,11 +287,10 @@ def create_gpu_runners(
                 email=service_account.email,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
             ),
-            # Spot scheduling for 70% cost savings (~$0.19/hr vs $0.61/hr)
-            # GPU VMs MUST use TERMINATE (cannot live-migrate with accelerators)
+            # On-demand scheduling — GPU VMs MUST use TERMINATE (cannot live-migrate)
             scheduling=compute.InstanceSchedulingArgs(
-                preemptible=True,
-                automatic_restart=False,  # Required for spot/preemptible
+                preemptible=False,
+                automatic_restart=True,
                 on_host_maintenance="TERMINATE",  # Required for GPU VMs
             ),
             metadata={
