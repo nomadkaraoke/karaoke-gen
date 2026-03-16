@@ -91,6 +91,7 @@ class QueueConfigs:
 # Number of self-hosted GitHub Action runners
 # Reduced from 20 to 3 - runners auto-scale with start/stop management
 NUM_GITHUB_RUNNERS = 3
+NUM_GPU_RUNNERS = 3
 
 # Runner labels
 GENERAL_RUNNER_LABELS = "self-hosted,linux,x64,gcp,large-disk"
