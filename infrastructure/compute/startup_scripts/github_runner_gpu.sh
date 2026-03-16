@@ -62,9 +62,20 @@ else
     echo "NVIDIA drivers already installed, skipping"
 fi
 
-# Verify GPU is accessible
+# Verify GPU is accessible (retry up to 30 times with 10s delay — driver may need time after install)
 echo "Verifying GPU..."
-nvidia-smi || echo "WARNING: nvidia-smi failed — GPU may not be ready yet"
+for attempt in $(seq 1 30); do
+    if nvidia-smi; then
+        echo "GPU verified successfully on attempt $attempt"
+        break
+    fi
+    if [ "$attempt" -eq 30 ]; then
+        echo "ERROR: nvidia-smi failed after 30 attempts — GPU not available"
+        exit 1
+    fi
+    echo "nvidia-smi attempt $attempt failed, retrying in 10s..."
+    sleep 10
+done
 
 # ==================== FFmpeg + audio libraries ====================
 if ! command -v ffmpeg &>/dev/null; then
@@ -208,13 +219,9 @@ sudo -u runner ./config.sh \
     --unattended \
     --replace
 
-# Install and start runner as a service
+# Install runner service (started AFTER all caches are warm — see end of script)
 echo "Installing runner service..."
 ./svc.sh install runner
-./svc.sh start
-
-echo "GitHub Actions GPU runner setup complete at $(date)"
-echo "Runner registered at organization level (nomadkaraoke) with labels: $RUNNER_LABELS"
 
 # ==================== Setup Python in tool cache ====================
 # setup-python action looks for Python in RUNNER_TOOL_CACHE/_tool/Python
@@ -327,4 +334,12 @@ download_model "$FALLBACK_URL/config_dereverb_mel_band_roformer_anvuew.yaml" "$M
 chown -R runner:runner "$MODEL_DIR"
 echo "Audio separator models pre-download complete ($(du -sh $MODEL_DIR | cut -f1))"
 
-echo "GPU runner setup complete!"
+# ==================== Start runner service ====================
+# Start AFTER all caches are warm so the runner only comes online
+# when the VM is fully ready to accept CI jobs.
+echo "Starting runner service..."
+cd $RUNNER_DIR
+./svc.sh start
+
+echo "GitHub Actions GPU runner setup complete at $(date)"
+echo "Runner registered at organization level (nomadkaraoke) with labels: $RUNNER_LABELS"
