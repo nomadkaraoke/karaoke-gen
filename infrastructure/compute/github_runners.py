@@ -25,6 +25,7 @@ from config import (
     NUM_GITHUB_RUNNERS,
     GENERAL_RUNNER_LABELS,
     BUILD_RUNNER_LABELS,
+    GPU_RUNNER_LABELS,
 )
 from .startup_scripts import read_script
 
@@ -216,6 +217,87 @@ def create_build_runner(
         metadata_startup_script=startup_script,
         labels={
             "purpose": "github-build-runner",
+            "managed-by": "pulumi",
+        },
+        tags=["github-runner"],
+        allow_stopping_for_update=True,
+        deletion_protection=False,
+        opts=pulumi.ResourceOptions(
+            depends_on=[runner_pat_secret, nat],
+            delete_before_replace=True,
+        ),
+    )
+
+
+def create_gpu_runner(
+    service_account: serviceaccount.Account,
+    runner_pat_secret: secretmanager.Secret,
+    nat: compute.RouterNat,
+) -> compute.Instance:
+    """
+    Create a GPU-enabled runner for python-audio-separator integration tests.
+
+    Uses an n1-standard-4 with 1× NVIDIA T4 GPU and spot scheduling for cost
+    optimization (~$0.19/hr vs $0.61/hr on-demand). The runner_manager Cloud
+    Function starts/stops this VM based on CI demand.
+
+    GPU VMs require on_host_maintenance="TERMINATE" (cannot live-migrate).
+
+    Args:
+        service_account: The GitHub runner service account.
+        runner_pat_secret: The Secret Manager secret containing the GitHub PAT.
+        nat: Cloud NAT for outbound internet access.
+
+    Returns:
+        compute.Instance: The GPU runner VM instance.
+    """
+    startup_script = read_script("github_runner_gpu.sh")
+    instance_name = "github-gpu-runner"
+
+    return compute.Instance(
+        instance_name,
+        name=instance_name,
+        machine_type=MachineTypes.GITHUB_GPU_RUNNER,
+        zone=ZONE,
+        boot_disk=compute.InstanceBootDiskArgs(
+            initialize_params=compute.InstanceBootDiskInitializeParamsArgs(
+                image="debian-cloud/debian-12",
+                size=DiskSizes.GITHUB_RUNNER,
+                type="pd-ssd",
+            ),
+            auto_delete=True,
+        ),
+        # 1× NVIDIA T4 GPU for ML model inference
+        guest_accelerators=[
+            compute.InstanceGuestAcceleratorArgs(
+                type="nvidia-tesla-t4",
+                count=1,
+            )
+        ],
+        network_interfaces=[
+            compute.InstanceNetworkInterfaceArgs(
+                network="default",
+            )
+        ],
+        service_account=compute.InstanceServiceAccountArgs(
+            email=service_account.email,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        ),
+        # Spot scheduling for 70% cost savings (~$0.19/hr vs $0.61/hr)
+        # GPU VMs MUST use TERMINATE (cannot live-migrate with accelerators)
+        scheduling=compute.InstanceSchedulingArgs(
+            preemptible=True,
+            automatic_restart=False,  # Required for spot/preemptible
+            on_host_maintenance="TERMINATE",  # Required for GPU VMs
+        ),
+        metadata={
+            "github-runner-pat-secret": "github-runner-pat",
+            "github-org": "nomadkaraoke",
+            "runner-labels": GPU_RUNNER_LABELS,
+        },
+        metadata_startup_script=startup_script,
+        labels={
+            "purpose": "github-gpu-runner",
             "managed-by": "pulumi",
         },
         tags=["github-runner"],

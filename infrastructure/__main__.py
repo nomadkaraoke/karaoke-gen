@@ -350,8 +350,13 @@ github_build_runner = github_runners.create_build_runner(
     github_runner_sa, all_secrets["github-runner-pat"], github_runners_nat
 )
 
+# Create GPU runner (spot, for audio-separator integration tests)
+github_gpu_runner = github_runners.create_gpu_runner(
+    github_runner_sa, all_secrets["github-runner-pat"], github_runners_nat
+)
+
 # All runner VM names for the runner manager to track
-all_runner_names = [vm.name for vm in github_runner_vms] + [github_build_runner.name]
+all_runner_names = [vm.name for vm in github_runner_vms] + [github_build_runner.name, github_gpu_runner.name]
 
 # Create runner manager (auto-start/stop VMs based on CI activity)
 runner_manager_resources = runner_manager.create_runner_manager_resources(
@@ -449,6 +454,7 @@ pulumi.export("encoding_worker_vm_name", encoding_worker_instance.name)
 # GitHub runners
 pulumi.export("github_runner_vm_names", [vm.name for vm in github_runner_vms])
 pulumi.export("github_build_runner_name", github_build_runner.name)
+pulumi.export("github_gpu_runner_name", github_gpu_runner.name)
 pulumi.export("github_runner_service_account", github_runner_sa.email)
 pulumi.export("github_runners_nat", github_runners_nat.name)
 
