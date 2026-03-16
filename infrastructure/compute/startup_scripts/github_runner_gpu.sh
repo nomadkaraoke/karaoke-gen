@@ -10,6 +10,10 @@
 exec > >(tee /var/log/github-runner-startup.log) 2>&1
 echo "Starting GitHub Actions GPU runner setup at $(date)"
 
+# ==================== Environment ====================
+# Prevent interactive prompts during package installation (e.g., keyboard-configuration)
+export DEBIAN_FRONTEND=noninteractive
+
 # ==================== Network ====================
 # Force apt to use IPv4 only — Cloud NAT doesn't support IPv6
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
