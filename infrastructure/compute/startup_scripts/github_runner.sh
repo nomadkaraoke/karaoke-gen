@@ -334,4 +334,59 @@ docker pull fsouza/fake-gcs-server:latest || true
 
 echo "Docker images pre-warmed"
 
+# ==================== Audio separator model pre-download ====================
+# Pre-download ML models used by python-audio-separator integration tests.
+# These models total ~2GB and would otherwise be downloaded on every CI run.
+# Stored in /opt/audio-separator-models/ which persists across job runs.
+echo "Pre-downloading audio separator integration test models..."
+
+MODEL_DIR="/opt/audio-separator-models"
+mkdir -p "$MODEL_DIR"
+chown runner:runner "$MODEL_DIR"
+
+BASE_URL="https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models"
+CONFIG_URL="https://raw.githubusercontent.com/TRvlvr/application_data/main/mdx_model_data/mdx_c_configs"
+META_URL="https://raw.githubusercontent.com/TRvlvr/application_data/main"
+DEMUCS_URL="https://dl.fbaipublicfiles.com/demucs/hybrid_transformer"
+FALLBACK_URL="https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs"
+
+download_model() {
+    local url="$1"
+    local dest="$2"
+    local fallback_url="${3:-}"
+    if [ -f "$dest" ] && [ -s "$dest" ]; then
+        return
+    fi
+    echo "  Downloading: $(basename $dest)"
+    if curl -fSL --retry 3 --connect-timeout 30 -o "$dest" "$url" 2>/dev/null; then
+        return
+    fi
+    if [ -n "$fallback_url" ]; then
+        echo "  Primary URL failed, trying fallback..."
+        curl -fSL --retry 3 --connect-timeout 30 -o "$dest" "$fallback_url" || true
+    fi
+}
+
+# Metadata files
+download_model "$META_URL/filelists/download_checks.json" "$MODEL_DIR/download_checks.json"
+download_model "$META_URL/vr_model_data/model_data_new.json" "$MODEL_DIR/vr_model_data.json"
+download_model "$META_URL/mdx_model_data/model_data_new.json" "$MODEL_DIR/mdx_model_data.json"
+
+# Integration test models (8 models, ~2GB total)
+download_model "$BASE_URL/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt" "$MODEL_DIR/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+download_model "$CONFIG_URL/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml" "$MODEL_DIR/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml" "$FALLBACK_URL/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml"
+download_model "$BASE_URL/kuielab_b_vocals.onnx" "$MODEL_DIR/kuielab_b_vocals.onnx"
+download_model "$BASE_URL/MGM_MAIN_v4.pth" "$MODEL_DIR/MGM_MAIN_v4.pth"
+download_model "$BASE_URL/UVR-MDX-NET-Inst_HQ_4.onnx" "$MODEL_DIR/UVR-MDX-NET-Inst_HQ_4.onnx"
+download_model "$BASE_URL/2_HP-UVR.pth" "$MODEL_DIR/2_HP-UVR.pth"
+download_model "$BASE_URL/htdemucs_6s.yaml" "$MODEL_DIR/htdemucs_6s.yaml"
+download_model "$DEMUCS_URL/5c90dfd2-34c22ccb.th" "$MODEL_DIR/5c90dfd2-34c22ccb.th"
+download_model "$BASE_URL/model_bs_roformer_ep_937_sdr_10.5309.ckpt" "$MODEL_DIR/model_bs_roformer_ep_937_sdr_10.5309.ckpt"
+download_model "$CONFIG_URL/model_bs_roformer_ep_937_sdr_10.5309.yaml" "$MODEL_DIR/model_bs_roformer_ep_937_sdr_10.5309.yaml"
+download_model "$BASE_URL/model_bs_roformer_ep_317_sdr_12.9755.ckpt" "$MODEL_DIR/model_bs_roformer_ep_317_sdr_12.9755.ckpt"
+download_model "$CONFIG_URL/model_bs_roformer_ep_317_sdr_12.9755.yaml" "$MODEL_DIR/model_bs_roformer_ep_317_sdr_12.9755.yaml"
+
+chown -R runner:runner "$MODEL_DIR"
+echo "Audio separator models pre-download complete ($(du -sh $MODEL_DIR | cut -f1))"
+
 echo "Setup complete!"
