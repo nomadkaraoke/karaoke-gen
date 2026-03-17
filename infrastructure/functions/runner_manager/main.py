@@ -34,7 +34,7 @@ PROJECT_ID = os.environ.get("GCP_PROJECT", "nomadkaraoke")
 ZONE = os.environ.get("GCP_ZONE", "us-central1-a")
 WEBHOOK_SECRET_NAME = os.environ.get("WEBHOOK_SECRET_NAME", "github-webhook-secret")
 RUNNER_PAT_SECRET_NAME = os.environ.get("RUNNER_PAT_SECRET_NAME", "github-runner-pat")
-IDLE_TIMEOUT_HOURS = int(os.environ.get("IDLE_TIMEOUT_HOURS", "1"))
+IDLE_TIMEOUT_HOURS = float(os.environ.get("IDLE_TIMEOUT_HOURS", "1"))
 RUNNER_NAMES = os.environ.get(
     "RUNNER_NAMES",
     "github-runner-1,github-runner-2,github-runner-3,github-build-runner",

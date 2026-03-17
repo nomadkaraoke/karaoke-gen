@@ -109,7 +109,7 @@ class RunnerManagerConfig:
     FUNCTION_NAME = "github-runner-manager"
     FUNCTION_MEMORY = "512M"  # Increased from 256M due to memory usage
     FUNCTION_TIMEOUT = 300  # 5 minutes
-    IDLE_TIMEOUT_HOURS = 1  # Shorter than Aquarius (3h) since we have more CI activity
+    IDLE_TIMEOUT_HOURS = 0.25  # 15 minutes — solo dev, runners stop at next scheduler check
     IDLE_CHECK_SCHEDULE = "*/15 * * * *"  # Every 15 minutes
 
 
