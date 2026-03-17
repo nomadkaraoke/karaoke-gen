@@ -139,6 +139,7 @@ def create_cloud_function(
     source_archive: gcp.storage.BucketObject,
     permissions: dict,
     runner_names: list[pulumi.Output] | None = None,
+    gpu_runner_names: list[pulumi.Output] | None = None,
 ) -> gcp.cloudfunctionsv2.Function:
     """Create the Cloud Function (Gen2) for runner management."""
     env_vars = {
@@ -151,6 +152,11 @@ def create_cloud_function(
 
     if runner_names:
         env_vars["RUNNER_NAMES"] = pulumi.Output.all(*runner_names).apply(
+            lambda names: ",".join(names)
+        )
+
+    if gpu_runner_names:
+        env_vars["GPU_RUNNER_NAMES"] = pulumi.Output.all(*gpu_runner_names).apply(
             lambda names: ",".join(names)
         )
 
@@ -262,6 +268,7 @@ def create_runner_manager_resources(
     webhook_secret: gcp.secretmanager.Secret,
     pat_secret: gcp.secretmanager.Secret,
     runner_names: list[pulumi.Output] | None = None,
+    gpu_runner_names: list[pulumi.Output] | None = None,
     runner_service_account: gcp.serviceaccount.Account | None = None,
 ) -> dict:
     """
@@ -271,6 +278,7 @@ def create_runner_manager_resources(
         webhook_secret: The webhook secret for signature verification.
         pat_secret: The GitHub PAT secret for API calls.
         runner_names: List of Pulumi Output VM names for the runner manager to track.
+        gpu_runner_names: Subset of runner_names that are GPU runners (started only for GPU jobs).
         runner_service_account: The SA that runner VMs run as (for IAM binding).
 
     Returns:
@@ -299,6 +307,7 @@ def create_runner_manager_resources(
         source_archive,
         permissions,
         runner_names,
+        gpu_runner_names,
     )
 
     # Allow unauthenticated invocation (GitHub webhooks)

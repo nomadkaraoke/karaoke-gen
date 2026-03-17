@@ -151,6 +151,42 @@ class TestStartRunners:
         assert set(result["started"]) == {"r-1", "r-2"}
         assert mock_client.start.call_count == 2
 
+    def test_skips_gpu_runners_by_default(self):
+        """GPU runners should not start unless include_gpu=True."""
+        main = _import_main(RUNNER_NAMES="r-1,gpu-1", GPU_RUNNER_NAMES="gpu-1")
+        mock_client = MagicMock()
+        mock_client.get.side_effect = [
+            _make_instance("r-1", status="TERMINATED"),
+            _make_instance("gpu-1", status="TERMINATED"),
+        ]
+        mock_op = MagicMock()
+        mock_op.result.return_value = None
+        mock_client.start.return_value = mock_op
+        main._compute_client = mock_client
+
+        result = main.start_runners(include_gpu=False)
+
+        assert "r-1" in result["started"]
+        assert "gpu-1" not in result["started"]
+        assert mock_client.start.call_count == 1
+
+    def test_starts_gpu_runners_when_requested(self):
+        """GPU runners should start when include_gpu=True."""
+        main = _import_main(RUNNER_NAMES="r-1,gpu-1", GPU_RUNNER_NAMES="gpu-1")
+        mock_client = MagicMock()
+        mock_client.get.side_effect = [
+            _make_instance("r-1", status="TERMINATED"),
+            _make_instance("gpu-1", status="TERMINATED"),
+        ]
+        mock_op = MagicMock()
+        mock_op.result.return_value = None
+        mock_client.start.return_value = mock_op
+        main._compute_client = mock_client
+
+        result = main.start_runners(include_gpu=True)
+
+        assert set(result["started"]) == {"r-1", "gpu-1"}
+
     def test_skips_running_instances(self):
         main = _import_main(RUNNER_NAMES="r-1,r-2")
         mock_client = MagicMock()

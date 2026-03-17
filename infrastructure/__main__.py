@@ -362,11 +362,15 @@ all_runner_names = (
     + [vm.name for vm in github_gpu_runner_vms]
 )
 
+# GPU runner names (only started when job requests "gpu" label)
+gpu_runner_names = [vm.name for vm in github_gpu_runner_vms]
+
 # Create runner manager (auto-start/stop VMs based on CI activity)
 runner_manager_resources = runner_manager.create_runner_manager_resources(
     all_secrets["github-webhook-secret"],
     all_secrets["github-runner-pat"],
     all_runner_names,
+    gpu_runner_names=gpu_runner_names,
     runner_service_account=github_runner_sa,
 )
 

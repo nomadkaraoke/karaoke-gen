@@ -39,6 +39,11 @@ RUNNER_NAMES = os.environ.get(
     "RUNNER_NAMES",
     "github-runner-1,github-runner-2,github-runner-3,github-build-runner",
 ).split(",")
+# GPU runners are only started when the job explicitly requests the "gpu" label.
+# This avoids waking ~$1.62/hr of GPU VMs for every CI run.
+GPU_RUNNER_NAMES = set(
+    os.environ.get("GPU_RUNNER_NAMES", "").split(",")
+) - {""}  # filter empty strings
 
 # Max time to wait for STOPPING VMs to become TERMINATED before starting them
 _STOPPING_WAIT_TIMEOUT = 90
@@ -156,7 +161,7 @@ def _start_single_runner(instance_name: str) -> tuple[str, str]:
         return instance_name, "failed"
 
 
-def start_runners() -> dict:
+def start_runners(include_gpu: bool = False) -> dict:
     """
     Start any TERMINATED runner VMs, waiting for STOPPING VMs first.
 
@@ -164,12 +169,24 @@ def start_runners() -> dict:
     new work), waits for them to finish stopping then starts them. This prevents
     a scenario where all runners are STOPPING and no webhook restarts them.
 
+    Args:
+        include_gpu: If False (default), skip GPU runners to save costs.
+                     Only set True when the job explicitly requests GPU labels.
+
     Returns a dict with lists of started, already_running, and failed instances.
     """
     client = get_compute_client()
     result = {"started": [], "already_running": [], "failed": []}
 
     instances = get_runner_instances()
+
+    # Filter out GPU runners unless explicitly requested
+    if not include_gpu and GPU_RUNNER_NAMES:
+        skipped = [i.name for i in instances if i.name in GPU_RUNNER_NAMES]
+        if skipped:
+            print(f"Skipping GPU runners (not requested): {skipped}")
+        instances = [i for i in instances if i.name not in GPU_RUNNER_NAMES]
+
     stopping_instances = []
     to_start = []
 
@@ -468,9 +485,11 @@ def handle_request(request: Request):
 
     # Handle different actions
     if action == "queued":
-        # Job is queued - ensure runners are started
-        print("Job queued - starting runners if needed")
-        result = start_runners()
+        # Job is queued - ensure runners are started.
+        # Only start GPU runners if the job explicitly requests the "gpu" label.
+        needs_gpu = "gpu" in labels
+        print(f"Job queued - starting runners (gpu={'yes' if needs_gpu else 'no'})")
+        result = start_runners(include_gpu=needs_gpu)
         return json.dumps(result), 200, {"Content-Type": "application/json"}
 
     elif action == "completed":
