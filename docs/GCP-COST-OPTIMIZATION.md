@@ -24,18 +24,20 @@ Analyzed GCP billing data and identified $1,440+/month in immediate savings thro
 
 ### ✅ GitHub Actions Runners Auto-Scaling
 
-**Status:** Deployed and operational (February 10, 2026)
+**Status:** Fixed and operational (March 17, 2026)
 
 **Changes Made:**
-- Reduced from 20 VMs to 3 Spot/Preemptible instances
+- Reduced from 20 VMs to 3 general + 1 build + 3 GPU runners
 - Implemented auto-start on CI job queue (via GitHub webhook)
 - Implemented auto-stop after 1 hour idle (via Cloud Scheduler)
 - Removed external IPs (using Cloud NAT instead)
 
+**March 2026 Fix:** The initial auto-scaling implementation had critical bugs that prevented idle shutdown — runners were running 24/7 despite the auto-stop mechanism. See `docs/SELF-HOSTED-RUNNERS.md` for full details. Bugs fixed: metadata writes not awaited, "set now and keep" infinite loop, pending jobs resetting all timestamps, missing IAM permission (`iam.serviceAccountUser`), no STOPPING state handling, sequential (slow) stops.
+
 **Cost Impact:**
-- **Before:** 20 VMs × $72/month = $1,440/month
-- **After:** 3 Spot VMs × $25/month × ~20% utilization = $50-100/month
-- **Savings:** ~$1,340-1,390/month (93% reduction)
+- **Before:** 7 VMs running 24/7 = ~$1,648/month
+- **After (fixed):** ~$50-150/month (estimated, with proper idle shutdown)
+- **Savings:** ~$1,500/month
 
 **Implementation:**
 - PRs: [#376](https://github.com/nomadkaraoke/karaoke-gen/pull/376), [#383](https://github.com/nomadkaraoke/karaoke-gen/pull/383), [#385](https://github.com/nomadkaraoke/karaoke-gen/pull/385)

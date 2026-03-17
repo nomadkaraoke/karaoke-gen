@@ -22,6 +22,19 @@ When fuzzy-matching by title returns multiple artists with the same song name (e
 
 ---
 
+## Infrastructure
+
+### GCE Metadata Writes Must Be Awaited (Mar 2026)
+`compute_v1.InstancesClient.set_metadata()` returns an Operation object. Without calling `.result()`, the write completes asynchronously and fingerprint conflicts from concurrent calls are swallowed silently. This caused the runner manager's `last-activity` metadata to never persist, preventing idle shutdown entirely. Always await metadata operations.
+
+### "Set Now and Keep" Anti-Pattern (Mar 2026)
+When a metadata key is missing, don't set it to "now" and skip the action — this creates an infinite loop where the key never appears old enough to trigger the action. Instead, fall back to `creationTimestamp` (always available on GCE instances) as the baseline for idle time calculation.
+
+### Pending Jobs Guard Must Not Reset Idle Timestamps (Mar 2026)
+When pending CI jobs are detected, keep runners alive but don't refresh their `last-activity` timestamps. Refreshing timestamps resets the idle timer, so runners can never accumulate enough idle time to be stopped — even after all jobs complete.
+
+---
+
 ## Architecture Decisions
 
 ### Separate Collections for Multi-App Projects

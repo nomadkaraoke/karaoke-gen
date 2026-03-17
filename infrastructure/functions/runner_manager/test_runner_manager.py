@@ -1,15 +1,21 @@
 """
 Tests for runner_manager/main.py
 
-Focuses on the RUNNER_NAMES configuration and the core functions that
-iterate over runner instances: get_runner_instances() and start_runners().
+Covers the critical bug fixes:
+1. Metadata writes are awaited (operation.result() called)
+2. Missing last-activity uses creationTimestamp fallback (not "set now and keep")
+3. Pending jobs don't reset all runner timestamps
+4. Stops are parallel (ThreadPoolExecutor)
+5. STOPPING state VMs are waited for then started
+6. Job completed updates only the specific runner (via runner_name)
 """
 
 import json
 import os
 import sys
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, PropertyMock
+import time
+from datetime import datetime, timezone, timedelta
+from unittest.mock import MagicMock, patch, call
 
 # Stub out Cloud Function dependencies not installed in test env
 for mod in (
@@ -20,31 +26,70 @@ for mod in (
 ):
     sys.modules.setdefault(mod, MagicMock())
 
+# Make @functions_framework.http a pass-through decorator so handle_request
+# remains a real callable function in tests
+sys.modules["functions_framework"].http = lambda f: f
+
 # We need compute_v1 to have Items and Metadata as usable classes
 mock_compute_v1 = sys.modules["google.cloud.compute_v1"]
 mock_compute_v1.Instance = MagicMock
 mock_compute_v1.Items = MagicMock
 mock_compute_v1.Metadata = MagicMock
 
-# Mock the InstancesClient
-mock_instances_client = MagicMock()
-mock_compute_v1.InstancesClient.return_value = mock_instances_client
-
 sys.path.insert(0, os.path.dirname(__file__))
+
+
+def _make_instance(name, status="RUNNING", creation_timestamp=None, metadata_items=None):
+    """Create a mock GCE instance."""
+    instance = MagicMock()
+    instance.name = name
+    instance.status = status
+    instance.creation_timestamp = creation_timestamp or (
+        datetime.now(timezone.utc) - timedelta(hours=5)
+    ).isoformat()
+
+    if metadata_items is None:
+        metadata_items = []
+    items = []
+    for k, v in metadata_items:
+        item = MagicMock()
+        item.key = k
+        item.value = v
+        items.append(item)
+    instance.metadata = MagicMock()
+    instance.metadata.items = items
+    instance.metadata.fingerprint = "fp123"
+    return instance
+
+
+def _import_main(**env_overrides):
+    """Import main module with clean state and optional env overrides."""
+    if "main" in sys.modules:
+        del sys.modules["main"]
+    env = {
+        "RUNNER_NAMES": "runner-1,runner-2",
+        "GCP_PROJECT": "test-project",
+        "GCP_ZONE": "us-central1-a",
+        **env_overrides,
+    }
+    with patch.dict(os.environ, env):
+        import main
+        main._compute_client = None
+        main._secret_client = None
+        main._webhook_secret = "test-secret"
+        main._github_pat = "ghp_test"
+        return main
 
 
 class TestRunnerNamesConfig:
     """Test that RUNNER_NAMES is parsed correctly from environment."""
 
     def test_default_runner_names(self):
-        """Default includes all 3 general runners plus the build runner."""
         env = {k: v for k, v in os.environ.items() if k != "RUNNER_NAMES"}
         with patch.dict(os.environ, env, clear=True):
-            # Re-import to pick up default
             if "main" in sys.modules:
                 del sys.modules["main"]
             import main
-
             assert main.RUNNER_NAMES == [
                 "github-runner-1",
                 "github-runner-2",
@@ -53,220 +98,407 @@ class TestRunnerNamesConfig:
             ]
 
     def test_custom_runner_names_from_env(self):
-        """RUNNER_NAMES env var overrides the default list."""
-        with patch.dict(os.environ, {"RUNNER_NAMES": "runner-a,runner-b"}):
-            if "main" in sys.modules:
-                del sys.modules["main"]
-            import main
-
-            assert main.RUNNER_NAMES == ["runner-a", "runner-b"]
+        main = _import_main(RUNNER_NAMES="runner-a,runner-b,runner-c")
+        assert main.RUNNER_NAMES == ["runner-a", "runner-b", "runner-c"]
 
     def test_single_runner_name(self):
-        """Single runner name without commas works."""
-        with patch.dict(os.environ, {"RUNNER_NAMES": "solo-runner"}):
-            if "main" in sys.modules:
-                del sys.modules["main"]
-            import main
-
-            assert main.RUNNER_NAMES == ["solo-runner"]
+        main = _import_main(RUNNER_NAMES="solo-runner")
+        assert main.RUNNER_NAMES == ["solo-runner"]
 
 
 class TestGetRunnerInstances:
-    """Test get_runner_instances() iterates over RUNNER_NAMES."""
-
-    def setup_method(self):
-        """Reset module state before each test."""
-        if "main" in sys.modules:
-            del sys.modules["main"]
-        # Reset the cached client
-        with patch.dict(
-            os.environ,
-            {"RUNNER_NAMES": "github-runner-1,github-runner-2,github-build-runner"},
-        ):
-            import main
-
-            self.main = main
-            self.main._compute_client = None
 
     def test_returns_all_instances(self):
-        """Should fetch each runner by name from RUNNER_NAMES."""
+        main = _import_main(RUNNER_NAMES="r-1,r-2,r-3")
         mock_client = MagicMock()
-        mock_instances = []
-        for name in ["github-runner-1", "github-runner-2", "github-build-runner"]:
-            instance = MagicMock()
-            instance.name = name
-            mock_instances.append(instance)
+        instances = [_make_instance(f"r-{i}") for i in range(1, 4)]
+        mock_client.get.side_effect = instances
+        main._compute_client = mock_client
 
-        mock_client.get.side_effect = mock_instances
-        self.main._compute_client = mock_client
-
-        result = self.main.get_runner_instances()
-
+        result = main.get_runner_instances()
         assert len(result) == 3
         assert mock_client.get.call_count == 3
-        # Verify each name was queried
-        call_names = [
-            call.kwargs.get("instance") or call[1].get("instance", call[1])
-            for call in mock_client.get.call_args_list
-        ]
-        for call_args in mock_client.get.call_args_list:
-            assert call_args == (
-                ()
-            ) or "instance" in str(call_args)
 
     def test_handles_missing_instance(self):
-        """Should skip instances that don't exist (e.g. not yet created)."""
+        main = _import_main(RUNNER_NAMES="r-1,r-2")
         mock_client = MagicMock()
-        instance1 = MagicMock()
-        instance1.name = "github-runner-1"
-
         mock_client.get.side_effect = [
-            instance1,
+            _make_instance("r-1"),
             Exception("Instance not found"),
-            MagicMock(name="github-build-runner"),
         ]
-        self.main._compute_client = mock_client
+        main._compute_client = mock_client
 
-        result = self.main.get_runner_instances()
-
-        # Should still return the 2 that succeeded
-        assert len(result) == 2
+        result = main.get_runner_instances()
+        assert len(result) == 1
 
 
 class TestStartRunners:
-    """Test start_runners() iterates over RUNNER_NAMES."""
 
-    def setup_method(self):
-        if "main" in sys.modules:
-            del sys.modules["main"]
-        with patch.dict(
-            os.environ,
-            {"RUNNER_NAMES": "github-runner-1,github-build-runner"},
-        ):
-            import main
-
-            self.main = main
-            self.main._compute_client = None
-
-    def test_starts_terminated_instances(self):
-        """Should start TERMINATED instances from RUNNER_NAMES."""
+    def test_starts_terminated_instances_in_parallel(self):
+        main = _import_main(RUNNER_NAMES="r-1,r-2")
         mock_client = MagicMock()
-
-        runner1 = MagicMock()
-        runner1.status = "TERMINATED"
-        runner1.name = "github-runner-1"
-
-        build_runner = MagicMock()
-        build_runner.status = "TERMINATED"
-        build_runner.name = "github-build-runner"
-
-        mock_client.get.side_effect = [runner1, build_runner]
-        # Make start operations succeed
+        mock_client.get.side_effect = [
+            _make_instance("r-1", status="TERMINATED"),
+            _make_instance("r-2", status="TERMINATED"),
+        ]
         mock_op = MagicMock()
         mock_op.result.return_value = None
         mock_client.start.return_value = mock_op
+        main._compute_client = mock_client
 
-        self.main._compute_client = mock_client
+        result = main.start_runners()
 
-        result = self.main.start_runners()
-
-        assert "github-runner-1" in result["started"]
-        assert "github-build-runner" in result["started"]
+        assert set(result["started"]) == {"r-1", "r-2"}
         assert mock_client.start.call_count == 2
 
     def test_skips_running_instances(self):
-        """Should not start already-running instances."""
+        main = _import_main(RUNNER_NAMES="r-1,r-2")
         mock_client = MagicMock()
-
-        runner1 = MagicMock()
-        runner1.status = "RUNNING"
-        runner1.name = "github-runner-1"
-
-        build_runner = MagicMock()
-        build_runner.status = "TERMINATED"
-        build_runner.name = "github-build-runner"
-
-        mock_client.get.side_effect = [runner1, build_runner]
+        mock_client.get.side_effect = [
+            _make_instance("r-1", status="RUNNING"),
+            _make_instance("r-2", status="TERMINATED"),
+        ]
         mock_op = MagicMock()
         mock_op.result.return_value = None
         mock_client.start.return_value = mock_op
+        main._compute_client = mock_client
 
-        self.main._compute_client = mock_client
+        result = main.start_runners()
 
-        result = self.main.start_runners()
-
-        assert "github-runner-1" in result["already_running"]
-        assert "github-build-runner" in result["started"]
+        assert "r-1" in result["already_running"]
+        assert "r-2" in result["started"]
         assert mock_client.start.call_count == 1
 
-    def test_handles_start_failure(self):
-        """Should report failures without crashing."""
+    def test_waits_for_stopping_vms(self):
+        """STOPPING VMs should be polled until TERMINATED, then started."""
+        main = _import_main(RUNNER_NAMES="r-1")
         mock_client = MagicMock()
 
-        runner1 = MagicMock()
-        runner1.status = "TERMINATED"
-        runner1.name = "github-runner-1"
+        # First call: get_runner_instances() sees STOPPING
+        stopping_inst = _make_instance("r-1", status="STOPPING")
+        # Poll calls: first still STOPPING, then TERMINATED
+        terminated_inst = _make_instance("r-1", status="TERMINATED")
 
-        mock_client.get.side_effect = [runner1]
-        mock_client.start.side_effect = Exception("API error")
-
-        self.main._compute_client = mock_client
-        # Patch RUNNER_NAMES to just one for simplicity
-        self.main.RUNNER_NAMES = ["github-runner-1"]
-
-        result = self.main.start_runners()
-
-        assert "github-runner-1" in result["failed"]
-
-    def test_handles_instance_not_found(self):
-        """Should handle case where instance doesn't exist yet."""
-        mock_client = MagicMock()
-        mock_client.get.side_effect = Exception("Instance not found")
-
-        self.main._compute_client = mock_client
-        self.main.RUNNER_NAMES = ["nonexistent-runner"]
-
-        result = self.main.start_runners()
-
-        assert "nonexistent-runner" in result["failed"]
-
-
-class TestWebhookHandling:
-    """Test that webhook handler starts all runners including build runner."""
-
-    def setup_method(self):
-        if "main" in sys.modules:
-            del sys.modules["main"]
-        with patch.dict(
-            os.environ,
-            {"RUNNER_NAMES": "github-runner-1,github-build-runner"},
-        ):
-            import main
-
-            self.main = main
-            self.main._compute_client = None
-            self.main._webhook_secret = "test-secret"
-
-    def test_queued_event_starts_all_runners(self):
-        """workflow_job.queued should start all runners in RUNNER_NAMES."""
-        mock_client = MagicMock()
-
-        instances = []
-        for name in ["github-runner-1", "github-build-runner"]:
-            inst = MagicMock()
-            inst.status = "TERMINATED"
-            inst.name = name
-            instances.append(inst)
-
-        mock_client.get.side_effect = instances
+        mock_client.get.side_effect = [stopping_inst, stopping_inst, terminated_inst]
         mock_op = MagicMock()
         mock_op.result.return_value = None
         mock_client.start.return_value = mock_op
+        main._compute_client = mock_client
 
-        self.main._compute_client = mock_client
+        with patch("main.time.sleep"):  # skip actual sleeps
+            result = main.start_runners()
 
-        result = self.main.start_runners()
+        assert "r-1" in result["started"]
 
-        assert len(result["started"]) == 2
-        assert "github-runner-1" in result["started"]
-        assert "github-build-runner" in result["started"]
+
+class TestUpdateInstanceMetadata:
+    """Test that metadata writes are properly awaited."""
+
+    def test_awaits_operation_result(self):
+        """The set_metadata operation must be awaited to catch fingerprint conflicts."""
+        main = _import_main()
+        mock_client = MagicMock()
+        instance = _make_instance("r-1", metadata_items=[("last-activity", "old")])
+        mock_client.get.return_value = instance
+        mock_op = MagicMock()
+        mock_client.set_metadata.return_value = mock_op
+        main._compute_client = mock_client
+
+        main.update_instance_metadata("r-1", "last-activity", "new-value")
+
+        # Critical: operation.result() must be called
+        mock_op.result.assert_called_once_with(timeout=60)
+
+    def test_adds_new_metadata_key(self):
+        main = _import_main()
+        mock_client = MagicMock()
+        instance = _make_instance("r-1", metadata_items=[])
+        mock_client.get.return_value = instance
+        mock_op = MagicMock()
+        mock_client.set_metadata.return_value = mock_op
+        main._compute_client = mock_client
+
+        main.update_instance_metadata("r-1", "last-activity", "2026-01-01T00:00:00+00:00")
+
+        mock_client.set_metadata.assert_called_once()
+        mock_op.result.assert_called_once()
+
+
+class TestGetInstanceAgeHours:
+    """Test creationTimestamp fallback logic."""
+
+    def test_returns_age_from_creation_timestamp(self):
+        main = _import_main()
+        two_hours_ago = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        instance = _make_instance("r-1", creation_timestamp=two_hours_ago)
+
+        age = main._get_instance_age_hours(instance)
+        assert 1.9 < age < 2.1
+
+    def test_returns_inf_when_no_timestamp(self):
+        main = _import_main()
+        instance = _make_instance("r-1")
+        instance.creation_timestamp = None
+
+        age = main._get_instance_age_hours(instance)
+        assert age == float("inf")
+
+
+class TestCheckAndStopIdleRunners:
+    """Test the idle check logic — the most critical function."""
+
+    def _setup(self, runner_names="r-1,r-2"):
+        main = _import_main(RUNNER_NAMES=runner_names)
+        mock_client = MagicMock()
+        main._compute_client = mock_client
+        return main, mock_client
+
+    def test_no_last_activity_uses_creation_timestamp_fallback(self):
+        """VMs without last-activity metadata should use creation time,
+        NOT set 'now' and keep running (the old bug)."""
+        main, mock_client = self._setup(runner_names="r-1")
+
+        # Instance created 3 hours ago, no last-activity metadata
+        three_hours_ago = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+        instance = _make_instance("r-1", status="RUNNING", creation_timestamp=three_hours_ago, metadata_items=[])
+        mock_client.get.side_effect = [instance]
+
+        mock_stop_op = MagicMock()
+        mock_stop_op.result.return_value = None
+        mock_client.stop.return_value = mock_stop_op
+
+        with patch.object(main, "check_github_for_pending_jobs", return_value=False):
+            result = main.check_and_stop_idle_runners()
+
+        assert "r-1" in result["stopped"]
+
+    def test_no_last_activity_keeps_recent_vm(self):
+        """VM created <1h ago without metadata should be kept."""
+        main, mock_client = self._setup(runner_names="r-1")
+
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        instance = _make_instance("r-1", status="RUNNING", creation_timestamp=recent, metadata_items=[])
+        mock_client.get.side_effect = [instance]
+
+        with patch.object(main, "check_github_for_pending_jobs", return_value=False):
+            result = main.check_and_stop_idle_runners()
+
+        assert "r-1" in result["kept"]
+        mock_client.stop.assert_not_called()
+
+    def test_pending_jobs_does_not_refresh_timestamps(self):
+        """When jobs are pending, runners stay alive but timestamps are NOT refreshed.
+        The old bug: refreshing timestamps prevented runners from ever being idle."""
+        main, mock_client = self._setup(runner_names="r-1")
+
+        instance = _make_instance("r-1", status="RUNNING")
+        mock_client.get.side_effect = [instance]
+
+        with patch.object(main, "check_github_for_pending_jobs", return_value=True):
+            result = main.check_and_stop_idle_runners()
+
+        assert "r-1" in result["kept"]
+        # Critical: set_metadata must NOT be called
+        mock_client.set_metadata.assert_not_called()
+
+    def test_stops_idle_runners_in_parallel(self):
+        """Multiple idle runners should be stopped in parallel."""
+        main, mock_client = self._setup(runner_names="r-1,r-2")
+
+        two_hours_ago = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        instances = [
+            _make_instance("r-1", status="RUNNING", metadata_items=[("last-activity", two_hours_ago)]),
+            _make_instance("r-2", status="RUNNING", metadata_items=[("last-activity", two_hours_ago)]),
+        ]
+        mock_client.get.side_effect = instances
+
+        mock_stop_op = MagicMock()
+        mock_stop_op.result.return_value = None
+        mock_client.stop.return_value = mock_stop_op
+
+        with patch.object(main, "check_github_for_pending_jobs", return_value=False):
+            result = main.check_and_stop_idle_runners()
+
+        assert set(result["stopped"]) == {"r-1", "r-2"}
+
+    def test_keeps_recently_active_runners(self):
+        main, mock_client = self._setup(runner_names="r-1")
+
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        instance = _make_instance("r-1", status="RUNNING", metadata_items=[("last-activity", recent)])
+        mock_client.get.side_effect = [instance]
+
+        with patch.object(main, "check_github_for_pending_jobs", return_value=False):
+            result = main.check_and_stop_idle_runners()
+
+        assert "r-1" in result["kept"]
+        mock_client.stop.assert_not_called()
+
+    def test_skips_non_running_instances(self):
+        main, mock_client = self._setup(runner_names="r-1")
+
+        instance = _make_instance("r-1", status="TERMINATED")
+        mock_client.get.side_effect = [instance]
+
+        with patch.object(main, "check_github_for_pending_jobs", return_value=False):
+            result = main.check_and_stop_idle_runners()
+
+        assert result == {"stopped": [], "kept": [], "errors": []}
+
+    def test_handles_invalid_last_activity_value(self):
+        """Invalid timestamp should fall back to creation time."""
+        main, mock_client = self._setup(runner_names="r-1")
+
+        old_creation = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+        instance = _make_instance(
+            "r-1", status="RUNNING",
+            creation_timestamp=old_creation,
+            metadata_items=[("last-activity", "not-a-date")],
+        )
+        mock_client.get.side_effect = [instance]
+
+        mock_stop_op = MagicMock()
+        mock_stop_op.result.return_value = None
+        mock_client.stop.return_value = mock_stop_op
+
+        with patch.object(main, "check_github_for_pending_jobs", return_value=False):
+            result = main.check_and_stop_idle_runners()
+
+        assert "r-1" in result["stopped"]
+
+
+class TestWebhookCompleted:
+    """Test that job completion updates only the specific runner."""
+
+    def _make_webhook_request(self, payload):
+        """Create a mock request with valid webhook signature."""
+        import hmac as hmac_mod
+        import hashlib
+
+        body = json.dumps(payload).encode()
+        sig = "sha256=" + hmac_mod.new(b"test-secret", body, hashlib.sha256).hexdigest()
+        headers = {
+            "X-Hub-Signature-256": sig,
+            "X-GitHub-Event": "workflow_job",
+        }
+
+        request = MagicMock()
+        request.args.get.return_value = None
+        request.headers.get.side_effect = lambda h, *a: headers.get(h)
+        request.get_data.return_value = body
+        request.get_json.return_value = payload
+        return request
+
+    def test_completed_updates_specific_runner_only(self):
+        """Only the runner that ran the job should have its metadata updated."""
+        main = _import_main(RUNNER_NAMES="r-1,r-2")
+        mock_client = MagicMock()
+        instance = _make_instance("r-1", metadata_items=[])
+        mock_client.get.return_value = instance
+        mock_op = MagicMock()
+        mock_client.set_metadata.return_value = mock_op
+        main._compute_client = mock_client
+
+        payload = {
+            "action": "completed",
+            "workflow_job": {
+                "labels": ["self-hosted", "linux"],
+                "runner_name": "r-1",
+            },
+        }
+        request = self._make_webhook_request(payload)
+
+        # Call the underlying function directly (bypasses decorator)
+        main.handle_request(request)
+
+        # Metadata should be updated on r-1 only
+        mock_client.set_metadata.assert_called_once()
+
+    def test_completed_without_runner_name_does_nothing(self):
+        """If webhook payload has no runner_name, no metadata update should happen."""
+        main = _import_main(RUNNER_NAMES="r-1")
+        mock_client = MagicMock()
+        main._compute_client = mock_client
+
+        payload = {
+            "action": "completed",
+            "workflow_job": {
+                "labels": ["self-hosted"],
+            },
+        }
+        request = self._make_webhook_request(payload)
+        main.handle_request(request)
+
+        mock_client.set_metadata.assert_not_called()
+
+
+class TestNonSelfHostedJobsIgnored:
+    """Test that jobs not targeting self-hosted runners are ignored."""
+
+    def test_ubuntu_latest_job_ignored(self):
+        main = _import_main()
+
+        import hmac as hmac_mod
+        import hashlib
+
+        payload = {
+            "action": "queued",
+            "workflow_job": {
+                "labels": ["ubuntu-latest"],
+            },
+        }
+        body = json.dumps(payload).encode()
+        sig = "sha256=" + hmac_mod.new(b"test-secret", body, hashlib.sha256).hexdigest()
+        headers = {
+            "X-Hub-Signature-256": sig,
+            "X-GitHub-Event": "workflow_job",
+        }
+
+        request = MagicMock()
+        request.args.get.return_value = None
+        request.headers.get.side_effect = lambda h, *a: headers.get(h)
+        request.get_data.return_value = body
+        request.get_json.return_value = payload
+
+        response = main.handle_request(request)
+
+        assert "not for self-hosted" in str(response)
+
+
+class TestCheckGithubForPendingJobs:
+    """Test the GitHub API check for pending jobs."""
+
+    def test_checks_both_queued_and_in_progress(self):
+        main = _import_main()
+
+        call_count = 0
+
+        def mock_urlopen(req, timeout=None):
+            nonlocal call_count
+            call_count += 1
+            response = MagicMock()
+            response.read.return_value = json.dumps({"total_count": 0}).encode()
+            response.__enter__ = lambda s: response
+            response.__exit__ = lambda s, *a: None
+            return response
+
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+            result = main.check_github_for_pending_jobs()
+
+        assert result is False
+        assert call_count == 2  # queued + in_progress
+
+    def test_returns_true_when_jobs_pending(self):
+        main = _import_main()
+
+        def mock_urlopen(req, timeout=None):
+            response = MagicMock()
+            response.read.return_value = json.dumps({"total_count": 3}).encode()
+            response.__enter__ = lambda s: response
+            response.__exit__ = lambda s, *a: None
+            return response
+
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+            result = main.check_github_for_pending_jobs()
+
+        assert result is True

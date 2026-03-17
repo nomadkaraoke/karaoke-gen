@@ -367,6 +367,7 @@ runner_manager_resources = runner_manager.create_runner_manager_resources(
     all_secrets["github-webhook-secret"],
     all_secrets["github-runner-pat"],
     all_runner_names,
+    runner_service_account=github_runner_sa,
 )
 
 

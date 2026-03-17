@@ -54,6 +54,7 @@ def grant_runner_manager_permissions(
     service_account: gcp.serviceaccount.Account,
     webhook_secret: gcp.secretmanager.Secret,
     pat_secret: gcp.secretmanager.Secret,
+    runner_service_account: gcp.serviceaccount.Account | None = None,
 ) -> dict:
     """Grant permissions to the runner manager service account."""
     bindings = {}
@@ -65,6 +66,17 @@ def grant_runner_manager_permissions(
         role="roles/compute.instanceAdmin.v1",
         member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
     )
+
+    # Grant Service Account User on the runner SA — required to set metadata
+    # on VMs that run as the runner service account. Without this, metadata
+    # writes fail with SERVICE_ACCOUNT_ACCESS_DENIED.
+    if runner_service_account is not None:
+        bindings["runner_sa_user"] = gcp.serviceaccount.IAMMember(
+            "runner-manager-runner-sa-user",
+            service_account_id=runner_service_account.name,
+            role="roles/iam.serviceAccountUser",
+            member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
+        )
 
     # Grant Secret Manager accessor for webhook secret
     bindings["webhook_secret_accessor"] = gcp.secretmanager.SecretIamMember(
@@ -250,6 +262,7 @@ def create_runner_manager_resources(
     webhook_secret: gcp.secretmanager.Secret,
     pat_secret: gcp.secretmanager.Secret,
     runner_names: list[pulumi.Output] | None = None,
+    runner_service_account: gcp.serviceaccount.Account | None = None,
 ) -> dict:
     """
     Create all resources for the GitHub Actions runner manager.
@@ -258,6 +271,7 @@ def create_runner_manager_resources(
         webhook_secret: The webhook secret for signature verification.
         pat_secret: The GitHub PAT secret for API calls.
         runner_names: List of Pulumi Output VM names for the runner manager to track.
+        runner_service_account: The SA that runner VMs run as (for IAM binding).
 
     Returns:
         dict: Dictionary of all created resources.
@@ -271,6 +285,7 @@ def create_runner_manager_resources(
         function_sa,
         webhook_secret,
         pat_secret,
+        runner_service_account,
     )
 
     # Create source storage bucket and archive
