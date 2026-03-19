@@ -2123,6 +2123,34 @@ export const adminApi = {
     return handleResponse(response);
   },
 
+  async syncDisposableDomains(): Promise<SuccessResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/rate-limits/blocklists/sync`,
+      { method: 'POST', headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async addAllowlistedDomain(domain: string): Promise<SuccessResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/rate-limits/blocklists/allowlisted-domains`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ domain }),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  async removeAllowlistedDomain(domain: string): Promise<SuccessResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/rate-limits/blocklists/allowlisted-domains/${encodeURIComponent(domain)}`,
+      { method: 'DELETE', headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
   // YouTube Upload Queue
 
   async getYouTubeQueue(): Promise<YouTubeQueueListResponse> {
@@ -2909,9 +2937,13 @@ export interface YouTubeQueueListResponse {
 }
 
 export interface BlocklistsResponse {
-  disposable_domains: string[];
+  external_domains: string[];
+  manual_domains: string[];
+  allowlisted_domains: string[];
   blocked_emails: string[];
   blocked_ips: string[];
+  last_sync_at?: string;
+  last_sync_count?: number;
   updated_at?: string;
   updated_by?: string;
 }
