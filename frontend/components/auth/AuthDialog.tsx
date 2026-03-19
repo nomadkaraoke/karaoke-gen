@@ -107,7 +107,21 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
                   disabled={isLoading}
                 />
                 {displayError && (
-                  <p className="text-xs text-destructive mt-1">{displayError}</p>
+                  displayError === "disposable_email_not_allowed" ? (
+                    <div className="mt-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30 text-sm space-y-2">
+                      <p className="font-medium text-amber-400">We don&apos;t support disposable email addresses</p>
+                      <p className="text-muted-foreground">
+                        We&apos;d love to help you create karaoke videos! Please use your regular email
+                        address so we can send you a notification when your video is ready.
+                      </p>
+                      <p className="text-muted-foreground">
+                        We promise — no spam, no marketing emails, ever. We only email you about
+                        your karaoke videos.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-destructive mt-1">{displayError}</p>
+                  )
                 )}
               </div>
               <div className="flex flex-col gap-2">
