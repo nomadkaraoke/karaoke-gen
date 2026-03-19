@@ -23,7 +23,11 @@ Hourly Cloud Scheduler cron that queries for stale review jobs and takes two act
   - Made-for-you jobs (`made_for_you == True`) — admin-controlled, customer already paid via Stripe
   - Tenant/white-label jobs (`tenant_id` is non-empty) — B2B partners with different workflows
 - **Credits refunded regardless** of whether they were free (welcome) or purchased.
-- **No retroactive cleanup** — existing stale jobs will be handled manually.
+- **No retroactive cleanup** — existing stale jobs will be handled manually. (Note: the processor will naturally clean up old stale jobs on first run if they exist — "no retroactive" means no separate migration script.)
+- **`AWAITING_AUDIO_EDIT` excluded** — intentionally out of scope. Audio edit is a rare state (user uploaded audio needing trimming) with a different workflow. Can be added later if needed.
+- **Separate flag from idle reminder** — the existing 5-minute idle reminder system already sets `state_data.expiry_reminder_sent = True` on every job. The 24h expiry warning uses a distinct flag `expiry_reminder_sent` to avoid collision.
+- **`blocking_state_entered_at` resets on re-visit** — if a user opens and closes the review page, `blocking_state_entered_at` may be reset by `_schedule_idle_reminder()`. This is desirable: the user was recently active, so the clock should restart.
+- **Configurable thresholds** — `REVIEW_REMINDER_HOURS = 24` and `REVIEW_EXPIRY_HOURS = 48` as module-level constants for easy tuning.
 
 ## Architecture
 
@@ -45,7 +49,7 @@ Hourly Cloud Scheduler cron that queries for stale review jobs and takes two act
 
 - No new Firestore collections or indexes
 - No new Cloud Tasks queues
-- No model changes — reuses existing `state_data.blocking_state_entered_at` and `state_data.reminder_sent`
+- No model changes — reuses existing `state_data.blocking_state_entered_at`; adds `expiry_reminder_sent` and `expiry_reminder_sent_at` to `state_data` (no schema change needed, state_data is a flexible dict)
 - No new env vars or feature flags
 
 ## Detailed Design
@@ -65,15 +69,15 @@ async def process_stale_reviews() -> dict:
     #    a. Skip if made_for_you == True
     #    b. Skip if tenant_id is non-empty
     #    c. Skip if no blocking_state_entered_at in state_data
-    #    d. Calculate hours_since_review = now - blocking_state_entered_at
-    #    e. If hours_since_review >= 48:
+    #    d. Parse blocking_state_entered_at (naive UTC ISO string) to datetime
+    #    e. Calculate hours_since_review = now_utc - blocking_state_entered_at
+    #    f. If hours_since_review >= REVIEW_EXPIRY_HOURS (48):
     #         - cancel_job(job_id, reason="Review not completed within 48 hours")
     #         - Send expiry notification email with refund confirmation
-    #         - Log to job timeline
-    #    f. Elif hours_since_review >= 24 and not reminder_sent:
+    #    g. Elif hours_since_review >= REVIEW_REMINDER_HOURS (24) and not expiry_reminder_sent:
     #         - Send reminder email with review link and help offer
-    #         - Update state_data: reminder_sent=True, reminder_sent_at=now
-    #         - Log to job timeline
+    #         - Update state_data: expiry_reminder_sent=True, expiry_reminder_sent_at=now
+    #    Note: blocking_state_entered_at is stored as naive UTC ISO string (datetime.utcnow().isoformat())
     # 3. Return summary
 ```
 
@@ -155,8 +159,9 @@ stale_review_scheduler = cloudscheduler.Job(
 ### Unit Tests (`backend/tests/test_stale_review_processor.py`)
 - Job >48h with no reminder → expires + refunds + sends expiry email
 - Job >48h with reminder already sent → expires (doesn't send duplicate reminder)
-- Job 24-48h with no reminder → sends reminder, sets reminder_sent=True
-- Job 24-48h with reminder already sent → skips (no duplicate)
+- Job 24-48h with no reminder → sends reminder, sets expiry_reminder_sent=True
+- Job 24-48h with expiry_reminder already sent → skips (no duplicate)
+- Job 24-48h with idle reminder_sent=True but expiry_reminder_sent=False → still sends 24h reminder (flags are independent)
 - Job <24h → no action
 - Made-for-you job >48h → skipped
 - Tenant job >48h → skipped
@@ -196,7 +201,7 @@ process_stale_reviews()
   │   │
   │   └─ Age >= 24h (reminder not sent):
   │       ├─ send_review_reminder() email
-  │       └─ Update state_data.reminder_sent = True
+  │       └─ Update state_data.expiry_reminder_sent = True
   │
   └─ Return {reminders_sent, jobs_expired, errors}
 ```
