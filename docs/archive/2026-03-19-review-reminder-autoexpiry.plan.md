@@ -25,7 +25,7 @@ Hourly Cloud Scheduler cron that queries for stale review jobs and takes two act
 - **Credits refunded regardless** of whether they were free (welcome) or purchased.
 - **No retroactive cleanup** — existing stale jobs will be handled manually. (Note: the processor will naturally clean up old stale jobs on first run if they exist — "no retroactive" means no separate migration script.)
 - **`AWAITING_AUDIO_EDIT` excluded** — intentionally out of scope. Audio edit is a rare state (user uploaded audio needing trimming) with a different workflow. Can be added later if needed.
-- **Separate flag from idle reminder** — the existing 5-minute idle reminder system already sets `state_data.expiry_reminder_sent = True` on every job. The 24h expiry warning uses a distinct flag `expiry_reminder_sent` to avoid collision.
+- **Separate flag from idle reminder** — the existing 5-minute idle reminder system already sets `state_data.reminder_sent = True` on every job. The 24h expiry warning uses a distinct flag `state_data.expiry_reminder_sent` to avoid collision.
 - **`blocking_state_entered_at` resets on re-visit** — if a user opens and closes the review page, `blocking_state_entered_at` may be reset by `_schedule_idle_reminder()`. This is desirable: the user was recently active, so the clock should restart.
 - **Configurable thresholds** — `REVIEW_REMINDER_HOURS = 24` and `REVIEW_EXPIRY_HOURS = 48` as module-level constants for easy tuning.
 

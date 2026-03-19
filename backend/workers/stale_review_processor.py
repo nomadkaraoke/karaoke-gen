@@ -8,7 +8,7 @@ Detects jobs stuck in review (awaiting_review / in_review) and takes action:
 Called by Cloud Scheduler via an internal endpoint (hourly).
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from backend.models.job import JobStatus
@@ -66,7 +66,7 @@ async def process_stale_reviews() -> Dict[str, Any]:
 
     logger.info(f"Found {len(stale_jobs)} jobs in review states, checking for stale ones")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     for job in stale_jobs:
         try:
@@ -84,9 +84,11 @@ async def process_stale_reviews() -> Dict[str, Any]:
             if not blocking_entered_at_str:
                 continue
 
-            # Parse the naive UTC ISO string
+            # Parse the naive UTC ISO string and make it timezone-aware
             try:
                 blocking_entered_at = datetime.fromisoformat(blocking_entered_at_str)
+                if blocking_entered_at.tzinfo is None:
+                    blocking_entered_at = blocking_entered_at.replace(tzinfo=timezone.utc)
             except (ValueError, TypeError):
                 logger.warning(
                     f"Job {job.job_id}: invalid blocking_state_entered_at: {blocking_entered_at_str}"
@@ -157,7 +159,7 @@ async def process_stale_reviews() -> Dict[str, Any]:
                 try:
                     firestore.update_job(job.job_id, {
                         'state_data.expiry_reminder_sent': True,
-                        'state_data.expiry_reminder_sent_at': datetime.utcnow().isoformat(),
+                        'state_data.expiry_reminder_sent_at': datetime.now(timezone.utc).isoformat(),
                     })
                 except Exception as update_err:
                     logger.error(

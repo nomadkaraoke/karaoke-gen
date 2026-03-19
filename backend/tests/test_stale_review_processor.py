@@ -6,7 +6,7 @@ and auto-expiring jobs that exceed the 48h threshold.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, MagicMock, patch
 
 # Mock Google Cloud before imports
@@ -40,7 +40,7 @@ def _make_job(
     job.tenant_id = tenant_id
 
     if has_blocking_state:
-        entered_at = (datetime.utcnow() - timedelta(hours=hours_ago)).isoformat()
+        entered_at = (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).isoformat()
         job.state_data = {
             'blocking_state_entered_at': entered_at,
             'blocking_action_type': 'lyrics',

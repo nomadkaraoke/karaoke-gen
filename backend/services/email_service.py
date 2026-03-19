@@ -1006,7 +1006,7 @@ Get started: {self.frontend_url}
         song_info = f" — {artist} - {title}" if artist and title else ""
         subject = f"Reminder: Your karaoke video is waiting for review{song_info}"
 
-        review_url = f"{self.frontend_url}/app/jobs#{job_id}/review" if job_id else f"{self.frontend_url}/app"
+        review_url = f"{self.frontend_url}/app/jobs#/{job_id}/review" if job_id else f"{self.frontend_url}/app"
 
         extra_styles = """
         .alert {

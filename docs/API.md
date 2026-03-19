@@ -1749,7 +1749,7 @@ Called by Cloud Scheduler hourly. Processes queued uploads while quota is availa
 ```http
 POST /api/internal/process-stale-reviews
 ```
-Called by Cloud Scheduler hourly. Queries for jobs in `awaiting_review` or `in_review` status, sends reminder emails at 24h, and auto-cancels with credit refund at 48h. Excludes made-for-you and tenant jobs. Returns `{status, reminders_sent, jobs_expired, errors}`.
+Called by Cloud Scheduler hourly. Queries for jobs in `awaiting_review` or `in_review` status, sends reminder emails at 24h, and auto-cancels with credit refund at 48h. Excludes made-for-you and tenant jobs. Returns `{status: "started", message: "..."}` immediately; processing runs in background.
 
 ## Webhooks
 
