@@ -303,6 +303,30 @@ youtube_queue_scheduler = cloudscheduler.Job(
     ),
 )
 
+# ==================== Stale Review Processor ====================
+
+# Cloud Scheduler job to send review reminders and expire stale review jobs
+stale_review_scheduler = cloudscheduler.Job(
+    "stale-review-scheduler",
+    name="stale-review-hourly",
+    description="Send review reminders and expire stale review jobs",
+    region=REGION,
+    schedule="0 * * * *",  # Every hour on the hour
+    time_zone="America/Los_Angeles",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/process-stale-reviews",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Stuck Job Recovery ====================
 
 # Cloud Scheduler job to detect and recover stuck audio downloads
