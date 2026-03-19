@@ -34,6 +34,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Shield,
+  X,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -52,6 +54,10 @@ export default function AdminRateLimitsPage() {
   const [searchDomain, setSearchDomain] = useState("")
   const [searchEmail, setSearchEmail] = useState("")
   const [searchIP, setSearchIP] = useState("")
+  const [syncing, setSyncing] = useState(false)
+  const [newAllowlistDomain, setNewAllowlistDomain] = useState("")
+  const [searchAllowlist, setSearchAllowlist] = useState("")
+  const [searchExternalDomain, setSearchExternalDomain] = useState("")
 
   const loadData = async () => {
     try {
@@ -95,6 +101,51 @@ export default function AdminRateLimitsPage() {
     try {
       await adminApi.removeDisposableDomain(domain)
       toast({ title: "Success", description: `Domain "${domain}" removed from blocklist` })
+      loadData()
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    }
+  }
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true)
+      const result = await adminApi.syncDisposableDomains()
+      toast({ title: "Success", description: result.message })
+      loadData()
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleRemoveExternalDomain = async (domain: string) => {
+    try {
+      await adminApi.addAllowlistedDomain(domain)
+      toast({ title: "Success", description: `Domain "${domain}" added to allowlist` })
+      loadData()
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    }
+  }
+
+  const handleAddAllowlist = async () => {
+    if (!newAllowlistDomain.trim()) return
+    try {
+      await adminApi.addAllowlistedDomain(newAllowlistDomain.trim())
+      toast({ title: "Success", description: `Domain "${newAllowlistDomain}" added to allowlist` })
+      setNewAllowlistDomain("")
+      loadData()
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    }
+  }
+
+  const handleRemoveAllowlist = async (domain: string) => {
+    try {
+      await adminApi.removeAllowlistedDomain(domain)
+      toast({ title: "Success", description: `Domain "${domain}" removed from allowlist` })
       loadData()
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
@@ -184,11 +235,19 @@ export default function AdminRateLimitsPage() {
   }
 
   // Filter functions
-  const filteredDomains = blocklists?.disposable_domains.filter(d =>
+  const filteredExternalDomains = blocklists?.external_domains?.filter(d =>
+    d.toLowerCase().includes(searchExternalDomain.toLowerCase())
+  ) || []
+
+  const filteredManualDomains = blocklists?.manual_domains?.filter(d =>
     d.toLowerCase().includes(searchDomain.toLowerCase())
   ) || []
 
-  const filteredEmails = blocklists?.blocked_emails.filter(e =>
+  const filteredAllowlisted = blocklists?.allowlisted_domains?.filter(d =>
+    d.toLowerCase().includes(searchAllowlist.toLowerCase())
+  ) || []
+
+  const filteredEmails = blocklists?.blocked_emails?.filter(e =>
     e.toLowerCase().includes(searchEmail.toLowerCase())
   ) || []
 
@@ -350,15 +409,89 @@ export default function AdminRateLimitsPage() {
 
         {/* Blocklists Tab */}
         <TabsContent value="blocklists" className="space-y-6">
-          {/* Disposable Domains */}
+          {/* Sync Status */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    Disposable Email Domains
+                  </CardTitle>
+                  <CardDescription>
+                    {blocklists?.last_sync_at
+                      ? `Last synced ${formatDate(blocklists.last_sync_at)} — ${blocklists.last_sync_count?.toLocaleString() || 0} external domains`
+                      : "Never synced"}
+                  </CardDescription>
+                </div>
+                <Button onClick={handleSync} disabled={syncing} variant="outline">
+                  {syncing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Sync Now
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* External Domains */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="w-5 h-5" />
-                Disposable Email Domains
+                External Domains
+                <Badge variant="secondary" className="ml-1">{blocklists?.external_domains?.length || 0}</Badge>
               </CardTitle>
               <CardDescription>
-                Blocked disposable email domains ({filteredDomains.length} of {blocklists?.disposable_domains.length || 0})
+                Domains from the external disposable email list. Remove a domain to add it to the allowlist.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search external domains..."
+                  value={searchExternalDomain}
+                  onChange={(e) => setSearchExternalDomain(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto border rounded-md">
+                <div className="flex flex-wrap gap-2 p-3">
+                  {filteredExternalDomains.slice(0, 200).map((domain) => (
+                    <Badge key={domain} variant="outline" className="flex items-center gap-1">
+                      {domain}
+                      <button
+                        onClick={() => handleRemoveExternalDomain(domain)}
+                        className="ml-1 hover:text-destructive cursor-pointer"
+                        title="Add to allowlist"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {filteredExternalDomains.length > 200 && (
+                    <span className="text-muted-foreground text-sm">
+                      +{filteredExternalDomains.length - 200} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Manual Domains */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                Manual Domains
+                <Badge variant="secondary" className="ml-1">{blocklists?.manual_domains?.length || 0}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Manually added disposable email domains.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -366,7 +499,7 @@ export default function AdminRateLimitsPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search domains..."
+                    placeholder="Search manual domains..."
                     value={searchDomain}
                     onChange={(e) => setSearchDomain(e.target.value)}
                     className="pl-9"
@@ -384,27 +517,88 @@ export default function AdminRateLimitsPage() {
                   Add
                 </Button>
               </div>
-              <div className="max-h-64 overflow-y-auto border rounded-md">
-                <div className="flex flex-wrap gap-2 p-3">
-                  {filteredDomains.slice(0, 100).map((domain) => (
-                    <Badge key={domain} variant="secondary" className="flex items-center gap-1">
-                      {domain}
-                      <button
-                        onClick={() => handleRemoveDomain(domain)}
-                        className="ml-1 hover:text-destructive cursor-pointer"
-                        title="Remove domain"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                  {filteredDomains.length > 100 && (
-                    <span className="text-muted-foreground text-sm">
-                      +{filteredDomains.length - 100} more
-                    </span>
-                  )}
+              {filteredManualDomains.length === 0 ? (
+                <p className="text-muted-foreground text-sm py-4 text-center">
+                  No manual domains
+                </p>
+              ) : (
+                <div className="max-h-64 overflow-y-auto border rounded-md">
+                  <div className="flex flex-wrap gap-2 p-3">
+                    {filteredManualDomains.map((domain) => (
+                      <Badge key={domain} variant="secondary" className="flex items-center gap-1">
+                        {domain}
+                        <button
+                          onClick={() => handleRemoveDomain(domain)}
+                          className="ml-1 hover:text-destructive cursor-pointer"
+                          title="Remove domain"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Allowlisted Domains */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Allowlisted Domains
+                <Badge variant="secondary" className="ml-1">{blocklists?.allowlisted_domains?.length || 0}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Domains that override the external blocklist. These domains will not be blocked.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search allowlisted domains..."
+                    value={searchAllowlist}
+                    onChange={(e) => setSearchAllowlist(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Input
+                  placeholder="Add domain to allowlist"
+                  value={newAllowlistDomain}
+                  onChange={(e) => setNewAllowlistDomain(e.target.value)}
+                  className="w-64"
+                  onKeyDown={(e) => e.key === "Enter" && handleAddAllowlist()}
+                />
+                <Button onClick={handleAddAllowlist} disabled={!newAllowlistDomain.trim()}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add
+                </Button>
               </div>
+              {filteredAllowlisted.length === 0 ? (
+                <p className="text-muted-foreground text-sm py-4 text-center">
+                  No allowlisted domains
+                </p>
+              ) : (
+                <div className="max-h-64 overflow-y-auto border rounded-md">
+                  <div className="flex flex-wrap gap-2 p-3">
+                    {filteredAllowlisted.map((domain) => (
+                      <Badge key={domain} variant="default" className="flex items-center gap-1 bg-green-600">
+                        {domain}
+                        <button
+                          onClick={() => handleRemoveAllowlist(domain)}
+                          className="ml-1 hover:text-white cursor-pointer"
+                          title="Remove from allowlist"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
