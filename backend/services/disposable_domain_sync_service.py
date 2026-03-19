@@ -10,7 +10,11 @@ from typing import Set
 
 import httpx
 
-from backend.services.email_validation_service import DEFAULT_DISPOSABLE_DOMAINS
+from backend.services.email_validation_service import (
+    BLOCKLISTS_COLLECTION,
+    BLOCKLIST_CONFIG_DOC,
+    DEFAULT_DISPOSABLE_DOMAINS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +25,6 @@ EXTERNAL_BLOCKLIST_URL = (
 FETCH_TIMEOUT_SECONDS = 30
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024  # 2 MB
 MAX_DOMAIN_COUNT = 50_000
-
-BLOCKLISTS_COLLECTION = "blocklists"
-BLOCKLIST_CONFIG_DOC = "config"
 
 
 def parse_blocklist_text(text: str) -> Set[str]:
@@ -39,8 +40,7 @@ def parse_blocklist_text(text: str) -> Set[str]:
 async def fetch_external_blocklist() -> Set[str]:
     """Fetch the external disposable domain blocklist from GitHub.
 
-    Uses streaming to check Content-Length before reading the full body.
-    Falls back to reading with a size cap if Content-Length is absent.
+    Checks Content-Length header and response body size against safety limits.
     """
     async with httpx.AsyncClient(timeout=FETCH_TIMEOUT_SECONDS) as client:
         response = await client.get(EXTERNAL_BLOCKLIST_URL)
@@ -95,16 +95,14 @@ def sync_disposable_domains(db, external_domains: Set[str]) -> dict:
         result["migrated_to_manual"] = sorted(manual_only)
 
         new_data = {
+            **data,  # preserve all existing fields
             "external_domains": sorted(external_domains),
             "manual_domains": sorted(manual_only),
             "allowlisted_domains": data.get("allowlisted_domains", []),
-            "blocked_emails": data.get("blocked_emails", []),
-            "blocked_ips": data.get("blocked_ips", []),
             "last_sync_at": datetime.now(timezone.utc),
             "last_sync_count": len(external_domains),
-            "updated_at": data.get("updated_at"),
-            "updated_by": data.get("updated_by"),
         }
+        new_data.pop("disposable_domains", None)  # remove legacy field
         doc_ref.set(new_data)
     else:
         old_external = set(data.get("external_domains", []))

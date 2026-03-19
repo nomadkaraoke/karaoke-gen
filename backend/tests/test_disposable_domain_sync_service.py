@@ -37,7 +37,7 @@ class TestFetchExternalBlocklist:
         from backend.services.disposable_domain_sync_service import fetch_external_blocklist
         from unittest.mock import AsyncMock, patch
 
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.text = "tempmail.com\nmailinator.com\n"
         mock_response.headers = {"content-length": "30"}
@@ -58,7 +58,7 @@ class TestFetchExternalBlocklist:
         from unittest.mock import AsyncMock, patch
 
         fake_text = "\n".join(f"domain{i}.com" for i in range(50_001))
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.text = fake_text
         mock_response.headers = {"content-length": str(len(fake_text))}
@@ -78,9 +78,9 @@ class TestFetchExternalBlocklist:
         from backend.services.disposable_domain_sync_service import fetch_external_blocklist
         from unittest.mock import AsyncMock, patch
 
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 500
-        mock_response.raise_for_status = AsyncMock(side_effect=Exception("Server Error"))
+        mock_response.raise_for_status = MagicMock(side_effect=Exception("Server Error"))
 
         with patch("backend.services.disposable_domain_sync_service.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
