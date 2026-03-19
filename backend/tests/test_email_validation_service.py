@@ -111,10 +111,17 @@ class TestDisposableDomainDetection:
 
     @pytest.fixture
     def mock_db(self):
-        """Create a mock Firestore client."""
+        """Create a mock Firestore client with new data model."""
         mock = MagicMock()
         mock_doc = Mock()
-        mock_doc.exists = False
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "external_domains": ["tempmail.com", "mailinator.com", "guerrillamail.com"],
+            "manual_domains": [],
+            "allowlisted_domains": [],
+            "blocked_emails": [],
+            "blocked_ips": [],
+        }
         mock.collection.return_value.document.return_value.get.return_value = mock_doc
         return mock
 
@@ -130,7 +137,6 @@ class TestDisposableDomainDetection:
 
     def test_detect_known_disposable_domain(self, email_service):
         """Test known disposable domains are detected."""
-        # These are in DEFAULT_DISPOSABLE_DOMAINS
         assert email_service.is_disposable_domain("user@tempmail.com") is True
         assert email_service.is_disposable_domain("user@mailinator.com") is True
         assert email_service.is_disposable_domain("user@guerrillamail.com") is True
