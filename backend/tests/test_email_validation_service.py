@@ -209,6 +209,188 @@ class TestBlocklistManagement:
         assert mock_db.collection.return_value.document.return_value.get.call_count == 1
 
 
+class TestEffectiveBlocklist:
+    """Test effective blocklist computation with new data model."""
+
+    @pytest.fixture
+    def mock_db(self):
+        mock = MagicMock()
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "external_domains": ["tempmail.com", "mailinator.com", "allowed-one.com"],
+            "manual_domains": ["my-custom.com"],
+            "allowlisted_domains": ["allowed-one.com"],
+            "blocked_emails": ["bad@example.com"],
+            "blocked_ips": ["1.2.3.4"],
+        }
+        mock.collection.return_value.document.return_value.get.return_value = mock_doc
+        return mock
+
+    @pytest.fixture
+    def email_service(self, mock_db):
+        from backend.services.email_validation_service import EmailValidationService
+        EmailValidationService._blocklist_cache = None
+        EmailValidationService._blocklist_cache_time = None
+        return EmailValidationService(db=mock_db)
+
+    def test_effective_set_excludes_allowlisted(self, email_service):
+        config = email_service.get_blocklist_config()
+        assert "tempmail.com" in config["disposable_domains"]
+        assert "mailinator.com" in config["disposable_domains"]
+        assert "my-custom.com" in config["disposable_domains"]
+        assert "allowed-one.com" not in config["disposable_domains"]
+
+    def test_allowlisted_domain_not_blocked(self, email_service):
+        assert email_service.is_disposable_domain("user@allowed-one.com") is False
+
+    def test_external_domain_blocked(self, email_service):
+        assert email_service.is_disposable_domain("user@tempmail.com") is True
+
+    def test_manual_domain_blocked(self, email_service):
+        assert email_service.is_disposable_domain("user@my-custom.com") is True
+
+
+class TestNewDataModelCRUD:
+    """Test CRUD operations with the new data model."""
+
+    @pytest.fixture
+    def mock_db(self):
+        mock = MagicMock()
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "external_domains": ["tempmail.com", "mailinator.com"],
+            "manual_domains": ["my-custom.com"],
+            "allowlisted_domains": [],
+            "blocked_emails": [],
+            "blocked_ips": [],
+        }
+        mock.collection.return_value.document.return_value.get.return_value = mock_doc
+        return mock
+
+    @pytest.fixture
+    def email_service(self, mock_db):
+        from backend.services.email_validation_service import EmailValidationService
+        EmailValidationService._blocklist_cache = None
+        EmailValidationService._blocklist_cache_time = None
+        return EmailValidationService(db=mock_db)
+
+    def test_add_disposable_domain_writes_to_manual(self, email_service, mock_db):
+        """Test add_disposable_domain writes to manual_domains field."""
+        email_service.add_disposable_domain("new-spam.com", "admin@test.com")
+        # Get the transaction set call args
+        transaction = mock_db.transaction.return_value
+        set_call = transaction.set
+        assert set_call.called
+        data = set_call.call_args[0][1]
+        assert "new-spam.com" in data["manual_domains"]
+        assert "my-custom.com" in data["manual_domains"]
+
+    def test_remove_disposable_domain_manual(self, email_service, mock_db):
+        """Test removing a manual domain removes from manual_domains."""
+        email_service.remove_disposable_domain("my-custom.com", "admin@test.com")
+        transaction = mock_db.transaction.return_value
+        set_call = transaction.set
+        assert set_call.called
+        data = set_call.call_args[0][1]
+        assert "my-custom.com" not in data["manual_domains"]
+
+    def test_remove_disposable_domain_external_adds_to_allowlist(self, email_service, mock_db):
+        """Test removing an external domain adds it to allowlisted_domains."""
+        email_service.remove_disposable_domain("tempmail.com", "admin@test.com")
+        transaction = mock_db.transaction.return_value
+        set_call = transaction.set
+        assert set_call.called
+        data = set_call.call_args[0][1]
+        assert "tempmail.com" in data["allowlisted_domains"]
+        # external_domains should still contain it (not removed, just allowlisted)
+        assert "tempmail.com" in data["external_domains"]
+
+    def test_add_allowlisted_domain(self, email_service, mock_db):
+        """Test add_allowlisted_domain writes to allowlisted_domains field."""
+        email_service.add_allowlisted_domain("legit.com", "admin@test.com")
+        transaction = mock_db.transaction.return_value
+        set_call = transaction.set
+        assert set_call.called
+        data = set_call.call_args[0][1]
+        assert "legit.com" in data["allowlisted_domains"]
+
+    def test_remove_allowlisted_domain(self, email_service, mock_db):
+        """Test remove_allowlisted_domain removes from allowlisted_domains."""
+        # Set up mock with an existing allowlisted domain
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "external_domains": ["tempmail.com"],
+            "manual_domains": [],
+            "allowlisted_domains": ["legit.com"],
+            "blocked_emails": [],
+            "blocked_ips": [],
+        }
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        result = email_service.remove_allowlisted_domain("legit.com", "admin@test.com")
+        assert result is True
+        transaction = mock_db.transaction.return_value
+        set_call = transaction.set
+        assert set_call.called
+        data = set_call.call_args[0][1]
+        assert "legit.com" not in data["allowlisted_domains"]
+
+    def test_remove_allowlisted_domain_not_found(self, email_service, mock_db):
+        """Test remove_allowlisted_domain returns False when domain not found."""
+        result = email_service.remove_allowlisted_domain("nonexistent.com", "admin@test.com")
+        assert result is False
+
+    def test_get_blocklist_raw_data(self, email_service, mock_db):
+        """Test get_blocklist_raw_data returns all raw fields."""
+        from backend.services.email_validation_service import EmailValidationService
+        # Clear cache so it reads fresh
+        EmailValidationService._blocklist_cache = None
+        EmailValidationService._blocklist_cache_time = None
+
+        raw = email_service.get_blocklist_raw_data()
+        assert "external_domains" in raw
+        assert "manual_domains" in raw
+        assert "allowlisted_domains" in raw
+        assert "blocked_emails" in raw
+        assert "blocked_ips" in raw
+        assert "last_sync_at" in raw
+        assert "last_sync_count" in raw
+        assert "updated_at" in raw
+        assert "updated_by" in raw
+        # Check sorted
+        assert raw["external_domains"] == sorted(["tempmail.com", "mailinator.com"])
+        assert raw["manual_domains"] == ["my-custom.com"]
+
+    def test_get_blocklist_raw_data_no_doc(self, email_service, mock_db):
+        """Test get_blocklist_raw_data returns defaults when doc doesn't exist."""
+        mock_doc = Mock()
+        mock_doc.exists = False
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        raw = email_service.get_blocklist_raw_data()
+        assert raw["external_domains"] == []
+        assert raw["manual_domains"] == []
+        assert raw["allowlisted_domains"] == []
+        assert raw["last_sync_at"] is None
+
+    def test_get_blocklist_stats_new_model(self, email_service, mock_db):
+        """Test get_blocklist_stats returns counts for new data model fields."""
+        from backend.services.email_validation_service import EmailValidationService
+        EmailValidationService._blocklist_cache = None
+        EmailValidationService._blocklist_cache_time = None
+
+        stats = email_service.get_blocklist_stats()
+        assert stats["external_domains_count"] == 2
+        assert stats["manual_domains_count"] == 1
+        assert stats["allowlisted_domains_count"] == 0
+        assert stats["disposable_domains_count"] == 3  # 2 external + 1 manual - 0 allowlisted
+        assert stats["blocked_emails_count"] == 0
+        assert stats["blocked_ips_count"] == 0
+
+
 class TestIPHashing:
     """Test IP address hashing."""
 
