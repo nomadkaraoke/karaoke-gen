@@ -48,7 +48,7 @@ async def process_stale_reviews() -> Dict[str, Any]:
     stale_jobs = []
     for status in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         try:
-            jobs = firestore.get_jobs(status=status, limit=500)
+            jobs = firestore.list_jobs(status=status, limit=500)
             stale_jobs.extend(jobs)
         except Exception as e:
             error_msg = f"Failed to query jobs with status {status.value}: {e}"
