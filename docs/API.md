@@ -1713,12 +1713,16 @@ Job creation is controlled by credits (purchased or earned via feedback). There 
 GET /api/admin/rate-limits/blocklists
 POST /api/admin/rate-limits/blocklists/disposable-domains
 DELETE /api/admin/rate-limits/blocklists/disposable-domains/{domain}
+POST /api/admin/rate-limits/blocklists/allowlisted-domains
+DELETE /api/admin/rate-limits/blocklists/allowlisted-domains/{domain}
+POST /api/admin/rate-limits/blocklists/sync
 POST /api/admin/rate-limits/blocklists/blocked-emails
 DELETE /api/admin/rate-limits/blocklists/blocked-emails/{email}
 POST /api/admin/rate-limits/blocklists/blocked-ips
 DELETE /api/admin/rate-limits/blocklists/blocked-ips/{ip}
+POST /api/internal/sync-disposable-domains
 ```
-Manage blocklists for disposable email domains, blocked emails, and blocked IPs.
+Manage blocklists for disposable email domains, blocked emails, and blocked IPs. The disposable domain list auto-syncs daily from the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) repo (~4,800 domains). Admins can add manual domains, and allowlist false positives. The `GET` response includes `external_domains`, `manual_domains`, `allowlisted_domains`, `last_sync_at`, and `last_sync_count`.
 
 ### YouTube Upload Queue
 
