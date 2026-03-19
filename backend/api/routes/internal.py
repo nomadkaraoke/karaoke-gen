@@ -480,6 +480,44 @@ async def process_youtube_upload_queue(
     }
 
 
+@router.post("/process-stale-reviews")
+async def process_stale_reviews_endpoint(
+    http_request: Request,
+    background_tasks: BackgroundTasks,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """
+    Process stale review jobs — send reminders and expire old ones.
+
+    Called by Cloud Scheduler (hourly). Can also be triggered manually
+    from the admin dashboard.
+
+    - Jobs in review for >= 24h get a reminder email
+    - Jobs in review for >= 48h are auto-cancelled with credit refund
+    """
+    from backend.workers.stale_review_processor import process_stale_reviews
+
+    trace_context = extract_trace_context(dict(http_request.headers))
+
+    logger.info("STALE_REVIEW_PROCESS starting")
+    add_span_attribute("operation", "stale_review_process")
+
+    async def _process():
+        try:
+            result = await process_stale_reviews()
+            logger.info(f"STALE_REVIEW_PROCESS complete: {result}")
+        except Exception as e:
+            logger.exception(f"STALE_REVIEW_PROCESS failed: {e}")
+
+    background_tasks.add_task(_process)
+
+    add_span_event("stale_review_processing_started")
+    return {
+        "status": "started",
+        "message": "Stale review processing started in background"
+    }
+
+
 @router.post("/trigger-gdrive-validation")
 async def trigger_gdrive_validation_endpoint(
     http_request: Request,
