@@ -161,6 +161,8 @@ DEFAULT_DISPOSABLE_DOMAINS = {
     "yuurok.com",
     "zehnminutenmail.de",
     "zippymail.info",
+    # Newer disposable services
+    "emailhook.site",
     # Additional common ones
     "mailnator.com",
     "bugmenot.com",

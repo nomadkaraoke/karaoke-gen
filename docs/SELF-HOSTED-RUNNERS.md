@@ -165,6 +165,14 @@ The initial runner manager implementation had several bugs that prevented idle s
 
 **Fix:** Only update the specific runner identified by `runner_name` in the webhook payload. Removed the `in_progress` handler entirely.
 
+### Bug 8: Flaky "docker: command not found" (Exit Code 127)
+
+**Problem:** Backend Emulator Integration Tests intermittently failed with `docker: command not found` (exit code 127). Re-running the job always succeeded. Root cause: When a stopped VM restarts, the GHA runner systemd service (installed via `svc.sh install` on a previous boot) auto-starts immediately, accepting CI jobs before the GCE startup script has finished setting up Docker and other dependencies.
+
+**Fix (two-part):**
+1. **Startup script:** Stop the runner service at the very top of the script, before any package installations, preventing premature job acceptance.
+2. **CI workflow:** Added a Docker readiness check step with 60-second retry loop in `backend-emulator-tests`, providing defense-in-depth.
+
 ## Troubleshooting
 
 ### Runners Not Starting

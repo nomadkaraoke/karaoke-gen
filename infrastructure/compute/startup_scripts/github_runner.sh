@@ -7,6 +7,16 @@
 exec > >(tee /var/log/github-runner-startup.log) 2>&1
 echo "Starting GitHub Actions runner setup at $(date)"
 
+# ==================== Stop existing runner service FIRST ====================
+# CRITICAL: The runner service from a previous boot auto-starts via systemd,
+# which means it can accept CI jobs before Docker/Python/Java are ready.
+# Stop it immediately to prevent flaky "docker: command not found" errors.
+RUNNER_DIR="/home/runner/actions-runner"
+if [ -f "$RUNNER_DIR/svc.sh" ]; then
+    echo "Stopping existing runner service to prevent premature job acceptance..."
+    (cd "$RUNNER_DIR" && ./svc.sh stop 2>/dev/null) || true
+fi
+
 # ==================== Network ====================
 # Force apt to use IPv4 only — Cloud NAT doesn't support IPv6
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4

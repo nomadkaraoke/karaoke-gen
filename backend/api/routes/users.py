@@ -34,6 +34,7 @@ def _mask_email(email: str) -> str:
 from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from pydantic import BaseModel, EmailStr
 
+from backend.services.email_validation_service import get_email_validation_service
 from backend.models.user import (
     UserRole,
     UserPublic,
@@ -147,6 +148,34 @@ async def send_magic_link(
     """
     from backend.middleware.tenant import get_tenant_from_request, get_tenant_config_from_request
 
+    email = request.email.lower()
+
+    # Check for disposable email domains, blocked emails, and blocked IPs
+    # (done before email service check so we can reject without needing email config)
+    email_validation = get_email_validation_service()
+
+    if email_validation.is_disposable_domain(email):
+        logger.warning(f"Blocked disposable email signup attempt: {_mask_email(email)}")
+        raise HTTPException(
+            status_code=422,
+            detail="disposable_email_not_allowed"
+        )
+
+    if email_validation.is_email_blocked(email):
+        logger.warning(f"Blocked email signup attempt: {_mask_email(email)}")
+        return SendMagicLinkResponse(
+            status="success",
+            message="If this email is registered, you will receive a sign-in link shortly."
+        )
+
+    ip_address = http_request.client.host if http_request.client else None
+    if ip_address and email_validation.is_ip_blocked(ip_address):
+        logger.warning(f"Blocked IP signup attempt: {ip_address}")
+        return SendMagicLinkResponse(
+            status="success",
+            message="If this email is registered, you will receive a sign-in link shortly."
+        )
+
     # Check if email service is configured
     if not email_service.is_configured():
         logger.error("Email service not configured - cannot send magic links")
@@ -154,8 +183,6 @@ async def send_magic_link(
             status_code=503,
             detail="Email service is not available. Please contact support."
         )
-
-    email = request.email.lower()
 
     # Get tenant context from middleware
     tenant_id = get_tenant_from_request(http_request)
@@ -171,8 +198,7 @@ async def send_magic_link(
                 message="If this email is registered, you will receive a sign-in link shortly."
             )
 
-    # Get client info for security logging
-    ip_address = http_request.client.host if http_request.client else None
+    # Get client info for security logging (ip_address already extracted above for blocklist check)
     user_agent = http_request.headers.get("user-agent")
 
     # Create magic link token with tenant context

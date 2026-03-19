@@ -628,7 +628,24 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Start Docker for GCS emulator
+      - name: Wait for Docker to be available
+        run: |
+          # Self-hosted runners may still be initializing Docker on boot.
+          # Wait up to 60s for the docker command and daemon to be ready.
+          for i in $(seq 1 12); do
+            if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+              echo "Docker is ready"
+              exit 0
+            fi
+            echo "Waiting for Docker... (attempt $i/12)"
+            sleep 5
+          done
+          echo "ERROR: Docker not available after 60s"
+          echo "PATH=$PATH"
+          which docker 2>&1 || echo "docker binary not found"
+          exit 1
+
+      - name: Pull GCS emulator image
         run: docker pull fsouza/fake-gcs-server:latest
 
       - name: Run emulator integration tests
