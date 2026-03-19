@@ -225,6 +225,38 @@ describe('AuthDialog', () => {
     })
   })
 
+  it('shows friendly message when disposable email is rejected', async () => {
+    const mockSendMagicLink = jest.fn().mockResolvedValue(false)
+    mockUseAuth.mockReturnValue({
+      sendMagicLink: mockSendMagicLink,
+      loginWithToken: jest.fn(),
+      isLoading: false,
+      error: 'disposable_email_not_allowed',
+      clearError: jest.fn(),
+    })
+    render(<AuthDialog open={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />)
+
+    // Should show the friendly disposable email message
+    expect(screen.getByText(/don't support disposable email/i)).toBeInTheDocument()
+    expect(screen.getByText(/no spam, no marketing emails/i)).toBeInTheDocument()
+    expect(screen.getByText(/your regular email/i)).toBeInTheDocument()
+  })
+
+  it('shows generic error for non-disposable errors', () => {
+    mockUseAuth.mockReturnValue({
+      sendMagicLink: jest.fn(),
+      loginWithToken: jest.fn(),
+      isLoading: false,
+      error: 'Something went wrong',
+      clearError: jest.fn(),
+    })
+    render(<AuthDialog open={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />)
+
+    // Should show generic error text, not the disposable email message
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.queryByText(/don't support disposable email/i)).not.toBeInTheDocument()
+  })
+
   it('shows email sent step after successful magic link send', async () => {
     const mockSendMagicLink = jest.fn().mockResolvedValue(true)
     mockUseAuth.mockReturnValue({
