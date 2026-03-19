@@ -96,15 +96,11 @@ class TestDisposableEmailBlocking:
 
 
 class TestDisposableDomainList:
-    """Verify key domains are in the default blocklist."""
+    """Verify DEFAULT_DISPOSABLE_DOMAINS is now empty (replaced by external sync)."""
 
-    def test_yopmail_in_defaults(self):
+    def test_defaults_empty_after_migration(self):
         from backend.services.email_validation_service import DEFAULT_DISPOSABLE_DOMAINS
-        assert "yopmail.com" in DEFAULT_DISPOSABLE_DOMAINS
-
-    def test_emailhook_in_defaults(self):
-        from backend.services.email_validation_service import DEFAULT_DISPOSABLE_DOMAINS
-        assert "emailhook.site" in DEFAULT_DISPOSABLE_DOMAINS
+        assert len(DEFAULT_DISPOSABLE_DOMAINS) == 0
 
     def test_gmail_not_in_defaults(self):
         from backend.services.email_validation_service import DEFAULT_DISPOSABLE_DOMAINS
