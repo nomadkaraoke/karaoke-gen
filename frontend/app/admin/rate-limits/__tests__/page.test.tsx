@@ -22,6 +22,9 @@ jest.mock("@/lib/api", () => ({
     removeBlockedEmail: jest.fn(),
     addBlockedIP: jest.fn(),
     removeBlockedIP: jest.fn(),
+    syncDisposableDomains: jest.fn(),
+    addAllowlistedDomain: jest.fn(),
+    removeAllowlistedDomain: jest.fn(),
     getYouTubeQueue: jest.fn(),
     retryYouTubeUpload: jest.fn(),
     processYouTubeQueue: jest.fn(),
@@ -41,11 +44,15 @@ import { adminApi } from "@/lib/api"
 
 const mockAdminApi = adminApi as jest.Mocked<typeof adminApi>
 
-// Mock data
+// Mock data — new data model with external/manual/allowlisted
 const mockBlocklists = {
-  disposable_domains: ["tempmail.com", "mailinator.com", "guerrillamail.com"],
+  external_domains: ["tempmail.com", "mailinator.com", "guerrillamail.com"],
+  manual_domains: ["custom-spam.com"],
+  allowlisted_domains: ["false-positive.com"],
   blocked_emails: ["spammer@example.com", "abuse@test.com"],
   blocked_ips: ["192.168.1.100"],
+  last_sync_at: "2025-01-09T10:00:00Z",
+  last_sync_count: 4800,
   updated_at: "2025-01-09T10:00:00Z",
   updated_by: "admin@nomadkaraoke.com",
 }
@@ -138,7 +145,7 @@ describe("AdminRateLimitsPage", () => {
   })
 
   describe("Blocklists Tab", () => {
-    it("displays disposable domains list", async () => {
+    it("displays external domains", async () => {
       const user = userEvent.setup()
       render(<AdminRateLimitsPage />)
 
@@ -148,12 +155,12 @@ describe("AdminRateLimitsPage", () => {
 
       await user.click(screen.getByRole("tab", { name: /blocklists/i }))
 
-      // Should show domains
+      // Should show external domains
       expect(screen.getByText("tempmail.com")).toBeInTheDocument()
       expect(screen.getByText("mailinator.com")).toBeInTheDocument()
     })
 
-    it("filters domains by search", async () => {
+    it("displays manual domains", async () => {
       const user = userEvent.setup()
       render(<AdminRateLimitsPage />)
 
@@ -163,16 +170,28 @@ describe("AdminRateLimitsPage", () => {
 
       await user.click(screen.getByRole("tab", { name: /blocklists/i }))
 
-      // Type in search box
-      const searchInput = screen.getByPlaceholderText("Search domains...")
+      expect(screen.getByText("custom-spam.com")).toBeInTheDocument()
+    })
+
+    it("filters external domains by search", async () => {
+      const user = userEvent.setup()
+      render(<AdminRateLimitsPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Rate Limits")).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole("tab", { name: /blocklists/i }))
+
+      // Type in external domains search box
+      const searchInput = screen.getByPlaceholderText("Search external domains...")
       await user.type(searchInput, "temp")
 
       // Should show filtered results
       expect(screen.getByText("tempmail.com")).toBeInTheDocument()
-      // mailinator should not match "temp" filter
     })
 
-    it("adds a disposable domain", async () => {
+    it("adds a manual domain", async () => {
       mockAdminApi.addDisposableDomain.mockResolvedValue({ success: true, message: "Operation successful" })
 
       const user = userEvent.setup()
@@ -184,13 +203,13 @@ describe("AdminRateLimitsPage", () => {
 
       await user.click(screen.getByRole("tab", { name: /blocklists/i }))
 
-      // Type new domain
+      // Type new domain in the manual domains add input
       const input = screen.getByPlaceholderText(
         "Add domain (e.g., tempmail.com)"
       )
       await user.type(input, "newspam.com")
 
-      // Click Add button
+      // Click Add button nearest to the input
       const addButton = screen
         .getAllByRole("button", { name: /add/i })
         .find((btn) => btn.textContent?.includes("Add"))!
