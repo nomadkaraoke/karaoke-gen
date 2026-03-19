@@ -49,12 +49,16 @@ class YouTubeQueueListResponse(BaseModel):
 
 
 class BlocklistsResponse(BaseModel):
-    """All blocklist data."""
-    disposable_domains: List[str]
+    """All blocklist data with domain source separation."""
+    external_domains: List[str]
+    manual_domains: List[str]
+    allowlisted_domains: List[str]
     blocked_emails: List[str]
     blocked_ips: List[str]
-    updated_at: Optional[datetime]
-    updated_by: Optional[str]
+    last_sync_at: Optional[datetime] = None
+    last_sync_count: Optional[int] = None
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
 
 
 class DomainRequest(BaseModel):
@@ -86,38 +90,10 @@ class SuccessResponse(BaseModel):
 async def get_blocklists(
     auth_result: AuthResult = Depends(require_admin),
 ):
-    """
-    Get all blocklist data.
-
-    Returns disposable domains, blocked emails, and blocked IPs.
-    """
+    """Get all blocklist data with domain source separation."""
     email_validation = get_email_validation_service()
-
-    # Force refresh to get latest data
-    config = email_validation.get_blocklist_config(force_refresh=True)
-
-    # Get the raw document for metadata
-    from google.cloud import firestore
-    from backend.services.firestore_service import get_firestore_client
-    from backend.services.email_validation_service import BLOCKLISTS_COLLECTION, BLOCKLIST_CONFIG_DOC
-
-    db = get_firestore_client()
-    doc = db.collection(BLOCKLISTS_COLLECTION).document(BLOCKLIST_CONFIG_DOC).get()
-
-    updated_at = None
-    updated_by = None
-    if doc.exists:
-        data = doc.to_dict()
-        updated_at = data.get("updated_at")
-        updated_by = data.get("updated_by")
-
-    return BlocklistsResponse(
-        disposable_domains=sorted(list(config["disposable_domains"])),
-        blocked_emails=sorted(list(config["blocked_emails"])),
-        blocked_ips=sorted(list(config["blocked_ips"])),
-        updated_at=updated_at,
-        updated_by=updated_by,
-    )
+    raw_data = email_validation.get_blocklist_raw_data()
+    return BlocklistsResponse(**raw_data)
 
 
 @router.post("/blocklists/disposable-domains", response_model=SuccessResponse)
@@ -155,6 +131,57 @@ async def remove_disposable_domain(
     return SuccessResponse(
         success=True,
         message=f"Domain '{domain}' removed from disposable domains blocklist"
+    )
+
+
+@router.post("/blocklists/allowlisted-domains", response_model=SuccessResponse)
+async def add_allowlisted_domain(
+    request: DomainRequest,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Add a domain to the allowlist (overrides external blocklist)."""
+    email_validation = get_email_validation_service()
+    domain = request.domain.lower().strip()
+    if not domain or "." not in domain:
+        raise HTTPException(status_code=400, detail="Invalid domain format")
+    email_validation.add_allowlisted_domain(domain, auth_result.user_email)
+    return SuccessResponse(success=True, message=f"Domain '{domain}' added to allowlist")
+
+
+@router.delete("/blocklists/allowlisted-domains/{domain}", response_model=SuccessResponse)
+async def remove_allowlisted_domain(
+    domain: str,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Remove a domain from the allowlist."""
+    email_validation = get_email_validation_service()
+    domain = domain.lower().strip()
+    if not email_validation.remove_allowlisted_domain(domain, auth_result.user_email):
+        raise HTTPException(status_code=404, detail="Domain not found in allowlist")
+    return SuccessResponse(success=True, message=f"Domain '{domain}' removed from allowlist")
+
+
+@router.post("/blocklists/sync", response_model=SuccessResponse)
+async def trigger_sync(
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Manually trigger a sync of the external disposable domain blocklist."""
+    import asyncio
+    from backend.services.disposable_domain_sync_service import (
+        fetch_external_blocklist, sync_disposable_domains
+    )
+    from backend.services.firestore_service import get_firestore_client
+
+    domains = await fetch_external_blocklist()
+    db = get_firestore_client()
+    result = await asyncio.to_thread(sync_disposable_domains, db, domains)
+
+    # Invalidate cache
+    EmailValidationService._blocklist_cache = None
+
+    return SuccessResponse(
+        success=True,
+        message=f"Synced {result['external_count']} external domains ({result['added']} added, {result['removed']} removed)"
     )
 
 

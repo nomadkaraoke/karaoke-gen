@@ -25,7 +25,7 @@ from backend.workers.screens_worker import generate_screens
 from backend.workers.video_worker import generate_video
 from backend.workers.render_video_worker import process_render_video
 from backend.api.dependencies import require_admin
-from backend.services.auth_service import UserType
+from backend.services.auth_service import AuthResult, UserType
 from backend.services.job_manager import JobManager
 from backend.services.tracing import (
     extract_trace_context,
@@ -112,6 +112,31 @@ def _check_worker_idempotency(job_id: str, worker_name: str) -> Optional[WorkerR
     # Mark as running before starting (for idempotency on next retry)
     job_manager.update_state_data(job_id, progress_key, {'stage': 'running'})
     return None
+
+
+@router.post("/sync-disposable-domains", response_model=WorkerResponse)
+async def sync_disposable_domains_endpoint(
+    request: Request,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Sync external disposable domain blocklist. Called by Cloud Scheduler daily."""
+    import asyncio
+    from backend.services.disposable_domain_sync_service import (
+        fetch_external_blocklist, sync_disposable_domains
+    )
+    from backend.services.firestore_service import get_firestore_client
+    from backend.services.email_validation_service import EmailValidationService
+
+    domains = await fetch_external_blocklist()
+    db = get_firestore_client()
+    result = await asyncio.to_thread(sync_disposable_domains, db, domains)
+    EmailValidationService._blocklist_cache = None
+
+    return WorkerResponse(
+        status="completed",
+        job_id="sync-disposable-domains",
+        message=f"Synced {result['external_count']} domains"
+    )
 
 
 @router.post("/workers/audio", response_model=WorkerResponse)
