@@ -28,6 +28,8 @@ The Firestore `blocklists/config` document is restructured:
 
 The hardcoded `DEFAULT_DISPOSABLE_DOMAINS` set in Python is removed.
 
+**Document size**: At ~4,800 domains averaging 15 chars each, `external_domains` is ~80 KB — well within Firestore's 1 MiB document limit. The list has grown slowly (~100 domains/year). If it ever exceeds 20,000 domains, migrate to a subcollection. Cache misses will transfer ~80 KB instead of ~3 KB, but the 5-minute TTL means this happens rarely.
+
 ## Sync Endpoint
 
 **`POST /api/internal/sync-disposable-domains`**
@@ -40,6 +42,10 @@ The hardcoded `DEFAULT_DISPOSABLE_DOMAINS` set in Python is removed.
 - Invalidates the in-memory cache
 - Returns summary: domains added/removed since last sync, total count
 - On fetch failure: returns error, existing list stays intact
+- Safety limits: 30-second request timeout, reject if response exceeds 2 MB or 50,000 domains
+- During sync, any `manual_domains` entries that now appear in the fetched external list are automatically removed from `manual_domains` (they're redundant)
+
+**Cache behavior**: The sync invalidates the cache on the instance handling the request. Other Cloud Run instances may serve stale data for up to 5 minutes (their TTL). This is acceptable for a daily sync.
 
 **Trigger:** Cloud Scheduler, daily at 3:00 AM UTC. Also callable manually from the admin UI via a "Sync Now" button.
 
@@ -63,16 +69,31 @@ At the top of the Disposable Domains section: last sync time, domain count, and 
 
 Blocked emails and blocked IPs sections remain as-is.
 
+## Backward Compatibility
+
+`get_blocklist_config()` continues to return `{"disposable_domains": <set>, "blocked_emails": <set>, "blocked_ips": <set>}`. Internally it computes the effective set from the three new fields. `is_disposable_domain()` and all other callers remain unchanged.
+
+The GET `/api/admin/rate-limits/blocklists` response is updated to include:
+- `external_domains`: list (the synced domains)
+- `manual_domains`: list (admin-added domains)
+- `allowlisted_domains`: list (override domains)
+- `last_sync_at`: ISO timestamp or null
+- `last_sync_count`: int or null
+- Plus existing `blocked_emails` and `blocked_ips`
+
+The old `disposable_domains` response field is removed (breaking change for the admin UI only, updated in the same PR).
+
 ## Migration Strategy
 
 The sync endpoint handles migration on first run:
 
 1. Detect migration needed: `external_domains` field doesn't exist yet
-2. Compare current `disposable_domains` against the fetched external list
-3. Domains in both → covered by `external_domains` (no action)
-4. Domains only in current list → moved to `manual_domains` (preserves admin additions)
-5. Remove old `disposable_domains` field
-6. Remove hardcoded `DEFAULT_DISPOSABLE_DOMAINS` from Python — fallback becomes empty set if Firestore unreachable (cached data covers outages)
+2. Build the current effective set: Firestore `disposable_domains` UNION Python `DEFAULT_DISPOSABLE_DOMAINS`
+3. Compare against the fetched external list
+4. Domains in both → covered by `external_domains` (no action)
+5. Domains only in the current effective set → moved to `manual_domains` (preserves admin additions and hardcoded extras)
+6. Remove old `disposable_domains` field
+7. Remove hardcoded `DEFAULT_DISPOSABLE_DOMAINS` from Python — fallback becomes empty set if Firestore unreachable (cached data covers outages)
 
 Subsequent sync runs just replace `external_domains`.
 
@@ -93,5 +114,9 @@ When displaying or operating on domains:
 
 ## Infrastructure
 
-- **Cloud Scheduler job**: Created via Pulumi in `infrastructure/`. Daily at 3:00 AM UTC, hits the sync endpoint with admin token.
+- **Cloud Scheduler job**: Created via Pulumi in `infrastructure/`. Daily at 3:00 AM UTC, hits the sync endpoint with admin token from Secret Manager.
 - **No new services**: Runs on existing Cloud Run backend.
+
+## Out of Scope
+
+- Wildcard/subdomain matching (the repo also publishes `disposable_email_blocklist_with_wildcards.conf` — deferred)
