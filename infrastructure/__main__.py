@@ -303,6 +303,30 @@ youtube_queue_scheduler = cloudscheduler.Job(
     ),
 )
 
+# ==================== Disposable Domain Blocklist Sync ====================
+
+# Cloud Scheduler job to sync disposable email domain blocklist daily
+disposable_domains_sync_scheduler = cloudscheduler.Job(
+    "disposable-domains-sync-scheduler",
+    name="disposable-domains-sync-daily",
+    description="Daily sync of disposable email domain blocklist from GitHub",
+    region=REGION,
+    schedule="0 3 * * *",  # 3:00 AM UTC daily
+    time_zone="UTC",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/sync-disposable-domains",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=2,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Stuck Job Recovery ====================
 
 # Cloud Scheduler job to detect and recover stuck audio downloads
@@ -448,6 +472,7 @@ pulumi.export("gdrive_validator_function_url", gdrive_validator_function.url)
 pulumi.export("gdrive_validator_function_name", gdrive_validator_function.name)
 pulumi.export("gdrive_validator_scheduler_name", gdrive_validator_scheduler.name)
 pulumi.export("recover_stuck_downloads_scheduler_name", recover_stuck_downloads_scheduler.name)
+pulumi.export("disposable_domains_sync_scheduler_name", disposable_domains_sync_scheduler.name)
 pulumi.export("gdrive_validator_service_account", gdrive_validator_sa.email)
 
 # VPC networking
