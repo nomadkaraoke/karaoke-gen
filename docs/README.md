@@ -35,6 +35,7 @@
 | **Song suggestions & fuzzy correction** | Working (catalog lookup on Step 2 + "Did you mean?" typo correction) |
 | **Community version detection** | Working (via karaokenerds.com) |
 | **Review session backup/restore** | Working (auto-save + restore UI) |
+| **Review reminder & auto-expiry** | Working (24h reminder, 48h cancel + refund) |
 
 ## Known Issues
 
@@ -45,6 +46,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Review Reminder & Auto-Expiry** (2026-03-19): Jobs stuck in review (`awaiting_review` / `in_review`) now get automatic cleanup. At 24 hours, a gentle reminder email is sent with a review link, help offer, and warning. At 48 hours, the job is auto-cancelled and the user's credit is refunded. Expiry notification email confirms the refund and current balance. Excludes made-for-you and tenant jobs. Powered by hourly Cloud Scheduler cron (`stale-review-hourly`). New endpoint: `POST /api/internal/process-stale-reviews`. Also fixed `make test` hanging on frontend Playwright E2E tests by splitting into `test-frontend` (Jest unit only) and `test-frontend-e2e` (Playwright, run manually). See [archive/2026-03-19-review-reminder-autoexpiry.plan.md](archive/2026-03-19-review-reminder-autoexpiry.plan.md).
 
 - **Step 2 Song Suggestions & Fuzzy Correction** (2026-03-08): Replaced the Step 1 autocomplete with a simpler approach: plain text inputs on Step 1, then catalog lookup + community version check fire in parallel with the audio search on Step 2. Results appear as a "Song found in our database" panel (exact match) or correction suggestion panel while the user waits. Added fuzzy "Did you mean?" correction — when audio search returns poor results (Tier 3) and catalog has no exact title match, fetches the artist's discography and fuzzy-matches against the user's title using LCS similarity. Shows an amber banner with one-click correction + expandable alternatives list. Handles garbled artist fields via title-based fallback with artist tiebreaker. Visibility step reworked with action buttons at top for one-click select+continue. See [archive/2026-03-08-step2-song-suggestions.plan.md](archive/2026-03-08-step2-song-suggestions.plan.md) and [archive/2026-03-08-fuzzy-did-you-mean.plan.md](archive/2026-03-08-fuzzy-did-you-mean.plan.md).
 
