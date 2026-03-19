@@ -61,7 +61,7 @@ class TestProcessStaleReviews:
     @pytest.fixture
     def mock_firestore(self):
         service = Mock()
-        service.get_jobs.return_value = []
+        service.list_jobs.return_value = []
         service.update_job = Mock()
         return service
 
@@ -110,7 +110,7 @@ class TestProcessStaleReviews:
     async def test_expires_job_over_48h(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should expire a job that's been in review for over 48 hours."""
         job = _make_job(hours_ago=50)
-        mock_firestore.get_jobs.side_effect = [[job], []]  # awaiting_review query, in_review query
+        mock_firestore.list_jobs.side_effect = [[job], []]  # awaiting_review query, in_review query
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -130,7 +130,7 @@ class TestProcessStaleReviews:
     async def test_expires_job_over_48h_with_reminder_already_sent(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should expire job >48h even if reminder was already sent (no duplicate reminder)."""
         job = _make_job(hours_ago=50, expiry_reminder_sent=True)
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -145,7 +145,7 @@ class TestProcessStaleReviews:
     async def test_sends_reminder_24_to_48h(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should send reminder for job in 24-48h range."""
         job = _make_job(hours_ago=30)
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -169,7 +169,7 @@ class TestProcessStaleReviews:
     async def test_skips_if_expiry_reminder_already_sent(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should skip reminder if expiry_reminder_sent is already True."""
         job = _make_job(hours_ago=30, expiry_reminder_sent=True)
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -185,7 +185,7 @@ class TestProcessStaleReviews:
         # reminder_sent is True (set by idle reminder system) but expiry_reminder_sent is not set
         assert job.state_data['reminder_sent'] is True
         assert 'expiry_reminder_sent' not in job.state_data
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -197,7 +197,7 @@ class TestProcessStaleReviews:
     async def test_no_action_under_24h(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should take no action for jobs under 24 hours old."""
         job = _make_job(hours_ago=12)
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -211,7 +211,7 @@ class TestProcessStaleReviews:
     async def test_skips_made_for_you_jobs(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should skip made-for-you jobs regardless of age."""
         job = _make_job(hours_ago=100, made_for_you=True)
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -224,7 +224,7 @@ class TestProcessStaleReviews:
     async def test_skips_tenant_jobs(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should skip tenant/white-label jobs regardless of age."""
         job = _make_job(hours_ago=100, tenant_id="vocalstar")
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -237,7 +237,7 @@ class TestProcessStaleReviews:
     async def test_skips_job_without_blocking_state(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should skip jobs that have no blocking_state_entered_at."""
         job = _make_job(hours_ago=50, has_blocking_state=False)
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -249,7 +249,7 @@ class TestProcessStaleReviews:
     async def test_expires_job_without_email(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should still expire jobs with no user_email (just skip the email)."""
         job = _make_job(hours_ago=50, user_email=None)
-        mock_firestore.get_jobs.side_effect = [[job], []]
+        mock_firestore.list_jobs.side_effect = [[job], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -264,7 +264,7 @@ class TestProcessStaleReviews:
         """An error processing one job should not prevent processing others."""
         job1 = _make_job(job_id="job-bad", hours_ago=50)
         job2 = _make_job(job_id="job-good", hours_ago=50)
-        mock_firestore.get_jobs.side_effect = [[job1, job2], []]
+        mock_firestore.list_jobs.side_effect = [[job1, job2], []]
 
         # First cancel raises, second succeeds
         mock_job_manager.cancel_job.side_effect = [Exception("DB error"), True]
@@ -283,7 +283,7 @@ class TestProcessStaleReviews:
         job_remind = _make_job(job_id="remind-1", hours_ago=30)
         job_fresh = _make_job(job_id="fresh-1", hours_ago=12)
         job_skip = _make_job(job_id="skip-1", hours_ago=50, made_for_you=True)
-        mock_firestore.get_jobs.side_effect = [[job_expire, job_remind, job_fresh, job_skip], []]
+        mock_firestore.list_jobs.side_effect = [[job_expire, job_remind, job_fresh, job_skip], []]
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
@@ -296,7 +296,7 @@ class TestProcessStaleReviews:
     async def test_handles_in_review_status(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should process jobs in IN_REVIEW status (user opened but abandoned)."""
         job = _make_job(job_id="in-review-1", status=JobStatus.IN_REVIEW, hours_ago=50)
-        mock_firestore.get_jobs.side_effect = [[], [job]]  # Empty awaiting, one in_review
+        mock_firestore.list_jobs.side_effect = [[], [job]]  # Empty awaiting, one in_review
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
