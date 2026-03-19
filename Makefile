@@ -13,7 +13,8 @@ help:
 	@echo "Available commands:"
 	@echo "  make test           - Run ALL tests (backend + frontend, installs deps automatically)"
 	@echo "  make test-backend   - Run backend tests only (unit + emulator)"
-	@echo "  make test-frontend  - Run frontend tests only (unit + E2E)"
+	@echo "  make test-frontend  - Run frontend unit tests (Jest)"
+	@echo "  make test-frontend-e2e - Run frontend E2E tests (Playwright, requires dev server)"
 	@echo "  make test-unit      - Run unit tests only (karaoke_gen package)"
 	@echo "  make test-e2e       - Run emulator tests with auto-start/stop"
 	@echo "  make install        - Install all dependencies (backend + frontend)"
@@ -89,10 +90,15 @@ test-backend: test-unit test-backend-unit test-e2e
 	@echo ""
 	@echo "✅ Backend tests passed!"
 
-# Run frontend tests (unit + E2E)
+# Run frontend unit tests (Jest only - E2E requires manual setup)
 test-frontend: install-frontend
-	@echo "=== Running frontend tests ==="
-	cd frontend && timeout $(TEST_TIMEOUT) npm run test:all
+	@echo "=== Running frontend unit tests ==="
+	cd frontend && timeout $(TEST_TIMEOUT) npm run test:unit
+
+# Run frontend E2E tests (requires dev server - run manually, not in make test)
+test-frontend-e2e: install-frontend
+	@echo "=== Running frontend E2E tests ==="
+	cd frontend && timeout $(TEST_TIMEOUT) npm run test:e2e
 
 # Run ALL tests (backend + frontend) - use this before committing!
 test: test-backend test-frontend

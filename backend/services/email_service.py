@@ -981,6 +981,194 @@ Get started: {self.frontend_url}
             text_content=message_content,
         )
 
+    def send_review_reminder(
+        self,
+        to_email: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        job_id: Optional[str] = None,
+    ) -> bool:
+        """
+        Send 24h review reminder email with expiry warning.
+
+        Sent when a job has been awaiting review for 24 hours.
+        Offers help and warns that the job will expire in another 24 hours.
+
+        Args:
+            to_email: User's email address
+            artist: Artist name for subject line
+            title: Song title for subject line
+            job_id: Job ID for constructing the review link
+
+        Returns:
+            True if email was sent successfully
+        """
+        song_info = f" — {artist} - {title}" if artist and title else ""
+        subject = f"Reminder: Your karaoke video is waiting for review{song_info}"
+
+        review_url = f"{self.frontend_url}/app/jobs#/{job_id}/review" if job_id else f"{self.frontend_url}/app"
+
+        extra_styles = """
+        .alert {
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .expiry-warning {
+            background-color: #fef2f2;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+            color: #991b1b;
+        }
+        .review-btn {
+            display: inline-block;
+            background-color: #ff7acc;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 16px 0;
+        }
+"""
+
+        song_name = f" for <strong>{html.escape(artist)} - {html.escape(title)}</strong>" if artist and title else ""
+
+        content = f"""
+    <div class="alert">
+        ⏰ Your karaoke video is waiting for you!
+    </div>
+
+    <p>Hi there! Just a friendly reminder that your karaoke video{song_name} is ready for review.</p>
+
+    <p style="text-align: center;">
+        <a href="{html.escape(review_url)}" class="review-btn">Review Your Video</a>
+    </p>
+
+    <p>During the review, you can check the lyrics are correct and choose your preferred instrumental track. It usually only takes a few minutes!</p>
+
+    <p>If you're having any trouble with the review process, just reply to this email and I'll be happy to help you out.</p>
+
+    <div class="expiry-warning">
+        ⚠️ Please note: if the review isn't completed within the next <strong>24 hours</strong>,
+        the job will automatically expire and your credit will be refunded.
+    </div>
+"""
+
+        html_content = self._build_email_html(content, extra_styles)
+
+        text_content = (
+            f"Reminder: Your karaoke video{' for ' + artist + ' - ' + title if artist and title else ''} is ready for review.\n\n"
+            f"Review it here: {review_url}\n\n"
+            "If you're having trouble with the review process, just reply to this email and I'll help you out.\n\n"
+            "Please note: if the review isn't completed within the next 24 hours, "
+            "the job will automatically expire and your credit will be refunded."
+        )
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
+    def send_review_expired(
+        self,
+        to_email: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        credits_balance: int = 0,
+    ) -> bool:
+        """
+        Send review expiry notification email.
+
+        Sent when a job is auto-cancelled after 48 hours in review.
+        Informs the user their credit has been refunded.
+
+        Args:
+            to_email: User's email address
+            artist: Artist name for subject line
+            title: Song title for subject line
+            credits_balance: User's current credit balance after refund
+
+        Returns:
+            True if email was sent successfully
+        """
+        song_info = f" — {artist} - {title}" if artist and title else ""
+        subject = f"Your karaoke video has expired{song_info}"
+
+        extra_styles = """
+        .info-box {
+            background-color: #f0f9ff;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .credit-badge {
+            display: inline-block;
+            background-color: #22c55e;
+            color: #ffffff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        .create-btn {
+            display: inline-block;
+            background-color: #ff7acc;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 16px 0;
+        }
+"""
+
+        song_name = f" for <strong>{html.escape(artist)} - {html.escape(title)}</strong>" if artist and title else ""
+
+        content = f"""
+    <div class="info-box">
+        Your karaoke video{song_name} has been automatically cancelled because the review
+        wasn't completed within 48 hours.
+    </div>
+
+    <p>Don't worry — your credit has been refunded! Your current balance is
+    <span class="credit-badge">{credits_balance} credit{'s' if credits_balance != 1 else ''}</span>.</p>
+
+    <p>You can create a new karaoke video anytime using your credits:</p>
+
+    <p style="text-align: center;">
+        <a href="{html.escape(self.frontend_url)}/app" class="create-btn">Create New Video</a>
+    </p>
+
+    <p>If you had any trouble with the review process or need help, just reply to this email — I'd love to help!</p>
+"""
+
+        html_content = self._build_email_html(content, extra_styles)
+
+        text_content = (
+            f"Your karaoke video{' for ' + artist + ' - ' + title if artist and title else ''} has been "
+            "automatically cancelled because the review wasn't completed within 48 hours.\n\n"
+            f"Your credit has been refunded. Current balance: {credits_balance} credit{'s' if credits_balance != 1 else ''}.\n\n"
+            f"Create a new video anytime: {self.frontend_url}/app\n\n"
+            "If you had any trouble or need help, just reply to this email."
+        )
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
     def send_youtube_upload_complete(
         self,
         to_email: str,
