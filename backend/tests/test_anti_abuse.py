@@ -121,23 +121,50 @@ class TestGrantWelcomeCredits:
         result = service.grant_welcome_credits_if_eligible("new@example.com")
 
         assert result is True
-        # Verify update was called with credits
+        # Verify update was called with credits and flag
         mock_db.collection.return_value.document.return_value.update.assert_called_once()
         update_args = mock_db.collection.return_value.document.return_value.update.call_args[0][0]
         assert update_args['credits'] == 2
+        assert update_args['welcome_credits_granted'] is True
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
-    def test_skips_if_already_granted(self, mock_fs, mock_settings):
-        """grant_welcome_credits_if_eligible returns False if welcome_credit already exists."""
+    def test_skips_if_flag_already_set(self, mock_fs, mock_settings):
+        """grant_welcome_credits_if_eligible returns False if welcome_credits_granted flag is True."""
         mock_settings.return_value = MagicMock(google_cloud_project='test')
         mock_db = MagicMock()
         mock_fs.Client.return_value = mock_db
 
-        # User already has welcome credit transaction
+        # User has the flag set (even if transactions were trimmed)
         user = User(
             email="existing@example.com",
             credits=2,
+            welcome_credits_granted=True,
+        )
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = user.model_dump(mode='json')
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        result = service.grant_welcome_credits_if_eligible("existing@example.com")
+
+        assert result is False
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_skips_if_transaction_exists(self, mock_fs, mock_settings):
+        """grant_welcome_credits_if_eligible returns False if welcome_credit txn exists (secondary check)."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        # User has transaction but flag not set (legacy user)
+        user = User(
+            email="existing@example.com",
+            credits=2,
+            welcome_credits_granted=False,
             credit_transactions=[
                 CreditTransaction(
                     id=str(uuid.uuid4()),

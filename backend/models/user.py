@@ -102,6 +102,9 @@ class User(BaseModel):
     signup_ip: Optional[str] = None
     device_fingerprint: Optional[str] = None
 
+    # Flag to prevent duplicate welcome credit grants (idempotency)
+    welcome_credits_granted: bool = False
+
 
 class MagicLinkToken(BaseModel):
     """

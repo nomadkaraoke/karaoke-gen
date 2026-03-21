@@ -374,8 +374,9 @@ class UserService:
         """
         Grant welcome credits on first magic link verification.
 
-        Checks if the user has already received welcome credits by looking
-        for a 'welcome_credit' transaction. If not found, grants credits.
+        Uses a dedicated welcome_credits_granted flag as primary idempotency
+        check (survives credit_transactions list trimming). Falls back to
+        checking for welcome_credit transaction as secondary defense.
 
         Returns:
             True if credits were granted, False if already received or user not found.
@@ -386,7 +387,11 @@ class UserService:
             if not user:
                 return False
 
-            # Check if welcome credits were already granted
+            # Primary check: dedicated flag (survives transaction list trimming)
+            if user.welcome_credits_granted:
+                return False
+
+            # Secondary check: look for existing welcome_credit transaction
             for txn in user.credit_transactions:
                 if txn.reason == "welcome_credit":
                     return False  # Already received
@@ -406,7 +411,8 @@ class UserService:
             self.update_user(
                 email,
                 credits=new_balance,
-                credit_transactions=[t.model_dump(mode='json') for t in transactions]
+                credit_transactions=[t.model_dump(mode='json') for t in transactions],
+                welcome_credits_granted=True,
             )
 
             logger.info(f"Granted {welcome_credit} welcome credits to {email}")
