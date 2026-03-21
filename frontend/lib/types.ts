@@ -32,6 +32,7 @@ export interface VerifyMagicLinkResponse {
   user: UserPublic
   message: string
   tenant_subdomain?: string | null
+  credits_granted?: number
 }
 
 export interface UserProfileResponse {

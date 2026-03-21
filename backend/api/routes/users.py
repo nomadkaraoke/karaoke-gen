@@ -279,6 +279,14 @@ async def verify_magic_link(
     if not success or not user:
         raise HTTPException(status_code=401, detail=message)
 
+    # Grant welcome credits on first verification (not at account creation)
+    credits_granted = 0
+    if user_service.grant_welcome_credits_if_eligible(user.email):
+        credits_granted = user_service.NEW_USER_FREE_CREDITS
+        logger.info(f"Granted {credits_granted} welcome credits to {_mask_email(user.email)}")
+        # Refresh user to get updated credit balance
+        user = user_service.get_user(user.email)
+
     # Create session with tenant context from the magic link
     session = user_service.create_session(
         user.email,
@@ -317,6 +325,7 @@ async def verify_magic_link(
         user=user_public,
         message="Successfully signed in",
         tenant_subdomain=tenant_subdomain,
+        credits_granted=credits_granted,
     )
 
 

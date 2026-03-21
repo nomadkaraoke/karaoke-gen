@@ -13,6 +13,7 @@ function VerifyMagicLinkContent() {
   const searchParams = useSearchParams()
   const [state, setState] = useState<VerifyState>("loading")
   const [errorMessage, setErrorMessage] = useState("")
+  const [creditsGranted, setCreditsGranted] = useState(0)
   const hasVerified = useRef(false)
 
   const { verifyMagicLink, user, error } = useAuth()
@@ -35,6 +36,11 @@ function VerifyMagicLinkContent() {
       const success = await verifyMagicLink(token)
       if (success) {
         setState("success")
+        // Check for welcome credits granted
+        const lastVerifyResponse = (window as any).__LAST_VERIFY_RESPONSE__
+        if (lastVerifyResponse?.credits_granted > 0) {
+          setCreditsGranted(lastVerifyResponse.credits_granted)
+        }
         // Check if the verify response included a tenant subdomain
         // If we're on the wrong domain, redirect to the correct tenant portal
         const lastVerifyResponse = (window as any).__LAST_VERIFY_RESPONSE__
@@ -85,8 +91,13 @@ function VerifyMagicLinkContent() {
             Successfully signed in!
           </h1>
           <p className="text-muted-foreground mb-4">
-            Welcome back{user?.email ? `, ${user.email}` : ""}!
+            Welcome{user?.email ? `, ${user.email}` : ""}!
           </p>
+          {creditsGranted > 0 && (
+            <p className="text-sm font-medium text-primary mb-4">
+              You received {creditsGranted} free credits to get started!
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
             Redirecting you to the app...
           </p>

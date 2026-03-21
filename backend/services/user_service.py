@@ -129,22 +129,15 @@ class UserService:
             # (though features may be restricted per-tenant)
             return user
 
-        # Create new user with welcome credit
-        welcome_credit = self.NEW_USER_FREE_CREDITS
-        welcome_transaction = CreditTransaction(
-            id=str(uuid.uuid4()),
-            amount=welcome_credit,
-            reason="welcome_credit",
-        )
-
+        # Create new user with zero credits (welcome credits granted on first verification)
         user = User(
             email=email,
-            credits=welcome_credit,
-            credit_transactions=[welcome_transaction],
+            credits=0,
+            credit_transactions=[],
             tenant_id=tenant_id,  # Associate with tenant on creation
         )
         self._save_user(user)
-        logger.info(f"Created new user: {email} with {welcome_credit} welcome credit(s) (tenant: {tenant_id or 'default'})")
+        logger.info(f"Created new user: {email} (tenant: {tenant_id or 'default'}) — credits pending verification")
         return user
 
     def _save_user(self, user: User) -> None:
@@ -358,6 +351,52 @@ class UserService:
         except Exception:
             logger.exception("Error verifying magic link")
             return False, None, "An error occurred during verification"
+
+    def grant_welcome_credits_if_eligible(self, email: str) -> bool:
+        """
+        Grant welcome credits on first magic link verification.
+
+        Checks if the user has already received welcome credits by looking
+        for a 'welcome_credit' transaction. If not found, grants credits.
+
+        Returns:
+            True if credits were granted, False if already received or user not found.
+        """
+        try:
+            email = email.lower()
+            user = self.get_user(email)
+            if not user:
+                return False
+
+            # Check if welcome credits were already granted
+            for txn in user.credit_transactions:
+                if txn.reason == "welcome_credit":
+                    return False  # Already received
+
+            # Grant welcome credits
+            welcome_credit = self.NEW_USER_FREE_CREDITS
+            transaction = CreditTransaction(
+                id=str(uuid.uuid4()),
+                amount=welcome_credit,
+                reason="welcome_credit",
+            )
+
+            transactions = user.credit_transactions[-MAX_CREDIT_TRANSACTIONS + 1:]
+            transactions.append(transaction)
+
+            new_balance = user.credits + welcome_credit
+            self.update_user(
+                email,
+                credits=new_balance,
+                credit_transactions=[t.model_dump(mode='json') for t in transactions]
+            )
+
+            logger.info(f"Granted {welcome_credit} welcome credits to {email}")
+            return True
+
+        except Exception:
+            logger.exception(f"Error granting welcome credits to {email}")
+            return False
 
     # =========================================================================
     # Session Management

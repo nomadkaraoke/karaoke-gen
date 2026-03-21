@@ -169,6 +169,7 @@ class VerifyMagicLinkResponse(BaseModel):
     user: "UserPublic"
     message: str
     tenant_subdomain: Optional[str] = None
+    credits_granted: int = 0
 
 
 class UserPublic(BaseModel):
