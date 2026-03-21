@@ -842,8 +842,10 @@ Common status codes:
 POST /api/users/auth/magic-link
 Content-Type: application/json
 
-{"email": "user@example.com"}
+{"email": "user@example.com", "device_fingerprint": "optional-fp-string"}
 ```
+
+The `device_fingerprint` field is optional. If provided, it's used alongside the client IP for signup rate limiting (max 2 new accounts per IP or fingerprint per 24 hours). Existing users are never rate limited. Rate-limited requests receive a silent 200 response (anti-enumeration).
 
 ### Verify Magic Link
 
@@ -851,7 +853,7 @@ Content-Type: application/json
 GET /api/users/auth/verify?token=TOKEN
 ```
 
-Returns session token and user info.
+Returns session token, user info, and `credits_granted` (number of welcome credits granted on this verification, 0 for returning users). Welcome credits are granted on first verification, not at account creation.
 
 **Admin Login Token**: The same endpoint supports admin login tokens embedded in notification emails. When a made-for-you order is received, the admin notification email includes a link with `?admin_token=TOKEN` that auto-logs the admin into the app. The frontend detects this parameter and calls the verify endpoint to authenticate. Admin tokens expire after 24 hours.
 

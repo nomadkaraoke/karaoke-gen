@@ -26,7 +26,7 @@
 | Payment flow (Stripe) | Working |
 | Feedback-for-credits | Working (2+ jobs → 2 free credits) |
 | Admin dashboard | Working |
-| Abuse prevention & YouTube quota | Working (blocklists, quota-aware YouTube uploads) |
+| Abuse prevention & YouTube quota | Working (blocklists, IP/fingerprint rate limiting, credits on verification, quota-aware YouTube uploads) |
 | CI/CD self-hosted runner | Working (GCP) |
 | E2E happy path test | Working (~20-25 min full pipeline) |
 | **White-label B2B portals** | Working (Vocal Star, Singa) |
@@ -46,6 +46,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Anti-Abuse: Credits on Verification + Rate Limiting** (2026-03-21): Three-layer defense against free credit abuse. (1) Welcome credits now granted on first magic link verification, not account creation — unverified accounts get 0 credits. (2) Per-IP signup rate limiting: max 2 new accounts per IP per 24 hours, silent reject. (3) Device fingerprinting (FingerprintJS open source): browser fingerprint sent with magic link request, combined with IP for rate limiting. Either signal hitting 2/day triggers block. Returning users are never rate limited. Graceful degradation if fingerprinting fails. Frontend verify page shows "You received N free credits" on first login. See [archive/2026-03-21-anti-abuse-credits.plan.md](archive/2026-03-21-anti-abuse-credits.plan.md).
 
 - **Review Reminder & Auto-Expiry** (2026-03-19): Jobs stuck in review (`awaiting_review` / `in_review`) now get automatic cleanup. At 24 hours, a gentle reminder email is sent with a review link, help offer, and warning. At 48 hours, the job is auto-cancelled and the user's credit is refunded. Expiry notification email confirms the refund and current balance. Excludes made-for-you and tenant jobs. Powered by hourly Cloud Scheduler cron (`stale-review-hourly`). New endpoint: `POST /api/internal/process-stale-reviews`. Also fixed `make test` hanging on frontend Playwright E2E tests by splitting into `test-frontend` (Jest unit only) and `test-frontend-e2e` (Playwright, run manually). See [archive/2026-03-19-review-reminder-autoexpiry.plan.md](archive/2026-03-19-review-reminder-autoexpiry.plan.md).
 
