@@ -1,0 +1,9 @@
+# HTTP client
+requests>=2.31.0
+
+# GCP clients
+google-cloud-bigquery>=3.13.0
+google-cloud-storage>=2.13.0
+
+# Cloud Functions framework
+functions-framework>=3.0.0

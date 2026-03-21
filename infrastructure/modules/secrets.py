@@ -54,6 +54,9 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
 
         # E2E Testing
         "e2e-bypass-key",
+
+        # KaraokeNerds API
+        "karaokenerds-api-key",
     ]
 
     secrets = {}

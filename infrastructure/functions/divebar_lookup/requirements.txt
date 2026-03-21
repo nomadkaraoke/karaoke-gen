@@ -1,0 +1,5 @@
+# BigQuery
+google-cloud-bigquery>=3.13.0
+
+# Cloud Functions framework
+functions-framework>=3.0.0

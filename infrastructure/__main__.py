@@ -38,6 +38,7 @@ from config import (
 )
 from modules import database, storage as storage_module, artifact_registry, secrets
 from modules import cloud_tasks, cloud_run, monitoring, networking, runner_manager
+from modules import divebar_mirror, kn_data_sync, divebar_lookup
 from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, worker_sas
 from compute import encoding_worker_vm, github_runners
 
@@ -375,6 +376,21 @@ recover_stuck_downloads_scheduler = cloudscheduler.Job(
     ),
 )
 
+# ==================== Divebar Mirror (Phase 1) ====================
+# Index diveBar Karaoke Google Drive files into BigQuery for search
+
+divebar_mirror_resources = divebar_mirror.create_divebar_mirror_resources(all_secrets)
+
+# ==================== KaraokeNerds Data Sync (Phase 2) ====================
+# Daily sync of KN catalog and community data to BigQuery/GCS
+
+kn_data_sync_resources = kn_data_sync.create_kn_data_sync_resources(all_secrets)
+
+# ==================== Divebar Lookup API (Phase 3) ====================
+# Search/lookup API for KJ Controller + KN cross-reference index
+
+divebar_lookup_resources = divebar_lookup.create_divebar_lookup_resources(all_secrets)
+
 # ==================== Compute VMs ====================
 
 # Encoding Worker VM (video encoding service)
@@ -519,3 +535,14 @@ pulumi.export("github_runners_nat", github_runners_nat.name)
 # GitHub runner manager (auto-start/stop)
 pulumi.export("runner_manager_function_url", runner_manager_resources["function"].url)
 pulumi.export("runner_manager_scheduler_job", runner_manager_resources["scheduler_job"].name)
+
+# Divebar mirror (Phase 1)
+pulumi.export("divebar_mirror_function_url", divebar_mirror_resources["function"].url)
+pulumi.export("divebar_mirror_scheduler_name", divebar_mirror_resources["scheduler"].name)
+
+# KaraokeNerds data sync (Phase 2)
+pulumi.export("kn_data_sync_function_url", kn_data_sync_resources["function"].url)
+pulumi.export("kn_data_bucket", kn_data_sync_resources["data_bucket"].name)
+
+# Divebar lookup API (Phase 3)
+pulumi.export("divebar_lookup_function_url", divebar_lookup_resources["function"].url)
