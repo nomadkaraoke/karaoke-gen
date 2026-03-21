@@ -321,6 +321,9 @@ class Job(BaseModel):
     # Creation-time decision params (for observability — what did the user actually choose?)
     creation_params: Dict[str, Any] = Field(default_factory=dict)
 
+    # Anti-abuse: IP address at job creation time (for cross-account correlation)
+    creation_ip: Optional[str] = None
+
     # Output deletion tracking (for admin cleanup without deleting job)
     outputs_deleted_at: Optional[datetime] = None  # Timestamp when outputs were deleted by admin
     outputs_deleted_by: Optional[str] = None       # Admin email who deleted outputs

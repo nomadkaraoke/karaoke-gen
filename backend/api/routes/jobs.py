@@ -70,6 +70,7 @@ async def _trigger_workers_parallel(job_id: str) -> None:
 @router.post("", response_model=JobResponse)
 async def create_job(
     request: URLSubmissionRequest,
+    http_request: Request,
     background_tasks: BackgroundTasks,
     auth_result: AuthResult = Depends(require_auth)
 ) -> JobResponse:
@@ -131,6 +132,11 @@ async def create_job(
             is_private=request.is_private or False,
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
+
+        # Store client IP on job for anti-abuse correlation
+        creation_ip = http_request.client.host if http_request.client else None
+        if creation_ip:
+            FirestoreService().update_job(job.job_id, {"creation_ip": creation_ip})
 
         # Trace attributes for observability
         add_span_attribute("job_id", job.job_id)
@@ -2234,6 +2240,11 @@ async def create_job_from_search(
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
+
+        # Store client IP on job for anti-abuse correlation
+        creation_ip = request.client.host if request.client else None
+        if creation_ip:
+            FirestoreService().update_job(job_id, {"creation_ip": creation_ip})
 
         logger.info(f"Created job {job_id} from search session {body.search_session_id}")
 
