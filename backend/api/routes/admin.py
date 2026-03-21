@@ -3672,3 +3672,79 @@ async def find_users_by_fingerprint(
             for u in users
         ],
     }
+
+
+@router.post("/abuse/backfill-ips")
+async def backfill_signup_ips(
+    auth_result: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Backfill signup_ip for existing users from their earliest session or magic link.
+
+    One-time operation to populate signup_ip for users created before the field was added.
+    Only updates users who currently have signup_ip=None.
+    """
+    from backend.services.user_service import SESSIONS_COLLECTION, MAGIC_LINKS_COLLECTION
+    from google.cloud.firestore_v1 import FieldFilter
+
+    db = user_service.db
+    updated = 0
+    skipped = 0
+    no_ip_found = 0
+
+    # Find all users without signup_ip
+    users_query = db.collection(USERS_COLLECTION).stream()
+
+    for user_doc in users_query:
+        user_data = user_doc.to_dict()
+        if user_data.get("signup_ip"):
+            skipped += 1
+            continue
+
+        email = user_data.get("email", "")
+        if not email:
+            continue
+
+        ip = None
+
+        # Try sessions first (most reliable — created at verification)
+        sessions = (
+            db.collection(SESSIONS_COLLECTION)
+            .where(filter=FieldFilter("user_email", "==", email))
+            .order_by("created_at")
+            .limit(1)
+            .stream()
+        )
+        for session_doc in sessions:
+            session_data = session_doc.to_dict()
+            ip = session_data.get("ip_address")
+            break
+
+        # Fallback: try magic links
+        if not ip:
+            links = (
+                db.collection(MAGIC_LINKS_COLLECTION)
+                .where(filter=FieldFilter("email", "==", email))
+                .order_by("created_at")
+                .limit(1)
+                .stream()
+            )
+            for link_doc in links:
+                link_data = link_doc.to_dict()
+                ip = link_data.get("ip_address")
+                break
+
+        if ip:
+            user_doc.reference.update({"signup_ip": ip})
+            updated += 1
+            logger.info(f"Backfilled signup_ip for {email}: {ip}")
+        else:
+            no_ip_found += 1
+
+    return {
+        "status": "success",
+        "updated": updated,
+        "skipped_already_set": skipped,
+        "no_ip_found": no_ip_found,
+    }

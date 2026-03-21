@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { adminApi } from "@/lib/api"
 import type {
   AbuseSuspiciousUser,
@@ -36,6 +36,9 @@ import {
   ArrowLeft,
   Users,
   ExternalLink,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react"
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -59,6 +62,79 @@ function truncate(str: string | null | undefined, len: number): string {
 }
 
 // =============================================================================
+// Sortable Table Header
+// =============================================================================
+
+type SortDir = "asc" | "desc"
+
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  currentDir,
+  onSort,
+  className,
+}: {
+  label: string
+  sortKey: string
+  currentSort: string
+  currentDir: SortDir
+  onSort: (key: string) => void
+  className?: string
+}) {
+  const isActive = currentSort === sortKey
+  return (
+    <TableHead
+      className={`cursor-pointer select-none hover:text-foreground ${className || ""}`}
+      onClick={() => onSort(sortKey)}
+    >
+      <span className="flex items-center gap-1">
+        {label}
+        {isActive ? (
+          currentDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+        ) : (
+          <ArrowUpDown className="w-3 h-3 opacity-30" />
+        )}
+      </span>
+    </TableHead>
+  )
+}
+
+function useSortableData<T>(items: T[], defaultKey: string, defaultDir: SortDir = "desc") {
+  const [sortKey, setSortKey] = useState(defaultKey)
+  const [sortDir, setSortDir] = useState<SortDir>(defaultDir)
+
+  const sorted = useMemo(() => {
+    const copy = [...items]
+    copy.sort((a, b) => {
+      const aVal = (a as any)[sortKey]
+      const bVal = (b as any)[sortKey]
+      if (aVal == null && bVal == null) return 0
+      if (aVal == null) return 1
+      if (bVal == null) return -1
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortDir === "asc" ? aVal - bVal : bVal - aVal
+      }
+      const aStr = String(aVal)
+      const bStr = String(bVal)
+      return sortDir === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr)
+    })
+    return copy
+  }, [items, sortKey, sortDir])
+
+  const toggleSort = (key: string) => {
+    if (key === sortKey) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc")
+    } else {
+      setSortKey(key)
+      setSortDir("desc")
+    }
+  }
+
+  return { sorted, sortKey, sortDir, toggleSort }
+}
+
+// =============================================================================
 // Suspicious Accounts Table
 // =============================================================================
 
@@ -72,6 +148,7 @@ function SuspiciousAccountsTab({
   const [loading, setLoading] = useState(true)
   const [minJobs, setMinJobs] = useState(2)
   const [maxSpend, setMaxSpend] = useState(0)
+  const { sorted, sortKey, sortDir, toggleSort } = useSortableData(users, "created_at", "desc")
 
   const loadData = async () => {
     try {
@@ -148,19 +225,19 @@ function SuspiciousAccountsTab({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-right">Jobs</TableHead>
-                  <TableHead className="text-right">Credits</TableHead>
-                  <TableHead className="text-right">Spent</TableHead>
+                  <SortableHeader label="Email" sortKey="email" currentSort={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader label="Jobs" sortKey="total_jobs_created" currentSort={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right" />
+                  <SortableHeader label="Credits" sortKey="credits" currentSort={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right" />
+                  <SortableHeader label="Spent" sortKey="total_spent" currentSort={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right" />
                   <TableHead>Feedback</TableHead>
-                  <TableHead>Signup IP</TableHead>
+                  <SortableHeader label="Signup IP" sortKey="signup_ip" currentSort={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <TableHead>Fingerprint</TableHead>
-                  <TableHead>Created</TableHead>
+                  <SortableHeader label="Created" sortKey="created_at" currentSort={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {sorted.map((user) => (
                   <TableRow key={user.email}>
                     <TableCell className="font-mono text-xs max-w-[200px] truncate">
                       {user.email}
