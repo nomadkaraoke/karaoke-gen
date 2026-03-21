@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""
+Divebar File Sync — Download files from Google Drive to GCS.
+
+Reads the BigQuery divebar_catalog index and downloads all files that don't
+yet exist in GCS. Progress is tracked by updating a `gcs_path` column in
+BigQuery after each successful upload.
+
+Usage:
+    # Sync all files (initial bulk or incremental)
+    python divebar_file_sync.py
+
+    # Sync with concurrency (faster but uses more Drive API quota)
+    python divebar_file_sync.py --workers 4
+
+    # Dry run (show what would be downloaded)
+    python divebar_file_sync.py --dry-run
+
+    # Sync only specific brand
+    python divebar_file_sync.py --brand "WTF Karaoke Videos"
+
+    # Limit number of files (useful for testing)
+    python divebar_file_sync.py --limit 100
+
+Requirements:
+    pip install google-api-python-client google-cloud-storage google-cloud-bigquery
+
+Environment:
+    GOOGLE_CLOUD_PROJECT (default: nomadkaraoke)
+    GCS_BUCKET (default: nomadkaraoke-divebar-files)
+"""
+
+import argparse
+import io
+import logging
+import os
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from google.auth import default
+from google.cloud import bigquery, storage
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "nomadkaraoke")
+GCS_BUCKET = os.environ.get("GCS_BUCKET", "nomadkaraoke-divebar-files")
+DATASET = "karaoke_decide"
+TABLE = "divebar_catalog"
+
+
+def get_drive_service():
+    """Create Google Drive API service."""
+    credentials, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    return build("drive", "v3", credentials=credentials)
+
+
+def get_unsynced_files(bq_client, brand=None, limit=None):
+    """Get files from BigQuery that haven't been synced to GCS yet."""
+    where = "WHERE gcs_path IS NULL"
+    if brand:
+        where += f" AND brand = @brand"
+
+    query = f"""
+        SELECT file_id, brand, filename, drive_path, file_size, drive_md5
+        FROM `{PROJECT_ID}.{DATASET}.{TABLE}`
+        {where}
+        ORDER BY file_size ASC
+    """
+    if limit:
+        query += f" LIMIT {limit}"
+
+    params = []
+    if brand:
+        params.append(bigquery.ScalarQueryParameter("brand", "STRING", brand))
+
+    job_config = bigquery.QueryJobConfig(query_parameters=params) if params else None
+    rows = list(bq_client.query(query, job_config=job_config).result())
+    return rows
+
+
+def get_sync_stats(bq_client):
+    """Get current sync progress."""
+    query = f"""
+        SELECT
+            COUNT(*) as total,
+            COUNTIF(gcs_path IS NOT NULL) as synced,
+            COUNTIF(gcs_path IS NULL) as pending,
+            ROUND(SUM(CASE WHEN gcs_path IS NOT NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as synced_gb,
+            ROUND(SUM(CASE WHEN gcs_path IS NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as pending_gb
+        FROM `{PROJECT_ID}.{DATASET}.{TABLE}`
+    """
+    row = list(bq_client.query(query).result())[0]
+    return {
+        "total": row.total,
+        "synced": row.synced,
+        "pending": row.pending,
+        "synced_gb": row.synced_gb,
+        "pending_gb": row.pending_gb,
+    }
+
+
+def download_and_upload(drive_service, gcs_bucket, file_id, gcs_path, expected_size=None):
+    """Download a file from Drive and upload to GCS. Returns True on success."""
+    try:
+        # Download from Drive
+        request = drive_service.files().get_media(fileId=file_id)
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+
+        buffer.seek(0)
+        actual_size = buffer.getbuffer().nbytes
+
+        # Upload to GCS
+        blob = gcs_bucket.blob(gcs_path)
+        blob.upload_from_file(buffer, timeout=300)
+
+        return True, actual_size
+
+    except Exception as e:
+        logger.error("Failed %s: %s", gcs_path, e)
+        return False, 0
+
+
+def update_gcs_path(bq_client, file_id, gcs_path):
+    """Update the gcs_path in BigQuery to mark a file as synced."""
+    query = f"""
+        UPDATE `{PROJECT_ID}.{DATASET}.{TABLE}`
+        SET gcs_path = @gcs_path
+        WHERE file_id = @file_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("gcs_path", "STRING", gcs_path),
+            bigquery.ScalarQueryParameter("file_id", "STRING", file_id),
+        ]
+    )
+    bq_client.query(query, job_config=job_config).result()
+
+
+def sync_file(drive_service, gcs_bucket, bq_client, row):
+    """Sync a single file from Drive to GCS."""
+    file_id = row.file_id
+    drive_path = row.drive_path
+    gcs_path = f"files/{drive_path}"
+    size_mb = (row.file_size or 0) / 1024 / 1024
+
+    logger.info("Downloading %s (%.1f MB)...", drive_path, size_mb)
+    start = time.time()
+
+    ok, actual_size = download_and_upload(
+        drive_service, gcs_bucket, file_id, gcs_path, row.file_size
+    )
+
+    if ok:
+        duration = time.time() - start
+        speed = actual_size / 1024 / 1024 / duration if duration > 0 else 0
+        full_gcs_path = f"gs://{GCS_BUCKET}/{gcs_path}"
+        update_gcs_path(bq_client, file_id, full_gcs_path)
+        logger.info(
+            "  ✓ %s (%.1f MB in %.1fs, %.1f MB/s)",
+            drive_path, actual_size / 1024 / 1024, duration, speed,
+        )
+        return True, actual_size
+    else:
+        return False, 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Sync Divebar files from Google Drive to GCS")
+    parser.add_argument("--workers", type=int, default=1, help="Concurrent download workers (default: 1)")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be downloaded")
+    parser.add_argument("--brand", help="Only sync files from this brand")
+    parser.add_argument("--limit", type=int, help="Maximum files to sync")
+    args = parser.parse_args()
+
+    bq_client = bigquery.Client(project=PROJECT_ID)
+    gcs_client = storage.Client(project=PROJECT_ID)
+
+    # Show current progress
+    stats = get_sync_stats(bq_client)
+    logger.info(
+        "Sync status: %d/%d files synced (%.1f/%.1f GB), %d pending (%.1f GB)",
+        stats["synced"], stats["total"], stats["synced_gb"],
+        stats["synced_gb"] + stats["pending_gb"],
+        stats["pending"], stats["pending_gb"],
+    )
+
+    # Get unsynced files
+    files = get_unsynced_files(bq_client, brand=args.brand, limit=args.limit)
+    if not files:
+        logger.info("All files are synced!")
+        return
+
+    total_size = sum(r.file_size or 0 for r in files)
+    logger.info(
+        "Will sync %d files (%.1f GB)%s",
+        len(files), total_size / 1024 / 1024 / 1024,
+        " [DRY RUN]" if args.dry_run else "",
+    )
+
+    if args.dry_run:
+        for row in files[:20]:
+            logger.info("  Would download: %s (%.1f MB)", row.drive_path, (row.file_size or 0) / 1024 / 1024)
+        if len(files) > 20:
+            logger.info("  ... and %d more", len(files) - 20)
+        return
+
+    gcs_bucket = gcs_client.bucket(GCS_BUCKET)
+    drive_service = get_drive_service()
+
+    synced = 0
+    failed = 0
+    bytes_synced = 0
+    overall_start = time.time()
+
+    if args.workers > 1:
+        # Parallel downloads
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            futures = {
+                executor.submit(sync_file, drive_service, gcs_bucket, bq_client, row): row
+                for row in files
+            }
+            for future in as_completed(futures):
+                ok, size = future.result()
+                if ok:
+                    synced += 1
+                    bytes_synced += size
+                else:
+                    failed += 1
+
+                if (synced + failed) % 50 == 0:
+                    elapsed = time.time() - overall_start
+                    logger.info(
+                        "Progress: %d/%d synced, %d failed, %.1f GB, %.0f s elapsed",
+                        synced, len(files), failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
+                    )
+    else:
+        # Sequential downloads
+        for i, row in enumerate(files):
+            ok, size = sync_file(drive_service, gcs_bucket, bq_client, row)
+            if ok:
+                synced += 1
+                bytes_synced += size
+            else:
+                failed += 1
+
+            if (i + 1) % 50 == 0:
+                elapsed = time.time() - overall_start
+                logger.info(
+                    "Progress: %d/%d synced, %d failed, %.1f GB, %.0f s elapsed",
+                    synced, len(files), failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
+                )
+
+    elapsed = time.time() - overall_start
+    logger.info(
+        "Done: %d synced, %d failed, %.1f GB in %.0f s (%.1f MB/s avg)",
+        synced, failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
+        bytes_synced / 1024 / 1024 / elapsed if elapsed > 0 else 0,
+    )
+
+
+if __name__ == "__main__":
+    main()

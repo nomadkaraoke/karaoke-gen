@@ -2,8 +2,9 @@
 Divebar Mirror infrastructure module.
 
 Creates:
+- GCS bucket for file mirror (actual karaoke files from Drive)
 - GCS bucket for function source code
-- Service account with Drive API + BigQuery permissions
+- Service account with Drive API + BigQuery + GCS permissions
 - Cloud Function v2 (Gen2) for indexing Divebar Drive files
 - Cloud Scheduler job for daily sync
 - BigQuery table for the Divebar catalog index
@@ -66,6 +67,27 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
         member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
+    # ==================== File Mirror Bucket ====================
+    # Stores the actual karaoke files downloaded from Google Drive (~779 GB)
+
+    files_bucket = storage.Bucket(
+        "divebar-files-bucket",
+        name="nomadkaraoke-divebar-files",
+        location="US-CENTRAL1",
+        force_destroy=False,  # Protect against accidental deletion
+        uniform_bucket_level_access=True,
+        versioning=storage.BucketVersioningArgs(enabled=False),
+    )
+    resources["files_bucket"] = files_bucket
+
+    # Grant SA write access to the files bucket
+    resources["files_bucket_access"] = storage.BucketIAMMember(
+        "divebar-mirror-files-bucket-access",
+        bucket=files_bucket.name,
+        role="roles/storage.objectAdmin",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     # ==================== Function Source Bucket ====================
 
     source_bucket = storage.Bucket(
@@ -101,7 +123,8 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
             {"name": "drive_md5", "type": "STRING", "mode": "NULLABLE"},
             {"name": "artist_normalized", "type": "STRING", "mode": "NULLABLE"},
             {"name": "title_normalized", "type": "STRING", "mode": "NULLABLE"},
-            {"name": "synced_at", "type": "TIMESTAMP", "mode": "REQUIRED"}
+            {"name": "synced_at", "type": "TIMESTAMP", "mode": "REQUIRED"},
+            {"name": "gcs_path", "type": "STRING", "mode": "NULLABLE"}
         ]""",
         deletion_protection=False,
     )

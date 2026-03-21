@@ -539,6 +539,7 @@ pulumi.export("runner_manager_scheduler_job", runner_manager_resources["schedule
 # Divebar mirror (Phase 1)
 pulumi.export("divebar_mirror_function_url", divebar_mirror_resources["function"].url)
 pulumi.export("divebar_mirror_scheduler_name", divebar_mirror_resources["scheduler"].name)
+pulumi.export("divebar_files_bucket", divebar_mirror_resources["files_bucket"].name)
 
 # KaraokeNerds data sync (Phase 2)
 pulumi.export("kn_data_sync_function_url", kn_data_sync_resources["function"].url)
