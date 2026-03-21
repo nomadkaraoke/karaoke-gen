@@ -176,6 +176,19 @@ async def send_magic_link(
             message="If this email is registered, you will receive a sign-in link shortly."
         )
 
+    # Per-IP signup rate limit (only for new users)
+    existing_user = user_service.get_user(email)
+    if existing_user is None and ip_address:
+        if user_service.is_ip_signup_rate_limited(ip_address):
+            logger.warning(
+                f"IP signup rate limit hit: {ip_address} for {_mask_email(email)}"
+            )
+            # Silent reject (anti-enumeration)
+            return SendMagicLinkResponse(
+                status="success",
+                message="If this email is registered, you will receive a sign-in link shortly."
+            )
+
     # Check if email service is configured
     if not email_service.is_configured():
         logger.error("Email service not configured - cannot send magic links")

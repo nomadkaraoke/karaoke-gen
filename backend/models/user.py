@@ -98,6 +98,9 @@ class User(BaseModel):
     # Feedback-for-credits program
     has_submitted_feedback: bool = False
 
+    # Anti-abuse: IP address used during signup (magic link request)
+    signup_ip: Optional[str] = None
+
 
 class MagicLinkToken(BaseModel):
     """

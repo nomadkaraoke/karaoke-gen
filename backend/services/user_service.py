@@ -107,15 +107,21 @@ class UserService:
             logger.exception(f"Error getting user {email}")
             return None
 
-    def get_or_create_user(self, email: str, tenant_id: Optional[str] = None) -> User:
+    def get_or_create_user(
+        self,
+        email: str,
+        tenant_id: Optional[str] = None,
+        signup_ip: Optional[str] = None,
+    ) -> User:
         """
         Get existing user or create a new one.
 
-        New users receive a welcome credit to try the service.
+        Welcome credits are granted on first magic link verification, not here.
 
         Args:
             email: User's email address
             tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
+            signup_ip: Client IP address at signup (for rate limiting)
 
         Note: If user exists but has a different tenant_id, the existing user is returned.
         Users are uniquely identified by email, not email+tenant.
@@ -135,6 +141,7 @@ class UserService:
             credits=0,
             credit_transactions=[],
             tenant_id=tenant_id,  # Associate with tenant on creation
+            signup_ip=signup_ip,
         )
         self._save_user(user)
         logger.info(f"Created new user: {email} (tenant: {tenant_id or 'default'}) — credits pending verification")
@@ -222,8 +229,8 @@ class UserService:
         """
         email = email.lower()
 
-        # Ensure user exists (with tenant association)
-        self.get_or_create_user(email, tenant_id=tenant_id)
+        # Ensure user exists (with tenant association and signup IP for rate limiting)
+        self.get_or_create_user(email, tenant_id=tenant_id, signup_ip=ip_address)
 
         # Generate secure token
         token = secrets.token_urlsafe(32)
@@ -397,6 +404,55 @@ class UserService:
         except Exception:
             logger.exception(f"Error granting welcome credits to {email}")
             return False
+
+    # =========================================================================
+    # Anti-Abuse Rate Limiting
+    # =========================================================================
+
+    # Maximum new signups allowed per IP address in the rate limit window
+    MAX_SIGNUPS_PER_IP = 2
+    SIGNUP_RATE_LIMIT_HOURS = 24
+
+    def count_recent_signups_from_ip(self, ip_address: str, hours: int = 24) -> int:
+        """
+        Count new user accounts created from this IP in the last N hours.
+
+        Queries gen_users where signup_ip matches and created_at is recent.
+        Used to rate-limit new account creation per IP address.
+
+        Args:
+            ip_address: Client IP to check
+            hours: Lookback window in hours (default: 24)
+
+        Returns:
+            Number of recent signups from this IP
+        """
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            query = (
+                self.db.collection(USERS_COLLECTION)
+                .where(filter=FieldFilter("signup_ip", "==", ip_address))
+                .where(filter=FieldFilter("created_at", ">=", cutoff))
+            )
+
+            count = 0
+            for _ in query.stream():
+                count += 1
+            return count
+
+        except Exception:
+            logger.exception(f"Error counting signups from IP {ip_address}")
+            # On error, don't block — return 0 to allow the request
+            return 0
+
+    def is_ip_signup_rate_limited(self, ip_address: str) -> bool:
+        """Check if an IP has exceeded the signup rate limit."""
+        if not ip_address:
+            return False
+        count = self.count_recent_signups_from_ip(
+            ip_address, hours=self.SIGNUP_RATE_LIMIT_HOURS
+        )
+        return count >= self.MAX_SIGNUPS_PER_IP
 
     # =========================================================================
     # Session Management
