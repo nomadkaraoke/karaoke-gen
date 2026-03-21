@@ -192,6 +192,32 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # Gen Users: query by signup_ip, order by created_at (anti-abuse investigation)
+    resources["firestore_index_gen_users_signup_ip"] = firestore.Index(
+        "firestore-index-gen-users-signup-ip",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="gen_users",
+        fields=[
+            firestore.IndexFieldArgs(field_path="signup_ip", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="created_at", order="DESCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
+    )
+
+    # Gen Users: query by device_fingerprint, order by created_at (anti-abuse investigation)
+    resources["firestore_index_gen_users_device_fingerprint"] = firestore.Index(
+        "firestore-index-gen-users-device-fingerprint",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="gen_users",
+        fields=[
+            firestore.IndexFieldArgs(field_path="device_fingerprint", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="created_at", order="DESCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
+    )
+
     # Stripe Payments: query by customer_email, order by created_at
     # Used for admin user detail page payment history
     resources["firestore_index_stripe_payments_email"] = firestore.Index(
