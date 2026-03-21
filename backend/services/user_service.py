@@ -525,7 +525,8 @@ class UserService:
         user_email: str,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        device_fingerprint: Optional[str] = None,
     ) -> Session:
         """
         Create a new session for an authenticated user.
@@ -535,6 +536,7 @@ class UserService:
             ip_address: Client IP for auditing
             user_agent: Client user agent for auditing
             tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
+            device_fingerprint: Browser fingerprint for cross-account correlation
         """
         token = secrets.token_urlsafe(32)
         token_prefix = token[:12]
@@ -546,6 +548,7 @@ class UserService:
             ip_address=ip_address,
             user_agent=user_agent,
             tenant_id=tenant_id,
+            device_fingerprint=device_fingerprint,
         )
 
         # Serialize and write to Firestore

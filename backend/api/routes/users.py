@@ -304,12 +304,14 @@ async def verify_magic_link(
         # Refresh user to get updated credit balance
         user = user_service.get_user(user.email)
 
-    # Create session with tenant context from the magic link
+    # Create session with tenant context and device fingerprint from the magic link
+    magic_link_fingerprint = magic_link_data.get('device_fingerprint') if magic_link_doc.exists else None
     session = user_service.create_session(
         user.email,
         ip_address=ip_address,
         user_agent=user_agent,
-        tenant_id=magic_link_tenant_id
+        tenant_id=magic_link_tenant_id,
+        device_fingerprint=magic_link_fingerprint,
     )
 
     # Send welcome email to first-time users

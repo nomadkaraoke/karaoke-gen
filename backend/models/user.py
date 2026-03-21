@@ -146,6 +146,7 @@ class Session(BaseModel):
     last_activity_at: datetime = Field(default_factory=datetime.utcnow)
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
+    device_fingerprint: Optional[str] = None
     is_active: bool = True
 
     # Multi-tenant support (None = default Nomad Karaoke)
