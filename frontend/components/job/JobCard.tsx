@@ -85,7 +85,8 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
                         job.status === "in_review" ||
                         job.status === "awaiting_instrumental_selection" ||
                         job.status === "awaiting_audio_selection" ||
-                        job.status === "awaiting_audio_edit"
+                        job.status === "awaiting_audio_edit" ||
+                        job.status === "in_audio_edit"
   const isComplete = job.status === "complete"
   const isFailed = job.status === "failed"
 
@@ -115,7 +116,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
       )
     }
 
-    if (job.status === "awaiting_audio_edit") {
+    if (job.status === "awaiting_audio_edit" || job.status === "in_audio_edit") {
       return (
         <a
           href={`/app/jobs#/${job.job_id}/audio-edit`}
