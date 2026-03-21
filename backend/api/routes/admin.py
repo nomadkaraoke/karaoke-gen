@@ -3528,3 +3528,147 @@ async def get_audio_edit_review_detail(
         "original_audio_url": original_audio_url,
         "current_audio_url": current_audio_url,
     }
+
+
+# =============================================================================
+# Anti-Abuse Investigation
+# =============================================================================
+
+
+@router.get("/abuse/related/{email}")
+async def find_related_accounts(
+    email: str,
+    auth_result: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Find accounts related to the given email by shared signup IP or device fingerprint.
+
+    Returns the target user plus lists of other accounts from the same IP and/or fingerprint.
+    """
+    result = user_service.find_related_accounts(email)
+
+    if not result["user"]:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user = result["user"]
+    return {
+        "user": {
+            "email": user.email,
+            "signup_ip": user.signup_ip,
+            "device_fingerprint": user.device_fingerprint,
+            "credits": user.credits,
+            "total_jobs_created": user.total_jobs_created,
+            "total_spent": user.total_spent,
+            "created_at": str(user.created_at),
+        },
+        "related_by_ip": [
+            {
+                "email": u.email,
+                "credits": u.credits,
+                "total_jobs_created": u.total_jobs_created,
+                "total_spent": u.total_spent,
+                "created_at": str(u.created_at),
+            }
+            for u in result["by_ip"]
+        ],
+        "related_by_fingerprint": [
+            {
+                "email": u.email,
+                "credits": u.credits,
+                "total_jobs_created": u.total_jobs_created,
+                "total_spent": u.total_spent,
+                "created_at": str(u.created_at),
+            }
+            for u in result["by_fingerprint"]
+        ],
+    }
+
+
+@router.get("/abuse/suspicious")
+async def find_suspicious_accounts(
+    min_jobs: int = 2,
+    max_spend: int = 0,
+    auth_result: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Find accounts with many jobs but no (or low) spend.
+
+    Detects potential free-credit abusers: people creating multiple accounts
+    to get welcome credits without ever paying.
+
+    Args:
+        min_jobs: Minimum jobs created to flag (default: 2)
+        max_spend: Maximum total_spent in cents (default: 0 = only free accounts)
+    """
+    users = user_service.find_suspicious_accounts(min_jobs=min_jobs, max_spend=max_spend)
+
+    return {
+        "count": len(users),
+        "users": [
+            {
+                "email": u.email,
+                "signup_ip": u.signup_ip,
+                "device_fingerprint": u.device_fingerprint,
+                "credits": u.credits,
+                "total_jobs_created": u.total_jobs_created,
+                "total_jobs_completed": u.total_jobs_completed,
+                "total_spent": u.total_spent,
+                "has_submitted_feedback": u.has_submitted_feedback,
+                "created_at": str(u.created_at),
+                "last_login_at": str(u.last_login_at) if u.last_login_at else None,
+            }
+            for u in users
+        ],
+    }
+
+
+@router.get("/abuse/by-ip/{ip_address:path}")
+async def find_users_by_ip(
+    ip_address: str,
+    auth_result: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Find all users who signed up from a specific IP address."""
+    users = user_service.find_users_by_signup_ip(ip_address)
+    return {
+        "ip_address": ip_address,
+        "count": len(users),
+        "users": [
+            {
+                "email": u.email,
+                "device_fingerprint": u.device_fingerprint,
+                "credits": u.credits,
+                "total_jobs_created": u.total_jobs_created,
+                "total_spent": u.total_spent,
+                "created_at": str(u.created_at),
+            }
+            for u in users
+        ],
+    }
+
+
+@router.get("/abuse/by-fingerprint/{fingerprint}")
+async def find_users_by_fingerprint(
+    fingerprint: str,
+    auth_result: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Find all users who signed up with a specific device fingerprint."""
+    users = user_service.find_users_by_fingerprint(fingerprint)
+    return {
+        "device_fingerprint": fingerprint,
+        "count": len(users),
+        "users": [
+            {
+                "email": u.email,
+                "signup_ip": u.signup_ip,
+                "credits": u.credits,
+                "total_jobs_created": u.total_jobs_created,
+                "total_spent": u.total_spent,
+                "created_at": str(u.created_at),
+            }
+            for u in users
+        ],
+    }

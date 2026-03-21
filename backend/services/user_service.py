@@ -517,6 +517,92 @@ class UserService:
         return False
 
     # =========================================================================
+    # Anti-Abuse Investigation
+    # =========================================================================
+
+    def find_users_by_signup_ip(self, ip_address: str) -> List[User]:
+        """Find all users who signed up from this IP address."""
+        try:
+            query = (
+                self.db.collection(USERS_COLLECTION)
+                .where(filter=FieldFilter("signup_ip", "==", ip_address))
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
+                .limit(50)
+            )
+            return [User(**doc.to_dict()) for doc in query.stream()]
+        except Exception:
+            logger.exception(f"Error finding users by IP {ip_address}")
+            return []
+
+    def find_users_by_fingerprint(self, device_fingerprint: str) -> List[User]:
+        """Find all users who signed up with this device fingerprint."""
+        try:
+            query = (
+                self.db.collection(USERS_COLLECTION)
+                .where(filter=FieldFilter("device_fingerprint", "==", device_fingerprint))
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
+                .limit(50)
+            )
+            return [User(**doc.to_dict()) for doc in query.stream()]
+        except Exception:
+            logger.exception(f"Error finding users by fingerprint")
+            return []
+
+    def find_suspicious_accounts(self, min_jobs: int = 2, max_spend: int = 0) -> List[User]:
+        """
+        Find accounts with many jobs but no spend (potential free-credit abusers).
+
+        Args:
+            min_jobs: Minimum total_jobs_created to flag (default: 2)
+            max_spend: Maximum total_spent in cents to include (default: 0 = free only)
+        """
+        try:
+            query = (
+                self.db.collection(USERS_COLLECTION)
+                .where(filter=FieldFilter("total_jobs_created", ">=", min_jobs))
+                .order_by("total_jobs_created", direction=firestore.Query.DESCENDING)
+                .limit(100)
+            )
+            users = []
+            for doc in query.stream():
+                user = User(**doc.to_dict())
+                if user.total_spent <= max_spend:
+                    users.append(user)
+            return users
+        except Exception:
+            logger.exception("Error finding suspicious accounts")
+            return []
+
+    def find_related_accounts(self, email: str) -> dict:
+        """
+        Given a user email, find all accounts that share the same signup IP
+        or device fingerprint. Returns a dict with grouped results.
+        """
+        user = self.get_user(email)
+        if not user:
+            return {"user": None, "by_ip": [], "by_fingerprint": []}
+
+        by_ip = []
+        if user.signup_ip:
+            by_ip = [
+                u for u in self.find_users_by_signup_ip(user.signup_ip)
+                if u.email != user.email
+            ]
+
+        by_fingerprint = []
+        if user.device_fingerprint:
+            by_fingerprint = [
+                u for u in self.find_users_by_fingerprint(user.device_fingerprint)
+                if u.email != user.email
+            ]
+
+        return {
+            "user": user,
+            "by_ip": by_ip,
+            "by_fingerprint": by_fingerprint,
+        }
+
+    # =========================================================================
     # Session Management
     # =========================================================================
 
