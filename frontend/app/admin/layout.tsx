@@ -57,6 +57,8 @@ function AdminBreadcrumb() {
           breadcrumbs.push({ label: "Payments" })
         } else if (segments[1] === "rate-limits") {
           breadcrumbs.push({ label: "Rate Limits" })
+        } else if (segments[1] === "abuse") {
+          breadcrumbs.push({ label: "Abuse Investigation" })
         }
       }
     }

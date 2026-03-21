@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   BookOpenCheck,
   Scissors,
+  Fingerprint,
 } from "lucide-react"
 
 import {
@@ -69,6 +70,11 @@ const navItems = [
     title: "Audio Edits",
     href: "/admin/audio-edits",
     icon: Scissors,
+  },
+  {
+    title: "Abuse Investigation",
+    href: "/admin/abuse",
+    icon: Fingerprint,
   },
 ]
 

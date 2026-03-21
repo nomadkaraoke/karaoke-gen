@@ -2333,6 +2333,40 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  // Anti-abuse investigation endpoints
+  async getAbuseSuspicious(params?: { min_jobs?: number; max_spend?: number }): Promise<AbuseSuspiciousResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.min_jobs) searchParams.set('min_jobs', String(params.min_jobs));
+    if (params?.max_spend !== undefined) searchParams.set('max_spend', String(params.max_spend));
+    const url = `${API_BASE_URL}/api/admin/abuse/suspicious${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async getAbuseRelated(email: string): Promise<AbuseRelatedResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/abuse/related/${encodeURIComponent(email)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getAbuseByIp(ip: string): Promise<AbuseByIpResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/abuse/by-ip/${encodeURIComponent(ip)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getAbuseByFingerprint(fingerprint: string): Promise<AbuseByFingerprintResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/abuse/by-fingerprint/${encodeURIComponent(fingerprint)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
 };
 
 export interface EditReviewSummary {
@@ -3109,6 +3143,61 @@ export interface ChangeVisibilityResponse {
   previous_visibility: string;
   new_visibility: string;
   reprocessing_required: boolean;
+}
+
+// Anti-abuse investigation types
+export interface AbuseSuspiciousUser {
+  email: string;
+  signup_ip: string | null;
+  device_fingerprint: string | null;
+  credits: number;
+  total_jobs_created: number;
+  total_jobs_completed: number;
+  total_spent: number;
+  has_submitted_feedback: boolean;
+  created_at: string;
+  last_login_at: string | null;
+}
+
+export interface AbuseSuspiciousResponse {
+  count: number;
+  users: AbuseSuspiciousUser[];
+}
+
+export interface AbuseRelatedUser {
+  email: string;
+  credits: number;
+  total_jobs_created: number;
+  total_spent: number;
+  created_at: string;
+  signup_ip?: string | null;
+  device_fingerprint?: string | null;
+}
+
+export interface AbuseRelatedResponse {
+  user: {
+    email: string;
+    signup_ip: string | null;
+    device_fingerprint: string | null;
+    credits: number;
+    total_jobs_created: number;
+    total_spent: number;
+    created_at: string;
+  };
+  related_by_ip: AbuseRelatedUser[];
+  related_by_fingerprint: AbuseRelatedUser[];
+}
+
+export interface AbuseByIpResponse {
+  ip_address: string;
+  count: number;
+  users: AbuseRelatedUser[];
+}
+
+export interface AbuseByFingerprintResponse {
+  device_fingerprint: string;
+  count: number;
+  users: AbuseRelatedUser[];
 }
 
 export { ApiError };
