@@ -36,14 +36,13 @@ function VerifyMagicLinkContent() {
       const success = await verifyMagicLink(token)
       if (success) {
         setState("success")
-        // Check for welcome credits granted
+        // Check verify response for welcome credits and tenant redirect
         const lastVerifyResponse = (window as any).__LAST_VERIFY_RESPONSE__
         if (lastVerifyResponse?.credits_granted > 0) {
           setCreditsGranted(lastVerifyResponse.credits_granted)
         }
         // Check if the verify response included a tenant subdomain
         // If we're on the wrong domain, redirect to the correct tenant portal
-        const lastVerifyResponse = (window as any).__LAST_VERIFY_RESPONSE__
         if (lastVerifyResponse?.tenant_subdomain) {
           const currentHost = window.location.hostname.toLowerCase()
           const tenantSubdomain = lastVerifyResponse.tenant_subdomain.toLowerCase()
