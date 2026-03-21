@@ -235,6 +235,26 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # ==================== Review Sessions Collection Group Index ====================
+
+    # The cross-job session search uses a collection group query on
+    # review_sessions ordered by updated_at DESC.  Firestore requires a
+    # single-field index exemption with COLLECTION_GROUP scope for this.
+    # Created via REST API (gcloud doesn't support query-scope for field exemptions):
+    #
+    #   curl -X PATCH \
+    #     "https://firestore.googleapis.com/v1/projects/nomadkaraoke/databases/(default)/collectionGroups/review_sessions/fields/updated_at" \
+    #     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    #     -H "Content-Type: application/json" \
+    #     -d '{"indexConfig":{"indexes":[
+    #       {"queryScope":"COLLECTION","fields":[{"fieldPath":"updated_at","order":"ASCENDING"}]},
+    #       {"queryScope":"COLLECTION","fields":[{"fieldPath":"updated_at","order":"DESCENDING"}]},
+    #       {"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"updated_at","order":"DESCENDING"}]}
+    #     ]}}'
+    #
+    # Pulumi doesn't have a native resource for single-field index
+    # exemptions — manage via gcloud/REST if it needs recreation.
+
     # ==================== Firestore Indexes for Logs Subcollection ====================
 
     # Logs: query by worker, order by timestamp
