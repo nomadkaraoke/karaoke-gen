@@ -176,6 +176,24 @@ LyricsTranscriber                 LyricsTranscriber
 
 *Flacfetch runs on a dedicated GCE VM with YouTube cookies and tracker access. Without it, YouTube downloads will fail due to bot detection on Cloud Run IPs.
 
+### Data Pipeline Cloud Functions
+
+Three Cloud Functions manage the community karaoke data pipeline, running daily on automated schedules:
+
+| Function | Schedule | Purpose |
+|----------|----------|---------|
+| `divebar-mirror` | Daily 2:00 AM ET | Indexes 48K+ files from [diveBar Karaoke Google Drive](https://drive.google.com/drive/folders/1zxnSZcE03gzy0YVGOdnTrEIi8It_3Wu8) into BigQuery `divebar_catalog` |
+| `kn-data-sync` | Daily 3:05 AM + 4:30 AM ET | Fetches KaraokeNerds catalog (281K songs) and community tracks (58K with YouTube URLs) to BigQuery + GCS |
+| `divebar-lookup` | Daily 6:00 AM ET + on-demand API | Public search/lookup API for KJ Controller; rebuilds KN↔Divebar cross-reference index |
+
+**Infrastructure** (Pulumi-managed in `infrastructure/`):
+- Service accounts: `divebar-mirror@`, `kn-data-sync@`, `divebar-lookup@` (least-privilege IAM)
+- GCS: `nomadkaraoke-kn-data` (raw exports), 3 source buckets for function code
+- BigQuery tables: `divebar_catalog`, `karaokenerds_community`, `kn_divebar_xref` (in `karaoke_decide` dataset)
+- Secret: `karaokenerds-api-key` (KN API access)
+
+**Source code:** `infrastructure/functions/{divebar_mirror,kn_data_sync,divebar_lookup}/`
+
 ## Firestore Collections
 
 karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses separate Firestore collections:
