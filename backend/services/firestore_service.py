@@ -871,12 +871,14 @@ class FirestoreService:
 
             # Collection group query across all jobs
             sessions_ref = self.db.collection_group("review_sessions")
-            query = sessions_ref.order_by("updated_at", direction=firestore.Query.DESCENDING).limit(limit)
-            docs = query.stream()
-            results = [doc.to_dict() for doc in docs]
 
-            # Filter in Python for text search (Firestore doesn't support LIKE)
             if query_text:
+                # Over-fetch since we filter in Python (Firestore doesn't support LIKE/contains)
+                fetch_limit = max(limit * 25, 500)
+                query = sessions_ref.order_by("updated_at", direction=firestore.Query.DESCENDING).limit(fetch_limit)
+                docs = query.stream()
+                results = [doc.to_dict() for doc in docs]
+
                 q_lower = query_text.lower()
                 results = [
                     r for r in results
@@ -884,8 +886,11 @@ class FirestoreService:
                     or q_lower in (r.get("title") or "").lower()
                     or q_lower in (r.get("job_id") or "").lower()
                 ]
-
-            return results
+                return results[:limit]
+            else:
+                query = sessions_ref.order_by("updated_at", direction=firestore.Query.DESCENDING).limit(limit)
+                docs = query.stream()
+                return [doc.to_dict() for doc in docs]
 
         except Exception as e:
             logger.error(f"Error searching review sessions: {e}")
