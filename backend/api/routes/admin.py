@@ -3747,7 +3747,13 @@ async def backfill_signup_ips(
             updated += 1
             logger.info(f"Backfilled signup_ip for {email}: {ip}")
         else:
-            no_ip_found += 1
+            # Clear bad IP if one was set (e.g., load balancer IP)
+            if current_ip and current_ip in BAD_IPS:
+                user_doc.reference.update({"signup_ip": None})
+                updated += 1
+                logger.info(f"Cleared bad signup_ip for {email}: {current_ip}")
+            else:
+                no_ip_found += 1
 
     return {
         "status": "success",
