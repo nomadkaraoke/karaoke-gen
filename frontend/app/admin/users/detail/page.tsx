@@ -414,6 +414,54 @@ export default function AdminUserDetailPage() {
               <span className="text-muted-foreground">Last Updated</span>
               <span className="text-sm">{formatDate(user.updated_at)}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total Spent</span>
+              <span className="text-sm font-medium">{user.total_spent ? `$${(user.total_spent / 100).toFixed(2)}` : "$0"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Feedback Submitted</span>
+              <Badge variant={user.has_submitted_feedback ? "default" : "secondary"}>
+                {user.has_submitted_feedback ? "Yes" : "No"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Identity & Security */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Identity & Security</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Signup IP</span>
+              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{user.signup_ip || "unknown"}</code>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Device Fingerprint</span>
+              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{user.device_fingerprint || "unknown"}</code>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Welcome Credits</span>
+              <Badge variant={user.welcome_credits_granted ? "default" : "secondary"}>
+                {user.welcome_credits_granted ? "Granted" : "Not yet"}
+              </Badge>
+            </div>
+            {user.recent_sessions && user.recent_sessions.length > 0 && (
+              <div className="pt-2 border-t">
+                <p className="text-sm font-medium mb-2">Active Sessions</p>
+                <div className="space-y-2">
+                  {user.recent_sessions.map((s, i) => (
+                    <div key={i} className="text-xs bg-muted rounded p-2 space-y-1">
+                      <div><span className="text-muted-foreground">IP:</span> {s.ip_address || "unknown"}</div>
+                      {s.device_fingerprint && <div><span className="text-muted-foreground">Fingerprint:</span> {s.device_fingerprint}</div>}
+                      {s.user_agent && <div className="truncate"><span className="text-muted-foreground">UA:</span> {s.user_agent}</div>}
+                      <div><span className="text-muted-foreground">Last active:</span> {s.last_activity_at ? new Date(s.last_activity_at).toLocaleString() : "unknown"}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

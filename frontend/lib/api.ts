@@ -1572,6 +1572,7 @@ export interface AdminUserDetail {
     job_id?: string;
     created_by?: string;
   }>;
+  total_spent: number;
   recent_jobs: Array<{
     job_id: string;
     status: string;
@@ -1580,6 +1581,18 @@ export interface AdminUserDetail {
     created_at?: string;
   }>;
   active_sessions_count: number;
+  // Anti-abuse fields
+  signup_ip?: string | null;
+  device_fingerprint?: string | null;
+  welcome_credits_granted?: boolean;
+  has_submitted_feedback?: boolean;
+  recent_sessions?: Array<{
+    ip_address?: string;
+    user_agent?: string;
+    device_fingerprint?: string;
+    created_at?: string;
+    last_activity_at?: string;
+  }>;
 }
 
 export interface AdminJobListParams {

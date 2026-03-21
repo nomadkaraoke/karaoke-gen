@@ -3693,12 +3693,16 @@ async def backfill_signup_ips(
     skipped = 0
     no_ip_found = 0
 
-    # Find all users without signup_ip
+    # Known bad IPs (load balancer / proxy IPs that aren't real client IPs)
+    BAD_IPS = {"169.254.169.126", "unknown", ""}
+
+    # Find all users without signup_ip or with a known-bad IP
     users_query = db.collection(USERS_COLLECTION).stream()
 
     for user_doc in users_query:
         user_data = user_doc.to_dict()
-        if user_data.get("signup_ip"):
+        current_ip = user_data.get("signup_ip")
+        if current_ip and current_ip not in BAD_IPS:
             skipped += 1
             continue
 
@@ -3719,7 +3723,7 @@ async def backfill_signup_ips(
         for session_doc in sessions:
             session_data = session_doc.to_dict()
             candidate_ip = session_data.get("ip_address")
-            if candidate_ip:
+            if candidate_ip and candidate_ip not in BAD_IPS:
                 ip = candidate_ip
                 break
 

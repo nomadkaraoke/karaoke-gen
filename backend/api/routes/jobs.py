@@ -18,6 +18,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile, File
 
 from datetime import datetime
+from backend.utils.request_helpers import get_client_ip
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
     URLSubmissionRequest,
@@ -134,7 +135,7 @@ async def create_job(
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
 
         # Store client IP on job for anti-abuse correlation
-        creation_ip = http_request.client.host if http_request.client else None
+        creation_ip = get_client_ip(http_request)
         if creation_ip:
             FirestoreService().update_job(job.job_id, {"creation_ip": creation_ip})
 
@@ -2242,7 +2243,7 @@ async def create_job_from_search(
         job_id = job.job_id
 
         # Store client IP on job for anti-abuse correlation
-        creation_ip = request.client.host if request.client else None
+        creation_ip = get_client_ip(request)
         if creation_ip:
             FirestoreService().update_job(job_id, {"creation_ip": creation_ip})
 

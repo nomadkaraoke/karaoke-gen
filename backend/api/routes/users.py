@@ -68,6 +68,7 @@ from backend.services.youtube_download_service import (
 )
 from backend.exceptions import InvalidStateTransitionError
 from backend.services.tracing import add_span_attribute
+from backend.utils.request_helpers import get_client_ip
 
 
 logger = logging.getLogger(__name__)
@@ -168,7 +169,7 @@ async def send_magic_link(
             message="If this email is registered, you will receive a sign-in link shortly."
         )
 
-    ip_address = http_request.client.host if http_request.client else None
+    ip_address = get_client_ip(http_request)
     if ip_address and email_validation.is_ip_blocked(ip_address):
         logger.warning(f"Blocked IP signup attempt: {ip_address}")
         return SendMagicLinkResponse(
@@ -273,7 +274,7 @@ async def verify_magic_link(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     # Get client info
-    ip_address = http_request.client.host if http_request.client else None
+    ip_address = get_client_ip(http_request)
     user_agent = http_request.headers.get("user-agent")
 
     # Check if this is a first login BEFORE verification (which sets last_login_at)
@@ -1255,9 +1256,17 @@ class UserDetailResponse(BaseModel):
     last_login_at: Optional[str] = None
     total_jobs_created: int = 0
     total_jobs_completed: int = 0
+    total_spent: int = 0
     credit_transactions: list[dict] = []
     recent_jobs: list[dict] = []
     active_sessions_count: int = 0
+    # Anti-abuse / identity info
+    signup_ip: Optional[str] = None
+    device_fingerprint: Optional[str] = None
+    welcome_credits_granted: bool = False
+    has_submitted_feedback: bool = False
+    # Recent session details (IP, user agent, fingerprint)
+    recent_sessions: list[dict] = []
 
 
 @router.get("/admin/users", response_model=UserListResponsePaginated)
@@ -1402,13 +1411,24 @@ async def get_user_detail(
             "created_at": created_at_str,
         })
 
-    # Count active sessions
+    # Get active sessions with details
     sessions_query = db.collection("sessions").where(
         filter=FieldFilter("user_email", "==", email)
     ).where(
         filter=FieldFilter("is_active", "==", True)
     )
-    active_sessions_count = sum(1 for _ in sessions_query.stream())
+    active_sessions = []
+    for session_doc in sessions_query.stream():
+        sd = session_doc.to_dict()
+        created = sd.get("created_at")
+        active_sessions.append({
+            "ip_address": sd.get("ip_address"),
+            "user_agent": sd.get("user_agent"),
+            "device_fingerprint": sd.get("device_fingerprint"),
+            "created_at": created.isoformat() if hasattr(created, 'isoformat') else str(created) if created else None,
+            "last_activity_at": str(sd.get("last_activity_at", "")),
+        })
+    active_sessions_count = len(active_sessions)
 
     # Format credit transactions
     credit_transactions = []
@@ -1430,9 +1450,15 @@ async def get_user_detail(
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         total_jobs_created=user.total_jobs_created,
         total_jobs_completed=user.total_jobs_completed,
+        total_spent=user.total_spent,
         credit_transactions=credit_transactions,
         recent_jobs=recent_jobs,
         active_sessions_count=active_sessions_count,
+        signup_ip=user.signup_ip,
+        device_fingerprint=user.device_fingerprint,
+        welcome_credits_granted=user.welcome_credits_granted,
+        has_submitted_feedback=user.has_submitted_feedback,
+        recent_sessions=active_sessions,
     )
 
 
