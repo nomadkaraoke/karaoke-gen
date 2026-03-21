@@ -83,7 +83,7 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
                 action=storage.BucketLifecycleRuleActionArgs(type="Delete"),
                 condition=storage.BucketLifecycleRuleConditionArgs(
                     age=365,  # Keep 1 year of exports
-                    matches_prefix=["full/full-data-2", "community/community-data-2"],
+                    matches_prefixes=["full/full-data-2", "community/community-data-2"],
                 ),
             ),
         ],

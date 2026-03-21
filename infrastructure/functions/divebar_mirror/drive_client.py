@@ -88,7 +88,7 @@ def list_all_files(service, folder_id: str) -> list[dict]:
 def list_divebar_recursive(
     service,
     root_folder_id: str,
-    max_depth: int = 4,
+    max_depth: int = 6,
 ) -> list[dict]:
     """
     Recursively list all karaoke files in the Divebar shared folder.
@@ -106,6 +106,7 @@ def list_divebar_recursive(
     }
     """
     result = []
+    visited_folders = set()
     stats = {"folders_visited": 0, "files_found": 0, "shortcuts_resolved": 0, "errors": 0}
 
     def _recurse(folder_id: str, brand: str, path_prefix: str, subfolder: str, depth: int):
@@ -139,8 +140,12 @@ def list_divebar_recursive(
                 item_mime = mime
                 item_name = name
 
-            # Recurse into subfolders
+            # Recurse into subfolders (skip if already visited to prevent cycles)
             if item_mime == FOLDER_MIME:
+                if item_id in visited_folders:
+                    logger.debug("Skipping already-visited folder %s (%s)", item_name, item_id)
+                    continue
+                visited_folders.add(item_id)
                 child_brand = brand or item_name
                 child_subfolder = item_name if brand else ""
                 child_path = f"{path_prefix}/{item_name}" if path_prefix else item_name
