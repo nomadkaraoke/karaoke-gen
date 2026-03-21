@@ -98,8 +98,9 @@ class User(BaseModel):
     # Feedback-for-credits program
     has_submitted_feedback: bool = False
 
-    # Anti-abuse: IP address used during signup (magic link request)
+    # Anti-abuse: IP address and device fingerprint used during signup
     signup_ip: Optional[str] = None
+    device_fingerprint: Optional[str] = None
 
 
 class MagicLinkToken(BaseModel):
@@ -120,6 +121,7 @@ class MagicLinkToken(BaseModel):
     used_at: Optional[datetime] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
+    device_fingerprint: Optional[str] = None
 
     # Multi-tenant support (None = default Nomad Karaoke)
     tenant_id: Optional[str] = None
@@ -152,6 +154,7 @@ class Session(BaseModel):
 class SendMagicLinkRequest(BaseModel):
     """Request to send a magic link email."""
     email: str
+    device_fingerprint: Optional[str] = None
 
 
 class SendMagicLinkResponse(BaseModel):

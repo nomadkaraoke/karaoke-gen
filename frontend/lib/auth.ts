@@ -53,7 +53,10 @@ export const useAuth = create<AuthStore>()(
       sendMagicLink: async (email: string) => {
         set({ isLoading: true, error: null })
         try {
-          await api.sendMagicLink(email)
+          // Get device fingerprint for anti-abuse rate limiting
+          const { getDeviceFingerprint } = await import('./fingerprint')
+          const fingerprint = await getDeviceFingerprint()
+          await api.sendMagicLink(email, fingerprint)
           set({ isLoading: false })
           return true
         } catch (err) {

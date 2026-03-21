@@ -176,12 +176,15 @@ async def send_magic_link(
             message="If this email is registered, you will receive a sign-in link shortly."
         )
 
-    # Per-IP signup rate limit (only for new users)
+    # Per-IP and per-fingerprint signup rate limit (only for new users)
+    device_fingerprint = request.device_fingerprint
     existing_user = user_service.get_user(email)
-    if existing_user is None and ip_address:
-        if user_service.is_ip_signup_rate_limited(ip_address):
+    if existing_user is None:
+        if user_service.is_signup_rate_limited(
+            ip_address=ip_address, device_fingerprint=device_fingerprint
+        ):
             logger.warning(
-                f"IP signup rate limit hit: {ip_address} for {_mask_email(email)}"
+                f"Signup rate limit hit: IP={ip_address} for {_mask_email(email)}"
             )
             # Silent reject (anti-enumeration)
             return SendMagicLinkResponse(
@@ -214,12 +217,13 @@ async def send_magic_link(
     # Get client info for security logging (ip_address already extracted above for blocklist check)
     user_agent = http_request.headers.get("user-agent")
 
-    # Create magic link token with tenant context
+    # Create magic link token with tenant context and fingerprint
     magic_link = user_service.create_magic_link(
         email,
         ip_address=ip_address,
         user_agent=user_agent,
-        tenant_id=tenant_id
+        tenant_id=tenant_id,
+        device_fingerprint=device_fingerprint,
     )
 
     # Get tenant-specific email configuration

@@ -112,6 +112,7 @@ class UserService:
         email: str,
         tenant_id: Optional[str] = None,
         signup_ip: Optional[str] = None,
+        device_fingerprint: Optional[str] = None,
     ) -> User:
         """
         Get existing user or create a new one.
@@ -122,6 +123,7 @@ class UserService:
             email: User's email address
             tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
             signup_ip: Client IP address at signup (for rate limiting)
+            device_fingerprint: Browser fingerprint at signup (for rate limiting)
 
         Note: If user exists but has a different tenant_id, the existing user is returned.
         Users are uniquely identified by email, not email+tenant.
@@ -142,6 +144,7 @@ class UserService:
             credit_transactions=[],
             tenant_id=tenant_id,  # Associate with tenant on creation
             signup_ip=signup_ip,
+            device_fingerprint=device_fingerprint,
         )
         self._save_user(user)
         logger.info(f"Created new user: {email} (tenant: {tenant_id or 'default'}) — credits pending verification")
@@ -213,7 +216,8 @@ class UserService:
         email: str,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        device_fingerprint: Optional[str] = None,
     ) -> MagicLinkToken:
         """
         Create a magic link token for email authentication.
@@ -226,11 +230,17 @@ class UserService:
             ip_address: Client IP for auditing
             user_agent: Client user agent for auditing
             tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
+            device_fingerprint: Browser fingerprint for anti-abuse
         """
         email = email.lower()
 
-        # Ensure user exists (with tenant association and signup IP for rate limiting)
-        self.get_or_create_user(email, tenant_id=tenant_id, signup_ip=ip_address)
+        # Ensure user exists (with tenant association, signup IP, and fingerprint)
+        self.get_or_create_user(
+            email,
+            tenant_id=tenant_id,
+            signup_ip=ip_address,
+            device_fingerprint=device_fingerprint,
+        )
 
         # Generate secure token
         token = secrets.token_urlsafe(32)
@@ -242,6 +252,7 @@ class UserService:
             ip_address=ip_address,
             user_agent=user_agent,
             tenant_id=tenant_id,
+            device_fingerprint=device_fingerprint,
         )
 
         # Save to Firestore
@@ -445,14 +456,59 @@ class UserService:
             # On error, don't block — return 0 to allow the request
             return 0
 
-    def is_ip_signup_rate_limited(self, ip_address: str) -> bool:
-        """Check if an IP has exceeded the signup rate limit."""
-        if not ip_address:
-            return False
-        count = self.count_recent_signups_from_ip(
-            ip_address, hours=self.SIGNUP_RATE_LIMIT_HOURS
-        )
-        return count >= self.MAX_SIGNUPS_PER_IP
+    def count_recent_signups_from_fingerprint(
+        self, device_fingerprint: str, hours: int = 24
+    ) -> int:
+        """
+        Count new user accounts created with this device fingerprint in the last N hours.
+
+        Args:
+            device_fingerprint: Browser fingerprint to check
+            hours: Lookback window in hours (default: 24)
+
+        Returns:
+            Number of recent signups from this fingerprint
+        """
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            query = (
+                self.db.collection(USERS_COLLECTION)
+                .where(filter=FieldFilter("device_fingerprint", "==", device_fingerprint))
+                .where(filter=FieldFilter("created_at", ">=", cutoff))
+            )
+
+            count = 0
+            for _ in query.stream():
+                count += 1
+            return count
+
+        except Exception:
+            logger.exception(f"Error counting signups from fingerprint")
+            return 0
+
+    def is_signup_rate_limited(
+        self, ip_address: Optional[str] = None, device_fingerprint: Optional[str] = None
+    ) -> bool:
+        """
+        Check if a signup should be rate limited based on IP and/or fingerprint.
+
+        Either signal hitting the limit triggers a block.
+        """
+        if ip_address:
+            ip_count = self.count_recent_signups_from_ip(
+                ip_address, hours=self.SIGNUP_RATE_LIMIT_HOURS
+            )
+            if ip_count >= self.MAX_SIGNUPS_PER_IP:
+                return True
+
+        if device_fingerprint:
+            fp_count = self.count_recent_signups_from_fingerprint(
+                device_fingerprint, hours=self.SIGNUP_RATE_LIMIT_HOURS
+            )
+            if fp_count >= self.MAX_SIGNUPS_PER_IP:
+                return True
+
+        return False
 
     # =========================================================================
     # Session Management
