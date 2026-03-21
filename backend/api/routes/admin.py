@@ -3709,31 +3709,34 @@ async def backfill_signup_ips(
         ip = None
 
         # Try sessions first (most reliable — created at verification)
+        # No order_by to avoid needing extra composite index; any IP is fine
         sessions = (
             db.collection(SESSIONS_COLLECTION)
             .where(filter=FieldFilter("user_email", "==", email))
-            .order_by("created_at")
-            .limit(1)
+            .limit(5)
             .stream()
         )
         for session_doc in sessions:
             session_data = session_doc.to_dict()
-            ip = session_data.get("ip_address")
-            break
+            candidate_ip = session_data.get("ip_address")
+            if candidate_ip:
+                ip = candidate_ip
+                break
 
         # Fallback: try magic links
         if not ip:
             links = (
                 db.collection(MAGIC_LINKS_COLLECTION)
                 .where(filter=FieldFilter("email", "==", email))
-                .order_by("created_at")
-                .limit(1)
+                .limit(5)
                 .stream()
             )
             for link_doc in links:
                 link_data = link_doc.to_dict()
-                ip = link_data.get("ip_address")
-                break
+                candidate_ip = link_data.get("ip_address")
+                if candidate_ip:
+                    ip = candidate_ip
+                    break
 
         if ip:
             user_doc.reference.update({"signup_ip": ip})
