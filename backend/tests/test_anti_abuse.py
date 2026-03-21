@@ -602,3 +602,129 @@ class TestModelFields:
         """SendMagicLinkRequest works without device_fingerprint."""
         req = SendMagicLinkRequest(email="test@example.com")
         assert req.device_fingerprint is None
+
+
+# =============================================================================
+# Error Path Tests
+# =============================================================================
+
+
+class TestErrorPaths:
+    """Test graceful degradation on errors."""
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_grant_credits_handles_exception(self, mock_fs, mock_settings):
+        """grant_welcome_credits_if_eligible returns False on exception."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        # User lookup raises exception
+        mock_db.collection.return_value.document.return_value.get.side_effect = Exception("Firestore down")
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        result = service.grant_welcome_credits_if_eligible("test@example.com")
+        assert result is False
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_count_signups_from_ip_handles_exception(self, mock_fs, mock_settings):
+        """count_recent_signups_from_ip returns 0 on Firestore error (fail-open)."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        mock_db.collection.return_value.where.return_value.where.side_effect = Exception("Query error")
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        count = service.count_recent_signups_from_ip("1.2.3.4")
+        assert count == 0  # Fail-open: don't block on error
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_count_signups_from_fingerprint_handles_exception(self, mock_fs, mock_settings):
+        """count_recent_signups_from_fingerprint returns 0 on error (fail-open)."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        mock_db.collection.return_value.where.return_value.where.side_effect = Exception("Query error")
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        count = service.count_recent_signups_from_fingerprint("fp123")
+        assert count == 0
+
+
+# =============================================================================
+# Caller-Callee Contract Tests
+# =============================================================================
+
+
+class TestCallerCalleeContracts:
+    """Verify that callers pass the right data to callees."""
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_create_magic_link_passes_fingerprint_to_get_or_create(self, mock_fs, mock_settings):
+        """create_magic_link passes device_fingerprint through to get_or_create_user."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        # User already exists (to avoid save path)
+        user = User(email="test@example.com", credits=0)
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = user.model_dump(mode='json')
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        from backend.services.user_service import UserService
+        service = UserService()
+
+        with patch.object(service, 'get_or_create_user', wraps=service.get_or_create_user) as spy:
+            service.create_magic_link(
+                "test@example.com",
+                ip_address="1.2.3.4",
+                device_fingerprint="fp-xyz",
+            )
+            spy.assert_called_once_with(
+                "test@example.com",
+                tenant_id=None,
+                signup_ip="1.2.3.4",
+                device_fingerprint="fp-xyz",
+            )
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_create_magic_link_stores_fingerprint_on_token(self, mock_fs, mock_settings):
+        """create_magic_link includes device_fingerprint in the MagicLinkToken."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        user = User(email="test@example.com", credits=0)
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = user.model_dump(mode='json')
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        from backend.services.user_service import UserService
+        service = UserService()
+
+        ml = service.create_magic_link(
+            "test@example.com",
+            ip_address="1.2.3.4",
+            device_fingerprint="fp-xyz",
+        )
+
+        assert ml.device_fingerprint == "fp-xyz"
+
+        # Also verify the data written to Firestore includes the fingerprint
+        set_call = mock_db.collection.return_value.document.return_value.set
+        set_call.assert_called()
+        saved_data = set_call.call_args[0][0]
+        assert saved_data["device_fingerprint"] == "fp-xyz"
