@@ -64,7 +64,8 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
             filename,
             format,
             file_size,
-            drive_path
+            drive_path,
+            gcs_path
         FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
         WHERE
             LOWER(CONCAT(COALESCE(artist, ''), ' ', COALESCE(title, '')))
@@ -95,6 +96,7 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
             "format": row.format,
             "file_size": row.file_size,
             "drive_path": row.drive_path,
+            "in_gcs": row.gcs_path is not None,
         })
 
     return results
@@ -239,10 +241,50 @@ def _rebuild_xref() -> dict:
     return result
 
 
-def _get_download_url(file_id: str) -> str:
-    """Generate a direct Google Drive download URL for a file."""
-    # For publicly shared files, this direct download URL works without auth
-    return f"https://drive.google.com/uc?export=download&id={file_id}"
+GCS_BUCKET = os.environ.get("GCS_BUCKET", "nomadkaraoke-divebar-files")
+_SIGNED_URL_EXPIRY_MINUTES = 60
+
+
+def _get_download_url(file_id: str) -> dict:
+    """Get a download URL for a Divebar file.
+
+    Prefers a signed GCS URL (fast, reliable) if the file has been synced.
+    Falls back to a direct Google Drive URL for files not yet in GCS.
+
+    Returns dict with 'url' and 'source' ('gcs' or 'drive').
+    """
+    # Check if file has been synced to GCS
+    client = bigquery.Client(project=GCP_PROJECT_ID)
+    query = f"""
+        SELECT gcs_path
+        FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
+        WHERE file_id = @file_id
+        LIMIT 1
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("file_id", "STRING", file_id),
+        ]
+    )
+    rows = list(client.query(query, job_config=job_config).result())
+
+    if rows and rows[0].gcs_path:
+        # File is in GCS — return public GCS URL
+        # The bucket has public read access (allUsers objectViewer)
+        # since these are community karaoke files from a public Google Drive
+        gcs_path = rows[0].gcs_path
+        path = gcs_path.replace(f"gs://{GCS_BUCKET}/", "")
+        # URL-encode the path for GCS public URL
+        from urllib.parse import quote
+        encoded_path = quote(path, safe="/")
+        public_url = f"https://storage.googleapis.com/{GCS_BUCKET}/{encoded_path}"
+        return {"url": public_url, "source": "gcs"}
+
+    # Fallback: direct Google Drive download URL
+    return {
+        "url": f"https://drive.google.com/uc?export=download&id={file_id}",
+        "source": "drive",
+    }
 
 
 @functions_framework.http
@@ -289,8 +331,12 @@ def divebar_lookup(request):
             file_id = body.get("file_id", "").strip()
             if not file_id:
                 return _json_response({"status": "error", "message": "file_id required"}, 400)
-            url = _get_download_url(file_id)
-            return _json_response({"status": "ok", "download_url": url})
+            result = _get_download_url(file_id)
+            return _json_response({
+                "status": "ok",
+                "download_url": result["url"],
+                "source": result["source"],
+            })
 
         else:
             return _json_response({"status": "error", "message": f"Unknown action: {action}"}, 400)
