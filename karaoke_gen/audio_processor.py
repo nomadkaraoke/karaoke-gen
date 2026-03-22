@@ -316,23 +316,32 @@ class AudioProcessor:
             return result
 
         try:
-            # Stage 1: Process original song with clean instrumental model + other stems models
-            stage1_models = []
-            if self.clean_instrumental_model:
-                stage1_models.append(self.clean_instrumental_model)
-            stage1_models.extend(self.other_stems_models)
-            
-            self.logger.info(f"Stage 1: Submitting audio separation job with models: {stage1_models}")
-            
-            # Submit the first stage job
+            # Stage 1: Process original song for clean instrumental separation
+            # Use ensemble preset if available, otherwise fall back to explicit models
+            instrumental_preset = getattr(self, 'instrumental_preset', None)
+
+            stage1_kwargs = {
+                "timeout": 1800,  # 30 minutes
+                "poll_interval": 15,
+                "download": True,
+                "output_dir": stems_dir,
+                "output_format": self.lossless_output_format.lower(),
+            }
+
+            if instrumental_preset:
+                self.logger.info(f"Stage 1: Using ensemble preset '{instrumental_preset}'")
+                stage1_kwargs["preset"] = instrumental_preset
+            else:
+                stage1_models = []
+                if self.clean_instrumental_model:
+                    stage1_models.append(self.clean_instrumental_model)
+                stage1_models.extend(self.other_stems_models)
+                self.logger.info(f"Stage 1: Using explicit models: {stage1_models}")
+                stage1_kwargs["models"] = stage1_models
+
             stage1_result = api_client.separate_audio_and_wait(
                 audio_file,
-                models=stage1_models,
-                timeout=1800,  # 30 minutes timeout
-                poll_interval=15,  # Check every 15 seconds
-                download=True,
-                output_dir=stems_dir,
-                output_format=self.lossless_output_format.lower()
+                **stage1_kwargs,
             )
             
             if stage1_result["status"] != "completed":
@@ -365,19 +374,32 @@ class AudioProcessor:
                 self.logger.error(error_msg)
                 raise Exception(error_msg)
             
-            # Stage 2: Process clean vocals with backing vocals models (if we have both)
-            if result["clean_instrumental"].get("vocals") and self.backing_vocals_models:
+            # Stage 2: Process clean vocals for karaoke/backing vocals separation
+            karaoke_preset = getattr(self, 'karaoke_preset', None)
+            has_backing_config = karaoke_preset or self.backing_vocals_models
+
+            if result["clean_instrumental"].get("vocals") and has_backing_config:
                 self.logger.info(f"Stage 2: Processing clean vocals for backing vocals separation...")
                 vocals_path = result["clean_instrumental"]["vocals"]
-                
+
+                stage2_kwargs = {
+                    "timeout": 900,  # 15 minutes
+                    "poll_interval": 10,
+                    "download": True,
+                    "output_dir": stems_dir,
+                    "output_format": self.lossless_output_format.lower(),
+                }
+
+                if karaoke_preset:
+                    self.logger.info(f"Stage 2: Using ensemble preset '{karaoke_preset}'")
+                    stage2_kwargs["preset"] = karaoke_preset
+                else:
+                    self.logger.info(f"Stage 2: Using explicit models: {self.backing_vocals_models}")
+                    stage2_kwargs["models"] = self.backing_vocals_models
+
                 stage2_result = api_client.separate_audio_and_wait(
                     vocals_path,
-                    models=self.backing_vocals_models,
-                    timeout=900,  # 15 minutes timeout for backing vocals
-                    poll_interval=10,
-                    download=True,
-                    output_dir=stems_dir,
-                    output_format=self.lossless_output_format.lower()
+                    **stage2_kwargs,
                 )
                 
                 if stage2_result["status"] == "completed":

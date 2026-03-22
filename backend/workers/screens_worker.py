@@ -258,7 +258,7 @@ async def generate_screens(job_id: str) -> bool:
 
 def _validate_prerequisites(job) -> bool:
     """
-    Validate that both audio and lyrics processing are complete.
+    Validate that lyrics processing is complete (audio is no longer required).
 
     Single Responsibility: Validation logic separated from main flow.
 
@@ -286,16 +286,18 @@ def _validate_prerequisites(job) -> bool:
         )
         return False
 
-    audio_complete = job.state_data.get('audio_complete', False)
     lyrics_complete = job.state_data.get('lyrics_complete', False)
-
-    if not audio_complete:
-        logger.error(f"Job {job.job_id}: Audio processing not complete")
-        return False
+    audio_complete = job.state_data.get('audio_complete', False)
 
     if not lyrics_complete:
         logger.error(f"Job {job.job_id}: Lyrics processing not complete")
         return False
+
+    # Audio separation is no longer a prerequisite for screens.
+    # Users can start lyrics review while separation runs in the background.
+    # The instrumental review page handles waiting for audio_complete.
+    if not audio_complete:
+        logger.info(f"Job {job.job_id}: Audio separation still in progress (not blocking screens)")
 
     if not job.artist or not job.title:
         logger.error(f"Job {job.job_id}: Missing artist or title")

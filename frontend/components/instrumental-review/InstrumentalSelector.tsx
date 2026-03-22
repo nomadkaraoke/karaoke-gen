@@ -112,8 +112,32 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
     }
   }, [isPlaying])
 
-  // Fetch data on mount
+  // Check if audio separation is complete
+  const audioComplete = job.state_data?.audio_complete ?? true // Default true for legacy jobs
+  const [waitingForAudio, setWaitingForAudio] = useState(!audioComplete)
+
+  // Poll for audio completion if separation is still in progress
   useEffect(() => {
+    if (!waitingForAudio) return
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const updatedJob = await api.getJob(job.job_id)
+        if (updatedJob?.state_data?.audio_complete) {
+          setWaitingForAudio(false)
+        }
+      } catch {
+        // Ignore poll errors, keep trying
+      }
+    }, 5000) // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [waitingForAudio, job.job_id])
+
+  // Fetch data on mount (only when audio is ready)
+  useEffect(() => {
+    if (waitingForAudio) return
+
     async function fetchData() {
       try {
         // Use different API based on mode:
@@ -151,7 +175,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
     }
 
     fetchData()
-  }, [job.job_id, isLocalMode])
+  }, [job.job_id, isLocalMode, waitingForAudio])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -487,6 +511,22 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
 
     return () => clearInterval(interval)
   }, [showSuccess, isLocalMode, router])
+
+  // Waiting for audio separation to complete
+  if (waitingForAudio) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <Spinner className="w-8 h-8 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Audio Separation In Progress</h2>
+          <p className="text-muted-foreground">
+            The audio stems are still being separated. This usually takes a few minutes.
+            This page will automatically update when the separation is complete.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   // Loading state
   if (isLoading) {

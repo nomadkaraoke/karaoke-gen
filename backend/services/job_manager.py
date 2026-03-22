@@ -931,22 +931,22 @@ class JobManager:
     
     def check_parallel_processing_complete(self, job_id: str) -> bool:
         """
-        Check if both parallel tracks (audio + lyrics) are complete.
-        
-        This is called after audio_complete or lyrics_complete to determine
-        if we can proceed to screen generation.
-        
+        Check if lyrics processing is complete (sufficient for screen generation).
+
+        Audio separation is decoupled from the critical path — users can start
+        reviewing lyrics while separation continues in the background. The
+        instrumental review page handles the case where separation isn't done yet.
+
         Returns:
-            True if both tracks complete, False otherwise
+            True if lyrics are complete, False otherwise
         """
         job = self.get_job(job_id)
         if not job:
             return False
-        
-        audio_complete = job.state_data.get('audio_complete', False)
+
         lyrics_complete = job.state_data.get('lyrics_complete', False)
-        
-        return audio_complete and lyrics_complete
+
+        return lyrics_complete
 
     async def start_job_processing(
         self,
@@ -1022,30 +1022,25 @@ class JobManager:
 
     def mark_audio_complete(self, job_id: str) -> None:
         """
-        Mark audio processing as complete and check if can proceed.
-        
-        If lyrics are also complete, automatically triggers screens worker.
+        Mark audio processing as complete.
+
+        Audio completion is decoupled from the lyrics review path — it no longer
+        triggers screens. The instrumental review page polls for this flag.
         """
         self.update_state_data(job_id, 'audio_complete', True)
-        
-        if self.check_parallel_processing_complete(job_id):
-            logger.info(f"Job {job_id}: Both audio and lyrics complete, triggering screens worker")
-            # Transition happens in screens worker
-            # We just trigger it here
-            self._trigger_screens_worker(job_id)
-    
+        logger.info(f"Job {job_id}: Audio processing complete (separation finished)")
+
     def mark_lyrics_complete(self, job_id: str) -> None:
         """
-        Mark lyrics processing as complete and check if can proceed.
-        
-        If audio is also complete, automatically triggers screens worker.
+        Mark lyrics processing as complete and trigger screens if ready.
+
+        Lyrics completion is the sole gate for screen generation and review.
+        Audio separation runs independently in the background.
         """
         self.update_state_data(job_id, 'lyrics_complete', True)
-        
+
         if self.check_parallel_processing_complete(job_id):
-            logger.info(f"Job {job_id}: Both audio and lyrics complete, triggering screens worker")
-            # Transition happens in screens worker
-            # We just trigger it here
+            logger.info(f"Job {job_id}: Lyrics complete, triggering screens worker")
             self._trigger_screens_worker(job_id)
     
     def _trigger_screens_worker(self, job_id: str) -> None:

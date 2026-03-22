@@ -61,10 +61,15 @@ async def _trigger_lyrics_worker_after_url_download(job_id: str) -> None:
         logger.error(f"Job {job_id}: Failed to trigger lyrics worker: {e}")
 
 
-# Default model names - used by create_audio_processor and stored in state_data
+# Default ensemble presets — resolved by audio-separator package into models + algorithm.
+# To change models, update ensemble_presets.json in audio-separator and release a new version.
+DEFAULT_INSTRUMENTAL_PRESET = "instrumental_clean"  # Fv7z + Resurrection, SDR ~17.5
+DEFAULT_KARAOKE_PRESET = "karaoke"  # 3 karaoke models ensemble, SDR ~10.6
+
+# Legacy model name constants — kept for backward compatibility with per-job overrides
 DEFAULT_CLEAN_MODEL = "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
 DEFAULT_BACKING_MODELS = ["mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"]
-DEFAULT_OTHER_MODELS = ["htdemucs_6s.yaml"]
+DEFAULT_OTHER_MODELS = []  # Demucs 6-stem dropped — no longer separating individual instruments
 
 
 # Loggers to capture for audio worker
@@ -197,49 +202,58 @@ def create_audio_processor(
     temp_dir: str,
     clean_instrumental_model: Optional[str] = None,
     backing_vocals_models: Optional[list] = None,
-    other_stems_models: Optional[list] = None
+    other_stems_models: Optional[list] = None,
+    instrumental_preset: Optional[str] = None,
+    karaoke_preset: Optional[str] = None,
 ) -> AudioProcessor:
     """
     Create an AudioProcessor instance configured for remote API processing.
-    
-    This reuses the karaoke_gen AudioProcessor with settings optimized for Cloud Run:
-    - Uses remote Modal API (via AUDIO_SEPARATOR_API_URL env var)
-    - No local models needed (model_file_dir=None)
-    - FLAC output format for quality
-    - Model configurations from job or CLI defaults
-    
+
+    Supports two modes:
+    - Preset mode (default): Uses ensemble presets for higher quality separation.
+      Presets are resolved by the audio-separator API server.
+    - Model mode (legacy): Uses explicit model filenames for per-job overrides.
+
     Args:
         temp_dir: Temporary directory for processing
-        clean_instrumental_model: Model for clean instrumental separation (optional, uses default if not provided)
-        backing_vocals_models: List of models for backing vocals separation (optional, uses default if not provided)
-        other_stems_models: List of models for other stems separation (optional, uses default if not provided)
-        
+        clean_instrumental_model: Model for clean instrumental (legacy, overrides preset)
+        backing_vocals_models: Models for backing vocals (legacy, overrides preset)
+        other_stems_models: Models for other stems (legacy, default empty)
+        instrumental_preset: Ensemble preset for instrumental separation
+        karaoke_preset: Ensemble preset for karaoke/BV separation
+
     Returns:
         Configured AudioProcessor instance
     """
-    # Configure logger for AudioProcessor
     audio_logger = logging.getLogger("karaoke_gen.audio_processor")
     audio_logger.setLevel(logging.INFO)
-    
-    # Model configurations - use provided values or defaults from module constants
+
+    # Determine effective configuration
+    # If explicit models are provided, use them (legacy per-job override)
+    # Otherwise use ensemble presets (default)
     effective_clean_model = clean_instrumental_model or DEFAULT_CLEAN_MODEL
     effective_backing_models = backing_vocals_models or DEFAULT_BACKING_MODELS
-    effective_other_models = other_stems_models or DEFAULT_OTHER_MODELS  # For 6-stem separation (bass, drums, etc.)
-    
-    # FFmpeg command for combining audio files (must be a string, not a list)
+    effective_other_models = other_stems_models or DEFAULT_OTHER_MODELS
+
     ffmpeg_base_command = "ffmpeg -hide_banner -loglevel error -nostats -y"
-    
-    return AudioProcessor(
+
+    processor = AudioProcessor(
         logger=audio_logger,
         log_level=logging.INFO,
-        log_formatter=None,  # Not needed for our use case
+        log_formatter=None,
         model_file_dir=None,  # No local models, using remote API
         lossless_output_format="FLAC",
         clean_instrumental_model=effective_clean_model,
         backing_vocals_models=effective_backing_models,
         other_stems_models=effective_other_models,
-        ffmpeg_base_command=ffmpeg_base_command
+        ffmpeg_base_command=ffmpeg_base_command,
     )
+
+    # Set preset configuration (used by _process_audio_separation_remote)
+    processor.instrumental_preset = instrumental_preset or DEFAULT_INSTRUMENTAL_PRESET
+    processor.karaoke_preset = karaoke_preset or DEFAULT_KARAOKE_PRESET
+
+    return processor
 
 
 async def process_audio_separation(job_id: str) -> bool:
