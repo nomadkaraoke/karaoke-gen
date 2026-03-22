@@ -315,9 +315,12 @@ class AudioProcessor:
         if os.environ.get("KARAOKE_GEN_SKIP_AUDIO_SEPARATION"):
             return result
 
+        # Derive a safe file prefix — use job_id if available (avoids artist/title encoding issues)
+        job_id = getattr(self, 'job_id', None)
+        file_prefix = job_id if job_id else artist_title.replace("/", "_").replace("\\", "_")
+
         try:
-            # Stage 1: Process original song for clean instrumental separation
-            # Use ensemble preset if available, otherwise fall back to explicit models
+            # Stage 1: Separate into mixed_instrumental + mixed_vocals
             instrumental_preset = getattr(self, 'instrumental_preset', None)
 
             stage1_kwargs = {
@@ -326,6 +329,7 @@ class AudioProcessor:
                 "download": True,
                 "output_dir": stems_dir,
                 "output_format": self.lossless_output_format.lower(),
+                "custom_output_names": {"Vocals": f"{file_prefix}_mixed_vocals", "Instrumental": f"{file_prefix}_mixed_instrumental"},
             }
 
             if instrumental_preset:
@@ -343,43 +347,47 @@ class AudioProcessor:
                 audio_file,
                 **stage1_kwargs,
             )
-            
+
             if stage1_result["status"] != "completed":
                 raise Exception(f"Stage 1 remote audio separation failed: {stage1_result.get('error', 'Unknown error')}")
-            
-            self.logger.info(f"Stage 1 completed. Downloaded {len(stage1_result['downloaded_files'])} files")
-            
-            # Check if we actually got the expected files for Stage 1
-            if len(stage1_result["downloaded_files"]) == 0:
-                error_msg = ("Stage 1 audio separation completed successfully but no files were downloaded. "
-                           "This indicates a filename encoding or API issue in the audio-separator remote service. "
-                           f"Expected files for models {stage1_models} but got 0.")
-                self.logger.error(error_msg)
-                raise Exception(error_msg)
-            
-            # Organize the stage 1 results
-            result = self._organize_stage1_remote_results(
-                stage1_result["downloaded_files"], artist_title, track_output_dir, stems_dir
-            )
-            
-            # Validate that we got the essential clean instrumental outputs
-            if not result["clean_instrumental"].get("vocals") or not result["clean_instrumental"].get("instrumental"):
-                missing = []
-                if not result["clean_instrumental"].get("vocals"):
-                    missing.append("clean vocals")
-                if not result["clean_instrumental"].get("instrumental"):
-                    missing.append("clean instrumental")
-                error_msg = (f"Stage 1 completed but failed to produce essential clean instrumental outputs: {', '.join(missing)}. "
-                           "This may indicate a model naming or file organization issue in the remote API.")
-                self.logger.error(error_msg)
-                raise Exception(error_msg)
-            
-            # Stage 2: Process clean vocals for karaoke/backing vocals separation
+
+            self.logger.info(f"Stage 1 completed. Downloaded {len(stage1_result.get('downloaded_files', []))} files")
+
+            if len(stage1_result.get("downloaded_files", [])) == 0:
+                raise Exception("Stage 1 completed but no files were downloaded.")
+
+            # Organize Stage 1 results by known filenames
+            fmt = self.lossless_output_format.lower()
+            mixed_vocals_path = os.path.join(stems_dir, f"{file_prefix}_mixed_vocals.{fmt}")
+            mixed_instrumental_path = os.path.join(stems_dir, f"{file_prefix}_mixed_instrumental.{fmt}")
+
+            result = {"clean_instrumental": {}, "other_stems": {}, "backing_vocals": {}, "combined_instrumentals": {}}
+
+            if os.path.exists(mixed_vocals_path):
+                result["clean_instrumental"]["vocals"] = mixed_vocals_path
+            if os.path.exists(mixed_instrumental_path):
+                # Move instrumental to track_output_dir (not stems_dir) per existing convention
+                final_instrumental_path = os.path.join(track_output_dir, f"{file_prefix}_mixed_instrumental.{fmt}")
+                if mixed_instrumental_path != final_instrumental_path:
+                    shutil.move(mixed_instrumental_path, final_instrumental_path)
+                result["clean_instrumental"]["instrumental"] = final_instrumental_path
+
+            # Validate essential outputs
+            missing = []
+            if not result["clean_instrumental"].get("vocals"):
+                missing.append("mixed_vocals")
+            if not result["clean_instrumental"].get("instrumental"):
+                missing.append("mixed_instrumental")
+            if missing:
+                downloaded = [os.path.basename(f) for f in stage1_result.get("downloaded_files", [])]
+                raise Exception(f"Stage 1 missing: {', '.join(missing)}. Downloaded: {downloaded}")
+
+            # Stage 2: Separate vocals into lead_vocals + backing_vocals
             karaoke_preset = getattr(self, 'karaoke_preset', None)
             has_backing_config = karaoke_preset or self.backing_vocals_models
 
             if result["clean_instrumental"].get("vocals") and has_backing_config:
-                self.logger.info(f"Stage 2: Processing clean vocals for backing vocals separation...")
+                self.logger.info(f"Stage 2: Processing mixed vocals for backing vocals separation...")
                 vocals_path = result["clean_instrumental"]["vocals"]
 
                 stage2_kwargs = {
@@ -388,6 +396,7 @@ class AudioProcessor:
                     "download": True,
                     "output_dir": stems_dir,
                     "output_format": self.lossless_output_format.lower(),
+                    "custom_output_names": {"Vocals": f"{file_prefix}_lead_vocals", "Instrumental": f"{file_prefix}_backing_vocals"},
                 }
 
                 if karaoke_preset:
@@ -401,44 +410,37 @@ class AudioProcessor:
                     vocals_path,
                     **stage2_kwargs,
                 )
-                
-                if stage2_result["status"] == "completed":
-                    self.logger.info(f"Stage 2 completed. Downloaded {len(stage2_result['downloaded_files'])} files")
-                    
-                    # Check if we actually got the expected files
-                    if len(stage2_result["downloaded_files"]) == 0:
-                        error_msg = ("Stage 2 backing vocals separation completed successfully but no files were downloaded. "
-                                   "This indicates a filename encoding or API issue in the audio-separator remote service. "
-                                   "Expected 2 files (lead vocals + backing vocals) but got 0.")
-                        self.logger.error(error_msg)
-                        raise Exception(error_msg)
-                    
-                    # Organize the stage 2 results (backing vocals)
-                    backing_vocals_result = self._organize_stage2_remote_results(
-                        stage2_result["downloaded_files"], artist_title, stems_dir
-                    )
 
-                    # Validate stage 2 outputs — each model should produce both lead_vocals and backing_vocals
-                    for bv_model, paths in backing_vocals_result.items():
-                        missing = []
-                        if not paths.get("lead_vocals"):
-                            missing.append("lead_vocals")
-                        if not paths.get("backing_vocals"):
-                            missing.append("backing_vocals")
-                        if missing:
-                            error_msg = (
-                                f"Stage 2 completed but model {bv_model} is missing: {', '.join(missing)}. "
-                                f"Got keys: {list(paths.keys())}. Downloaded {len(stage2_result['downloaded_files'])} files. "
-                                "This may indicate an intermittent issue with the remote separation API."
-                            )
-                            self.logger.error(error_msg)
-                            raise Exception(error_msg)
+                if stage2_result["status"] != "completed":
+                    raise Exception(f"Stage 2 failed: {stage2_result.get('error', 'Unknown error')}")
 
-                    result["backing_vocals"] = backing_vocals_result
-                else:
-                    error_msg = f"Stage 2 backing vocals separation failed: {stage2_result.get('error', 'Unknown error')}"
-                    self.logger.error(error_msg)
-                    raise Exception(error_msg)
+                self.logger.info(f"Stage 2 completed. Downloaded {len(stage2_result.get('downloaded_files', []))} files")
+
+                if len(stage2_result.get("downloaded_files", [])) == 0:
+                    raise Exception("Stage 2 completed but no files were downloaded.")
+
+                # Organize Stage 2 results by known filenames
+                lead_vocals_path = os.path.join(stems_dir, f"{file_prefix}_lead_vocals.{fmt}")
+                backing_vocals_path = os.path.join(stems_dir, f"{file_prefix}_backing_vocals.{fmt}")
+
+                # Use a generic key for the backing vocals model (preset name or first model)
+                bv_key = karaoke_preset or (self.backing_vocals_models[0] if self.backing_vocals_models else "karaoke")
+                result["backing_vocals"][bv_key] = {}
+
+                if os.path.exists(lead_vocals_path):
+                    result["backing_vocals"][bv_key]["lead_vocals"] = lead_vocals_path
+                if os.path.exists(backing_vocals_path):
+                    result["backing_vocals"][bv_key]["backing_vocals"] = backing_vocals_path
+
+                # Validate
+                missing = []
+                if not result["backing_vocals"][bv_key].get("lead_vocals"):
+                    missing.append("lead_vocals")
+                if not result["backing_vocals"][bv_key].get("backing_vocals"):
+                    missing.append("backing_vocals")
+                if missing:
+                    downloaded = [os.path.basename(f) for f in stage2_result.get("downloaded_files", [])]
+                    raise Exception(f"Stage 2 missing: {', '.join(missing)}. Downloaded: {downloaded}")
             else:
                 result["backing_vocals"] = {}
             

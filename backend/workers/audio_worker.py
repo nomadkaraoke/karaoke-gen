@@ -370,8 +370,9 @@ async def process_audio_separation(job_id: str) -> bool:
                     temp_dir,
                     clean_instrumental_model=job.clean_instrumental_model,
                     backing_vocals_models=job.backing_vocals_models,
-                    other_stems_models=job.other_stems_models
+                    other_stems_models=job.other_stems_models,
                 )
+                audio_processor.job_id = job_id  # Used as filename prefix (avoids artist/title encoding issues)
 
                 # Store effective model names in state_data for video_worker to use in file naming
                 # This ensures output filenames match local CLI behavior (e.g., "Instrumental model_bs_roformer_ep_317_sdr_12.9755.ckpt")
