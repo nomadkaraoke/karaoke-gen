@@ -16,7 +16,7 @@
 │  https://api.nomadkaraoke.com                                   │
 │                                                                 │
 │  Workers:                                                       │
-│  • Audio Worker    - Stem separation via Modal API              │
+│  • Audio Worker    - Stem separation via Cloud Run GPU (L4)              │
 │  • Lyrics Worker   - Transcription via AudioShake               │
 │  • Screens Worker  - Title/end screen generation                │
 │  • Render Worker   - Karaoke video with lyrics                  │
@@ -48,7 +48,7 @@
 2. PARALLEL PROCESSING (with Worker Registry coordination)
    ┌─────────────────┐    ┌─────────────────┐
    │  Audio Worker   │    │  Lyrics Worker  │
-   │  Modal API      │    │  AudioShake     │
+   │  Cloud Run GPU      │    │  AudioShake     │
    │  2-stage sep    │    │  Auto-correct   │
    │  ↓ register()   │    │  ↓ register()   │
    │  ↓ unregister() │    │  ↓ unregister() │
@@ -161,7 +161,7 @@ LyricsTranscriber                 LyricsTranscriber
 
 | Service | Purpose | Required |
 |---------|---------|----------|
-| Modal | GPU audio separation | Yes |
+| Cloud Run GPU (L4) | Audio stem separation (us-east4) | Yes |
 | AudioShake | Lyrics transcription | Yes |
 | Vertex AI | Agentic AI correction (Gemini 3 Flash) | Default off (SKIP_CORRECTION=false to enable) |
 | Genius | Reference lyrics | Yes |
@@ -323,7 +323,7 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 │                                                                 │
 │  audio-download-job          - 30s-5 min (flacfetch/YouTube)     │
 │  lyrics-transcription-job    - 5-15 min (AudioShake + correction)│
-│  audio-separation-job        - 10-20 min (Modal API)            │
+│  audio-separation-job        - 10-20 min (Cloud Run GPU)            │
 │  video-encoding-job          - up to 60 min (optional)          │
 │                                                                 │
 │  Triggered via: google.cloud.run_v2.JobsClient.run_job()        │

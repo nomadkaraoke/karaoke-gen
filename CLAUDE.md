@@ -28,7 +28,7 @@
 
 - **Backend**: FastAPI on Cloud Run, Firestore, GCS, Secret Manager
 - **Frontend**: Next.js on Cloudflare Pages
-- **Processing**: Modal (GPU audio separation), AudioShake/Whisper (transcription)
+- **Processing**: Cloud Run GPU (L4 audio separation), AudioShake/Whisper (transcription)
 - **Infra**: Pulumi IaC, GitHub Actions CI/CD
 
 ## Essential Rules

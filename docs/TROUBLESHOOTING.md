@@ -151,11 +151,11 @@ python scripts/backfill_gdrive_uploads.py --job-ids JOB1,JOB2
 
 ## Job failed: "Audio separation failed: expected str, bytes or os.PathLike object, not NoneType"
 
-**Cause:** Modal API intermittently returned fewer stems than expected from stage 2 (backing vocals) separation. Missing stems caused NoneType crashes in downstream processing.
+**Cause (historical):** Modal API intermittently returned fewer stems than expected from stage 2 (backing vocals) separation. Missing stems caused NoneType crashes in downstream processing. This was resolved by migrating to Cloud Run GPU (see `docs/archive/2026-03-22-modal-to-gcp-migration-plan.md`).
 
-**Fix (v0.135+):** Stage 2 now validates that all expected stems are present (matching existing stage 1 validation). Defensive null checks prevent confusing TypeError messages. Full tracebacks are logged with `exc_info=True`.
+**Fix (v0.135+):** Stage 2 now validates that all expected stems are present. Defensive null checks prevent confusing TypeError messages. Full tracebacks are logged with `exc_info=True`.
 
-**Recovery:** Retry the job — the failure is transient (Modal API intermittent). Long-term fix: migrate audio separation from Modal to GCP (see `docs/archive/2026-03-21-modal-to-gcp-migration-plan.md`).
+**Recovery:** Retry the job. With the Cloud Run GPU deployment, transient API failures are much less frequent than they were with Modal.
 
 ---
 
