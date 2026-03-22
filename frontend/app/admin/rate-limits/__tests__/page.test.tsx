@@ -28,6 +28,8 @@ jest.mock("@/lib/api", () => ({
     getYouTubeQueue: jest.fn(),
     retryYouTubeUpload: jest.fn(),
     processYouTubeQueue: jest.fn(),
+    getIpInfo: jest.fn().mockResolvedValue({ status: "success", ip: "192.168.1.100", country_code: "US", isp: "Test ISP" }),
+    getIpInfoBatch: jest.fn().mockResolvedValue({}),
   },
 }))
 

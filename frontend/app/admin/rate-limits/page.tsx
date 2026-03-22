@@ -38,6 +38,7 @@ import {
   X,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { IpInfo } from "@/components/admin/ip-info"
 
 export default function AdminRateLimitsPage() {
   const { toast } = useToast()
@@ -704,7 +705,7 @@ export default function AdminRateLimitsPage() {
                   <div className="flex flex-wrap gap-2 p-3">
                     {filteredIPs.map((ip) => (
                       <Badge key={ip} variant="destructive" className="flex items-center gap-1">
-                        {ip}
+                        <IpInfo ip={ip} compact />
                         <button
                           onClick={() => handleRemoveIP(ip)}
                           className="ml-1 hover:text-white cursor-pointer"

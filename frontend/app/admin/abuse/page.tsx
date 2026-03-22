@@ -8,6 +8,7 @@ import type {
   AbuseRelatedUser,
 } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { IpInfo } from "@/components/admin/ip-info"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -265,8 +266,8 @@ function SuspiciousAccountsTab({
                         "-"
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {truncate(user.signup_ip, 15)}
+                    <TableCell>
+                      <IpInfo ip={user.signup_ip} compact />
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {truncate(user.device_fingerprint, 10)}
@@ -381,7 +382,7 @@ function RelatedAccountsView({
             </div>
             <div className="col-span-2">
               <span className="text-muted-foreground">Signup IP:</span>{" "}
-              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{user.signup_ip || "unknown"}</code>
+              <IpInfo ip={user.signup_ip} />
             </div>
             <div className="col-span-2">
               <span className="text-muted-foreground">Fingerprint:</span>{" "}
@@ -623,7 +624,7 @@ function LookupTab({
                             formatCents(user.total_spent)
                           )}
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{truncate(user.signup_ip, 15)}</TableCell>
+                        <TableCell><IpInfo ip={user.signup_ip} compact /></TableCell>
                         <TableCell className="font-mono text-xs">{truncate(user.device_fingerprint, 10)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {formatDate(user.created_at)}

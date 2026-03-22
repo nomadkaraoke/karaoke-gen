@@ -24,6 +24,7 @@ from backend.services.audio_search_service import get_audio_search_service, NoRe
 from backend.models.job import JobStatus
 from backend.services.firestore_service import log_to_job
 from backend.utils.test_data import is_test_email
+from backend.services.ip_geolocation_service import get_ip_geolocation_service
 from karaoke_gen.utils import sanitize_filename
 
 
@@ -3761,3 +3762,35 @@ async def backfill_signup_ips(
         "skipped_already_set": skipped,
         "no_ip_found": no_ip_found,
     }
+
+
+# =============================================================================
+# IP Geolocation Lookup
+# =============================================================================
+
+
+class IpBatchRequest(BaseModel):
+    """Request for batch IP geolocation lookup."""
+    ips: list[str]
+
+
+@router.get("/abuse/ip-info/{ip_address:path}")
+async def get_ip_info(
+    ip_address: str,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Look up geolocation info for a single IP address."""
+    geo_service = get_ip_geolocation_service()
+    return geo_service.lookup_ip(ip_address)
+
+
+@router.post("/abuse/ip-info/batch")
+async def get_ip_info_batch(
+    request: IpBatchRequest,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """Look up geolocation info for multiple IP addresses."""
+    if len(request.ips) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 IPs per batch request")
+    geo_service = get_ip_geolocation_service()
+    return geo_service.lookup_ips_batch(request.ips)
