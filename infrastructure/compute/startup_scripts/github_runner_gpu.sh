@@ -46,10 +46,37 @@ apt-get install -y \
     lsb-release
 
 # ==================== NVIDIA drivers ====================
+# Kernel header / DKMS strategy:
+#   Debian auto-updates the kernel on `apt-get upgrade`, but DKMS only rebuilds
+#   modules if headers are installed at upgrade time. Since these VMs stop/start
+#   frequently, the kernel can advance between boots without a DKMS rebuild.
+#   We fix this by ALWAYS installing headers for the running kernel and triggering
+#   DKMS if the nvidia module isn't loaded.
+
+RUNNING_KERNEL="$(uname -r)"
+echo "Running kernel: $RUNNING_KERNEL"
+
+# 1. Ensure kernel headers match the running kernel (idempotent — no-op if current)
+echo "Ensuring kernel headers are installed for $RUNNING_KERNEL..."
+apt-get install -y "linux-headers-$RUNNING_KERNEL" dkms
+
+# 2. Clean up headers for kernels we're no longer running (prevents disk bloat)
+for old_headers in /usr/src/linux-headers-*; do
+    header_ver="$(basename "$old_headers" | sed 's/^linux-headers-//')"
+    # Skip the running kernel's headers and the -common package
+    if [ "$header_ver" = "$RUNNING_KERNEL" ] || echo "$header_ver" | grep -q "common"; then
+        continue
+    fi
+    pkg="linux-headers-$header_ver"
+    if dpkg -l "$pkg" 2>/dev/null | grep -q '^ii'; then
+        echo "Removing stale kernel headers: $pkg"
+        apt-get remove -y "$pkg" 2>/dev/null || true
+    fi
+done
+
+# 3. Install NVIDIA packages if not yet present
 if ! command -v nvidia-smi &>/dev/null; then
     echo "Installing NVIDIA drivers..."
-    # Install kernel headers (required for driver build)
-    apt-get install -y linux-headers-$(uname -r)
 
     # Add NVIDIA CUDA repository for Debian 12
     install_gpg_key \
@@ -63,22 +90,42 @@ if ! command -v nvidia-smi &>/dev/null; then
     # Installing cuda-toolkit gives us nvidia-smi and full CUDA support.
     apt-get install -y cuda-drivers cuda-toolkit-12-4
 else
-    echo "NVIDIA drivers already installed, skipping"
+    echo "NVIDIA packages already installed"
 fi
 
-# Verify GPU is accessible (retry up to 30 times with 10s delay — driver may need time after install)
+# 4. If the kernel module isn't loaded (e.g., kernel upgraded since last boot),
+#    rebuild via DKMS and load it. This is the common failure mode: packages are
+#    installed but the module was built against an older kernel.
+if ! lsmod | grep -q '^nvidia '; then
+    echo "NVIDIA kernel module not loaded for $RUNNING_KERNEL — rebuilding with DKMS..."
+
+    # Check DKMS status before and after for diagnostics
+    echo "DKMS status before rebuild:"
+    dkms status || true
+
+    dkms autoinstall
+    modprobe nvidia
+
+    echo "DKMS status after rebuild:"
+    dkms status || true
+fi
+
+# 5. Verify GPU is accessible (retry up to 10 times — module should load quickly after DKMS)
 echo "Verifying GPU..."
-for attempt in $(seq 1 30); do
+for attempt in $(seq 1 10); do
     if nvidia-smi; then
         echo "GPU verified successfully on attempt $attempt"
         break
     fi
-    if [ "$attempt" -eq 30 ]; then
-        echo "ERROR: nvidia-smi failed after 30 attempts — GPU not available"
+    if [ "$attempt" -eq 10 ]; then
+        echo "ERROR: nvidia-smi failed after 10 attempts — GPU not available"
+        echo "Diagnostic info:"
+        dkms status || true
+        ls /lib/modules/"$RUNNING_KERNEL"/updates/dkms/ 2>/dev/null || echo "No DKMS modules found for $RUNNING_KERNEL"
         exit 1
     fi
-    echo "nvidia-smi attempt $attempt failed, retrying in 10s..."
-    sleep 10
+    echo "nvidia-smi attempt $attempt failed, retrying in 5s..."
+    sleep 5
 done
 
 # ==================== FFmpeg + audio libraries ====================
