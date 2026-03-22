@@ -621,7 +621,7 @@ class TestAudioWorkerModelConfiguration:
                 # Should use default models
                 assert call_kwargs['clean_instrumental_model'] == "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
                 assert call_kwargs['backing_vocals_models'] == ["mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"]
-                assert call_kwargs['other_stems_models'] == ["htdemucs_6s.yaml"]
+                assert call_kwargs['other_stems_models'] == []
     
     def test_create_audio_processor_with_custom_clean_model(self):
         """Test creating AudioProcessor with custom clean instrumental model."""
@@ -762,7 +762,7 @@ class TestAudioWorkerModelConfiguration:
                 # Should fall back to defaults
                 assert call_kwargs['clean_instrumental_model'] == "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
                 assert call_kwargs['backing_vocals_models'] == ["mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"]
-                assert call_kwargs['other_stems_models'] == ["htdemucs_6s.yaml"]
+                assert call_kwargs['other_stems_models'] == []
 
 
 class TestDownloadFromUrl:
