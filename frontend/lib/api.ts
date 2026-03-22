@@ -2380,6 +2380,26 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  async getIpInfo(ip: string): Promise<IpGeoInfo> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/abuse/ip-info/${encodeURIComponent(ip)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
+  async getIpInfoBatch(ips: string[]): Promise<Record<string, IpGeoInfo>> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/abuse/ip-info/batch`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ ips }),
+      }
+    );
+    return handleResponse(response);
+  },
 };
 
 export interface EditReviewSummary {
@@ -3211,6 +3231,22 @@ export interface AbuseByFingerprintResponse {
   device_fingerprint: string;
   count: number;
   users: AbuseRelatedUser[];
+}
+
+// IP geolocation types
+export interface IpGeoInfo {
+  status: string;
+  ip: string;
+  country?: string;
+  country_code?: string;
+  region?: string;
+  city?: string;
+  isp?: string;
+  org?: string;
+  as_number?: string;
+  as_name?: string;
+  timezone?: string;
+  cached_at?: string;
 }
 
 export { ApiError };
