@@ -555,5 +555,4 @@ pulumi.export("divebar_lookup_function_url", divebar_lookup_resources["function"
 
 # Audio separator GPU service
 pulumi.export("audio_separator_service_url", audio_separator_resources["service"].uri)
-pulumi.export("audio_separator_model_bucket", audio_separator_resources["model_bucket"].name)
 pulumi.export("audio_separator_service_account", audio_separator_resources["service_account"].email)
