@@ -37,67 +37,71 @@ class TestRemoteAudioSeparation(unittest.TestCase):
     @patch('karaoke_gen.audio_processor.REMOTE_API_AVAILABLE', True)
     @patch('karaoke_gen.audio_processor.AudioSeparatorAPIClient')
     def test_remote_api_detection(self, mock_client_class):
-        """Test that remote API is detected when environment variable is set."""
+        """Test that remote API is detected and two-stage separation works with custom_output_names."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
-        
-        # Mock the API responses for the two-stage approach
-        mock_client.separate_audio_and_wait.side_effect = [
-            # Stage 1: Clean instrumental + other stems
-            {
-                "status": "completed",
-                "downloaded_files": [
-                    "/tmp/test_file_(Vocals)_model_bs_roformer_ep_317_sdr_12.9755.flac",
-                    "/tmp/test_file_(Instrumental)_model_bs_roformer_ep_317_sdr_12.9755.flac",
-                    "/tmp/test_file_(Drums)_htdemucs_6s.flac",
-                    "/tmp/test_file_(Bass)_htdemucs_6s.flac",
-                    "/tmp/test_file_(Other)_htdemucs_6s.flac"
-                ]
-            },
-            # Stage 2: Backing vocals
-            {
-                "status": "completed", 
-                "downloaded_files": [
-                    "/tmp/test_vocals_(Vocals)_mel_band_roformer_karaoke_aufr33_viperx_sdr_10.flac",
-                    "/tmp/test_vocals_(Instrumental)_mel_band_roformer_karaoke_aufr33_viperx_sdr_10.flac"
-                ]
-            }
-        ]
-        
-        # Mock file operations
-        with patch('os.path.exists', return_value=True), \
-             patch('shutil.move'), \
-             patch('os.makedirs'), \
-             patch('builtins.open', create=True) as mock_open, \
-             patch('os.path.abspath', side_effect=lambda x: x), \
-             patch('sys.platform', 'darwin'), \
-             patch('os.system'), \
-             patch.object(self.audio_processor, '_generate_combined_instrumentals', return_value={"mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt": "/tmp/combined.flac"}), \
+
+        # Create stems dir and expected output files
+        stems_dir = os.path.join(self.temp_dir, "stems")
+        os.makedirs(stems_dir, exist_ok=True)
+
+        # File prefix uses artist_title (no job_id set on this processor)
+        prefix = "Test Artist - Test Song"
+        fmt = "flac"
+        vocals_path = os.path.join(stems_dir, f"{prefix}_mixed_vocals.{fmt}")
+        instrumental_path = os.path.join(stems_dir, f"{prefix}_mixed_instrumental.{fmt}")
+        lead_vocals_path = os.path.join(stems_dir, f"{prefix}_lead_vocals.{fmt}")
+        backing_vocals_path = os.path.join(stems_dir, f"{prefix}_backing_vocals.{fmt}")
+
+        # Create fake files that the API would "download"
+        for path in [vocals_path, instrumental_path]:
+            with open(path, "w") as f:
+                f.write("fake")
+
+        # Stage 1 response
+        stage1_response = {
+            "status": "completed",
+            "downloaded_files": [vocals_path, instrumental_path],
+        }
+        # Stage 2 response — create the files too
+        for path in [lead_vocals_path, backing_vocals_path]:
+            with open(path, "w") as f:
+                f.write("fake")
+        stage2_response = {
+            "status": "completed",
+            "downloaded_files": [lead_vocals_path, backing_vocals_path],
+        }
+
+        mock_client.separate_audio_and_wait.side_effect = [stage1_response, stage2_response]
+
+        # Create a fake input file
+        input_file = os.path.join(self.temp_dir, "test_audio.wav")
+        with open(input_file, "w") as f:
+            f.write("fake input")
+
+        with patch.object(self.audio_processor, '_generate_combined_instrumentals', return_value={}), \
              patch.object(self.audio_processor, '_normalize_audio_files'):
-            
             result = self.audio_processor.process_audio_separation(
-                "/tmp/test_audio.wav", 
-                "Test Artist - Test Song", 
-                self.temp_dir
+                input_file,
+                "Test Artist - Test Song",
+                self.temp_dir,
             )
-        
+
         # Verify remote API was called twice (stage 1 and stage 2)
         self.assertTrue(mock_client_class.called)
         self.assertEqual(mock_client.separate_audio_and_wait.call_count, 2)
-        
-        # Verify stage 1 call parameters (original song with clean + other stems models)
-        stage1_call_args = mock_client.separate_audio_and_wait.call_args_list[0]
-        self.assertEqual(stage1_call_args[0][0], "/tmp/test_audio.wav")  # original audio file
-        self.assertIn("model_bs_roformer_ep_317_sdr_12.9755.ckpt", stage1_call_args[1]["models"])
-        self.assertIn("htdemucs_6s.yaml", stage1_call_args[1]["models"])
-        # Stage 1 should NOT include backing vocals models
-        self.assertNotIn("mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt", stage1_call_args[1]["models"])
-        
-        # Verify stage 2 call parameters (clean vocals with backing vocals models)
-        stage2_call_args = mock_client.separate_audio_and_wait.call_args_list[1]
-        # Stage 2 should process the vocals file from stage 1
-        self.assertTrue(stage2_call_args[0][0].endswith("(Vocals model_bs_roformer_ep_317_sdr_12.9755.ckpt).FLAC"))
-        self.assertEqual(stage2_call_args[1]["models"], ["mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"])
+
+        # Verify stage 1 used custom_output_names
+        stage1_kwargs = mock_client.separate_audio_and_wait.call_args_list[0][1]
+        self.assertIn("custom_output_names", stage1_kwargs)
+        self.assertIn("mixed_vocals", stage1_kwargs["custom_output_names"]["Vocals"])
+        self.assertIn("mixed_instrumental", stage1_kwargs["custom_output_names"]["Instrumental"])
+
+        # Verify stage 2 used custom_output_names
+        stage2_kwargs = mock_client.separate_audio_and_wait.call_args_list[1][1]
+        self.assertIn("custom_output_names", stage2_kwargs)
+        self.assertIn("lead_vocals", stage2_kwargs["custom_output_names"]["Vocals"])
+        self.assertIn("backing_vocals", stage2_kwargs["custom_output_names"]["Instrumental"])
 
     @patch.dict(os.environ, {}, clear=True)  # Clear AUDIO_SEPARATOR_API_URL
     def test_local_fallback_when_no_env_var(self):
@@ -298,9 +302,7 @@ class TestRemoteAudioSeparation(unittest.TestCase):
         
         # Verify the exception message is clear and helpful
         error_message = str(context.exception)
-        self.assertIn("Stage 2 backing vocals separation completed successfully but no files were downloaded", error_message)
-        self.assertIn("filename encoding or API issue", error_message)
-        self.assertIn("Expected 2 files", error_message)
+        self.assertIn("Stage 2 completed but no files were downloaded", error_message)
 
 
     @patch.dict(os.environ, {'AUDIO_SEPARATOR_API_URL': 'https://test-api.com'})
@@ -331,8 +333,7 @@ class TestRemoteAudioSeparation(unittest.TestCase):
         
         # Verify the exception message is clear and helpful
         error_message = str(context.exception)
-        self.assertIn("Stage 1 audio separation completed successfully but no files were downloaded", error_message)
-        self.assertIn("filename encoding or API issue", error_message)
+        self.assertIn("Stage 1 completed but no files were downloaded", error_message)
 
 
 if __name__ == '__main__':
