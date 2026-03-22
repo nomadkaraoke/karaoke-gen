@@ -45,19 +45,48 @@ apt-get install -y \
     gnupg \
     lsb-release
 
-# ==================== NVIDIA drivers ====================
-# Kernel header / DKMS strategy:
-#   Debian auto-updates the kernel on `apt-get upgrade`, but DKMS only rebuilds
-#   modules if headers are installed at upgrade time. Since these VMs stop/start
-#   frequently, the kernel can advance between boots without a DKMS rebuild.
-#   We fix this by ALWAYS installing headers for the running kernel and triggering
-#   DKMS if the nvidia module isn't loaded.
+# ==================== Kernel + NVIDIA drivers ====================
+# Strategy:
+#   The base debian-cloud/debian-12 image ships an older kernel (e.g., 6.1.0-43)
+#   but Debian repos drop old kernel headers once a new point release lands.
+#   If headers aren't available for the running kernel, we upgrade the kernel,
+#   reboot ONCE (tracked via metadata flag), and then install headers + NVIDIA.
+#
+#   On subsequent stop/start cycles the kernel stays current and headers match,
+#   so the script just ensures DKMS has built the nvidia module.
 
 RUNNING_KERNEL="$(uname -r)"
+REBOOT_FLAG="/var/lib/gpu-runner-kernel-upgraded"
 echo "Running kernel: $RUNNING_KERNEL"
 
-# 1. Ensure kernel headers match the running kernel (idempotent — no-op if current)
-echo "Ensuring kernel headers are installed for $RUNNING_KERNEL..."
+# Check if headers are available for the running kernel
+if ! apt-cache show "linux-headers-$RUNNING_KERNEL" &>/dev/null; then
+    if [ -f "$REBOOT_FLAG" ]; then
+        echo "ERROR: Headers still unavailable after kernel upgrade + reboot. Giving up."
+        echo "Running kernel: $RUNNING_KERNEL"
+        apt-cache search linux-headers | grep cloud | tail -5
+        exit 1
+    fi
+
+    echo "Headers for $RUNNING_KERNEL not in repos — upgrading kernel and rebooting..."
+
+    # Upgrade kernel to latest available version (headers will match after reboot)
+    apt-get install -y linux-image-cloud-amd64 linux-headers-cloud-amd64
+
+    # Mark that we've upgraded so we don't loop forever
+    touch "$REBOOT_FLAG"
+
+    echo "Kernel upgraded. Rebooting to load new kernel..."
+    reboot
+    # Script exits here; startup script re-runs after reboot with the new kernel
+    exit 0
+fi
+
+# If we got here after a reboot, clean up the flag
+rm -f "$REBOOT_FLAG"
+
+# 1. Install headers + DKMS for the running kernel
+echo "Installing kernel headers for $RUNNING_KERNEL..."
 apt-get install -y "linux-headers-$RUNNING_KERNEL" dkms
 
 # 2. Clean up headers for kernels we're no longer running (prevents disk bloat)
@@ -98,8 +127,6 @@ fi
 #    installed but the module was built against an older kernel.
 if ! lsmod | grep -q '^nvidia '; then
     echo "NVIDIA kernel module not loaded for $RUNNING_KERNEL — rebuilding with DKMS..."
-
-    # Check DKMS status before and after for diagnostics
     echo "DKMS status before rebuild:"
     dkms status || true
 
@@ -110,7 +137,7 @@ if ! lsmod | grep -q '^nvidia '; then
     dkms status || true
 fi
 
-# 5. Verify GPU is accessible (retry up to 10 times — module should load quickly after DKMS)
+# 5. Verify GPU is accessible
 echo "Verifying GPU..."
 for attempt in $(seq 1 10); do
     if nvidia-smi; then
