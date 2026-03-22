@@ -1,0 +1,221 @@
+"""
+Audio Separator Cloud Run GPU Service.
+
+Deploys the audio-separator API as a Cloud Run service with L4 GPU acceleration.
+Replaces the Modal deployment for audio stem separation.
+
+Resources created:
+- Artifact Registry repository for audio-separator Docker images
+- GCS bucket for pre-downloaded separation models
+- Cloud Run GPU service (L4, scale-to-zero)
+- Service account with minimal permissions
+"""
+
+import pulumi
+import pulumi_gcp as gcp
+from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount, storage
+
+from config import PROJECT_ID, REGION
+
+
+def create_audio_separator_artifact_repo() -> artifactregistry.Repository:
+    """Create Artifact Registry repo for audio-separator Docker images."""
+    return artifactregistry.Repository(
+        "audio-separator-artifact-repo",
+        repository_id="audio-separator",
+        location=REGION,
+        format="DOCKER",
+        description="Docker repository for audio-separator GPU service",
+    )
+
+
+def create_model_bucket() -> storage.Bucket:
+    """Create GCS bucket for audio separation model files (~1-1.5 GB total)."""
+    return storage.Bucket(
+        "audio-separator-models-bucket",
+        name=f"nomadkaraoke-audio-separator-models",
+        location=REGION,
+        storage_class="STANDARD",
+        uniform_bucket_level_access=True,
+        force_destroy=False,
+    )
+
+
+def create_service_account() -> serviceaccount.Account:
+    """Create service account for the audio separator Cloud Run service."""
+    return serviceaccount.Account(
+        "audio-separator-sa",
+        account_id="audio-separator",
+        display_name="Audio Separator Service Account",
+        description="Service account for audio separator Cloud Run GPU service",
+    )
+
+
+def grant_permissions(
+    sa: serviceaccount.Account,
+    model_bucket: storage.Bucket,
+) -> dict:
+    """Grant permissions to the audio separator service account."""
+    bindings = {}
+
+    # Read models from GCS bucket
+    bindings["model_bucket_reader"] = storage.BucketIAMMember(
+        "audio-separator-model-bucket-reader",
+        bucket=model_bucket.name,
+        role="roles/storage.objectViewer",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
+    # Read admin-tokens secret for API auth
+    bindings["secrets_access"] = gcp.projects.IAMMember(
+        "audio-separator-secrets-access",
+        project=PROJECT_ID,
+        role="roles/secretmanager.secretAccessor",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
+    # Write logs
+    bindings["logging"] = gcp.projects.IAMMember(
+        "audio-separator-logging",
+        project=PROJECT_ID,
+        role="roles/logging.logWriter",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
+    # Write metrics
+    bindings["monitoring"] = gcp.projects.IAMMember(
+        "audio-separator-monitoring",
+        project=PROJECT_ID,
+        role="roles/monitoring.metricWriter",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
+    return bindings
+
+
+def create_service(
+    sa: serviceaccount.Account,
+    model_bucket: storage.Bucket,
+    artifact_repo: artifactregistry.Repository,
+) -> cloudrunv2.Service:
+    """
+    Create the Cloud Run GPU service for audio separation.
+
+    Uses L4 GPU for fast inference. Scales to zero when idle.
+    The service runs the audio-separator FastAPI server (deploy_cloudrun.py).
+    """
+    service = cloudrunv2.Service(
+        "audio-separator-service",
+        name="audio-separator",
+        location=REGION,
+        ingress="INGRESS_TRAFFIC_ALL",
+        template=cloudrunv2.ServiceTemplateArgs(
+            scaling=cloudrunv2.ServiceTemplateScalingArgs(
+                min_instance_count=0,
+                max_instance_count=2,
+            ),
+            # Keep instances warm for 600s (10 min) between Stage 1 → Stage 2
+            session_affinity=True,
+            timeout="1800s",  # 30 min max per request
+            service_account=sa.email,
+            containers=[
+                cloudrunv2.ServiceTemplateContainerArgs(
+                    # Initial placeholder image - will be updated by CI/CD
+                    image=artifact_repo.name.apply(
+                        lambda name: f"{REGION}-docker.pkg.dev/{PROJECT_ID}/audio-separator/api:latest"
+                    ),
+                    ports=[
+                        cloudrunv2.ServiceTemplateContainerPortArgs(
+                            container_port=8080,
+                        ),
+                    ],
+                    resources=cloudrunv2.ServiceTemplateContainerResourcesArgs(
+                        limits={
+                            "cpu": "4",
+                            "memory": "16Gi",
+                            "nvidia.com/gpu": "1",
+                        },
+                        startup_cpu_boost=True,
+                    ),
+                    envs=[
+                        cloudrunv2.ServiceTemplateContainerEnvArgs(
+                            name="MODEL_BUCKET",
+                            value=model_bucket.name,
+                        ),
+                        cloudrunv2.ServiceTemplateContainerEnvArgs(
+                            name="MODEL_DIR",
+                            value="/models",
+                        ),
+                        cloudrunv2.ServiceTemplateContainerEnvArgs(
+                            name="STORAGE_DIR",
+                            value="/tmp/storage",
+                        ),
+                    ],
+                    startup_probe=cloudrunv2.ServiceTemplateContainerStartupProbeArgs(
+                        http_get=cloudrunv2.ServiceTemplateContainerStartupProbeHttpGetArgs(
+                            path="/health",
+                            port=8080,
+                        ),
+                        initial_delay_seconds=10,
+                        period_seconds=10,
+                        timeout_seconds=5,
+                        failure_threshold=30,  # Allow up to 5 min for model download
+                    ),
+                    liveness_probe=cloudrunv2.ServiceTemplateContainerLivenessProbeArgs(
+                        http_get=cloudrunv2.ServiceTemplateContainerLivenessProbeHttpGetArgs(
+                            path="/health",
+                            port=8080,
+                        ),
+                        period_seconds=30,
+                        timeout_seconds=5,
+                        failure_threshold=3,
+                    ),
+                ),
+            ],
+            # L4 GPU node selector
+            node_selector=cloudrunv2.ServiceTemplateNodeSelectorArgs(
+                accelerator="nvidia-l4",
+            ),
+        ),
+    )
+
+    return service
+
+
+def allow_unauthenticated_access(service: cloudrunv2.Service) -> cloudrunv2.ServiceIamMember:
+    """
+    Allow unauthenticated access to the audio separator service.
+
+    Auth is handled at the application level via admin-tokens,
+    matching the pattern used by the encoding worker.
+    """
+    return cloudrunv2.ServiceIamMember(
+        "audio-separator-allow-unauthenticated",
+        project=PROJECT_ID,
+        location=REGION,
+        name=service.name,
+        role="roles/run.invoker",
+        member="allUsers",
+    )
+
+
+def create_all_resources() -> dict:
+    """
+    Create all audio separator infrastructure resources.
+
+    Returns dict of all created resources for export.
+    """
+    artifact_repo = create_audio_separator_artifact_repo()
+    model_bucket = create_model_bucket()
+    sa = create_service_account()
+    iam_bindings = grant_permissions(sa, model_bucket)
+    service = create_service(sa, model_bucket, artifact_repo)
+    unauthenticated_access = allow_unauthenticated_access(service)
+
+    return {
+        "artifact_repo": artifact_repo,
+        "model_bucket": model_bucket,
+        "service_account": sa,
+        "service": service,
+        "iam_bindings": iam_bindings,
+    }

@@ -39,6 +39,7 @@ from config import (
 from modules import database, storage as storage_module, artifact_registry, secrets
 from modules import cloud_tasks, cloud_run, monitoring, networking, runner_manager
 from modules import divebar_mirror, kn_data_sync, divebar_lookup
+from modules import audio_separator_service
 from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, worker_sas
 from compute import encoding_worker_vm, github_runners
 
@@ -391,6 +392,10 @@ kn_data_sync_resources = kn_data_sync.create_kn_data_sync_resources(all_secrets)
 
 divebar_lookup_resources = divebar_lookup.create_divebar_lookup_resources(all_secrets)
 
+# ==================== Audio Separator GPU Service ====================
+# Cloud Run GPU (L4) service for audio stem separation — replaces Modal
+audio_separator_resources = audio_separator_service.create_all_resources()
+
 # ==================== Compute VMs ====================
 
 # Encoding Worker VM (video encoding service)
@@ -547,3 +552,8 @@ pulumi.export("kn_data_bucket", kn_data_sync_resources["data_bucket"].name)
 
 # Divebar lookup API (Phase 3)
 pulumi.export("divebar_lookup_function_url", divebar_lookup_resources["function"].url)
+
+# Audio separator GPU service
+pulumi.export("audio_separator_service_url", audio_separator_resources["service"].uri)
+pulumi.export("audio_separator_model_bucket", audio_separator_resources["model_bucket"].name)
+pulumi.export("audio_separator_service_account", audio_separator_resources["service_account"].email)
