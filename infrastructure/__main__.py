@@ -186,7 +186,7 @@ gdrive_validator_function = cloudfunctionsv2.Function(
         service_account_email=gdrive_validator_sa.email,
         environment_variables={
             "GDRIVE_FOLDER_ID": GDRIVE_FOLDER_ID,
-            "NOTIFY_ON_SUCCESS": "true",
+            "NOTIFY_ON_SUCCESS": "false",
             "EMAIL_TO": "gen@nomadkaraoke.com",
             "EMAIL_FROM": "gen@nomadkaraoke.com",
         },
