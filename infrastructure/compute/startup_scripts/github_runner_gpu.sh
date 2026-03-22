@@ -195,8 +195,11 @@ fi
 # ==================== Poetry ====================
 if ! command -v poetry &>/dev/null; then
     echo "Installing Poetry..."
-    curl -sSL https://install.python-poetry.org | python3 -
-    ln -sf /root/.local/bin/poetry /usr/local/bin/poetry
+    # Install Poetry to /opt/poetry (shared location) so the runner user can access it.
+    # The default installer puts everything under ~/.local which is /root/.local — the
+    # runner user can't follow symlinks into /root/ (mode 700).
+    POETRY_HOME="/opt/poetry" curl -sSL https://install.python-poetry.org | python3 -
+    ln -sf /opt/poetry/bin/poetry /usr/local/bin/poetry
 else
     echo "Poetry already installed, skipping"
 fi
