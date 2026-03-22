@@ -50,6 +50,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
+import { IpInfo } from "@/components/admin/ip-info"
 
 export default function AdminUserDetailPage() {
   const searchParams = useSearchParams()
@@ -433,9 +434,9 @@ export default function AdminUserDetailPage() {
             <CardTitle>Identity & Security</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Signup IP</span>
-              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{user.signup_ip || "unknown"}</code>
+              <IpInfo ip={user.signup_ip} />
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Device Fingerprint</span>
@@ -453,7 +454,7 @@ export default function AdminUserDetailPage() {
                 <div className="space-y-2">
                   {user.recent_sessions.map((s, i) => (
                     <div key={i} className="text-xs bg-muted rounded p-2 space-y-1">
-                      <div><span className="text-muted-foreground">IP:</span> {s.ip_address || "unknown"}</div>
+                      <div className="flex items-center gap-1"><span className="text-muted-foreground">IP:</span> <IpInfo ip={s.ip_address} compact /></div>
                       {s.device_fingerprint && <div><span className="text-muted-foreground">Fingerprint:</span> {s.device_fingerprint}</div>}
                       {s.user_agent && <div className="truncate"><span className="text-muted-foreground">UA:</span> {s.user_agent}</div>}
                       <div><span className="text-muted-foreground">Last active:</span> {s.last_activity_at ? new Date(s.last_activity_at).toLocaleString() : "unknown"}</div>
