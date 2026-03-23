@@ -184,6 +184,10 @@ if [ ! -f "$PYTHON_PREFIX/bin/python3.13" ]; then
     make install
     rm -rf /tmp/Python-3.13.0*
 
+    # Bootstrap pip — ensurepip is bundled but pip may not be installed into
+    # site-packages by make install. setup-python@v5 requires a working pip.
+    "$PYTHON_PREFIX/bin/python3.13" -m ensurepip --upgrade
+
     # Create convenience symlinks
     ln -sf "$PYTHON_PREFIX/bin/python3.13" /usr/local/bin/python3.13
     ln -sf "$PYTHON_PREFIX/bin/python3" /usr/local/bin/python3
