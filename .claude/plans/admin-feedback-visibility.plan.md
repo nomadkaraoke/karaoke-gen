@@ -100,7 +100,7 @@ Add a new method to `EmailService` (or call `send_email` directly) from the `sub
 ## Open Questions
 
 - [ ] Should the admin page show feedback from the old `beta_feedback` collection too, or just `user_feedback`? (Recommendation: just `user_feedback` — the beta collection is legacy)
-- [ ] Should there be any spam/quality detection flagging? (The Harry Nguyen submission was clearly gaming the system for credits)
+- [ ] Should there be any spam/quality detection flagging? (Some submissions appear to game the system for credits)
 
 ## Rollback Plan
 

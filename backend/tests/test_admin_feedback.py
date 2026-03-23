@@ -376,7 +376,8 @@ class TestFeedbackEmailNotification:
         call_args = mock_provider.send_email.call_args
 
         # Check email is sent to admin
-        assert call_args.kwargs.get("to_email") or call_args[0][0] == "admin@nomadkaraoke.com"
+        to_email = call_args.kwargs.get("to_email") or call_args[0][0]
+        assert to_email == "admin@nomadkaraoke.com"
 
         # Check subject contains user email and rating
         subject = call_args.kwargs.get("subject") or call_args[0][1]

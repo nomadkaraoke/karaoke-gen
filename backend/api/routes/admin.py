@@ -3839,6 +3839,9 @@ def list_user_feedback(
     auth_result: AuthResult = Depends(require_admin),
 ):
     """List all user feedback submissions with pagination and search."""
+    limit = max(1, min(limit, 200))
+    offset = max(0, offset)
+
     user_service = get_user_service()
     db = user_service.db
 

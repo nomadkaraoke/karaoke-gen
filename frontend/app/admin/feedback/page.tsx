@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { Fragment, useEffect, useState, useCallback } from "react"
 import { adminApi, AdminFeedbackItem, AdminFeedbackListResponse } from "@/lib/api"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { Button } from "@/components/ui/button"
@@ -211,9 +211,8 @@ export default function AdminFeedbackPage() {
               </TableHeader>
               <TableBody>
                 {data.items.map((item) => (
-                  <>
+                  <Fragment key={item.id}>
                     <TableRow
-                      key={item.id}
                       className={`cursor-pointer hover:bg-muted/50 ${
                         expandedId === item.id ? "bg-muted/30" : ""
                       }`}
@@ -272,7 +271,7 @@ export default function AdminFeedbackPage() {
                       </TableCell>
                     </TableRow>
                     {expandedId === item.id && hasTextContent(item) && (
-                      <TableRow key={`${item.id}-detail`}>
+                      <TableRow>
                         <TableCell colSpan={9} className="bg-muted/20 px-8 py-4">
                           <ExpandableText label="What went well" text={item.what_went_well} />
                           <ExpandableText label="What could improve" text={item.what_could_improve} />
@@ -280,7 +279,7 @@ export default function AdminFeedbackPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
