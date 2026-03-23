@@ -118,9 +118,12 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("new@example.com")
+        with patch('backend.services.credit_evaluation_service.get_credit_evaluation_service') as mock_eval:
+            from backend.services.credit_evaluation_service import CreditEvaluation
+            mock_eval.return_value.evaluate.return_value = CreditEvaluation(decision="grant", reasoning="OK", confidence=1.0)
+            granted, status = service.grant_welcome_credits_if_eligible("new@example.com")
 
-        assert result is True
+        assert granted is True
         # Verify update was called with credits and flag
         mock_db.collection.return_value.document.return_value.update.assert_called_once()
         update_args = mock_db.collection.return_value.document.return_value.update.call_args[0][0]
@@ -148,9 +151,9 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("existing@example.com")
+        granted, status = service.grant_welcome_credits_if_eligible("existing@example.com")
 
-        assert result is False
+        assert granted is False
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
@@ -180,9 +183,9 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("existing@example.com")
+        granted, status = service.grant_welcome_credits_if_eligible("existing@example.com")
 
-        assert result is False
+        assert granted is False
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
@@ -199,9 +202,9 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("ghost@example.com")
+        granted, status = service.grant_welcome_credits_if_eligible("ghost@example.com")
 
-        assert result is False
+        assert granted is False
 
 
 # =============================================================================
@@ -524,7 +527,7 @@ class TestVerifyGrantsCredits:
         from backend.services.email_service import get_email_service
 
         mock_user_svc.verify_magic_link.return_value = (True, user, "Success")
-        mock_user_svc.grant_welcome_credits_if_eligible.return_value = credits_eligible
+        mock_user_svc.grant_welcome_credits_if_eligible.return_value = (credits_eligible, "granted" if credits_eligible else "already_granted")
         mock_user_svc.get_user.return_value = user
         mock_user_svc.create_session.return_value = MagicMock(token="session-token")
         mock_user_svc.NEW_USER_FREE_CREDITS = 2
@@ -652,8 +655,8 @@ class TestErrorPaths:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("test@example.com")
-        assert result is False
+        granted, status = service.grant_welcome_credits_if_eligible("test@example.com")
+        assert granted is False
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')

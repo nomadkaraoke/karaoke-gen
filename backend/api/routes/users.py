@@ -297,13 +297,17 @@ async def verify_magic_link(
     if not success or not user:
         raise HTTPException(status_code=401, detail=message)
 
-    # Grant welcome credits on first verification (not at account creation)
+    # Grant welcome credits on first verification (with AI abuse evaluation)
     credits_granted = 0
-    if user_service.grant_welcome_credits_if_eligible(user.email):
+    credit_status = "not_applicable"  # returning user, not first login
+    granted, credit_status = user_service.grant_welcome_credits_if_eligible(user.email)
+    if granted:
         credits_granted = user_service.NEW_USER_FREE_CREDITS
         logger.info(f"Granted {credits_granted} welcome credits to {_mask_email(user.email)}")
         # Refresh user to get updated credit balance
         user = user_service.get_user(user.email)
+    elif credit_status == "denied":
+        logger.info(f"Welcome credits denied for {_mask_email(user.email)}")
 
     # Create session with tenant context and device fingerprint from the magic link
     magic_link_fingerprint = magic_link_data.get('device_fingerprint') if magic_link_doc.exists else None
@@ -346,6 +350,7 @@ async def verify_magic_link(
         message="Successfully signed in",
         tenant_subdomain=tenant_subdomain,
         credits_granted=credits_granted,
+        credit_status=credit_status,
     )
 
 
@@ -1210,7 +1215,35 @@ async def submit_user_feedback(
         has_submitted_feedback=True,
     )
 
-    # Grant 2 credits
+    # AI evaluation before granting feedback credits
+    credits_granted = 0
+    feedback_content = {
+        "overall_rating": request.overall_rating,
+        "what_went_well": request.what_went_well,
+        "what_could_improve": request.what_could_improve,
+        "additional_comments": request.additional_comments,
+    }
+    try:
+        from backend.services.credit_evaluation_service import get_credit_evaluation_service
+        eval_service = get_credit_evaluation_service()
+        evaluation = eval_service.evaluate(user.email, "feedback", feedback_content)
+
+        if evaluation.decision == "deny":
+            logger.info(f"Feedback credits denied for {_mask_email(user.email)}: {evaluation.reasoning}")
+            try:
+                from backend.services.email_service import get_email_service
+                get_email_service().send_credit_denied_email(user.email, "feedback")
+            except Exception:
+                logger.exception(f"Failed to send credit denied email to {_mask_email(user.email)}")
+            return UserFeedbackResponse(
+                status="success",
+                message="Thank you for your feedback! We appreciate your input.",
+                credits_granted=0,
+            )
+    except Exception:
+        logger.exception(f"Credit evaluation failed for {_mask_email(user.email)} — granting anyway")
+
+    # Grant 2 credits (passed evaluation or fail-open)
     credits_granted = 2
     user_service.add_credits(
         email=user.email,

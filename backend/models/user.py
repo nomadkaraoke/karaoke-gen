@@ -180,6 +180,7 @@ class VerifyMagicLinkResponse(BaseModel):
     message: str
     tenant_subdomain: Optional[str] = None
     credits_granted: int = 0
+    credit_status: str = "not_applicable"  # "granted", "denied", "already_granted", "not_applicable"
 
 
 class UserPublic(BaseModel):
