@@ -308,6 +308,39 @@ async def flacfetch_health() -> Dict[str, Any]:
     }
 
 
+@router.get("/health/audio-separator")
+async def audio_separator_health() -> Dict[str, Any]:
+    """
+    Return the installed audio-separator package version.
+
+    Does NOT call the remote GPU service — that would cold-start an expensive
+    Cloud Run GPU instance (~$0.07 per wake). Instead reports the locally
+    installed package version, which matches what the audio worker uses.
+
+    No authentication required.
+    """
+    from backend.config import get_settings
+
+    settings = get_settings()
+    if not settings.audio_separator_api_url:
+        return {
+            "available": False,
+            "status": "not_configured",
+        }
+
+    try:
+        from importlib.metadata import version
+        pkg_version = version("audio-separator")
+    except Exception:
+        pkg_version = None
+
+    return {
+        "available": True,
+        "status": "ok",
+        "version": pkg_version,
+    }
+
+
 @router.get("/health/detailed")
 async def detailed_health_check() -> Dict[str, Any]:
     """

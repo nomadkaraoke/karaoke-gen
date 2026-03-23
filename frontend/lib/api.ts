@@ -297,6 +297,13 @@ export interface FlacfetchHealth {
   error?: string;
 }
 
+export interface AudioSeparatorHealth {
+  available: boolean;
+  status: string;  // 'ok' | 'offline' | 'not_configured'
+  version?: string | null;
+  error?: string;
+}
+
 // Signed URL upload types
 export interface SignedUploadUrl {
   file_type: string;
@@ -1302,6 +1309,14 @@ export const api = {
    */
   async getFlacfetchHealth(): Promise<FlacfetchHealth> {
     const response = await fetch(`${API_BASE_URL}/api/health/flacfetch`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get audio separator service health status
+   */
+  async getAudioSeparatorHealth(): Promise<AudioSeparatorHealth> {
+    const response = await fetch(`${API_BASE_URL}/api/health/audio-separator`);
     return handleResponse(response);
   },
 
