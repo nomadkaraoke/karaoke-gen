@@ -614,6 +614,9 @@ class UserService:
         from collections import defaultdict
         from backend.utils.test_data import is_internal_or_test_email
 
+        # Known bad IPs (load balancer, metadata, placeholder) that don't represent real client IPs
+        BAD_IPS = {"169.254.169.126", "unknown", ""}
+
         try:
             all_users = []
             for doc in self.db.collection(USERS_COLLECTION).stream():
@@ -627,10 +630,10 @@ class UserService:
                 if user.device_fingerprint:
                     fp_groups[user.device_fingerprint].append(user)
 
-            # Group by IP
+            # Group by IP (exclude known bad IPs)
             ip_groups: dict[str, list[User]] = defaultdict(list)
             for user in all_users:
-                if user.signup_ip:
+                if user.signup_ip and user.signup_ip not in BAD_IPS:
                     ip_groups[user.signup_ip].append(user)
 
             # Collect user agents from latest sessions for users in clusters
