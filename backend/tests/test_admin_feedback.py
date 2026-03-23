@@ -185,6 +185,168 @@ class TestAdminFeedbackEndpoint:
         assert result.avg_overall_rating is None
 
 
+    @patch("backend.api.routes.admin.get_user_service")
+    @patch("backend.api.routes.admin.is_test_email")
+    def test_list_feedback_handles_string_created_at(self, mock_is_test, mock_get_user_svc):
+        """Test that string timestamps (not datetime objects) are handled correctly."""
+        from backend.api.routes.admin import list_user_feedback
+
+        mock_db = Mock()
+        mock_user_svc = Mock()
+        mock_user_svc.db = mock_db
+        mock_get_user_svc.return_value = mock_user_svc
+        mock_is_test.return_value = False
+
+        doc = self._make_feedback_doc("a@x.com", 5, id="id-1", created_at="2026-03-01T12:00:00")
+        mock_db.collection.return_value.stream.return_value = [doc]
+
+        result = list_user_feedback(
+            limit=50, offset=0, search=None, exclude_test=False,
+            auth_result=("admin@test.com", "admin", 1),
+        )
+
+        assert result.items[0].created_at == "2026-03-01T12:00:00"
+
+    @patch("backend.api.routes.admin.get_user_service")
+    @patch("backend.api.routes.admin.is_test_email")
+    def test_list_feedback_handles_none_created_at(self, mock_is_test, mock_get_user_svc):
+        """Test that None created_at is handled correctly."""
+        from backend.api.routes.admin import list_user_feedback
+
+        mock_db = Mock()
+        mock_user_svc = Mock()
+        mock_user_svc.db = mock_db
+        mock_get_user_svc.return_value = mock_user_svc
+        mock_is_test.return_value = False
+
+        doc = self._make_feedback_doc("a@x.com", 5, id="id-1", created_at=None)
+        mock_db.collection.return_value.stream.return_value = [doc]
+
+        result = list_user_feedback(
+            limit=50, offset=0, search=None, exclude_test=False,
+            auth_result=("admin@test.com", "admin", 1),
+        )
+
+        assert result.items[0].created_at is None
+
+
+class TestSubmitFeedbackEmailIntegration:
+    """Test that submit_user_feedback correctly calls send_feedback_notification."""
+
+    @patch("backend.services.email_service.get_email_service")
+    @patch("backend.services.auth_service.get_auth_service")
+    def test_submit_feedback_sends_admin_notification(self, mock_get_auth, mock_get_email):
+        """Verify the caller (submit_user_feedback) passes correct args to email service."""
+        import asyncio
+        import uuid as uuid_mod
+        from backend.api.routes.users import submit_user_feedback
+        from backend.models.user import UserFeedbackRequest
+
+        # Mock auth
+        mock_auth_svc = Mock()
+        mock_auth_result = Mock()
+        mock_auth_result.is_valid = True
+        mock_auth_result.user_email = "alice@example.com"
+        mock_auth_svc.validate_token_full.return_value = mock_auth_result
+        mock_get_auth.return_value = mock_auth_svc
+
+        # Mock email service
+        mock_email_svc = Mock()
+        mock_email_svc.send_feedback_notification.return_value = True
+        mock_get_email.return_value = mock_email_svc
+
+        # Mock user service with a db that has a collection mock
+        mock_user_svc = Mock()
+        mock_user = Mock()
+        mock_user.email = "alice@example.com"
+        mock_user.total_jobs_completed = 5
+        mock_user.has_submitted_feedback = False
+        mock_user_svc.get_or_create_user.return_value = mock_user
+        mock_user_svc.update_user.return_value = None
+        mock_user_svc.add_credits.return_value = None
+
+        went_well = "The lyrics synchronization was incredibly accurate and impressive overall"
+        could_improve = "Speed could be faster for longer songs in the processing queue"
+
+        request = UserFeedbackRequest(
+            overall_rating=4,
+            ease_of_use_rating=3,
+            lyrics_accuracy_rating=5,
+            correction_experience_rating=2,
+            what_went_well=went_well,
+            what_could_improve=could_improve,
+            additional_comments=None,
+            would_recommend=True,
+            would_use_again=False,
+        )
+
+        with patch.object(uuid_mod, "uuid4", return_value="fake-uuid"):
+            result = asyncio.get_event_loop().run_until_complete(
+                submit_user_feedback(request, authorization="Bearer test-token", user_service=mock_user_svc)
+            )
+
+        # Verify email notification was called with matching args
+        mock_email_svc.send_feedback_notification.assert_called_once_with(
+            user_email="alice@example.com",
+            overall_rating=4,
+            ease_of_use_rating=3,
+            lyrics_accuracy_rating=5,
+            correction_experience_rating=2,
+            what_went_well=went_well,
+            what_could_improve=could_improve,
+            additional_comments=None,
+            would_recommend=True,
+            would_use_again=False,
+        )
+
+        assert result.credits_granted == 2
+
+    @patch("backend.services.email_service.get_email_service")
+    @patch("backend.services.auth_service.get_auth_service")
+    def test_submit_feedback_continues_on_email_failure(self, mock_get_auth, mock_get_email):
+        """Verify feedback submission succeeds even if email notification fails."""
+        import asyncio
+        import uuid as uuid_mod
+        from backend.api.routes.users import submit_user_feedback
+        from backend.models.user import UserFeedbackRequest
+
+        mock_auth_svc = Mock()
+        mock_auth_result = Mock()
+        mock_auth_result.is_valid = True
+        mock_auth_result.user_email = "bob@example.com"
+        mock_auth_svc.validate_token_full.return_value = mock_auth_result
+        mock_get_auth.return_value = mock_auth_svc
+
+        # Email service throws an exception
+        mock_email_svc = Mock()
+        mock_email_svc.send_feedback_notification.side_effect = Exception("SendGrid down")
+        mock_get_email.return_value = mock_email_svc
+
+        mock_user_svc = Mock()
+        mock_user = Mock()
+        mock_user.email = "bob@example.com"
+        mock_user.total_jobs_completed = 3
+        mock_user.has_submitted_feedback = False
+        mock_user_svc.get_or_create_user.return_value = mock_user
+
+        request = UserFeedbackRequest(
+            overall_rating=5,
+            ease_of_use_rating=5,
+            lyrics_accuracy_rating=5,
+            correction_experience_rating=5,
+            what_went_well="Everything was perfect and I really enjoyed the experience a lot",
+        )
+
+        with patch.object(uuid_mod, "uuid4", return_value="fake-uuid"):
+            result = asyncio.get_event_loop().run_until_complete(
+                submit_user_feedback(request, authorization="Bearer test-token", user_service=mock_user_svc)
+            )
+
+        # User still gets credits even though email failed
+        assert result.status == "success"
+        assert result.credits_granted == 2
+
+
 class TestFeedbackEmailNotification:
     """Tests for send_feedback_notification email method."""
 
