@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, EncodingWorkerHealth, FlacfetchHealth } from "@/lib/api";
+import { api, EncodingWorkerHealth, FlacfetchHealth, AudioSeparatorHealth } from "@/lib/api";
 
 export function VersionFooter() {
   const [backendVersion, setBackendVersion] = useState<string | null>(null);
   const [encodingWorker, setEncodingWorker] = useState<EncodingWorkerHealth | null>(null);
   const [flacfetch, setFlacfetch] = useState<FlacfetchHealth | null>(null);
+  const [audioSeparator, setAudioSeparator] = useState<AudioSeparatorHealth | null>(null);
   // Frontend version is injected at build time from pyproject.toml
   const frontendVersion = process.env.NEXT_PUBLIC_APP_VERSION || "dev";
 
@@ -41,9 +42,20 @@ export function VersionFooter() {
       }
     };
 
+    const fetchAudioSeparatorHealth = async () => {
+      try {
+        const health = await api.getAudioSeparatorHealth();
+        setAudioSeparator(health);
+      } catch (error) {
+        console.error("Failed to fetch audio separator health:", error);
+        setAudioSeparator(null);
+      }
+    };
+
     fetchBackendVersion();
     fetchEncodingWorkerHealth();
     fetchFlacfetchHealth();
+    fetchAudioSeparatorHealth();
   }, []);
 
   // Render encoding worker status indicator
@@ -113,6 +125,36 @@ export function VersionFooter() {
     );
   };
 
+  // Render audio separator status indicator
+  const renderAudioSeparatorStatus = () => {
+    if (!audioSeparator) {
+      return null;
+    }
+
+    if (audioSeparator.status === "not_configured") {
+      return null;
+    }
+
+    const isHealthy = audioSeparator.available && audioSeparator.status === "ok";
+    const statusColor = isHealthy ? "text-green-500" : "text-red-500";
+    const statusDot = isHealthy ? "●" : "○";
+
+    let statusText = isHealthy ? "Separator" : "Separator offline";
+    if (isHealthy && audioSeparator.version) {
+      statusText = `Separator: v${audioSeparator.version}`;
+    }
+
+    return (
+      <>
+        {" | "}
+        <span className={statusColor} title={isHealthy ? "Audio separator healthy" : audioSeparator.error || "Audio separator offline"}>
+          {statusDot}
+        </span>{" "}
+        {statusText}
+      </>
+    );
+  };
+
   return (
     <footer className="border-t mt-12 py-6" style={{ borderColor: 'var(--card-border)' }}>
       <div className="px-4 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -132,6 +174,7 @@ export function VersionFooter() {
           )}
           {renderEncodingWorkerStatus()}
           {renderFlacfetchStatus()}
+          {renderAudioSeparatorStatus()}
         </p>
       </div>
     </footer>
