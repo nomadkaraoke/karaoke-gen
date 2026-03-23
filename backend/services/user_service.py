@@ -556,6 +556,8 @@ class UserService:
             min_jobs: Minimum total_jobs_created to flag (default: 2)
             max_spend: Maximum total_spent in cents to include (default: 0 = free only)
         """
+        from backend.utils.test_data import is_internal_or_test_email
+
         try:
             query = (
                 self.db.collection(USERS_COLLECTION)
@@ -566,7 +568,7 @@ class UserService:
             users = []
             for doc in query.stream():
                 user = User(**doc.to_dict())
-                if user.total_spent <= max_spend:
+                if user.total_spent <= max_spend and not is_internal_or_test_email(user.email):
                     users.append(user)
             return users
         except Exception:
@@ -601,6 +603,90 @@ class UserService:
             "by_ip": by_ip,
             "by_fingerprint": by_fingerprint,
         }
+
+    def find_account_correlations(self) -> dict:
+        """
+        Find clusters of accounts sharing the same fingerprint or signup IP.
+
+        Returns groups of 2+ accounts that share the same identifier,
+        sorted by group size (largest first). Excludes internal/test accounts.
+        """
+        from collections import defaultdict
+        from backend.utils.test_data import is_internal_or_test_email
+
+        try:
+            all_users = []
+            for doc in self.db.collection(USERS_COLLECTION).stream():
+                user = User(**doc.to_dict())
+                if not is_internal_or_test_email(user.email):
+                    all_users.append(user)
+
+            # Group by fingerprint
+            fp_groups: dict[str, list[User]] = defaultdict(list)
+            for user in all_users:
+                if user.device_fingerprint:
+                    fp_groups[user.device_fingerprint].append(user)
+
+            # Group by IP
+            ip_groups: dict[str, list[User]] = defaultdict(list)
+            for user in all_users:
+                if user.signup_ip:
+                    ip_groups[user.signup_ip].append(user)
+
+            # Collect user agents from latest sessions for users in clusters
+            cluster_emails = set()
+            for fp, users in fp_groups.items():
+                if len(users) >= 2:
+                    cluster_emails.update(u.email for u in users)
+            for ip, users in ip_groups.items():
+                if len(users) >= 2:
+                    cluster_emails.update(u.email for u in users)
+
+            user_agents: dict[str, str] = {}
+            for email in cluster_emails:
+                try:
+                    sessions = (
+                        self.db.collection(SESSIONS_COLLECTION)
+                        .where(filter=FieldFilter("user_email", "==", email))
+                        .order_by("created_at", direction=firestore.Query.DESCENDING)
+                        .limit(1)
+                        .stream()
+                    )
+                    for session_doc in sessions:
+                        session_data = session_doc.to_dict()
+                        ua = session_data.get("user_agent")
+                        if ua:
+                            user_agents[email] = ua
+                except Exception:
+                    pass  # Skip if session lookup fails
+
+            # Build response - only clusters with 2+ users
+            fingerprint_clusters = []
+            for fp, users in fp_groups.items():
+                if len(users) >= 2:
+                    fingerprint_clusters.append({
+                        "fingerprint": fp,
+                        "users": sorted(users, key=lambda u: u.created_at or "", reverse=True),
+                    })
+            fingerprint_clusters.sort(key=lambda c: len(c["users"]), reverse=True)
+
+            ip_clusters = []
+            for ip, users in ip_groups.items():
+                if len(users) >= 2:
+                    ip_clusters.append({
+                        "ip": ip,
+                        "users": sorted(users, key=lambda u: u.created_at or "", reverse=True),
+                    })
+            ip_clusters.sort(key=lambda c: len(c["users"]), reverse=True)
+
+            return {
+                "fingerprint_clusters": fingerprint_clusters,
+                "ip_clusters": ip_clusters,
+                "user_agents": user_agents,
+            }
+        except Exception:
+            logger.exception("Error finding account correlations")
+            return {"fingerprint_clusters": [], "ip_clusters": [], "user_agents": {}}
 
     # =========================================================================
     # Session Management

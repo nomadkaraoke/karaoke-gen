@@ -2363,6 +2363,14 @@ export const adminApi = {
   },
 
   // Anti-abuse investigation endpoints
+  async getAbuseCorrelations(): Promise<AbuseCorrelationsResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/abuse/correlations`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse(response);
+  },
+
   async getAbuseSuspicious(params?: { min_jobs?: number; max_spend?: number }): Promise<AbuseSuspiciousResponse> {
     const searchParams = new URLSearchParams();
     if (params?.min_jobs) searchParams.set('min_jobs', String(params.min_jobs));
@@ -3246,6 +3254,36 @@ export interface AbuseByFingerprintResponse {
   device_fingerprint: string;
   count: number;
   users: AbuseRelatedUser[];
+}
+
+// Correlation cluster types
+export interface AbuseClusterUser {
+  email: string;
+  signup_ip: string | null;
+  device_fingerprint: string | null;
+  credits: number;
+  total_jobs_created: number;
+  total_jobs_completed: number;
+  total_spent: number;
+  created_at: string;
+  user_agent?: string | null;
+}
+
+export interface AbuseFingerprintCluster {
+  fingerprint: string;
+  count: number;
+  users: AbuseClusterUser[];
+}
+
+export interface AbuseIpCluster {
+  ip: string;
+  count: number;
+  users: AbuseClusterUser[];
+}
+
+export interface AbuseCorrelationsResponse {
+  fingerprint_clusters: AbuseFingerprintCluster[];
+  ip_clusters: AbuseIpCluster[];
 }
 
 // IP geolocation types

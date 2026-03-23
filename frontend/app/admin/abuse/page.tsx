@@ -6,6 +6,10 @@ import type {
   AbuseSuspiciousUser,
   AbuseRelatedResponse,
   AbuseRelatedUser,
+  AbuseCorrelationsResponse,
+  AbuseFingerprintCluster,
+  AbuseIpCluster,
+  AbuseClusterUser,
 } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { IpInfo } from "@/components/admin/ip-info"
@@ -297,6 +301,312 @@ function SuspiciousAccountsTab({
 }
 
 // =============================================================================
+// Correlations Tab (primary view)
+// =============================================================================
+
+function ClusterUserRow({
+  user,
+  highlightUa,
+  onInvestigate,
+}: {
+  user: AbuseClusterUser
+  highlightUa: boolean
+  onInvestigate: (email: string) => void
+}) {
+  return (
+    <TableRow>
+      <TableCell className="font-mono text-xs max-w-[200px] truncate">
+        <a
+          href={`/admin/users/detail?email=${encodeURIComponent(user.email)}`}
+          className="hover:underline text-blue-400"
+        >
+          {user.email}
+        </a>
+      </TableCell>
+      <TableCell className="text-right font-medium">
+        {user.total_jobs_created}
+        {user.total_jobs_completed > 0 && (
+          <span className="text-muted-foreground text-xs ml-1">
+            ({user.total_jobs_completed} done)
+          </span>
+        )}
+      </TableCell>
+      <TableCell className="text-right">{user.credits}</TableCell>
+      <TableCell className="text-right">
+        {user.total_spent === 0 ? (
+          <Badge variant="destructive" className="text-xs">$0</Badge>
+        ) : (
+          formatCents(user.total_spent)
+        )}
+      </TableCell>
+      <TableCell>
+        <IpInfo ip={user.signup_ip} compact />
+      </TableCell>
+      <TableCell className="text-xs max-w-[200px] truncate" title={user.user_agent || undefined}>
+        {user.user_agent ? (
+          <span className={highlightUa ? "bg-yellow-500/20 text-yellow-300 px-1 py-0.5 rounded" : ""}>
+            {truncate(user.user_agent, 30)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        )}
+      </TableCell>
+      <TableCell className="text-xs text-muted-foreground">
+        {formatDate(user.created_at)}
+      </TableCell>
+      <TableCell>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onInvestigate(user.email)}
+          title="Investigate related accounts"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  )
+}
+
+function hasMatchingUserAgents(users: AbuseClusterUser[]): boolean {
+  const agents = users.map((u) => u.user_agent).filter(Boolean)
+  if (agents.length < 2) return false
+  return new Set(agents).size < agents.length
+}
+
+function getMatchingUaSet(users: AbuseClusterUser[]): Set<string> {
+  const counts: Record<string, number> = {}
+  for (const u of users) {
+    if (u.user_agent) {
+      counts[u.user_agent] = (counts[u.user_agent] || 0) + 1
+    }
+  }
+  return new Set(Object.keys(counts).filter((ua) => counts[ua] > 1))
+}
+
+function FingerprintClusterCard({
+  cluster,
+  onInvestigate,
+}: {
+  cluster: AbuseFingerprintCluster
+  onInvestigate: (email: string) => void
+}) {
+  const [expanded, setExpanded] = useState(true)
+  const uaMatches = hasMatchingUserAgents(cluster.users)
+  const matchingUas = getMatchingUaSet(cluster.users)
+
+  return (
+    <Card className="border-red-500/30">
+      <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Fingerprint className="w-4 h-4 text-red-500" />
+          <Badge variant="destructive" className="text-xs">{cluster.count} accounts</Badge>
+          <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{cluster.fingerprint}</code>
+          {uaMatches && (
+            <Badge className="text-xs bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+              matching UA
+            </Badge>
+          )}
+          <ChevronRight className={`w-4 h-4 ml-auto transition-transform ${expanded ? "rotate-90" : ""}`} />
+        </CardTitle>
+      </CardHeader>
+      {expanded && (
+        <CardContent>
+          <div className="border rounded-lg overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Jobs</TableHead>
+                  <TableHead className="text-right">Credits</TableHead>
+                  <TableHead className="text-right">Spent</TableHead>
+                  <TableHead>Signup IP</TableHead>
+                  <TableHead>User Agent</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cluster.users.map((user) => (
+                  <ClusterUserRow
+                    key={user.email}
+                    user={user}
+                    highlightUa={!!user.user_agent && matchingUas.has(user.user_agent)}
+                    onInvestigate={onInvestigate}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+function IpClusterCard({
+  cluster,
+  onInvestigate,
+}: {
+  cluster: AbuseIpCluster
+  onInvestigate: (email: string) => void
+}) {
+  const [expanded, setExpanded] = useState(true)
+  const uaMatches = hasMatchingUserAgents(cluster.users)
+  const matchingUas = getMatchingUaSet(cluster.users)
+
+  return (
+    <Card className="border-orange-500/30">
+      <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Globe className="w-4 h-4 text-orange-500" />
+          <Badge className="text-xs bg-orange-500/20 text-orange-300 border-orange-500/30">
+            {cluster.count} accounts
+          </Badge>
+          <IpInfo ip={cluster.ip} compact />
+          {uaMatches && (
+            <Badge className="text-xs bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+              matching UA
+            </Badge>
+          )}
+          <ChevronRight className={`w-4 h-4 ml-auto transition-transform ${expanded ? "rotate-90" : ""}`} />
+        </CardTitle>
+      </CardHeader>
+      {expanded && (
+        <CardContent>
+          <div className="border rounded-lg overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Jobs</TableHead>
+                  <TableHead className="text-right">Credits</TableHead>
+                  <TableHead className="text-right">Spent</TableHead>
+                  <TableHead>Signup IP</TableHead>
+                  <TableHead>User Agent</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cluster.users.map((user) => (
+                  <ClusterUserRow
+                    key={user.email}
+                    user={user}
+                    highlightUa={!!user.user_agent && matchingUas.has(user.user_agent)}
+                    onInvestigate={onInvestigate}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+function CorrelationsTab({
+  onInvestigate,
+}: {
+  onInvestigate: (email: string) => void
+}) {
+  const { toast } = useToast()
+  const [data, setData] = useState<AbuseCorrelationsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true)
+        const result = await adminApi.getAbuseCorrelations()
+        setData(result)
+      } catch (err: any) {
+        toast({ title: "Error", description: err.message, variant: "destructive" })
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+  const totalFpAccounts = data.fingerprint_clusters.reduce((sum: number, c: AbuseFingerprintCluster) => sum + c.count, 0)
+  const totalIpAccounts = data.ip_clusters.reduce((sum: number, c: AbuseIpCluster) => sum + c.count, 0)
+
+  return (
+    <div className="space-y-6">
+      {/* Fingerprint clusters */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Fingerprint className="w-5 h-5 text-red-500" />
+          <h3 className="text-lg font-semibold">Shared Fingerprints</h3>
+          <Badge variant="destructive" className="text-xs">
+            {data.fingerprint_clusters.length} cluster{data.fingerprint_clusters.length !== 1 ? "s" : ""} ({totalFpAccounts} accounts)
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Multiple accounts sharing the same device fingerprint — strong indicator of multi-accounting.
+        </p>
+        {data.fingerprint_clusters.length === 0 ? (
+          <Card>
+            <CardContent className="py-6 text-center text-muted-foreground">
+              No shared fingerprint clusters found.
+            </CardContent>
+          </Card>
+        ) : (
+          data.fingerprint_clusters.map((cluster) => (
+            <FingerprintClusterCard
+              key={cluster.fingerprint}
+              cluster={cluster}
+              onInvestigate={onInvestigate}
+            />
+          ))
+        )}
+      </div>
+
+      {/* IP clusters */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Globe className="w-5 h-5 text-orange-500" />
+          <h3 className="text-lg font-semibold">Shared Signup IPs</h3>
+          <Badge className="text-xs bg-orange-500/20 text-orange-300 border-orange-500/30">
+            {data.ip_clusters.length} cluster{data.ip_clusters.length !== 1 ? "s" : ""} ({totalIpAccounts} accounts)
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Multiple accounts from the same IP address — suspicious but could be a shared network (school, office, VPN).
+        </p>
+        {data.ip_clusters.length === 0 ? (
+          <Card>
+            <CardContent className="py-6 text-center text-muted-foreground">
+              No shared IP clusters found.
+            </CardContent>
+          </Card>
+        ) : (
+          data.ip_clusters.map((cluster) => (
+            <IpClusterCard
+              key={cluster.ip}
+              cluster={cluster}
+              onInvestigate={onInvestigate}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
 // Related Accounts Detail View
 // =============================================================================
 
@@ -391,7 +701,7 @@ function RelatedAccountsView({
           </div>
           <div className="mt-3">
             <Button variant="outline" size="sm" asChild>
-              <a href={`/admin/users/${encodeURIComponent(email)}`}>
+              <a href={`/admin/users/detail?email=${encodeURIComponent(email)}`}>
                 <ExternalLink className="w-3 h-3 mr-1" />
                 View full user profile
               </a>
@@ -656,7 +966,7 @@ function LookupTab({
 // =============================================================================
 
 export default function AbuseInvestigationPage() {
-  const [activeTab, setActiveTab] = useState("suspicious")
+  const [activeTab, setActiveTab] = useState("correlations")
   const [investigatingEmail, setInvestigatingEmail] = useState<string | null>(null)
 
   const handleInvestigate = (email: string) => {
@@ -689,6 +999,10 @@ export default function AbuseInvestigationPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
+          <TabsTrigger value="correlations">
+            <Users className="w-4 h-4 mr-1" />
+            Correlations
+          </TabsTrigger>
           <TabsTrigger value="suspicious">
             <AlertTriangle className="w-4 h-4 mr-1" />
             Suspicious
@@ -698,6 +1012,10 @@ export default function AbuseInvestigationPage() {
             Lookup
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="correlations" className="space-y-6">
+          <CorrelationsTab onInvestigate={handleInvestigate} />
+        </TabsContent>
 
         <TabsContent value="suspicious" className="space-y-6">
           <SuspiciousAccountsTab onInvestigate={handleInvestigate} />

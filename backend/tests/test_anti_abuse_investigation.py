@@ -66,6 +66,40 @@ class TestJobCreationIp:
 
 
 # =============================================================================
+# Internal/Test Email Filtering
+# =============================================================================
+
+
+class TestInternalOrTestEmail:
+    """Tests for is_internal_or_test_email utility."""
+
+    def test_nomadkaraoke_is_internal(self):
+        from backend.utils.test_data import is_internal_or_test_email
+        assert is_internal_or_test_email("admin@nomadkaraoke.com") is True
+
+    def test_beveridge_is_internal(self):
+        from backend.utils.test_data import is_internal_or_test_email
+        assert is_internal_or_test_email("vocalstar@beveridge.uk") is True
+
+    def test_testmail_is_test(self):
+        from backend.utils.test_data import is_internal_or_test_email
+        assert is_internal_or_test_email("test123@inbox.testmail.app") is True
+
+    def test_regular_email_is_not_internal(self):
+        from backend.utils.test_data import is_internal_or_test_email
+        assert is_internal_or_test_email("user@gmail.com") is False
+
+    def test_empty_email(self):
+        from backend.utils.test_data import is_internal_or_test_email
+        assert is_internal_or_test_email("") is False
+
+    def test_is_internal_email_only(self):
+        from backend.utils.test_data import is_internal_email
+        assert is_internal_email("andrew@beveridge.uk") is True
+        assert is_internal_email("user@gmail.com") is False
+
+
+# =============================================================================
 # UserService Investigation Methods
 # =============================================================================
 
@@ -152,6 +186,33 @@ class TestFindSuspiciousAccounts:
 
         assert len(results) == 1
         assert results[0].email == "free@test.com"
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_excludes_internal_and_test_accounts(self, mock_fs, mock_settings):
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        real_user = User(email="abuser@gmail.com", total_jobs_created=5, total_spent=0).model_dump(mode='json')
+        internal_user = User(email="admin@nomadkaraoke.com", total_jobs_created=10, total_spent=0).model_dump(mode='json')
+        test_user = User(email="e2e@inbox.testmail.app", total_jobs_created=8, total_spent=0).model_dump(mode='json')
+        personal_user = User(email="vocalstar@beveridge.uk", total_jobs_created=3, total_spent=0).model_dump(mode='json')
+
+        docs = []
+        for data in [real_user, internal_user, test_user, personal_user]:
+            doc = MagicMock()
+            doc.to_dict.return_value = data
+            docs.append(doc)
+
+        mock_db.collection.return_value.where.return_value.order_by.return_value.limit.return_value.stream.return_value = docs
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        results = service.find_suspicious_accounts(min_jobs=2, max_spend=0)
+
+        assert len(results) == 1
+        assert results[0].email == "abuser@gmail.com"
 
 
 class TestFindRelatedAccounts:
@@ -293,3 +354,127 @@ class TestAdminAbuseEndpoints:
 
         response = admin_client.get("/api/admin/abuse/related/ghost@test.com")
         assert response.status_code == 404
+
+    def test_correlations_endpoint(self, admin_client, mock_user_svc):
+        user_a = User(email="a@test.com", signup_ip="1.2.3.4", device_fingerprint="fp123", total_jobs_created=2)
+        user_b = User(email="b@test.com", signup_ip="1.2.3.4", device_fingerprint="fp123", total_jobs_created=3)
+
+        mock_user_svc.find_account_correlations.return_value = {
+            "fingerprint_clusters": [
+                {"fingerprint": "fp123", "users": [user_a, user_b]},
+            ],
+            "ip_clusters": [
+                {"ip": "1.2.3.4", "users": [user_a, user_b]},
+            ],
+            "user_agents": {"a@test.com": "Mozilla/5.0", "b@test.com": "Mozilla/5.0"},
+        }
+
+        response = admin_client.get("/api/admin/abuse/correlations")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["fingerprint_clusters"]) == 1
+        assert data["fingerprint_clusters"][0]["fingerprint"] == "fp123"
+        assert data["fingerprint_clusters"][0]["count"] == 2
+        assert data["fingerprint_clusters"][0]["users"][0]["user_agent"] == "Mozilla/5.0"
+        assert len(data["ip_clusters"]) == 1
+        assert data["ip_clusters"][0]["ip"] == "1.2.3.4"
+        assert data["ip_clusters"][0]["count"] == 2
+
+    def test_correlations_endpoint_empty(self, admin_client, mock_user_svc):
+        mock_user_svc.find_account_correlations.return_value = {
+            "fingerprint_clusters": [],
+            "ip_clusters": [],
+            "user_agents": {},
+        }
+
+        response = admin_client.get("/api/admin/abuse/correlations")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["fingerprint_clusters"] == []
+        assert data["ip_clusters"] == []
+
+
+# =============================================================================
+# Correlations Service Method Tests
+# =============================================================================
+
+
+class TestFindAccountCorrelations:
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_groups_by_fingerprint_and_ip(self, mock_fs, mock_settings):
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        user_a = User(email="a@gmail.com", signup_ip="1.2.3.4", device_fingerprint="fp123", total_jobs_created=2).model_dump(mode='json')
+        user_b = User(email="b@gmail.com", signup_ip="1.2.3.4", device_fingerprint="fp123", total_jobs_created=3).model_dump(mode='json')
+        user_c = User(email="c@gmail.com", signup_ip="5.6.7.8", device_fingerprint="fp999", total_jobs_created=1).model_dump(mode='json')
+
+        docs = []
+        for data in [user_a, user_b, user_c]:
+            doc = MagicMock()
+            doc.to_dict.return_value = data
+            docs.append(doc)
+
+        # Mock the users collection stream
+        mock_db.collection.return_value.stream.return_value = docs
+
+        # Mock session lookups (return empty for simplicity)
+        mock_db.collection.return_value.where.return_value.order_by.return_value.limit.return_value.stream.return_value = []
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        result = service.find_account_correlations()
+
+        # a and b share fp123 → 1 fingerprint cluster
+        assert len(result["fingerprint_clusters"]) == 1
+        assert result["fingerprint_clusters"][0]["fingerprint"] == "fp123"
+        assert len(result["fingerprint_clusters"][0]["users"]) == 2
+
+        # a and b share IP 1.2.3.4 → 1 IP cluster
+        assert len(result["ip_clusters"]) == 1
+        assert result["ip_clusters"][0]["ip"] == "1.2.3.4"
+        assert len(result["ip_clusters"][0]["users"]) == 2
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_excludes_internal_accounts(self, mock_fs, mock_settings):
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        real_user = User(email="user@gmail.com", signup_ip="1.2.3.4", device_fingerprint="fp123").model_dump(mode='json')
+        internal_user = User(email="admin@nomadkaraoke.com", signup_ip="1.2.3.4", device_fingerprint="fp123").model_dump(mode='json')
+
+        docs = []
+        for data in [real_user, internal_user]:
+            doc = MagicMock()
+            doc.to_dict.return_value = data
+            docs.append(doc)
+
+        mock_db.collection.return_value.stream.return_value = docs
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        result = service.find_account_correlations()
+
+        # Only 1 non-internal user with fp123, so no cluster (need 2+)
+        assert len(result["fingerprint_clusters"]) == 0
+        assert len(result["ip_clusters"]) == 0
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_returns_empty_on_error(self, mock_fs, mock_settings):
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+        mock_db.collection.return_value.stream.side_effect = Exception("Firestore down")
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        result = service.find_account_correlations()
+
+        assert result["fingerprint_clusters"] == []
+        assert result["ip_clusters"] == []

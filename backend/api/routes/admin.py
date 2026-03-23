@@ -3586,6 +3586,56 @@ async def find_related_accounts(
     }
 
 
+@router.get("/abuse/correlations")
+async def find_account_correlations(
+    auth_result: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Find clusters of accounts sharing the same device fingerprint or signup IP.
+
+    Returns fingerprint clusters (RED flag - near-certain multi-accounting) and
+    IP clusters (ORANGE flag - suspicious but could be shared network), sorted
+    by group size. Includes user agent data for additional correlation signal.
+    """
+    result = user_service.find_account_correlations()
+    user_agents = result.get("user_agents", {})
+
+    def serialize_cluster_user(u, include_user_agent=True):
+        data = {
+            "email": u.email,
+            "signup_ip": u.signup_ip,
+            "device_fingerprint": u.device_fingerprint,
+            "credits": u.credits,
+            "total_jobs_created": u.total_jobs_created,
+            "total_jobs_completed": u.total_jobs_completed,
+            "total_spent": u.total_spent,
+            "created_at": str(u.created_at),
+        }
+        if include_user_agent:
+            data["user_agent"] = user_agents.get(u.email)
+        return data
+
+    return {
+        "fingerprint_clusters": [
+            {
+                "fingerprint": cluster["fingerprint"],
+                "count": len(cluster["users"]),
+                "users": [serialize_cluster_user(u) for u in cluster["users"]],
+            }
+            for cluster in result["fingerprint_clusters"]
+        ],
+        "ip_clusters": [
+            {
+                "ip": cluster["ip"],
+                "count": len(cluster["users"]),
+                "users": [serialize_cluster_user(u) for u in cluster["users"]],
+            }
+            for cluster in result["ip_clusters"]
+        ],
+    }
+
+
 @router.get("/abuse/suspicious")
 async def find_suspicious_accounts(
     min_jobs: int = 2,
