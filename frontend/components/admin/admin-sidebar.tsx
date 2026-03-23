@@ -14,6 +14,7 @@ import {
   BookOpenCheck,
   Scissors,
   Fingerprint,
+  MessageSquare,
 } from "lucide-react"
 
 import {
@@ -70,6 +71,11 @@ const navItems = [
     title: "Audio Edits",
     href: "/admin/audio-edits",
     icon: Scissors,
+  },
+  {
+    title: "Feedback",
+    href: "/admin/feedback",
+    icon: MessageSquare,
   },
   {
     title: "Abuse Investigation",

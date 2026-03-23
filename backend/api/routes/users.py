@@ -1223,6 +1223,25 @@ async def submit_user_feedback(
         f"credits granted: {credits_granted}"
     )
 
+    # Send admin notification email (fire-and-forget)
+    try:
+        from backend.services.email_service import get_email_service
+        email_service = get_email_service()
+        email_service.send_feedback_notification(
+            user_email=user.email,
+            overall_rating=request.overall_rating,
+            ease_of_use_rating=request.ease_of_use_rating,
+            lyrics_accuracy_rating=request.lyrics_accuracy_rating,
+            correction_experience_rating=request.correction_experience_rating,
+            what_went_well=request.what_went_well,
+            what_could_improve=request.what_could_improve,
+            additional_comments=request.additional_comments,
+            would_recommend=request.would_recommend,
+            would_use_again=request.would_use_again,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send feedback notification email: {e}")
+
     return UserFeedbackResponse(
         status="success",
         message=f"Thank you for your feedback! You earned {credits_granted} free credits.",

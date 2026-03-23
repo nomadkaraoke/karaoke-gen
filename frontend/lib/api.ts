@@ -2400,6 +2400,25 @@ export const adminApi = {
     );
     return handleResponse(response);
   },
+
+  async listFeedback(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    exclude_test?: boolean;
+  }): Promise<AdminFeedbackListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
+
+    const url = `${API_BASE_URL}/api/admin/feedback${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
 };
 
 export interface EditReviewSummary {
@@ -3247,6 +3266,34 @@ export interface IpGeoInfo {
   as_name?: string;
   timezone?: string;
   cached_at?: string;
+}
+
+// Admin feedback types
+export interface AdminFeedbackItem {
+  id: string;
+  user_email: string;
+  created_at: string | null;
+  overall_rating: number;
+  ease_of_use_rating: number;
+  lyrics_accuracy_rating: number;
+  correction_experience_rating: number;
+  what_went_well: string | null;
+  what_could_improve: string | null;
+  additional_comments: string | null;
+  would_recommend: boolean;
+  would_use_again: boolean;
+}
+
+export interface AdminFeedbackListResponse {
+  items: AdminFeedbackItem[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+  avg_overall_rating: number | null;
+  avg_ease_of_use_rating: number | null;
+  avg_lyrics_accuracy_rating: number | null;
+  avg_correction_experience_rating: number | null;
 }
 
 export { ApiError };

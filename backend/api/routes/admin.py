@@ -3794,3 +3794,106 @@ async def get_ip_info_batch(
         raise HTTPException(status_code=400, detail="Maximum 100 IPs per batch request")
     geo_service = get_ip_geolocation_service()
     return geo_service.lookup_ips_batch(request.ips)
+
+
+# =============================================================================
+# User Feedback
+# =============================================================================
+
+
+class AdminFeedbackItem(BaseModel):
+    """Single feedback submission for admin view."""
+    id: str
+    user_email: str
+    created_at: Optional[str] = None
+    overall_rating: int
+    ease_of_use_rating: int
+    lyrics_accuracy_rating: int
+    correction_experience_rating: int
+    what_went_well: Optional[str] = None
+    what_could_improve: Optional[str] = None
+    additional_comments: Optional[str] = None
+    would_recommend: bool = True
+    would_use_again: bool = True
+
+
+class AdminFeedbackListResponse(BaseModel):
+    """Paginated list of feedback submissions."""
+    items: List[AdminFeedbackItem]
+    total: int
+    offset: int
+    limit: int
+    has_more: bool
+    avg_overall_rating: Optional[float] = None
+    avg_ease_of_use_rating: Optional[float] = None
+    avg_lyrics_accuracy_rating: Optional[float] = None
+    avg_correction_experience_rating: Optional[float] = None
+
+
+@router.get("/feedback", response_model=AdminFeedbackListResponse)
+def list_user_feedback(
+    limit: int = 50,
+    offset: int = 0,
+    search: Optional[str] = None,
+    exclude_test: bool = False,
+    auth_result: AuthResult = Depends(require_admin),
+):
+    """List all user feedback submissions with pagination and search."""
+    user_service = get_user_service()
+    db = user_service.db
+
+    items = []
+    for doc in db.collection("user_feedback").stream():
+        data = doc.to_dict()
+        email = data.get("user_email", "")
+
+        if exclude_test and is_test_email(email):
+            continue
+
+        if search and search.lower() not in email.lower():
+            continue
+
+        created_at = data.get("created_at")
+        if created_at is not None and hasattr(created_at, "isoformat"):
+            created_at = created_at.isoformat()
+        elif created_at is not None:
+            created_at = str(created_at)
+
+        items.append(AdminFeedbackItem(
+            id=data.get("id", doc.id),
+            user_email=email,
+            created_at=created_at,
+            overall_rating=data.get("overall_rating", 0),
+            ease_of_use_rating=data.get("ease_of_use_rating", 0),
+            lyrics_accuracy_rating=data.get("lyrics_accuracy_rating", 0),
+            correction_experience_rating=data.get("correction_experience_rating", 0),
+            what_went_well=data.get("what_went_well"),
+            what_could_improve=data.get("what_could_improve"),
+            additional_comments=data.get("additional_comments"),
+            would_recommend=data.get("would_recommend", True),
+            would_use_again=data.get("would_use_again", True),
+        ))
+
+    # Sort by newest first
+    items.sort(key=lambda x: x.created_at or "", reverse=True)
+
+    # Compute aggregate stats
+    total = len(items)
+    avg_overall = sum(i.overall_rating for i in items) / total if total else None
+    avg_ease = sum(i.ease_of_use_rating for i in items) / total if total else None
+    avg_lyrics = sum(i.lyrics_accuracy_rating for i in items) / total if total else None
+    avg_correction = sum(i.correction_experience_rating for i in items) / total if total else None
+
+    paginated = items[offset:offset + limit]
+
+    return AdminFeedbackListResponse(
+        items=paginated,
+        total=total,
+        offset=offset,
+        limit=limit,
+        has_more=(offset + limit) < total,
+        avg_overall_rating=round(avg_overall, 2) if avg_overall is not None else None,
+        avg_ease_of_use_rating=round(avg_ease, 2) if avg_ease is not None else None,
+        avg_lyrics_accuracy_rating=round(avg_lyrics, 2) if avg_lyrics is not None else None,
+        avg_correction_experience_rating=round(avg_correction, 2) if avg_correction is not None else None,
+    )

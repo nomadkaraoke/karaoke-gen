@@ -1416,6 +1416,138 @@ Open Job: {app_url}
         )
 
 
+    def send_feedback_notification(
+        self,
+        user_email: str,
+        overall_rating: int,
+        ease_of_use_rating: int,
+        lyrics_accuracy_rating: int,
+        correction_experience_rating: int,
+        what_went_well: Optional[str] = None,
+        what_could_improve: Optional[str] = None,
+        additional_comments: Optional[str] = None,
+        would_recommend: bool = True,
+        would_use_again: bool = True,
+    ) -> bool:
+        """
+        Send admin notification when a user submits product feedback.
+
+        Args:
+            user_email: Email of the user who submitted feedback
+            overall_rating: 1-5 star rating
+            ease_of_use_rating: 1-5 star rating
+            lyrics_accuracy_rating: 1-5 star rating
+            correction_experience_rating: 1-5 star rating
+            what_went_well: Optional text feedback
+            what_could_improve: Optional text feedback
+            additional_comments: Optional text feedback
+            would_recommend: Whether user would recommend
+            would_use_again: Whether user would use again
+
+        Returns:
+            True if email was sent successfully
+        """
+        admin_email = os.getenv("ADMIN_NOTIFICATION_EMAIL", "admin@nomadkaraoke.com")
+        subject = f"New Feedback from {user_email} — {overall_rating}/5 overall"
+
+        def stars(rating: int) -> str:
+            return "★" * rating + "☆" * (5 - rating)
+
+        def text_block(label: str, value: Optional[str]) -> str:
+            if not value:
+                return ""
+            escaped = html.escape(value).replace("\n", "<br>")
+            return f"""
+            <tr>
+                <td style="padding: 8px 12px; font-weight: bold; vertical-align: top; white-space: nowrap;">{label}</td>
+                <td style="padding: 8px 12px;">{escaped}</td>
+            </tr>"""
+
+        recommend_badge = "Yes ✓" if would_recommend else "No ✗"
+        use_again_badge = "Yes ✓" if would_use_again else "No ✗"
+
+        admin_url = f"{self.frontend_url}/admin/feedback"
+
+        extra_styles = """
+        .feedback-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+        .feedback-table td {
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .stars {
+            color: #eab308;
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+"""
+
+        content = f"""
+    <p>New product feedback submitted by <strong>{html.escape(user_email)}</strong>:</p>
+
+    <table class="feedback-table">
+        <tr>
+            <td style="padding: 8px 12px; font-weight: bold;">Overall</td>
+            <td style="padding: 8px 12px;"><span class="stars">{stars(overall_rating)}</span> ({overall_rating}/5)</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 12px; font-weight: bold;">Ease of Use</td>
+            <td style="padding: 8px 12px;"><span class="stars">{stars(ease_of_use_rating)}</span> ({ease_of_use_rating}/5)</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 12px; font-weight: bold;">Lyrics Accuracy</td>
+            <td style="padding: 8px 12px;"><span class="stars">{stars(lyrics_accuracy_rating)}</span> ({lyrics_accuracy_rating}/5)</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 12px; font-weight: bold;">Correction Experience</td>
+            <td style="padding: 8px 12px;"><span class="stars">{stars(correction_experience_rating)}</span> ({correction_experience_rating}/5)</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 12px; font-weight: bold;">Would Recommend</td>
+            <td style="padding: 8px 12px;">{recommend_badge}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 12px; font-weight: bold;">Would Use Again</td>
+            <td style="padding: 8px 12px;">{use_again_badge}</td>
+        </tr>
+        {text_block("What went well", what_went_well)}
+        {text_block("What could improve", what_could_improve)}
+        {text_block("Additional comments", additional_comments)}
+    </table>
+
+    <p style="text-align: center;">
+        <a href="{admin_url}" class="button">View All Feedback</a>
+    </p>
+"""
+
+        text_content = f"""New Feedback from {user_email}
+
+Overall: {overall_rating}/5
+Ease of Use: {ease_of_use_rating}/5
+Lyrics Accuracy: {lyrics_accuracy_rating}/5
+Correction Experience: {correction_experience_rating}/5
+Would Recommend: {recommend_badge}
+Would Use Again: {use_again_badge}
+
+What went well: {what_went_well or '(empty)'}
+What could improve: {what_could_improve or '(empty)'}
+Additional comments: {additional_comments or '(empty)'}
+
+View all feedback: {admin_url}
+"""
+
+        html_content = self._build_email_html(content, extra_styles)
+
+        return self.provider.send_email(
+            to_email=admin_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
+
 # Global instance
 _email_service = None
 
