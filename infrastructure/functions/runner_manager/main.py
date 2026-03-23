@@ -311,7 +311,8 @@ def _get_instance_age_hours(instance: compute_v1.Instance) -> float:
 
 def check_github_for_pending_jobs() -> bool:
     """
-    Check GitHub API for any pending/queued/in-progress workflow runs.
+    Check GitHub API for any pending/queued/in-progress workflow runs
+    across all org repos that use self-hosted runners.
 
     Returns True if there are runs that might need our self-hosted runners.
     """
@@ -320,25 +321,29 @@ def check_github_for_pending_jobs() -> bool:
     pat = get_github_pat()
     org = "nomadkaraoke"
 
-    for status in ["queued", "in_progress"]:
-        url = f"https://api.github.com/repos/{org}/karaoke-gen/actions/runs?status={status}"
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Authorization": f"Bearer {pat}",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-        )
+    # All repos that have workflows using self-hosted runners
+    repos = ["karaoke-gen", "python-audio-separator"]
 
-        try:
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode("utf-8"))
-                if data.get("total_count", 0) > 0:
-                    print(f"Found {data['total_count']} {status} runs in karaoke-gen")
-                    return True
-        except Exception as e:
-            print(f"Error checking GitHub API ({status}): {e}")
+    for repo in repos:
+        for status in ["queued", "in_progress"]:
+            url = f"https://api.github.com/repos/{org}/{repo}/actions/runs?status={status}"
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "Authorization": f"Bearer {pat}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                    if data.get("total_count", 0) > 0:
+                        print(f"Found {data['total_count']} {status} runs in {repo}")
+                        return True
+            except Exception as e:
+                print(f"Error checking GitHub API ({repo}/{status}): {e}")
 
     return False
 
