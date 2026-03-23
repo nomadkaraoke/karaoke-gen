@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "karaoke-gen"
-version = "0.148.0"
+version = "0.148.1"
 description = "Generate karaoke videos with synchronized lyrics. Handles the entire process from downloading audio and lyrics to creating the final video with title screens."
 authors = ["Andrew Beveridge <andrew@beveridge.uk>"]
 license = "MIT"
@@ -36,7 +36,7 @@ google-auth-oauthlib = "*"
 google-auth-httplib2 = "*"
 thefuzz = ">=0.22"
 numpy = ">=2"
-audio-separator = { version = ">=0.34.0", extras = ["cpu"] }
+audio-separator = { version = ">=0.43.0", extras = ["cpu"] }
 lyrics-converter = ">=0.2.1"
 # lyrics_transcriber is now a subpackage of karaoke_gen (karaoke_gen/lyrics_transcriber/)
 # Dependencies from vendored lyrics_transcriber:

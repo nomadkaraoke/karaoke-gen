@@ -214,10 +214,10 @@ def create_audio_separation_job(
                                 name="GCP_REGION",
                                 value=REGION,
                             ),
-                            # Modal API URL for GPU audio separation
+                            # Audio separator API (Cloud Run GPU service in us-east4)
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="AUDIO_SEPARATOR_API_URL",
-                                value="https://nomadkaraoke--audio-separator-api.modal.run",
+                                value="https://audio-separator-718638054799.us-east4.run.app",
                             ),
                             # Cloud Run service URL for Cloud Tasks targeting
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
