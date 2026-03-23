@@ -1699,6 +1699,48 @@ Called by Cloud Tasks 5 minutes after a job enters a blocking state (primarily `
 
 **Note**: With the combined review flow, users complete both lyrics review and instrumental selection in one session. The `awaiting_instrumental_selection` state is only used for finalise-only jobs.
 
+### Admin Feedback
+
+```http
+GET /api/admin/feedback
+GET /api/admin/feedback?search=user@example.com&exclude_test=true&limit=50&offset=0
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Lists all user feedback submissions with pagination, search, and aggregate stats.
+
+Response:
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "user_email": "user@example.com",
+      "created_at": "2026-03-01T12:00:00",
+      "overall_rating": 4,
+      "ease_of_use_rating": 5,
+      "lyrics_accuracy_rating": 3,
+      "correction_experience_rating": 4,
+      "what_went_well": "...",
+      "what_could_improve": "...",
+      "additional_comments": null,
+      "would_recommend": true,
+      "would_use_again": true
+    }
+  ],
+  "total": 2,
+  "offset": 0,
+  "limit": 50,
+  "has_more": false,
+  "avg_overall_rating": 4.0,
+  "avg_ease_of_use_rating": 4.5,
+  "avg_lyrics_accuracy_rating": 3.5,
+  "avg_correction_experience_rating": 4.0
+}
+```
+
+An email notification is also sent to `admin@nomadkaraoke.com` (configurable via `ADMIN_NOTIFICATION_EMAIL` env var) whenever a user submits new feedback.
+
 ## Rate Limits & Abuse Prevention
 
 ### Usage Control
