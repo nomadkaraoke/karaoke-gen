@@ -178,12 +178,20 @@ class AudioProcessor:
                 try:
                     return self._process_audio_separation_remote(audio_file, artist_title, track_output_dir, remote_api_url)
                 except Exception as e:
-                    self.logger.error(f"Remote API processing failed: {e}")
-                    # Only fall back to local if model_file_dir is configured,
-                    # meaning local GPU/models are available (e.g. CLI usage).
-                    # In Cloud Run, model_file_dir is None so local can't work.
-                    if not self.model_file_dir:
-                        self.logger.error("No local model directory configured — cannot fall back to local processing.")
+                    error_str = str(e)
+                    self.logger.error(f"Remote API processing failed: {error_str}")
+                    # Never fall back for API processing errors (download failures,
+                    # missing files, etc.) — retrying locally won't help.
+                    # Only fall back for transient network errors AND only when
+                    # local processing is possible (model_file_dir is configured).
+                    is_api_error = (
+                        "no files were downloaded" in error_str
+                        or "failed to produce essential" in error_str
+                        or "missing" in error_str.lower()
+                    )
+                    if is_api_error or not self.model_file_dir:
+                        if not self.model_file_dir:
+                            self.logger.error("No local model directory configured — cannot fall back to local processing.")
                         raise
                     self.logger.info("Falling back to local audio separation")
         else:
