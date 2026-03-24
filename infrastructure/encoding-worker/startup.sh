@@ -87,8 +87,12 @@ fi
 echo "Downloaded wheel as: ${WHEEL_NAME}"
 
 # 4. Install the wheel
+# Use --no-deps because the encoding worker venv has runtime deps pre-installed.
+# The wheel only needs to update the karaoke-gen code itself.
+# Full dependency resolution on the complex dep graph (langchain, CUDA, etc.)
+# can hit pip's "resolution-too-deep" error and prevent the service from starting.
 echo "[4/5] Installing wheel..."
-"${VENV}/bin/pip" install --upgrade --quiet --force-reinstall "${WHEEL_PATH}"
+"${VENV}/bin/pip" install --upgrade --quiet --force-reinstall --no-deps "${WHEEL_PATH}"
 
 # 5. Verify installed version
 echo "[5/5] Verifying installed version..."
