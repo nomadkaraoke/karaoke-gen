@@ -291,13 +291,16 @@ class CreditEvaluationService:
 
     def _call_gemini(self, prompt: str) -> str:
         """Call Gemini and return the response text."""
-        import google.generativeai as genai
+        from google import genai
 
-        model = genai.GenerativeModel(
-            model_name=self.settings.credit_eval_model,
-            system_instruction=SYSTEM_PROMPT,
+        client = genai.Client()
+        response = client.models.generate_content(
+            model=self.settings.credit_eval_model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+            ),
         )
-        response = model.generate_content(prompt)
         return response.text
 
     def _log_evaluation(
