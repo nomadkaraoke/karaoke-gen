@@ -178,17 +178,14 @@ class AudioProcessor:
                 try:
                     return self._process_audio_separation_remote(audio_file, artist_title, track_output_dir, remote_api_url)
                 except Exception as e:
-                    error_str = str(e)
-                    # Don't fall back for download failures - these indicate API issues that should be fixed
-                    if ("no files were downloaded" in error_str or 
-                        "failed to produce essential" in error_str):
-                        self.logger.error(f"Remote API processing failed with download/file organization issue: {error_str}")
-                        self.logger.error("This indicates an audio-separator API issue that should be fixed. Not falling back to local processing.")
-                        raise e
-                    else:
-                        # Fall back for other types of errors (network issues, etc.)
-                        self.logger.error(f"Remote API processing failed: {error_str}")
-                        self.logger.info("Falling back to local audio separation")
+                    self.logger.error(f"Remote API processing failed: {e}")
+                    # Only fall back to local if model_file_dir is configured,
+                    # meaning local GPU/models are available (e.g. CLI usage).
+                    # In Cloud Run, model_file_dir is None so local can't work.
+                    if not self.model_file_dir:
+                        self.logger.error("No local model directory configured — cannot fall back to local processing.")
+                        raise
+                    self.logger.info("Falling back to local audio separation")
         else:
             self.logger.info("AUDIO_SEPARATOR_API_URL not set, using local audio separation. "
                            "Set this environment variable to use remote GPU processing.")

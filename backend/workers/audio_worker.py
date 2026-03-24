@@ -402,12 +402,32 @@ async def process_audio_separation(job_id: str) -> bool:
                     add_span_event("separation_started")
                     logger.info(f"[job:{job_id}] Calling Modal API for audio separation")
                     
-                    with metrics.time_external_api("modal", job_id):
-                        separation_result = audio_processor.process_audio_separation(
-                            audio_file=audio_path,
-                            artist_title=artist_title,
-                            track_output_dir=temp_dir
-                        )
+                    # Retry with exponential backoff. The audio-separator GPU service
+                    # may be busy processing other jobs for 5-10+ minutes each, so we
+                    # need patience: 60s, 120s, 240s, 480s = ~15 min total wait.
+                    max_retries = 5
+                    for attempt in range(1, max_retries + 1):
+                        try:
+                            with metrics.time_external_api("modal", job_id):
+                                separation_result = audio_processor.process_audio_separation(
+                                    audio_file=audio_path,
+                                    artist_title=artist_title,
+                                    track_output_dir=temp_dir
+                                )
+                            break  # Success
+                        except Exception as e:
+                            error_str = str(e)
+                            if attempt < max_retries:
+                                wait_time = 60 * (2 ** (attempt - 1))  # 60s, 120s, 240s, 480s
+                                job_log.warning(
+                                    f"Audio separation attempt {attempt}/{max_retries} failed: {error_str}. "
+                                    f"Retrying in {wait_time}s..."
+                                )
+                                logger.warning(f"[job:{job_id}] Separation attempt {attempt} failed: {error_str}")
+                                time.sleep(wait_time)
+                            else:
+                                job_log.error(f"Audio separation failed after {max_retries} attempts: {error_str}")
+                                raise
                     
                     sep_duration = time.time() - sep_start
                     sep_span.set_attribute("duration_seconds", sep_duration)

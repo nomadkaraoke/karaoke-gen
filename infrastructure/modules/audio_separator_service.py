@@ -107,8 +107,9 @@ def create_service(
         template=cloudrunv2.ServiceTemplateArgs(
             scaling=cloudrunv2.ServiceTemplateScalingArgs(
                 min_instance_count=0,
-                max_instance_count=1,  # GPU zonal redundancy requires quota for >1
+                max_instance_count=8,  # Max allowed by our L4 GPU quota in us-east4
             ),
+            max_instance_request_concurrency=1,  # Each separation uses the full GPU; route new requests to new instances
             gpu_zonal_redundancy_disabled=True,  # Not needed for batch workloads
             # Keep instances warm for 600s (10 min) between Stage 1 → Stage 2
             session_affinity=True,
