@@ -1240,10 +1240,33 @@ async def submit_user_feedback(
                 message="Thank you for your feedback! We appreciate your input.",
                 credits_granted=0,
             )
-    except Exception:
-        logger.exception(f"Credit evaluation failed for {_mask_email(user.email)} — granting anyway")
 
-    # Grant 2 credits (passed evaluation or fail-open)
+        if evaluation.decision == "pending_review":
+            logger.info(f"Feedback credits pending review for {_mask_email(user.email)}: {evaluation.reasoning}")
+            try:
+                from backend.services.email_service import get_email_service
+                get_email_service().send_credit_review_needed_email(user.email, "feedback", evaluation.reasoning)
+            except Exception:
+                logger.exception(f"Failed to send review needed email for {_mask_email(user.email)}")
+            return UserFeedbackResponse(
+                status="success",
+                message="Thank you for your feedback! Our team will review your account shortly.",
+                credits_granted=0,
+            )
+    except Exception:
+        logger.exception(f"Credit evaluation failed for {_mask_email(user.email)} — pending review (fail-closed)")
+        try:
+            from backend.services.email_service import get_email_service
+            get_email_service().send_credit_review_needed_email(user.email, "feedback", "Evaluation error")
+        except Exception:
+            pass
+        return UserFeedbackResponse(
+            status="success",
+            message="Thank you for your feedback! Our team will review your account shortly.",
+            credits_granted=0,
+        )
+
+    # Grant 2 credits (passed evaluation)
     credits_granted = 2
     user_service.add_credits(
         email=user.email,

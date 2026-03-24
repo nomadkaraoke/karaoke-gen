@@ -412,15 +412,34 @@ class UserService:
                     logger.info(
                         f"Denied welcome credits to {email}: {evaluation.reasoning}"
                     )
-                    # Send rejection email
                     try:
                         from backend.services.email_service import get_email_service
                         get_email_service().send_credit_denied_email(email, "welcome")
                     except Exception:
                         logger.exception(f"Failed to send credit denied email to {email}")
                     return False, "denied"
+
+                if evaluation.decision == "pending_review":
+                    # Don't mark welcome_credits_granted — allow retry after manual review
+                    logger.info(
+                        f"Welcome credits pending review for {email}: {evaluation.reasoning}"
+                    )
+                    try:
+                        from backend.services.email_service import get_email_service
+                        email_service = get_email_service()
+                        email_service.send_credit_review_needed_email(email, "welcome", evaluation.reasoning)
+                    except Exception:
+                        logger.exception(f"Failed to send review needed email for {email}")
+                    return False, "pending_review"
             except Exception:
-                logger.exception(f"Credit evaluation failed for {email} — granting anyway (fail-open)")
+                logger.exception(f"Credit evaluation failed for {email} — pending review (fail-closed)")
+                try:
+                    from backend.services.email_service import get_email_service
+                    email_service = get_email_service()
+                    email_service.send_credit_review_needed_email(email, "welcome", f"Evaluation error: {email}")
+                except Exception:
+                    pass
+                return False, "pending_review"
 
             # Grant welcome credits
             welcome_credit = self.NEW_USER_FREE_CREDITS

@@ -6,7 +6,7 @@ import { Loader2, CheckCircle, XCircle, Gift, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 
-type VerifyState = "verifying" | "preparing" | "credits_granted" | "credits_denied" | "success" | "error"
+type VerifyState = "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
 
 function VerifyMagicLinkContent() {
   const router = useRouter()
@@ -61,6 +61,8 @@ function VerifyMagicLinkContent() {
           setState("credits_granted")
         } else if (status === "denied") {
           setState("credits_denied")
+        } else if (status === "pending_review") {
+          setState("credits_pending")
         } else {
           // Returning user or not applicable — go straight to app
           setState("success")
@@ -168,6 +170,40 @@ function VerifyMagicLinkContent() {
               className="w-full"
             >
               Go to Dashboard
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Credits pending review - friendly holding message */}
+      {state === "credits_pending" && (
+        <>
+          <Loader2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-foreground mb-2">
+            Welcome to Nomad Karaoke!
+          </h1>
+          <p className="text-muted-foreground mb-4">
+            We weren&apos;t able to assign your free credits automatically this time.
+            Our team will review your signup shortly and assign credits if we&apos;re able to.
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            You can still explore the app while you wait, or purchase credits
+            to get started right away.
+          </p>
+          <div className="space-y-2">
+            <Button
+              onClick={goToBuy}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Buy Credits
+            </Button>
+            <Button
+              onClick={goToApp}
+              variant="ghost"
+              className="w-full"
+            >
+              Explore the App
             </Button>
           </div>
         </>

@@ -1548,6 +1548,52 @@ View all feedback: {admin_url}
         )
 
 
+    def send_credit_review_needed_email(self, user_email: str, grant_type: str, reason: str) -> bool:
+        """
+        Notify Andrew that a credit grant needs manual review.
+
+        Sent when AI evaluation fails, is uncertain, or encounters an error.
+        Includes a direct link to the user's admin page for quick action.
+        """
+        admin_user_url = f"{self.frontend_url}/admin/users/detail?email={user_email}"
+        subject = f"Credit review needed: {user_email} ({grant_type})"
+
+        content = f"""
+    <p>A {grant_type} credit grant for <strong>{user_email}</strong> needs your review.</p>
+
+    <p><strong>Reason:</strong> {reason}</p>
+
+    <p>The user has been told that their signup is being reviewed and credits will be
+    assigned shortly if everything checks out.</p>
+
+    <p style="text-align: center;">
+        <a href="{admin_user_url}" class="button">Review User</a>
+    </p>
+
+    <p style="color: #999; font-size: 14px;">
+        If the user looks legitimate, grant them credits from their admin page.
+        If not, no action needed — they already have 0 credits.
+    </p>
+"""
+
+        text_content = f"""Credit review needed: {user_email} ({grant_type})
+
+Reason: {reason}
+
+Review user: {admin_user_url}
+
+If the user looks legitimate, grant them credits from their admin page.
+"""
+
+        html_content = self._build_email_html(content)
+
+        return self.provider.send_email(
+            to_email="andrew@beveridge.uk",
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
     def send_credit_denied_email(self, email: str, grant_type: str = "welcome") -> bool:
         """
         Send a friendly-but-firm email when free credits are denied due to abuse signals.

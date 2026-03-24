@@ -161,9 +161,9 @@ def _parse_gemini_response(response_text: str) -> CreditEvaluation:
             text = text[4:].strip()
 
         data = json.loads(text)
-        decision = data.get("decision", "grant").lower()
+        decision = data.get("decision", "").lower()
         if decision not in ("grant", "deny"):
-            decision = "grant"  # fail-open on unexpected value
+            decision = "pending_review"  # fail-closed: unknown decision → manual review
 
         return CreditEvaluation(
             decision=decision,
@@ -173,8 +173,8 @@ def _parse_gemini_response(response_text: str) -> CreditEvaluation:
     except (json.JSONDecodeError, ValueError, TypeError) as e:
         logger.warning(f"Failed to parse Gemini response: {e}. Response: {response_text[:200]}")
         return CreditEvaluation(
-            decision="grant",
-            reasoning="Failed to parse AI response — granting credits (fail-open)",
+            decision="pending_review",
+            reasoning="Failed to parse AI response — pending manual review",
             confidence=0.0,
             error=f"Parse error: {e}",
         )
@@ -350,7 +350,7 @@ class CreditEvaluationService:
 
         Returns:
             CreditEvaluation with decision, reasoning, confidence.
-            Fail-open: returns "grant" on any error.
+            Fail-closed: returns "pending_review" on any error (admin notified).
         """
         if not self.settings.credit_eval_enabled:
             return CreditEvaluation(
@@ -403,10 +403,10 @@ class CreditEvaluationService:
             return evaluation
 
         except Exception as e:
-            logger.exception(f"Credit evaluation failed for {email} — granting credits (fail-open)")
+            logger.exception(f"Credit evaluation failed for {email} — pending manual review (fail-closed)")
             evaluation = CreditEvaluation(
-                decision="grant",
-                reasoning=f"Evaluation failed — granting credits (fail-open)",
+                decision="pending_review",
+                reasoning="Evaluation failed — pending manual review",
                 confidence=0.0,
                 error=str(e),
             )

@@ -125,24 +125,24 @@ class TestParseGeminiResponse:
         result = _parse_gemini_response('```json\n{"decision": "grant", "reasoning": "OK", "confidence": 0.8}\n```')
         assert result.decision == "grant"
 
-    def test_fails_open_on_invalid_json(self):
+    def test_fails_closed_on_invalid_json(self):
         from backend.services.credit_evaluation_service import _parse_gemini_response
 
         result = _parse_gemini_response("I think this user is fine")
-        assert result.decision == "grant"
+        assert result.decision == "pending_review"
         assert result.error is not None
 
-    def test_fails_open_on_unexpected_decision(self):
+    def test_fails_closed_on_unexpected_decision(self):
         from backend.services.credit_evaluation_service import _parse_gemini_response
 
         result = _parse_gemini_response('{"decision": "maybe", "reasoning": "Unsure", "confidence": 0.5}')
-        assert result.decision == "grant"  # fail-open
+        assert result.decision == "pending_review"  # fail-closed
 
-    def test_fails_open_on_empty_response(self):
+    def test_fails_closed_on_empty_response(self):
         from backend.services.credit_evaluation_service import _parse_gemini_response
 
         result = _parse_gemini_response("")
-        assert result.decision == "grant"
+        assert result.decision == "pending_review"
         assert result.error is not None
 
 
@@ -215,7 +215,7 @@ class TestCreditEvaluationService:
         assert result.decision == "deny"
 
     @patch('backend.services.credit_evaluation_service.get_settings')
-    def test_fails_open_on_gemini_error(self, mock_settings):
+    def test_fails_closed_on_gemini_error(self, mock_settings):
         mock_settings.return_value = MagicMock(
             credit_eval_enabled=True,
             credit_eval_model="gemini-3.1-pro-preview",
@@ -229,7 +229,7 @@ class TestCreditEvaluationService:
              patch.object(service, '_log_evaluation'):
             result = service.evaluate("test@example.com", "welcome")
 
-        assert result.decision == "grant"
+        assert result.decision == "pending_review"
         assert result.error is not None
 
 
@@ -299,8 +299,8 @@ class TestWelcomeCreditsWithEvaluation:
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
-    def test_grants_credits_when_evaluation_fails(self, mock_fs, mock_settings):
-        """Fail-open: if evaluation crashes, still grant credits."""
+    def test_pending_review_when_evaluation_fails(self, mock_fs, mock_settings):
+        """Fail-closed: if evaluation crashes, credits are NOT granted, admin notified."""
         mock_settings.return_value = MagicMock(google_cloud_project='test')
         mock_db = MagicMock()
         mock_fs.Client.return_value = mock_db
@@ -315,12 +315,15 @@ class TestWelcomeCreditsWithEvaluation:
 
         service = UserService()
 
-        with patch('backend.services.credit_evaluation_service.get_credit_evaluation_service') as mock_eval:
+        with patch('backend.services.credit_evaluation_service.get_credit_evaluation_service') as mock_eval, \
+             patch('backend.services.email_service.get_email_service') as mock_email:
             mock_eval.return_value.evaluate.side_effect = Exception("Gemini is down")
             granted, status = service.grant_welcome_credits_if_eligible("new@user.com")
 
-        assert granted is True
-        assert status == "granted"
+        assert granted is False
+        assert status == "pending_review"
+        # Verify admin review email was sent
+        mock_email.return_value.send_credit_review_needed_email.assert_called_once()
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
