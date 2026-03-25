@@ -40,6 +40,7 @@ from modules import database, storage as storage_module, artifact_registry, secr
 from modules import cloud_tasks, cloud_run, monitoring, networking, runner_manager
 from modules import divebar_mirror, kn_data_sync, divebar_lookup
 from modules import audio_separator_service
+from modules import encoding_worker_manager
 from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, worker_sas
 from compute import encoding_worker_vm, github_runners, divebar_sync_vm
 
@@ -448,6 +449,9 @@ encoding_worker_firewall = encoding_worker_vm.create_encoding_worker_firewall()
 # Grant backend SA permission to start encoding worker VMs
 backend_compute_perms = worker_sas.grant_backend_compute_permissions(backend_service_account)
 
+# Encoding Worker Idle Shutdown (auto-stop after 15 min idle)
+encoding_worker_idle_resources = encoding_worker_manager.create_idle_shutdown_resources()
+
 # GitHub Runners (CI/CD self-hosted runners)
 # Create Cloud NAT for outbound internet access (no external IPs needed)
 github_runners_router, github_runners_nat = github_runners.create_cloud_nat()
@@ -606,3 +610,7 @@ pulumi.export("divebar_sync_scheduler_name", divebar_sync_scheduler.name)
 # Audio separator GPU service
 pulumi.export("audio_separator_service_url", audio_separator_resources["service"].uri)
 pulumi.export("audio_separator_service_account", audio_separator_resources["service_account"].email)
+
+# Encoding worker idle shutdown
+pulumi.export("encoding_worker_idle_function_url", encoding_worker_idle_resources["function"].url)
+pulumi.export("encoding_worker_idle_scheduler", encoding_worker_idle_resources["scheduler"].name)
