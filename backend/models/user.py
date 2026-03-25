@@ -129,6 +129,11 @@ class MagicLinkToken(BaseModel):
     # Multi-tenant support (None = default Nomad Karaoke)
     tenant_id: Optional[str] = None
 
+    # Pre-computed credit evaluation (set asynchronously after magic link is sent)
+    credit_eval_decision: Optional[str] = None  # "grant", "deny", "pending_review"
+    credit_eval_reasoning: Optional[str] = None
+    credit_eval_error: Optional[str] = None
+
 
 class Session(BaseModel):
     """

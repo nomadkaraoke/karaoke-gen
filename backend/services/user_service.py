@@ -370,7 +370,11 @@ class UserService:
             logger.exception("Error verifying magic link")
             return False, None, "An error occurred during verification"
 
-    def grant_welcome_credits_if_eligible(self, email: str) -> Tuple[bool, str]:
+    def grant_welcome_credits_if_eligible(
+        self,
+        email: str,
+        precomputed_eval: Optional[dict] = None,
+    ) -> Tuple[bool, str]:
         """
         Grant welcome credits on first magic link verification.
 
@@ -380,6 +384,12 @@ class UserService:
         Uses a dedicated welcome_credits_granted flag as primary idempotency
         check (survives credit_transactions list trimming). Falls back to
         checking for welcome_credit transaction as secondary defense.
+
+        Args:
+            email: User's email address.
+            precomputed_eval: Optional pre-computed evaluation from magic link doc.
+                Keys: credit_eval_decision, credit_eval_reasoning, credit_eval_error.
+                If provided and has a decision, skips the AI call.
 
         Returns:
             Tuple of (credits_granted: bool, status: str).
@@ -401,10 +411,24 @@ class UserService:
                     return False, "already_granted"
 
             # AI evaluation: check for abuse signals before granting
+            # Use pre-computed result from magic link if available
             try:
-                from backend.services.credit_evaluation_service import get_credit_evaluation_service
-                eval_service = get_credit_evaluation_service()
-                evaluation = eval_service.evaluate(email, "welcome")
+                from backend.services.credit_evaluation_service import (
+                    get_credit_evaluation_service,
+                    CreditEvaluation,
+                )
+                precomputed_decision = (precomputed_eval or {}).get("credit_eval_decision")
+                if precomputed_decision:
+                    logger.info(f"Using pre-computed credit eval for {email}: {precomputed_decision}")
+                    evaluation = CreditEvaluation(
+                        decision=precomputed_decision,
+                        reasoning=(precomputed_eval or {}).get("credit_eval_reasoning", ""),
+                        confidence=1.0,
+                        error=(precomputed_eval or {}).get("credit_eval_error"),
+                    )
+                else:
+                    eval_service = get_credit_evaluation_service()
+                    evaluation = eval_service.evaluate(email, "welcome")
 
                 if evaluation.decision == "deny":
                     # Mark as evaluated but not granted so we don't re-evaluate

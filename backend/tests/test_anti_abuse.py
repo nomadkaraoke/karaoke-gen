@@ -132,6 +132,36 @@ class TestGrantWelcomeCredits:
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
+    def test_uses_precomputed_eval_when_provided(self, mock_fs, mock_settings):
+        """grant_welcome_credits_if_eligible uses pre-computed eval and skips AI call."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        user = User(email="new@example.com", credits=0, credit_transactions=[])
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = user.model_dump(mode='json')
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        with patch('backend.services.credit_evaluation_service.get_credit_evaluation_service') as mock_eval:
+            granted, status = service.grant_welcome_credits_if_eligible(
+                "new@example.com",
+                precomputed_eval={
+                    "credit_eval_decision": "grant",
+                    "credit_eval_reasoning": "Pre-computed: clean user",
+                },
+            )
+            # AI evaluation should NOT have been called
+            mock_eval.return_value.evaluate.assert_not_called()
+
+        assert granted is True
+        assert status == "granted"
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
     def test_skips_if_flag_already_set(self, mock_fs, mock_settings):
         """grant_welcome_credits_if_eligible returns False if welcome_credits_granted flag is True."""
         mock_settings.return_value = MagicMock(google_cloud_project='test')
@@ -561,6 +591,49 @@ class TestVerifyGrantsCredits:
             data = response.json()
             assert data["credits_granted"] == 1
             mock_user_svc.grant_welcome_credits_if_eligible.assert_called_once()
+        finally:
+            from backend.main import app
+            app.dependency_overrides.clear()
+
+    def test_verify_passes_precomputed_eval(self, mock_user_svc):
+        """Verify endpoint passes pre-computed eval from magic link doc."""
+        user = User(email="new@example.com", credits=2, email_verified=True)
+        client = self._make_verify_client(mock_user_svc, user, credits_eligible=True)
+
+        # Add pre-computed eval to the magic link doc
+        mock_ml_doc = mock_user_svc.db.collection.return_value.document.return_value.get.return_value
+        mock_ml_doc.to_dict.return_value = {
+            'email': user.email,
+            'tenant_id': None,
+            'credit_eval_decision': 'grant',
+            'credit_eval_reasoning': 'Clean user',
+        }
+
+        try:
+            response = client.get("/api/users/auth/verify?token=valid-token")
+
+            assert response.status_code == 200
+            # Verify precomputed_eval was passed through
+            call_kwargs = mock_user_svc.grant_welcome_credits_if_eligible.call_args
+            assert call_kwargs[1]['precomputed_eval'] == {
+                'credit_eval_decision': 'grant',
+                'credit_eval_reasoning': 'Clean user',
+            }
+        finally:
+            from backend.main import app
+            app.dependency_overrides.clear()
+
+    def test_verify_falls_back_without_precomputed_eval(self, mock_user_svc):
+        """Verify endpoint passes None when no pre-computed eval exists."""
+        user = User(email="new@example.com", credits=2, email_verified=True)
+        client = self._make_verify_client(mock_user_svc, user, credits_eligible=True)
+
+        try:
+            response = client.get("/api/users/auth/verify?token=valid-token")
+
+            assert response.status_code == 200
+            call_kwargs = mock_user_svc.grant_welcome_credits_if_eligible.call_args
+            assert call_kwargs[1]['precomputed_eval'] is None
         finally:
             from backend.main import app
             app.dependency_overrides.clear()
