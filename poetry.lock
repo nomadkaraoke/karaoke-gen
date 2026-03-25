@@ -2547,6 +2547,28 @@ requests-oauthlib = ">=0.7.0"
 tool = ["click (>=6.0.0)"]
 
 [[package]]
+name = "google-cloud-compute"
+version = "1.46.0"
+description = "Google Cloud Compute API client library"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "google_cloud_compute-1.46.0-py3-none-any.whl", hash = "sha256:f92d9a7c32454b8a719ff937bfd46e794ee35d65e141ec5d20797aad6988dfb0"},
+    {file = "google_cloud_compute-1.46.0.tar.gz", hash = "sha256:8b0f8d5a1115e8beae5fafdc7050f1ad15e922a5cdf6c634e5a745e47cb49281"},
+]
+
+[package.dependencies]
+google-api-core = {version = ">=1.34.1,<2.0.dev0 || >=2.11.dev0,<3.0.0", extras = ["grpc"]}
+google-auth = ">=2.14.1,<2.24.0 || >2.24.0,<2.25.0 || >2.25.0,<3.0.0"
+grpcio = ">=1.33.2,<2.0.0"
+proto-plus = [
+    {version = ">=1.25.0,<2.0.0", markers = "python_version >= \"3.13\""},
+    {version = ">=1.22.3,<2.0.0"},
+]
+protobuf = ">=3.20.2,<4.21.0 || >4.21.0,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4.21.4 || >4.21.4,<4.21.5 || >4.21.5,<7.0.0"
+
+[[package]]
 name = "google-cloud-core"
 version = "2.5.0"
 description = "Google Cloud API client core library"
@@ -10680,4 +10702,4 @@ local-whisper = ["whisper-timestamped"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "bfb710412104ada6da5504e2afb3181da05cac4d6ed1238d08e9a712c254f22d"
+content-hash = "fd26762a0d3f754ddc150bb24dc6d1ee1a15cb8154584950b213029751315ed2"

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "karaoke-gen"
-version = "0.151.0"
+version = "0.151.1"
 description = "Generate karaoke videos with synchronized lyrics. Handles the entire process from downloading audio and lyrics to creating the final video with title screens."
 authors = ["Andrew Beveridge <andrew@beveridge.uk>"]
 license = "MIT"
@@ -88,6 +88,7 @@ pydantic-settings = ">=2.1.0"
 httpx = ">=0.25.0"
 tenacity = "^8.2.0"  # Retry logic for external service calls
 google-cloud-firestore = "2.26.0"
+google-cloud-compute = "^1.0.0"
 google-cloud-storage = "3.10.1"
 google-cloud-secret-manager = "2.26.0"
 google-cloud-monitoring = "2.29.1"  # Cloud Monitoring for YouTube API quota metrics
