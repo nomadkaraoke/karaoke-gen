@@ -350,14 +350,14 @@ files = [
 
 [[package]]
 name = "audio-separator"
-version = "0.44.0"
+version = "0.44.1"
 description = "Easy to use audio stem separation, using various models from UVR trained primarily by @Anjok07"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "audio_separator-0.44.0-py3-none-any.whl", hash = "sha256:750bee702eb718ea3d3848f396020e911de0679f6b153619cf9d66a4b85c1c58"},
-    {file = "audio_separator-0.44.0.tar.gz", hash = "sha256:a05e5f906074414e727b3ee1acedc64f23a123436fcae0daa086817e7c91495f"},
+    {file = "audio_separator-0.44.1-py3-none-any.whl", hash = "sha256:6d9d3f570dceba16dd49116cf72a9764225e5aebb48ab117796bb79c8e1be4cd"},
+    {file = "audio_separator-0.44.1.tar.gz", hash = "sha256:505c78c205ce2e6af27a7e73c1b4a59b0cc7c834a2abdd93b3f5cdaf8f3cb26f"},
 ]
 
 [package.dependencies]
