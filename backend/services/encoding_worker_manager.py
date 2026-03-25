@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from datetime import datetime, UTC
 from typing import Optional
 
+from google.cloud import firestore
+
 logger = logging.getLogger(__name__)
 
 CONFIG_COLLECTION = "config"
@@ -133,7 +135,7 @@ class EncodingWorkerManager:
         doc_ref = self._doc_ref()
         now = datetime.now(UTC).isoformat()
 
-        @_transactional
+        @firestore.transactional
         def _swap_in_transaction(txn, ref):
             txn.update(ref, {
                 "primary_vm": new_primary_vm,
@@ -235,14 +237,3 @@ class EncodingWorkerManager:
         }
 
 
-def _transactional(func):
-    """Decorator that marks a function as a Firestore transactional operation.
-
-    This is a thin wrapper that simply calls the function — the actual
-    transactional behavior comes from the Firestore transaction object
-    passed as the first argument, which handles retries and conflict
-    resolution.
-    """
-    def wrapper(transaction, *args, **kwargs):
-        return func(transaction, *args, **kwargs)
-    return wrapper
