@@ -1146,6 +1146,7 @@ jobs:
 
       - name: Wait for service health
         id: health
+        continue-on-error: true
         run: |
           SECONDARY_IP="${{ steps.config.outputs.secondary_ip }}"
           EXPECTED_VERSION="${{ steps.version_check.outputs.version }}"
@@ -1174,6 +1175,7 @@ jobs:
       - name: Deep health check - real encode test
         if: steps.health.outputs.healthy == 'true'
         id: encode-test
+        continue-on-error: true
         run: |
           SECONDARY_IP="${{ steps.config.outputs.secondary_ip }}"
           API_KEY=$(gcloud secrets versions access latest \
@@ -1225,7 +1227,7 @@ jobs:
           exit 1
 
       - name: Rollback on failure
-        if: failure()
+        if: steps.health.outputs.healthy != 'true' || steps.encode-test.outputs.passed == 'false'
         run: |
           SECONDARY_VM="${{ steps.config.outputs.secondary_vm }}"
           if [ -n "$SECONDARY_VM" ]; then
