@@ -310,3 +310,63 @@ class TestWaitForCompletionPollTolerance:
 
         assert result["status"] == "complete"
         assert call_count == 6  # 2 fail + 1 success + 2 fail + 1 success
+
+
+class TestDynamicURLResolution:
+    """Tests that EncodingService reads URL from Firestore, not static config."""
+
+    def test_url_from_worker_manager(self):
+        """Should read primary_url from worker manager."""
+        mock_manager = MagicMock()
+        mock_manager.get_config.return_value = MagicMock(
+            primary_url="http://34.1.2.3:8080",
+        )
+        service = EncodingService()
+        service._initialized = True
+        service._api_key = "test-key"
+        service.set_worker_manager(mock_manager)
+
+        url = service._get_worker_url()
+        assert url == "http://34.1.2.3:8080"
+        mock_manager.get_config.assert_called_once()
+
+    def test_url_caches_within_ttl(self):
+        """Should cache URL and not re-read within TTL."""
+        mock_manager = MagicMock()
+        mock_manager.get_config.return_value = MagicMock(
+            primary_url="http://34.1.2.3:8080",
+        )
+        service = EncodingService()
+        service._initialized = True
+        service.set_worker_manager(mock_manager)
+
+        service._get_worker_url()
+        service._get_worker_url()
+
+        assert mock_manager.get_config.call_count == 1
+
+    def test_url_refreshes_after_ttl(self):
+        """Should re-read URL after TTL expires."""
+        mock_manager = MagicMock()
+        mock_manager.get_config.return_value = MagicMock(
+            primary_url="http://34.1.2.3:8080",
+        )
+        service = EncodingService()
+        service._initialized = True
+        service.set_worker_manager(mock_manager)
+        service._URL_CACHE_TTL = 0  # Expire immediately
+
+        service._get_worker_url()
+        service._get_worker_url()
+
+        assert mock_manager.get_config.call_count == 2
+
+    def test_fallback_to_static_url_without_manager(self):
+        """Should fall back to static URL when no worker manager set."""
+        service = EncodingService()
+        service._url = "http://static:8080"
+        service._api_key = "test-key"
+        service._initialized = True
+
+        url = service._get_worker_url()
+        assert url == "http://static:8080"

@@ -17,6 +17,7 @@ Usage:
 
 import asyncio
 import logging
+import time
 from typing import Optional, Dict, Any
 
 import aiohttp
@@ -52,6 +53,34 @@ class EncodingService:
         self._url = None
         self._api_key = None
         self._initialized = False
+        self._worker_manager = None
+        self._cached_url = None
+        self._url_cached_at = 0
+        self._URL_CACHE_TTL = 30  # seconds
+
+    def set_worker_manager(self, manager):
+        """Set the worker manager for dynamic URL resolution from Firestore."""
+        self._worker_manager = manager
+
+    def _get_worker_url(self) -> str:
+        """Get the current primary worker URL from Firestore (with TTL cache).
+
+        Falls back to static URL from config if worker_manager is not set.
+        """
+        now = time.time()
+        if self._cached_url and (now - self._url_cached_at) < self._URL_CACHE_TTL:
+            return self._cached_url
+
+        if self._worker_manager:
+            config = self._worker_manager.get_config()
+            self._cached_url = config.primary_url
+            self._url_cached_at = now
+            return self._cached_url
+
+        # Fallback to static URL
+        if not self._initialized:
+            self._load_credentials()
+        return self._url
 
     def _load_credentials(self):
         """Load encoding worker URL and API key from config/secrets."""
@@ -188,7 +217,7 @@ class EncodingService:
         if not self.is_configured:
             raise RuntimeError("Encoding service not configured")
 
-        url = f"{self._url}/encode"
+        url = f"{self._get_worker_url()}/encode"
         headers = {"X-API-Key": self._api_key, "Content-Type": "application/json"}
         payload = {
             "job_id": job_id,
@@ -249,7 +278,7 @@ class EncodingService:
         if not self.is_configured:
             raise RuntimeError("Encoding service not configured")
 
-        url = f"{self._url}/status/{job_id}"
+        url = f"{self._get_worker_url()}/status/{job_id}"
         headers = {"X-API-Key": self._api_key}
 
         resp = await self._request_with_retry(
@@ -437,7 +466,7 @@ class EncodingService:
         if not self.is_configured:
             raise RuntimeError("Encoding service not configured")
 
-        url = f"{self._url}/encode-preview"
+        url = f"{self._get_worker_url()}/encode-preview"
         headers = {"X-API-Key": self._api_key, "Content-Type": "application/json"}
         payload = {
             "job_id": job_id,
@@ -543,7 +572,7 @@ class EncodingService:
         if not self.is_configured:
             return {"status": "not_configured"}
 
-        url = f"{self._url}/health"
+        url = f"{self._get_worker_url()}/health"
         headers = {"X-API-Key": self._api_key}
 
         try:
@@ -565,4 +594,20 @@ def get_encoding_service() -> EncodingService:
     global _encoding_service
     if _encoding_service is None:
         _encoding_service = EncodingService()
+        # Wire up worker manager for dynamic URL resolution
+        try:
+            from backend.services.encoding_worker_manager import EncodingWorkerManager
+            from google.cloud import compute_v1, firestore
+            settings = get_settings()
+            db = firestore.Client(project=settings.google_cloud_project)
+            compute_client = compute_v1.InstancesClient()
+            manager = EncodingWorkerManager(
+                db=db,
+                compute_client=compute_client,
+                project_id=settings.google_cloud_project,
+            )
+            _encoding_service.set_worker_manager(manager)
+        except Exception:
+            # Fallback to static URL if worker manager setup fails
+            pass
     return _encoding_service
