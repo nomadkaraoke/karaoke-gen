@@ -437,6 +437,16 @@ divebar_sync_compute_admin = gcp.projects.IAMMember(
 # Cloud Run GPU (L4) service for audio stem separation — replaces Modal
 audio_separator_resources = audio_separator_service.create_all_resources()
 
+# Grant audio separator read access to main storage bucket (for GCS URI passthrough)
+gcp.storage.BucketIAMMember(
+    "audio-separator-storage-reader",
+    bucket=bucket.name,
+    role="roles/storage.objectViewer",
+    member=audio_separator_resources["service_account"].email.apply(
+        lambda email: f"serviceAccount:{email}"
+    ),
+)
+
 # ==================== Compute VMs ====================
 
 # Encoding Worker VMs (blue-green pair for zero-downtime deployments)

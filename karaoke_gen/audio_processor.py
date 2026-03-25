@@ -348,10 +348,19 @@ class AudioProcessor:
                 self.logger.info(f"Stage 1: Using explicit models: {stage1_models}")
                 stage1_kwargs["models"] = stage1_models
 
-            stage1_result = api_client.separate_audio_and_wait(
-                audio_file,
-                **stage1_kwargs,
-            )
+            # Use GCS URI for Stage 1 if available (avoids 413 for large files)
+            input_gcs_uri = getattr(self, 'input_gcs_uri', None)
+            if input_gcs_uri:
+                self.logger.info(f"Stage 1: Using GCS URI: {input_gcs_uri}")
+                stage1_kwargs["gcs_uri"] = input_gcs_uri
+                stage1_result = api_client.separate_audio_and_wait(
+                    **stage1_kwargs,
+                )
+            else:
+                stage1_result = api_client.separate_audio_and_wait(
+                    audio_file,
+                    **stage1_kwargs,
+                )
 
             if stage1_result["status"] != "completed":
                 raise Exception(f"Stage 1 remote audio separation failed: {stage1_result.get('error', 'Unknown error')}")

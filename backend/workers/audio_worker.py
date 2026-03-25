@@ -374,6 +374,11 @@ async def process_audio_separation(job_id: str) -> bool:
                 )
                 audio_processor.job_id = job_id  # Used as filename prefix (avoids artist/title encoding issues)
 
+                # Pass GCS URI so the separator can fetch directly from GCS (avoids 413 for large files)
+                if job.input_media_gcs_path:
+                    audio_processor.input_gcs_uri = f"gs://{settings.gcs_bucket_name}/{job.input_media_gcs_path}"
+                    job_log.info(f"  GCS URI for separator: {audio_processor.input_gcs_uri}")
+
                 # Store effective model names in state_data for video_worker to use in file naming
                 # This ensures output filenames match local CLI behavior (e.g., "Instrumental model_bs_roformer_ep_317_sdr_12.9755.ckpt")
                 effective_model_names = {
