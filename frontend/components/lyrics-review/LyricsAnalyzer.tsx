@@ -21,7 +21,7 @@ import {
 } from '@/lib/lyrics-review/types'
 import type { EditLog, EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
 import type { InstrumentalSelectionType, LyricsReviewApiClient } from '@/lib/api'
-import { lyricsReviewApi } from '@/lib/api'
+import { lyricsReviewApi, warmupEncodingWorker, heartbeatEncodingWorker } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import ReferenceView from './ReferenceView'
 import TranscriptionView from './TranscriptionView'
@@ -272,12 +272,30 @@ export default function LyricsAnalyzer({
     setSessionRestoreOpen(true)
   }, [apiClient])
 
-  // Save data (localStorage - instant crash recovery)
+  // Warm up encoding worker VM when lyrics review page loads
+  useEffect(() => {
+    if (!isReadOnly) {
+      warmupEncodingWorker()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced heartbeat — keeps VM alive during active editing
+  const lastHeartbeat = useRef(0)
+  const sendHeartbeat = useCallback(() => {
+    const now = Date.now()
+    if (now - lastHeartbeat.current > 60_000) {
+      lastHeartbeat.current = now
+      heartbeatEncodingWorker()
+    }
+  }, [])
+
+  // Save data (localStorage - instant crash recovery) + heartbeat encoding worker
   useEffect(() => {
     if (!isReadOnly) {
       saveData(data, initialData)
+      sendHeartbeat()
     }
-  }, [data, isReadOnly, initialData])
+  }, [data, isReadOnly, initialData, sendHeartbeat])
 
   // Server-side session auto-save (periodic backup)
   const { saveSession } = useReviewSessionAutoSave({

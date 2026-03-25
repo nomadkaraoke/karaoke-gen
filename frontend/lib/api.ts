@@ -3007,6 +3007,35 @@ export const lyricsReviewApi = {
   },
 }
 
+/**
+ * Signal the backend to start the encoding worker VM.
+ * Fire-and-forget — doesn't wait for the VM to boot.
+ */
+export async function warmupEncodingWorker(): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/warmup`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    })
+  } catch {
+    // Fire-and-forget, don't throw on failure
+  }
+}
+
+/**
+ * Send heartbeat to keep encoding worker alive during active session.
+ */
+export async function heartbeatEncodingWorker(): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/heartbeat`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    })
+  } catch {
+    // Fire-and-forget
+  }
+}
+
 export interface DeleteOutputsResponse {
   status: string;
   job_id: string;
