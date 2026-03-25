@@ -1617,8 +1617,8 @@ View all feedback: {admin_url}
                 text_rows.append(f"IP matches: {match_emails}")
 
             table_rows = "".join(
-                f'<tr><td style="padding:4px 12px 4px 0;color:#999;white-space:nowrap;">{label}</td>'
-                f'<td style="padding:4px 0;">{value}</td></tr>'
+                f'<tr><td style="padding:4px 12px 4px 0;color:#999;white-space:nowrap;">{html.escape(label)}</td>'
+                f'<td style="padding:4px 0;">{html.escape(value or "")}</td></tr>'
                 for label, value in rows
             )
             signals_html = f"""
