@@ -1016,14 +1016,15 @@ jobs:
           version: "latest"
 
       # ============================================
-      # Deploy to GCE Encoding Worker (Immutable Deployment Pattern)
+      # Blue-Green Deploy to GCE Encoding Worker
       #
-      # This pattern ensures version consistency:
-      # 1. Upload wheel to FIXED path (no version sorting)
-      # 2. Upload startup.sh (logic can change without image rebuild)
-      # 3. Write version manifest for verification
-      # 4. Restart service (triggers bootstrap.sh -> startup.sh)
-      # 5. STRICTLY verify deployed version (fail CI on mismatch)
+      # This pattern ensures zero-downtime deployments:
+      # 1. Upload wheel + startup.sh + version manifest to GCS
+      # 2. Read blue-green config from Firestore
+      # 3. Start secondary VM, wait for health + version match
+      # 4. Deep health check: submit a real encode test
+      # 5. Swap primary/secondary in Firestore (atomic transaction)
+      # 6. Drain and stop old primary
       #
       # See infrastructure/encoding-worker/README.md for details
       # ============================================
@@ -1034,12 +1035,12 @@ jobs:
           name: package-dist
           path: dist/
 
-      - name: Deploy to GCE Encoding Worker
+      - name: Deploy to GCS
         run: |
           VERSION="${{ steps.version_check.outputs.version }}"
           BUCKET="gs://karaoke-gen-storage-${{ env.PROJECT_ID }}"
 
-          echo "🚀 Deploying encoding worker v${VERSION}..."
+          echo "Deploying encoding worker v${VERSION}..."
 
           # 1. Find the wheel file
           WHEEL_FILE=$(ls dist/*.whl | head -1)
@@ -1047,11 +1048,11 @@ jobs:
             echo "::error::No wheel file found in dist/"
             exit 1
           fi
-          echo "📦 Found wheel: $WHEEL_FILE"
+          echo "Found wheel: $WHEEL_FILE"
 
           # 2. Upload wheel to FIXED path (atomic via temp file)
           # This eliminates version sorting - always use karaoke_gen-current.whl
-          echo "📤 Uploading wheel to fixed path..."
+          echo "Uploading wheel to fixed path..."
           gsutil cp "$WHEEL_FILE" "${BUCKET}/wheels/karaoke_gen-current.whl.tmp"
           gsutil mv "${BUCKET}/wheels/karaoke_gen-current.whl.tmp" \
                     "${BUCKET}/wheels/karaoke_gen-current.whl"
@@ -1060,129 +1061,260 @@ jobs:
           gsutil cp "$WHEEL_FILE" "${BUCKET}/wheels/"
 
           # 3. Upload startup.sh (allows logic changes without image rebuild)
-          echo "📤 Uploading startup.sh..."
+          echo "Uploading startup.sh..."
           gsutil cp infrastructure/encoding-worker/startup.sh \
                     "${BUCKET}/encoding-worker/startup.sh"
 
           # 4. Write version manifest for verification
-          echo "📝 Writing version manifest..."
+          echo "Writing version manifest..."
           echo "${VERSION}" | gsutil cp - "${BUCKET}/encoding-worker/version.txt"
 
-          echo "✅ GCS deployment complete"
+          echo "GCS deployment complete"
 
-      - name: Drain active encoding jobs before restart
+      - name: Install Firestore client
+        run: pip install google-cloud-firestore
+
+      - name: Read Firestore config
+        id: config
         run: |
-          # Graceful drain: wait for any active encoding jobs to finish before
-          # restarting the worker. This prevents killing in-flight FFmpeg encodes.
-          #
-          # The /health endpoint returns active_jobs count. We poll until it's 0
-          # or until the drain timeout expires (10 minutes — well within the
-          # longest encoding time of ~5 min for a full 4-format encode).
+          python3 << 'PYEOF'
+          import json, os
+          from google.cloud import firestore
+          db = firestore.Client(project="nomadkaraoke")
+          doc = db.collection("config").document("encoding-worker").get()
+          if not doc.exists:
+              print("::error::Encoding worker config not found in Firestore")
+              raise SystemExit(1)
+          data = doc.to_dict()
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              for key in ["primary_vm", "primary_ip", "primary_version",
+                          "secondary_vm", "secondary_ip"]:
+                  f.write(f"{key}={data.get(key, '')}\n")
+              f.write(f"deploy_in_progress={str(data.get('deploy_in_progress', False)).lower()}\n")
+          print(f"Config: primary={data['primary_vm']}, secondary={data['secondary_vm']}")
+          PYEOF
 
-          WORKER_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key --project=nomadkaraoke)
-          WORKER_URL=$(gcloud secrets versions access latest --secret=encoding-worker-url --project=nomadkaraoke)
-          DRAIN_TIMEOUT=600  # 10 minutes
-          POLL_INTERVAL=15
-          ELAPSED=0
+      - name: Wait for concurrent deploy
+        if: steps.config.outputs.deploy_in_progress == 'true'
+        run: |
+          echo "Another deploy is in progress, waiting..."
+          python3 << 'PYEOF'
+          import time
+          from google.cloud import firestore
+          db = firestore.Client(project="nomadkaraoke")
+          for i in range(20):
+              time.sleep(30)
+              doc = db.collection("config").document("encoding-worker").get()
+              if not doc.to_dict().get("deploy_in_progress", False):
+                  print("Concurrent deploy finished, proceeding")
+                  break
+          else:
+              print("::error::Timed out waiting for concurrent deploy (10 min)")
+              raise SystemExit(1)
+          PYEOF
 
-          echo "🔍 Checking for active encoding jobs before restart..."
+      - name: Set deploy in progress
+        run: |
+          python3 << 'PYEOF'
+          from datetime import datetime, timezone
+          from google.cloud import firestore
+          db = firestore.Client(project="nomadkaraoke")
+          db.collection("config").document("encoding-worker").update({
+              "deploy_in_progress": True,
+              "deploy_in_progress_since": datetime.now(timezone.utc).isoformat(),
+          })
+          print("Set deploy_in_progress=true")
+          PYEOF
 
-          while [ $ELAPSED -lt $DRAIN_TIMEOUT ]; do
-            HEALTH=$(curl -sf -H "X-API-Key: $WORKER_KEY" "$WORKER_URL/health" 2>/dev/null || echo '{"active_jobs": -1}')
-            ACTIVE=$(echo "$HEALTH" | grep -o '"active_jobs":[0-9]*' | cut -d: -f2)
+      - name: Start secondary VM
+        run: |
+          SECONDARY_VM="${{ steps.config.outputs.secondary_vm }}"
+          echo "Starting secondary VM: $SECONDARY_VM"
+          gcloud compute instances start "$SECONDARY_VM" \
+            --zone=us-central1-c --project=nomadkaraoke || true
 
-            if [ -z "$ACTIVE" ] || [ "$ACTIVE" = "-1" ]; then
-              echo "⚠️ Could not reach health endpoint (worker may already be down). Proceeding with restart."
+          for i in $(seq 1 12); do
+            STATUS=$(gcloud compute instances describe "$SECONDARY_VM" \
+              --zone=us-central1-c --project=nomadkaraoke \
+              --format='value(status)')
+            echo "VM status: $STATUS (attempt $i/12)"
+            if [ "$STATUS" = "RUNNING" ]; then
               break
             fi
-
-            if [ "$ACTIVE" = "0" ]; then
-              echo "✅ No active encoding jobs. Safe to restart."
-              break
-            fi
-
-            echo "⏳ $ACTIVE active encoding job(s) running. Waiting ${POLL_INTERVAL}s... (${ELAPSED}s/${DRAIN_TIMEOUT}s)"
-            sleep $POLL_INTERVAL
-            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+            sleep 10
           done
 
-          if [ $ELAPSED -ge $DRAIN_TIMEOUT ]; then
-            echo "⚠️ Drain timeout reached (${DRAIN_TIMEOUT}s) with jobs still active. Proceeding with restart."
-            echo "   Active jobs will be recoverable via idempotent /encode endpoint (PR #413)."
+      - name: Wait for service health
+        id: health
+        run: |
+          SECONDARY_IP="${{ steps.config.outputs.secondary_ip }}"
+          EXPECTED_VERSION="${{ steps.version_check.outputs.version }}"
+          HEALTH_URL="http://${SECONDARY_IP}:8080/health"
+
+          echo "Waiting for service at $HEALTH_URL..."
+          for i in $(seq 1 18); do
+            RESPONSE=$(curl -sf "$HEALTH_URL" 2>/dev/null || echo "")
+            if [ -n "$RESPONSE" ]; then
+              WHEEL_VERSION=$(echo "$RESPONSE" | jq -r '.wheel_version // empty')
+              echo "Health: version=$WHEEL_VERSION"
+              if [ "$WHEEL_VERSION" = "$EXPECTED_VERSION" ]; then
+                echo "Version matches! Service is healthy."
+                echo "healthy=true" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            fi
+            echo "Attempt $i/18 - waiting 10s..."
+            sleep 10
+          done
+
+          echo "::error::Service did not become healthy within 3 minutes"
+          echo "healthy=false" >> $GITHUB_OUTPUT
+          exit 1
+
+      - name: Deep health check - real encode test
+        if: steps.health.outputs.healthy == 'true'
+        id: encode-test
+        run: |
+          SECONDARY_IP="${{ steps.config.outputs.secondary_ip }}"
+          API_KEY=$(gcloud secrets versions access latest \
+            --secret=encoding-worker-api-key --project=nomadkaraoke)
+
+          echo "Uploading test assets to GCS..."
+          gsutil cp infrastructure/encoding-worker/test-assets/test-preview.ass \
+            gs://karaoke-gen-storage-nomadkaraoke/deploy-test/test-preview.ass
+
+          echo "Submitting test encode to $SECONDARY_IP..."
+          RESPONSE=$(curl -sf -X POST "http://${SECONDARY_IP}:8080/encode-preview" \
+            -H "X-API-Key: $API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "job_id": "deploy-health-check",
+              "ass_gcs_path": "gs://karaoke-gen-storage-nomadkaraoke/deploy-test/test-preview.ass",
+              "duration_seconds": 10
+            }')
+
+          echo "Encode response: $RESPONSE"
+          STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"')
+
+          if [ "$STATUS" != "accepted" ] && [ "$STATUS" != "completed" ]; then
+            echo "::error::Encode test failed with status: $STATUS"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
           fi
 
-      - name: Restart GCE Encoding Worker
-        run: |
-          VERSION="${{ steps.version_check.outputs.version }}"
-
-          echo "🔄 Restarting encoding worker..."
-
-          # Use IAP tunneling - works directly with service account credentials
-          gcloud compute ssh encoding-worker \
-            --zone=us-central1-c \
-            --project=nomadkaraoke \
-            --tunnel-through-iap \
-            --command="sudo systemctl restart encoding-worker"
-
-          echo "⏳ Waiting for service to start (up to 60s)..."
-          sleep 20
-
-      - name: Verify Encoding Worker Version
-        run: |
-          VERSION="${{ steps.version_check.outputs.version }}"
-
-          echo "🔍 Verifying encoding worker version..."
-
-          # Retry loop - service may take time to fully start
-          MAX_RETRIES=6
-          RETRY_DELAY=10
-
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "Attempt $i/$MAX_RETRIES..."
-
-            NEW_VERSION=$(gcloud compute ssh encoding-worker \
-              --zone=us-central1-c \
-              --project=nomadkaraoke \
-              --tunnel-through-iap \
-              --command="curl -s http://localhost:8080/health 2>/dev/null | grep -o '\"wheel_version\":\"[^\"]*\"' | cut -d'\"' -f4" 2>/dev/null || echo "")
-
-            if [ "$NEW_VERSION" = "$VERSION" ]; then
-              echo "✅ Encoding worker version verified: v$NEW_VERSION"
+          for i in $(seq 1 12); do
+            sleep 5
+            JOB_STATUS=$(curl -sf \
+              "http://${SECONDARY_IP}:8080/status/deploy-health-check" \
+              -H "X-API-Key: $API_KEY" | jq -r '.status // "unknown"')
+            echo "Encode status: $JOB_STATUS (attempt $i/12)"
+            if [ "$JOB_STATUS" = "completed" ]; then
+              echo "Encode test passed!"
+              echo "passed=true" >> $GITHUB_OUTPUT
+              gsutil rm -f gs://karaoke-gen-storage-nomadkaraoke/deploy-test/** || true
               exit 0
-            fi
-
-            if [ -n "$NEW_VERSION" ]; then
-              echo "⚠️ Version: $NEW_VERSION (expected: $VERSION)"
-            else
-              echo "⚠️ Health endpoint not responding yet"
-            fi
-
-            if [ $i -lt $MAX_RETRIES ]; then
-              echo "   Retrying in ${RETRY_DELAY}s..."
-              sleep $RETRY_DELAY
+            elif [ "$JOB_STATUS" = "failed" ]; then
+              echo "::error::Encode test failed"
+              echo "passed=false" >> $GITHUB_OUTPUT
+              exit 1
             fi
           done
 
-          # STRICT VERIFICATION: Fail CI on version mismatch
-          echo ""
-          echo "=============================================="
-          echo "❌ ENCODING WORKER DEPLOYMENT FAILED"
-          echo "=============================================="
-          echo "Expected version: $VERSION"
-          echo "Deployed version: $NEW_VERSION"
-          echo ""
-          echo "Possible causes:"
-          echo "  - GCS upload failed (check 'Deploy to GCE' step)"
-          echo "  - startup.sh download failed (check VM logs)"
-          echo "  - Wheel installation failed (check VM logs)"
-          echo ""
-          echo "To debug, SSH to VM and check logs:"
-          echo "  gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke --tunnel-through-iap"
-          echo "  sudo journalctl -u encoding-worker -n 100"
-          echo "  cat /var/log/encoding-worker-startup.log"
-          echo "=============================================="
-
+          echo "::error::Encode test timed out after 60s"
+          echo "passed=false" >> $GITHUB_OUTPUT
           exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          SECONDARY_VM="${{ steps.config.outputs.secondary_vm }}"
+          if [ -n "$SECONDARY_VM" ]; then
+            echo "Stopping secondary VM $SECONDARY_VM due to failed deploy"
+            gcloud compute instances stop "$SECONDARY_VM" \
+              --zone=us-central1-c --project=nomadkaraoke || true
+          fi
+
+          python3 -c "
+          from google.cloud import firestore
+          db = firestore.Client(project='nomadkaraoke')
+          db.collection('config').document('encoding-worker').update({
+              'deploy_in_progress': False,
+              'deploy_in_progress_since': None,
+          })
+          print('Cleared deploy_in_progress flag')
+          " || true
+
+      - name: Swap primary in Firestore
+        if: steps.encode-test.outputs.passed == 'true'
+        env:
+          NEW_PRIMARY: ${{ steps.config.outputs.secondary_vm }}
+          NEW_PRIMARY_IP: ${{ steps.config.outputs.secondary_ip }}
+          NEW_VERSION: ${{ steps.version_check.outputs.version }}
+          OLD_PRIMARY: ${{ steps.config.outputs.primary_vm }}
+          OLD_PRIMARY_IP: ${{ steps.config.outputs.primary_ip }}
+          OLD_VERSION: ${{ steps.config.outputs.primary_version }}
+        run: |
+          echo "Swapping: $OLD_PRIMARY -> secondary, $NEW_PRIMARY -> primary"
+          python3 << 'PYEOF'
+          import os
+          from datetime import datetime, timezone
+          from google.cloud import firestore
+
+          db = firestore.Client(project="nomadkaraoke")
+          doc_ref = db.collection("config").document("encoding-worker")
+          now = datetime.now(timezone.utc).isoformat()
+
+          @firestore.transactional
+          def swap(transaction):
+              transaction.update(doc_ref, {
+                  "primary_vm": os.environ["NEW_PRIMARY"],
+                  "primary_ip": os.environ["NEW_PRIMARY_IP"],
+                  "primary_version": os.environ["NEW_VERSION"],
+                  "primary_deployed_at": now,
+                  "secondary_vm": os.environ["OLD_PRIMARY"],
+                  "secondary_ip": os.environ["OLD_PRIMARY_IP"],
+                  "secondary_version": os.environ["OLD_VERSION"],
+                  "secondary_deployed_at": now,
+                  "last_swap_at": now,
+                  "deploy_in_progress": False,
+                  "deploy_in_progress_since": None,
+              })
+
+          transaction = db.transaction()
+          swap(transaction)
+          print(f"Swapped: {os.environ['NEW_PRIMARY']} is now primary")
+          PYEOF
+
+      - name: Drain and stop old primary
+        if: steps.encode-test.outputs.passed == 'true'
+        run: |
+          OLD_PRIMARY="${{ steps.config.outputs.primary_vm }}"
+          OLD_PRIMARY_IP="${{ steps.config.outputs.primary_ip }}"
+          API_KEY=$(gcloud secrets versions access latest \
+            --secret=encoding-worker-api-key --project=nomadkaraoke)
+
+          ACTIVE_JOBS=$(curl -sf "http://${OLD_PRIMARY_IP}:8080/health" \
+            | jq -r '.active_jobs // 0' 2>/dev/null || echo "0")
+
+          if [ "$ACTIVE_JOBS" -gt 0 ]; then
+            echo "Old primary has $ACTIVE_JOBS active jobs, waiting for drain..."
+            DRAIN_TIMEOUT=600
+            ELAPSED=0
+            while [ $ELAPSED -lt $DRAIN_TIMEOUT ]; do
+              sleep 15
+              ELAPSED=$((ELAPSED + 15))
+              ACTIVE_JOBS=$(curl -sf "http://${OLD_PRIMARY_IP}:8080/health" \
+                | jq -r '.active_jobs // 0' 2>/dev/null || echo "0")
+              echo "Active jobs: $ACTIVE_JOBS (${ELAPSED}s elapsed)"
+              if [ "$ACTIVE_JOBS" -eq 0 ]; then
+                break
+              fi
+            done
+          fi
+
+          echo "Stopping old primary: $OLD_PRIMARY"
+          gcloud compute instances stop "$OLD_PRIMARY" \
+            --zone=us-central1-c --project=nomadkaraoke || true
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
