@@ -36,7 +36,7 @@ def mock_job_manager():
 @pytest.fixture
 def mock_storage_service():
     with patch('backend.api.routes.file_upload.storage_service') as mock:
-        mock.bucket_name = "test-bucket"
+        mock.bucket.name = "test-bucket"
         yield mock
 
 
