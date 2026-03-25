@@ -68,6 +68,35 @@ def grant_encoding_worker_permissions(
     return bindings
 
 
+def grant_backend_compute_permissions(
+    backend_sa: serviceaccount.Account,
+) -> dict:
+    """Grant the backend SA permission to start/get encoding worker VMs.
+
+    Needed for on-demand VM warmup when users open lyrics review.
+    """
+    custom_role = gcp.projects.IAMCustomRole(
+        "encoding-worker-lifecycle-role",
+        role_id="encodingWorkerLifecycle",
+        title="Encoding Worker Lifecycle",
+        description="Start and check status of encoding worker VMs",
+        permissions=[
+            "compute.instances.get",
+            "compute.instances.start",
+        ],
+        project=PROJECT_ID,
+    )
+
+    binding = gcp.projects.IAMMember(
+        "backend-encoding-worker-lifecycle",
+        project=PROJECT_ID,
+        role=custom_role.name,
+        member=backend_sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
+    return {"custom_role": custom_role, "binding": binding}
+
+
 # ==================== GDrive Validator Service Account ====================
 
 def create_gdrive_validator_service_account() -> serviceaccount.Account:
