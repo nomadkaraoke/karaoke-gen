@@ -214,6 +214,52 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 
 **Worker Logs**: Stored in subcollection (`jobs/{job_id}/logs`) instead of embedded array to avoid Firestore's 1MB document size limit. TTL policy auto-deletes logs after 30 days. Feature flag: `USE_LOG_SUBCOLLECTION` (default: true). See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#firestore-document-1mb-limit-with-embedded-arrays).
 
+## Encoding Worker Blue-Green Deployment
+
+The GCE encoding worker uses a blue-green deployment pattern with two named VMs (`encoding-worker-a` and `encoding-worker-b`).
+
+### Architecture
+
+```text
+Frontend → Backend (Cloud Run) → Firestore config → Primary VM (encoding-worker-a or b)
+                                                   ↑
+Cloud Scheduler (5 min) → Cloud Function → checks idle + stops VMs
+                                                   ↑
+CI (GitHub Actions) → deploys to secondary → health check → swap Firestore → stop old
+```
+
+### Key Components
+
+**Two VMs (a/b)**: Both VMs are TERMINATED by default. One is designated "primary" and serves all encoding traffic. The secondary VM exists solely to receive new deployments before they go live.
+
+**Firestore config doc** (`config/encoding-worker`): Single source of truth for routing. Fields: `primary` (a or b), `ip_a`, `ip_b`, `deploy_in_progress` flag, `activity_a`/`activity_b` timestamps.
+
+**Backend routing** (`encoding_interface.py`): Reads the primary IP from the Firestore config doc with a 30-second TTL cache. All encoding requests route to the current primary.
+
+**JIT startup**: When a user enters the lyrics review page, the backend starts the primary VM on demand. This gives ~60 seconds of natural warmup time before encoding is needed, avoiding both 24/7 costs and noticeable cold-start latency for the user.
+
+**Idle auto-shutdown**: A Cloud Function (triggered every 5 minutes by Cloud Scheduler) checks the `activity_*` timestamps in Firestore and stops any VM that has been idle for more than 15 minutes. This is external to the VM — if the encoding worker code itself has a bug, the Cloud Function still shuts it down.
+
+**Blue-green deploys**: CI builds a new wheel, deploys it to the secondary VM (not the live primary), runs a real encode test against the secondary, then atomically swaps the `primary` field in Firestore to point to the secondary. The old primary is stopped after the swap. If the health check fails, the primary is never updated.
+
+### Seeding the Config
+
+Initial setup or reset:
+```bash
+python scripts/seed-encoding-worker-config.py <ip-a> <ip-b>
+```
+
+### Deploy Flow
+
+```text
+1. CI builds new karaoke-gen wheel + pushes to GCS
+2. CI starts secondary VM, waits for /health to respond
+3. CI runs real encode test against secondary VM
+4. If test passes: CI writes secondary name to Firestore `primary` field
+5. CI stops the old primary VM
+6. If test fails: CI stops secondary VM, primary unchanged
+```
+
 ## Video Worker Orchestrator
 
 The Video Worker uses an orchestrator pattern to ensure all features work regardless of encoding backend (local Cloud Run or GCE VM).

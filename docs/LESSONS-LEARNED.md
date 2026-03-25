@@ -36,6 +36,16 @@ Three patterns from investigating production job failures where errors cascaded 
 ### "Set Now and Keep" Anti-Pattern (Mar 2026)
 When a metadata key is missing, don't set it to "now" and skip the action — this creates an infinite loop where the key never appears old enough to trigger the action. Instead, fall back to `creationTimestamp` (always available on GCE instances) as the baseline for idle time calculation.
 
+### Encoding Worker Blue-Green: Named VMs Beat MIG for Small Scale (Mar 2026)
+
+**Why not a Managed Instance Group?** MIG rolling updates don't support deep health checks — you can verify HTTP liveness but not "did a real encode actually work?". PR #587 showed that the service can respond to `/health` while failing all encode jobs (pip resolution error had broken the wheel). A real encode test catches this; a simple HTTP check does not. At two VMs, the operational complexity of a MIG (instance template management, rolling update policies, drain configuration) adds no value over two named VMs with a Firestore pointer.
+
+**Deep health check pattern**: After deploying to the secondary VM, CI runs a real encode job end-to-end before swapping traffic. This has caught broken deploys that passed all unit tests and liveness probes.
+
+**JIT startup**: Tying VM startup to a user workflow event (entering the lyrics review page) gives ~60 seconds of natural warmup time before encoding is actually needed. Users are reading and editing lyrics while the VM starts — they never experience a cold-start stall. This avoids both 24/7 costs (~$400/mo) and noticeable latency.
+
+**Idle shutdown must be external**: A Cloud Function watcher is more reliable than self-shutdown. If the encoding worker code has a bug that prevents it from shutting itself down, the Cloud Function still stops it based on Firestore activity timestamps. Self-shutdown approaches that rely on the worker's own health are circular — a sick worker may not be able to stop itself.
+
 ### Pending Jobs Guard Must Not Reset Idle Timestamps (Mar 2026)
 When pending CI jobs are detected, keep runners alive but don't refresh their `last-activity` timestamps. Refreshing timestamps resets the idle timer, so runners can never accumulate enough idle time to be stopped — even after all jobs complete.
 

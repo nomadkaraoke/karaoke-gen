@@ -208,6 +208,71 @@ TESTMAIL_NAMESPACE=...       # testmail.app namespace
 | `./scripts/setup-singa-tenant.py` | Generate Singa tenant assets and upload to GCS |
 | `./scripts/setup-vocalstar-tenant.py` | Generate Vocal Star tenant assets and upload to GCS |
 
+## Encoding Worker Operations
+
+The encoding worker uses a blue-green deployment with two GCE VMs (`encoding-worker-a`, `encoding-worker-b`). See [ARCHITECTURE.md](ARCHITECTURE.md#encoding-worker-blue-green-deployment) for the full design.
+
+### Seed Firestore config (initial setup or reset)
+
+```bash
+python scripts/seed-encoding-worker-config.py <ip-a> <ip-b>
+```
+
+### Check VM status
+
+```bash
+gcloud compute instances describe encoding-worker-a \
+  --zone=us-central1-c --project=nomadkaraoke \
+  --format='value(status)'
+```
+
+### Manually start / stop a VM
+
+```bash
+# Start
+gcloud compute instances start encoding-worker-a \
+  --zone=us-central1-c --project=nomadkaraoke
+
+# Stop
+gcloud compute instances stop encoding-worker-a \
+  --zone=us-central1-c --project=nomadkaraoke
+```
+
+### Check worker health
+
+```bash
+IP=$(gcloud compute instances describe encoding-worker-a \
+  --zone=us-central1-c --project=nomadkaraoke \
+  --format='value(networkInterfaces[0].accessConfigs[0].natIP)')
+curl http://$IP:8080/health
+```
+
+### Manually trigger idle shutdown
+
+Go to Cloud Scheduler in the GCP console and click "Force run" on the `encoding-worker-idle-shutdown` job, or:
+
+```bash
+gcloud scheduler jobs run encoding-worker-idle-shutdown \
+  --location=us-central1 --project=nomadkaraoke
+```
+
+### Roll back a deploy
+
+If a deploy went wrong, swap the Firestore config back to the old primary:
+
+```bash
+python3 << 'EOF'
+import os
+os.environ['GOOGLE_CLOUD_PROJECT'] = 'nomadkaraoke'
+from google.cloud import firestore
+db = firestore.Client(project='nomadkaraoke')
+db.collection('config').document('encoding-worker').update({'primary': 'a'})  # or 'b'
+print("Rolled back")
+EOF
+```
+
+The backend's 30-second URL cache will pick up the change within 30 seconds.
+
 ## Project Structure
 
 ```

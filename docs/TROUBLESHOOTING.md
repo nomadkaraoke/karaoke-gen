@@ -166,3 +166,89 @@ python scripts/backfill_gdrive_uploads.py --job-ids JOB1,JOB2
 **Fix (v0.135+):** AudioShake API calls now retry up to 5 times with exponential backoff (60s base, 3x multiplier, ~40 minutes total spread). Retries on 5xx, 429, connection errors, and timeouts.
 
 **For older jobs:** Simply retry the job via admin dashboard.
+
+---
+
+## Encoding worker not starting
+
+**Symptoms:** Encoding jobs time out waiting for the VM to respond. The `/api/internal/encoding-worker/start` call returns success but the VM never accepts connections.
+
+**Check Firestore config exists:**
+```bash
+python3 -c "
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+doc = firestore.Client(project='nomadkaraoke').collection('config').document('encoding-worker').get()
+print(doc.to_dict() if doc.exists else 'MISSING - run seed script')
+"
+```
+
+**Check VM status:**
+```bash
+gcloud compute instances describe encoding-worker-a \
+  --zone=us-central1-c --project=nomadkaraoke --format='value(status)'
+```
+
+**Check backend service account permissions:** The backend Cloud Run SA needs `compute.instances.start` on the encoding worker VMs. Verify in IAM or check Cloud Run logs for permission denied errors when the start call is made.
+
+---
+
+## Deploy stuck in progress (`deploy_in_progress: true`)
+
+**Symptoms:** CI deploys fail immediately with "deploy already in progress". The flag in Firestore was never cleared after a previous failed deploy.
+
+**Auto-clear:** The Cloud Function that manages idle shutdown also clears stale `deploy_in_progress` flags after 20 minutes. Wait for the next Cloud Scheduler tick (every 5 minutes) and the function will clear it.
+
+**Manual clear:**
+```bash
+python3 << 'EOF'
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+firestore.Client(project='nomadkaraoke').collection('config').document('encoding-worker').update({
+    'deploy_in_progress': False
+})
+print("Cleared")
+EOF
+```
+
+---
+
+## Both VMs running unexpectedly
+
+**Symptoms:** GCP billing alert, or you notice both `encoding-worker-a` and `encoding-worker-b` are RUNNING.
+
+**Check Cloud Function logs:**
+```bash
+gcloud logging read 'resource.type="cloud_function" resource.labels.function_name="encoding-worker-idle-shutdown"' \
+  --project=nomadkaraoke --limit=20 --format="table(timestamp,textPayload)"
+```
+
+**Verify scheduler is firing:** Go to Cloud Scheduler console and check the `encoding-worker-idle-shutdown` job's last execution time and status.
+
+**Check activity timestamps in Firestore:** Look at `config/encoding-worker` — the `activity_a` and `activity_b` fields show when each VM last reported activity. If a timestamp is very recent, that VM is actively being used (or the heartbeat is stuck).
+
+**Force idle check:**
+```bash
+gcloud scheduler jobs run encoding-worker-idle-shutdown \
+  --location=us-central1 --project=nomadkaraoke
+```
+
+---
+
+## Encoding requests failing after deploy
+
+**Symptoms:** Jobs fail at encoding immediately after a blue-green deploy swap. Logs show connection refused or 404 to the old primary IP.
+
+**Cause:** The backend caches the encoding worker URL for 30 seconds. Requests in-flight during the swap may hit the old (now stopped) primary.
+
+**Fix:** Wait 30 seconds after the swap for the cache to expire. In-flight jobs can be retried via the admin dashboard — re-triggering the video worker will pick up the new primary URL.
+
+**Verify the swap happened:**
+```bash
+python3 -c "
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+doc = firestore.Client(project='nomadkaraoke').collection('config').document('encoding-worker').get()
+print('primary:', doc.to_dict().get('primary'))
+"
+```
