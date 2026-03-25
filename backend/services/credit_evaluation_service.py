@@ -26,6 +26,7 @@ class CreditEvaluation:
     reasoning: str
     confidence: float
     error: Optional[str] = None  # Set if evaluation failed (decision defaults to "grant")
+    signals: Optional[dict] = None  # Collected abuse signals (for admin review emails)
 
 
 SYSTEM_PROMPT = """You are an anti-abuse evaluator for Nomad Karaoke, a web service that creates professional karaoke videos. Each job costs the service real money in API credits and cloud compute.
@@ -293,7 +294,11 @@ class CreditEvaluationService:
         """Call Gemini and return the response text."""
         from google import genai
 
-        client = genai.Client()
+        client = genai.Client(
+            vertexai=True,
+            project=self.settings.google_cloud_project,
+            location=self.settings.gcp_region,
+        )
         response = client.models.generate_content(
             model=self.settings.credit_eval_model,
             contents=prompt,
@@ -377,6 +382,7 @@ class CreditEvaluationService:
                     decision="grant",
                     reasoning="No suspicious correlations found — clean user",
                     confidence=1.0,
+                    signals=signals,
                 )
                 self._log_evaluation(email, grant_type, evaluation, signals)
                 return evaluation
@@ -397,6 +403,7 @@ class CreditEvaluationService:
 
             response_text = self._call_gemini(prompt)
             evaluation = _parse_gemini_response(response_text)
+            evaluation.signals = signals
 
             self._log_evaluation(email, grant_type, evaluation, signals)
             logger.info(
@@ -407,14 +414,17 @@ class CreditEvaluationService:
 
         except Exception as e:
             logger.exception(f"Credit evaluation failed for {email} — pending manual review (fail-closed)")
+            # Include whatever signals were collected before the failure
+            collected_signals = locals().get("signals")
             evaluation = CreditEvaluation(
                 decision="pending_review",
                 reasoning="Evaluation failed — pending manual review",
                 confidence=0.0,
                 error=str(e),
+                signals=collected_signals,
             )
             try:
-                self._log_evaluation(email, grant_type, evaluation, {})
+                self._log_evaluation(email, grant_type, evaluation, collected_signals or {})
             except Exception:
                 pass
             return evaluation

@@ -427,7 +427,9 @@ class UserService:
                     try:
                         from backend.services.email_service import get_email_service
                         email_service = get_email_service()
-                        email_service.send_credit_review_needed_email(email, "welcome", evaluation.reasoning)
+                        email_service.send_credit_review_needed_email(
+                            email, "welcome", evaluation.reasoning, signals=evaluation.signals,
+                        )
                     except Exception:
                         logger.exception(f"Failed to send review needed email for {email}")
                     return False, "pending_review"
@@ -436,7 +438,9 @@ class UserService:
                 try:
                     from backend.services.email_service import get_email_service
                     email_service = get_email_service()
-                    email_service.send_credit_review_needed_email(email, "welcome", f"Evaluation error: {email}")
+                    email_service.send_credit_review_needed_email(
+                        email, "welcome", f"Evaluation error: {email}",
+                    )
                 except Exception:
                     pass
                 return False, "pending_review"
