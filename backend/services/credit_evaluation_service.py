@@ -297,7 +297,7 @@ class CreditEvaluationService:
         client = genai.Client(
             vertexai=True,
             project=self.settings.google_cloud_project,
-            location=self.settings.gcp_region,
+            location="global",
         )
         response = client.models.generate_content(
             model=self.settings.credit_eval_model,
