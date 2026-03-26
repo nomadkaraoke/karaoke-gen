@@ -56,17 +56,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
-# Install optimized static FFmpeg build (7.0.2) instead of Ubuntu package
-# John Van Sickle's builds are compiled with better optimizations for x86_64
-# This provides ~20-40% performance improvement for encoding tasks
-# Source: https://johnvansickle.com/ffmpeg/
-RUN curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz && \
-    tar -xf /tmp/ffmpeg.tar.xz -C /tmp && \
-    cp /tmp/ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ && \
-    cp /tmp/ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ && \
-    chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe && \
-    rm -rf /tmp/ffmpeg* && \
-    ffmpeg -version
+# Install FFmpeg from Ubuntu package
+# The audio worker only uses FFmpeg for format conversion and padding, not
+# encoding-intensive tasks, so the Debian package is sufficient. The static
+# build from johnvansickle.com is used for the encoding worker instead.
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Set Python 3.11 as default and install pip
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
