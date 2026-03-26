@@ -383,14 +383,13 @@ class WorkerService:
         """
         Trigger audio separation worker.
 
-        Always uses Cloud Run Jobs to avoid instance termination during long-running
-        Modal API calls. The BackgroundTasks approach caused Cloud Run to terminate
-        instances mid-processing when no HTTP requests were active.
+        Uses Cloud Run Jobs with L4 GPU in us-east4 for direct audio separation.
         """
         return await self._trigger_worker_cloud_run_job(
             job_id=job_id,
             cloud_run_job_name="audio-separation-job",
             worker_module="audio_worker",
+            location="us-east4",  # GPU job runs in us-east4 (L4 quota)
         )
 
     async def trigger_lyrics_worker(self, job_id: str) -> bool:
@@ -448,6 +447,7 @@ class WorkerService:
         job_id: str,
         cloud_run_job_name: str,
         worker_module: str,
+        location: str | None = None,
     ) -> bool:
         """
         Trigger a worker as a Cloud Run Job.
@@ -460,6 +460,7 @@ class WorkerService:
             job_id: Job ID to process
             cloud_run_job_name: Name of the Cloud Run Job (e.g., "lyrics-transcription-job")
             worker_module: Worker module name (e.g., "lyrics_worker")
+            location: GCP region for the job (defaults to settings.gcp_region)
 
         Returns:
             True if job was triggered successfully, False otherwise
@@ -472,7 +473,7 @@ class WorkerService:
                 logger.error("GOOGLE_CLOUD_PROJECT not set, cannot trigger Cloud Run Job")
                 return False
 
-            location = self.settings.gcp_region
+            location = location or self.settings.gcp_region
             job_name = f"projects/{project}/locations/{location}/jobs/{cloud_run_job_name}"
 
             # Create Cloud Run Jobs client
