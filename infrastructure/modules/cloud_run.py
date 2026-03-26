@@ -187,6 +187,7 @@ def create_audio_separation_job(
         "audio-separation-job",
         name="audio-separation-job",
         location=AUDIO_WORKER_GPU_REGION,
+        deletion_protection=False,  # Allow Pulumi to replace (region change requires delete+create)
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
@@ -249,6 +250,7 @@ def create_audio_separation_job(
                 node_selector=cloudrunv2.JobTemplateTemplateNodeSelectorArgs(
                     accelerator="nvidia-l4",
                 ),
+                gpu_zonal_redundancy_disabled=True,  # Required for GPU Jobs (capacity limitation)
                 service_account=service_account.email,
                 timeout="1800s",  # 30 minutes (local GPU is faster than remote API)
                 max_retries=2,
