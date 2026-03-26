@@ -127,7 +127,9 @@ RUN python /tmp/download_models.py /models && \
 # Label with build info
 ARG BUILD_DATE
 ARG BUILD_ID
+ARG BASE_CONTENT_HASH
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.revision="${BUILD_ID}"
 LABEL org.opencontainers.image.title="karaoke-backend-gpu-base"
 LABEL org.opencontainers.image.description="GPU base image with CUDA, PyTorch, audio-separator, and pre-downloaded models for karaoke-backend audio worker"
+LABEL base.content.hash="${BASE_CONTENT_HASH}"

@@ -959,6 +959,11 @@ jobs:
       REPOSITORY: karaoke-repo
       BASE_IMAGE_NAME: karaoke-backend-base
       APP_IMAGE_NAME: karaoke-backend
+      # GPU image for audio worker (L4 in us-east4)
+      GPU_REGISTRY: us-east4-docker.pkg.dev
+      GPU_REPOSITORY: karaoke-backend-gpu
+      GPU_BASE_IMAGE_NAME: karaoke-backend-gpu-base
+      GPU_APP_IMAGE_NAME: karaoke-backend
     steps:
       - name: Check disk space (aggressive for Docker builds)
         run: |
@@ -1319,7 +1324,9 @@ jobs:
             --zone=us-central1-c --project=nomadkaraoke || true
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+        run: |
+          gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+          gcloud auth configure-docker ${{ env.GPU_REGISTRY }} --quiet
 
       # ============================================
       # Docker Build with BuildKit + Registry Cache
@@ -1439,6 +1446,86 @@ jobs:
           provenance: false
 
       # ============================================
+      # GPU Image Build (for audio worker with L4 GPU)
+      # Same pattern as base image: hash check → rebuild if needed
+      # GPU image lives in us-east4 (co-located with GPU instances)
+      # ============================================
+
+      - name: Calculate GPU base image hash
+        id: gpu-base-hash
+        run: |
+          # Hash Dockerfile.gpu-base + pyproject.toml (deps that affect GPU image)
+          CURRENT_HASH=$(cat backend/Dockerfile.gpu-base pyproject.toml | sha256sum | cut -d' ' -f1)
+          echo "hash=$CURRENT_HASH" >> $GITHUB_OUTPUT
+          echo "📋 GPU base content hash: $CURRENT_HASH"
+
+      - name: Check if GPU base image exists and is current
+        id: check-gpu-base
+        run: |
+          GPU_BASE_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest"
+          EXISTING_HASH=""
+
+          MANIFEST=$(docker manifest inspect $GPU_BASE_IMAGE 2>/dev/null || echo "")
+          CONFIG_DIGEST=$(echo "$MANIFEST" | jq -r '.config.digest // ""' 2>/dev/null || echo "")
+
+          if [ -n "$CONFIG_DIGEST" ] && [ "$CONFIG_DIGEST" != "null" ] && [ "$CONFIG_DIGEST" != "" ]; then
+            echo "📋 Found GPU manifest, config digest: $CONFIG_DIGEST"
+            TOKEN=$(gcloud auth print-access-token)
+            CONFIG_JSON=$(curl -sL -H "Authorization: Bearer $TOKEN" \
+              "https://${{ env.GPU_REGISTRY }}/v2/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}/blobs/$CONFIG_DIGEST" 2>/dev/null)
+            EXISTING_HASH=$(echo "$CONFIG_JSON" | jq -r '.config.Labels["base.content.hash"] // ""' 2>/dev/null || echo "")
+            echo "📋 Registry GPU base image hash: $EXISTING_HASH"
+          else
+            echo "⚠️ No existing GPU base image found in registry - will build"
+          fi
+
+          if [ "${{ steps.gpu-base-hash.outputs.hash }}" != "$EXISTING_HASH" ]; then
+            echo "🔄 GPU base image needs rebuild (Dockerfile.gpu-base or pyproject.toml changed)"
+            echo "   Current: ${{ steps.gpu-base-hash.outputs.hash }}"
+            echo "   Registry: $EXISTING_HASH"
+            echo "needs_rebuild=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ GPU base image is up to date"
+            echo "needs_rebuild=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push GPU base image (if needed)
+        if: steps.check-gpu-base.outputs.needs_rebuild == 'true'
+        timeout-minutes: 45
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.gpu-base
+          push: true
+          tags: |
+            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
+            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,ignore-error=true
+          cache-to: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,mode=max,ignore-error=true
+          build-args: |
+            BUILD_DATE=${{ github.run_id }}
+            BUILD_ID=${{ github.sha }}
+            BASE_CONTENT_HASH=${{ steps.gpu-base-hash.outputs.hash }}
+          provenance: false
+
+      - name: Build and push GPU app image
+        timeout-minutes: 10
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:latest
+            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:v${{ steps.version_check.outputs.version }}
+          build-args: |
+            BASE_IMAGE=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
+          cache-from: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:cache,ignore-error=true
+          cache-to: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:cache,mode=max,ignore-error=true
+          provenance: false
+
+      # ============================================
       # Deploy to Cloud Run
       # ============================================
 
@@ -1473,13 +1560,21 @@ jobs:
       - name: Update Cloud Run Jobs with new image
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:${{ github.sha }}"
+          GPU_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:${{ github.sha }}"
 
-          echo "📦 Updating Cloud Run Jobs to image: $IMAGE"
+          echo "📦 Updating Cloud Run Jobs..."
 
-          # Video encoding job - runs video worker to completion, immune to service deployments
+          # Video encoding job (CPU, us-central1)
           gcloud run jobs update video-encoding-job \
             --image "$IMAGE" \
             --region us-central1 \
+            --project ${{ env.PROJECT_ID }} \
+            --quiet
+
+          # Audio separation job (GPU, us-east4) — uses GPU image
+          gcloud run jobs update audio-separation-job \
+            --image "$GPU_IMAGE" \
+            --region us-east4 \
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
