@@ -746,6 +746,91 @@ class TestExtendAnchorsIntoSingleWordGaps:
         assert result[0].anchor.length == 2
         assert result[1].anchor.length == 2
 
+    def test_gap_at_end_of_transcription_skipped(self, finder):
+        """Gap position at or beyond all_words length does not crash (IndexError regression)."""
+        # Last anchor ends at position 4 (len=2, start=3), gap_position = 5
+        # But all_words only has 6 items (indices 0-5), and next_anchor starts at 6
+        # which means gap_position = 5 is valid, but test the exact boundary
+        anchor1 = create_scored_anchor(
+            words=["hello", "world", "foo"],
+            transcription_position=0,
+            reference_positions={"src1": 0},
+        )
+        anchor2 = create_scored_anchor(
+            words=["bar", "baz"],
+            transcription_position=4,  # gap_position = 3, within bounds
+            reference_positions={"src1": 4},
+        )
+        # Anchor that would create an out-of-bounds gap
+        anchor3 = create_scored_anchor(
+            words=["end"],
+            transcription_position=7,  # gap_position = 6, but all_words has 7 items (0-6)
+            reference_positions={"src1": 7},
+        )
+
+        all_words = [
+            create_word("w0", "hello", 0),
+            create_word("w1", "world", 1),
+            create_word("w2", "foo", 2),
+            create_word("w3", "gap1", 3),
+            create_word("w4", "bar", 4),
+            create_word("w5", "baz", 5),
+            # gap at position 6 would be out of bounds if all_words only has 6 items
+            # but we have 7 items, so let's test with exactly 7 to make gap_position = 6 valid
+            create_word("w6", "gap2", 6),
+        ]
+
+        ref_texts_clean = {"src1": ["hello", "world", "foo", "gap1", "bar", "baz", "gap2", "end"]}
+        ref_words = {"src1": [create_word(f"r{i}", w, i) for i, w in
+                     enumerate(["hello", "world", "foo", "gap1", "bar", "baz", "gap2", "end"])]}
+
+        # Should not raise IndexError
+        result = finder._extend_anchors_into_single_word_gaps(
+            filtered_scored=[anchor1, anchor2, anchor3],
+            all_words=all_words,
+            ref_texts_clean=ref_texts_clean,
+            ref_words=ref_words,
+        )
+        assert len(result) == 3
+
+    def test_gap_beyond_all_words_length_skipped(self, finder):
+        """When gap_position >= len(all_words), the gap is safely skipped."""
+        # anchor1 ends at position 3, anchor2 starts at 4, gap at 3
+        # But all_words only has 3 items — gap_position is out of bounds
+        anchor1 = create_scored_anchor(
+            words=["hello", "world", "test"],
+            transcription_position=0,
+            reference_positions={"src1": 0},
+        )
+        anchor2 = create_scored_anchor(
+            words=["more"],
+            transcription_position=4,  # gap_position = 3 = len(all_words)
+            reference_positions={"src1": 4},
+        )
+
+        all_words = [
+            create_word("w0", "hello", 0),
+            create_word("w1", "world", 1),
+            create_word("w2", "test", 2),
+            # No word at position 3 — gap_position is out of bounds
+        ]
+
+        ref_texts_clean = {"src1": ["hello", "world", "test", "gap", "more"]}
+        ref_words = {"src1": [create_word(f"r{i}", w, i) for i, w in
+                     enumerate(["hello", "world", "test", "gap", "more"])]}
+
+        # Should not raise IndexError — gap is skipped
+        result = finder._extend_anchors_into_single_word_gaps(
+            filtered_scored=[anchor1, anchor2],
+            all_words=all_words,
+            ref_texts_clean=ref_texts_clean,
+            ref_words=ref_words,
+        )
+
+        # Both anchors unchanged — gap was skipped
+        assert result[0].anchor.length == 3
+        assert result[1].anchor.length == 1
+
     def test_prefers_longer_anchor_when_both_valid(self, finder):
         """When both directions valid, extends the longer anchor."""
         # Longer anchor1 (3 words) vs shorter anchor2 (2 words)
