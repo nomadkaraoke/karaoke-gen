@@ -8,6 +8,9 @@ Key insights for future AI agents working on this codebase.
 
 ## UX Patterns
 
+### Don't Conflate "No Results" with "Not Yet Searched" (Mar 2026)
+When a search component initializes `results = []`, any rendering condition like `results.length === 0 && !error` will match both "search returned empty" and "haven't searched yet" (or "search failed silently"). Use an explicit state machine with phases (`searching | succeeded | failed`) so that "no results" UI only appears after a confirmed successful search. This prevents misleading users when the real problem was a timeout, network error, or silent exception.
+
 ### Fixture-Driven UI Verification
 For UI that renders differently based on data (e.g., audio search result tiers), fetch real production data as fixtures and build a Playwright review tool. The `npm run fixtures:review-ui` pattern (41 fixtures, console-based `next()` advancement) was far more effective than manual testing or screenshots — caught edge cases with non-Latin filenames, single-character filenames, and underscore-separated names that unit tests alone would have missed.
 
