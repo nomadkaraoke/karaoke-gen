@@ -549,7 +549,7 @@ export function AudioSourceStep({
       )}
 
       {/* No results */}
-      {!isSearching && results.length === 0 && !error && (
+      {searchStatus.phase === 'succeeded' && results.length === 0 && (
         <NoResultsSection />
       )}
 
