@@ -39,7 +39,6 @@ type PendingChoice =
   | { type: "file"; file: File }
 
 type SearchStatus =
-  | { phase: 'idle' }
   | { phase: 'searching'; attempt: number }
   | { phase: 'succeeded' }
   | { phase: 'failed'; reason: string; isCreditError: boolean; attempt: number }
@@ -280,31 +279,9 @@ export function AudioSourceStep({
     setShowOtherOptions(false)
     searchTriggered.current = false
     fuzzyTriggered.current = false
-    // doSearch will re-fire via the useEffect since searchTriggered is reset
-    // But artist/title are props — they update on next render, so we need to
-    // let the parent re-render us with new props first. Use a microtask.
-    Promise.resolve().then(() => {
-      searchTriggered.current = true
-      api.searchStandalone(chosen.artist_name, chosen.track_name)
-        .then((response) => {
-          onSearchCompleted(response.search_session_id)
-          setResults(response.results as ExtendedAudioSearchResult[])
-          setSearchStatus({ phase: 'succeeded' })
-        })
-        .catch((err) => {
-          const reason = err instanceof ApiError
-            ? err.message
-            : "Search failed. Please try again."
-          setSearchStatus({ phase: 'failed', reason, isCreditError: false, attempt: 1 })
-        })
-      // Also re-run catalog + community check with corrected name
-      api.searchCatalogTracks(chosen.track_name, chosen.artist_name, 5)
-        .then((tracks) => setCatalogResults(tracks))
-        .catch(() => {})
-      api.checkCommunityVersions(chosen.artist_name, chosen.track_name)
-        .then((data) => setCommunityData(data))
-        .catch(() => {})
-    })
+    // doSearch (and catalog/community searches) will re-fire via the useEffect
+    // when the parent re-renders us with corrected artist/title props, since
+    // searchTriggered.current is reset and doSearch is recreated with new props.
   }
 
   function handleSelect(index: number) {
@@ -352,6 +329,11 @@ export function AudioSourceStep({
       onFileReady(pendingChoice.file)
     }
   }
+
+  const handleRetry = useCallback(() => {
+    searchTriggered.current = false
+    doSearch()
+  }, [doSearch])
 
   const isLossyBest = confidence.bestCategory === 'YOUTUBE'
 
@@ -486,7 +468,7 @@ export function AudioSourceStep({
           )}
           {!isCreditError && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-              <button onClick={() => { searchTriggered.current = false; doSearch() }} className="font-medium underline" style={{ color: 'var(--brand-pink)' }}>Retry</button>
+              <button onClick={handleRetry} className="font-medium underline" style={{ color: 'var(--brand-pink)' }}>Retry</button>
               <span className="text-xs text-muted-foreground">
                 Still not working? <a href="mailto:andrew@nomadkaraoke.com" className="underline hover:text-foreground">Email andrew@nomadkaraoke.com</a>
               </span>
