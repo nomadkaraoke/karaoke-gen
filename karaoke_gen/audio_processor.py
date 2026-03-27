@@ -306,18 +306,29 @@ class AudioProcessor:
                 self.logger.info(f"Stage 1 ensemble produced {len(output_files)} files: {output_files}")
 
                 # Find vocals and instrumental from ensemble output
-                # Output filenames follow: {base}_(Vocals)_preset_{name}.flac
-                # Check instrumental/no_vocal first to avoid substring false match
+                # Output filenames follow: {base}_(StemTag)_preset_{name}.flac
+                # where StemTag is "Vocals", "Instrumental", or "No Vocal"
+                # Must match the stem tag specifically, not the preset name
+                # (e.g., preset "instrumental_clean" contains "instrumental")
                 for f in output_files:
                     basename = os.path.basename(f).lower()
-                    if "no_vocal" in basename or "instrumental" in basename:
+                    # Extract stem tag: text between _( and )_ in the filename
+                    stem_tag = ""
+                    tag_start = basename.rfind("_(")
+                    tag_end = basename.find(")_", tag_start) if tag_start >= 0 else -1
+                    if tag_start >= 0 and tag_end >= 0:
+                        stem_tag = basename[tag_start + 2:tag_end]
+
+                    if stem_tag in ("no vocal", "instrumental", "no_vocal"):
                         # Move instrumental to track_output_dir per convention
                         final_path = os.path.join(track_output_dir, os.path.basename(f))
                         if f != final_path:
                             shutil.move(f, final_path)
                         result["clean_instrumental"]["instrumental"] = final_path
-                    elif "vocal" in basename:
+                    elif stem_tag in ("vocals", "vocal"):
                         result["clean_instrumental"]["vocals"] = f
+                    else:
+                        self.logger.warning(f"Stage 1: Unrecognized stem tag '{stem_tag}' in {basename}")
             else:
                 # Legacy mode — individual model calls (existing code)
                 separator = Separator(
@@ -354,10 +365,19 @@ class AudioProcessor:
                     result["backing_vocals"][bv_key] = {}
                     for f in bv_output_files:
                         basename = os.path.basename(f).lower()
-                        if "instrumental" in basename or "backing" in basename or "no_vocal" in basename:
+                        # Extract stem tag: text between _( and )_ in the filename
+                        stem_tag = ""
+                        tag_start = basename.rfind("_(")
+                        tag_end = basename.find(")_", tag_start) if tag_start >= 0 else -1
+                        if tag_start >= 0 and tag_end >= 0:
+                            stem_tag = basename[tag_start + 2:tag_end]
+
+                        if stem_tag in ("no vocal", "instrumental", "no_vocal", "backing"):
                             result["backing_vocals"][bv_key]["backing_vocals"] = f
-                        elif "vocal" in basename:
+                        elif stem_tag in ("vocals", "vocal"):
                             result["backing_vocals"][bv_key]["lead_vocals"] = f
+                        else:
+                            self.logger.warning(f"Stage 2: Unrecognized stem tag '{stem_tag}' in {basename}")
                 else:
                     # Legacy: individual model calls (existing code)
                     result["backing_vocals"] = self._separate_backing_vocals(

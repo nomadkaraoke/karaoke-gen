@@ -204,11 +204,17 @@ class TestLocalSeparationWithPresets:
         self.processor.karaoke_preset = None
         self.processor.backing_vocals_models = []
 
+        # Use realistic ensemble preset filenames
+        stems_dir = "/tmp/stems"
         mock_sep = MagicMock()
-        mock_sep.separate.return_value = ["/tmp/stems/vocals.flac", "/tmp/stems/instrumental.flac"]
+        mock_sep.separate.return_value = [
+            f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac",
+            f"{stems_dir}/Song_(Instrumental)_preset_instrumental_clean.flac",
+        ]
         mock_separator_cls.return_value = mock_sep
+        mock_shutil.move.side_effect = lambda src, dst: dst
 
-        with patch.object(self.processor, '_create_stems_directory', return_value="/tmp/stems"):
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
             with patch.object(self.processor, '_normalize_audio_files'):
                 with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
                     self.processor.process_audio_separation(
@@ -227,11 +233,23 @@ class TestLocalSeparationWithPresets:
         """Stage 2 uses karaoke_preset on a fresh Separator for BV separation."""
         os.environ.pop("AUDIO_SEPARATOR_API_URL", None)
 
-        mock_sep = MagicMock()
-        mock_sep.separate.return_value = ["/tmp/stems/vocals.flac", "/tmp/stems/instrumental.flac"]
-        mock_separator_cls.return_value = mock_sep
+        stems_dir = "/tmp/stems"
 
-        with patch.object(self.processor, '_create_stems_directory', return_value="/tmp/stems"):
+        # Stage 1 output
+        s1_vocals = f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac"
+        s1_instrumental = f"{stems_dir}/Song_(Instrumental)_preset_instrumental_clean.flac"
+        # Stage 2 output
+        s2_lead = f"{stems_dir}/Song_(Vocals)_preset_karaoke.flac"
+        s2_backing = f"{stems_dir}/Song_(No Vocal)_preset_karaoke.flac"
+
+        mock_sep1 = MagicMock()
+        mock_sep1.separate.return_value = [s1_vocals, s1_instrumental]
+        mock_sep2 = MagicMock()
+        mock_sep2.separate.return_value = [s2_lead, s2_backing]
+        mock_separator_cls.side_effect = [mock_sep1, mock_sep2]
+        mock_shutil.move.side_effect = lambda src, dst: dst
+
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
             with patch.object(self.processor, '_normalize_audio_files'):
                 with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
                     self.processor.process_audio_separation(
@@ -242,3 +260,190 @@ class TestLocalSeparationWithPresets:
         assert mock_separator_cls.call_count == 2
         stage2_kwargs = mock_separator_cls.call_args_list[1][1]
         assert stage2_kwargs.get("ensemble_preset") == "karaoke"
+
+
+class TestEnsembleStemTagParsing:
+    """Tests for stem tag extraction from ensemble preset output filenames.
+
+    Ensemble presets produce files named: {base}_(StemTag)_preset_{name}.flac
+    The parser must identify the StemTag (between _( and )_) and NOT be confused
+    by the preset name (e.g., "instrumental_clean" contains "instrumental").
+    """
+
+    def setup_method(self):
+        self.processor = AudioProcessor(
+            logger=logging.getLogger("test"),
+            log_level=logging.DEBUG,
+            log_formatter=None,
+            model_file_dir="/models",
+            lossless_output_format="FLAC",
+            clean_instrumental_model="model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+            backing_vocals_models=["mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"],
+            other_stems_models=[],
+            ffmpeg_base_command="ffmpeg",
+        )
+        self.processor.instrumental_preset = "instrumental_clean"
+        self.processor.karaoke_preset = "karaoke"
+
+    @patch.dict(os.environ, {}, clear=False)
+    @patch("karaoke_gen.audio_processor.shutil")
+    @patch("karaoke_gen.audio_processor.Separator")
+    def test_stage1_instrumental_clean_preset_classifies_vocals_correctly(
+        self, mock_separator_cls, mock_shutil
+    ):
+        """Regression: preset name 'instrumental_clean' must not cause Vocals file
+        to be classified as instrumental (the old substring match bug)."""
+        os.environ.pop("AUDIO_SEPARATOR_API_URL", None)
+
+        # Disable stage 2 to isolate stage 1
+        self.processor.karaoke_preset = None
+        self.processor.backing_vocals_models = []
+
+        # Realistic filenames from instrumental_clean ensemble preset
+        stems_dir = "/tmp/stems"
+        vocals_file = f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac"
+        instrumental_file = f"{stems_dir}/Song_(Instrumental)_preset_instrumental_clean.flac"
+
+        mock_sep = MagicMock()
+        mock_sep.separate.return_value = [vocals_file, instrumental_file]
+        mock_separator_cls.return_value = mock_sep
+
+        # shutil.move returns the destination path
+        mock_shutil.move.side_effect = lambda src, dst: dst
+
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
+            with patch.object(self.processor, '_normalize_audio_files'):
+                with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
+                    result = self.processor.process_audio_separation(
+                        "/tmp/test.wav", "Artist - Song", "/tmp/output"
+                    )
+
+        # Vocals must be set (this is what the bug prevented)
+        assert result["clean_instrumental"]["vocals"] == vocals_file
+        # Instrumental must also be set
+        assert result["clean_instrumental"]["instrumental"] is not None
+
+    @patch.dict(os.environ, {}, clear=False)
+    @patch("karaoke_gen.audio_processor.shutil")
+    @patch("karaoke_gen.audio_processor.Separator")
+    def test_stage1_vocals_path_enables_stage2(self, mock_separator_cls, mock_shutil):
+        """When Stage 1 correctly identifies vocals, Stage 2 runs and produces
+        backing vocals + lead vocals stems."""
+        os.environ.pop("AUDIO_SEPARATOR_API_URL", None)
+
+        stems_dir = "/tmp/stems"
+
+        # Stage 1 output (instrumental_clean preset)
+        s1_vocals = f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac"
+        s1_instrumental = f"{stems_dir}/Song_(Instrumental)_preset_instrumental_clean.flac"
+
+        # Stage 2 output (karaoke preset)
+        s2_lead = f"{stems_dir}/Song_(Vocals)_preset_karaoke.flac"
+        s2_backing = f"{stems_dir}/Song_(No Vocal)_preset_karaoke.flac"
+
+        mock_sep1 = MagicMock()
+        mock_sep1.separate.return_value = [s1_vocals, s1_instrumental]
+        mock_sep2 = MagicMock()
+        mock_sep2.separate.return_value = [s2_lead, s2_backing]
+        mock_separator_cls.side_effect = [mock_sep1, mock_sep2]
+
+        mock_shutil.move.side_effect = lambda src, dst: dst
+
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
+            with patch.object(self.processor, '_normalize_audio_files'):
+                with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
+                    result = self.processor.process_audio_separation(
+                        "/tmp/test.wav", "Artist - Song", "/tmp/output"
+                    )
+
+        # Stage 2 should have run (Separator instantiated twice)
+        assert mock_separator_cls.call_count == 2
+
+        # Backing vocals correctly classified
+        bv = result["backing_vocals"]["karaoke"]
+        assert bv["lead_vocals"] == s2_lead
+        assert bv["backing_vocals"] == s2_backing
+
+    @patch.dict(os.environ, {}, clear=False)
+    @patch("karaoke_gen.audio_processor.shutil")
+    @patch("karaoke_gen.audio_processor.Separator")
+    def test_stage1_no_vocal_tag_recognized(self, mock_separator_cls, mock_shutil):
+        """Files with '(No Vocal)' stem tag are correctly classified as instrumental."""
+        os.environ.pop("AUDIO_SEPARATOR_API_URL", None)
+        self.processor.karaoke_preset = None
+        self.processor.backing_vocals_models = []
+
+        stems_dir = "/tmp/stems"
+        vocals_file = f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac"
+        no_vocal_file = f"{stems_dir}/Song_(No Vocal)_preset_instrumental_clean.flac"
+
+        mock_sep = MagicMock()
+        mock_sep.separate.return_value = [vocals_file, no_vocal_file]
+        mock_separator_cls.return_value = mock_sep
+        mock_shutil.move.side_effect = lambda src, dst: dst
+
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
+            with patch.object(self.processor, '_normalize_audio_files'):
+                with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
+                    result = self.processor.process_audio_separation(
+                        "/tmp/test.wav", "Artist - Song", "/tmp/output"
+                    )
+
+        assert result["clean_instrumental"]["vocals"] == vocals_file
+        assert result["clean_instrumental"]["instrumental"] is not None
+
+    @patch.dict(os.environ, {}, clear=False)
+    @patch("karaoke_gen.audio_processor.shutil")
+    @patch("karaoke_gen.audio_processor.Separator")
+    def test_unrecognized_stem_tag_logs_warning(self, mock_separator_cls, mock_shutil):
+        """Files with unrecognized stem tags produce a warning log."""
+        os.environ.pop("AUDIO_SEPARATOR_API_URL", None)
+        self.processor.karaoke_preset = None
+        self.processor.backing_vocals_models = []
+
+        stems_dir = "/tmp/stems"
+        weird_file = f"{stems_dir}/Song_(Drums)_preset_instrumental_clean.flac"
+
+        mock_sep = MagicMock()
+        mock_sep.separate.return_value = [weird_file]
+        mock_separator_cls.return_value = mock_sep
+
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
+            with patch.object(self.processor, '_normalize_audio_files'):
+                with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
+                    with patch.object(self.processor.logger, 'warning') as mock_warn:
+                        result = self.processor.process_audio_separation(
+                            "/tmp/test.wav", "Artist - Song", "/tmp/output"
+                        )
+
+        mock_warn.assert_called_once()
+        assert "drums" in mock_warn.call_args[0][0].lower()
+
+    @patch.dict(os.environ, {}, clear=False)
+    @patch("karaoke_gen.audio_processor.shutil")
+    @patch("karaoke_gen.audio_processor.Separator")
+    def test_filename_without_stem_tag_pattern_logs_warning(self, mock_separator_cls, mock_shutil):
+        """Files missing the _(Tag)_ pattern produce a warning."""
+        os.environ.pop("AUDIO_SEPARATOR_API_URL", None)
+        self.processor.karaoke_preset = None
+        self.processor.backing_vocals_models = []
+
+        stems_dir = "/tmp/stems"
+        plain_file = f"{stems_dir}/vocals.flac"
+
+        mock_sep = MagicMock()
+        mock_sep.separate.return_value = [plain_file]
+        mock_separator_cls.return_value = mock_sep
+
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
+            with patch.object(self.processor, '_normalize_audio_files'):
+                with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
+                    with patch.object(self.processor.logger, 'warning') as mock_warn:
+                        result = self.processor.process_audio_separation(
+                            "/tmp/test.wav", "Artist - Song", "/tmp/output"
+                        )
+
+        mock_warn.assert_called_once()
+        # Should not have classified anything
+        assert result["clean_instrumental"].get("vocals") is None
+        assert result["clean_instrumental"].get("instrumental") is None
