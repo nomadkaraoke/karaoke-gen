@@ -1019,3 +1019,11 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 
 **Key insight:** For abuse prevention, static lists give you a floor but not a ceiling. Real-time API verification services maintain much larger and more current databases. The tiered approach (free service first, paid service only for edge cases) keeps costs minimal while dramatically improving detection. In our test of 60 recent signups, the free DeBounce API caught 6 disposable accounts and verifymail.io caught 4 more that DeBounce missed.
 
+### Lyrics Upload Race Condition: Admin Edits During Processing (Mar 2026)
+
+**Problem:** When an admin updated a job's artist name while the lyrics worker was running, `upload_lyrics_results` reconstructed filenames from the updated Firestore values (`job.artist`, `job.title`), which no longer matched the files on disk generated with the original values. This caused "No corrections JSON found" errors even though the files existed.
+
+**Fix:** Scan the lyrics directory for files by suffix pattern (e.g., `*(Lyrics Corrections).json`, `*(Lyrics Genius).txt`) instead of reconstructing filenames from Firestore job metadata. This decouples the upload from the current state of mutable job fields.
+
+**Key insight:** Long-running workers should avoid re-reading mutable metadata to reconstruct local file paths. If a file was created earlier in the same pipeline, find it by pattern rather than reconstructing its name from state that may have changed. This is a variant of TOCTOU — the "check" (reading artist/title) and "use" (looking for the file) happen at different times, and the underlying data can change between them.
+
