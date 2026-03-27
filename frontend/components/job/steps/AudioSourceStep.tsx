@@ -478,13 +478,15 @@ export function AudioSourceStep({
       )}
 
       {/* Loading state */}
-      {isSearching && (
+      {searchStatus.phase === 'searching' && (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-pink)' }} />
           <div className="text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>Searching for audio sources...</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              This usually takes 15-30 seconds
+              {searchStatus.attempt > 1
+                ? `Retry ${searchStatus.attempt - 1} of ${MAX_SEARCH_ATTEMPTS - 1} — this usually takes 15-30 seconds`
+                : 'This usually takes 15-30 seconds'}
             </p>
           </div>
         </div>
