@@ -187,15 +187,26 @@ describe("AudioSourceStep", () => {
   })
 
   it("shows error message when search fails with ApiError", async () => {
-    mockApi.searchStandalone.mockRejectedValue(
-      new ApiError("Internal server error", 500)
-    )
+    jest.useFakeTimers()
+    try {
+      mockApi.searchStandalone.mockRejectedValue(
+        new ApiError("Internal server error", 500)
+      )
 
-    render(<AudioSourceStep {...defaultProps} />)
+      render(<AudioSourceStep {...defaultProps} />)
 
-    await waitFor(() => {
-      expect(screen.getByText("Internal server error")).toBeInTheDocument()
-    })
+      // 500 errors are retried up to 3 times with delays (0, 2s, 4s).
+      // Advance timers and flush microtasks between each retry.
+      for (let i = 0; i < 5; i++) {
+        await act(async () => { jest.advanceTimersByTime(5000) })
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText("Internal server error")).toBeInTheDocument()
+      })
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it("shows credit error with Buy Credits link on 402", async () => {
