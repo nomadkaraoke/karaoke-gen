@@ -556,7 +556,7 @@ export function AudioSourceStep({
       )}
 
       {/* Fallback section for Tier 1/2 and no-results — at the bottom */}
-      {!isSearching && (confidence.tier !== 3 || results.length === 0) && (
+      {searchStatus.phase !== 'searching' && (confidence.tier !== 3 || results.length === 0) && (
         <FallbackSection
           tier={confidence.tier}
           hasResults={results.length > 0}
