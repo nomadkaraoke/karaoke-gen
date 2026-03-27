@@ -349,6 +349,18 @@ class AudioProcessor:
             if vocals_path and has_backing_config:
                 if karaoke_preset:
                     self.logger.info(f"Stage 2: Using ensemble preset '{karaoke_preset}'")
+
+                    # Rename vocals file to strip Stage 1 stem tags before passing
+                    # to Stage 2. The ensemble code uses regex to find the FIRST
+                    # _(Tag)_ in intermediate filenames to classify stems. If the
+                    # input already has _(Vocals)_preset_instrumental_clean in its
+                    # name, the regex matches that instead of the Stage 2 tag,
+                    # causing all stems to be classified as "Vocals".
+                    clean_vocals_name = f"{artist_title} (Vocals).{self.lossless_output_format.lower()}"
+                    clean_vocals_path = os.path.join(stems_dir, clean_vocals_name)
+                    shutil.copy2(vocals_path, clean_vocals_path)
+                    self.logger.info(f"Stage 2: Renamed vocals input to avoid stem tag collision: {os.path.basename(clean_vocals_path)}")
+
                     bv_separator = Separator(
                         log_level=self.log_level,
                         log_formatter=self.log_formatter,
@@ -358,7 +370,7 @@ class AudioProcessor:
                         ensemble_preset=karaoke_preset,
                     )
                     bv_separator.load_model()
-                    bv_output_files = bv_separator.separate(vocals_path)
+                    bv_output_files = bv_separator.separate(clean_vocals_path)
                     self.logger.info(f"Stage 2 ensemble produced {len(bv_output_files)} files: {bv_output_files}")
 
                     bv_key = karaoke_preset

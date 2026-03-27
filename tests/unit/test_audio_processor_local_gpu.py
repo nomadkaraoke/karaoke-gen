@@ -238,9 +238,9 @@ class TestLocalSeparationWithPresets:
         # Stage 1 output
         s1_vocals = f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac"
         s1_instrumental = f"{stems_dir}/Song_(Instrumental)_preset_instrumental_clean.flac"
-        # Stage 2 output
-        s2_lead = f"{stems_dir}/Song_(Vocals)_preset_karaoke.flac"
-        s2_backing = f"{stems_dir}/Song_(No Vocal)_preset_karaoke.flac"
+        # Stage 2 output (uses clean-named input)
+        s2_lead = f"{stems_dir}/Artist - Title (Vocals)_(Vocals)_preset_karaoke.flac"
+        s2_backing = f"{stems_dir}/Artist - Title (Vocals)_(No Vocal)_preset_karaoke.flac"
 
         mock_sep1 = MagicMock()
         mock_sep1.separate.return_value = [s1_vocals, s1_instrumental]
@@ -248,6 +248,7 @@ class TestLocalSeparationWithPresets:
         mock_sep2.separate.return_value = [s2_lead, s2_backing]
         mock_separator_cls.side_effect = [mock_sep1, mock_sep2]
         mock_shutil.move.side_effect = lambda src, dst: dst
+        mock_shutil.copy2 = MagicMock()
 
         with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
             with patch.object(self.processor, '_normalize_audio_files'):
@@ -337,9 +338,10 @@ class TestEnsembleStemTagParsing:
         s1_vocals = f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac"
         s1_instrumental = f"{stems_dir}/Song_(Instrumental)_preset_instrumental_clean.flac"
 
-        # Stage 2 output (karaoke preset)
-        s2_lead = f"{stems_dir}/Song_(Vocals)_preset_karaoke.flac"
-        s2_backing = f"{stems_dir}/Song_(No Vocal)_preset_karaoke.flac"
+        # Stage 2 output uses the RENAMED clean input, so filenames don't have
+        # nested stem tags (this is the fix for the regex collision bug)
+        s2_lead = f"{stems_dir}/Artist - Song (Vocals)_(Vocals)_preset_karaoke.flac"
+        s2_backing = f"{stems_dir}/Artist - Song (Vocals)_(No Vocal)_preset_karaoke.flac"
 
         mock_sep1 = MagicMock()
         mock_sep1.separate.return_value = [s1_vocals, s1_instrumental]
@@ -348,6 +350,7 @@ class TestEnsembleStemTagParsing:
         mock_separator_cls.side_effect = [mock_sep1, mock_sep2]
 
         mock_shutil.move.side_effect = lambda src, dst: dst
+        mock_shutil.copy2 = MagicMock()  # For the vocals rename
 
         with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
             with patch.object(self.processor, '_normalize_audio_files'):
@@ -358,6 +361,16 @@ class TestEnsembleStemTagParsing:
 
         # Stage 2 should have run (Separator instantiated twice)
         assert mock_separator_cls.call_count == 2
+
+        # Vocals file should have been copied to a clean name for Stage 2
+        mock_shutil.copy2.assert_called_once()
+        copy_dest = mock_shutil.copy2.call_args[0][1]
+        assert "_(Vocals)_preset_instrumental_clean" not in copy_dest
+        assert "Artist - Song (Vocals).flac" in copy_dest
+
+        # Stage 2 separator should receive the clean-named file
+        stage2_input = mock_sep2.separate.call_args[0][0]
+        assert "_(Vocals)_preset_instrumental_clean" not in stage2_input
 
         # Backing vocals correctly classified
         bv = result["backing_vocals"]["karaoke"]
