@@ -1134,6 +1134,10 @@ class AnchorSequenceFinder:
 
             gap_position = current_end
 
+            # Bounds check: gap_position must be a valid index into all_words
+            if gap_position >= len(all_words):
+                continue
+
             # Skip if this gap was already absorbed by a previous extension
             if gap_position in absorbed_gaps:
                 continue
