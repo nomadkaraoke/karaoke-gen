@@ -281,6 +281,28 @@ class TestLyricsWorker:
             )
     
     @pytest.mark.asyncio
+    async def test_upload_lyrics_results_raises_when_no_corrections(self, mock_job_manager, mock_storage, mock_job):
+        """Test that upload_lyrics_results raises when no corrections file exists at all."""
+        from backend.workers.lyrics_worker import upload_lyrics_results
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            lyrics_dir = os.path.join(temp_dir, "lyrics")
+            os.makedirs(lyrics_dir)
+
+            lrc_path = os.path.join(lyrics_dir, "test.lrc")
+            with open(lrc_path, 'w') as f:
+                f.write("[00:00.00]Test\n")
+
+            # No corrections file at all
+            transcription_result = {"lrc_filepath": lrc_path}
+
+            with pytest.raises(Exception, match="No corrections JSON found"):
+                await upload_lyrics_results(
+                    "test123", temp_dir, transcription_result,
+                    mock_storage, mock_job_manager
+                )
+
+    @pytest.mark.asyncio
     async def test_upload_lyrics_results_finds_reference_and_uncorrected_by_scan(self, mock_job_manager, mock_storage, mock_job):
         """Test that upload_lyrics_results finds reference and uncorrected files by scanning.
 
