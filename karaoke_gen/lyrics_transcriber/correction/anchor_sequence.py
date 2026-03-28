@@ -1468,7 +1468,9 @@ class AnchorSequenceFinder:
             ref_start = anchor.reference_positions[source]
             ref_end = ref_start + len(word_ids)
 
-            if source in ref_words and ref_end < len(ref_words[source]):
+            # Bounds check: ref_end must be within ref_words (which may be shorter
+            # than ref_texts_clean due to clean_text() normalizing word boundaries)
+            if source in ref_words and 0 <= ref_end < len(ref_words[source]):
                 new_ref_word = ref_words[source][ref_end]
                 new_reference_word_ids[source] = list(word_ids) + [new_ref_word.id]
             else:
@@ -1523,7 +1525,9 @@ class AnchorSequenceFinder:
             ref_start = anchor.reference_positions[source]
             new_ref_start = ref_start - 1
 
-            if source in ref_words and new_ref_start >= 0:
+            # Bounds check: new_ref_start must be within ref_words (which may be shorter
+            # than ref_texts_clean due to clean_text() normalizing word boundaries)
+            if source in ref_words and 0 <= new_ref_start < len(ref_words[source]):
                 new_ref_word = ref_words[source][new_ref_start]
                 new_reference_word_ids[source] = [new_ref_word.id] + list(word_ids)
                 new_reference_positions[source] = new_ref_start
