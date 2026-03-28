@@ -28,6 +28,7 @@ Three patterns from investigating production job failures where errors cascaded 
 1. **Validate every stage's outputs, not just some** — stage 1 of audio separation had validation for expected stems, stage 2 didn't. The missing validation let a transient Modal API failure propagate through 3 more functions before crashing with a confusing NoneType error.
 2. **Block impossible downstream work early** — AudioShake returning 0 lyrics segments was treated as "success", letting the user submit an empty review that only failed at CDG generation. Validate at the boundary: if transcription returns 0 segments, fail with a user-friendly error, not 4 steps later.
 3. **File handles in retry loops** — when wrapping HTTP calls with retry (e.g. tenacity), ensure file handles are re-opened on each attempt. A `with open()` wrapping a retried `requests.post(files=...)` exhausts the file handle on the first attempt; subsequent retries send empty data.
+4. **Text normalization changes word counts** — `clean_text()` (strip punctuation, normalize whitespace) then `split()` can produce a different word count than the original Word objects list. In anchor sequence correction, `ref_texts_clean` had 599 words for Spotify but `ref_words` only had 528 Word objects. Anchor positions computed against the cleaned list were used to index the Word list, causing IndexError. Always bounds-check when indexing a different data structure than the one used to compute positions.
 
 ---
 
