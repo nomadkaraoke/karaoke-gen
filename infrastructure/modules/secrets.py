@@ -57,6 +57,9 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
 
         # KaraokeNerds API
         "karaokenerds-api-key",
+
+        # Notifications (Discord)
+        "discord-alert-webhook",
     ]
 
     secrets = {}
