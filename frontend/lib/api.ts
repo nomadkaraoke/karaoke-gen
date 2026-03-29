@@ -4,7 +4,7 @@
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse } from './types';
-import type { CorrectionData, CorrectionAnnotation, EditLog } from './lyrics-review/types';
+import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -2732,6 +2732,7 @@ export interface LyricsReviewApiClient {
   submitEditLog: (editLog: EditLog) => Promise<void>
   updateHandlers: (handlers: string[]) => Promise<CorrectionData>
   addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
+  searchLyrics: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
   generatePreviewVideo: (data: CorrectionData) => Promise<{
     status: string
@@ -2837,6 +2838,25 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       // Backend returns { status: "success", data: CorrectionData }
       const result = await handleResponse<{ status: string; data: CorrectionData }>(response)
       return result.data
+    },
+
+    /**
+     * Search for lyrics from configured providers
+     */
+    async searchLyrics(artist: string, title: string, forceSources: string[] = []): Promise<SearchLyricsResponse> {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/search-lyrics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          artist,
+          title,
+          force_sources: forceSources,
+        }),
+      })
+      return handleResponse<SearchLyricsResponse>(response)
     },
 
     /**

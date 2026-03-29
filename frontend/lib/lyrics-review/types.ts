@@ -392,6 +392,23 @@ export interface ReferenceViewProps extends BaseViewProps {
   onAddLyrics?: () => void
 }
 
+export interface RejectedSource {
+  relevance: number
+  matched_words: number
+  total_words: number
+  track_name: string
+  artist_names: string
+}
+
+export interface SearchLyricsResponse {
+  status: 'success' | 'no_results'
+  data?: CorrectionData
+  message?: string
+  sources_added: string[]
+  sources_rejected: Record<string, RejectedSource>
+  sources_not_found: string[]
+}
+
 export interface HighlightedTextProps extends BaseViewProps {
   text?: string
   segments?: LyricsSegment[]
