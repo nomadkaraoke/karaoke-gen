@@ -1037,3 +1037,13 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 
 **Key insight:** Long-running workers should avoid re-reading mutable metadata to reconstruct local file paths. If a file was created earlier in the same pipeline, find it by pattern rather than reconstructing its name from state that may have changed. This is a variant of TOCTOU — the "check" (reading artist/title) and "use" (looking for the file) happen at different times, and the underlying data can change between them.
 
+### Cloud Scheduler OIDC Tokens ≠ Admin Tokens (Mar 2026)
+
+**Problem:** All 4 Cloud Scheduler → backend jobs (stale review processor, stuck job recovery, YouTube queue, disposable domain sync) were silently returning 401 since deployment. The auth system only validated admin tokens, Firestore tokens, and session tokens — it had no OIDC JWT validation. Cloud Scheduler sends a Google-signed OIDC JWT in the `Authorization: Bearer` header, which the auth service didn't recognize.
+
+**Root cause:** A plan document incorrectly stated "The existing `require_admin` dependency handles OIDC via the Authorization header flow, so this works without changes." This was never verified, and the 401s went unnoticed because scheduler endpoints run in the background with no user-visible feedback.
+
+**Fix:** Added OIDC token validation to `validate_token_full()` using `google.oauth2.id_token.verify_oauth2_token()`. Verifies the token is Google-signed and the `email` claim matches the configured backend service account.
+
+**Key insight:** Background cron jobs need monitoring for auth failures — a 401 from a scheduler is silent by default. When adding new Cloud Scheduler endpoints, verify the auth flow end-to-end (check Cloud Logging for 200s after deployment). Don't assume OIDC "just works" with custom auth middleware — Cloud Tasks uses `X-Admin-Token` (custom header) for a reason, while Cloud Scheduler only sends OIDC.
+
