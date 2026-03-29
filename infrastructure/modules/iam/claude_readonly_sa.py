@@ -75,3 +75,43 @@ def grant_impersonation_permission(
             "user:admin@nomadkaraoke.com",
         ],
     )
+
+
+def create_deny_policies(
+    break_glass_sa: serviceaccount.Account,
+) -> dict:
+    """Create IAM deny policies to prevent catastrophic deletes.
+
+    The break-glass SA is excepted from all deny policies.
+    Uses project NUMBER (not ID) for principal URIs as required by IAM v2.
+    """
+    from config import get_project_number
+
+    policies = {}
+    project_number = get_project_number()
+
+    # Deny destructive operations project-wide
+    policies["deny_destructive_ops"] = gcp.iam.DenyPolicy(
+        "deny-destructive-operations",
+        parent=f"cloudresourcemanager.googleapis.com/projects/{PROJECT_ID}",
+        name="deny-destructive-operations",
+        rules=[
+            gcp.iam.DenyPolicyRuleArgs(
+                deny_rule=gcp.iam.DenyPolicyRuleDenyRuleArgs(
+                    denied_principals=["principalSet://goog/public:all"],
+                    denied_permissions=[
+                        "firestore.googleapis.com/databases.delete",
+                        "storage.googleapis.com/buckets.delete",
+                        "bigquery.googleapis.com/datasets.delete",
+                    ],
+                    exception_principals=[
+                        break_glass_sa.email.apply(
+                            lambda email: f"principal://iam.googleapis.com/projects/{project_number}/serviceAccounts/{email}"
+                        ),
+                    ],
+                ),
+            ),
+        ],
+    )
+
+    return policies

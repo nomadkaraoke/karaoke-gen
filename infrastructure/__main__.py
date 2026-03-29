@@ -132,6 +132,9 @@ claude_readonly_impersonation = claude_readonly_sa.grant_impersonation_permissio
 # Break-glass service account (excepted from deny policies)
 break_glass_service_account = claude_readonly_sa.create_break_glass_service_account()
 
+# IAM deny policies (prevent catastrophic deletes for all principals)
+deny_policies = claude_readonly_sa.create_deny_policies(break_glass_service_account)
+
 # Worker service accounts (VMs)
 encoding_worker_sa = worker_sas.create_encoding_worker_service_account()
 encoding_worker_iam_bindings = worker_sas.grant_encoding_worker_permissions(
