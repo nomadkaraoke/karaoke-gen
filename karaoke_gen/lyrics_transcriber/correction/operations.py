@@ -14,13 +14,14 @@ These operations handle dynamic updates to correction results including:
 import json
 import hashlib
 import logging
+import os
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from karaoke_gen.lyrics_transcriber.types import (
-    CorrectionResult, 
-    WordCorrection, 
-    LyricsSegment, 
+    CorrectionResult,
+    WordCorrection,
+    LyricsSegment,
     Word,
     TranscriptionResult,
     TranscriptionData,
@@ -28,8 +29,74 @@ from karaoke_gen.lyrics_transcriber.types import (
 )
 from karaoke_gen.lyrics_transcriber.correction.corrector import LyricsCorrector
 from karaoke_gen.lyrics_transcriber.lyrics.user_input_provider import UserInputProvider
+from karaoke_gen.lyrics_transcriber.lyrics.base_lyrics_provider import LyricsProviderConfig, BaseLyricsProvider
 from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
 from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
+
+
+def create_lyrics_providers(
+    cache_dir: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
+) -> List[BaseLyricsProvider]:
+    """
+    Create lyrics providers based on available environment variables.
+
+    Reads API keys from environment and returns a list of providers that are
+    configured and ready to use. Providers with missing required credentials
+    are silently skipped.
+
+    Args:
+        cache_dir: Optional cache directory for provider caching.
+        logger: Optional logger instance.
+
+    Returns:
+        List of configured BaseLyricsProvider instances.
+    """
+    if not logger:
+        logger = logging.getLogger(__name__)
+
+    # Import provider classes here to keep them mockable in tests
+    from karaoke_gen.lyrics_transcriber.lyrics.genius import GeniusProvider
+    from karaoke_gen.lyrics_transcriber.lyrics.spotify import SpotifyProvider
+    from karaoke_gen.lyrics_transcriber.lyrics.musixmatch import MusixmatchProvider
+    from karaoke_gen.lyrics_transcriber.lyrics.lrclib import LRCLIBProvider
+
+    genius_api_token = os.environ.get("GENIUS_API_KEY")
+    rapidapi_key = os.environ.get("RAPIDAPI_KEY")
+    spotify_cookie = os.environ.get("SPOTIFY_COOKIE_SP_DC")
+
+    config = LyricsProviderConfig(
+        genius_api_token=genius_api_token,
+        rapidapi_key=rapidapi_key,
+        spotify_cookie=spotify_cookie,
+        cache_dir=cache_dir,
+    )
+
+    providers: List[BaseLyricsProvider] = []
+
+    if genius_api_token or rapidapi_key:
+        providers.append(GeniusProvider(config=config, logger=logger))
+        logger.info("GeniusProvider configured")
+    else:
+        logger.info("Skipping GeniusProvider: no GENIUS_API_KEY or RAPIDAPI_KEY")
+
+    if spotify_cookie or rapidapi_key:
+        providers.append(SpotifyProvider(config=config, logger=logger))
+        logger.info("SpotifyProvider configured")
+    else:
+        logger.info("Skipping SpotifyProvider: no SPOTIFY_COOKIE_SP_DC or RAPIDAPI_KEY")
+
+    if rapidapi_key:
+        providers.append(MusixmatchProvider(config=config, logger=logger))
+        logger.info("MusixmatchProvider configured")
+    else:
+        logger.info("Skipping MusixmatchProvider: no RAPIDAPI_KEY")
+
+    # LRCLIB needs no API key
+    providers.append(LRCLIBProvider(config=config, logger=logger))
+    logger.info("LRCLIBProvider configured")
+
+    return providers
 
 
 class CorrectionOperations:
@@ -104,21 +171,24 @@ class CorrectionOperations:
         source: str,
         lyrics_text: str,
         cache_dir: str,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
+        force: bool = False,
     ) -> CorrectionResult:
         """
         Add a new lyrics source and rerun correction.
-        
+
         Args:
             correction_result: Current correction result
             source: Name of the new lyrics source
             lyrics_text: The lyrics text content
             cache_dir: Cache directory for correction operations
             logger: Optional logger instance
-            
+            force: If True and the source is rejected by the relevance filter, re-add
+                   it to reference_lyrics anyway so it is preserved in the result.
+
         Returns:
             Updated CorrectionResult with new lyrics source and corrections
-            
+
         Raises:
             ValueError: If source name is already in use or inputs are invalid
         """
@@ -194,10 +264,167 @@ class CorrectionOperations:
         # Restore audio hash
         if audio_hash:
             updated_result.metadata["audio_hash"] = audio_hash
-            
+
+        # If force=True and the source was rejected by the relevance filter, put it back
+        # so the frontend can see it and the user's intent is respected.
+        if force:
+            rejected_sources = updated_result.metadata.get("rejected_sources", {})
+            if source in rejected_sources:
+                logger.info(
+                    f"force=True: re-adding rejected source '{source}' to reference_lyrics"
+                )
+                updated_result.reference_lyrics[source] = lyrics_data
+
         logger.info(f"Successfully added lyrics source '{source}' and updated corrections")
         return updated_result
-    
+
+    @staticmethod
+    def search_lyrics_sources(
+        correction_result: CorrectionResult,
+        artist: str,
+        title: str,
+        cache_dir: str,
+        force_sources: Optional[List[str]] = None,
+        logger: Optional[logging.Logger] = None,
+    ) -> Dict[str, Any]:
+        """
+        Search for lyrics from all configured providers and run correction.
+
+        Fetches lyrics from Genius, Spotify, Musixmatch, and LRCLIB using the
+        supplied artist/title, then runs them through the correction pipeline
+        (which includes the relevance filter from Task 2).
+
+        Args:
+            correction_result: Current correction result (provides transcription data).
+            artist: Artist name to search for.
+            title: Song title to search for.
+            cache_dir: Cache directory for providers and correction operations.
+            force_sources: Optional list of provider names whose results should bypass
+                           the relevance filter and be included regardless of score.
+            logger: Optional logger instance.
+
+        Returns:
+            Dict with keys:
+                - ``updated_result``: Updated CorrectionResult (or None if nothing passed).
+                - ``sources_added``: List of source names that passed the filter.
+                - ``sources_rejected``: Dict mapping rejected source names to relevance info.
+                - ``sources_not_found``: List of provider names that returned no lyrics.
+        """
+        if not logger:
+            logger = logging.getLogger(__name__)
+
+        force_sources = force_sources or []
+
+        logger.info(f"Searching lyrics for artist='{artist}' title='{title}'")
+
+        # Store existing audio hash
+        audio_hash = correction_result.metadata.get("audio_hash") if correction_result.metadata else None
+
+        # Create and query all configured providers
+        providers = create_lyrics_providers(cache_dir=cache_dir, logger=logger)
+
+        new_lyrics: Dict[str, LyricsData] = {}
+        sources_not_found: List[str] = []
+
+        for provider in providers:
+            provider_name = provider.get_name()
+            # Skip providers whose source name is already in the existing reference_lyrics
+            if provider_name in correction_result.reference_lyrics:
+                logger.info(f"Skipping provider '{provider_name}': already present in reference_lyrics")
+                continue
+            try:
+                lyrics_data = provider.fetch_lyrics(artist, title)
+                if lyrics_data:
+                    new_lyrics[provider_name] = lyrics_data
+                    logger.info(f"Provider '{provider_name}' returned lyrics")
+                else:
+                    sources_not_found.append(provider_name)
+                    logger.info(f"Provider '{provider_name}' found no lyrics")
+            except Exception as e:
+                logger.warning(f"Provider '{provider_name}' raised an error: {e}")
+                sources_not_found.append(provider_name)
+
+        if not new_lyrics:
+            logger.info("No new lyrics found from any provider")
+            return {
+                "updated_result": None,
+                "sources_added": [],
+                "sources_rejected": {},
+                "sources_not_found": sources_not_found,
+            }
+
+        # Combine new lyrics with existing reference_lyrics
+        combined_lyrics = correction_result.reference_lyrics.copy()
+        combined_lyrics.update(new_lyrics)
+
+        # Create TranscriptionData from original segments
+        transcription_data = TranscriptionData(
+            segments=correction_result.original_segments,
+            words=[word for segment in correction_result.original_segments for word in segment.words],
+            text="\n".join(segment.text for segment in correction_result.original_segments),
+            source="original",
+        )
+
+        # Get currently enabled handlers from metadata
+        enabled_handlers = None
+        if correction_result.metadata:
+            enabled_handlers = correction_result.metadata.get("enabled_handlers")
+
+        # Run correction (relevance filter is automatic inside corrector.run)
+        logger.info(f"Running correction with {len(combined_lyrics)} combined reference sources")
+        corrector = LyricsCorrector(
+            cache_dir=cache_dir,
+            enabled_handlers=enabled_handlers,
+            logger=logger,
+        )
+
+        updated_result = corrector.run(
+            transcription_results=[TranscriptionResult(name="original", priority=1, result=transcription_data)],
+            lyrics_results=combined_lyrics,
+            metadata=correction_result.metadata,
+        )
+
+        # Update metadata with handler state
+        if not updated_result.metadata:
+            updated_result.metadata = {}
+        updated_result.metadata.update({
+            "available_handlers": corrector.all_handlers,
+            "enabled_handlers": [getattr(handler, "name", handler.__class__.__name__) for handler in corrector.handlers],
+        })
+
+        # Restore audio hash
+        if audio_hash:
+            updated_result.metadata["audio_hash"] = audio_hash
+
+        # Determine which of the *new* sources were accepted vs rejected
+        rejected_sources_meta = updated_result.metadata.get("rejected_sources", {})
+
+        sources_added = [name for name in new_lyrics if name not in rejected_sources_meta]
+        sources_rejected = {name: info for name, info in rejected_sources_meta.items() if name in new_lyrics}
+
+        # Re-add force_sources that were rejected
+        for source_name in force_sources:
+            if source_name in sources_rejected and source_name in new_lyrics:
+                logger.info(
+                    f"force_sources: re-adding rejected source '{source_name}' to reference_lyrics"
+                )
+                updated_result.reference_lyrics[source_name] = new_lyrics[source_name]
+                sources_added.append(source_name)
+                del sources_rejected[source_name]
+
+        logger.info(
+            f"Search complete: added={sources_added}, "
+            f"rejected={list(sources_rejected.keys())}, "
+            f"not_found={sources_not_found}"
+        )
+
+        return {
+            "updated_result": updated_result,
+            "sources_added": sources_added,
+            "sources_rejected": sources_rejected,
+            "sources_not_found": sources_not_found,
+        }
+
     @staticmethod
     def update_correction_handlers(
         correction_result: CorrectionResult,
