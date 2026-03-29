@@ -373,9 +373,38 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.screenshot({ path: 'test-results/02c-app-after-signup.png' });
         console.log('STEP 2-3 COMPLETE: Magic link signup and auth successful');
 
-        // Verify credits are visible
+        // Verify credits — if 0 (credit eval denied), grant via admin API
         const creditText = await page.getByText(/credit/i).first().textContent();
         console.log(`  Credits visible: ${creditText}`);
+
+        if (creditText?.includes('0 credit')) {
+          const adminToken = process.env.E2E_ADMIN_TOKEN;
+          if (adminToken && inbox?.emailAddress) {
+            console.log('  User has 0 credits — granting via admin API...');
+            const grantResponse = await fetch(`${API_URL}/api/admin/credits`, {
+              method: 'POST',
+              headers: {
+                'X-Admin-Token': adminToken,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: inbox.emailAddress,
+                amount: 1,
+                reason: 'e2e_test_grant',
+              }),
+            });
+            const grantResult = await grantResponse.json();
+            console.log(`  Credit grant result: ${JSON.stringify(grantResult)}`);
+
+            // Reload to pick up new credit balance
+            await page.reload();
+            await page.waitForURL(/\/app/, { timeout: 15000 });
+            const newCreditText = await page.getByText(/credit/i).first().textContent();
+            console.log(`  Credits after grant: ${newCreditText}`);
+          } else {
+            throw new Error('User has 0 credits and no E2E_ADMIN_TOKEN to grant them');
+          }
+        }
       }
 
       // =========================================================================
