@@ -46,9 +46,11 @@ def compute_source_relevance(
             artist_names=lyrics_data.metadata.artist_names or "",
         )
 
-    # Collect all reference word IDs for this source across all anchors
+    # Collect all reference word IDs for this source across all anchors.
+    # Handle both AnchorSequence and ScoredAnchor (which wraps AnchorSequence).
     all_ref_word_ids = set()
-    for anchor in anchor_sequences:
+    for anchor_or_scored in anchor_sequences:
+        anchor = getattr(anchor_or_scored, "anchor", anchor_or_scored)
         source_word_ids = anchor.reference_word_ids.get(source_name, [])
         all_ref_word_ids.update(source_word_ids)
 

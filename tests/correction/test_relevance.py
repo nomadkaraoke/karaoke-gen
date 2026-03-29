@@ -9,6 +9,8 @@ from karaoke_gen.lyrics_transcriber.types import (
     LyricsData,
     LyricsMetadata,
     LyricsSegment,
+    TranscriptionData,
+    TranscriptionResult,
     Word,
 )
 
@@ -132,3 +134,83 @@ class TestFilterIrrelevantSources:
         filtered, rejected = filter_irrelevant_sources({}, [], min_relevance=0.5)
         assert filtered == {}
         assert rejected == {}
+
+
+class TestCorrectorRelevanceIntegration:
+    """Test that LyricsCorrector filters irrelevant sources."""
+
+    def test_corrector_removes_irrelevant_source(self, tmp_path):
+        """A source with 0% match should be excluded from the CorrectionResult."""
+        from karaoke_gen.lyrics_transcriber.correction.corrector import LyricsCorrector
+
+        # Transcription: "hello world foo bar"
+        trans_words = _make_words(["hello", "world", "foo", "bar"], "trans")
+        trans_segment = LyricsSegment(
+            id="trans_seg_0",
+            text="hello world foo bar",
+            words=trans_words,
+            start_time=0.0,
+            end_time=1.0,
+        )
+        transcription = TranscriptionData(
+            segments=[trans_segment],
+            words=trans_words,
+            text="hello world foo bar",
+            source="test",
+        )
+
+        # Good source: matching words
+        good_lyrics = _make_lyrics_data([["hello", "world", "foo", "bar"]], "good_source")
+        # Bad source: completely different words
+        bad_lyrics = _make_lyrics_data([["alpha", "beta", "gamma", "delta"]], "bad_source")
+
+        corrector = LyricsCorrector(cache_dir=str(tmp_path))
+        result = corrector.run(
+            transcription_results=[
+                TranscriptionResult(name="test", priority=1, result=transcription)
+            ],
+            lyrics_results={"good_source": good_lyrics, "bad_source": bad_lyrics},
+        )
+
+        # Good source should be in result, bad source should not
+        assert "good_source" in result.reference_lyrics
+        assert "bad_source" not in result.reference_lyrics
+
+        # Rejected sources should be logged in metadata
+        assert "rejected_sources" in result.metadata
+        assert "bad_source" in result.metadata["rejected_sources"]
+
+    def test_corrector_keeps_all_relevant_sources(self, tmp_path):
+        """Sources that match the transcription should all be kept."""
+        from karaoke_gen.lyrics_transcriber.correction.corrector import LyricsCorrector
+
+        trans_words = _make_words(["hello", "world", "foo", "bar"], "trans")
+        trans_segment = LyricsSegment(
+            id="trans_seg_0",
+            text="hello world foo bar",
+            words=trans_words,
+            start_time=0.0,
+            end_time=1.0,
+        )
+        transcription = TranscriptionData(
+            segments=[trans_segment],
+            words=trans_words,
+            text="hello world foo bar",
+            source="test",
+        )
+
+        # Both sources match the transcription
+        source_a = _make_lyrics_data([["hello", "world", "foo", "bar"]], "source_a")
+        source_b = _make_lyrics_data([["hello", "world", "foo", "bar"]], "source_b")
+
+        corrector = LyricsCorrector(cache_dir=str(tmp_path))
+        result = corrector.run(
+            transcription_results=[
+                TranscriptionResult(name="test", priority=1, result=transcription)
+            ],
+            lyrics_results={"source_a": source_a, "source_b": source_b},
+        )
+
+        assert "source_a" in result.reference_lyrics
+        assert "source_b" in result.reference_lyrics
+        assert "rejected_sources" not in result.metadata
