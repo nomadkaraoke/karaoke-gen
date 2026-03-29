@@ -122,6 +122,8 @@ export interface CorrectionData {
     audio_hash?: string
     available_handlers?: CorrectionHandler[]
     enabled_handlers?: string[]
+    artist?: string
+    title?: string
   }
   correction_steps: CorrectionStep[]
   word_id_map: Record<string, string>
@@ -390,6 +392,10 @@ export interface ReferenceViewProps extends BaseViewProps {
   corrected_segments: LyricsSegment[]
   corrections: WordCorrection[]
   onAddLyrics?: () => void
+  onAddLyricsInline?: (source: string, lyrics: string) => Promise<void>
+  onSearchLyrics?: (artist: string, title: string, forceSources: string[]) => Promise<SearchLyricsResponse>
+  defaultArtist?: string
+  defaultTitle?: string
 }
 
 export interface RejectedSource {
