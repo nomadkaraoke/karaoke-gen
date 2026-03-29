@@ -40,7 +40,7 @@ from modules import database, storage as storage_module, artifact_registry, secr
 from modules import cloud_tasks, cloud_run, monitoring, networking, runner_manager
 from modules import divebar_mirror, kn_data_sync, divebar_lookup
 from modules import audio_separator_service
-from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, worker_sas
+from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, claude_readonly_sa, worker_sas
 from compute import encoding_worker_vm, github_runners
 
 # ==================== Core Infrastructure ====================
@@ -119,6 +119,18 @@ claude_automation_iam_bindings = claude_automation_sa.grant_claude_automation_pe
 claude_impersonation = claude_automation_sa.grant_impersonation_permission(
     claude_automation_service_account
 )
+
+# Claude read-only service account (default for Claude Code sessions)
+claude_readonly_service_account = claude_readonly_sa.create_claude_readonly_service_account()
+claude_readonly_iam_bindings = claude_readonly_sa.grant_claude_readonly_permissions(
+    claude_readonly_service_account
+)
+claude_readonly_impersonation = claude_readonly_sa.grant_impersonation_permission(
+    claude_readonly_service_account
+)
+
+# Break-glass service account (excepted from deny policies)
+break_glass_service_account = claude_readonly_sa.create_break_glass_service_account()
 
 # Worker service accounts (VMs)
 encoding_worker_sa = worker_sas.create_encoding_worker_service_account()
@@ -469,6 +481,8 @@ pulumi.export("firestore_index_logs_worker_timestamp", db_resources["firestore_i
 pulumi.export("service_account_email", backend_service_account.email)
 pulumi.export("github_actions_service_account", github_actions_service_account.email)
 pulumi.export("claude_automation_service_account", claude_automation_service_account.email)
+pulumi.export("claude_readonly_service_account", claude_readonly_service_account.email)
+pulumi.export("break_glass_service_account", break_glass_service_account.email)
 
 # Artifact Registry
 pulumi.export("artifact_repo_url", artifact_registry.get_repo_url(artifact_repo))
