@@ -12,7 +12,7 @@ from karaoke_gen.lyrics_transcriber.types import AnchorSequence, LyricsData
 
 # Default threshold — determined by empirical analysis of production jobs.
 # See scripts/analyze_reference_relevance.py and the design spec for methodology.
-MIN_REFERENCE_RELEVANCE = 0.30  # Placeholder — will be updated after threshold analysis
+MIN_REFERENCE_RELEVANCE = 0.30  # Empirical: wrong-song max 3.5%, correct-song min 26.8%
 
 
 @dataclass

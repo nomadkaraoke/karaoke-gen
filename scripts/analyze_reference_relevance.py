@@ -35,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PROJECT = "nomadkaraoke"
-GCS_BUCKET = "karaoke-gen-outputs"
+GCS_BUCKET = "karaoke-gen-storage-nomadkaraoke"
 
 
 # ---------------------------------------------------------------------------
