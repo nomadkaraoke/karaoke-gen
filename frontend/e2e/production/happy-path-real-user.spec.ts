@@ -335,11 +335,29 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.goto(magicLinkUrl);
         console.log('  Navigated to magic link verification page');
 
-        // Wait for successful verification
-        await expect(
-          page.getByText(/successfully signed in/i)
-        ).toBeVisible({ timeout: 15000 });
-        console.log('  Successfully signed in via magic link');
+        // Wait for verification to complete — new users see a credit interstitial
+        // (credits_granted, credits_denied, or credits_pending), returning users
+        // see "Successfully signed in!". Handle all cases.
+        const verifyResult = await Promise.race([
+          page.getByText(/successfully signed in/i).waitFor({ state: 'visible', timeout: 30000 }).then(() => 'success'),
+          page.getByText(/welcome to nomad karaoke/i).waitFor({ state: 'visible', timeout: 30000 }).then(() => 'credits_interstitial'),
+          page.getByText(/sign-in failed/i).waitFor({ state: 'visible', timeout: 30000 }).then(() => 'error'),
+        ]);
+        console.log(`  Verification result: ${verifyResult}`);
+        await page.screenshot({ path: 'test-results/02b2-verify-result.png' });
+
+        if (verifyResult === 'error') {
+          const errorText = await page.locator('.text-muted-foreground').first().textContent();
+          throw new Error(`Magic link verification failed: ${errorText}`);
+        }
+
+        if (verifyResult === 'credits_interstitial') {
+          // Click through the credit interstitial to get to /app
+          const startButton = page.getByRole('button', { name: /start creating|go to dashboard|explore the app/i });
+          await expect(startButton).toBeVisible({ timeout: 5000 });
+          await startButton.click();
+          console.log('  Clicked through credit interstitial');
+        }
 
         // Wait for redirect to /app
         await page.waitForURL(/\/app/, { timeout: 15000 });
