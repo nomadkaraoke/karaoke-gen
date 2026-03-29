@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     
     # Authentication
     admin_tokens: Optional[str] = os.getenv("ADMIN_TOKENS")  # Comma-separated list
+    scheduler_service_account: str = os.getenv(
+        "SCHEDULER_SERVICE_ACCOUNT",
+        "karaoke-backend@nomadkaraoke.iam.gserviceaccount.com"
+    )
     
     # Application
     environment: str = os.getenv("ENVIRONMENT", "development")
