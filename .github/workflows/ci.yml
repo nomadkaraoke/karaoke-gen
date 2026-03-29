@@ -1571,6 +1571,13 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
+          # Lyrics transcription job (CPU, us-central1)
+          gcloud run jobs update lyrics-transcription-job \
+            --image "$IMAGE" \
+            --region us-central1 \
+            --project ${{ env.PROJECT_ID }} \
+            --quiet
+
           # Audio separation job (GPU, us-east4) — uses GPU image
           gcloud run jobs update audio-separation-job \
             --image "$GPU_IMAGE" \
