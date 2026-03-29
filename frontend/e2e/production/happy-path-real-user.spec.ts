@@ -381,7 +381,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
           const adminToken = process.env.E2E_ADMIN_TOKEN;
           if (adminToken && inbox?.emailAddress) {
             console.log('  User has 0 credits — granting via admin API...');
-            const grantResponse = await fetch(`${API_URL}/api/admin/credits`, {
+            const grantResponse = await fetch(`${API_URL}/api/users/admin/credits`, {
               method: 'POST',
               headers: {
                 'X-Admin-Token': adminToken,
