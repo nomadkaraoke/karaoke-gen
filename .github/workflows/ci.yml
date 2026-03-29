@@ -1454,8 +1454,10 @@ jobs:
       - name: Calculate GPU base image hash
         id: gpu-base-hash
         run: |
-          # Hash Dockerfile.gpu-base + pyproject.toml (deps that affect GPU image)
-          CURRENT_HASH=$(cat backend/Dockerfile.gpu-base pyproject.toml | sha256sum | cut -d' ' -f1)
+          # Hash Dockerfile.gpu-base + poetry.lock (resolved deps that affect GPU image)
+          # Using poetry.lock instead of pyproject.toml so that version-only bumps
+          # (which don't change dependencies) don't trigger expensive GPU base rebuilds
+          CURRENT_HASH=$(cat backend/Dockerfile.gpu-base poetry.lock | sha256sum | cut -d' ' -f1)
           echo "hash=$CURRENT_HASH" >> $GITHUB_OUTPUT
           echo "📋 GPU base content hash: $CURRENT_HASH"
 
