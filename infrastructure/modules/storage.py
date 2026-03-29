@@ -37,12 +37,21 @@ def create_bucket() -> storage.Bucket:
                 max_age_seconds=3600,
             ),
         ],
+        versioning=storage.BucketVersioningArgs(enabled=True),
+        soft_delete_policy=storage.BucketSoftDeletePolicyArgs(retention_duration_seconds=604800),
         lifecycle_rules=[
             storage.BucketLifecycleRuleArgs(
                 action=storage.BucketLifecycleRuleActionArgs(type="Delete"),
                 condition=storage.BucketLifecycleRuleConditionArgs(
                     age=7,
                     matches_prefixes=["temp/", "uploads/"]
+                ),
+            ),
+            storage.BucketLifecycleRuleArgs(
+                action=storage.BucketLifecycleRuleActionArgs(type="Delete"),
+                condition=storage.BucketLifecycleRuleConditionArgs(
+                    num_newer_versions=1,
+                    days_since_noncurrent_time=30,
                 ),
             ),
         ],

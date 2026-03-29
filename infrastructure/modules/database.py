@@ -29,6 +29,7 @@ def create_database() -> dict:
         type="FIRESTORE_NATIVE",
         concurrency_mode="PESSIMISTIC",
         app_engine_integration_mode="DISABLED",
+        point_in_time_recovery_enablement="POINT_IN_TIME_RECOVERY_ENABLED",
     )
     resources["firestore_db"] = firestore_db
 
