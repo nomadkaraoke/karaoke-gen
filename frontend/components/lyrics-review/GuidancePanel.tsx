@@ -171,7 +171,9 @@ export default function GuidancePanel({
         <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20">
           <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground flex-1 leading-relaxed space-y-1.5">
-            {totalGaps === 0 ? (
+            {totalGaps === 0 && Object.keys(data.reference_lyrics).length === 0 ? (
+              <p>No reference lyrics were found for this track. You can still review the transcription and click any word to edit. Use the <strong>Reference Lyrics</strong> panel on the right to search for lyrics with a different artist/title.</p>
+            ) : totalGaps === 0 ? (
               <p>All lyrics matched the reference — no corrections needed. You can still click any word to edit.</p>
             ) : (
               <>

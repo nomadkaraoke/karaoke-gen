@@ -152,12 +152,14 @@ def mock_anchor_finder():
     """Create a mock anchor finder that returns sample anchors and gaps."""
     finder = MagicMock()
 
-    # Return sample anchor sequences
+    # Return sample anchor sequences with reference_word_ids for relevance filtering
     finder.find_anchors.return_value = [
         AnchorSequence(
-            words=["Hello", "world"],
+            id="a1",
+            transcribed_word_ids=["w1", "w2"],
             transcription_position=0,
             reference_positions={"genius": 0, "spotify": 0},
+            reference_word_ids={"genius": ["gw1", "gw2"], "spotify": ["sw1", "sw2"]},
             confidence=1.0,
         ),
     ]
@@ -368,7 +370,7 @@ class TestCreateUncorrectedResult:
 
             result = controller.results.transcription_corrected
 
-            # Verify reference lyrics are included
-            assert result.reference_lyrics is sample_lyrics_results
+            # Verify reference lyrics that passed relevance filter are included
+            # (filtering creates a new dict, so we check contents not identity)
             assert "genius" in result.reference_lyrics
             assert "spotify" in result.reference_lyrics

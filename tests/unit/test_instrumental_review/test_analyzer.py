@@ -100,12 +100,12 @@ class TestAnalyzeAudibleAudio:
         # Should be mostly audible
         assert result.audible_percentage > 80.0
     
-    def test_loud_audio_recommends_review(self, loud_audio_path):
-        """Loud audio should recommend review."""
+    def test_loud_audio_recommends_with_backing(self, loud_audio_path):
+        """Loud audio should recommend with_backing."""
         analyzer = AudioAnalyzer()
         result = analyzer.analyze(loud_audio_path)
         
-        assert result.recommended_selection == RecommendedSelection.REVIEW_NEEDED
+        assert result.recommended_selection == RecommendedSelection.WITH_BACKING
 
 
 class TestSegmentDetection:
@@ -210,16 +210,16 @@ class TestRecommendationLogic:
         
         assert result.recommended_selection == RecommendedSelection.CLEAN
     
-    def test_high_percentage_recommends_review(self, loud_audio_path):
-        """High audible percentage (>20%) should recommend review."""
+    def test_high_percentage_recommends_with_backing(self, loud_audio_path):
+        """High audible percentage (>20%) should recommend with_backing."""
         analyzer = AudioAnalyzer()
         result = analyzer.analyze(loud_audio_path)
         
         assert result.audible_percentage > 20.0
-        assert result.recommended_selection == RecommendedSelection.REVIEW_NEEDED
+        assert result.recommended_selection == RecommendedSelection.WITH_BACKING
     
-    def test_loud_segments_recommend_review(self, temp_dir):
-        """Loud segments (>-20dB) should recommend review."""
+    def test_loud_segments_recommend_with_backing(self, temp_dir):
+        """Loud segments (>-20dB) should recommend with_backing."""
         # Create audio with a loud section
         silence = AudioSegment.silent(duration=5000, frame_rate=44100)
         loud_section = Sine(440).to_audio_segment(duration=500) - 5  # Very loud
@@ -232,7 +232,7 @@ class TestRecommendationLogic:
         result = analyzer.analyze(audio_path)
         
         # Even though percentage is low, loud segment should trigger review
-        assert result.recommended_selection == RecommendedSelection.REVIEW_NEEDED
+        assert result.recommended_selection == RecommendedSelection.WITH_BACKING
 
 
 class TestAmplitudeEnvelope:

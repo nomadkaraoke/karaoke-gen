@@ -178,11 +178,8 @@ async def generate_screens(job_id: str) -> bool:
                 # Apply countdown padding if needed
                 await _apply_countdown_padding_if_needed(job_id, job_manager, job)
 
-                # Analyze backing vocals for combined review
-                # This runs BEFORE review so user can select instrumental during lyrics review
-                with job_span("analyze-backing-vocals", job_id):
-                    job_log.info("Analyzing backing vocals for instrumental selection...")
-                    await _analyze_backing_vocals(job_id, job_manager, storage, job_log)
+                # Note: backing vocals analysis now runs in audio_worker after stems are uploaded,
+                # since screens_worker triggers on lyrics completion and audio may not be done yet.
 
                 # Transcode review audio to OGG Opus for fast browser playback
                 # This runs BEFORE review so all files are cached when the user opens the UI
@@ -642,7 +639,7 @@ async def _analyze_backing_vocals(
         job_manager.update_state_data(job_id, 'backing_vocals_analysis', {
             'has_audible_content': None,
             'analysis_error': str(e),
-            'recommended_selection': 'review_needed',
+            'recommended_selection': 'clean',
         })
 
 
