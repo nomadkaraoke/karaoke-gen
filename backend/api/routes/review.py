@@ -427,7 +427,8 @@ async def add_lyrics(
     
     source = data.get("source", "").strip()
     lyrics_text = data.get("lyrics", "").strip()
-    force: bool = bool(data.get("force", False))
+    raw_force = data.get("force", False)
+    force = raw_force if isinstance(raw_force, bool) else str(raw_force).lower() == "true"
 
     logger.info(f"Job {job_id}: Adding lyrics source '{source}' with {len(lyrics_text)} characters (force={force})")
     
@@ -602,6 +603,7 @@ async def search_lyrics(
                         return {
                             "status": "no_results",
                             "message": "No matching lyrics found from any provider",
+                            "sources_added": [],
                             "sources_rejected": sources_rejected,
                             "sources_not_found": sources_not_found,
                         }

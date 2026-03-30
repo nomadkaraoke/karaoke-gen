@@ -71,8 +71,9 @@ export default function SearchLyricsTab({
   }
 
   const rejectedEntries = searchResult
-    ? Object.entries(searchResult.sources_rejected)
+    ? Object.entries(searchResult.sources_rejected ?? {})
     : []
+  const notFoundSources = searchResult?.sources_not_found ?? []
 
   return (
     <div className="space-y-4">
@@ -117,9 +118,9 @@ export default function SearchLyricsTab({
             </AlertDescription>
           </Alert>
 
-          {searchResult.sources_not_found.length > 0 && (
+          {notFoundSources.length > 0 && (
             <p className="text-xs text-muted-foreground">
-              Not found: {searchResult.sources_not_found.join(', ')}
+              Not found: {notFoundSources.join(', ')}
             </p>
           )}
 
