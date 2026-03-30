@@ -538,6 +538,21 @@ def _prune_file_urls(data: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+def _search_filter_jobs(jobs: List[Dict[str, Any]], search: str) -> List[Dict[str, Any]]:
+    """Filter job dicts by case-insensitive substring match across key fields."""
+    if not search:
+        return jobs
+    term = search.lower()
+    results = []
+    for job in jobs:
+        searchable = " ".join(
+            str(job.get(f) or "") for f in ("job_id", "artist", "title", "audio_search_artist", "audio_search_title")
+        )
+        if term in searchable.lower():
+            results.append(job)
+    return results
+
+
 @router.get("", response_model=None)
 async def list_jobs(
     request: Request,
@@ -550,6 +565,7 @@ async def list_jobs(
     limit: int = 100,
     fields: Optional[str] = None,
     hide_completed: bool = False,
+    search: Optional[str] = None,
     auth_result: AuthResult = Depends(require_auth)
 ):
     """
@@ -568,6 +584,7 @@ async def list_jobs(
         limit: Maximum number of jobs to return (default 100)
         fields: Set to "summary" for reduced payload with only dashboard-required fields
         hide_completed: If True, exclude successful completions (complete, prep_complete). Failed jobs remain visible.
+        search: Text search filter - matches against artist, title, audio_search_artist, audio_search_title, and job_id (case-insensitive substring). Only works with fields=summary.
 
     Returns:
         List of jobs matching filters, ordered by created_at descending.
@@ -615,6 +632,8 @@ async def list_jobs(
         # --- Summary mode: field-projected query returning dicts ---
         if fields == "summary":
             exclude_statuses = _HIDE_COMPLETED_STATUSES if hide_completed else None
+            # When searching, fetch more results and filter in Python
+            fetch_limit = 1000 if search else limit
             jobs_dicts = job_manager.list_jobs_summary(
                 status=status,
                 exclude_statuses=exclude_statuses,
@@ -624,12 +643,17 @@ async def list_jobs(
                 created_before=created_before_dt,
                 user_email=user_email_filter,
                 tenant_id=effective_tenant_id,
-                limit=limit,
+                limit=fetch_limit,
             )
 
             # Exclude test user jobs (Python-side, same as full mode)
             if exclude_test and auth_result.is_admin:
                 jobs_dicts = [j for j in jobs_dicts if not is_test_email(j.get('user_email') or "")]
+
+            # Apply search filter if provided
+            if search:
+                jobs_dicts = _search_filter_jobs(jobs_dicts, search)
+                jobs_dicts = jobs_dicts[:limit]  # Apply original limit after filtering
 
             # Safety-net pruning (in case Firestore returned extra nested keys)
             jobs_dicts = [_prune_file_urls(_prune_state_data(j)) for j in jobs_dicts]

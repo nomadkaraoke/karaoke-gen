@@ -736,3 +736,86 @@ class TestContentDispositionHeader:
         decoded = unquote(utf8_part)
         assert decoded == "周杰倫 - 青花瓷.mp4"
 
+
+class TestSearchFiltering:
+    """Tests for the search parameter on list_jobs summary mode."""
+
+    def _make_job_dict(self, job_id="job1", artist="Queen", title="Bohemian Rhapsody",
+                       audio_search_artist=None, audio_search_title=None, status="complete"):
+        return {
+            "job_id": job_id,
+            "artist": artist,
+            "title": title,
+            "audio_search_artist": audio_search_artist,
+            "audio_search_title": audio_search_title,
+            "status": status,
+            "user_email": "admin@nomadkaraoke.com",
+        }
+
+    def test_search_filters_by_artist(self):
+        """Search 'queen' should match job with artist='Queen'."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1", artist="Queen", title="We Will Rock You"),
+            self._make_job_dict(job_id="j2", artist="Eagles", title="Hotel California"),
+        ]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 1
+        assert result[0]["job_id"] == "j1"
+
+    def test_search_filters_by_title(self):
+        """Search 'california' should match job with title containing it."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1", artist="Queen", title="We Will Rock You"),
+            self._make_job_dict(job_id="j2", artist="Eagles", title="Hotel California"),
+        ]
+        result = _search_filter_jobs(jobs, "california")
+        assert len(result) == 1
+        assert result[0]["job_id"] == "j2"
+
+    def test_search_filters_by_job_id(self):
+        """Search by partial job_id."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="abc-123-def"),
+            self._make_job_dict(job_id="xyz-789-ghi"),
+        ]
+        result = _search_filter_jobs(jobs, "abc-123")
+        assert len(result) == 1
+        assert result[0]["job_id"] == "abc-123-def"
+
+    def test_search_filters_by_audio_search_fields(self):
+        """Search should also check audio_search_artist and audio_search_title."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1", artist="Display Name", title="Display Title",
+                                audio_search_artist="Original Artist", audio_search_title="Original Song"),
+        ]
+        result = _search_filter_jobs(jobs, "original artist")
+        assert len(result) == 1
+
+    def test_search_is_case_insensitive(self):
+        """Search should be case-insensitive."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [self._make_job_dict(artist="QUEEN", title="Bohemian Rhapsody")]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 1
+
+    def test_search_handles_none_fields(self):
+        """Search should not crash on None artist/title fields."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [self._make_job_dict(artist=None, title=None)]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 0
+
+    def test_search_empty_string_returns_all(self):
+        """Empty search string should return all jobs."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1"),
+            self._make_job_dict(job_id="j2"),
+        ]
+        result = _search_filter_jobs(jobs, "")
+        assert len(result) == 2
+
