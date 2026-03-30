@@ -141,6 +141,7 @@ GET /api/jobs?status=complete
 GET /api/jobs?limit=10&offset=0
 GET /api/jobs?exclude_test=false
 GET /api/jobs?fields=summary&hide_completed=true
+GET /api/jobs?fields=summary&search=bohemian
 ```
 
 Query parameters:
@@ -149,6 +150,7 @@ Query parameters:
 - `limit` / `offset` - Pagination
 - `fields` (string, optional) - Set to `summary` to return only dashboard-required fields using Firestore field projection. Reduces payload from ~16MB to <500KB for large job lists.
 - `hide_completed` (bool, default: false) - Exclude successful completions (complete, prep_complete) server-side. Failed jobs remain visible.
+- `search` (string, optional) - Text search filter (summary mode only). Case-insensitive substring match against artist, title, audio_search_artist, audio_search_title, and job_id. When active, fetches up to 1000 results internally and filters in Python.
 
 #### Delete Job
 
