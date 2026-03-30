@@ -280,7 +280,8 @@ async def send_magic_link(
     # Pre-compute credit evaluation in background for new users.
     # By the time they check their email and click the link, the decision
     # will be ready and verification will be instant.
-    if existing_user is None:
+    # Skip for test emails — they get auto-granted without evaluation.
+    if existing_user is None and not is_test_email(email):
         thread = threading.Thread(
             target=_precompute_credit_eval,
             args=(magic_link.token, email),

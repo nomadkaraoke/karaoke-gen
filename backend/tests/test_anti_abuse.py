@@ -236,6 +236,30 @@ class TestGrantWelcomeCredits:
 
         assert granted is False
 
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_skips_evaluation_for_test_emails(self, mock_fs, mock_settings):
+        """grant_welcome_credits_if_eligible skips AI evaluation for @inbox.testmail.app emails."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        user = User(email="e2e.test@inbox.testmail.app", credits=0, credit_transactions=[])
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = user.model_dump(mode='json')
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        with patch('backend.services.credit_evaluation_service.get_credit_evaluation_service') as mock_eval:
+            granted, status = service.grant_welcome_credits_if_eligible("e2e.test@inbox.testmail.app")
+            # AI evaluation should NOT have been called
+            mock_eval.return_value.evaluate.assert_not_called()
+
+        assert granted is True
+        assert status == "granted"
+
 
 # =============================================================================
 # Phase 2: Per-IP Signup Rate Limiting
