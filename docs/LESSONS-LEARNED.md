@@ -28,6 +28,7 @@ Three patterns from investigating production job failures where errors cascaded 
 1. **Validate every stage's outputs, not just some** — stage 1 of audio separation had validation for expected stems, stage 2 didn't. The missing validation let a transient Modal API failure propagate through 3 more functions before crashing with a confusing NoneType error.
 2. **Block impossible downstream work early** — AudioShake returning 0 lyrics segments was treated as "success", letting the user submit an empty review that only failed at CDG generation. Validate at the boundary: if transcription returns 0 segments, fail with a user-friendly error, not 4 steps later.
 3. **File handles in retry loops** — when wrapping HTTP calls with retry (e.g. tenacity), ensure file handles are re-opened on each attempt. A `with open()` wrapping a retried `requests.post(files=...)` exhausts the file handle on the first attempt; subsequent retries send empty data.
+4. **Text normalization changes word counts** — `clean_text()` (strip punctuation, normalize whitespace) then `split()` can produce a different word count than the original Word objects list. In anchor sequence correction, `ref_texts_clean` had 599 words for Spotify but `ref_words` only had 528 Word objects. Anchor positions computed against the cleaned list were used to index the Word list, causing IndexError. Always bounds-check when indexing a different data structure than the one used to compute positions.
 
 ---
 
@@ -1043,4 +1044,14 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 **Solution:** Added relevance filtering in `LyricsCorrector` — after anchor sequences are found, compute `(reference words in anchors) / (total reference words)` per source. Sources below 30% are rejected. The threshold was determined empirically by analyzing 168 source pairs across 81 production jobs: wrong-song sources maxed at 3.5%, correct-song sources started at 26.8%.
 
 **Key insight:** Don't guess thresholds — measure them. A visual review tool showing side-by-side lyrics with match highlighting made it trivial to classify 168 pairs in minutes. The massive gap between wrong (0-3.5%) and correct (26.8%+) meant any threshold from 5-25% would work, but 30% provides safety margin. Always include a force-add override for edge cases where the transcription is bad (not the reference).
+
+### Cloud Scheduler OIDC Tokens ≠ Admin Tokens (Mar 2026)
+
+**Problem:** All 4 Cloud Scheduler → backend jobs (stale review processor, stuck job recovery, YouTube queue, disposable domain sync) were silently returning 401 since deployment. The auth system only validated admin tokens, Firestore tokens, and session tokens — it had no OIDC JWT validation. Cloud Scheduler sends a Google-signed OIDC JWT in the `Authorization: Bearer` header, which the auth service didn't recognize.
+
+**Root cause:** A plan document incorrectly stated "The existing `require_admin` dependency handles OIDC via the Authorization header flow, so this works without changes." This was never verified, and the 401s went unnoticed because scheduler endpoints run in the background with no user-visible feedback.
+
+**Fix:** Added OIDC token validation to `validate_token_full()` using `google.oauth2.id_token.verify_oauth2_token()`. Verifies the token is Google-signed and the `email` claim matches the configured backend service account.
+
+**Key insight:** Background cron jobs need monitoring for auth failures — a 401 from a scheduler is silent by default. When adding new Cloud Scheduler endpoints, verify the auth flow end-to-end (check Cloud Logging for 200s after deployment). Don't assume OIDC "just works" with custom auth middleware — Cloud Tasks uses `X-Admin-Token` (custom header) for a reason, while Cloud Scheduler only sends OIDC.
 

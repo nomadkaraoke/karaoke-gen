@@ -335,11 +335,29 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.goto(magicLinkUrl);
         console.log('  Navigated to magic link verification page');
 
-        // Wait for successful verification
-        await expect(
-          page.getByText(/successfully signed in/i)
-        ).toBeVisible({ timeout: 15000 });
-        console.log('  Successfully signed in via magic link');
+        // Wait for verification to complete — new users see a credit interstitial
+        // (credits_granted, credits_denied, or credits_pending), returning users
+        // see "Successfully signed in!". Handle all cases.
+        const verifyResult = await Promise.race([
+          page.getByText(/successfully signed in/i).waitFor({ state: 'visible', timeout: 30000 }).then(() => 'success'),
+          page.getByText(/welcome to nomad karaoke/i).waitFor({ state: 'visible', timeout: 30000 }).then(() => 'credits_interstitial'),
+          page.getByText(/sign-in failed/i).waitFor({ state: 'visible', timeout: 30000 }).then(() => 'error'),
+        ]);
+        console.log(`  Verification result: ${verifyResult}`);
+        await page.screenshot({ path: 'test-results/02b2-verify-result.png' });
+
+        if (verifyResult === 'error') {
+          const errorText = await page.locator('.text-muted-foreground').first().textContent();
+          throw new Error(`Magic link verification failed: ${errorText}`);
+        }
+
+        if (verifyResult === 'credits_interstitial') {
+          // Click through the credit interstitial to get to /app
+          const startButton = page.getByRole('button', { name: /start creating|go to dashboard|explore the app/i });
+          await expect(startButton).toBeVisible({ timeout: 5000 });
+          await startButton.click();
+          console.log('  Clicked through credit interstitial');
+        }
 
         // Wait for redirect to /app
         await page.waitForURL(/\/app/, { timeout: 15000 });
@@ -355,9 +373,38 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await page.screenshot({ path: 'test-results/02c-app-after-signup.png' });
         console.log('STEP 2-3 COMPLETE: Magic link signup and auth successful');
 
-        // Verify credits are visible
+        // Verify credits — if 0 (credit eval denied), grant via admin API
         const creditText = await page.getByText(/credit/i).first().textContent();
         console.log(`  Credits visible: ${creditText}`);
+
+        if (creditText?.includes('0 credit')) {
+          const adminToken = process.env.E2E_ADMIN_TOKEN;
+          if (adminToken && inbox?.emailAddress) {
+            console.log('  User has 0 credits — granting via admin API...');
+            const grantResponse = await fetch(`${API_URL}/api/users/admin/credits`, {
+              method: 'POST',
+              headers: {
+                'X-Admin-Token': adminToken,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: inbox.emailAddress,
+                amount: 1,
+                reason: 'e2e_test_grant',
+              }),
+            });
+            const grantResult = await grantResponse.json();
+            console.log(`  Credit grant result: ${JSON.stringify(grantResult)}`);
+
+            // Reload to pick up new credit balance
+            await page.reload();
+            await page.waitForURL(/\/app/, { timeout: 15000 });
+            const newCreditText = await page.getByText(/credit/i).first().textContent();
+            console.log(`  Credits after grant: ${newCreditText}`);
+          } else {
+            throw new Error('User has 0 credits and no E2E_ADMIN_TOKEN to grant them');
+          }
+        }
       }
 
       // =========================================================================
