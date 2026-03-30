@@ -819,3 +819,12 @@ class TestSearchFiltering:
         result = _search_filter_jobs(jobs, "")
         assert len(result) == 2
 
+    def test_search_returns_all_matches_for_limit_slicing(self):
+        """Search returns all matches — caller applies limit separately."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [self._make_job_dict(job_id=f"j{i}", artist="Queen", title=f"Song {i}") for i in range(10)]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 10  # All 10 match; limit slicing is caller's job
+        # Verify caller can slice: simulates jobs_dicts[:limit] in route handler
+        assert len(result[:3]) == 3
+
