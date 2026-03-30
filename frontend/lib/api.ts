@@ -427,6 +427,7 @@ export const api = {
     exclude_test?: boolean;
     fields?: 'summary';
     hide_completed?: boolean;
+    search?: string;
   }): Promise<Job[]> {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
@@ -434,6 +435,7 @@ export const api = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
     if (params?.fields) searchParams.set('fields', params.fields);
     if (params?.hide_completed !== undefined) searchParams.set('hide_completed', String(params.hide_completed));
+    if (params?.search) searchParams.set('search', params.search);
 
     const url = `${API_BASE_URL}/api/jobs${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     const response = await fetch(url, {
