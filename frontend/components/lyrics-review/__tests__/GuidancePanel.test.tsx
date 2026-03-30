@@ -91,11 +91,22 @@ describe('GuidancePanel', () => {
     expect(screen.getByText(/Synced Lyrics/)).toBeInTheDocument()
   })
 
-  it('shows zero-gap message when no gaps exist', () => {
-    const data = makeMockData({ gap_sequences: [], corrections: [] })
+  it('shows zero-gap message when no gaps exist and references are present', () => {
+    const data = makeMockData({
+      gap_sequences: [],
+      corrections: [],
+      reference_lyrics: { genius: { segments: [], metadata: { source: 'genius' }, source: 'genius' } },
+    })
     render(<GuidancePanel data={data} {...defaultProps} />)
 
     expect(screen.getByText(/All lyrics matched the reference/)).toBeInTheDocument()
+  })
+
+  it('shows no-reference message when no reference sources exist', () => {
+    const data = makeMockData({ gap_sequences: [], corrections: [], reference_lyrics: {} })
+    render(<GuidancePanel data={data} {...defaultProps} />)
+
+    expect(screen.getByText(/No reference lyrics were found/)).toBeInTheDocument()
   })
 
   it('dismisses tip and stores in localStorage', async () => {
