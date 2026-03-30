@@ -1018,7 +1018,7 @@ async def get_instrumental_analysis(
             "has_audible_content": backing_analysis.get('has_audible_content', False),
             "total_duration_seconds": backing_analysis.get('total_duration_seconds', 0),
             "audible_segments": backing_analysis.get('audible_segments', []),
-            "recommended_selection": backing_analysis.get('recommended_selection', 'with_backing'),
+            "recommended_selection": backing_analysis.get('recommended_selection', 'clean'),
             "total_audible_duration_seconds": backing_analysis.get('total_audible_duration_seconds', 0),
             "audible_percentage": backing_analysis.get('audible_percentage', 0),
             "silence_threshold_db": backing_analysis.get('silence_threshold_db', -40),

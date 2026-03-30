@@ -389,20 +389,21 @@ class AudioAnalyzer:
         Logic:
         - If no audible content: recommend clean instrumental
         - If audible content covers > 20% of the audio: likely has
-          meaningful backing vocals, recommend review
+          meaningful backing vocals, recommend with_backing
+        - If loud segments detected: recommend with_backing
         - Otherwise: minimal content, recommend clean
         """
         if not has_audible_content:
             return RecommendedSelection.CLEAN
-        
-        # If there's significant audible content, recommend review
+
+        # If there's significant audible content, recommend with backing vocals
         if audible_percentage > 20.0:
-            return RecommendedSelection.REVIEW_NEEDED
-        
-        # If there are loud segments, recommend review
+            return RecommendedSelection.WITH_BACKING
+
+        # If there are loud segments, recommend with backing vocals
         loud_segments = [seg for seg in segments if seg.is_loud]
         if loud_segments:
-            return RecommendedSelection.REVIEW_NEEDED
-        
+            return RecommendedSelection.WITH_BACKING
+
         # Minimal content - recommend clean
         return RecommendedSelection.CLEAN

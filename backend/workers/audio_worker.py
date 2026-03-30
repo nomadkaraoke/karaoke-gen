@@ -491,6 +491,15 @@ async def process_audio_separation(job_id: str) -> bool:
                 })
                 job_manager.update_processing_metadata(job_id, "timing.audio_worker_seconds", round(duration, 1))
 
+                # Analyze backing vocals for instrumental selection recommendation
+                # This must run here (after stems are uploaded) rather than in screens_worker,
+                # because screens_worker triggers on lyrics completion and audio may not be done yet
+                from backend.workers.screens_worker import _analyze_backing_vocals
+                try:
+                    await _analyze_backing_vocals(job_id, job_manager, storage, job_log)
+                except Exception as e:
+                    logger.warning(f"[job:{job_id}] Backing vocals analysis failed (non-fatal): {e}")
+
                 # Mark audio processing complete
                 # This will check if lyrics are also complete and transition to next stage if so
                 job_manager.mark_audio_complete(job_id)
