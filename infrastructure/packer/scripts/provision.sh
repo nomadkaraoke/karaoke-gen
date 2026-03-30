@@ -96,7 +96,7 @@ echo "Creating Python virtual environment..."
 # Install base Python dependencies (wheel will add more at runtime)
 source venv/bin/activate
 pip install --upgrade pip
-pip install fastapi uvicorn google-cloud-storage aiofiles aiohttp
+pip install fastapi uvicorn google-cloud-storage aiofiles aiohttp packaging
 
 # Create bootstrap script (runs via ExecStartPre before service starts)
 # This minimal script downloads the REAL startup script from GCS.

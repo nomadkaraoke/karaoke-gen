@@ -2486,7 +2486,7 @@ async def complete_style_uploads(
 
                 # Overwrite background paths with custom uploads
                 for asset_key, gcs_path in new_style_assets.items():
-                    bucket_name = storage_service.bucket_name
+                    bucket_name = storage_service.bucket.name
                     gcs_uri = f"gs://{bucket_name}/{gcs_path}"
                     if asset_key == "intro_background" and "intro" in style_params:
                         style_params["intro"]["background_image"] = gcs_uri

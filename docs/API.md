@@ -141,6 +141,7 @@ GET /api/jobs?status=complete
 GET /api/jobs?limit=10&offset=0
 GET /api/jobs?exclude_test=false
 GET /api/jobs?fields=summary&hide_completed=true
+GET /api/jobs?fields=summary&search=bohemian
 ```
 
 Query parameters:
@@ -149,6 +150,7 @@ Query parameters:
 - `limit` / `offset` - Pagination
 - `fields` (string, optional) - Set to `summary` to return only dashboard-required fields using Firestore field projection. Reduces payload from ~16MB to <500KB for large job lists.
 - `hide_completed` (bool, default: false) - Exclude successful completions (complete, prep_complete) server-side. Failed jobs remain visible.
+- `search` (string, optional) - Text search filter (summary mode only). Case-insensitive substring match against artist, title, audio_search_artist, audio_search_title, and job_id. When active, fetches up to 1000 results internally and filters in Python.
 
 #### Delete Job
 
@@ -440,6 +442,61 @@ Content-Type: application/json
 ```
 
 Stores annotations to `jobs/{job_id}/lyrics/annotations.json`. Merges with existing annotations if present.
+
+#### Add Reference Lyrics (Paste)
+
+```http
+POST /api/review/{job_id}/add-lyrics
+Content-Type: application/json
+
+{
+  "source": "manual",
+  "lyrics": "Full lyrics text...",
+  "force": false
+}
+```
+
+Adds user-pasted lyrics as a new reference source, re-runs the correction pipeline with all sources, and uploads updated corrections to GCS. The `force` flag (default `false`) bypasses the relevance threshold — use when the transcription is poor and a low match % doesn't mean wrong song.
+
+Returns `{ "status": "success", "data": <CorrectionData> }`.
+
+#### Search Reference Lyrics
+
+```http
+POST /api/review/{job_id}/search-lyrics
+Content-Type: application/json
+
+{
+  "artist": "Billie Eilish",
+  "title": "What Was I Made For",
+  "force_sources": []
+}
+```
+
+Searches all configured lyrics providers (Genius, Spotify, Musixmatch, LRCLIB) with the given artist/title. Results are filtered through the relevance threshold (30% word match minimum) — sources below are rejected as likely wrong-song matches. Sources in `force_sources` bypass the threshold.
+
+**Success response** (at least one source passed):
+```json
+{
+  "status": "success",
+  "data": { "...CorrectionData..." },
+  "sources_added": ["genius", "lrclib"],
+  "sources_rejected": {
+    "spotify": { "relevance": 0.12, "matched_words": 18, "total_words": 150, "track_name": "...", "artist_names": "..." }
+  },
+  "sources_not_found": ["musixmatch"]
+}
+```
+
+**No results response** (all filtered or nothing found):
+```json
+{
+  "status": "no_results",
+  "message": "No matching lyrics found from any provider",
+  "sources_rejected": { "genius": { "relevance": 0.05, "..." } },
+  "sources_not_found": ["lrclib", "musixmatch"]
+}
+```
 
 #### Review Sessions
 
@@ -944,7 +1001,7 @@ Credits are checked and deducted at job creation time. The flow:
 3. **Deduct** - `user_service.deduct_credit()` atomically deducts 1 credit (with job_id for audit trail)
 4. **Refund on failure** - If the job fails, 1 credit is automatically refunded
 
-Admin users bypass credit checks entirely. New users receive 2 welcome credits. Users can earn 2 additional free credits by submitting product feedback after completing 2+ jobs (see [User Feedback for Credits](#user-feedback-for-credits)).
+Admin users bypass credit checks entirely. New users receive 1 welcome credit. Users can earn 1 additional free credit by submitting product feedback after completing 2+ jobs (see [User Feedback for Credits](#user-feedback-for-credits)).
 
 #### 402 Response
 
@@ -969,7 +1026,7 @@ Handles `checkout.session.completed` events.
 
 ### User Feedback for Credits
 
-Users who have completed 2+ jobs can submit feedback to earn 2 free credits.
+Users who have completed 2+ jobs can submit feedback to earn 1 free credit.
 
 #### Check Eligibility
 
@@ -984,7 +1041,7 @@ Response:
   "eligible": true,
   "has_submitted": false,
   "jobs_completed": 3,
-  "credits_reward": 2
+  "credits_reward": 1
 }
 ```
 
@@ -1013,7 +1070,7 @@ Requirements:
 - At least one text field must have >50 characters
 - User can only submit once (duplicate prevention)
 
-Grants 2 credits on success. Feedback stored in `user_feedback` Firestore collection.
+Grants 1 credit on success. Feedback stored in `user_feedback` Firestore collection.
 
 The `/api/users/me` response includes `feedback_eligible: bool` so the frontend can show/hide feedback prompts without an extra API call.
 

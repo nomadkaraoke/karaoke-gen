@@ -45,7 +45,7 @@ Input (audio + metadata)
         v                                      v
 ┌───────────────────┐              ┌───────────────────┐
 │ Audio Separation  │              │ Lyrics Processing │
-│ (Modal GPU)       │              │ (AudioShake API)  │
+│ (Cloud Run GPU L4)│              │ (AudioShake API)  │
 │                   │              │                   │
 │ • Clean vocal     │              │ • Fetch reference │
 │   removal         │              │   lyrics          │
@@ -98,7 +98,7 @@ All code is open source (MIT license) because:
 However, reliable fully-automated generation requires:
 - **AudioShake API**: ~$0.50-1.00 per track for high-quality transcription
 - **LLM tokens**: ~$0.50-1.00 for agentic correction workflow
-- **GPU compute**: ~$0.20-0.50 for audio separation on Modal
+- **GPU compute**: ~$0.10-0.30 for audio separation on Cloud Run GPU (L4)
 - **Infrastructure**: Cloud Run, Firestore, GCS, etc.
 
 **Cost per track: ~$2-3** for fully-automated processing, making a paid service necessary to sustain development.
@@ -130,7 +130,7 @@ Commercial producers pay for API access or custom integration to generate tracks
 ## Current State (December 2025)
 
 ### What Works
-- Audio upload and separation (Modal API)
+- Audio upload and separation (Cloud Run GPU)
 - Lyrics transcription (AudioShake API)
 - Agentic AI correction (Gemini 3 Flash via Vertex AI)
 - Human lyrics review (React UI)
@@ -188,7 +188,7 @@ Commercial producers pay for API access or custom integration to generate tracks
 - **Database**: Firestore
 - **Storage**: Google Cloud Storage
 - **Secrets**: Google Secret Manager
-- **Audio Separation**: Modal (GPU compute)
+- **Audio Separation**: Cloud Run GPU (L4, us-east4)
 - **Lyrics Transcription**: AudioShake API
 - **AI Correction**: Vertex AI (Gemini 3 Flash)
 - **Payments**: Stripe

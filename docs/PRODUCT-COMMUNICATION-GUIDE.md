@@ -61,7 +61,7 @@ Guidelines for how to communicate about Nomad Karaoke to users, in marketing mat
 
 ## Free Credits
 
-- All new accounts receive 2 free credits to try the service
+- All new accounts receive 1 free credit to try the service
 - No payment required to get started
 - Credits never expire
 - Additional credits available for purchase ($5/credit, bulk discounts available)

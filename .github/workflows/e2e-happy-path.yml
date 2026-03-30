@@ -67,6 +67,16 @@ jobs:
         working-directory: frontend
         run: mkdir -p test-results
 
+      - name: Ensure testmail.app domain is allowlisted
+        run: |
+          # testmail.app is used for E2E testing but gets flagged as disposable
+          # by external APIs. Ensure it's in the allowlist before the test runs.
+          curl -sf -X POST \
+            "https://api.nomadkaraoke.com/api/admin/rate-limits/blocklists/allowlisted-domains" \
+            -H "X-Admin-Token: ${{ secrets.E2E_ADMIN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"domain": "inbox.testmail.app"}' || echo "Warning: failed to allowlist domain (may already exist)"
+
       - name: Refresh E2E session token (when use_test_token enabled)
         id: refresh_token
         if: inputs.use_test_token == true

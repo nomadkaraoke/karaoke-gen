@@ -156,7 +156,7 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
                 <Gift className="w-5 h-5 text-green-500" />
-                Share Your Feedback — Earn 2 Free Credits
+                Share Your Feedback — Earn 1 Free Credit
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
                 Tell us about your experience creating karaoke videos. Your feedback directly shapes what we build next.
@@ -268,7 +268,7 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
                     Submitting...
                   </>
                 ) : (
-                  'Submit Feedback & Earn 2 Credits'
+                  'Submit Feedback & Earn 1 Credit'
                 )}
               </Button>
             </div>

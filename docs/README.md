@@ -24,7 +24,7 @@
 | Token-based auth | Working |
 | Magic link auth | Working |
 | Payment flow (Stripe) | Working |
-| Feedback-for-credits | Working (2+ jobs → 2 free credits) |
+| Feedback-for-credits | Working (2+ jobs → 1 free credit) |
 | Admin dashboard | Working |
 | Abuse prevention & YouTube quota | Working (blocklists, IP/fingerprint rate limiting, credits on verification, quota-aware YouTube uploads) |
 | CI/CD self-hosted runner | Working (GCP) |
@@ -74,9 +74,9 @@
 - **Song Lookup Autocomplete & Community Version Detection** (2026-03-03): Added song catalog integration to the job creation flow. Two features: (1) **Track autocomplete** on the title field provides canonical artist/title names from MusicBrainz + Spotify data via the karaoke-decide catalog API, improving text consistency for YouTube releases. Autocomplete activates when the artist field has a value; selecting a suggestion overwrites both artist and title with canonical names. (2) **Community version detection** checks karaokenerds.com for existing high-quality karaoke versions — if found, a dismissible green banner suggests the user check those versions first before spending credits. New backend: 3 endpoints (`/api/catalog/artists`, `/api/catalog/tracks`, `/api/catalog/community-check`) with per-user rate limiting (20 req/min) and in-memory TTL caching. New services: `catalog_proxy_service.py` (proxies to karaoke-decide), `karaokenerds_service.py` (scrapes karaokenerds.com). New frontend components: `AutocompleteInput` (reusable), `CommunityVersionBanner`. See [API.md](API.md#catalog-song-lookup).
 
 
-- **Feedback-for-Credits** (2026-03-01): Added a feedback-for-credits mechanism available to all users (replaces the old beta-only feedback flow). Users who complete 2+ karaoke videos can submit product feedback (star ratings + text) to earn 2 free credits (total possible free credits: 4 — 2 welcome + 2 feedback). New endpoints: `GET /api/users/feedback/eligibility`, `POST /api/users/feedback`. The `/api/users/me` response includes `feedback_eligible: bool` so the frontend can show/hide prompts without an extra API call. Frontend shows a dismissible banner on the dashboard and a "Earn 2 Free Credits" menu item in the user dropdown when eligible. Feedback stored in `user_feedback` Firestore collection with duplicate prevention via `has_submitted_feedback` flag on user model. Welcome email updated with credit-focused messaging and feedback teaser. See [API.md](API.md#user-feedback-for-credits).
+- **Feedback-for-Credits** (2026-03-01): Added a feedback-for-credits mechanism available to all users (replaces the old beta-only feedback flow). Users who complete 2+ karaoke videos can submit product feedback (star ratings + text) to earn 1 free credit (total possible free credits: 2 — 1 welcome + 1 feedback). New endpoints: `GET /api/users/feedback/eligibility`, `POST /api/users/feedback`. The `/api/users/me` response includes `feedback_eligible: bool` so the frontend can show/hide prompts without an extra API call. Frontend shows a dismissible banner on the dashboard and a "Earn 1 Free Credit" menu item in the user dropdown when eligible. Feedback stored in `user_feedback` Firestore collection with duplicate prevention via `has_submitted_feedback` flag on user model. Welcome email updated with credit-focused messaging and feedback teaser. See [API.md](API.md#user-feedback-for-credits).
 
-- **Remove Beta Program from Homepage** (2026-03-01): Removed beta enrollment from landing page and replaced with prominent "2 Free Credits" messaging. Beta enrollment endpoint preserved for backward compatibility but no longer actively promoted. See PR #430.
+- **Remove Beta Program from Homepage** (2026-03-01): Removed beta enrollment from landing page and replaced with prominent "1 Free Credit" messaging. Beta enrollment endpoint preserved for backward compatibility but no longer actively promoted. See PR #430.
 
 - **Fix Event Loop Blocking in Audio Search Endpoints** (2026-02-28): Fixed `/api/audio-search/{job_id}/select` taking 20-36s to respond (should be <1s) and `/api/audio-search/search` sometimes taking 25-47s. **Root cause**: Async endpoints called sync methods that create new event loops via `loop.run_until_complete()`, blocking the FastAPI event loop — response body was queued but never flushed. **Fix**: RED/OPS and Spotify download paths now call `FlacfetchClient` async methods directly (matching `YouTubeDownloadService` pattern), generic downloads use `asyncio.to_thread()`, search endpoint uses `search_async()`. Also fixed `InsufficientCreditsError` occasionally returning 500 instead of 402 by using `isinstance()` check. Added 14 new tests. See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#never-call-sync-over-async-from-fastapi-async-routes-feb-2026).
 
@@ -237,7 +237,7 @@
 ```
 Upload Audio → Parallel Processing → Human Review → Video Generation → Download
                    │                      │
-           (Modal + AudioShake)    (LyricsTranscriber UI)
+        (Cloud Run GPU + AudioShake)  (LyricsTranscriber UI)
 ```
 
 ## For AI Agents

@@ -114,7 +114,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
               className="text-green-500 focus:text-green-400 focus:bg-secondary"
             >
               <Gift className="w-4 h-4 mr-2" />
-              <span>Earn 2 Free Credits</span>
+              <span>Earn 1 Free Credit</span>
             </DropdownMenuItem>
           )}
           {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (

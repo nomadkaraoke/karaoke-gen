@@ -29,7 +29,6 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from backend.models.job import JobStatus
-from karaoke_gen.utils import sanitize_filename
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
@@ -599,10 +598,7 @@ async def upload_lyrics_results(
         job_log: Optional JobLogger for remote debugging
     """
     logger.info(f"Job {job_id}: Uploading lyrics results to GCS")
-    
-    # Get job object for artist/title
-    job = job_manager.get_job(job_id)
-    
+
     lyrics_dir = os.path.join(temp_dir, "lyrics")
     
     # Upload LRC file (timed lyrics)
@@ -614,17 +610,21 @@ async def upload_lyrics_results(
     
     # Upload corrections JSON (for review interface)
     # LyricsProcessor saves it as "{artist} - {title} (Lyrics Corrections).json"
-    # Sanitize artist/title to prevent path injection and match LyricsProcessor's sanitization
-    safe_artist = sanitize_filename(job.artist) if job.artist else "Unknown"
-    safe_title = sanitize_filename(job.title) if job.title else "Unknown"
-    corrections_filename = f"{safe_artist} - {safe_title} (Lyrics Corrections).json"
-    corrections_file = os.path.join(lyrics_dir, corrections_filename)
+    # Scan the directory instead of reconstructing the filename, because the artist/title
+    # in Firestore may have been updated (e.g. by admin) after LyricsProcessor generated the file.
+    corrections_file = None
+    if os.path.isdir(lyrics_dir):
+        for fname in os.listdir(lyrics_dir):
+            if fname.endswith("(Lyrics Corrections).json"):
+                corrections_file = os.path.join(lyrics_dir, fname)
+                break
+    # Fallback: check for generic corrections.json
+    if not corrections_file:
+        fallback = os.path.join(lyrics_dir, "corrections.json")
+        if os.path.exists(fallback):
+            corrections_file = fallback
     
-    # Also check for generic corrections.json (fallback)
-    if not os.path.exists(corrections_file):
-        corrections_file = os.path.join(lyrics_dir, "corrections.json")
-    
-    if os.path.exists(corrections_file):
+    if corrections_file and os.path.exists(corrections_file):
         # Always upload as corrections.json for consistent access
         gcs_path = f"jobs/{job_id}/lyrics/corrections.json"
         url = storage.upload_file(corrections_file, gcs_path)
@@ -660,33 +660,29 @@ async def upload_lyrics_results(
     else:
         # CRITICAL: corrections.json is required for the review UI
         # If it's missing, the job cannot proceed to review
-        error_msg = f"No corrections JSON found at {corrections_file}. Transcription may have produced no lyrics."
+        error_msg = f"No corrections JSON found in {lyrics_dir}. Transcription may have produced no lyrics."
         logger.error(f"Job {job_id}: {error_msg}")
         raise Exception(error_msg)
     
     # Upload ALL reference lyrics files (not just first) so they're available for distribution
-    # Note: Source names use .title() so "lrclib" -> "Lrclib", "genius" -> "Genius"
-    # Use sanitized artist/title to match LyricsProcessor's file naming
-    reference_files = [
-        (f"{safe_artist} - {safe_title} (Lyrics Genius).txt", "genius"),
-        (f"{safe_artist} - {safe_title} (Lyrics Spotify).txt", "spotify"),
-        (f"{safe_artist} - {safe_title} (Lyrics Musixmatch).txt", "musixmatch"),
-        (f"{safe_artist} - {safe_title} (Lyrics Lrclib).txt", "lrclib"),
-    ]
+    # Scan directory for reference files instead of reconstructing filenames,
+    # since artist/title may have changed in Firestore after file generation.
+    source_keys = {"Genius": "genius", "Spotify": "spotify", "Musixmatch": "musixmatch", "Lrclib": "lrclib"}
 
     found_references = []
-    for ref_filename, source_key in reference_files:
-        ref_path = os.path.join(lyrics_dir, ref_filename)
-        if os.path.exists(ref_path):
-            # Upload with original filename to preserve proper naming
-            gcs_path = f"jobs/{job_id}/lyrics/{ref_filename}"
-            url = storage.upload_file(ref_path, gcs_path)
-            # Track in job.files so video_worker can download for distribution
-            job_manager.update_file_url(job_id, 'lyrics', f'reference_{source_key}', url)
-            if job_log:
-                job_log.info(f"Found reference lyrics from {source_key}")
-            logger.info(f"Job {job_id}: Uploaded reference lyrics: {ref_filename}")
-            found_references.append(source_key)
+    if os.path.isdir(lyrics_dir):
+        for fname in os.listdir(lyrics_dir):
+            for source_label, source_key in source_keys.items():
+                if fname.endswith(f"(Lyrics {source_label}).txt"):
+                    ref_path = os.path.join(lyrics_dir, fname)
+                    gcs_path = f"jobs/{job_id}/lyrics/{fname}"
+                    url = storage.upload_file(ref_path, gcs_path)
+                    job_manager.update_file_url(job_id, 'lyrics', f'reference_{source_key}', url)
+                    if job_log:
+                        job_log.info(f"Found reference lyrics from {source_key}")
+                    logger.info(f"Job {job_id}: Uploaded reference lyrics: {fname}")
+                    found_references.append(source_key)
+                    break
 
     if not found_references:
         if job_log:
@@ -695,14 +691,17 @@ async def upload_lyrics_results(
     else:
         logger.info(f"Job {job_id}: Found {len(found_references)} reference lyrics sources: {found_references}")
     
-    # Upload uncorrected transcription if available (preserve original filename for distribution)
-    uncorrected_filename = f"{safe_artist} - {safe_title} (Lyrics Uncorrected).txt"
-    uncorrected_file = os.path.join(lyrics_dir, uncorrected_filename)
-    if os.path.exists(uncorrected_file):
-        gcs_path = f"jobs/{job_id}/lyrics/{uncorrected_filename}"
-        url = storage.upload_file(uncorrected_file, gcs_path)
-        job_manager.update_file_url(job_id, 'lyrics', 'uncorrected', url)
-        logger.info(f"Job {job_id}: Uploaded uncorrected transcription: {uncorrected_filename}")
+    # Upload uncorrected transcription if available
+    # Scan directory instead of reconstructing filename (artist/title may have changed)
+    if os.path.isdir(lyrics_dir):
+        for fname in os.listdir(lyrics_dir):
+            if fname.endswith("(Lyrics Uncorrected).txt"):
+                uncorrected_file = os.path.join(lyrics_dir, fname)
+                gcs_path = f"jobs/{job_id}/lyrics/{fname}"
+                url = storage.upload_file(uncorrected_file, gcs_path)
+                job_manager.update_file_url(job_id, 'lyrics', 'uncorrected', url)
+                logger.info(f"Job {job_id}: Uploaded uncorrected transcription: {fname}")
+                break
     
     logger.info(f"Job {job_id}: All lyrics results uploaded successfully")
 

@@ -10,6 +10,8 @@ from pulumi_gcp import cloudrun, cloudrunv2
 
 from config import PROJECT_ID, REGION
 
+AUDIO_WORKER_GPU_REGION = "us-east4"  # L4 GPU quota available here
+
 
 def create_domain_mapping() -> cloudrun.DomainMapping:
     """
@@ -70,22 +72,15 @@ def create_lyrics_transcription_job(
                             },
                         ),
                         envs=[
-                            # Basic configuration
+                            # Admin token for Cloud Tasks auth header
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GOOGLE_CLOUD_PROJECT",
-                                value=PROJECT_ID,
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCS_BUCKET_NAME",
-                                value=bucket.name,
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ENVIRONMENT",
-                                value="production",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCP_REGION",
-                                value=REGION,
+                                name="ADMIN_TOKENS",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
+                                        version="latest",
+                                    ),
+                                ),
                             ),
                             # AudioShake API token (required for transcription)
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
@@ -93,36 +88,6 @@ def create_lyrics_transcription_job(
                                 value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
                                     secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
                                         secret=f"projects/{PROJECT_ID}/secrets/audioshake-api-key",
-                                        version="latest",
-                                    ),
-                                ),
-                            ),
-                            # Genius API token (for lyrics fetching)
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GENIUS_API_TOKEN",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/genius-api-key",
-                                        version="latest",
-                                    ),
-                                ),
-                            ),
-                            # Spotify cookie (for Spotify lyrics)
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="SPOTIFY_COOKIE_SP_DC",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/spotify-cookie",
-                                        version="latest",
-                                    ),
-                                ),
-                            ),
-                            # RapidAPI key (for Musixmatch lyrics)
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="RAPIDAPI_KEY",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/rapidapi-key",
                                         version="latest",
                                     ),
                                 ),
@@ -137,12 +102,49 @@ def create_lyrics_transcription_job(
                                 name="ENABLE_CLOUD_TASKS",
                                 value="true",
                             ),
-                            # Admin token for Cloud Tasks auth header
+                            # Basic configuration
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ADMIN_TOKENS",
+                                name="ENVIRONMENT",
+                                value="production",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCP_REGION",
+                                value=REGION,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCS_BUCKET_NAME",
+                                value=bucket.name,
+                            ),
+                            # Genius API token (for lyrics fetching)
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GENIUS_API_TOKEN",
                                 value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
                                     secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
+                                        secret=f"projects/{PROJECT_ID}/secrets/genius-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GOOGLE_CLOUD_PROJECT",
+                                value=PROJECT_ID,
+                            ),
+                            # RapidAPI key (for Musixmatch lyrics)
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="RAPIDAPI_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/rapidapi-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            # Spotify cookie (for Spotify lyrics)
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="SPOTIFY_COOKIE_SP_DC",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/spotify-cookie",
                                         version="latest",
                                     ),
                                 ),
@@ -165,13 +167,14 @@ def create_audio_separation_job(
     service_account: gcp.serviceaccount.Account,
 ) -> cloudrunv2.Job:
     """
-    Create the Cloud Run Job for audio separation.
+    Create the Cloud Run Job for audio separation with L4 GPU.
 
-    Cloud Run Jobs run to completion without HTTP request lifecycle concerns,
-    avoiding the instance termination issue where Cloud Run would shut down
-    instances mid-processing when using BackgroundTasks.
+    Runs the Separator class directly with GPU acceleration, eliminating
+    the HTTP call to the separate audio-separator service.
 
-    Typical duration: 10-20 minutes (Modal API for GPU separation)
+    Deployed in us-east4 where L4 GPU quota is available.
+
+    Typical duration: 5-10 minutes (local GPU separation)
 
     Args:
         bucket: The GCS bucket for job artifacts.
@@ -183,41 +186,36 @@ def create_audio_separation_job(
     audio_separation_job = cloudrunv2.Job(
         "audio-separation-job",
         name="audio-separation-job",
-        location=REGION,
+        location=AUDIO_WORKER_GPU_REGION,
+        deletion_protection=False,  # Allow Pulumi to replace (region change requires delete+create)
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
                     cloudrunv2.JobTemplateTemplateContainerArgs(
-                        image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+                        image=f"{AUDIO_WORKER_GPU_REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-backend-gpu/karaoke-backend:latest",
                         args=["python", "-m", "backend.workers.audio_worker"],
                         resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
                             limits={
-                                "cpu": "2",
-                                "memory": "4Gi",
+                                "cpu": "4",
+                                "memory": "16Gi",
+                                "nvidia.com/gpu": "1",
                             },
                         ),
                         envs=[
-                            # Basic configuration
+                            # Admin token for Cloud Tasks auth header
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GOOGLE_CLOUD_PROJECT",
-                                value=PROJECT_ID,
+                                name="ADMIN_TOKENS",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
+                                        version="latest",
+                                    ),
+                                ),
                             ),
+                            # Model directory (baked into GPU image, triggers local GPU mode)
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCS_BUCKET_NAME",
-                                value=bucket.name,
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ENVIRONMENT",
-                                value="production",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCP_REGION",
-                                value=REGION,
-                            ),
-                            # Audio separator API (Cloud Run GPU service in us-east4)
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="AUDIO_SEPARATOR_API_URL",
-                                value="https://audio-separator-718638054799.us-east4.run.app",
+                                name="MODEL_DIR",
+                                value="/models",
                             ),
                             # Cloud Run service URL for Cloud Tasks targeting
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
@@ -229,21 +227,32 @@ def create_audio_separation_job(
                                 name="ENABLE_CLOUD_TASKS",
                                 value="true",
                             ),
-                            # Admin token for Cloud Tasks auth header
+                            # Basic configuration
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ADMIN_TOKENS",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
-                                        version="latest",
-                                    ),
-                                ),
+                                name="ENVIRONMENT",
+                                value="production",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCP_REGION",
+                                value=AUDIO_WORKER_GPU_REGION,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCS_BUCKET_NAME",
+                                value=bucket.name,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GOOGLE_CLOUD_PROJECT",
+                                value=PROJECT_ID,
                             ),
                         ],
                     )
                 ],
+                node_selector=cloudrunv2.JobTemplateTemplateNodeSelectorArgs(
+                    accelerator="nvidia-l4",
+                ),
+                gpu_zonal_redundancy_disabled=True,  # Required for GPU Jobs (capacity limitation)
                 service_account=service_account.email,
-                timeout="2400s",  # 40 minutes max per task (Modal can be slow)
+                timeout="1800s",  # 30 minutes (local GPU is faster than remote API)
                 max_retries=2,
             ),
         ),
@@ -300,39 +309,12 @@ def create_audio_download_job(
                             },
                         ),
                         envs=[
-                            # Basic configuration
+                            # Admin token for worker auth
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GOOGLE_CLOUD_PROJECT",
-                                value=PROJECT_ID,
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCS_BUCKET_NAME",
-                                value=bucket.name,
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ENVIRONMENT",
-                                value="production",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCP_REGION",
-                                value=REGION,
-                            ),
-                            # Flacfetch API URL (internal VPC address)
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="FLACFETCH_API_URL",
+                                name="ADMIN_TOKENS",
                                 value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
                                     secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-url",
-                                        version="latest",
-                                    ),
-                                ),
-                            ),
-                            # Flacfetch API key
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="FLACFETCH_API_KEY",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-key",
+                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
                                         version="latest",
                                     ),
                                 ),
@@ -347,15 +329,42 @@ def create_audio_download_job(
                                 name="ENABLE_CLOUD_TASKS",
                                 value="true",
                             ),
-                            # Admin token for worker auth
+                            # Basic configuration
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ADMIN_TOKENS",
+                                name="ENVIRONMENT",
+                                value="production",
+                            ),
+                            # Flacfetch API key
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="FLACFETCH_API_KEY",
                                 value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
                                     secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
+                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-key",
                                         version="latest",
                                     ),
                                 ),
+                            ),
+                            # Flacfetch API URL (internal VPC address)
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="FLACFETCH_API_URL",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-url",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCP_REGION",
+                                value=REGION,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCS_BUCKET_NAME",
+                                value=bucket.name,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GOOGLE_CLOUD_PROJECT",
+                                value=PROJECT_ID,
                             ),
                         ],
                     )
@@ -410,81 +419,6 @@ def create_video_encoding_job(
                             },
                         ),
                         envs=[
-                            # Core configuration
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GOOGLE_CLOUD_PROJECT",
-                                value=PROJECT_ID,
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCS_BUCKET_NAME",
-                                value=bucket.name,
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ENVIRONMENT",
-                                value="production",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="GCP_REGION",
-                                value=REGION,
-                            ),
-                            # GCE encoding worker
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="USE_GCE_ENCODING",
-                                value="true",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ENCODING_WORKER_URL",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/encoding-worker-url",
-                                        version="latest",
-                                    ),
-                                ),
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="ENCODING_WORKER_API_KEY",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/encoding-worker-api-key",
-                                        version="latest",
-                                    ),
-                                ),
-                            ),
-                            # Distribution defaults
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="DEFAULT_ENABLE_YOUTUBE_UPLOAD",
-                                value="true",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="DEFAULT_BRAND_PREFIX",
-                                value="NOMAD",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="DEFAULT_PRIVATE_BRAND_PREFIX",
-                                value="NOMADNP",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="DEFAULT_DROPBOX_PATH",
-                                value="/MediaUnsynced/Karaoke/Tracks-Organized",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="DEFAULT_PRIVATE_DROPBOX_PATH",
-                                value="/MediaUnsynced/Karaoke/Tracks-NonPublished",
-                            ),
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="DEFAULT_GDRIVE_FOLDER_ID",
-                                value="1laRKAyxo0v817SstfM5XkpbWiNKNAMSX",
-                            ),
-                            # Discord webhook for release notifications
-                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
-                                name="DEFAULT_DISCORD_WEBHOOK_URL",
-                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
-                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
-                                        secret=f"projects/{PROJECT_ID}/secrets/discord-releases-webhook",
-                                        version="latest",
-                                    ),
-                                ),
-                            ),
                             # Admin token for worker-to-service auth
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="ADMIN_TOKENS",
@@ -500,9 +434,80 @@ def create_video_encoding_job(
                                 name="CLOUD_RUN_SERVICE_URL",
                                 value="https://api.nomadkaraoke.com",
                             ),
+                            # Distribution defaults
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_BRAND_PREFIX",
+                                value="NOMAD",
+                            ),
+                            # Discord webhook for release notifications
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_DISCORD_WEBHOOK_URL",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/discord-releases-webhook",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_DROPBOX_PATH",
+                                value="/MediaUnsynced/Karaoke/Tracks-Organized",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_ENABLE_YOUTUBE_UPLOAD",
+                                value="true",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_GDRIVE_FOLDER_ID",
+                                value="1laRKAyxo0v817SstfM5XkpbWiNKNAMSX",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_PRIVATE_BRAND_PREFIX",
+                                value="NOMADNP",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="DEFAULT_PRIVATE_DROPBOX_PATH",
+                                value="/MediaUnsynced/Karaoke/Tracks-NonPublished",
+                            ),
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="ENABLE_CLOUD_TASKS",
                                 value="true",
+                            ),
+                            # GCE encoding worker
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENCODING_WORKER_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/encoding-worker-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENCODING_WORKER_URL",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/encoding-worker-url",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            # Core configuration
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENVIRONMENT",
+                                value="production",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCP_REGION",
+                                value=REGION,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCS_BUCKET_NAME",
+                                value=bucket.name,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GOOGLE_CLOUD_PROJECT",
+                                value=PROJECT_ID,
                             ),
                             # SendGrid for completion emails
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
@@ -513,6 +518,10 @@ def create_video_encoding_job(
                                         version="latest",
                                     ),
                                 ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="USE_GCE_ENCODING",
+                                value="true",
                             ),
                         ],
                     )

@@ -32,7 +32,7 @@ export default function PreviewVideoSection({
   timingOffsetMs = 0,
 }: PreviewVideoSectionProps) {
   const [previewState, setPreviewState] = useState<{
-    status: 'loading' | 'ready' | 'error'
+    status: 'loading' | 'warming_up' | 'ready' | 'error'
     videoUrl?: string
     error?: string
   }>({ status: 'loading' })
@@ -50,6 +50,14 @@ export default function PreviewVideoSection({
               : updatedData
 
           const response = await apiClient.generatePreviewVideo(dataToPreview)
+
+          if (response.status === 'worker_starting') {
+            setPreviewState({
+              status: 'warming_up',
+              error: response.message,
+            })
+            return
+          }
 
           if (response.status === 'error') {
             setPreviewState({
@@ -92,6 +100,15 @@ export default function PreviewVideoSection({
         <div className="flex items-center gap-3 p-4">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span>Generating preview video...</span>
+        </div>
+      )}
+
+      {previewState.status === 'warming_up' && (
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500 mb-4" />
+          <p className="text-sm text-gray-600">
+            Starting encoding worker... This usually takes about a minute.
+          </p>
         </div>
       )}
 

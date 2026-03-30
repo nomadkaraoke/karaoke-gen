@@ -2,11 +2,13 @@
 Audio separation worker.
 
 Handles the audio processing track of parallel processing:
-1. Stage 1: Clean instrumental separation (Modal API, 3-5 min)
-2. Stage 2: Backing vocals separation (Modal API, 2-3 min)
+1. Stage 1: Clean instrumental separation (GPU, 3-5 min)
+2. Stage 2: Backing vocals separation (GPU, 2-3 min)
 3. Post-processing: Combine instrumentals, normalize
 
-Re-uses karaoke_gen.audio_processor.AudioProcessor for remote GPU separation.
+Supports two modes:
+- Local GPU: Runs Separator directly with L4 GPU (MODEL_DIR env var)
+- Remote API: Calls audio-separator Cloud Run Service (AUDIO_SEPARATOR_API_URL env var)
 
 Observability:
 - All operations wrapped in tracing spans for Cloud Trace visibility
@@ -200,6 +202,7 @@ async def download_from_url(url: str, temp_dir: str, artist: str, title: str, jo
 
 def create_audio_processor(
     temp_dir: str,
+    model_file_dir: Optional[str] = None,
     clean_instrumental_model: Optional[str] = None,
     backing_vocals_models: Optional[list] = None,
     other_stems_models: Optional[list] = None,
@@ -207,15 +210,24 @@ def create_audio_processor(
     karaoke_preset: Optional[str] = None,
 ) -> AudioProcessor:
     """
-    Create an AudioProcessor instance configured for remote API processing.
+    Create an AudioProcessor instance configured for audio processing.
 
     Supports two modes:
+    - Local GPU mode: When model_file_dir is set, uses the local Separator class
+      with GPU models loaded from that directory. No remote API calls.
+    - Remote API mode (default): When model_file_dir is None, delegates separation
+      to a remote audio-separator API server.
+
+    Within each mode, separation can be configured via:
     - Preset mode (default): Uses ensemble presets for higher quality separation.
-      Presets are resolved by the audio-separator API server.
+      Presets are resolved by the audio-separator API server (remote) or local
+      preset definitions (local GPU).
     - Model mode (legacy): Uses explicit model filenames for per-job overrides.
 
     Args:
         temp_dir: Temporary directory for processing
+        model_file_dir: Directory containing local model files for GPU separation.
+            When set, enables local GPU mode. When None (default), uses remote API.
         clean_instrumental_model: Model for clean instrumental (legacy, overrides preset)
         backing_vocals_models: Models for backing vocals (legacy, overrides preset)
         other_stems_models: Models for other stems (legacy, default empty)
@@ -241,7 +253,7 @@ def create_audio_processor(
         logger=audio_logger,
         log_level=logging.INFO,
         log_formatter=None,
-        model_file_dir=None,  # No local models, using remote API
+        model_file_dir=model_file_dir,
         lossless_output_format="FLAC",
         clean_instrumental_model=effective_clean_model,
         backing_vocals_models=effective_backing_models,
@@ -249,7 +261,7 @@ def create_audio_processor(
         ffmpeg_base_command=ffmpeg_base_command,
     )
 
-    # Set preset configuration (used by _process_audio_separation_remote)
+    # Set preset configuration (used by both remote and local paths)
     processor.instrumental_preset = instrumental_preset or DEFAULT_INSTRUMENTAL_PRESET
     processor.karaoke_preset = karaoke_preset or DEFAULT_KARAOKE_PRESET
 
@@ -265,8 +277,8 @@ async def process_audio_separation(job_id: str) -> bool:
     
     Workflow:
     1. Download audio from GCS
-    2. Stage 1: Separate with clean instrumental + other stems models (Modal API)
-    3. Stage 2: Separate vocals for backing vocals (Modal API)
+    2. Stage 1: Separate with clean instrumental + other stems models (GPU)
+    3. Stage 2: Separate vocals for backing vocals (GPU)
     4. Post-process: Combine instrumentals, normalize audio
     5. Upload all stems to GCS
     6. Mark job as AUDIO_COMPLETE
@@ -326,13 +338,22 @@ async def process_audio_separation(job_id: str) -> bool:
                 job_log.info(f"Starting audio separation for {job.artist} - {job.title}")
                 logger.info(f"[job:{job_id}] Starting audio separation for {job.artist} - {job.title}")
                 
-                # Ensure AUDIO_SEPARATOR_API_URL is set
+                # Determine separation mode: local GPU or remote API
                 api_url = os.environ.get("AUDIO_SEPARATOR_API_URL")
-                if not api_url:
-                    raise Exception("AUDIO_SEPARATOR_API_URL environment variable not set. "
-                                  "Cannot perform audio separation without remote API access.")
-                job_log.info(f"Audio separator API: {api_url}")
-                add_span_attribute("audio_separator_api", api_url)
+                model_dir = os.environ.get("MODEL_DIR")
+                if api_url:
+                    job_log.info(f"Audio separator mode: remote API at {api_url}")
+                    add_span_attribute("audio_separator_mode", "remote")
+                    add_span_attribute("audio_separator_api", api_url)
+                elif model_dir:
+                    job_log.info(f"Audio separator mode: local GPU (models at {model_dir})")
+                    add_span_attribute("audio_separator_mode", "local_gpu")
+                    add_span_attribute("model_dir", model_dir)
+                else:
+                    raise Exception(
+                        "Audio separation not configured. Set either AUDIO_SEPARATOR_API_URL "
+                        "(remote API) or MODEL_DIR (local GPU with baked-in models)."
+                    )
                 
                 # Download audio file from GCS or URL
                 with job_span("download-audio", job_id) as download_span:
@@ -371,8 +392,14 @@ async def process_audio_separation(job_id: str) -> bool:
                     clean_instrumental_model=job.clean_instrumental_model,
                     backing_vocals_models=job.backing_vocals_models,
                     other_stems_models=job.other_stems_models,
+                    model_file_dir=model_dir,
                 )
                 audio_processor.job_id = job_id  # Used as filename prefix (avoids artist/title encoding issues)
+
+                # Pass GCS URI so the separator can fetch directly from GCS (avoids 413 for large files)
+                if job.input_media_gcs_path:
+                    audio_processor.input_gcs_uri = f"gs://{settings.gcs_bucket_name}/{job.input_media_gcs_path}"
+                    job_log.info(f"  GCS URI for separator: {audio_processor.input_gcs_uri}")
 
                 # Store effective model names in state_data for video_worker to use in file naming
                 # This ensures output filenames match local CLI behavior (e.g., "Instrumental model_bs_roformer_ep_317_sdr_12.9755.ckpt")
@@ -392,22 +419,42 @@ async def process_audio_separation(job_id: str) -> bool:
                 safe_title = sanitize_filename(job.title) if job.title else "Unknown"
                 artist_title = f"{safe_artist} - {safe_title}"
                 
-                # Run audio separation (calls Modal API internally)
+                # Run audio separation (local GPU or remote API)
                 # This returns a dict with paths to all separated stems
-                with job_span("modal-separation", job_id) as sep_span:
+                with job_span("audio-separation", job_id) as sep_span:
                     sep_start = time.time()
                     job_log.info("Starting audio separation (this may take 5-10 minutes)...")
                     job_log.info("  Stage 1: Clean instrumental separation (MDX models)")
                     job_log.info("  Stage 2: Backing vocals separation (Demucs model)")
                     add_span_event("separation_started")
-                    logger.info(f"[job:{job_id}] Calling Modal API for audio separation")
+                    logger.info(f"[job:{job_id}] Starting audio separation")
                     
-                    with metrics.time_external_api("modal", job_id):
-                        separation_result = audio_processor.process_audio_separation(
-                            audio_file=audio_path,
-                            artist_title=artist_title,
-                            track_output_dir=temp_dir
-                        )
+                    # Retry with exponential backoff. The audio-separator GPU service
+                    # may be busy processing other jobs for 5-10+ minutes each, so we
+                    # need patience: 60s, 120s, 240s, 480s = ~15 min total wait.
+                    max_retries = 5
+                    for attempt in range(1, max_retries + 1):
+                        try:
+                            with metrics.time_external_api("audio_separation", job_id):
+                                separation_result = audio_processor.process_audio_separation(
+                                    audio_file=audio_path,
+                                    artist_title=artist_title,
+                                    track_output_dir=temp_dir
+                                )
+                            break  # Success
+                        except Exception as e:
+                            error_str = str(e)
+                            if attempt < max_retries:
+                                wait_time = 60 * (2 ** (attempt - 1))  # 60s, 120s, 240s, 480s
+                                job_log.warning(
+                                    f"Audio separation attempt {attempt}/{max_retries} failed: {error_str}. "
+                                    f"Retrying in {wait_time}s..."
+                                )
+                                logger.warning(f"[job:{job_id}] Separation attempt {attempt} failed: {error_str}")
+                                time.sleep(wait_time)
+                            else:
+                                job_log.error(f"Audio separation failed after {max_retries} attempts: {error_str}")
+                                raise
                     
                     sep_duration = time.time() - sep_start
                     sep_span.set_attribute("duration_seconds", sep_duration)
@@ -435,7 +482,7 @@ async def process_audio_separation(job_id: str) -> bool:
                 # Store processing metadata for separation provenance
                 duration = time.time() - start_time
                 job_manager.update_processing_metadata(job_id, "separation", {
-                    "provider": "modal",
+                    "provider": "local_gpu" if model_dir else "remote_api",
                     "clean_model": effective_model_names['clean_instrumental_model'],
                     "backing_models": effective_model_names['backing_vocals_models'],
                     "other_models": effective_model_names['other_stems_models'],
@@ -443,6 +490,15 @@ async def process_audio_separation(job_id: str) -> bool:
                     "duration_seconds": round(sep_duration, 1),
                 })
                 job_manager.update_processing_metadata(job_id, "timing.audio_worker_seconds", round(duration, 1))
+
+                # Analyze backing vocals for instrumental selection recommendation
+                # This must run here (after stems are uploaded) rather than in screens_worker,
+                # because screens_worker triggers on lyrics completion and audio may not be done yet
+                from backend.workers.screens_worker import _analyze_backing_vocals
+                try:
+                    await _analyze_backing_vocals(job_id, job_manager, storage, job_log)
+                except Exception as e:
+                    logger.warning(f"[job:{job_id}] Backing vocals analysis failed (non-fatal): {e}")
 
                 # Mark audio processing complete
                 # This will check if lyrics are also complete and transition to next stage if so
@@ -776,7 +832,7 @@ def main():
     Environment Variables:
         GOOGLE_CLOUD_PROJECT: GCP project ID (required)
         GCS_BUCKET_NAME: Storage bucket name (required)
-        AUDIO_SEPARATOR_API_URL: Modal API URL (required)
+        AUDIO_SEPARATOR_API_URL: Remote API URL (or MODEL_DIR for local GPU)
     """
     import argparse
     import asyncio

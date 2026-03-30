@@ -1,0 +1,1519 @@
+{
+  "reviewed_at": "2026-03-29T23:45:04.385259+00:00",
+  "total_pairs": 168,
+  "reviewed": 168,
+  "reviews": [
+    {
+      "job_id": "a3828f4d",
+      "source": "genius",
+      "artist": "BINZ",
+      "title": "H\u1ed2N L\u1ee0 SA V\u00c0O (ft. TRIPLE D)",
+      "relevance": 0.5337,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "a3828f4d",
+      "source": "spotify",
+      "artist": "BINZ",
+      "title": "H\u1ed2N L\u1ee0 SA V\u00c0O (ft. TRIPLE D)",
+      "relevance": 0.5489,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9d2b88d3",
+      "source": "genius",
+      "artist": "Ballad Lines",
+      "title": "Change of Plan",
+      "relevance": 0.8886,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "e984540f",
+      "source": "lrclib",
+      "artist": "Bee Gees",
+      "title": "Massachusetts - Stereo Version",
+      "relevance": 0.8611,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "e984540f",
+      "source": "spotify",
+      "artist": "Bee Gees",
+      "title": "Massachusetts - Stereo Version",
+      "relevance": 0.8017,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "8e6b80eb",
+      "source": "genius",
+      "artist": "Burning Sensations",
+      "title": "Pablo Picasso",
+      "relevance": 0.7714,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "8e6b80eb",
+      "source": "spotify",
+      "artist": "Burning Sensations",
+      "title": "Pablo Picasso",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9e9b8ac1",
+      "source": "genius",
+      "artist": "CHARLIE LANSBOROUGH",
+      "title": "LOVE YOU EVERY SECOND",
+      "relevance": 0.9042,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9e9b8ac1",
+      "source": "spotify",
+      "artist": "CHARLIE LANSBOROUGH",
+      "title": "LOVE YOU EVERY SECOND",
+      "relevance": 0.0086,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "6f3beb52",
+      "source": "spotify",
+      "artist": "CT Media",
+      "title": "Ng\u01b0\u1eddi Im L\u1eb7ng G\u1eb7p Ng\u01b0\u1eddi Hay N\u00f3i 2",
+      "relevance": 0.011,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "f2eb27cc",
+      "source": "spotify",
+      "artist": "Ca S\u0129 Gi\u1ea5u M\u1eb7t",
+      "title": "Ch\u1ea1m (Touch) | ST : Ivan Tran",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9d60d94e",
+      "source": "genius",
+      "artist": "Chris Stapleton",
+      "title": "Joy of My Life",
+      "relevance": 0.9299,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9d60d94e",
+      "source": "lrclib",
+      "artist": "Chris Stapleton",
+      "title": "Joy of My Life",
+      "relevance": 0.9359,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9d60d94e",
+      "source": "spotify",
+      "artist": "Chris Stapleton",
+      "title": "Joy of My Life",
+      "relevance": 0.9359,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "aaf8aed6",
+      "source": "genius",
+      "artist": "Citizen Soldier",
+      "title": "Dead Butterflies",
+      "relevance": 0.7134,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "aaf8aed6",
+      "source": "lrclib",
+      "artist": "Citizen Soldier",
+      "title": "Dead Butterflies",
+      "relevance": 0.7279,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "aaf8aed6",
+      "source": "spotify",
+      "artist": "Citizen Soldier",
+      "title": "Dead Butterflies",
+      "relevance": 0.7279,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "e284e8a0",
+      "source": "genius",
+      "artist": "Cotoday",
+      "title": "C\u00f2n L\u1ea1i G\u00ec",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "e284e8a0",
+      "source": "lrclib",
+      "artist": "Cotoday",
+      "title": "C\u00f2n L\u1ea1i G\u00ec",
+      "relevance": 0.6385,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "e284e8a0",
+      "source": "spotify",
+      "artist": "Cotoday",
+      "title": "C\u00f2n L\u1ea1i G\u00ec",
+      "relevance": 0.6385,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "91cfcd20",
+      "source": "genius",
+      "artist": "C\u00d3 L\u1ebc N\u00c0O ( THU CU\u1ed0I ) |",
+      "title": "Megaz",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "91cfcd20",
+      "source": "spotify",
+      "artist": "C\u00d3 L\u1ebc N\u00c0O ( THU CU\u1ed0I ) |",
+      "title": "Megaz",
+      "relevance": 0.4625,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9c121931",
+      "source": "genius",
+      "artist": "Donkey Kong",
+      "title": "Donkey Kong Theme",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "ad86b90a",
+      "source": "spotify",
+      "artist": "Dr Slump",
+      "title": "Wai Wai Koushinkyoku",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "1581f19f",
+      "source": "lrclib",
+      "artist": "Eiffel 65",
+      "title": "Living in a bubble (album mix)",
+      "relevance": 0.4656,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "1581f19f",
+      "source": "spotify",
+      "artist": "Eiffel 65",
+      "title": "Living in a bubble (album mix)",
+      "relevance": 0.4294,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "180feaf2",
+      "source": "genius",
+      "artist": "Eli",
+      "title": "All at Once",
+      "relevance": 0.5831,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "180feaf2",
+      "source": "lrclib",
+      "artist": "Eli",
+      "title": "All at Once",
+      "relevance": 0.585,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "180feaf2",
+      "source": "spotify",
+      "artist": "Eli",
+      "title": "All at Once",
+      "relevance": 0.5993,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "55914953",
+      "source": "genius",
+      "artist": "Enscen",
+      "title": "Miss you Mom",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "55914953",
+      "source": "spotify",
+      "artist": "Enscen",
+      "title": "Miss you Mom",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "34cd7b80",
+      "source": "genius",
+      "artist": "Fiona Apple",
+      "title": "Jonathan",
+      "relevance": 0.5392,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "34cd7b80",
+      "source": "lrclib",
+      "artist": "Fiona Apple",
+      "title": "Jonathan",
+      "relevance": 0.5366,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "34cd7b80",
+      "source": "spotify",
+      "artist": "Fiona Apple",
+      "title": "Jonathan",
+      "relevance": 0.5366,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "eee6710a",
+      "source": "genius",
+      "artist": "Fox Stevenson",
+      "title": "All Eyes On Me",
+      "relevance": 0.7009,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "eee6710a",
+      "source": "lrclib",
+      "artist": "Fox Stevenson",
+      "title": "All Eyes On Me",
+      "relevance": 0.6949,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "eee6710a",
+      "source": "spotify",
+      "artist": "Fox Stevenson",
+      "title": "All Eyes On Me",
+      "relevance": 0.6949,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "7c3fbd2d",
+      "source": "genius",
+      "artist": "Fox Stevenson",
+      "title": "Don't Care Crown",
+      "relevance": 0.7599,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "7c3fbd2d",
+      "source": "lrclib",
+      "artist": "Fox Stevenson",
+      "title": "Don't Care Crown",
+      "relevance": 0.7642,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "7c3fbd2d",
+      "source": "spotify",
+      "artist": "Fox Stevenson",
+      "title": "Don't Care Crown",
+      "relevance": 0.7642,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "83dd12c2",
+      "source": "genius",
+      "artist": "Fox Stevenson",
+      "title": "Out My Head",
+      "relevance": 0.4423,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "83dd12c2",
+      "source": "lrclib",
+      "artist": "Fox Stevenson",
+      "title": "Out My Head",
+      "relevance": 0.4235,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "83dd12c2",
+      "source": "spotify",
+      "artist": "Fox Stevenson",
+      "title": "Out My Head",
+      "relevance": 0.268,
+      "verdict": "correct_song",
+      "comment": "Correct song but seems like the spotify lyrics are only the chorus"
+    },
+    {
+      "job_id": "51f327a5",
+      "source": "genius",
+      "artist": "Fox Stevenson",
+      "title": "Still Here",
+      "relevance": 0.7123,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "51f327a5",
+      "source": "lrclib",
+      "artist": "Fox Stevenson",
+      "title": "Still Here",
+      "relevance": 0.7079,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "51f327a5",
+      "source": "spotify",
+      "artist": "Fox Stevenson",
+      "title": "Still Here",
+      "relevance": 0.6923,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "466ccdf9",
+      "source": "genius",
+      "artist": "Gia",
+      "title": "Anh \u0111\u00e3 l\u1eeba d\u1ed1i em r\u1ed3i",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "466ccdf9",
+      "source": "spotify",
+      "artist": "Gia",
+      "title": "Anh \u0111\u00e3 l\u1eeba d\u1ed1i em r\u1ed3i",
+      "relevance": 0.004,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c78fa904",
+      "source": "genius",
+      "artist": "HIEUTHUHAI",
+      "title": "Ng\u01b0\u1eddi hay n\u00f3i",
+      "relevance": 0.4783,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c78fa904",
+      "source": "lrclib",
+      "artist": "HIEUTHUHAI",
+      "title": "Ng\u01b0\u1eddi hay n\u00f3i",
+      "relevance": 0.7787,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c78fa904",
+      "source": "spotify",
+      "artist": "HIEUTHUHAI",
+      "title": "Ng\u01b0\u1eddi hay n\u00f3i",
+      "relevance": 0.5008,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9a83c991",
+      "source": "spotify",
+      "artist": "HV Musical",
+      "title": "C\u00f2n M\u00e3i Ch\u00fang Ta",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "727ca3eb",
+      "source": "genius",
+      "artist": "Hard-Fi",
+      "title": "Cash Machine",
+      "relevance": 0.8558,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "727ca3eb",
+      "source": "lrclib",
+      "artist": "Hard-Fi",
+      "title": "Cash Machine",
+      "relevance": 0.8558,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "727ca3eb",
+      "source": "spotify",
+      "artist": "Hard-Fi",
+      "title": "Cash Machine",
+      "relevance": 0.8613,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "db8b4149",
+      "source": "genius",
+      "artist": "Hoa Minzy",
+      "title": "Bac bling",
+      "relevance": 0.3446,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "db8b4149",
+      "source": "lrclib",
+      "artist": "Hoa Minzy",
+      "title": "Bac bling",
+      "relevance": 0.3679,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "db8b4149",
+      "source": "spotify",
+      "artist": "Hoa Minzy",
+      "title": "Bac bling",
+      "relevance": 0.3694,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "b907a6c0",
+      "source": "genius",
+      "artist": "Hole",
+      "title": "Retard Girl",
+      "relevance": 0.5195,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "b907a6c0",
+      "source": "lrclib",
+      "artist": "Hole",
+      "title": "Retard Girl",
+      "relevance": 0.511,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "b907a6c0",
+      "source": "spotify",
+      "artist": "Hole",
+      "title": "Retard Girl",
+      "relevance": 0.5133,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "183aaff2",
+      "source": "genius",
+      "artist": "Home Is Where",
+      "title": "Long Distance Conjoined Twins",
+      "relevance": 0.771,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "183aaff2",
+      "source": "lrclib",
+      "artist": "Home Is Where",
+      "title": "Long Distance Conjoined Twins",
+      "relevance": 0.6667,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "183aaff2",
+      "source": "spotify",
+      "artist": "Home Is Where",
+      "title": "Long Distance Conjoined Twins",
+      "relevance": 0.6667,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "05b4c52b",
+      "source": "genius",
+      "artist": "H\u00e0 Anh Tu\u1ea5n",
+      "title": "Xu\u00e2n Th\u00ec",
+      "relevance": 0.5972,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "05b4c52b",
+      "source": "lrclib",
+      "artist": "H\u00e0 Anh Tu\u1ea5n",
+      "title": "Xu\u00e2n Th\u00ec",
+      "relevance": 0.6295,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "05b4c52b",
+      "source": "spotify",
+      "artist": "H\u00e0 Anh Tu\u1ea5n",
+      "title": "Xu\u00e2n Th\u00ec",
+      "relevance": 0.6295,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "912da74c",
+      "source": "genius",
+      "artist": "H\u00e0m Nghi",
+      "title": "H\u00e0m Nghi - M\u00e1i Tr\u01b0\u1eddng Em Y\u00eau",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "912da74c",
+      "source": "spotify",
+      "artist": "H\u00e0m Nghi",
+      "title": "H\u00e0m Nghi - M\u00e1i Tr\u01b0\u1eddng Em Y\u00eau",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "49f5dd86",
+      "source": "genius",
+      "artist": "ICD",
+      "title": "Cu\u1ed1n s\u00e1ch ng\u00e0y x\u01b0a m\u1eb9 t\u00f4i th\u01b0\u1eddng n\u00f3i",
+      "relevance": 0.0131,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "49f5dd86",
+      "source": "spotify",
+      "artist": "ICD",
+      "title": "Cu\u1ed1n s\u00e1ch ng\u00e0y x\u01b0a m\u1eb9 t\u00f4i th\u01b0\u1eddng n\u00f3i",
+      "relevance": 0.0172,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "fa4ebd40",
+      "source": "genius",
+      "artist": "JOHN ALFORD",
+      "title": "IF ( ORIGINALLY TERRY SAVALAS )",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "bbe38ccf",
+      "source": "genius",
+      "artist": "JOHN MCDERMOTT",
+      "title": "THE OLD MAN",
+      "relevance": 0.7884,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "bbe38ccf",
+      "source": "lrclib",
+      "artist": "JOHN MCDERMOTT",
+      "title": "THE OLD MAN",
+      "relevance": 0.7884,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "bbe38ccf",
+      "source": "spotify",
+      "artist": "JOHN MCDERMOTT",
+      "title": "THE OLD MAN",
+      "relevance": 0.7884,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "66c9ee9b",
+      "source": "genius",
+      "artist": "JimmyNguyen",
+      "title": "Khoi Thuoc Doi Cho",
+      "relevance": 0.0095,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "66c9ee9b",
+      "source": "spotify",
+      "artist": "JimmyNguyen",
+      "title": "Khoi Thuoc Doi Cho",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "3bca5158",
+      "source": "genius",
+      "artist": "Jimy",
+      "title": "T\u00ecnh \u0111\u1eddi",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "dfe28f3a",
+      "source": "genius",
+      "artist": "KERRI AND MICK",
+      "title": "SONS AND DAUGHTERS (80'S)",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "dfe28f3a",
+      "source": "spotify",
+      "artist": "KERRI AND MICK",
+      "title": "SONS AND DAUGHTERS (80'S)",
+      "relevance": 0.0143,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "86e95986",
+      "source": "genius",
+      "artist": "Lauren Alaina",
+      "title": "Candle in the Wind",
+      "relevance": 0.8013,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "86e95986",
+      "source": "lrclib",
+      "artist": "Lauren Alaina",
+      "title": "Candle in the Wind",
+      "relevance": 0.8282,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "86e95986",
+      "source": "spotify",
+      "artist": "Lauren Alaina",
+      "title": "Candle in the Wind",
+      "relevance": 0.8282,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "1269d4b7",
+      "source": "genius",
+      "artist": "Lela",
+      "title": "Lela Music",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "1269d4b7",
+      "source": "spotify",
+      "artist": "Lela",
+      "title": "Lela Music",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "65cad355",
+      "source": "spotify",
+      "artist": "Lil'Zendy, Kat, Sudoll",
+      "title": "Sweet Heart",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "bcbcd811",
+      "source": "genius",
+      "artist": "Little Foot",
+      "title": "Death or Glory",
+      "relevance": 0.8725,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "27054772",
+      "source": "genius",
+      "artist": "MATT MONROE",
+      "title": "MEDLEY - PORTRAIT/WALK/BORN",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "27054772",
+      "source": "spotify",
+      "artist": "MATT MONROE",
+      "title": "MEDLEY - PORTRAIT/WALK/BORN",
+      "relevance": 0.6415,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "1ee9d745",
+      "source": "spotify",
+      "artist": "Marco McDewey",
+      "title": "Girls ain't got dicks",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "87fc6280",
+      "source": "Client",
+      "artist": "Marco McDewey",
+      "title": "I'm Fucking Broken",
+      "relevance": 0.6078,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "29ba087d",
+      "source": "spotify",
+      "artist": "Marco McDewey",
+      "title": "I'm fucking broken extended version",
+      "relevance": 0.0148,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "975b3e10",
+      "source": "genius",
+      "artist": "Mermaid Melody",
+      "title": "Princess Serena",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": "seems like this was a script or something non-lyrics returned by genius"
+    },
+    {
+      "job_id": "975b3e10",
+      "source": "spotify",
+      "artist": "Mermaid Melody",
+      "title": "Princess Serena",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "5ff14100",
+      "source": "genius",
+      "artist": "NCT",
+      "title": "Chuy\u1ec7n Ng\u01b0\u1eddi \u0110\u1eafp Chi\u1ebfu",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "5ff14100",
+      "source": "spotify",
+      "artist": "NCT",
+      "title": "Chuy\u1ec7n Ng\u01b0\u1eddi \u0110\u1eafp Chi\u1ebfu",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "ef05ab91",
+      "source": "genius",
+      "artist": "Neyt, CDT",
+      "title": "Lasttime",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "a4e60d3f",
+      "source": "genius",
+      "artist": "Noo phuoc",
+      "title": "Noo phuoc",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "88b99e7f",
+      "source": "genius",
+      "artist": "Novo Amor",
+      "title": "Onterio",
+      "relevance": 0.5476,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "88b99e7f",
+      "source": "spotify",
+      "artist": "Novo Amor",
+      "title": "Onterio",
+      "relevance": 0.4854,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "d57b463e",
+      "source": "genius",
+      "artist": "QUANGLVH",
+      "title": "QUANGLVH",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "d57b463e",
+      "source": "spotify",
+      "artist": "QUANGLVH",
+      "title": "QUANGLVH",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "fbec37d6",
+      "source": "spotify",
+      "artist": "Quay Money",
+      "title": "Hardtobelieve",
+      "relevance": 0.0053,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "b545ca33",
+      "source": "genius",
+      "artist": "Regina Spektor",
+      "title": "Eet",
+      "relevance": 0.7542,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "b545ca33",
+      "source": "lrclib",
+      "artist": "Regina Spektor",
+      "title": "Eet",
+      "relevance": 0.7062,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "b545ca33",
+      "source": "spotify",
+      "artist": "Regina Spektor",
+      "title": "Eet",
+      "relevance": 0.6923,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "71b4524e",
+      "source": "genius",
+      "artist": "Roy Black",
+      "title": "Ein kleines bisschen Z\u00e4rtlichkeit",
+      "relevance": 0.6009,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "71b4524e",
+      "source": "spotify",
+      "artist": "Roy Black",
+      "title": "Ein kleines bisschen Z\u00e4rtlichkeit",
+      "relevance": 0.6179,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "80114a89",
+      "source": "spotify",
+      "artist": "R\u00d4 TI",
+      "title": "L\u1eacP \u0110\u00d4NG (CA S\u0128 GI\u1ea4U M\u1eb6T COVER)",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c02c2e12",
+      "source": "genius",
+      "artist": "SEAN WILSON",
+      "title": "BACK ON MY MIND AGAIN",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c02c2e12",
+      "source": "spotify",
+      "artist": "SEAN WILSON",
+      "title": "BACK ON MY MIND AGAIN",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "ae8f4e3a",
+      "source": "spotify",
+      "artist": "SOOBIN",
+      "title": "D\u1ea1o b\u01b0\u1edbc hongkong",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "0dd5327b",
+      "source": "genius",
+      "artist": "Shane Filan",
+      "title": "Beautiful In White",
+      "relevance": 0.6537,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "0dd5327b",
+      "source": "lrclib",
+      "artist": "Shane Filan",
+      "title": "Beautiful In White",
+      "relevance": 0.6047,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "0dd5327b",
+      "source": "spotify",
+      "artist": "Shane Filan",
+      "title": "Beautiful In White",
+      "relevance": 0.6047,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c183d1e3",
+      "source": "genius",
+      "artist": "Slutever",
+      "title": "Maggot",
+      "relevance": 0.4611,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c183d1e3",
+      "source": "lrclib",
+      "artist": "Slutever",
+      "title": "Maggot",
+      "relevance": 0.4529,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "c183d1e3",
+      "source": "spotify",
+      "artist": "Slutever",
+      "title": "Maggot",
+      "relevance": 0.4503,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "0df1c90c",
+      "source": "genius",
+      "artist": "Sorcie Elle",
+      "title": "100 Songs",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "b6e4b044",
+      "source": "genius",
+      "artist": "Sorcie Elle",
+      "title": "Far From Evil",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "45f9bbc0",
+      "source": "genius",
+      "artist": "Sorcie Elle",
+      "title": "Fever Dream",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "45f9bbc0",
+      "source": "spotify",
+      "artist": "Sorcie Elle",
+      "title": "Fever Dream",
+      "relevance": 0.7236,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9f31024e",
+      "source": "genius",
+      "artist": "Taylor Swift",
+      "title": "The Fate Of Ophelia",
+      "relevance": 0.6175,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9f31024e",
+      "source": "lrclib",
+      "artist": "Taylor Swift",
+      "title": "The Fate Of Ophelia",
+      "relevance": 0.6713,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "9f31024e",
+      "source": "spotify",
+      "artist": "Taylor Swift",
+      "title": "The Fate Of Ophelia",
+      "relevance": 0.6713,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "0d4b550c",
+      "source": "genius",
+      "artist": "The Ataris",
+      "title": "All Souls Day",
+      "relevance": 0.8289,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "fa1e2eab",
+      "source": "genius",
+      "artist": "The Ataris",
+      "title": "All Souls Day",
+      "relevance": 0.9276,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "0d4b550c",
+      "source": "lrclib",
+      "artist": "The Ataris",
+      "title": "All Souls Day",
+      "relevance": 0.8289,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "fa1e2eab",
+      "source": "lrclib",
+      "artist": "The Ataris",
+      "title": "All Souls Day",
+      "relevance": 0.9276,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "0d4b550c",
+      "source": "spotify",
+      "artist": "The Ataris",
+      "title": "All Souls Day",
+      "relevance": 0.835,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "fa1e2eab",
+      "source": "spotify",
+      "artist": "The Ataris",
+      "title": "All Souls Day",
+      "relevance": 0.9175,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "e051d8ef",
+      "source": "genius",
+      "artist": "The Hoan",
+      "title": "coi me dang o that gan",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "e051d8ef",
+      "source": "spotify",
+      "artist": "The Hoan",
+      "title": "coi me dang o that gan",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "741f04f1",
+      "source": "genius",
+      "artist": "The Raven Age",
+      "title": "Age of the Raven",
+      "relevance": 0.76,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "741f04f1",
+      "source": "lrclib",
+      "artist": "The Raven Age",
+      "title": "Age of the Raven",
+      "relevance": 0.76,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "741f04f1",
+      "source": "spotify",
+      "artist": "The Raven Age",
+      "title": "Age of the Raven",
+      "relevance": 0.0353,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "14dddf69",
+      "source": "genius",
+      "artist": "The Raven Age",
+      "title": "My Revenge",
+      "relevance": 0.6928,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "14dddf69",
+      "source": "lrclib",
+      "artist": "The Raven Age",
+      "title": "My Revenge",
+      "relevance": 0.7006,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "14dddf69",
+      "source": "spotify",
+      "artist": "The Raven Age",
+      "title": "My Revenge",
+      "relevance": 0.7006,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "8d2419f1",
+      "source": "genius",
+      "artist": "The Raven Age",
+      "title": "Winds of Change",
+      "relevance": 0.6512,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "8d2419f1",
+      "source": "lrclib",
+      "artist": "The Raven Age",
+      "title": "Winds of Change",
+      "relevance": 0.6499,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "8d2419f1",
+      "source": "spotify",
+      "artist": "The Raven Age",
+      "title": "Winds of Change",
+      "relevance": 0.6499,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "6967eed3",
+      "source": "genius",
+      "artist": "Them & I",
+      "title": "Light Blue Linen",
+      "relevance": 0.6863,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "6967eed3",
+      "source": "lrclib",
+      "artist": "Them & I",
+      "title": "Light Blue Linen",
+      "relevance": 0.7451,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "6967eed3",
+      "source": "spotify",
+      "artist": "Them & I",
+      "title": "Light Blue Linen",
+      "relevance": 0.7451,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "ff4abd9a",
+      "source": "genius",
+      "artist": "Tung Duong",
+      "title": "Thiep Hong Sai Ten",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "ff4abd9a",
+      "source": "spotify",
+      "artist": "Tung Duong",
+      "title": "Thiep Hong Sai Ten",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "13b8adcf",
+      "source": "spotify",
+      "artist": "T\u00f4i l\u00e0m b\u1ea1n xem",
+      "title": "50 n\u0103m v\u1ec1 sau ballad",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "5b96ec22",
+      "source": "genius",
+      "artist": "UB4O",
+      "title": "KISS AND SAY GOODBYE",
+      "relevance": 0.7945,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "5431c59f",
+      "source": "genius",
+      "artist": "Undercover",
+      "title": "I Wanna Stay With You",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "5431c59f",
+      "source": "lrclib",
+      "artist": "Undercover",
+      "title": "I Wanna Stay With You",
+      "relevance": 0.9597,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "5431c59f",
+      "source": "spotify",
+      "artist": "Undercover",
+      "title": "I Wanna Stay With You",
+      "relevance": 0.9597,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "10dbc9c4",
+      "source": "genius",
+      "artist": "Van Le",
+      "title": "N\u1ed7i \u0111au ng\u1ef1 tr\u1ecb drill",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "10dbc9c4",
+      "source": "spotify",
+      "artist": "Van Le",
+      "title": "N\u1ed7i \u0111au ng\u1ef1 tr\u1ecb drill",
+      "relevance": 0.0122,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "43c0d519",
+      "source": "genius",
+      "artist": "WESTLIFE",
+      "title": "MEDLEY",
+      "relevance": 0.0052,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "43c0d519",
+      "source": "spotify",
+      "artist": "WESTLIFE",
+      "title": "MEDLEY",
+      "relevance": 0.0084,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "41891d06",
+      "source": "genius",
+      "artist": "While Heaven Wept",
+      "title": "Living Sepulchre (Single)",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "41891d06",
+      "source": "geniusmanual",
+      "artist": "While Heaven Wept",
+      "title": "Living Sepulchre (Single)",
+      "relevance": 0.8072,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "138f548d",
+      "source": "genius",
+      "artist": "Yung Lean",
+      "title": "Red Bottom Sky",
+      "relevance": 0.5412,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "138f548d",
+      "source": "lrclib",
+      "artist": "Yung Lean",
+      "title": "Red Bottom Sky",
+      "relevance": 0.5298,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "138f548d",
+      "source": "spotify",
+      "artist": "Yung Lean",
+      "title": "Red Bottom Sky",
+      "relevance": 0.5298,
+      "verdict": "correct_song",
+      "comment": ""
+    },
+    {
+      "job_id": "bf6743ff",
+      "source": "genius",
+      "artist": "la chan kiet",
+      "title": "chinh con nguoi lam kho con nguoi",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "bf6743ff",
+      "source": "spotify",
+      "artist": "la chan kiet",
+      "title": "chinh con nguoi lam kho con nguoi",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "7cd68d1d",
+      "source": "genius",
+      "artist": "tram cam xuc",
+      "title": "co ai hen ho cung em chua",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "7cd68d1d",
+      "source": "spotify",
+      "artist": "tram cam xuc",
+      "title": "co ai hen ho cung em chua",
+      "relevance": 0.0081,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "75931a5a",
+      "source": "spotify",
+      "artist": "\u0110\u00e2u Ph\u1ea3i Cho Anh (Toan2k8 Remix) - karaoke",
+      "title": "Ph\u00e1t Lee",
+      "relevance": 0,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "d43cd085",
+      "source": "genius",
+      "artist": "\u0110\u1ee9c T\u00e2n",
+      "title": "Bu\u1ed3n L\u00e0m Chi Em \u01a0i",
+      "relevance": 0.0043,
+      "verdict": "wrong_song",
+      "comment": ""
+    },
+    {
+      "job_id": "d43cd085",
+      "source": "spotify",
+      "artist": "\u0110\u1ee9c T\u00e2n",
+      "title": "Bu\u1ed3n L\u00e0m Chi Em \u01a0i",
+      "relevance": 0.0047,
+      "verdict": "wrong_song",
+      "comment": ""
+    }
+  ]
+}

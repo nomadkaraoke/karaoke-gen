@@ -19,7 +19,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     if (!user) {
       router.push("/")
     } else if (requireAdmin && user.role !== "admin") {
-      router.push("/dashboard")
+      router.push("/app")
     }
   }, [user, requireAdmin, router])
 

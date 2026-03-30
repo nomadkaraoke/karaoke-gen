@@ -122,3 +122,14 @@ class SecretNames:
 # GitHub repository for runner registration
 GITHUB_REPO_OWNER = "nomadkaraoke"
 GITHUB_REPO_NAME = "karaoke-gen"
+
+
+class EncodingWorkerConfig:
+    """Configuration for blue-green encoding worker VMs."""
+    VM_NAMES = ["encoding-worker-a", "encoding-worker-b"]
+    IP_NAMES = ["encoding-worker-ip-a", "encoding-worker-ip-b"]
+    IDLE_CHECK_SCHEDULE = "*/5 * * * *"  # Every 5 minutes
+    IDLE_TIMEOUT_MINUTES = 15
+    FUNCTION_NAME = "encoding-worker-idle-shutdown"
+    FUNCTION_MEMORY = "256M"
+    FUNCTION_TIMEOUT = 120  # 2 minutes

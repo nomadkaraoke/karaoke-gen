@@ -1,101 +1,83 @@
 """
-Encoding Worker VM resources.
+Encoding Worker VM resources — blue-green deployment pair.
 
-Manages the high-performance VM instance for video encoding,
-including static IP and firewall rules.
+Manages two identical VMs (a/b) for zero-downtime deployments.
+Only one is active (primary) at a time; the other is stopped (secondary).
+Both auto-shutdown when idle to minimize cost.
+
+See docs/superpowers/specs/2026-03-24-blue-green-encoding-worker-design.md
 """
 
 import pulumi
 from pulumi_gcp import compute, serviceaccount
 
-from config import REGION, ENCODING_WORKER_ZONE, PROJECT_ID, MachineTypes, DiskSizes
+from config import REGION, ENCODING_WORKER_ZONE, PROJECT_ID, MachineTypes, DiskSizes, EncodingWorkerConfig
 from .startup_scripts import read_script
 
 
-def create_encoding_worker_ip() -> compute.Address:
-    """
-    Create static IP for the encoding worker.
+def create_encoding_worker_ips() -> list[compute.Address]:
+    """Create static IPs for both encoding worker VMs."""
+    ips = []
+    for name in EncodingWorkerConfig.IP_NAMES:
+        ip = compute.Address(
+            name,
+            name=name,
+            region=REGION,
+            address_type="EXTERNAL",
+            description=f"Static external IP for {name}",
+        )
+        ips.append(ip)
+    return ips
 
-    Returns:
-        compute.Address: The static IP resource.
-    """
-    return compute.Address(
-        "encoding-worker-ip",
-        name="encoding-worker-static-ip",
-        region=REGION,
-        address_type="EXTERNAL",
-        description="Static external IP for encoding worker service",
-    )
 
-
-def create_encoding_worker_vm(
-    ip: compute.Address,
+def create_encoding_worker_vms(
+    ips: list[compute.Address],
     service_account: serviceaccount.Account,
-) -> compute.Instance:
-    """
-    Create the encoding worker VM instance.
-
-    This VM runs video encoding jobs with high CPU/memory resources.
-    Uses c4d-highcpu-32 (AMD EPYC 9B45 Turin, 32 vCPU) for 4.92x faster
-    encoding vs c4-standard-8. Uses hyperdisk-balanced for fast I/O.
-
-    Uses a custom Packer-built image with Python 3.13, FFmpeg, and fonts
-    pre-installed to reduce startup time from ~10 minutes to ~30 seconds.
-    See infrastructure/packer/README.md for image build instructions.
-
-    Args:
-        ip: The static IP address for the VM.
-        service_account: The encoding worker service account.
-
-    Returns:
-        compute.Instance: The VM instance resource.
-    """
+) -> list[compute.Instance]:
+    """Create the blue-green encoding worker VM pair."""
     startup_script = read_script("encoding_worker.sh")
-
-    # Use custom Packer image with dependencies pre-installed
-    # Image family returns latest image in the family
-    # Fallback: "debian-cloud/debian-12" if image doesn't exist yet
     custom_image = f"projects/{PROJECT_ID}/global/images/family/encoding-worker"
 
-    return compute.Instance(
-        "encoding-worker",
-        name="encoding-worker",
-        machine_type=MachineTypes.ENCODING_WORKER,
-        zone=ENCODING_WORKER_ZONE,
-        boot_disk=compute.InstanceBootDiskArgs(
-            initialize_params=compute.InstanceBootDiskInitializeParamsArgs(
-                image=custom_image,
-                size=DiskSizes.ENCODING_WORKER,
-                type="hyperdisk-balanced",
+    vms = []
+    for vm_name, ip in zip(EncodingWorkerConfig.VM_NAMES, ips):
+        vm = compute.Instance(
+            vm_name,
+            name=vm_name,
+            machine_type=MachineTypes.ENCODING_WORKER,
+            zone=ENCODING_WORKER_ZONE,
+            boot_disk=compute.InstanceBootDiskArgs(
+                initialize_params=compute.InstanceBootDiskInitializeParamsArgs(
+                    image=custom_image,
+                    size=DiskSizes.ENCODING_WORKER,
+                    type="hyperdisk-balanced",
+                ),
             ),
-        ),
-        network_interfaces=[compute.InstanceNetworkInterfaceArgs(
-            network="default",
-            access_configs=[compute.InstanceNetworkInterfaceAccessConfigArgs(
-                nat_ip=ip.address,
+            network_interfaces=[compute.InstanceNetworkInterfaceArgs(
+                network="default",
+                access_configs=[compute.InstanceNetworkInterfaceAccessConfigArgs(
+                    nat_ip=ip.address,
+                )],
             )],
-        )],
-        service_account=compute.InstanceServiceAccountArgs(
-            email=service_account.email,
-            scopes=["cloud-platform"],
-        ),
-        metadata_startup_script=startup_script,
-        tags=["encoding-worker"],
-        allow_stopping_for_update=True,
-        advanced_machine_features=compute.InstanceAdvancedMachineFeaturesArgs(
-            threads_per_core=2,
-        ),
-    )
+            service_account=compute.InstanceServiceAccountArgs(
+                email=service_account.email,
+                scopes=["cloud-platform"],
+            ),
+            metadata_startup_script=startup_script,
+            tags=["encoding-worker"],
+            allow_stopping_for_update=True,
+            advanced_machine_features=compute.InstanceAdvancedMachineFeaturesArgs(
+                threads_per_core=2,
+            ),
+        )
+        vms.append(vm)
+    return vms
 
 
 def create_encoding_worker_firewall() -> compute.Firewall:
-    """
-    Create firewall rules for the encoding worker.
+    """Create firewall rules for encoding worker VMs.
 
-    Opens port 8080 for the HTTP API (authentication required).
-
-    Returns:
-        compute.Firewall: The firewall resource.
+    Opens port 8080 for the HTTP API. Both VMs share the same
+    firewall rule via the 'encoding-worker' network tag.
     """
     return compute.Firewall(
         "encoding-worker-firewall",
@@ -106,5 +88,5 @@ def create_encoding_worker_firewall() -> compute.Firewall:
         ],
         source_ranges=["0.0.0.0/0"],
         target_tags=["encoding-worker"],
-        description="Allow HTTP access to encoding worker (auth required)",
+        description="Allow HTTP access to encoding workers (auth required)",
     )

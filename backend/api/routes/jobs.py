@@ -519,7 +519,7 @@ _SUMMARY_STATE_DATA_KEYS = {
     'backing_vocals_analysis', 'visibility_change_in_progress',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
-_HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete']
+_HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']
 
 
 def _prune_state_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -538,6 +538,21 @@ def _prune_file_urls(data: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+def _search_filter_jobs(jobs: List[Dict[str, Any]], search: str) -> List[Dict[str, Any]]:
+    """Filter job dicts by case-insensitive substring match across key fields."""
+    if not search:
+        return jobs
+    term = search.lower()
+    results = []
+    for job in jobs:
+        searchable = " ".join(
+            str(job.get(f) or "") for f in ("job_id", "artist", "title", "audio_search_artist", "audio_search_title")
+        )
+        if term in searchable.lower():
+            results.append(job)
+    return results
+
+
 @router.get("", response_model=None)
 async def list_jobs(
     request: Request,
@@ -550,6 +565,7 @@ async def list_jobs(
     limit: int = 100,
     fields: Optional[str] = None,
     hide_completed: bool = False,
+    search: Optional[str] = None,
     auth_result: AuthResult = Depends(require_auth)
 ):
     """
@@ -568,6 +584,7 @@ async def list_jobs(
         limit: Maximum number of jobs to return (default 100)
         fields: Set to "summary" for reduced payload with only dashboard-required fields
         hide_completed: If True, exclude successful completions (complete, prep_complete). Failed jobs remain visible.
+        search: Text search filter - matches against artist, title, audio_search_artist, audio_search_title, and job_id (case-insensitive substring). Only works with fields=summary.
 
     Returns:
         List of jobs matching filters, ordered by created_at descending.
@@ -615,6 +632,8 @@ async def list_jobs(
         # --- Summary mode: field-projected query returning dicts ---
         if fields == "summary":
             exclude_statuses = _HIDE_COMPLETED_STATUSES if hide_completed else None
+            # When searching, fetch more results and filter in Python
+            fetch_limit = 1000 if search else limit
             jobs_dicts = job_manager.list_jobs_summary(
                 status=status,
                 exclude_statuses=exclude_statuses,
@@ -624,12 +643,17 @@ async def list_jobs(
                 created_before=created_before_dt,
                 user_email=user_email_filter,
                 tenant_id=effective_tenant_id,
-                limit=limit,
+                limit=fetch_limit,
             )
 
             # Exclude test user jobs (Python-side, same as full mode)
             if exclude_test and auth_result.is_admin:
                 jobs_dicts = [j for j in jobs_dicts if not is_test_email(j.get('user_email') or "")]
+
+            # Apply search filter if provided
+            if search:
+                jobs_dicts = _search_filter_jobs(jobs_dicts, search)
+                jobs_dicts = jobs_dicts[:limit]  # Apply original limit after filtering
 
             # Safety-net pruning (in case Firestore returned extra nested keys)
             jobs_dicts = [_prune_file_urls(_prune_state_data(j)) for j in jobs_dicts]
@@ -1423,18 +1447,12 @@ async def get_download_urls(
     if not _check_job_ownership(job, auth_result):
         raise HTTPException(status_code=403, detail="You don't have permission to access this job")
 
-    if job.status != JobStatus.COMPLETE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Job not complete (current status: {job.status})"
-        )
-    
     file_urls = job.file_urls or {}
     download_urls = {}
-    
+
     # Build download URLs using the streaming endpoint
     base_url = f"/api/jobs/{job_id}/download"
-    
+
     for category, files in file_urls.items():
         if isinstance(files, dict):
             download_urls[category] = {}
@@ -1444,7 +1462,7 @@ async def get_download_urls(
         elif isinstance(files, str) and files:
             # For single-file categories, use the category name as the file_key
             download_urls[category] = f"{base_url}/{category}/{category}"
-    
+
     return {
         "job_id": job_id,
         "artist": job.artist,
@@ -1490,12 +1508,6 @@ async def download_file(
     if not _check_job_ownership(job, auth_result):
         raise HTTPException(status_code=403, detail="You don't have permission to access this job")
 
-    if job.status != JobStatus.COMPLETE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Job not complete (current status: {job.status})"
-        )
-    
     file_urls = job.file_urls or {}
     category_files = file_urls.get(category)
     
@@ -1693,11 +1705,14 @@ async def retry_job(
                 "retry_stage": "video_generation"
             }
         
-        # If we have corrections and screens but no video, retry render
-        elif (file_urls.get('lyrics', {}).get('corrections') and 
-              file_urls.get('screens', {}).get('title')):
-            
-            logger.info(f"Job {job_id}: Has corrections and screens, retrying from render stage")
+        # If we have corrections, screens, AND review was completed, retry render
+        # Review completion is proven by instrumental_selection in state_data
+        # (set only when user submits the review endpoint)
+        elif (file_urls.get('lyrics', {}).get('corrections') and
+              file_urls.get('screens', {}).get('title') and
+              state_data.get('instrumental_selection')):
+
+            logger.info(f"Job {job_id}: Has corrections, screens, and completed review — retrying from render stage")
 
             # Clear error state and reset worker progress for idempotency
             job_manager.update_job(job_id, {
@@ -1717,15 +1732,47 @@ async def retry_job(
                     status_code=500,
                     detail="Failed to transition job status for retry"
                 )
-            
+
             # Trigger render video worker
             background_tasks.add_task(worker_service.trigger_render_video_worker, job_id)
-            
+
             return {
                 "status": "success",
                 "job_status": "review_complete",
                 "message": "Job retry started from render stage",
                 "retry_stage": "render_video"
+            }
+
+        # If we have corrections and screens but review was NOT completed,
+        # return to awaiting_review so the user can review lyrics
+        elif (file_urls.get('lyrics', {}).get('corrections') and
+              file_urls.get('screens', {}).get('title')):
+
+            logger.info(f"Job {job_id}: Has corrections and screens but review not completed — returning to review")
+
+            # Clear error state
+            job_manager.update_job(job_id, {
+                'error_message': None,
+                'error_details': None,
+            })
+
+            # Transition to AWAITING_REVIEW so user can review lyrics
+            if not job_manager.transition_to_state(
+                job_id=job_id,
+                new_status=JobStatus.AWAITING_REVIEW,
+                progress=55,
+                message=f"Ready for review. Please review lyrics and select your instrumental."
+            ):
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to transition job status for retry"
+                )
+
+            return {
+                "status": "success",
+                "job_status": "awaiting_review",
+                "message": "Job retry: returning to lyrics review (review was not completed before failure)",
+                "retry_stage": "awaiting_review"
             }
         
         # If we have stems and corrections, retry from screens generation

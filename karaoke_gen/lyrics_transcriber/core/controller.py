@@ -547,6 +547,8 @@ class LyricsTranscriber:
         # Calculate anchor sequences and gaps if we have reference lyrics
         anchor_sequences = []
         gap_sequences = []
+        filtered_lyrics = self.results.lyrics_results
+        rejected_sources = {}
         if self.results.lyrics_results:
             self.logger.info("Calculating anchor sequences for uncorrected result")
             transcribed_text = " ".join(
@@ -556,8 +558,28 @@ class LyricsTranscriber:
             anchor_sequences = self.corrector.anchor_finder.find_anchors(
                 transcribed_text, self.results.lyrics_results, best_transcription
             )
+
+            # Filter irrelevant reference sources even when correction is disabled
+            from karaoke_gen.lyrics_transcriber.correction.relevance import filter_irrelevant_sources
+            filtered_lyrics, rejected_sources = filter_irrelevant_sources(
+                self.results.lyrics_results, anchor_sequences, logger=self.logger,
+            )
+            if len(filtered_lyrics) < len(self.results.lyrics_results):
+                self.logger.info(
+                    f"Relevance filter (uncorrected path): {len(self.results.lyrics_results)} -> {len(filtered_lyrics)} sources "
+                    f"(rejected: {', '.join(rejected_sources.keys())})"
+                )
+                if filtered_lyrics:
+                    # Re-find anchors with only valid sources
+                    self.corrector._anchor_finder = None
+                    anchor_sequences = self.corrector.anchor_finder.find_anchors(
+                        transcribed_text, filtered_lyrics, best_transcription
+                    )
+                else:
+                    anchor_sequences = []
+
             gap_sequences = self.corrector.anchor_finder.find_gaps(
-                transcribed_text, anchor_sequences, self.results.lyrics_results, best_transcription
+                transcribed_text, anchor_sequences, filtered_lyrics, best_transcription
             )
             self.logger.info(
                 f"Found {len(anchor_sequences)} anchor sequences and {len(gap_sequences)} gaps"
@@ -570,7 +592,7 @@ class LyricsTranscriber:
             corrections=[],
             corrections_made=0,
             confidence=1.0,  # Full confidence since we're using original
-            reference_lyrics=self.results.lyrics_results,  # Include fetched lyrics for review UI
+            reference_lyrics=filtered_lyrics,  # Only include relevant lyrics for review UI
             anchor_sequences=anchor_sequences,
             gap_sequences=gap_sequences,
             resized_segments=[],
@@ -588,6 +610,16 @@ class LyricsTranscriber:
                 "available_handlers": [],
                 "enabled_handlers": [],
                 "agentic_routing": "disabled",
+                **({"rejected_sources": {
+                    name: {
+                        "relevance": result.relevance,
+                        "matched_words": result.matched_words,
+                        "total_words": result.total_words,
+                        "track_name": result.track_name,
+                        "artist_names": result.artist_names,
+                    }
+                    for name, result in rejected_sources.items()
+                }} if rejected_sources else {}),
             },
         )
         self.logger.info(

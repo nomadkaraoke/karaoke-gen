@@ -1,0 +1,35 @@
+# Cloud Build config for GPU base image
+#
+# Builds the CUDA + PyTorch + models base image used by the audio worker.
+# This image is large (~10GB) so builds take 15-30 minutes.
+#
+# Trigger manually:
+#   gcloud builds submit --config=backend/cloudbuild-gpu-base.yaml --project=nomadkaraoke --timeout=3600s
+#
+# The app-layer Dockerfile uses this as its BASE_IMAGE for audio worker deploys.
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'backend/Dockerfile.gpu-base'
+      - '-t'
+      - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:latest'
+      - '-t'
+      - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:$BUILD_ID'
+      - '--build-arg'
+      - 'BUILD_DATE=$_BUILD_DATE'
+      - '--build-arg'
+      - 'BUILD_ID=$BUILD_ID'
+      - '.'
+
+images:
+  - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:latest'
+  - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:$BUILD_ID'
+
+timeout: '3600s'
+
+options:
+  machineType: 'E2_HIGHCPU_32'
+  diskSizeGb: 100

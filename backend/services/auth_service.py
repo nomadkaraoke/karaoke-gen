@@ -3,6 +3,7 @@ Authentication service for karaoke backend.
 
 Provides token-based authentication with support for:
 - Admin tokens (hardcoded in environment)
+- Google OIDC tokens (from Cloud Scheduler / Cloud Tasks service accounts)
 - Admin by email domain (@nomadkaraoke.com)
 - User tokens (stored in Firestore auth_tokens collection)
 - Session tokens (stored in Firestore sessions collection, from magic link auth)
@@ -18,6 +19,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Tuple, Dict, Any, List
 from datetime import datetime
+
+from google.auth.transport import requests as google_auth_requests
+from google.oauth2 import id_token as google_id_token
 
 from backend.services.firestore_service import FirestoreService
 from backend.config import get_settings
@@ -72,6 +76,7 @@ class AuthService:
         self.firestore = FirestoreService()
         self.settings = get_settings()
         self._init_admin_tokens()
+        self._scheduler_service_account = self.settings.scheduler_service_account
 
     def _init_admin_tokens(self):
         """Load admin tokens from environment variables."""
@@ -83,6 +88,56 @@ class AuthService:
             logger.info(f"Loaded {len(self.admin_tokens)} admin token(s)")
         else:
             logger.warning("No admin tokens configured! Set ADMIN_TOKENS environment variable.")
+
+    def _validate_oidc_token(self, token: str) -> Optional[AuthResult]:
+        """
+        Validate a Google OIDC token (from Cloud Scheduler or Cloud Tasks).
+
+        Returns AuthResult if token is a valid Google OIDC JWT from an allowed
+        service account, None if the token is not a JWT or validation fails.
+        """
+        # Quick check: JWTs have 3 dot-separated parts
+        if token.count('.') != 2:
+            return None
+
+        try:
+            # Verify the token signature and claims with Google
+            # audience=None skips audience check — Cloud Scheduler sets audience
+            # to the endpoint URL, which varies per endpoint
+            claims = google_id_token.verify_oauth2_token(
+                token,
+                google_auth_requests.Request(),
+                audience=None,
+            )
+
+            token_email = claims.get("email", "")
+
+            # Only accept tokens from the configured service account
+            if token_email != self._scheduler_service_account:
+                logger.warning(
+                    f"OIDC token from unexpected service account: {token_email} "
+                    f"(expected {self._scheduler_service_account})"
+                )
+                return None
+
+            logger.info(f"OIDC token validated for service account: {token_email}")
+            return AuthResult(
+                is_valid=True,
+                user_type=UserType.ADMIN,
+                remaining_uses=-1,
+                message="OIDC service account access granted",
+                user_email=token_email,
+                is_admin=True,
+            )
+
+        except ValueError as e:
+            # verify_oauth2_token raises ValueError for invalid/expired tokens
+            logger.debug(f"OIDC token validation failed: {e}")
+            return None
+        except Exception as e:
+            # Network errors fetching Google certs, etc.
+            logger.warning(f"OIDC token verification error: {e}")
+            return None
     
     def validate_token(self, token: str) -> Tuple[bool, UserType, int, str]:
         """
@@ -212,6 +267,12 @@ class AuthService:
                 user_email="admin@nomadkaraoke.com",
                 is_admin=True
             )
+
+        # Check for Google OIDC tokens (Cloud Scheduler / Cloud Tasks)
+        # Done before Firestore lookup to avoid wasting a read on JWT strings
+        oidc_result = self._validate_oidc_token(token)
+        if oidc_result is not None:
+            return oidc_result
 
         # Check stored tokens in Firestore (auth_tokens collection)
         token_data = self.firestore.get_token(token)

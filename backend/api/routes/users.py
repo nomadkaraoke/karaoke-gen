@@ -10,6 +10,7 @@ Handles:
 """
 import hashlib
 import logging
+import threading
 from datetime import datetime
 from typing import Optional, Tuple
 
@@ -132,6 +133,32 @@ class LogoutResponse(BaseModel):
 # Magic Link Authentication
 # =============================================================================
 
+
+def _precompute_credit_eval(token: str, email: str) -> None:
+    """Run credit evaluation in background and store result on magic link doc.
+
+    Called in a background thread after sending a magic link for new users.
+    If the user clicks the link before this finishes, verify_magic_link falls
+    back to inline evaluation (same as before this optimization).
+    """
+    try:
+        from backend.services.credit_evaluation_service import get_credit_evaluation_service
+        from backend.services.user_service import get_user_service, MAGIC_LINKS_COLLECTION
+
+        eval_service = get_credit_evaluation_service()
+        evaluation = eval_service.evaluate(email, "welcome")
+
+        user_service = get_user_service()
+        user_service.db.collection(MAGIC_LINKS_COLLECTION).document(token).update({
+            "credit_eval_decision": evaluation.decision,
+            "credit_eval_reasoning": evaluation.reasoning,
+            "credit_eval_error": evaluation.error,
+        })
+        logger.info(f"Pre-computed credit eval for {_mask_email(email)}: {evaluation.decision}")
+    except Exception:
+        logger.exception(f"Background credit eval failed for {_mask_email(email)} — verify will compute inline")
+
+
 @router.post("/auth/magic-link", response_model=SendMagicLinkResponse)
 async def send_magic_link(
     request: SendMagicLinkRequest,
@@ -250,6 +277,17 @@ async def send_magic_link(
         # Don't reveal failure to prevent email enumeration
         # Still return success
 
+    # Pre-compute credit evaluation in background for new users.
+    # By the time they check their email and click the link, the decision
+    # will be ready and verification will be instant.
+    if existing_user is None:
+        thread = threading.Thread(
+            target=_precompute_credit_eval,
+            args=(magic_link.token, email),
+            daemon=True,
+        )
+        thread.start()
+
     return SendMagicLinkResponse(
         status="success",
         message="If this email is registered, you will receive a sign-in link shortly."
@@ -297,13 +335,28 @@ async def verify_magic_link(
     if not success or not user:
         raise HTTPException(status_code=401, detail=message)
 
-    # Grant welcome credits on first verification (not at account creation)
+    # Grant welcome credits on first verification (with AI abuse evaluation)
+    # Use pre-computed evaluation from magic link if available (computed at send time)
+    precomputed_eval = None
+    if magic_link_doc.exists:
+        precomputed_eval = {
+            k: magic_link_data.get(k)
+            for k in ("credit_eval_decision", "credit_eval_reasoning", "credit_eval_error")
+            if magic_link_data.get(k) is not None
+        } or None
+
     credits_granted = 0
-    if user_service.grant_welcome_credits_if_eligible(user.email):
+    credit_status = "not_applicable"  # returning user, not first login
+    granted, credit_status = user_service.grant_welcome_credits_if_eligible(
+        user.email, precomputed_eval=precomputed_eval,
+    )
+    if granted:
         credits_granted = user_service.NEW_USER_FREE_CREDITS
         logger.info(f"Granted {credits_granted} welcome credits to {_mask_email(user.email)}")
         # Refresh user to get updated credit balance
         user = user_service.get_user(user.email)
+    elif credit_status == "denied":
+        logger.info(f"Welcome credits denied for {_mask_email(user.email)}")
 
     # Create session with tenant context and device fingerprint from the magic link
     magic_link_fingerprint = magic_link_data.get('device_fingerprint') if magic_link_doc.exists else None
@@ -346,6 +399,7 @@ async def verify_magic_link(
         message="Successfully signed in",
         tenant_subdomain=tenant_subdomain,
         credits_granted=credits_granted,
+        credit_status=credit_status,
     )
 
 
@@ -1121,7 +1175,7 @@ async def check_feedback_eligibility(
         eligible=eligible,
         has_submitted=user.has_submitted_feedback,
         jobs_completed=user.total_jobs_completed,
-        credits_reward=2,
+        credits_reward=1,
     )
 
 
@@ -1132,7 +1186,7 @@ async def submit_user_feedback(
     user_service: UserService = Depends(get_user_service),
 ):
     """
-    Submit product feedback to earn 2 free credits.
+    Submit product feedback to earn 1 free credit.
 
     Requires authentication. Users must have completed 2+ jobs and
     not have already submitted feedback. At least one text field
@@ -1210,8 +1264,59 @@ async def submit_user_feedback(
         has_submitted_feedback=True,
     )
 
-    # Grant 2 credits
-    credits_granted = 2
+    # AI evaluation before granting feedback credits
+    credits_granted = 0
+    feedback_content = {
+        "overall_rating": request.overall_rating,
+        "what_went_well": request.what_went_well,
+        "what_could_improve": request.what_could_improve,
+        "additional_comments": request.additional_comments,
+    }
+    try:
+        from backend.services.credit_evaluation_service import get_credit_evaluation_service
+        eval_service = get_credit_evaluation_service()
+        evaluation = eval_service.evaluate(user.email, "feedback", feedback_content)
+
+        if evaluation.decision == "deny":
+            logger.info(f"Feedback credits denied for {_mask_email(user.email)}: {evaluation.reasoning}")
+            try:
+                from backend.services.email_service import get_email_service
+                get_email_service().send_credit_denied_email(user.email, "feedback")
+            except Exception:
+                logger.exception(f"Failed to send credit denied email to {_mask_email(user.email)}")
+            return UserFeedbackResponse(
+                status="success",
+                message="Thank you for your feedback! We appreciate your input.",
+                credits_granted=0,
+            )
+
+        if evaluation.decision == "pending_review":
+            logger.info(f"Feedback credits pending review for {_mask_email(user.email)}: {evaluation.reasoning}")
+            try:
+                from backend.services.email_service import get_email_service
+                get_email_service().send_credit_review_needed_email(user.email, "feedback", evaluation.reasoning)
+            except Exception:
+                logger.exception(f"Failed to send review needed email for {_mask_email(user.email)}")
+            return UserFeedbackResponse(
+                status="success",
+                message="Thank you for your feedback! Our team will review your account shortly.",
+                credits_granted=0,
+            )
+    except Exception:
+        logger.exception(f"Credit evaluation failed for {_mask_email(user.email)} — pending review (fail-closed)")
+        try:
+            from backend.services.email_service import get_email_service
+            get_email_service().send_credit_review_needed_email(user.email, "feedback", "Evaluation error")
+        except Exception:
+            pass
+        return UserFeedbackResponse(
+            status="success",
+            message="Thank you for your feedback! Our team will review your account shortly.",
+            credits_granted=0,
+        )
+
+    # Grant 1 credit (passed evaluation)
+    credits_granted = 1
     user_service.add_credits(
         email=user.email,
         amount=credits_granted,

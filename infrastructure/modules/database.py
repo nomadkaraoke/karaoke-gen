@@ -223,6 +223,19 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # Audio separation jobs: query by status + updated_at (for cleanup of old jobs)
+    resources["firestore_index_audio_separation_jobs_cleanup"] = firestore.Index(
+        "firestore-index-audio-separation-jobs-cleanup",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="audio_separation_jobs",
+        fields=[
+            firestore.IndexFieldArgs(field_path="status", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="updated_at", order="ASCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
+    )
+
     # ==================== Firestore TTL Field Configuration ====================
     # TTL policies automatically delete documents after expiration.
 

@@ -2,6 +2,7 @@
 
 import os
 import pytest
+import subprocess
 import tempfile
 from unittest.mock import MagicMock, patch
 from karaoke_gen.lyrics_transcriber.transcribers.audioshake import (
@@ -24,7 +25,7 @@ class TestAudioUploadOptimizer:
 
     # ===== Test AudioShake-supported formats are uploaded directly =====
 
-    @pytest.mark.parametrize("ext", [".mp3", ".flac", ".aac", ".mp4a"])
+    @pytest.mark.parametrize("ext", [".mp3", ".aac", ".mp4a"])
     def test_supported_audio_formats_uploaded_directly(self, optimizer, ext):
         """AudioShake-supported audio formats should be uploaded directly."""
         filepath = f"/path/to/audio{ext}"
@@ -35,6 +36,21 @@ class TestAudioUploadOptimizer:
         assert temp_path is None
         optimizer.logger.info.assert_called_once()
         assert "directly" in optimizer.logger.info.call_args[0][0]
+
+    def test_flac_files_have_metadata_stripped(self, optimizer):
+        """FLAC files should have metadata stripped before upload."""
+        filepath = "/path/to/audio.flac"
+
+        with patch.object(optimizer, "_strip_metadata") as mock_strip:
+            mock_strip.return_value = ("/tmp/clean.flac", "/tmp/clean.flac")
+
+            result_path, temp_path = optimizer.prepare_for_upload(filepath)
+
+            mock_strip.assert_called_once_with(filepath)
+            assert result_path == "/tmp/clean.flac"
+            assert temp_path == "/tmp/clean.flac"
+            optimizer.logger.info.assert_called_once()
+            assert "metadata" in optimizer.logger.info.call_args[0][0].lower()
 
     @pytest.mark.parametrize("ext", [".mp4", ".mov"])
     def test_supported_video_formats_uploaded_directly(self, optimizer, ext):
@@ -197,5 +213,38 @@ class TestAudioUploadOptimizerConversion:
         try:
             assert flac_path.endswith(".flac")
             assert os.path.exists(flac_path)
+        finally:
+            optimizer.cleanup(cleanup_path)
+
+    def test_strip_metadata_produces_clean_flac(self, optimizer, tmp_path):
+        """Test that _strip_metadata creates a clean FLAC file without metadata."""
+        pytest.importorskip("pydub")
+
+        from pydub import AudioSegment
+        from pydub.generators import Sine
+
+        # Generate a FLAC file with metadata
+        sine_wave = Sine(440).to_audio_segment(duration=1000)
+        flac_path = tmp_path / "test_with_metadata.flac"
+        sine_wave.export(str(flac_path), format="flac", tags={"title": "Test", "artist": "Bot"})
+
+        # Strip metadata
+        clean_path, cleanup_path = optimizer._strip_metadata(str(flac_path))
+
+        try:
+            assert clean_path.endswith(".flac")
+            assert os.path.exists(clean_path)
+            assert os.path.getsize(clean_path) > 0
+
+            # Verify metadata was stripped using ffprobe
+            result = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", clean_path],
+                capture_output=True, text=True,
+            )
+            import json
+            probe = json.loads(result.stdout)
+            tags = probe.get("format", {}).get("tags", {})
+            assert "title" not in tags
+            assert "artist" not in tags
         finally:
             optimizer.cleanup(cleanup_path)

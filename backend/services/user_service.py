@@ -48,7 +48,7 @@ class UserService:
     """Service for user management and authentication."""
 
     # Number of free credits granted to new users
-    NEW_USER_FREE_CREDITS = 2
+    NEW_USER_FREE_CREDITS = 1
 
     def __init__(self):
         """Initialize user service with Firestore client."""
@@ -370,31 +370,104 @@ class UserService:
             logger.exception("Error verifying magic link")
             return False, None, "An error occurred during verification"
 
-    def grant_welcome_credits_if_eligible(self, email: str) -> bool:
+    def grant_welcome_credits_if_eligible(
+        self,
+        email: str,
+        precomputed_eval: Optional[dict] = None,
+    ) -> Tuple[bool, str]:
         """
         Grant welcome credits on first magic link verification.
+
+        Uses AI evaluation to check for abuse before granting. Fail-open:
+        if evaluation fails, credits are granted anyway.
 
         Uses a dedicated welcome_credits_granted flag as primary idempotency
         check (survives credit_transactions list trimming). Falls back to
         checking for welcome_credit transaction as secondary defense.
 
+        Args:
+            email: User's email address.
+            precomputed_eval: Optional pre-computed evaluation from magic link doc.
+                Keys: credit_eval_decision, credit_eval_reasoning, credit_eval_error.
+                If provided and has a decision, skips the AI call.
+
         Returns:
-            True if credits were granted, False if already received or user not found.
+            Tuple of (credits_granted: bool, status: str).
+            status is one of: "granted", "denied", "already_granted", "not_found", "error"
         """
         try:
             email = email.lower()
             user = self.get_user(email)
             if not user:
-                return False
+                return False, "not_found"
 
             # Primary check: dedicated flag (survives transaction list trimming)
             if user.welcome_credits_granted:
-                return False
+                return False, "already_granted"
 
             # Secondary check: look for existing welcome_credit transaction
             for txn in user.credit_transactions:
                 if txn.reason == "welcome_credit":
-                    return False  # Already received
+                    return False, "already_granted"
+
+            # AI evaluation: check for abuse signals before granting
+            # Use pre-computed result from magic link if available
+            try:
+                from backend.services.credit_evaluation_service import (
+                    get_credit_evaluation_service,
+                    CreditEvaluation,
+                )
+                precomputed_decision = (precomputed_eval or {}).get("credit_eval_decision")
+                if precomputed_decision:
+                    logger.info(f"Using pre-computed credit eval for {email}: {precomputed_decision}")
+                    evaluation = CreditEvaluation(
+                        decision=precomputed_decision,
+                        reasoning=(precomputed_eval or {}).get("credit_eval_reasoning", ""),
+                        confidence=1.0,
+                        error=(precomputed_eval or {}).get("credit_eval_error"),
+                    )
+                else:
+                    eval_service = get_credit_evaluation_service()
+                    evaluation = eval_service.evaluate(email, "welcome")
+
+                if evaluation.decision == "deny":
+                    # Mark as evaluated but not granted so we don't re-evaluate
+                    self.update_user(email, welcome_credits_granted=True)
+                    logger.info(
+                        f"Denied welcome credits to {email}: {evaluation.reasoning}"
+                    )
+                    try:
+                        from backend.services.email_service import get_email_service
+                        get_email_service().send_credit_denied_email(email, "welcome")
+                    except Exception:
+                        logger.exception(f"Failed to send credit denied email to {email}")
+                    return False, "denied"
+
+                if evaluation.decision == "pending_review":
+                    # Don't mark welcome_credits_granted — allow retry after manual review
+                    logger.info(
+                        f"Welcome credits pending review for {email}: {evaluation.reasoning}"
+                    )
+                    try:
+                        from backend.services.email_service import get_email_service
+                        email_service = get_email_service()
+                        email_service.send_credit_review_needed_email(
+                            email, "welcome", evaluation.reasoning, signals=evaluation.signals,
+                        )
+                    except Exception:
+                        logger.exception(f"Failed to send review needed email for {email}")
+                    return False, "pending_review"
+            except Exception:
+                logger.exception(f"Credit evaluation failed for {email} — pending review (fail-closed)")
+                try:
+                    from backend.services.email_service import get_email_service
+                    email_service = get_email_service()
+                    email_service.send_credit_review_needed_email(
+                        email, "welcome", f"Evaluation error: {email}",
+                    )
+                except Exception:
+                    pass
+                return False, "pending_review"
 
             # Grant welcome credits
             welcome_credit = self.NEW_USER_FREE_CREDITS
@@ -416,11 +489,11 @@ class UserService:
             )
 
             logger.info(f"Granted {welcome_credit} welcome credits to {email}")
-            return True
+            return True, "granted"
 
         except Exception:
             logger.exception(f"Error granting welcome credits to {email}")
-            return False
+            return False, "error"
 
     # =========================================================================
     # Anti-Abuse Rate Limiting

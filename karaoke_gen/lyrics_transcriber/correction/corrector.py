@@ -24,6 +24,7 @@ from karaoke_gen.lyrics_transcriber.types import (
     Word,
 )
 from karaoke_gen.lyrics_transcriber.correction.anchor_sequence import AnchorSequenceFinder
+from karaoke_gen.lyrics_transcriber.correction.relevance import filter_irrelevant_sources
 from karaoke_gen.lyrics_transcriber.correction.handlers.base import GapCorrectionHandler
 from karaoke_gen.lyrics_transcriber.correction.handlers.extend_anchor import ExtendAnchorHandler
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
@@ -142,9 +143,6 @@ class LyricsCorrector:
                 self.logger.error("No transcription results available")
                 raise ValueError("No primary transcription data available")
 
-            # Store reference lyrics for use in word map
-            self.reference_lyrics = lyrics_results
-
             # Get primary transcription
             primary_transcription_result = sorted(transcription_results, key=lambda x: x.priority)[0]
             primary_transcription = primary_transcription_result.result
@@ -152,12 +150,41 @@ class LyricsCorrector:
 
             # Find anchor sequences and gaps
             self.logger.debug("Finding anchor sequences and gaps")
+            rejected_sources = {}
             with create_span("lyrics_corrector.find_anchors_and_gaps") as anchor_span:
                 anchor_sequences = self.anchor_finder.find_anchors(transcribed_text, lyrics_results, primary_transcription_result)
+
+                # Filter irrelevant reference sources based on anchor match quality
+                filtered_lyrics, rejected_sources = filter_irrelevant_sources(
+                    lyrics_results, anchor_sequences, logger=self.logger,
+                )
+
+                # If sources were filtered, re-run anchor finding with only valid sources
+                if len(filtered_lyrics) < len(lyrics_results):
+                    self.logger.info(
+                        f"Relevance filter: {len(lyrics_results)} -> {len(filtered_lyrics)} sources "
+                        f"(rejected: {', '.join(rejected_sources.keys())})"
+                    )
+                    if filtered_lyrics:
+                        # Re-find anchors with only the valid sources
+                        self._anchor_finder = None  # Reset to clear cached state
+                        anchor_sequences = self.anchor_finder.find_anchors(
+                            transcribed_text, filtered_lyrics, primary_transcription_result
+                        )
+                    else:
+                        anchor_sequences = []
+
+                    # Update lyrics_results to only include filtered sources
+                    lyrics_results = filtered_lyrics
+
+                # Store filtered reference lyrics for use in word map
+                self.reference_lyrics = lyrics_results
+
                 gap_sequences = self.anchor_finder.find_gaps(transcribed_text, anchor_sequences, lyrics_results, primary_transcription_result)
                 if anchor_span:
                     anchor_span.set_attribute("anchor_count", len(anchor_sequences))
                     anchor_span.set_attribute("gap_count", len(gap_sequences))
+                    anchor_span.set_attribute("sources_rejected", len(rejected_sources))
 
             # Store anchor sequences for use in correction handlers
             self._anchor_sequences = anchor_sequences
@@ -198,6 +225,19 @@ class LyricsCorrector:
                     "enabled_handlers": enabled_handlers,
                     "agentic_routing": "agentic" if agentic_enabled else "rule-based",
             }
+
+            # Add rejected sources to metadata for debugging and frontend display
+            if rejected_sources:
+                result_metadata["rejected_sources"] = {
+                    name: {
+                        "relevance": result.relevance,
+                        "matched_words": result.matched_words,
+                        "total_words": result.total_words,
+                        "track_name": result.track_name,
+                        "artist_names": result.artist_names,
+                    }
+                    for name, result in rejected_sources.items()
+                }
 
             # Pass through primary transcription metadata (e.g., AudioShake task_id, asset_id)
             if primary_transcription.metadata:

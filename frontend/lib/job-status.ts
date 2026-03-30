@@ -294,36 +294,3 @@ export function sortJobsByDate(jobs: Job[]): Job[] {
   });
 }
 
-/**
- * Select which jobs to display from a sorted list.
- * When sorted by date, simply applies the display limit and hide-completed filter.
- *
- * @param sortedJobs - Jobs already sorted by sortJobsByDate
- * @param displayLimit - Max jobs to show (-1 = show all)
- * @returns Object with displayedJobs array and totalFetched count
- */
-export function getDisplayJobs(
-  sortedJobs: Job[],
-  displayLimit: number,
-  hideCompleted: boolean = false
-): { displayedJobs: Job[]; totalFetched: number } {
-  const totalFetched = sortedJobs.length;
-
-  // Filter out successfully completed jobs when toggle is on (keep failed jobs visible)
-  const filteredJobs = hideCompleted
-    ? sortedJobs.filter((job) => {
-        const status = job.status?.toLowerCase() || ""
-        return status !== "complete" && status !== "prep_complete"
-      })
-    : sortedJobs;
-
-  // Show all: -1 or fewer jobs than limit
-  if (displayLimit === -1 || filteredJobs.length <= displayLimit) {
-    return { displayedJobs: filteredJobs, totalFetched };
-  }
-
-  return {
-    displayedJobs: filteredJobs.slice(0, displayLimit),
-    totalFetched,
-  };
-}

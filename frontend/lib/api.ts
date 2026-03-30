@@ -4,7 +4,7 @@
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse } from './types';
-import type { CorrectionData, CorrectionAnnotation, EditLog } from './lyrics-review/types';
+import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -427,6 +427,7 @@ export const api = {
     exclude_test?: boolean;
     fields?: 'summary';
     hide_completed?: boolean;
+    search?: string;
   }): Promise<Job[]> {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
@@ -434,6 +435,7 @@ export const api = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
     if (params?.fields) searchParams.set('fields', params.fields);
     if (params?.hide_completed !== undefined) searchParams.set('hide_completed', String(params.hide_completed));
+    if (params?.search) searchParams.set('search', params.search);
 
     const url = `${API_BASE_URL}/api/jobs${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     const response = await fetch(url, {
@@ -2732,6 +2734,7 @@ export interface LyricsReviewApiClient {
   submitEditLog: (editLog: EditLog) => Promise<void>
   updateHandlers: (handlers: string[]) => Promise<CorrectionData>
   addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
+  searchLyrics: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
   generatePreviewVideo: (data: CorrectionData) => Promise<{
     status: string
@@ -2837,6 +2840,25 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       // Backend returns { status: "success", data: CorrectionData }
       const result = await handleResponse<{ status: string; data: CorrectionData }>(response)
       return result.data
+    },
+
+    /**
+     * Search for lyrics from configured providers
+     */
+    async searchLyrics(artist: string, title: string, forceSources: string[] = []): Promise<SearchLyricsResponse> {
+      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/search-lyrics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          artist,
+          title,
+          force_sources: forceSources,
+        }),
+      })
+      return handleResponse<SearchLyricsResponse>(response)
     },
 
     /**
@@ -3005,6 +3027,35 @@ export const lyricsReviewApi = {
     const base = `${API_BASE_URL}/api/review/${jobId}/audio/${stemType}`
     return token ? `${base}?token=${encodeURIComponent(token)}` : base
   },
+}
+
+/**
+ * Signal the backend to start the encoding worker VM.
+ * Fire-and-forget — doesn't wait for the VM to boot.
+ */
+export async function warmupEncodingWorker(): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/warmup`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    })
+  } catch {
+    // Fire-and-forget, don't throw on failure
+  }
+}
+
+/**
+ * Send heartbeat to keep encoding worker alive during active session.
+ */
+export async function heartbeatEncodingWorker(): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/heartbeat`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    })
+  } catch {
+    // Fire-and-forget
+  }
 }
 
 export interface DeleteOutputsResponse {

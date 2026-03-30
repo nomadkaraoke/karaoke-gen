@@ -1548,6 +1548,183 @@ View all feedback: {admin_url}
         )
 
 
+    def send_credit_review_needed_email(
+        self,
+        user_email: str,
+        grant_type: str,
+        reason: str,
+        signals: dict | None = None,
+    ) -> bool:
+        """
+        Notify Andrew that a credit grant needs manual review.
+
+        Sent when AI evaluation fails, is uncertain, or encounters an error.
+        Includes abuse signals and a direct link to the user's admin page.
+        """
+        admin_user_url = f"{self.frontend_url}/admin/users/detail?email={user_email}"
+        subject = f"Credit review needed: {user_email} ({grant_type})"
+
+        # Build signals summary for the email
+        signals_html = ""
+        signals_text = ""
+        if signals:
+            user_data = signals.get("user_data", {})
+            ip_geo = signals.get("ip_geo")
+            fp_matches = signals.get("fingerprint_matches", [])
+            ip_matches = signals.get("ip_matches", [])
+
+            rows = []
+            text_rows = []
+
+            if user_data.get("signup_ip"):
+                rows.append(("IP Address", user_data["signup_ip"]))
+                text_rows.append(f"IP Address: {user_data['signup_ip']}")
+
+            if ip_geo:
+                geo_str = ", ".join(
+                    str(v) for v in [
+                        ip_geo.get("city"), ip_geo.get("region"), ip_geo.get("country"),
+                    ] if v
+                )
+                if ip_geo.get("org"):
+                    geo_str += f" ({ip_geo['org']})"
+                if geo_str:
+                    rows.append(("Location", geo_str))
+                    text_rows.append(f"Location: {geo_str}")
+
+            if signals.get("user_agent"):
+                rows.append(("User Agent", signals["user_agent"]))
+                text_rows.append(f"User Agent: {signals['user_agent']}")
+
+            if user_data.get("device_fingerprint"):
+                fp = user_data["device_fingerprint"]
+                rows.append(("Fingerprint", f"{fp[:12]}..."))
+                text_rows.append(f"Fingerprint: {fp[:12]}...")
+
+            rows.append(("Recent signups (IP)", str(signals.get("recent_signups_ip", 0))))
+            rows.append(("Recent signups (fingerprint)", str(signals.get("recent_signups_fp", 0))))
+            text_rows.append(f"Recent signups from IP: {signals.get('recent_signups_ip', 0)}")
+            text_rows.append(f"Recent signups from fingerprint: {signals.get('recent_signups_fp', 0)}")
+
+            if fp_matches:
+                match_emails = ", ".join(m.get("email", "?") for m in fp_matches)
+                rows.append(("Fingerprint matches", match_emails))
+                text_rows.append(f"Fingerprint matches: {match_emails}")
+
+            if ip_matches:
+                match_emails = ", ".join(m.get("email", "?") for m in ip_matches)
+                rows.append(("IP matches", match_emails))
+                text_rows.append(f"IP matches: {match_emails}")
+
+            table_rows = "".join(
+                f'<tr><td style="padding:4px 12px 4px 0;color:#999;white-space:nowrap;">{html.escape(label)}</td>'
+                f'<td style="padding:4px 0;">{html.escape(value or "")}</td></tr>'
+                for label, value in rows
+            )
+            signals_html = f"""
+    <table style="margin:12px 0;font-size:14px;border-collapse:collapse;">{table_rows}</table>"""
+            signals_text = "\n".join(text_rows)
+
+        content = f"""
+    <p>A {grant_type} credit grant for <strong>{user_email}</strong> needs your review.</p>
+
+    <p><strong>Reason:</strong> {reason}</p>
+    {signals_html}
+    <p>The user has been told that their signup is being reviewed and credits will be
+    assigned shortly if everything checks out.</p>
+
+    <p style="text-align: center;">
+        <a href="{admin_user_url}" class="button">Review User</a>
+    </p>
+
+    <p style="color: #999; font-size: 14px;">
+        If the user looks legitimate, grant them credits from their admin page.
+        If not, no action needed — they already have 0 credits.
+    </p>
+"""
+
+        signals_section = f"\n{signals_text}\n" if signals_text else ""
+        text_content = f"""Credit review needed: {user_email} ({grant_type})
+
+Reason: {reason}
+{signals_section}
+Review user: {admin_user_url}
+
+If the user looks legitimate, grant them credits from their admin page.
+"""
+
+        html_content = self._build_email_html(content)
+
+        return self.provider.send_email(
+            to_email="andrew@beveridge.uk",
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
+    def send_credit_denied_email(self, email: str, grant_type: str = "welcome") -> bool:
+        """
+        Send a friendly-but-firm email when free credits are denied due to abuse signals.
+
+        CC'd to andrew@beveridge.uk so he can intervene if it's a false positive.
+        The tone invites the user to reply if it's a mistake.
+        """
+        subject = "About your Nomad Karaoke free credits"
+
+        credit_type = "welcome credits" if grant_type == "welcome" else "feedback bonus credits"
+
+        content = f"""
+    <p>Hi there,</p>
+
+    <p>Thanks for signing up for Nomad Karaoke!</p>
+
+    <p>Unfortunately, we weren't able to grant your free {credit_type} this time. Our system detected
+    patterns that suggest this may not be your first account with us, and each karaoke generation job
+    costs us real money in cloud computing and API fees.</p>
+
+    <p>We totally understand if this is a mistake! If you're a genuine new user, please just
+    <strong>reply to this email</strong> and let Andrew (the founder) know. He built this service and is
+    happy to grant you some free credits to try it out — he just asks that you provide honest feedback
+    on the experience in return.</p>
+
+    <p>If you'd like to get started right away, you can also purchase credits:</p>
+
+    <p style="text-align: center;">
+        <a href="{self.buy_url}" class="button">Buy Credits</a>
+    </p>
+
+    <p style="color: #999; font-size: 14px;">We keep costs low so we can offer the service affordably,
+    which means we need to be careful about free credit abuse. Thanks for understanding!</p>
+
+    {self._get_email_signature()}
+"""
+
+        text_content = f"""Hi there,
+
+Thanks for signing up for Nomad Karaoke!
+
+Unfortunately, we weren't able to grant your free {credit_type} this time. Our system detected patterns that suggest this may not be your first account with us, and each karaoke generation job costs us real money in cloud computing and API fees.
+
+We totally understand if this is a mistake! If you're a genuine new user, please just reply to this email and let Andrew (the founder) know. He built this service and is happy to grant you some free credits to try it out - he just asks that you provide honest feedback on the experience in return.
+
+If you'd like to get started right away, you can also purchase credits:
+{self.buy_url}
+
+---
+© {self._get_year()} Nomad Karaoke
+"""
+
+        html_content = self._build_email_html(content)
+
+        return self.provider.send_email(
+            to_email=email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            cc_emails=["andrew@beveridge.uk"],
+        )
+
+
 # Global instance
 _email_service = None
 

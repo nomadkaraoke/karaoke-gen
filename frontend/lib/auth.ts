@@ -81,6 +81,7 @@ export const useAuth = create<AuthStore>()(
             (window as any).__LAST_VERIFY_RESPONSE__ = {
               tenant_subdomain: response.tenant_subdomain,
               credits_granted: response.credits_granted || 0,
+              credit_status: response.credit_status || "not_applicable",
             }
           }
 

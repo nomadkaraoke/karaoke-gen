@@ -106,7 +106,7 @@ class TestRemoteAudioSeparation(unittest.TestCase):
     @patch.dict(os.environ, {}, clear=True)  # Clear AUDIO_SEPARATOR_API_URL
     def test_local_fallback_when_no_env_var(self):
         """Test that local processing is used when environment variable is not set."""
-        with patch('audio_separator.separator.Separator') as mock_separator_class:
+        with patch('karaoke_gen.audio_processor.Separator') as mock_separator_class:
             mock_separator = MagicMock()
             mock_separator_class.return_value = mock_separator
             mock_separator.separate.return_value = []
@@ -139,7 +139,7 @@ class TestRemoteAudioSeparation(unittest.TestCase):
     @patch('karaoke_gen.audio_processor.REMOTE_API_AVAILABLE', False)
     def test_local_fallback_when_remote_unavailable(self):
         """Test that local processing is used when remote API is unavailable."""
-        with patch('audio_separator.separator.Separator') as mock_separator_class:
+        with patch('karaoke_gen.audio_processor.Separator') as mock_separator_class:
             mock_separator = MagicMock()
             mock_separator_class.return_value = mock_separator
             mock_separator.separate.return_value = []
@@ -179,7 +179,7 @@ class TestRemoteAudioSeparation(unittest.TestCase):
         # Mock API failure
         mock_client.separate_audio_and_wait.side_effect = Exception("API Error")
         
-        with patch('audio_separator.separator.Separator') as mock_separator_class:
+        with patch('karaoke_gen.audio_processor.Separator') as mock_separator_class:
             mock_separator = MagicMock()
             mock_separator_class.return_value = mock_separator
             mock_separator.separate.return_value = []

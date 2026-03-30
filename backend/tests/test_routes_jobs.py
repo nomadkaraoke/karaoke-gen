@@ -224,7 +224,38 @@ class TestRetryEndpoint:
         assert has_video and has_instrumental_selection
 
     def test_retry_checkpoint_detection_render_stage(self):
-        """Test retry detects render stage checkpoint."""
+        """Test retry detects render stage checkpoint when review was completed."""
+        job = Job(
+            job_id="test123",
+            status=JobStatus.FAILED,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test",
+            title="Song",
+            file_urls={
+                'lyrics': {'corrections': 'gs://bucket/path/corrections.json'},
+                'screens': {'title': 'gs://bucket/path/title.mov'}
+            },
+            state_data={
+                'instrumental_selection': 'clean'
+            }
+        )
+
+        # This job has corrections, screens, AND completed review - should retry from render
+        has_corrections = job.file_urls.get('lyrics', {}).get('corrections')
+        has_screens = job.file_urls.get('screens', {}).get('title')
+        has_video = job.file_urls.get('videos', {}).get('with_vocals')
+        has_review = (job.state_data or {}).get('instrumental_selection')
+        assert has_corrections and has_screens and not has_video and has_review
+
+    def test_retry_checkpoint_returns_to_review_when_not_completed(self):
+        """Test retry returns to awaiting_review when corrections and screens exist
+        but user never completed the review (no instrumental_selection).
+
+        Regression test: previously, retry would skip to REVIEW_COMPLETE based solely
+        on corrections.json + title.mov existing, but these are auto-generated artifacts
+        that exist BEFORE the user reviews anything.
+        """
         job = Job(
             job_id="test123",
             status=JobStatus.FAILED,
@@ -236,13 +267,15 @@ class TestRetryEndpoint:
                 'lyrics': {'corrections': 'gs://bucket/path/corrections.json'},
                 'screens': {'title': 'gs://bucket/path/title.mov'}
             }
+            # No state_data.instrumental_selection — review was never completed
         )
 
-        # This job has corrections and screens - should retry from render
+        # Has corrections and screens but NO review completion
         has_corrections = job.file_urls.get('lyrics', {}).get('corrections')
         has_screens = job.file_urls.get('screens', {}).get('title')
-        has_video = job.file_urls.get('videos', {}).get('with_vocals')
-        assert has_corrections and has_screens and not has_video
+        has_review = (job.state_data or {}).get('instrumental_selection')
+        # Should match the "awaiting_review" checkpoint, NOT "render"
+        assert has_corrections and has_screens and not has_review
 
     def test_retry_checkpoint_detection_from_beginning(self):
         """Test retry detects need to restart from beginning."""
@@ -525,14 +558,14 @@ class TestSummaryEndpoint:
         assert list(result['file_urls'].keys()) == ['finals']
 
     def test_hide_completed_statuses(self):
-        """Verify _HIDE_COMPLETED_STATUSES only hides successful completions (not failed/cancelled)."""
+        """Verify _HIDE_COMPLETED_STATUSES hides terminal statuses (not failed or active)."""
         from backend.api.routes.jobs import _HIDE_COMPLETED_STATUSES
 
         assert 'complete' in _HIDE_COMPLETED_STATUSES
         assert 'prep_complete' in _HIDE_COMPLETED_STATUSES
-        # Failed/cancelled should NOT be hidden - users need to see these
+        assert 'cancelled' in _HIDE_COMPLETED_STATUSES
+        # Failed should NOT be hidden - users need to see these
         assert 'failed' not in _HIDE_COMPLETED_STATUSES
-        assert 'cancelled' not in _HIDE_COMPLETED_STATUSES
         # Active statuses should NOT be in the list
         assert 'pending' not in _HIDE_COMPLETED_STATUSES
         assert 'downloading' not in _HIDE_COMPLETED_STATUSES
@@ -702,4 +735,96 @@ class TestContentDispositionHeader:
         utf8_part = header.split("filename*=UTF-8''")[1]
         decoded = unquote(utf8_part)
         assert decoded == "周杰倫 - 青花瓷.mp4"
+
+
+class TestSearchFiltering:
+    """Tests for the search parameter on list_jobs summary mode."""
+
+    def _make_job_dict(self, job_id="job1", artist="Queen", title="Bohemian Rhapsody",
+                       audio_search_artist=None, audio_search_title=None, status="complete"):
+        return {
+            "job_id": job_id,
+            "artist": artist,
+            "title": title,
+            "audio_search_artist": audio_search_artist,
+            "audio_search_title": audio_search_title,
+            "status": status,
+            "user_email": "admin@nomadkaraoke.com",
+        }
+
+    def test_search_filters_by_artist(self):
+        """Search 'queen' should match job with artist='Queen'."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1", artist="Queen", title="We Will Rock You"),
+            self._make_job_dict(job_id="j2", artist="Eagles", title="Hotel California"),
+        ]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 1
+        assert result[0]["job_id"] == "j1"
+
+    def test_search_filters_by_title(self):
+        """Search 'california' should match job with title containing it."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1", artist="Queen", title="We Will Rock You"),
+            self._make_job_dict(job_id="j2", artist="Eagles", title="Hotel California"),
+        ]
+        result = _search_filter_jobs(jobs, "california")
+        assert len(result) == 1
+        assert result[0]["job_id"] == "j2"
+
+    def test_search_filters_by_job_id(self):
+        """Search by partial job_id."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="abc-123-def"),
+            self._make_job_dict(job_id="xyz-789-ghi"),
+        ]
+        result = _search_filter_jobs(jobs, "abc-123")
+        assert len(result) == 1
+        assert result[0]["job_id"] == "abc-123-def"
+
+    def test_search_filters_by_audio_search_fields(self):
+        """Search should also check audio_search_artist and audio_search_title."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1", artist="Display Name", title="Display Title",
+                                audio_search_artist="Original Artist", audio_search_title="Original Song"),
+        ]
+        result = _search_filter_jobs(jobs, "original artist")
+        assert len(result) == 1
+
+    def test_search_is_case_insensitive(self):
+        """Search should be case-insensitive."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [self._make_job_dict(artist="QUEEN", title="Bohemian Rhapsody")]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 1
+
+    def test_search_handles_none_fields(self):
+        """Search should not crash on None artist/title fields."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [self._make_job_dict(artist=None, title=None)]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 0
+
+    def test_search_empty_string_returns_all(self):
+        """Empty search string should return all jobs."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [
+            self._make_job_dict(job_id="j1"),
+            self._make_job_dict(job_id="j2"),
+        ]
+        result = _search_filter_jobs(jobs, "")
+        assert len(result) == 2
+
+    def test_search_returns_all_matches_for_limit_slicing(self):
+        """Search returns all matches — caller applies limit separately."""
+        from backend.api.routes.jobs import _search_filter_jobs
+        jobs = [self._make_job_dict(job_id=f"j{i}", artist="Queen", title=f"Song {i}") for i in range(10)]
+        result = _search_filter_jobs(jobs, "queen")
+        assert len(result) == 10  # All 10 match; limit slicing is caller's job
+        # Verify caller can slice: simulates jobs_dicts[:limit] in route handler
+        assert len(result[:3]) == 3
 

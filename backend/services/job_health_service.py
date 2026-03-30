@@ -213,8 +213,10 @@ def get_worker_valid_statuses() -> Dict[str, List[JobStatus]]:
         "video_worker": [
             JobStatus.INSTRUMENTAL_SELECTED,
             JobStatus.REVIEW_COMPLETE,
-            JobStatus.RENDERING_VIDEO,
-            JobStatus.GENERATING_VIDEO,
+            # Note: RENDERING_VIDEO and GENERATING_VIDEO are intentionally excluded.
+            # If the job is already in those states, another worker is actively processing it.
+            # Including them caused a race condition where Cloud Run Job retries + manual retries
+            # could launch concurrent workers that corrupt each other's state transitions.
         ],
         "render_video_worker": [
             JobStatus.REVIEW_COMPLETE,

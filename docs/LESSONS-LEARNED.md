@@ -8,6 +8,9 @@ Key insights for future AI agents working on this codebase.
 
 ## UX Patterns
 
+### Don't Conflate "No Results" with "Not Yet Searched" (Mar 2026)
+When a search component initializes `results = []`, any rendering condition like `results.length === 0 && !error` will match both "search returned empty" and "haven't searched yet" (or "search failed silently"). Use an explicit state machine with phases (`searching | succeeded | failed`) so that "no results" UI only appears after a confirmed successful search. This prevents misleading users when the real problem was a timeout, network error, or silent exception.
+
 ### Fixture-Driven UI Verification
 For UI that renders differently based on data (e.g., audio search result tiers), fetch real production data as fixtures and build a Playwright review tool. The `npm run fixtures:review-ui` pattern (41 fixtures, console-based `next()` advancement) was far more effective than manual testing or screenshots — caught edge cases with non-Latin filenames, single-character filenames, and underscore-separated names that unit tests alone would have missed.
 
@@ -25,6 +28,7 @@ Three patterns from investigating production job failures where errors cascaded 
 1. **Validate every stage's outputs, not just some** — stage 1 of audio separation had validation for expected stems, stage 2 didn't. The missing validation let a transient Modal API failure propagate through 3 more functions before crashing with a confusing NoneType error.
 2. **Block impossible downstream work early** — AudioShake returning 0 lyrics segments was treated as "success", letting the user submit an empty review that only failed at CDG generation. Validate at the boundary: if transcription returns 0 segments, fail with a user-friendly error, not 4 steps later.
 3. **File handles in retry loops** — when wrapping HTTP calls with retry (e.g. tenacity), ensure file handles are re-opened on each attempt. A `with open()` wrapping a retried `requests.post(files=...)` exhausts the file handle on the first attempt; subsequent retries send empty data.
+4. **Text normalization changes word counts** — `clean_text()` (strip punctuation, normalize whitespace) then `split()` can produce a different word count than the original Word objects list. In anchor sequence correction, `ref_texts_clean` had 599 words for Spotify but `ref_words` only had 528 Word objects. Anchor positions computed against the cleaned list were used to index the Word list, causing IndexError. Always bounds-check when indexing a different data structure than the one used to compute positions.
 
 ---
 
@@ -36,8 +40,50 @@ Three patterns from investigating production job failures where errors cascaded 
 ### "Set Now and Keep" Anti-Pattern (Mar 2026)
 When a metadata key is missing, don't set it to "now" and skip the action — this creates an infinite loop where the key never appears old enough to trigger the action. Instead, fall back to `creationTimestamp` (always available on GCE instances) as the baseline for idle time calculation.
 
+### Encoding Worker Blue-Green: Named VMs Beat MIG for Small Scale (Mar 2026)
+
+**Why not a Managed Instance Group?** MIG rolling updates don't support deep health checks — you can verify HTTP liveness but not "did a real encode actually work?". PR #587 showed that the service can respond to `/health` while failing all encode jobs (pip resolution error had broken the wheel). A real encode test catches this; a simple HTTP check does not. At two VMs, the operational complexity of a MIG (instance template management, rolling update policies, drain configuration) adds no value over two named VMs with a Firestore pointer.
+
+**Deep health check pattern**: After deploying to the secondary VM, CI runs a real encode job end-to-end before swapping traffic. This has caught broken deploys that passed all unit tests and liveness probes.
+
+**JIT startup**: Tying VM startup to a user workflow event (entering the lyrics review page) gives ~60 seconds of natural warmup time before encoding is actually needed. Users are reading and editing lyrics while the VM starts — they never experience a cold-start stall. This avoids both 24/7 costs (~$400/mo) and noticeable latency.
+
+**Idle shutdown must be external**: A Cloud Function watcher is more reliable than self-shutdown. If the encoding worker code has a bug that prevents it from shutting itself down, the Cloud Function still stops it based on Firestore activity timestamps. Self-shutdown approaches that rely on the worker's own health are circular — a sick worker may not be able to stop itself.
+
 ### Pending Jobs Guard Must Not Reset Idle Timestamps (Mar 2026)
 When pending CI jobs are detected, keep runners alive but don't refresh their `last-activity` timestamps. Refreshing timestamps resets the idle timer, so runners can never accumulate enough idle time to be stopped — even after all jobs complete.
+
+### Cloud Run GPU: Let the Platform Scale, Not Your Code (Mar 2026)
+
+**Don't use fire-and-forget + semaphore on Cloud Run.** We tried making the `/separate` endpoint return immediately (fire-and-forget background thread) with a `threading.Semaphore(1)` to serialize GPU work. Cloud Run couldn't see background threads as "busy", so it routed ALL requests to one instance where they queued behind the semaphore — causing 30-minute timeouts in production.
+
+**Fix: synchronous endpoint + `concurrency=1`.** Keep the HTTP request active during processing. Cloud Run sees the request as occupying the instance and scales to new GPU instances for concurrent jobs. This matches Modal's `.spawn()` pattern where each job gets its own container. The client POST timeout must match Cloud Run's request timeout (1800s).
+
+**Rule of thumb**: If you need the platform's autoscaler to work for you, the request must stay active. Background threads are invisible to the platform.
+
+### Direct GPU in Cloud Run Jobs > HTTP Microservice
+
+When a Cloud Run Job needs GPU processing, attach the GPU directly to the Job instead of calling a separate GPU service over HTTP. Benefits:
+- No HTTP timeout concerns (Jobs can run up to 24h)
+- No connection management, retry logic, or polling
+- Simpler architecture (1 hop instead of 3)
+- Platform handles scaling naturally (each Job execution gets its own GPU)
+
+The audio separator started as a separate Cloud Run Service called via HTTP from the audio worker Job. This required 1800s HTTP timeouts, complex retry logic, and caused a production outage when the fire-and-forget pattern interacted badly with Cloud Run's autoscaler. Moving the GPU work directly into the Job eliminated all of this complexity.
+
+### GPU Docker Images: Pin CUDA-Specific Package Versions (Mar 2026)
+
+**`pip install audio-separator[gpu]` pulls the latest PyTorch, which may require a newer CUDA than your runtime provides.** Cloud Run L4 GPUs have NVIDIA driver 570 (CUDA 12.8 max), but the default torch install gets `cu130` (requires CUDA 13.0), which fails silently — PyTorch reports "NVIDIA driver is too old" and falls back to CPU, then ONNX models fail to load.
+
+**Fix:** Pin torch to a CUDA version your driver supports (`torch==2.6.0+cu126` from `--index-url https://download.pytorch.org/whl/cu126`), install it BEFORE `audio-separator[gpu]`, and protect it from being overwritten by later `pip install` commands (use `--no-deps` in the app layer).
+
+**Validate with the actual Docker image, not just packages.** We proved the package combo worked interactively on a VM but missed that the app Dockerfile's `pip install -e .` (with `torch>=2.7` in pyproject.toml) upgraded torch back to cu130. The fastest debugging loop: spin up a GCE L4 VM (~$1/hr), build the Docker image locally, run separation inside the container with `--gpus all`, tear down.
+
+### audio-separator Ensemble Presets Require Explicit load_model() (Mar 2026)
+
+**Always call `separator.load_model()` before `separator.separate()`, even when using ensemble presets.** The Separator constructor with `ensemble_preset=` resolves the preset to model names but does NOT load them into memory. Calling `separate()` without `load_model()` fails with "Initialization failed or model not loaded."
+
+Similarly, **baking models into Docker images requires downloading each model individually** — `Separator(ensemble_preset=...).load_model()` with no args doesn't trigger downloads. Use `sep.load_model(model_filename)` for each model file in the preset.
 
 ---
 
@@ -833,6 +879,12 @@ Add defensive type checking for all external service responses. Lists vs dicts, 
 ### Thread All Encoding Outputs Through OrchestratorResult (Mar 2026)
 The encoding pipeline (`LocalEncodingService`) created a `(With Vocals).mp4` file (3.4x smaller than the raw MKV), but `OrchestratorResult` had no field for it so it was silently dropped. Users got the 134MB raw MKV instead of the 39MB encoded MP4. **Pattern**: When adding output files to encoding, verify the full chain: `EncodingOutput` → `OrchestratorResult` → `_upload_results()` file_mappings → Firestore `file_urls`. Also beware of hardcoded file extensions — the temp directory saved `.mkv` files as `.mov`, causing Dropbox to receive mislabeled files.
 
+### Cloud Run Job Retries Race With Manual Retries (Mar 2026)
+Job 13b8adcf failed because Cloud Run Job `max_retries: 2` and a manual `/retry` call launched concurrent video workers. Worker A transitioned to `generating_video`, Worker B saw `generating_video` as valid (it was in the `validate_worker_can_run` allowlist), tried the same transition, failed, and marked the job `failed` — then Worker A tried `failed → encoding` and also failed. **Fix**: Remove in-progress states (`generating_video`, `rendering_video`) from the video_worker startup validation — if a job is already in those states, another worker is processing it. Also make `_validate_prerequisites` a hard failure, not just a warning.
+
+### Encoding Worker Warmup Must Cover All Paths (Mar 2026)
+The JIT startup design (frontend calls warmup on lyrics review page, VM boots during editing) only covered the happy path. Five of ten paths to encoding (retries, admin resets, pipeline chains, visibility changes) had no warmup — the encoding service retried blindly for ~90s against a TERMINATED VM. **Fix**: Call `ensure_primary_running()` at two layers: (1) in `trigger_video_worker`/`trigger_render_video_worker` for early start, and (2) as a fallback in `EncodingService._request_with_retry` on first connection failure. Defense in depth: frontend warmup → worker dispatch warmup → encoding retry warmup.
+
 ### Brand Code Allocation Must Be Atomic (Feb 2026)
 Two concurrent jobs both got brand code `NOMADNP-0012` because `get_next_brand_code()` scanned Dropbox folders to find the next number — a classic TOCTOU race condition. Jobs processed 0.86s apart both saw the same state. **Fix**: `brand_code_service.py` uses Firestore transactions to atomically allocate codes. Counter doc per prefix (`NOMAD`, `NOMADNP`) with `next_number` and `recycled` pool. E2E cleanup recycles numbers via `recycle_brand_code()`.
 
@@ -976,4 +1028,30 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 **Solution:** Tiered external API checking as a fallback after the static list: DeBounce (free, catches most) → verifymail.io ($25/mo, catches niche domains the free service misses). Auto-learn persists flagged domains to `manual_domains` so each domain only requires one API call ever. Clean domains are cached for 7 days.
 
 **Key insight:** For abuse prevention, static lists give you a floor but not a ceiling. Real-time API verification services maintain much larger and more current databases. The tiered approach (free service first, paid service only for edge cases) keeps costs minimal while dramatically improving detection. In our test of 60 recent signups, the free DeBounce API caught 6 disposable accounts and verifymail.io caught 4 more that DeBounce missed.
+
+### Lyrics Upload Race Condition: Admin Edits During Processing (Mar 2026)
+
+**Problem:** When an admin updated a job's artist name while the lyrics worker was running, `upload_lyrics_results` reconstructed filenames from the updated Firestore values (`job.artist`, `job.title`), which no longer matched the files on disk generated with the original values. This caused "No corrections JSON found" errors even though the files existed.
+
+**Fix:** Scan the lyrics directory for files by suffix pattern (e.g., `*(Lyrics Corrections).json`, `*(Lyrics Genius).txt`) instead of reconstructing filenames from Firestore job metadata. This decouples the upload from the current state of mutable job fields.
+
+**Key insight:** Long-running workers should avoid re-reading mutable metadata to reconstruct local file paths. If a file was created earlier in the same pipeline, find it by pattern rather than reconstructing its name from state that may have changed. This is a variant of TOCTOU — the "check" (reading artist/title) and "use" (looking for the file) happen at different times, and the underlying data can change between them.
+
+### Reference Lyrics Relevance Filtering: Data-Driven Thresholds (Mar 2026)
+
+**Problem:** Lyrics providers often return wrong-song results for tracks with remixes, "feat." artists, or unusual naming. These irrelevant references pollute anchor/gap statistics and confuse correction tooling.
+
+**Solution:** Added relevance filtering in `LyricsCorrector` — after anchor sequences are found, compute `(reference words in anchors) / (total reference words)` per source. Sources below 30% are rejected. The threshold was determined empirically by analyzing 168 source pairs across 81 production jobs: wrong-song sources maxed at 3.5%, correct-song sources started at 26.8%.
+
+**Key insight:** Don't guess thresholds — measure them. A visual review tool showing side-by-side lyrics with match highlighting made it trivial to classify 168 pairs in minutes. The massive gap between wrong (0-3.5%) and correct (26.8%+) meant any threshold from 5-25% would work, but 30% provides safety margin. Always include a force-add override for edge cases where the transcription is bad (not the reference).
+
+### Cloud Scheduler OIDC Tokens ≠ Admin Tokens (Mar 2026)
+
+**Problem:** All 4 Cloud Scheduler → backend jobs (stale review processor, stuck job recovery, YouTube queue, disposable domain sync) were silently returning 401 since deployment. The auth system only validated admin tokens, Firestore tokens, and session tokens — it had no OIDC JWT validation. Cloud Scheduler sends a Google-signed OIDC JWT in the `Authorization: Bearer` header, which the auth service didn't recognize.
+
+**Root cause:** A plan document incorrectly stated "The existing `require_admin` dependency handles OIDC via the Authorization header flow, so this works without changes." This was never verified, and the 401s went unnoticed because scheduler endpoints run in the background with no user-visible feedback.
+
+**Fix:** Added OIDC token validation to `validate_token_full()` using `google.oauth2.id_token.verify_oauth2_token()`. Verifies the token is Google-signed and the `email` claim matches the configured backend service account.
+
+**Key insight:** Background cron jobs need monitoring for auth failures — a 401 from a scheduler is silent by default. When adding new Cloud Scheduler endpoints, verify the auth flow end-to-end (check Cloud Logging for 200s after deployment). Don't assume OIDC "just works" with custom auth middleware — Cloud Tasks uses `X-Admin-Token` (custom header) for a reason, while Cloud Scheduler only sends OIDC.
 

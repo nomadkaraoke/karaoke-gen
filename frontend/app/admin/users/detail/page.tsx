@@ -184,7 +184,7 @@ export default function AdminUserDetailPage() {
       setImpersonating(true)
       const success = await startImpersonation(email)
       if (success) {
-        router.push("/dashboard")
+        router.push("/app")
       } else {
         const authError = useAuth.getState().error
         toast({

@@ -33,6 +33,7 @@ export interface VerifyMagicLinkResponse {
   message: string
   tenant_subdomain?: string | null
   credits_granted?: number
+  credit_status?: string  // "granted", "denied", "already_granted", "not_applicable"
 }
 
 export interface UserProfileResponse {

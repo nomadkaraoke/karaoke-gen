@@ -20,6 +20,14 @@ except ImportError:
     REMOTE_API_AVAILABLE = False
     AudioSeparatorAPIClient = None
 
+# Try to import the Separator for local GPU processing
+try:
+    from audio_separator.separator import Separator
+    SEPARATOR_AVAILABLE = True
+except ImportError:
+    SEPARATOR_AVAILABLE = False
+    Separator = None
+
 
 # Placeholder class or functions for audio processing
 class AudioProcessor:
@@ -116,8 +124,6 @@ class AudioProcessor:
             f"instantiating Separator with model_file_dir: {self.model_file_dir}, model_filename: {model_name} output_format: {self.lossless_output_format}"
         )
 
-        from audio_separator.separator import Separator
-
         separator = Separator(
             log_level=self.log_level,
             log_formatter=self.log_formatter,
@@ -179,21 +185,29 @@ class AudioProcessor:
                     return self._process_audio_separation_remote(audio_file, artist_title, track_output_dir, remote_api_url)
                 except Exception as e:
                     error_str = str(e)
-                    # Don't fall back for download failures - these indicate API issues that should be fixed
-                    if ("no files were downloaded" in error_str or 
-                        "failed to produce essential" in error_str):
-                        self.logger.error(f"Remote API processing failed with download/file organization issue: {error_str}")
-                        self.logger.error("This indicates an audio-separator API issue that should be fixed. Not falling back to local processing.")
-                        raise e
-                    else:
-                        # Fall back for other types of errors (network issues, etc.)
-                        self.logger.error(f"Remote API processing failed: {error_str}")
-                        self.logger.info("Falling back to local audio separation")
+                    self.logger.error(f"Remote API processing failed: {error_str}")
+                    # Never fall back for API processing errors (download failures,
+                    # missing files, etc.) — retrying locally won't help.
+                    # Only fall back for transient network errors AND only when
+                    # local processing is possible (model_file_dir is configured).
+                    is_api_error = (
+                        "no files were downloaded" in error_str
+                        or "failed to produce essential" in error_str
+                        or "missing" in error_str.lower()
+                    )
+                    if is_api_error or not self.model_file_dir:
+                        if not self.model_file_dir:
+                            self.logger.error("No local model directory configured — cannot fall back to local processing.")
+                        raise
+                    self.logger.info("Falling back to local audio separation")
         else:
             self.logger.info("AUDIO_SEPARATOR_API_URL not set, using local audio separation. "
                            "Set this environment variable to use remote GPU processing.")
         
-        from audio_separator.separator import Separator
+        if not SEPARATOR_AVAILABLE:
+            raise ImportError(
+                "audio-separator package not installed. Install with: pip install audio-separator[gpu]"
+            )
 
         self.logger.info(f"Starting local audio separation process for {artist_title}")
 
@@ -266,29 +280,127 @@ class AudioProcessor:
                 continue
 
         try:
-            separator = Separator(
-                log_level=self.log_level,
-                log_formatter=self.log_formatter,
-                model_file_dir=self.model_file_dir,
-                output_format=self.lossless_output_format,
-            )
-
             stems_dir = self._create_stems_directory(track_output_dir)
             result = {"clean_instrumental": {}, "other_stems": {}, "backing_vocals": {}, "combined_instrumentals": {}}
 
             if os.environ.get("KARAOKE_GEN_SKIP_AUDIO_SEPARATION"):
                 return result
 
-            result["clean_instrumental"] = self._separate_clean_instrumental(
-                separator, audio_file, artist_title, track_output_dir, stems_dir
-            )
-            result["other_stems"] = self._separate_other_stems(separator, audio_file, artist_title, stems_dir)
-            result["backing_vocals"] = self._separate_backing_vocals(
-                separator, result["clean_instrumental"]["vocals"], artist_title, stems_dir
-            )
-            result["combined_instrumentals"] = self._generate_combined_instrumentals(
-                result["clean_instrumental"]["instrumental"], result["backing_vocals"], artist_title, track_output_dir
-            )
+            # Check if we have ensemble presets configured
+            instrumental_preset = getattr(self, 'instrumental_preset', None)
+            karaoke_preset = getattr(self, 'karaoke_preset', None)
+
+            if instrumental_preset:
+                # Stage 1: Ensemble preset mode — higher quality, uses multiple models
+                self.logger.info(f"Stage 1: Using ensemble preset '{instrumental_preset}'")
+                separator = Separator(
+                    log_level=self.log_level,
+                    log_formatter=self.log_formatter,
+                    model_file_dir=self.model_file_dir,
+                    output_format=self.lossless_output_format,
+                    output_dir=stems_dir,
+                    ensemble_preset=instrumental_preset,
+                )
+                separator.load_model()
+                output_files = separator.separate(audio_file)
+                self.logger.info(f"Stage 1 ensemble produced {len(output_files)} files: {output_files}")
+
+                # Find vocals and instrumental from ensemble output
+                # Output filenames follow: {base}_(StemTag)_preset_{name}.flac
+                # where StemTag is "Vocals", "Instrumental", or "No Vocal"
+                # Must match the stem tag specifically, not the preset name
+                # (e.g., preset "instrumental_clean" contains "instrumental")
+                for f in output_files:
+                    basename = os.path.basename(f).lower()
+                    # Extract stem tag: text between _( and )_ in the filename
+                    stem_tag = ""
+                    tag_start = basename.rfind("_(")
+                    tag_end = basename.find(")_", tag_start) if tag_start >= 0 else -1
+                    if tag_start >= 0 and tag_end >= 0:
+                        stem_tag = basename[tag_start + 2:tag_end]
+
+                    if stem_tag in ("no vocal", "instrumental", "no_vocal"):
+                        # Move instrumental to track_output_dir per convention
+                        final_path = os.path.join(track_output_dir, os.path.basename(f))
+                        if f != final_path:
+                            shutil.move(f, final_path)
+                        result["clean_instrumental"]["instrumental"] = final_path
+                    elif stem_tag in ("vocals", "vocal"):
+                        result["clean_instrumental"]["vocals"] = f
+                    else:
+                        self.logger.warning(f"Stage 1: Unrecognized stem tag '{stem_tag}' in {basename}")
+            else:
+                # Legacy mode — individual model calls (existing code)
+                separator = Separator(
+                    log_level=self.log_level,
+                    log_formatter=self.log_formatter,
+                    model_file_dir=self.model_file_dir,
+                    output_format=self.lossless_output_format,
+                )
+                result["clean_instrumental"] = self._separate_clean_instrumental(
+                    separator, audio_file, artist_title, track_output_dir, stems_dir
+                )
+                result["other_stems"] = self._separate_other_stems(separator, audio_file, artist_title, stems_dir)
+
+            # Stage 2: Backing vocals separation
+            vocals_path = result["clean_instrumental"].get("vocals")
+            has_backing_config = karaoke_preset or self.backing_vocals_models
+
+            if vocals_path and has_backing_config:
+                if karaoke_preset:
+                    self.logger.info(f"Stage 2: Using ensemble preset '{karaoke_preset}'")
+
+                    # Rename vocals file to strip Stage 1 stem tags before passing
+                    # to Stage 2. The ensemble code uses regex to find the FIRST
+                    # _(Tag)_ in intermediate filenames to classify stems. If the
+                    # input already has _(Vocals)_preset_instrumental_clean in its
+                    # name, the regex matches that instead of the Stage 2 tag,
+                    # causing all stems to be classified as "Vocals".
+                    clean_vocals_name = f"{artist_title} (Vocals).{self.lossless_output_format.lower()}"
+                    clean_vocals_path = os.path.join(stems_dir, clean_vocals_name)
+                    shutil.copy2(vocals_path, clean_vocals_path)
+                    self.logger.info(f"Stage 2: Renamed vocals input to avoid stem tag collision: {os.path.basename(clean_vocals_path)}")
+
+                    bv_separator = Separator(
+                        log_level=self.log_level,
+                        log_formatter=self.log_formatter,
+                        model_file_dir=self.model_file_dir,
+                        output_format=self.lossless_output_format,
+                        output_dir=stems_dir,
+                        ensemble_preset=karaoke_preset,
+                    )
+                    bv_separator.load_model()
+                    bv_output_files = bv_separator.separate(clean_vocals_path)
+                    self.logger.info(f"Stage 2 ensemble produced {len(bv_output_files)} files: {bv_output_files}")
+
+                    bv_key = karaoke_preset
+                    result["backing_vocals"][bv_key] = {}
+                    for f in bv_output_files:
+                        basename = os.path.basename(f).lower()
+                        # Extract stem tag: text between _( and )_ in the filename
+                        stem_tag = ""
+                        tag_start = basename.rfind("_(")
+                        tag_end = basename.find(")_", tag_start) if tag_start >= 0 else -1
+                        if tag_start >= 0 and tag_end >= 0:
+                            stem_tag = basename[tag_start + 2:tag_end]
+
+                        if stem_tag in ("no vocal", "instrumental", "no_vocal", "backing"):
+                            result["backing_vocals"][bv_key]["backing_vocals"] = f
+                        elif stem_tag in ("vocals", "vocal"):
+                            result["backing_vocals"][bv_key]["lead_vocals"] = f
+                        else:
+                            self.logger.warning(f"Stage 2: Unrecognized stem tag '{stem_tag}' in {basename}")
+                else:
+                    # Legacy: individual model calls (existing code)
+                    result["backing_vocals"] = self._separate_backing_vocals(
+                        separator, vocals_path, artist_title, stems_dir
+                    )
+
+            # Combined instrumentals + normalization
+            if result["clean_instrumental"].get("instrumental") and result["backing_vocals"]:
+                result["combined_instrumentals"] = self._generate_combined_instrumentals(
+                    result["clean_instrumental"]["instrumental"], result["backing_vocals"], artist_title, track_output_dir
+                )
             self._normalize_audio_files(result, artist_title, track_output_dir)
 
             self.logger.info("Audio separation, combination, and normalization process completed")
@@ -343,10 +455,19 @@ class AudioProcessor:
                 self.logger.info(f"Stage 1: Using explicit models: {stage1_models}")
                 stage1_kwargs["models"] = stage1_models
 
-            stage1_result = api_client.separate_audio_and_wait(
-                audio_file,
-                **stage1_kwargs,
-            )
+            # Use GCS URI for Stage 1 if available (avoids 413 for large files)
+            input_gcs_uri = getattr(self, 'input_gcs_uri', None)
+            if input_gcs_uri:
+                self.logger.info(f"Stage 1: Using GCS URI: {input_gcs_uri}")
+                stage1_kwargs["gcs_uri"] = input_gcs_uri
+                stage1_result = api_client.separate_audio_and_wait(
+                    **stage1_kwargs,
+                )
+            else:
+                stage1_result = api_client.separate_audio_and_wait(
+                    audio_file,
+                    **stage1_kwargs,
+                )
 
             if stage1_result["status"] != "completed":
                 raise Exception(f"Stage 1 remote audio separation failed: {stage1_result.get('error', 'Unknown error')}")

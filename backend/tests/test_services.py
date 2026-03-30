@@ -336,9 +336,54 @@ class TestWorkerService:
                 assert "test123" in str(override_args)
 
 
+class TestWorkerServiceWarmup:
+    """Test encoding worker warmup in trigger methods."""
+
+    @pytest.mark.asyncio
+    async def test_trigger_video_worker_calls_warmup(self):
+        """trigger_video_worker calls _warmup_encoding_worker before dispatching."""
+        with patch('backend.services.worker_service.httpx.AsyncClient') as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_client.post.return_value = mock_response
+
+            worker_service = get_worker_service()
+
+            with patch.object(worker_service, '_warmup_encoding_worker') as mock_warmup:
+                await worker_service.trigger_video_worker("test-job")
+                mock_warmup.assert_called_once_with("test-job")
+
+    @pytest.mark.asyncio
+    async def test_trigger_render_video_worker_calls_warmup(self):
+        """trigger_render_video_worker calls _warmup_encoding_worker before dispatching."""
+        with patch('backend.services.worker_service.httpx.AsyncClient') as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_client.post.return_value = mock_response
+
+            worker_service = get_worker_service()
+
+            with patch.object(worker_service, '_warmup_encoding_worker') as mock_warmup:
+                await worker_service.trigger_render_video_worker("test-job")
+                mock_warmup.assert_called_once_with("test-job")
+
+    def test_warmup_swallows_exceptions(self):
+        """Warmup failures are logged but never block worker dispatch."""
+        worker_service = get_worker_service()
+
+        with patch('backend.services.encoding_worker_manager.EncodingWorkerManager.ensure_primary_running',
+                    side_effect=Exception("Compute API down")):
+            # Should not raise
+            worker_service._warmup_encoding_worker("test-job")
+
+
 class TestWorkerServiceCloudTasks:
     """Test WorkerService Cloud Tasks integration."""
-    
+
     def test_should_use_cloud_tasks_default_false(self):
         """Test that Cloud Tasks is disabled by default."""
         from backend.services.worker_service import WorkerService, reset_worker_service

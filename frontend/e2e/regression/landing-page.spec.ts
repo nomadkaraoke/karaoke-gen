@@ -115,7 +115,7 @@ test.describe('Landing Page', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('2 Free Credits', { exact: true })).toBeVisible();
+    await expect(page.getByText('1 Free Credit', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /sign up free/i })).toBeVisible();
   });
 

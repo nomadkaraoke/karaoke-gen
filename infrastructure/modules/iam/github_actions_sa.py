@@ -186,6 +186,9 @@ def grant_github_actions_permissions(
                 lambda pool_name: f"principalSet://iam.googleapis.com/{pool_name}/attribute.repository/nomadkaraoke/karaoke-decide"
             ),
             pool.name.apply(
+                lambda pool_name: f"principalSet://iam.googleapis.com/{pool_name}/attribute.repository/nomadkaraoke/python-audio-separator"
+            ),
+            pool.name.apply(
                 lambda pool_name: f"principalSet://iam.googleapis.com/{pool_name}/attribute.repository/beveradb/cryptotrader"
             ),
         ],

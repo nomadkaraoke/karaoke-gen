@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     
     # Authentication
     admin_tokens: Optional[str] = os.getenv("ADMIN_TOKENS")  # Comma-separated list
+    scheduler_service_account: str = os.getenv(
+        "SCHEDULER_SERVICE_ACCOUNT",
+        "karaoke-backend@nomadkaraoke.iam.gserviceaccount.com"
+    )
     
     # Application
     environment: str = os.getenv("ENVIRONMENT", "development")
@@ -56,6 +60,12 @@ class Settings(BaseSettings):
     # Timeout for agentic correction in seconds. If correction takes longer, abort and
     # use uncorrected transcription - human review will fix any issues.
     agentic_correction_timeout_seconds: int = int(os.getenv("AGENTIC_CORRECTION_TIMEOUT_SECONDS", "180"))
+
+    # AI Credit Evaluation (anti-abuse gating for free credits)
+    # When enabled, welcome and feedback credit grants are evaluated by Gemini
+    # before granting. Fail-open: if evaluation fails, credits are granted anyway.
+    credit_eval_enabled: bool = os.getenv("CREDIT_EVAL_ENABLED", "true").lower() in ("true", "1", "yes")
+    credit_eval_model: str = os.getenv("CREDIT_EVAL_MODEL", "gemini-3.1-pro-preview")
 
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery

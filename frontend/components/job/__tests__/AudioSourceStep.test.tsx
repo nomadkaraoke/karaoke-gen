@@ -15,6 +15,7 @@
 import { render, screen, waitFor, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { api, ApiError } from "@/lib/api"
+import { getSearchConfidence } from "@/lib/audio-search-utils"
 
 // Mock the api module
 jest.mock("@/lib/api", () => ({
@@ -61,6 +62,7 @@ jest.mock("@/lib/audio-search-utils", () => ({
 }))
 
 const mockApi = api as jest.Mocked<typeof api>
+const mockGetSearchConfidence = getSearchConfidence as jest.Mock
 
 import { AudioSourceStep } from "../steps/AudioSourceStep"
 
@@ -187,15 +189,26 @@ describe("AudioSourceStep", () => {
   })
 
   it("shows error message when search fails with ApiError", async () => {
-    mockApi.searchStandalone.mockRejectedValue(
-      new ApiError("Internal server error", 500)
-    )
+    jest.useFakeTimers()
+    try {
+      mockApi.searchStandalone.mockRejectedValue(
+        new ApiError("Internal server error", 500)
+      )
 
-    render(<AudioSourceStep {...defaultProps} />)
+      render(<AudioSourceStep {...defaultProps} />)
 
-    await waitFor(() => {
-      expect(screen.getByText("Internal server error")).toBeInTheDocument()
-    })
+      // 500 errors are retried up to 3 times with delays (0, 2s, 4s).
+      // Advance timers and flush microtasks between each retry.
+      for (let i = 0; i < 5; i++) {
+        await act(async () => { jest.advanceTimersByTime(5000) })
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText("Internal server error")).toBeInTheDocument()
+      })
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it("shows credit error with Buy Credits link on 402", async () => {
@@ -273,5 +286,112 @@ describe("AudioSourceStep", () => {
     expect(
       screen.queryByText("A karaoke version of this song already exists!")
     ).not.toBeInTheDocument()
+  })
+
+  // --- Search robustness tests (state machine + retry) ---
+
+  it("does NOT show 'No audio sources found' when search fails with network error", async () => {
+    jest.useFakeTimers()
+    try {
+      mockApi.searchStandalone.mockRejectedValue(new TypeError("Failed to fetch"))
+      mockGetSearchConfidence.mockReturnValue({
+        tier: 3, bestResult: null, bestCategory: null, reason: "", warnings: [],
+      })
+
+      render(<AudioSourceStep {...defaultProps} />)
+
+      // Advance through all retry attempts
+      for (let i = 0; i < 5; i++) {
+        await act(async () => { jest.advanceTimersByTime(5000) })
+      }
+
+      // Should show error message, NOT "No audio sources found"
+      await waitFor(() => {
+        expect(screen.getByText(/network error/i)).toBeInTheDocument()
+      })
+      expect(screen.queryByTestId("no-results-section")).not.toBeInTheDocument()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("retries 500 errors up to 3 times before showing error", async () => {
+    jest.useFakeTimers()
+    try {
+      mockApi.searchStandalone.mockRejectedValue(
+        new ApiError("Server error", 500)
+      )
+
+      render(<AudioSourceStep {...defaultProps} />)
+
+      // Advance through all retry attempts
+      for (let i = 0; i < 5; i++) {
+        await act(async () => { jest.advanceTimersByTime(5000) })
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText("Server error")).toBeInTheDocument()
+      })
+
+      // Should have been called 3 times (1 initial + 2 retries)
+      expect(mockApi.searchStandalone).toHaveBeenCalledTimes(3)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("shows retry progress text during retries", async () => {
+    jest.useFakeTimers()
+    try {
+      mockApi.searchStandalone.mockRejectedValue(
+        new ApiError("Server error", 500)
+      )
+
+      render(<AudioSourceStep {...defaultProps} />)
+
+      // After first failure + 2s delay, should show retry text
+      await act(async () => { jest.advanceTimersByTime(3000) })
+
+      expect(screen.getByText(/Retry 1 of 2/)).toBeInTheDocument()
+
+      // Clean up remaining retries
+      for (let i = 0; i < 3; i++) {
+        await act(async () => { jest.advanceTimersByTime(5000) })
+      }
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("does not retry 402 credit errors", async () => {
+    mockApi.searchStandalone.mockRejectedValue(
+      new ApiError("No credits", 402)
+    )
+
+    render(<AudioSourceStep {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/out of credits/i)).toBeInTheDocument()
+    })
+
+    // Should have been called only once — no retries
+    expect(mockApi.searchStandalone).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows 'No audio sources found' only after successful search with 0 results", async () => {
+    mockApi.searchStandalone.mockResolvedValue({
+      search_session_id: "sess-empty",
+      results: [],
+      results_count: 0,
+    })
+    mockGetSearchConfidence.mockReturnValue({
+      tier: 3, bestResult: null, bestCategory: null, reason: "", warnings: [],
+    })
+
+    render(<AudioSourceStep {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("no-results-section")).toBeInTheDocument()
+    })
   })
 })

@@ -212,9 +212,11 @@ class EmailValidationService:
                 effective_domains = (external | manual) - allowlisted
             else:
                 # Old data model (pre-migration): use disposable_domains + defaults
+                allowlisted = set()
                 effective_domains = set(data.get("disposable_domains", [])) | DEFAULT_DISPOSABLE_DOMAINS
             config = {
                 "disposable_domains": effective_domains,
+                "allowlisted_domains": allowlisted,
                 "blocked_emails": set(data.get("blocked_emails", [])),
                 "blocked_ips": set(data.get("blocked_ips", [])),
                 "verified_clean_domains": data.get("verified_clean_domains", {}),
@@ -222,6 +224,7 @@ class EmailValidationService:
         else:
             config = {
                 "disposable_domains": DEFAULT_DISPOSABLE_DOMAINS.copy(),
+                "allowlisted_domains": set(),
                 "blocked_emails": set(),
                 "blocked_ips": set(),
                 "verified_clean_domains": {},
@@ -266,6 +269,12 @@ class EmailValidationService:
         config = self.get_blocklist_config()
         if domain in config["disposable_domains"]:
             return True
+
+        # Tier 1.5: Explicitly allowlisted domains skip external API checks.
+        # Without this, external APIs can override admin allowlist decisions
+        # (e.g. inbox.testmail.app is a legitimate testing domain we allow).
+        if domain in config.get("allowlisted_domains", set()):
+            return False
 
         # Tier 2: Recently verified clean? Skip API calls
         if self._is_domain_verified_clean(domain, config):

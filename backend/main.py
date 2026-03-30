@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
-from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, rate_limits, push, catalog
+from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, rate_limits, push, catalog, encoding_worker
 from backend.services.tracing import setup_tracing, instrument_app, get_current_trace_id
 from backend.services.structured_logging import setup_structured_logging
 from backend.services.spacy_preloader import preload_spacy_model
@@ -153,6 +153,7 @@ app.include_router(health.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(file_upload.router, prefix="/api")  # File upload endpoint
 app.include_router(internal.router, prefix="/api")  # Internal worker endpoints
+app.include_router(encoding_worker.router, prefix="/api")  # Encoding worker lifecycle
 app.include_router(review.router, prefix="/api")  # Review UI compatibility endpoints
 app.include_router(auth.router, prefix="/api")  # OAuth credential management
 app.include_router(audio_search.router, prefix="/api")  # Audio search (artist+title mode)

@@ -543,6 +543,41 @@ class TestExternalAPIChecks:
             mock_client.return_value.get.assert_not_called()
 
     # =========================================================================
+    # Allowlisted domain bypass (Tier 1.5)
+    # =========================================================================
+
+    def test_allowlisted_domain_skips_external_api_checks(self, mock_db):
+        """Allowlisted domains should skip external API checks entirely.
+
+        Regression test: inbox.testmail.app was getting flagged by DeBounce
+        even though it was in the allowlist, because external API calls ran
+        after the static blocklist check but before checking the allowlist.
+        """
+        from backend.services.email_validation_service import EmailValidationService
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "external_domains": ["yopmail.com"],
+            "manual_domains": ["inbox.testmail.app"],  # auto-learned by DeBounce
+            "allowlisted_domains": ["inbox.testmail.app"],  # but also allowlisted
+            "blocked_emails": [],
+            "blocked_ips": [],
+            "verified_clean_domains": {},
+        }
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+        EmailValidationService._blocklist_cache = None
+        EmailValidationService._blocklist_cache_time = None
+        service = EmailValidationService(db=mock_db)
+
+        with patch(
+            "backend.services.email_validation_service._get_http_client"
+        ) as mock_client:
+            result = service.is_disposable_domain("user@inbox.testmail.app")
+            assert result is False
+            # No HTTP calls should have been made — allowlist bypasses external APIs
+            mock_client.return_value.get.assert_not_called()
+
+    # =========================================================================
     # DeBounce API
     # =========================================================================
 

@@ -1,4 +1,6 @@
 export { default as AddLyricsModal } from './AddLyricsModal'
+export { default as PasteLyricsTab } from './PasteLyricsTab'
+export { default as SearchLyricsTab } from './SearchLyricsTab'
 export { default as AIFeedbackModal } from './AIFeedbackModal'
 export { default as CorrectionAnnotationModal } from './CorrectionAnnotationModal'
 export { default as EditModal } from './EditModal'

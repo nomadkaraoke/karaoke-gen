@@ -1219,7 +1219,7 @@ def _validate_prerequisites(job) -> bool:
     status_error = validate_worker_can_run("video_worker", job)
     if status_error:
         logger.warning(f"Job {job.job_id}: {status_error}")
-        # Continue anyway - this is a safety net warning, not a hard failure
+        return False
 
     # Check instrumental selection
     instrumental_selection = job.state_data.get('instrumental_selection')

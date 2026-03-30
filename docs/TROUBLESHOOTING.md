@@ -166,3 +166,200 @@ python scripts/backfill_gdrive_uploads.py --job-ids JOB1,JOB2
 **Fix (v0.135+):** AudioShake API calls now retry up to 5 times with exponential backoff (60s base, 3x multiplier, ~40 minutes total spread). Retries on 5xx, 429, connection errors, and timeouts.
 
 **For older jobs:** Simply retry the job via admin dashboard.
+
+---
+
+## Encoding worker not starting
+
+**Symptoms:** Encoding jobs time out waiting for the VM to respond. The `/api/internal/encoding-worker/start` call returns success but the VM never accepts connections.
+
+**Check Firestore config exists:**
+```bash
+python3 -c "
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+doc = firestore.Client(project='nomadkaraoke').collection('config').document('encoding-worker').get()
+print(doc.to_dict() if doc.exists else 'MISSING - run seed script')
+"
+```
+
+**Check VM status:**
+```bash
+gcloud compute instances describe encoding-worker-a \
+  --zone=us-central1-c --project=nomadkaraoke --format='value(status)'
+```
+
+**Check backend service account permissions:** The backend Cloud Run SA needs `compute.instances.start` on the encoding worker VMs. Verify in IAM or check Cloud Run logs for permission denied errors when the start call is made.
+
+---
+
+## Deploy stuck in progress (`deploy_in_progress: true`)
+
+**Symptoms:** CI deploys fail immediately with "deploy already in progress". The flag in Firestore was never cleared after a previous failed deploy.
+
+**Auto-clear:** The Cloud Function that manages idle shutdown also clears stale `deploy_in_progress` flags after 20 minutes. Wait for the next Cloud Scheduler tick (every 5 minutes) and the function will clear it.
+
+**Manual clear:**
+```bash
+python3 << 'EOF'
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+firestore.Client(project='nomadkaraoke').collection('config').document('encoding-worker').update({
+    'deploy_in_progress': False
+})
+print("Cleared")
+EOF
+```
+
+---
+
+## Both VMs running unexpectedly
+
+**Symptoms:** GCP billing alert, or you notice both `encoding-worker-a` and `encoding-worker-b` are RUNNING.
+
+**Check Cloud Function logs:**
+```bash
+gcloud logging read 'resource.type="cloud_function" resource.labels.function_name="encoding-worker-idle-shutdown"' \
+  --project=nomadkaraoke --limit=20 --format="table(timestamp,textPayload)"
+```
+
+**Verify scheduler is firing:** Go to Cloud Scheduler console and check the `encoding-worker-idle-shutdown` job's last execution time and status.
+
+**Check activity timestamps in Firestore:** Look at `config/encoding-worker` — the `activity_a` and `activity_b` fields show when each VM last reported activity. If a timestamp is very recent, that VM is actively being used (or the heartbeat is stuck).
+
+**Force idle check:**
+```bash
+gcloud scheduler jobs run encoding-worker-idle-shutdown \
+  --location=us-central1 --project=nomadkaraoke
+```
+
+---
+
+## Encoding requests failing after deploy
+
+**Symptoms:** Jobs fail at encoding immediately after a blue-green deploy swap. Logs show connection refused or 404 to the old primary IP.
+
+**Cause:** The backend caches the encoding worker URL for 30 seconds. Requests in-flight during the swap may hit the old (now stopped) primary.
+
+**Fix:** Wait 30 seconds after the swap for the cache to expire. In-flight jobs can be retried via the admin dashboard — re-triggering the video worker will pick up the new primary URL.
+
+**Verify the swap happened:**
+```bash
+python3 -c "
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+doc = firestore.Client(project='nomadkaraoke').collection('config').document('encoding-worker').get()
+print('primary:', doc.to_dict().get('primary'))
+"
+```
+
+---
+
+## Surgical job repair: re-run audio separation without losing lyrics/review
+
+**When to use:** Jobs where audio separation failed or produced incomplete stems, but the user has already completed lyrics review. The admin `/restart` endpoint clears ALL state including lyrics — use direct Firestore updates instead.
+
+**Approach:** Clear only audio-related state, trigger the Cloud Run GPU audio job, then advance the job to the correct next step.
+
+```python
+import os
+os.environ["GOOGLE_CLOUD_PROJECT"] = "nomadkaraoke"
+from google.cloud import firestore, run_v2
+from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
+from datetime import datetime, timezone
+
+db = firestore.Client(project="nomadkaraoke")
+job_id = "YOUR_JOB_ID"
+
+# Step 1: Clear audio state only (preserves lyrics, review, instrumental selection)
+job_ref = db.collection("jobs").document(job_id)
+job_ref.update({
+    "status": "downloading",  # Required: idempotency checks reject terminal states
+    "state_data.audio_progress": DELETE_FIELD,
+    "state_data.audio_complete": False,
+    "state_data.instrumental_options": DELETE_FIELD,
+    "state_data.backing_vocals_analysis": DELETE_FIELD,
+    "file_urls.stems": DELETE_FIELD,
+    "error_message": DELETE_FIELD,
+    "error_details": DELETE_FIELD,
+    "progress": 15,
+    "timeline": ArrayUnion([{
+        "status": "downloading",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "message": "Admin repair: re-running audio separation",
+    }]),
+})
+
+# Step 2: Trigger Cloud Run GPU audio job directly
+# (bypasses internal HTTP endpoint which has idempotency checks)
+client = run_v2.JobsClient()
+client.run_job(request=run_v2.RunJobRequest(
+    name="projects/nomadkaraoke/locations/us-east4/jobs/audio-separation-job",
+    overrides=run_v2.RunJobRequest.Overrides(
+        container_overrides=[run_v2.RunJobRequest.Overrides.ContainerOverride(
+            args=["python", "-m", "backend.workers.audio_worker", "--job-id", job_id],
+        )]
+    )
+))
+
+# Step 3: After audio completes, advance the job based on its previous state:
+# - If job was "failed" with lyrics: trigger screens worker → awaiting_review
+# - If job was "instrumental_selected": set status back, trigger video worker
+```
+
+**Key gotchas:**
+- Must set `status` to a non-terminal state (`"downloading"`) before triggering workers
+- `mark_audio_complete()` only sets a flag — it does NOT trigger the next pipeline step
+- After audio completes, you must manually trigger screens (for review path) or video (for post-review path)
+- The admin `/restart` endpoint with `preserve_audio_stems=false` is the simpler option when lyrics don't need preserving
+
+---
+
+## Triggering Cloud Run Jobs directly (bypassing internal API)
+
+**When to use:** The internal worker endpoints (`/api/internal/workers/audio`, etc.) have idempotency checks that reject jobs in terminal states (`failed`, `complete`, etc.). When repairing jobs, trigger Cloud Run Jobs directly via the API.
+
+```python
+from google.cloud import run_v2
+
+client = run_v2.JobsClient()
+client.run_job(request=run_v2.RunJobRequest(
+    name="projects/nomadkaraoke/locations/{REGION}/jobs/{JOB_NAME}",
+    overrides=run_v2.RunJobRequest.Overrides(
+        container_overrides=[run_v2.RunJobRequest.Overrides.ContainerOverride(
+            args=["python", "-m", "backend.workers.{MODULE}", "--job-id", "{JOB_ID}"],
+        )]
+    )
+))
+```
+
+**Available Cloud Run Jobs:**
+
+| Job Name | Region | Module | GPU |
+|----------|--------|--------|-----|
+| `audio-separation-job` | `us-east4` | `audio_worker` | L4 |
+| `lyrics-transcription-job` | `us-central1` | `lyrics_worker` | No |
+| `video-encoding-job` | `us-central1` | `video_worker` | No |
+
+---
+
+## CI does not update `lyrics-transcription-job` image
+
+**Symptoms:** Deployed code fixes don't take effect for lyrics processing. The backend service shows the new version, but lyrics jobs still crash with the old bug.
+
+**Cause:** The CI workflow (`.github/workflows/ci.yml`) updates `audio-separation-job` and `video-encoding-job` after deploy, but does NOT update `lyrics-transcription-job`. The job uses the `:latest` tag, but Cloud Run Jobs resolve the tag to a digest at update time — pushing a new `:latest` image doesn't automatically update running jobs.
+
+**Manual fix after deploy:**
+```bash
+# Pin to the specific version tag (preferred)
+gcloud run jobs update lyrics-transcription-job \
+  --image us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend:vX.Y.Z \
+  --region us-central1 --project nomadkaraoke
+
+# Or force re-resolve :latest
+gcloud run jobs update lyrics-transcription-job \
+  --image us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend:latest \
+  --region us-central1 --project nomadkaraoke
+```
+
+**Permanent fix:** Add `lyrics-transcription-job` update to CI deploy step in `.github/workflows/ci.yml` alongside the existing `video-encoding-job` and `audio-separation-job` updates (~line 1568).

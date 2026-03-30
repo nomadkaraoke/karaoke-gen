@@ -1,50 +1,34 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { SearchLyricsResponse } from '@/lib/lyrics-review/types'
+import SearchLyricsTab from './SearchLyricsTab'
+import PasteLyricsTab from './PasteLyricsTab'
 
 interface AddLyricsModalProps {
   open: boolean
   onClose: () => void
   onAdd: (source: string, lyrics: string) => Promise<void>
+  onSearch: (artist: string, title: string, forceSources: string[]) => Promise<SearchLyricsResponse>
+  defaultArtist: string
+  defaultTitle: string
 }
 
-export default function AddLyricsModal({ open, onClose, onAdd }: AddLyricsModalProps) {
-  const [source, setSource] = useState('')
-  const [lyrics, setLyrics] = useState('')
-  const [isAdding, setIsAdding] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleAdd = async () => {
-    if (!source.trim() || !lyrics.trim()) return
-
-    setIsAdding(true)
-    setError(null)
-
-    try {
-      await onAdd(source.trim(), lyrics.trim())
-      setSource('')
-      setLyrics('')
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add lyrics')
-    } finally {
-      setIsAdding(false)
-    }
-  }
+export default function AddLyricsModal({
+  open,
+  onClose,
+  onAdd,
+  onSearch,
+  defaultArtist,
+  defaultTitle,
+}: AddLyricsModalProps) {
+  const [activeTab, setActiveTab] = useState('search')
 
   const handleClose = () => {
-    if (!isAdding) {
-      setSource('')
-      setLyrics('')
-      setError(null)
-      onClose()
-    }
+    setActiveTab('search')
+    onClose()
   }
 
   return (
@@ -54,52 +38,29 @@ export default function AddLyricsModal({ open, onClose, onAdd }: AddLyricsModalP
           <DialogTitle>Add Reference Lyrics</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="source">Source Name</Label>
-            <Input
-              id="source"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              placeholder="e.g., manual, genius, azlyrics..."
-              disabled={isAdding}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full">
+            <TabsTrigger value="search" className="flex-1">
+              Search
+            </TabsTrigger>
+            <TabsTrigger value="paste" className="flex-1">
+              Paste
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="search">
+            <SearchLyricsTab
+              defaultArtist={defaultArtist}
+              defaultTitle={defaultTitle}
+              onSearch={onSearch}
+              onClose={handleClose}
             />
-          </div>
+          </TabsContent>
 
-          <div className="space-y-2">
-            <Label htmlFor="lyrics">Lyrics</Label>
-            <Textarea
-              id="lyrics"
-              value={lyrics}
-              onChange={(e) => setLyrics(e.target.value)}
-              placeholder="Paste lyrics here..."
-              rows={10}
-              disabled={isAdding}
-              className="font-mono text-sm"
-            />
-          </div>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isAdding}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleAdd}
-            disabled={isAdding || !source.trim() || !lyrics.trim()}
-          >
-            {isAdding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              'Add Lyrics'
-            )}
-          </Button>
-        </DialogFooter>
+          <TabsContent value="paste">
+            <PasteLyricsTab onAdd={onAdd} onClose={handleClose} />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

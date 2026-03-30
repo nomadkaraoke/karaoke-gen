@@ -161,7 +161,7 @@ LyricsTranscriber                 LyricsTranscriber
 
 | Service | Purpose | Required |
 |---------|---------|----------|
-| Cloud Run GPU (L4) | Audio stem separation (us-east4) | Yes |
+| Cloud Run GPU Job (L4, us-east4) | Audio stem separation — `Separator` runs directly in the audio worker Job (no HTTP hop) | Yes |
 | AudioShake | Lyrics transcription | Yes |
 | Vertex AI | Agentic AI correction (Gemini 3 Flash) | Default off (SKIP_CORRECTION=false to enable) |
 | Genius | Reference lyrics | Yes |
@@ -213,6 +213,52 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 **Note**: The `users` collection in the same Firestore instance belongs to karaoke-decide (different schema: user_id, is_guest, quiz_* fields). Don't use it for karaoke-gen.
 
 **Worker Logs**: Stored in subcollection (`jobs/{job_id}/logs`) instead of embedded array to avoid Firestore's 1MB document size limit. TTL policy auto-deletes logs after 30 days. Feature flag: `USE_LOG_SUBCOLLECTION` (default: true). See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#firestore-document-1mb-limit-with-embedded-arrays).
+
+## Encoding Worker Blue-Green Deployment
+
+The GCE encoding worker uses a blue-green deployment pattern with two named VMs (`encoding-worker-a` and `encoding-worker-b`).
+
+### Architecture
+
+```text
+Frontend → Backend (Cloud Run) → Firestore config → Primary VM (encoding-worker-a or b)
+                                                   ↑
+Cloud Scheduler (5 min) → Cloud Function → checks idle + stops VMs
+                                                   ↑
+CI (GitHub Actions) → deploys to secondary → health check → swap Firestore → stop old
+```
+
+### Key Components
+
+**Two VMs (a/b)**: Both VMs are TERMINATED by default. One is designated "primary" and serves all encoding traffic. The secondary VM exists solely to receive new deployments before they go live.
+
+**Firestore config doc** (`config/encoding-worker`): Single source of truth for routing. Fields: `primary` (a or b), `ip_a`, `ip_b`, `deploy_in_progress` flag, `activity_a`/`activity_b` timestamps.
+
+**Backend routing** (`encoding_interface.py`): Reads the primary IP from the Firestore config doc with a 30-second TTL cache. All encoding requests route to the current primary.
+
+**JIT startup**: When a user enters the lyrics review page, the backend starts the primary VM on demand. This gives ~60 seconds of natural warmup time before encoding is needed, avoiding both 24/7 costs and noticeable cold-start latency for the user.
+
+**Idle auto-shutdown**: A Cloud Function (triggered every 5 minutes by Cloud Scheduler) checks the `activity_*` timestamps in Firestore and stops any VM that has been idle for more than 15 minutes. This is external to the VM — if the encoding worker code itself has a bug, the Cloud Function still shuts it down.
+
+**Blue-green deploys**: CI builds a new wheel, deploys it to the secondary VM (not the live primary), runs a real encode test against the secondary, then atomically swaps the `primary` field in Firestore to point to the secondary. The old primary is stopped after the swap. If the health check fails, the primary is never updated.
+
+### Seeding the Config
+
+Initial setup or reset:
+```bash
+python scripts/seed-encoding-worker-config.py <ip-a> <ip-b>
+```
+
+### Deploy Flow
+
+```text
+1. CI builds new karaoke-gen wheel + pushes to GCS
+2. CI starts secondary VM, waits for /health to respond
+3. CI runs real encode test against secondary VM
+4. If test passes: CI writes secondary name to Firestore `primary` field
+5. CI stops the old primary VM
+6. If test fails: CI stops secondary VM, primary unchanged
+```
 
 ## Video Worker Orchestrator
 
@@ -323,7 +369,7 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 │                                                                 │
 │  audio-download-job          - 30s-5 min (flacfetch/YouTube)     │
 │  lyrics-transcription-job    - 5-15 min (AudioShake + correction)│
-│  audio-separation-job        - 10-20 min (Cloud Run GPU)            │
+│  audio-separation-job        - 10-20 min (L4 GPU, us-east4, direct) │
 │  video-encoding-job          - up to 60 min (optional)          │
 │                                                                 │
 │  Triggered via: google.cloud.run_v2.JobsClient.run_job()        │
@@ -359,6 +405,32 @@ Screens and render workers run via internal HTTP endpoints with BackgroundTasks,
 - On shutdown signal, checks `worker_registry.has_active_workers()`
 - If workers active, calls `wait_for_completion(timeout=600)` (10 min max)
 - Logs which workers are still running for debugging
+
+## Audio Separation Architecture
+
+Audio stem separation runs **directly inside the audio worker Cloud Run Job** — the `Separator` class from `audio-separator` is imported and called in-process. There is no separate GPU microservice.
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│  audio-separation-job  (Cloud Run Job, L4 GPU, us-east4)         │
+│                                                                  │
+│  AudioWorker                                                     │
+│  ├── download audio from GCS                                     │
+│  ├── create_audio_processor()  ← Separator(model_file_dir=...)   │
+│  ├── Stage 1: instrumental_clean preset                          │
+│  │   └── produces: vocals.flac, instrumental_clean.flac          │
+│  ├── Stage 2: karaoke preset                                     │
+│  │   └── produces: instrumental_with_backing.flac                │
+│  └── upload stems to GCS                                         │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Key decisions:**
+- **Direct GPU** — No HTTP hop to a separate service. Jobs can run up to 24h; no timeout concerns.
+- **Two-stage ensemble preset** — `instrumental_clean` (stage 1) + `karaoke` (stage 2).
+- **Model cache** — Models are downloaded to `model_file_dir` (GCS-backed or local) and reused across executions.
+
+**Rollback**: The old audio-separator Cloud Run Service (HTTP endpoint) is kept for rollback but no longer receives traffic. It will be removed in a future phase.
 
 ## Multitenancy
 

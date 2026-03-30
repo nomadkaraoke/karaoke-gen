@@ -1,4 +1,5 @@
 import os
+import shutil
 import pytest
 import glob
 import json
@@ -8,7 +9,6 @@ import datetime as dt # Use alias to avoid conflict
 import fcntl
 from pydub import AudioSegment
 from karaoke_gen.karaoke_gen import KaraokePrep
-from audio_separator.separator import Separator # Keep for patching target
 
 class TestAudio:
     def test_separate_audio(self, basic_karaoke_gen, temp_dir):
@@ -34,7 +34,7 @@ class TestAudio:
         ]
         
         # Mock dependencies
-        with patch('audio_separator.separator.Separator', return_value=mock_separator), \
+        with patch('karaoke_gen.audio_processor.Separator', return_value=mock_separator), \
              patch('os.rename') as mock_rename:
             
             # Call the method
@@ -130,7 +130,7 @@ class TestAudio:
         ]
         
         # Mock dependencies
-        with patch('audio_separator.separator.Separator', return_value=mock_separator), \
+        with patch('karaoke_gen.audio_processor.Separator', return_value=mock_separator), \
              patch('os.rename') as mock_rename, \
              patch('os.path.exists', return_value=True), \
              patch('os.getpid', return_value=12345), \

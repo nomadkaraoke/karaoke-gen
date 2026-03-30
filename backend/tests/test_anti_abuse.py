@@ -118,14 +118,47 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("new@example.com")
+        with patch('backend.services.credit_evaluation_service.get_credit_evaluation_service') as mock_eval:
+            from backend.services.credit_evaluation_service import CreditEvaluation
+            mock_eval.return_value.evaluate.return_value = CreditEvaluation(decision="grant", reasoning="OK", confidence=1.0)
+            granted, status = service.grant_welcome_credits_if_eligible("new@example.com")
 
-        assert result is True
+        assert granted is True
         # Verify update was called with credits and flag
         mock_db.collection.return_value.document.return_value.update.assert_called_once()
         update_args = mock_db.collection.return_value.document.return_value.update.call_args[0][0]
-        assert update_args['credits'] == 2
+        assert update_args['credits'] == 1
         assert update_args['welcome_credits_granted'] is True
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_uses_precomputed_eval_when_provided(self, mock_fs, mock_settings):
+        """grant_welcome_credits_if_eligible uses pre-computed eval and skips AI call."""
+        mock_settings.return_value = MagicMock(google_cloud_project='test')
+        mock_db = MagicMock()
+        mock_fs.Client.return_value = mock_db
+
+        user = User(email="new@example.com", credits=0, credit_transactions=[])
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = user.model_dump(mode='json')
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        from backend.services.user_service import UserService
+        service = UserService()
+        with patch('backend.services.credit_evaluation_service.get_credit_evaluation_service') as mock_eval:
+            granted, status = service.grant_welcome_credits_if_eligible(
+                "new@example.com",
+                precomputed_eval={
+                    "credit_eval_decision": "grant",
+                    "credit_eval_reasoning": "Pre-computed: clean user",
+                },
+            )
+            # AI evaluation should NOT have been called
+            mock_eval.return_value.evaluate.assert_not_called()
+
+        assert granted is True
+        assert status == "granted"
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
@@ -148,9 +181,9 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("existing@example.com")
+        granted, status = service.grant_welcome_credits_if_eligible("existing@example.com")
 
-        assert result is False
+        assert granted is False
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
@@ -180,9 +213,9 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("existing@example.com")
+        granted, status = service.grant_welcome_credits_if_eligible("existing@example.com")
 
-        assert result is False
+        assert granted is False
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')
@@ -199,9 +232,9 @@ class TestGrantWelcomeCredits:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("ghost@example.com")
+        granted, status = service.grant_welcome_credits_if_eligible("ghost@example.com")
 
-        assert result is False
+        assert granted is False
 
 
 # =============================================================================
@@ -376,7 +409,7 @@ def mock_user_svc():
         email="test@example.com",
         expires_at=datetime.utcnow() + timedelta(minutes=15),
     )
-    svc.NEW_USER_FREE_CREDITS = 2
+    svc.NEW_USER_FREE_CREDITS = 1
     return svc
 
 
@@ -524,10 +557,10 @@ class TestVerifyGrantsCredits:
         from backend.services.email_service import get_email_service
 
         mock_user_svc.verify_magic_link.return_value = (True, user, "Success")
-        mock_user_svc.grant_welcome_credits_if_eligible.return_value = credits_eligible
+        mock_user_svc.grant_welcome_credits_if_eligible.return_value = (credits_eligible, "granted" if credits_eligible else "already_granted")
         mock_user_svc.get_user.return_value = user
         mock_user_svc.create_session.return_value = MagicMock(token="session-token")
-        mock_user_svc.NEW_USER_FREE_CREDITS = 2
+        mock_user_svc.NEW_USER_FREE_CREDITS = 1
 
         # Mock magic link doc for first-login check
         mock_ml_doc = MagicMock()
@@ -556,8 +589,51 @@ class TestVerifyGrantsCredits:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["credits_granted"] == 2
+            assert data["credits_granted"] == 1
             mock_user_svc.grant_welcome_credits_if_eligible.assert_called_once()
+        finally:
+            from backend.main import app
+            app.dependency_overrides.clear()
+
+    def test_verify_passes_precomputed_eval(self, mock_user_svc):
+        """Verify endpoint passes pre-computed eval from magic link doc."""
+        user = User(email="new@example.com", credits=2, email_verified=True)
+        client = self._make_verify_client(mock_user_svc, user, credits_eligible=True)
+
+        # Add pre-computed eval to the magic link doc
+        mock_ml_doc = mock_user_svc.db.collection.return_value.document.return_value.get.return_value
+        mock_ml_doc.to_dict.return_value = {
+            'email': user.email,
+            'tenant_id': None,
+            'credit_eval_decision': 'grant',
+            'credit_eval_reasoning': 'Clean user',
+        }
+
+        try:
+            response = client.get("/api/users/auth/verify?token=valid-token")
+
+            assert response.status_code == 200
+            # Verify precomputed_eval was passed through
+            call_kwargs = mock_user_svc.grant_welcome_credits_if_eligible.call_args
+            assert call_kwargs[1]['precomputed_eval'] == {
+                'credit_eval_decision': 'grant',
+                'credit_eval_reasoning': 'Clean user',
+            }
+        finally:
+            from backend.main import app
+            app.dependency_overrides.clear()
+
+    def test_verify_falls_back_without_precomputed_eval(self, mock_user_svc):
+        """Verify endpoint passes None when no pre-computed eval exists."""
+        user = User(email="new@example.com", credits=2, email_verified=True)
+        client = self._make_verify_client(mock_user_svc, user, credits_eligible=True)
+
+        try:
+            response = client.get("/api/users/auth/verify?token=valid-token")
+
+            assert response.status_code == 200
+            call_kwargs = mock_user_svc.grant_welcome_credits_if_eligible.call_args
+            assert call_kwargs[1]['precomputed_eval'] is None
         finally:
             from backend.main import app
             app.dependency_overrides.clear()
@@ -652,8 +728,8 @@ class TestErrorPaths:
 
         from backend.services.user_service import UserService
         service = UserService()
-        result = service.grant_welcome_credits_if_eligible("test@example.com")
-        assert result is False
+        granted, status = service.grant_welcome_credits_if_eligible("test@example.com")
+        assert granted is False
 
     @patch('backend.services.user_service.get_settings')
     @patch('backend.services.user_service.firestore')

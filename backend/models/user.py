@@ -129,6 +129,11 @@ class MagicLinkToken(BaseModel):
     # Multi-tenant support (None = default Nomad Karaoke)
     tenant_id: Optional[str] = None
 
+    # Pre-computed credit evaluation (set asynchronously after magic link is sent)
+    credit_eval_decision: Optional[str] = None  # "grant", "deny", "pending_review"
+    credit_eval_reasoning: Optional[str] = None
+    credit_eval_error: Optional[str] = None
+
 
 class Session(BaseModel):
     """
@@ -180,6 +185,7 @@ class VerifyMagicLinkResponse(BaseModel):
     message: str
     tenant_subdomain: Optional[str] = None
     credits_granted: int = 0
+    credit_status: str = "not_applicable"  # "granted", "denied", "pending_review", "already_granted", "not_applicable"
 
 
 class UserPublic(BaseModel):
@@ -228,7 +234,7 @@ class UserFeedback(BaseModel):
     Feedback from any user (not just beta testers).
 
     Stored in Firestore 'user_feedback' collection.
-    Users earn 2 free credits for submitting detailed feedback.
+    Users earn 1 free credit for submitting detailed feedback.
     """
     id: str
     user_email: str
@@ -283,4 +289,4 @@ class FeedbackEligibilityResponse(BaseModel):
     eligible: bool
     has_submitted: bool
     jobs_completed: int
-    credits_reward: int = 2
+    credits_reward: int = 1

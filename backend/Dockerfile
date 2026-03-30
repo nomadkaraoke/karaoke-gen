@@ -26,7 +26,15 @@ COPY backend /app/backend
 # Note: lyrics_transcriber is now a subpackage of karaoke_gen
 COPY karaoke_gen /app/karaoke_gen
 COPY pyproject.toml README.md LICENSE /app/
-RUN pip install --no-cache-dir -e .
+# GPU images (MODEL_DIR set in base): use --no-deps to preserve pinned torch cu126
+# and audio-separator[gpu]. Without this, pip upgrades torch to cu130 (breaks CUDA
+# on Cloud Run L4 drivers) and reinstalls audio-separator[cpu] (breaks GPU ONNX).
+# CPU images: normal install resolves all deps from pyproject.toml.
+RUN if [ -n "$MODEL_DIR" ]; then \
+      pip install --no-cache-dir --no-deps -e .; \
+    else \
+      pip install --no-cache-dir -e .; \
+    fi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

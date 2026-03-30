@@ -299,7 +299,7 @@ class TestSubmitFeedbackEmailIntegration:
             would_use_again=False,
         )
 
-        assert result.credits_granted == 2
+        assert result.credits_granted == 1
 
     @patch("backend.services.email_service.get_email_service")
     @patch("backend.services.auth_service.get_auth_service")
@@ -344,7 +344,7 @@ class TestSubmitFeedbackEmailIntegration:
 
         # User still gets credits even though email failed
         assert result.status == "success"
-        assert result.credits_granted == 2
+        assert result.credits_granted == 1
 
 
 class TestFeedbackEmailNotification:

@@ -405,10 +405,10 @@ class TestCreditRefundOnJobDeletion:
 class TestWelcomeCredits:
     """Test new user welcome credits."""
 
-    def test_new_user_gets_2_welcome_credits(self):
-        """Verify NEW_USER_FREE_CREDITS is set to 2."""
+    def test_new_user_gets_1_welcome_credit(self):
+        """Verify NEW_USER_FREE_CREDITS is set to 1."""
         from backend.services.user_service import UserService
-        assert UserService.NEW_USER_FREE_CREDITS == 2
+        assert UserService.NEW_USER_FREE_CREDITS == 1
 
 
 class TestInsufficientCreditsError:

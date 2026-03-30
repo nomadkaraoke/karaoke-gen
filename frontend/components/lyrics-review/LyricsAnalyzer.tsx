@@ -18,10 +18,11 @@ import {
   Word,
   WordClickInfo,
   ModalContent,
+  SearchLyricsResponse,
 } from '@/lib/lyrics-review/types'
 import type { EditLog, EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
 import type { InstrumentalSelectionType, LyricsReviewApiClient } from '@/lib/api'
-import { lyricsReviewApi } from '@/lib/api'
+import { lyricsReviewApi, warmupEncodingWorker, heartbeatEncodingWorker } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import ReferenceView from './ReferenceView'
 import TranscriptionView from './TranscriptionView'
@@ -71,6 +72,7 @@ interface ApiClient {
   submitEditLog: (editLog: EditLog) => Promise<void>
   updateHandlers: (handlers: string[]) => Promise<CorrectionData>
   addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
+  searchLyrics?: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
   generatePreviewVideo: (data: CorrectionData) => Promise<{
     status: string
@@ -272,12 +274,30 @@ export default function LyricsAnalyzer({
     setSessionRestoreOpen(true)
   }, [apiClient])
 
-  // Save data (localStorage - instant crash recovery)
+  // Warm up encoding worker VM when lyrics review page loads
+  useEffect(() => {
+    if (!isReadOnly) {
+      warmupEncodingWorker()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced heartbeat — keeps VM alive during active editing
+  const lastHeartbeat = useRef(0)
+  const sendHeartbeat = useCallback(() => {
+    const now = Date.now()
+    if (now - lastHeartbeat.current > 60_000) {
+      lastHeartbeat.current = now
+      heartbeatEncodingWorker()
+    }
+  }, [])
+
+  // Save data (localStorage - instant crash recovery) + heartbeat encoding worker
   useEffect(() => {
     if (!isReadOnly) {
       saveData(data, initialData)
+      sendHeartbeat()
     }
-  }, [data, isReadOnly, initialData])
+  }, [data, isReadOnly, initialData, sendHeartbeat])
 
   // Server-side session auto-save (periodic backup)
   const { saveSession } = useReviewSessionAutoSave({
@@ -1029,6 +1049,21 @@ export default function LyricsAnalyzer({
     [apiClient, updateDataWithHistory]
   )
 
+  // Search lyrics (reference lyrics search)
+  const handleSearchLyrics = useCallback(
+    async (artist: string, title: string, forceSources: string[]): Promise<SearchLyricsResponse> => {
+      if (!apiClient || !apiClient.searchLyrics) {
+        return { status: 'no_results', message: 'No API client', sources_added: [], sources_rejected: {}, sources_not_found: [] }
+      }
+      const result = await apiClient.searchLyrics(artist, title, forceSources)
+      if (result.status === 'success' && result.data) {
+        updateDataWithHistory(result.data, 'search lyrics')
+      }
+      return result
+    },
+    [apiClient, updateDataWithHistory],
+  )
+
   // Find/replace
   const handleFindReplace = useCallback(
     (
@@ -1232,6 +1267,10 @@ export default function LyricsAnalyzer({
           corrected_segments={data.corrected_segments}
           corrections={data.corrections}
           onAddLyrics={() => setIsAddLyricsModalOpen(true)}
+          onAddLyricsInline={handleAddLyrics}
+          onSearchLyrics={handleSearchLyrics}
+          defaultArtist={data.metadata?.artist || ''}
+          defaultTitle={data.metadata?.title || ''}
         />
       </div>
 
@@ -1356,6 +1395,9 @@ export default function LyricsAnalyzer({
         open={isAddLyricsModalOpen}
         onClose={() => setIsAddLyricsModalOpen(false)}
         onAdd={handleAddLyrics}
+        onSearch={handleSearchLyrics}
+        defaultArtist={data.metadata?.artist || ''}
+        defaultTitle={data.metadata?.title || ''}
       />
 
       <FindReplaceModal

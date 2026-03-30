@@ -38,6 +38,24 @@ type PendingChoice =
   | { type: "url"; url: string }
   | { type: "file"; file: File }
 
+type SearchStatus =
+  | { phase: 'searching'; attempt: number }
+  | { phase: 'succeeded' }
+  | { phase: 'failed'; reason: string; isCreditError: boolean; attempt: number }
+
+const MAX_SEARCH_ATTEMPTS = 3
+const RETRY_DELAYS = [0, 2000, 4000] // ms delay before each attempt
+
+/** Returns true for transient errors that should be auto-retried */
+function isRetryableError(err: unknown): boolean {
+  // Network errors (TypeError: Failed to fetch, connection refused, CORS)
+  if (!(err instanceof ApiError)) return true
+  // Server errors (5xx) are retryable
+  if (err.status >= 500) return true
+  // Everything else (4xx) is not
+  return false
+}
+
 /** Render an availability badge with tooltip */
 function AvailabilityBadge({ seeders }: { seeders: number | undefined | null }) {
   if (seeders === undefined || seeders === null) return null
@@ -108,10 +126,13 @@ export function AudioSourceStep({
   onAudioEditChange,
 }: AudioSourceStepProps) {
   const [results, setResults] = useState<ExtendedAudioSearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(true)
-  const [error, setError] = useState("")
+  const [searchStatus, setSearchStatus] = useState<SearchStatus>({ phase: 'searching', attempt: 1 })
   const [pendingChoice, setPendingChoice] = useState<PendingChoice | null>(null)
-  const [isCreditError, setIsCreditError] = useState(false)
+
+  // Derived from searchStatus for rendering convenience
+  const isSearching = searchStatus.phase === 'searching'
+  const error = searchStatus.phase === 'failed' ? searchStatus.reason : ''
+  const isCreditError = searchStatus.phase === 'failed' && searchStatus.isCreditError
   const [showOtherOptions, setShowOtherOptions] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const searchTriggered = useRef(false)
@@ -137,30 +158,48 @@ export function AudioSourceStep({
   const [youtubeUrl, setYoutubeUrl] = useState("")
   const [fallbackMode, setFallbackMode] = useState<"upload" | "url" | null>(null)
 
-  // Search with retry for network failures
-  const doSearch = useCallback(async (retryCount = 0): Promise<void> => {
-    setIsSearching(true)
-    setError("")
-    setIsCreditError(false)
+  // Search with automatic retry for transient failures
+  const doSearch = useCallback(async (attempt = 1): Promise<void> => {
+    setSearchStatus({ phase: 'searching', attempt })
+
+    // Delay before retry attempts
+    if (attempt > 1) {
+      await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt - 1] ?? RETRY_DELAYS[RETRY_DELAYS.length - 1]))
+    }
+
     try {
       const response = await api.searchStandalone(artist, title)
-      // Notify parent of completed session (no job created yet)
       onSearchCompleted(response.search_session_id)
       setResults(response.results as ExtendedAudioSearchResult[])
+      setSearchStatus({ phase: 'succeeded' })
     } catch (err) {
+      // Credit errors — never retry
       if (err instanceof ApiError && err.status === 402) {
-        setIsCreditError(true)
-        setError("You're out of credits. Buy more to continue creating karaoke videos.")
-      } else if (err instanceof ApiError) {
-        setError(err.message)
-      } else if (retryCount < 1) {
-        // Network errors (CORS, timeout, connection reset) - auto-retry once
-        return doSearch(retryCount + 1)
-      } else {
-        setError("Search failed due to a network error. Please try again.")
+        setSearchStatus({
+          phase: 'failed',
+          reason: "You're out of credits. Buy more to continue creating karaoke videos.",
+          isCreditError: true,
+          attempt,
+        })
+        return
       }
-    } finally {
-      setIsSearching(false)
+
+      // Retryable errors — try again if attempts remain
+      if (isRetryableError(err) && attempt < MAX_SEARCH_ATTEMPTS) {
+        return doSearch(attempt + 1)
+      }
+
+      // All retries exhausted or non-retryable error — show failure
+      let reason: string
+      if (err instanceof ApiError) {
+        reason = err.message
+      } else if (err instanceof DOMException && err.name === 'AbortError') {
+        reason = "Search timed out. Please try again."
+      } else {
+        reason = "Search failed due to a network error. Please try again."
+      }
+
+      setSearchStatus({ phase: 'failed', reason, isCreditError: false, attempt })
     }
   }, [artist, title, onSearchCompleted])
 
@@ -232,8 +271,7 @@ export function AudioSourceStep({
     setFuzzyAlternatives([])
     setFuzzyDismissed(true)
     setResults([])
-    setIsSearching(true)
-    setError("")
+    setSearchStatus({ phase: 'searching', attempt: 1 })
     setCatalogResults([])
     setCatalogDismissed(false)
     setCommunityData(null)
@@ -241,29 +279,9 @@ export function AudioSourceStep({
     setShowOtherOptions(false)
     searchTriggered.current = false
     fuzzyTriggered.current = false
-    // doSearch will re-fire via the useEffect since searchTriggered is reset
-    // But artist/title are props — they update on next render, so we need to
-    // let the parent re-render us with new props first. Use a microtask.
-    Promise.resolve().then(() => {
-      searchTriggered.current = true
-      api.searchStandalone(chosen.artist_name, chosen.track_name)
-        .then((response) => {
-          onSearchCompleted(response.search_session_id)
-          setResults(response.results as ExtendedAudioSearchResult[])
-        })
-        .catch((err) => {
-          if (err instanceof ApiError) setError(err.message)
-          else setError("Search failed. Please try again.")
-        })
-        .finally(() => setIsSearching(false))
-      // Also re-run catalog + community check with corrected name
-      api.searchCatalogTracks(chosen.track_name, chosen.artist_name, 5)
-        .then((tracks) => setCatalogResults(tracks))
-        .catch(() => {})
-      api.checkCommunityVersions(chosen.artist_name, chosen.track_name)
-        .then((data) => setCommunityData(data))
-        .catch(() => {})
-    })
+    // doSearch (and catalog/community searches) will re-fire via the useEffect
+    // when the parent re-renders us with corrected artist/title props, since
+    // searchTriggered.current is reset and doSearch is recreated with new props.
   }
 
   function handleSelect(index: number) {
@@ -311,6 +329,11 @@ export function AudioSourceStep({
       onFileReady(pendingChoice.file)
     }
   }
+
+  const handleRetry = useCallback(() => {
+    searchTriggered.current = false
+    doSearch()
+  }, [doSearch])
 
   const isLossyBest = confidence.bestCategory === 'YOUTUBE'
 
@@ -445,7 +468,7 @@ export function AudioSourceStep({
           )}
           {!isCreditError && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-              <button onClick={() => { searchTriggered.current = false; doSearch() }} className="font-medium underline" style={{ color: 'var(--brand-pink)' }}>Retry</button>
+              <button onClick={handleRetry} className="font-medium underline" style={{ color: 'var(--brand-pink)' }}>Retry</button>
               <span className="text-xs text-muted-foreground">
                 Still not working? <a href="mailto:andrew@nomadkaraoke.com" className="underline hover:text-foreground">Email andrew@nomadkaraoke.com</a>
               </span>
@@ -455,13 +478,15 @@ export function AudioSourceStep({
       )}
 
       {/* Loading state */}
-      {isSearching && (
+      {searchStatus.phase === 'searching' && (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-pink)' }} />
           <div className="text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>Searching for audio sources...</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              This usually takes 15-30 seconds
+              {searchStatus.attempt > 1
+                ? `Retry ${searchStatus.attempt - 1} of ${MAX_SEARCH_ATTEMPTS - 1} — this usually takes 15-30 seconds`
+                : 'This usually takes 15-30 seconds'}
             </p>
           </div>
         </div>
@@ -526,12 +551,12 @@ export function AudioSourceStep({
       )}
 
       {/* No results */}
-      {!isSearching && results.length === 0 && !error && (
+      {searchStatus.phase === 'succeeded' && results.length === 0 && (
         <NoResultsSection />
       )}
 
       {/* Fallback section for Tier 1/2 and no-results — at the bottom */}
-      {!isSearching && (confidence.tier !== 3 || results.length === 0) && (
+      {searchStatus.phase !== 'searching' && (confidence.tier !== 3 || results.length === 0) && (
         <FallbackSection
           tier={confidence.tier}
           hasResults={results.length > 0}

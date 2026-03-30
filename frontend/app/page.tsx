@@ -262,7 +262,7 @@ function ConsumerLandingPage() {
                 Create It Yourself
                 <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-sm">$5</span>
               </button>
-              <span className="text-green-400 text-sm">2 free credits included - no payment required</span>
+              <span className="text-green-400 text-sm">1 free credit included - no payment required</span>
             </div>
             <div className="flex flex-col items-center gap-2">
               <a
@@ -451,12 +451,12 @@ function ConsumerLandingPage() {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-4">Simple Pricing</h2>
           <p className="text-dark-400 text-center mb-4 max-w-xl mx-auto">
-            Start with 2 free credits, then buy more to save more.
+            Start with 1 free credit, then buy more to save more.
           </p>
 
           <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6 text-center mb-10 max-w-sm mx-auto">
             <div className="text-sm text-green-400 font-medium mb-1">Every new account includes</div>
-            <div className="text-4xl font-bold text-green-400 mb-1">2 Free Credits</div>
+            <div className="text-4xl font-bold text-green-400 mb-1">1 Free Credit</div>
             <div className="text-sm text-dark-400 mb-4">No payment required</div>
             <button
               onClick={() => setShowAuthDialog(true)}

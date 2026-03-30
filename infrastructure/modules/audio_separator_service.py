@@ -6,14 +6,13 @@ Replaces the Modal deployment for audio stem separation.
 
 Resources created:
 - Artifact Registry repository for audio-separator Docker images
-- GCS bucket for pre-downloaded separation models
 - Cloud Run GPU service (L4, scale-to-zero)
 - Service account with minimal permissions
 """
 
 import pulumi
 import pulumi_gcp as gcp
-from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount, storage
+from pulumi_gcp import artifactregistry, cloudrunv2, serviceaccount
 from pulumi_gcp.cloudrunv2 import ServiceTemplateNodeSelectorArgs, ServiceTemplateContainerPortsArgs
 
 from config import PROJECT_ID, REGION
@@ -34,18 +33,6 @@ def create_audio_separator_artifact_repo() -> artifactregistry.Repository:
     )
 
 
-def create_model_bucket() -> storage.Bucket:
-    """Create GCS bucket for audio separation model files (~1-1.5 GB total)."""
-    return storage.Bucket(
-        "audio-separator-models-bucket",
-        name=f"nomadkaraoke-audio-separator-models",
-        location=AUDIO_SEPARATOR_REGION,
-        storage_class="STANDARD",
-        uniform_bucket_level_access=True,
-        force_destroy=False,
-    )
-
-
 def create_service_account() -> serviceaccount.Account:
     """Create service account for the audio separator Cloud Run service."""
     return serviceaccount.Account(
@@ -54,6 +41,26 @@ def create_service_account() -> serviceaccount.Account:
         display_name="Audio Separator Service Account",
         description="Service account for audio separator Cloud Run GPU service",
     )
+
+
+def create_output_bucket() -> gcp.storage.Bucket:
+    """Create GCS bucket for separation output files with auto-cleanup."""
+    bucket = gcp.storage.Bucket(
+        "audio-separator-output-bucket",
+        name="nomadkaraoke-audio-separator-outputs",
+        location="US",
+        force_destroy=True,
+        uniform_bucket_level_access=True,
+        lifecycle_rules=[
+            gcp.storage.BucketLifecycleRuleArgs(
+                action=gcp.storage.BucketLifecycleRuleActionArgs(type="Delete"),
+                condition=gcp.storage.BucketLifecycleRuleConditionArgs(
+                    age=1,  # Delete after 1 day (minimum GCS lifecycle granularity)
+                ),
+            ),
+        ],
+    )
+    return bucket
 
 
 def grant_permissions(
@@ -86,6 +93,14 @@ def grant_permissions(
         member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
+    # Read/write Firestore for async job status
+    bindings["firestore"] = gcp.projects.IAMMember(
+        "audio-separator-firestore-access",
+        project=PROJECT_ID,
+        role="roles/datastore.user",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     return bindings
 
 
@@ -107,8 +122,9 @@ def create_service(
         template=cloudrunv2.ServiceTemplateArgs(
             scaling=cloudrunv2.ServiceTemplateScalingArgs(
                 min_instance_count=0,
-                max_instance_count=1,  # GPU zonal redundancy requires quota for >1
+                max_instance_count=5,  # Cloud Run GPU services limited to 5 max instances
             ),
+            max_instance_request_concurrency=1,  # One GPU job per instance; forces Cloud Run to scale to new instances for concurrent jobs
             gpu_zonal_redundancy_disabled=True,  # Not needed for batch workloads
             # Keep instances warm for 600s (10 min) between Stage 1 → Stage 2
             session_affinity=True,
@@ -139,6 +155,14 @@ def create_service(
                         cloudrunv2.ServiceTemplateContainerEnvArgs(
                             name="STORAGE_DIR",
                             value="/tmp/storage",
+                        ),
+                        cloudrunv2.ServiceTemplateContainerEnvArgs(
+                            name="OUTPUT_BUCKET",
+                            value="nomadkaraoke-audio-separator-outputs",
+                        ),
+                        cloudrunv2.ServiceTemplateContainerEnvArgs(
+                            name="GCP_PROJECT",
+                            value=PROJECT_ID,
                         ),
                     ],
                     startup_probe=cloudrunv2.ServiceTemplateContainerStartupProbeArgs(
@@ -197,13 +221,24 @@ def create_all_resources() -> dict:
     """
     artifact_repo = create_audio_separator_artifact_repo()
     sa = create_service_account()
+    output_bucket = create_output_bucket()
     iam_bindings = grant_permissions(sa)
+
+    # Output bucket IAM (separate from grant_permissions since it needs the bucket)
+    output_bucket_iam = gcp.storage.BucketIAMMember(
+        "audio-separator-output-bucket-access",
+        bucket=output_bucket.name,
+        role="roles/storage.objectAdmin",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     service = create_service(sa, artifact_repo)
     unauthenticated_access = allow_unauthenticated_access(service)
 
     return {
         "artifact_repo": artifact_repo,
         "service_account": sa,
+        "output_bucket": output_bucket,
         "service": service,
         "iam_bindings": iam_bindings,
     }

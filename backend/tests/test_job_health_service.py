@@ -285,6 +285,13 @@ class TestValidateWorkerCanRun:
         assert error is not None
         assert "video_worker called but job status is pending" in error
 
+    def test_video_worker_invalid_with_generating_video_status(self):
+        """Test video worker rejects GENERATING_VIDEO to prevent concurrent worker races."""
+        job = create_test_job(status=JobStatus.GENERATING_VIDEO)
+        error = validate_worker_can_run("video_worker", job)
+        assert error is not None
+        assert "video_worker called but job status is generating_video" in error
+
     def test_render_video_worker_valid_with_review_complete_status(self):
         """Test render video worker is valid with REVIEW_COMPLETE status."""
         job = create_test_job(status=JobStatus.REVIEW_COMPLETE)

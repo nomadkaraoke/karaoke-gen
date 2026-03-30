@@ -276,7 +276,7 @@ class TestFindRelatedAccounts:
 @pytest.fixture
 def mock_user_svc():
     svc = MagicMock()
-    svc.NEW_USER_FREE_CREDITS = 2
+    svc.NEW_USER_FREE_CREDITS = 1
     return svc
 
 

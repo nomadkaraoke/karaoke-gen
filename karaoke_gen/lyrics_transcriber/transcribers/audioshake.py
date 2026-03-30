@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import logging
 import requests
+import subprocess
 import time
 import os
 import tempfile
@@ -51,7 +52,12 @@ class AudioUploadOptimizer:
             self.logger.info(f"Converting uncompressed format ({ext}) to FLAC for efficient upload")
             return self._convert_to_flac(filepath)
 
-        # AudioShake-supported formats: upload directly
+        # FLAC files: strip metadata to avoid non-standard tags breaking AudioShake
+        if ext == '.flac':
+            self.logger.info("Stripping metadata from FLAC before upload (audio unchanged)")
+            return self._strip_metadata(filepath)
+
+        # Other AudioShake-supported formats: upload directly
         if ext in AUDIOSHAKE_SUPPORTED:
             self.logger.info(f"Uploading AudioShake-supported format ({ext}) directly")
             return filepath, None
@@ -59,6 +65,31 @@ class AudioUploadOptimizer:
         # Unsupported formats: convert to FLAC for compatibility
         self.logger.info(f"Converting unsupported format ({ext}) to FLAC for AudioShake compatibility")
         return self._convert_to_flac(filepath)
+
+    def _strip_metadata(self, filepath: str) -> Tuple[str, str]:
+        """Strip all metadata from an audio file using ffmpeg, keeping audio unchanged.
+
+        This prevents non-standard metadata tags (e.g. MP4/M4A container fields
+        embedded in FLAC) from breaking AudioShake's processing pipeline.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as temp_file:
+            clean_path = temp_file.name
+
+        try:
+            subprocess.run(
+                ["ffmpeg", "-i", filepath, "-map", "0:a", "-c", "copy", "-map_metadata", "-1", clean_path, "-y"],
+                check=True,
+                capture_output=True,
+            )
+        except subprocess.CalledProcessError as e:
+            # Clean up on failure
+            if os.path.exists(clean_path):
+                os.unlink(clean_path)
+            self.logger.error(f"ffmpeg metadata strip failed: {e.stderr.decode()}")
+            raise
+
+        self.logger.info(f"Stripped metadata from {os.path.basename(filepath)}")
+        return clean_path, clean_path
 
     def _convert_to_flac(self, filepath: str) -> Tuple[str, str]:
         """Convert audio file to FLAC format."""

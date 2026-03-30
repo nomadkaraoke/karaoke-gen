@@ -15,8 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Moon, Sun, Eye, EyeOff, Gift, X, Shield, ShieldOff, HelpCircle, Mail, Phone } from "lucide-react"
-import { sortJobsByDate, getDisplayJobs } from "@/lib/job-status"
+import { Music2, RefreshCw, Loader2, Moon, Sun, Search, Gift, X, Shield, ShieldOff, HelpCircle, Mail, Phone } from "lucide-react"
+import { sortJobsByDate } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
@@ -50,6 +50,7 @@ function AppPageContent() {
   const [allJobs, setAllJobs] = useState<Job[]>([])
   const [isLoadingJobs, setIsLoadingJobs] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [hasFetchedSuccessfully, setHasFetchedSuccessfully] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isVerifyingToken, setIsVerifyingToken] = useState(false)
   const adminTokenHandled = useRef(false) // Track if admin_token was already processed
@@ -62,10 +63,12 @@ function AppPageContent() {
     const saved = localStorage.getItem("nomad-karaoke-job-limit")
     return saved ? Number(saved) : 10
   })
-  const [hideCompleted, setHideCompleted] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("nomad-karaoke-hide-completed") === "true"
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return "active"
+    return localStorage.getItem("nomad-karaoke-status-filter") || "active"
   })
+  const [searchInput, setSearchInput] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
   const [showAdminControls, setShowAdminControls] = useState<boolean>(() => {
     if (typeof window === "undefined") return false
     return localStorage.getItem("nomad-karaoke-admin-controls") === "true"
@@ -80,16 +83,16 @@ function AppPageContent() {
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
 
   // Filter out in-progress search jobs (managed by the guided flow, not standalone cards)
-  const visibleJobs = useMemo(
+  const jobs = useMemo(
     () => allJobs.filter(job => job.status !== 'awaiting_audio_selection'),
     [allJobs]
   )
 
-  // Derive displayed jobs from visibleJobs + display limit + filter (instant, no re-fetch)
-  const { displayedJobs: jobs, totalFetched } = useMemo(
-    () => getDisplayJobs(visibleJobs, jobLimit, hideCompleted),
-    [visibleJobs, jobLimit, hideCompleted]
-  )
+  // Debounce search input — only update the query (which triggers API calls) after 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchInput), 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   // Memoize loadJobs for use with visibility refresh
   const loadJobs = useCallback(async () => {
@@ -99,25 +102,25 @@ function AppPageContent() {
       return
     }
     try {
-      // Use summary mode for reduced payload (~12 fields instead of 50+)
       const data = await api.listJobs({
-        limit: 100,
+        limit: jobLimit,
         exclude_test: isAdmin ? !showTestData : undefined,
         fields: 'summary',
-        hide_completed: hideCompleted,
+        status: statusFilter !== 'all' && statusFilter !== 'active' ? statusFilter : undefined,
+        hide_completed: statusFilter === 'active' ? true : undefined,
+        search: searchQuery || undefined,
       })
-      // Sort by creation date (newest first)
       setAllJobs(sortJobsByDate(data))
     } catch (err: any) {
-      // Don't log auth errors - user just needs to authenticate
       if (err?.status !== 401) {
         console.error("Failed to load jobs:", err)
       }
     } finally {
       setIsLoadingJobs(false)
       setIsInitialLoad(false)
+      setHasFetchedSuccessfully(true)
     }
-  }, [isAdmin, showTestData, hideCompleted])
+  }, [isAdmin, showTestData, jobLimit, statusFilter, searchQuery])
 
   // Enable notifications for job status changes (sound + title animation)
   useJobNotifications(allJobs)
@@ -335,7 +338,7 @@ function AppPageContent() {
             <div className="flex items-center gap-3 min-w-0">
               <Gift className="w-5 h-5 text-green-500 shrink-0" />
               <p className="text-sm" style={{ color: 'var(--text)' }}>
-                <strong>Earn 2 free credits!</strong>{' '}
+                <strong>Earn 1 free credit!</strong>{' '}
                 <span style={{ color: 'var(--text-muted)' }}>
                   Share your feedback on the karaoke creation experience.
                 </span>
@@ -389,62 +392,91 @@ function AppPageContent() {
           {/* Jobs List Card */}
           <Card className="backdrop-blur min-w-0" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
             <CardHeader className="px-3 sm:px-6">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle style={{ color: 'var(--text)' }}>Recent Jobs</CardTitle>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
+                  <CardTitle style={{ color: 'var(--text)' }}>Recent Jobs</CardTitle>
                   {isLoadingJobs && <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          style={{ color: 'var(--text-muted)' }}
-                          onClick={() => {
-                            const next = !hideCompleted
-                            setHideCompleted(next)
-                            localStorage.setItem("nomad-karaoke-hide-completed", String(next))
-                          }}
-                        >
-                          {hideCompleted ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p>{hideCompleted ? "Show all jobs" : "Hide completed jobs"}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      aria-label="Search jobs"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      className="h-7 w-[160px] sm:w-[200px] text-xs rounded-md border pl-7 pr-2"
+                      style={{
+                        backgroundColor: 'var(--input)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text)',
+                      }}
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={(v) => {
+                    setStatusFilter(v)
+                    localStorage.setItem("nomad-karaoke-status-filter", v)
+                  }}>
+                    <SelectTrigger className="h-7 w-[130px] text-xs" aria-label="Filter by status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="complete">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="awaiting_review">Awaiting review</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={String(jobLimit)} onValueChange={(v) => {
                     const val = Number(v)
                     setJobLimit(val)
                     localStorage.setItem("nomad-karaoke-job-limit", String(val))
                   }}>
-                    <SelectTrigger className="h-7 w-[80px] text-xs">
+                    <SelectTrigger className="h-7 w-[70px] text-xs" aria-label="Results per page">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="5">5</SelectItem>
                       <SelectItem value="10">10</SelectItem>
                       <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="-1">All</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="1000">1000</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
-                {hideCompleted
-                  ? `${jobs.length} incomplete of ${totalFetched} total`
-                  : jobs.length < totalFetched
-                    ? `Showing ${jobs.length} of ${totalFetched} jobs`
+                {!hasFetchedSuccessfully
+                  ? 'Loading...'
+                  : searchQuery || statusFilter !== 'active'
+                    ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''} matching filters`
                     : `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`}
               </CardDescription>
             </CardHeader>
             <CardContent className="px-3 sm:px-6">
               {jobs.length === 0 ? (
                 <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
-                  <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No jobs yet. Create one to get started!</p>
+                  {!hasFetchedSuccessfully ? (
+                    <>
+                      <Loader2 className="w-12 h-12 mx-auto mb-3 opacity-50 animate-spin" />
+                      <p>Loading jobs...</p>
+                    </>
+                  ) : searchQuery || statusFilter !== 'active' ? (
+                    <>
+                      <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No jobs match your filters.</p>
+                    </>
+                  ) : (
+                    <>
+                      <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No jobs yet. Create one to get started!</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">

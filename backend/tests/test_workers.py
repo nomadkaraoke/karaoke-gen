@@ -179,48 +179,48 @@ class TestLyricsWorker:
         return storage
     
     @pytest.mark.asyncio
-    async def test_upload_lyrics_results_requires_job(self, mock_job_manager, mock_storage, mock_job):
-        """Test that upload_lyrics_results correctly fetches job for artist/title.
-        
-        This test would have caught the UnboundLocalError bug where job was used
-        before being defined.
+    async def test_upload_lyrics_results_finds_corrections_by_scan(self, mock_job_manager, mock_storage, mock_job):
+        """Test that upload_lyrics_results finds corrections JSON by scanning the directory.
+
+        The function scans for files ending in '(Lyrics Corrections).json' rather than
+        reconstructing filenames from job.artist/title, since those may change mid-processing
+        (e.g. admin updates artist name while lyrics worker is running).
         """
         with patch('backend.workers.lyrics_worker.JobManager', return_value=mock_job_manager), \
              patch('backend.workers.lyrics_worker.StorageService', return_value=mock_storage):
-            
+
             from backend.workers.lyrics_worker import upload_lyrics_results
-            
+
             with tempfile.TemporaryDirectory() as temp_dir:
-                # Create mock lyrics directory and files
                 lyrics_dir = os.path.join(temp_dir, "lyrics")
                 os.makedirs(lyrics_dir)
-                
-                # Create test LRC file
+
                 lrc_path = os.path.join(lyrics_dir, "ABBA - Waterloo (Karaoke).lrc")
                 with open(lrc_path, 'w') as f:
                     f.write("[00:00.00]Test lyrics\n")
-                
-                # Create corrections JSON
-                corrections_path = os.path.join(lyrics_dir, "ABBA - Waterloo (Lyrics Corrections).json")
+
+                # Use a different artist than what's in the job to simulate mid-run rename
+                corrections_path = os.path.join(lyrics_dir, "OldArtist - Waterloo (Lyrics Corrections).json")
                 with open(corrections_path, 'w') as f:
                     json.dump({"lines": [], "corrections": []}, f)
-                
+
                 transcription_result = {
                     "lrc_filepath": lrc_path,
                     "corrections_filepath": corrections_path
                 }
-                
-                # This should NOT raise UnboundLocalError
+
                 await upload_lyrics_results(
-                    "test123", 
-                    temp_dir, 
-                    transcription_result, 
-                    mock_storage, 
+                    "test123",
+                    temp_dir,
+                    transcription_result,
+                    mock_storage,
                     mock_job_manager
                 )
-                
-                # Verify job was fetched
-                mock_job_manager.get_job.assert_called_with("test123")
+
+                # Verify corrections file was found and uploaded as corrections.json
+                upload_calls = mock_storage.upload_file.call_args_list
+                corrections_uploads = [c for c in upload_calls if 'corrections.json' in str(c)]
+                assert len(corrections_uploads) == 1
     
     @pytest.mark.asyncio
     async def test_upload_lyrics_results_uploads_lrc_file(self, mock_job_manager, mock_storage, mock_job):
@@ -281,53 +281,68 @@ class TestLyricsWorker:
             )
     
     @pytest.mark.asyncio
-    async def test_upload_lyrics_results_uses_artist_title_from_job(self, mock_job_manager, mock_storage, mock_job):
-        """Test that upload_lyrics_results correctly uses job.artist and job.title.
-        
-        This test specifically validates the bug fix where job was not defined
-        when accessing job.artist and job.title for reference file lookups.
-        """
+    async def test_upload_lyrics_results_raises_when_no_corrections(self, mock_job_manager, mock_storage, mock_job):
+        """Test that upload_lyrics_results raises when no corrections file exists at all."""
         from backend.workers.lyrics_worker import upload_lyrics_results
-        import json
-        
+
         with tempfile.TemporaryDirectory() as temp_dir:
             lyrics_dir = os.path.join(temp_dir, "lyrics")
             os.makedirs(lyrics_dir)
-            
-            # Create LRC file
+
             lrc_path = os.path.join(lyrics_dir, "test.lrc")
             with open(lrc_path, 'w') as f:
                 f.write("[00:00.00]Test\n")
-            
-            # Create required corrections.json file
-            corrections_path = os.path.join(lyrics_dir, "corrections.json")
+
+            # No corrections file at all
+            transcription_result = {"lrc_filepath": lrc_path}
+
+            with pytest.raises(Exception, match="No corrections JSON found"):
+                await upload_lyrics_results(
+                    "test123", temp_dir, transcription_result,
+                    mock_storage, mock_job_manager
+                )
+
+    @pytest.mark.asyncio
+    async def test_upload_lyrics_results_finds_reference_and_uncorrected_by_scan(self, mock_job_manager, mock_storage, mock_job):
+        """Test that upload_lyrics_results finds reference and uncorrected files by scanning.
+
+        Files are found by suffix pattern, not by reconstructing from job.artist/title,
+        so mid-processing artist name changes don't break the upload.
+        """
+        from backend.workers.lyrics_worker import upload_lyrics_results
+        import json
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            lyrics_dir = os.path.join(temp_dir, "lyrics")
+            os.makedirs(lyrics_dir)
+
+            lrc_path = os.path.join(lyrics_dir, "test.lrc")
+            with open(lrc_path, 'w') as f:
+                f.write("[00:00.00]Test\n")
+
+            corrections_path = os.path.join(lyrics_dir, "SomeArtist - SomeTitle (Lyrics Corrections).json")
             with open(corrections_path, 'w') as f:
                 json.dump({"corrected_segments": []}, f)
-            
-            # Create a reference lyrics file using the job's artist/title
-            ref_path = os.path.join(lyrics_dir, f"{mock_job.artist} - {mock_job.title} (Lyrics Genius).txt")
+
+            # Reference and uncorrected files with arbitrary artist name
+            ref_path = os.path.join(lyrics_dir, "SomeArtist - SomeTitle (Lyrics Genius).txt")
             with open(ref_path, 'w') as f:
                 f.write("Reference lyrics content\n")
-            
-            # Create uncorrected transcription file using job's artist/title
-            uncorrected_path = os.path.join(lyrics_dir, f"{mock_job.artist} - {mock_job.title} (Lyrics Uncorrected).txt")
+
+            uncorrected_path = os.path.join(lyrics_dir, "SomeArtist - SomeTitle (Lyrics Uncorrected).txt")
             with open(uncorrected_path, 'w') as f:
                 f.write("Uncorrected transcription\n")
-            
+
             transcription_result = {"lrc_filepath": lrc_path}
-            
-            # This should NOT raise UnboundLocalError for 'job'
+
             await upload_lyrics_results(
                 "test123", temp_dir, transcription_result,
                 mock_storage, mock_job_manager
             )
-            
-            # Verify job was fetched to get artist/title
-            mock_job_manager.get_job.assert_called_with("test123")
-            
-            # Verify files were uploaded (the reference and uncorrected files exist)
+
+            # Verify files were uploaded: LRC + corrections + genius ref + uncorrected = 4
             upload_calls = mock_storage.upload_file.call_args_list
-            assert len(upload_calls) >= 2  # LRC + at least one reference or uncorrected
+            assert len(upload_calls) == 4
     
     @pytest.mark.asyncio
     async def test_process_lyrics_transcription_marks_failed_on_error(self, mock_job_manager, mock_storage):

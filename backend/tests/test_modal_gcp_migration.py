@@ -387,3 +387,128 @@ class TestScreensWorkerPrerequisites:
 
         job = _make_job(state_data={"lyrics_complete": True}, artist="", title="Test")
         assert _validate_prerequisites(job) is False
+
+
+# ==================== GCS URI Passthrough ====================
+
+class TestGCSURIPassthrough:
+    """
+    Test that Stage 1 uses gcs_uri when input_gcs_uri is set on the processor.
+    Fixes 413 Request Entity Too Large for large FLAC files.
+    """
+
+    def test_stage1_uses_gcs_uri_when_set(self):
+        """When input_gcs_uri is set, Stage 1 passes gcs_uri instead of file_path."""
+        from karaoke_gen.audio_processor import AudioProcessor
+        import logging
+
+        processor = AudioProcessor(
+            logger=logging.getLogger("test"),
+            log_level=logging.INFO,
+            log_formatter=None,
+            model_file_dir=None,
+            lossless_output_format="FLAC",
+            clean_instrumental_model="test.ckpt",
+            backing_vocals_models=[],
+            other_stems_models=[],
+            ffmpeg_base_command="ffmpeg",
+        )
+        processor.instrumental_preset = "instrumental_clean"
+        processor.karaoke_preset = None
+        processor.job_id = "gcs-test-001"
+        processor.input_gcs_uri = "gs://karaoke-gen-storage-nomadkaraoke/jobs/gcs-test-001/input/song.flac"
+
+        mock_client = Mock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stems_dir = os.path.join(temp_dir, "stems")
+            os.makedirs(stems_dir)
+
+            for name in ["gcs-test-001_mixed_vocals.flac", "gcs-test-001_mixed_instrumental.flac"]:
+                with open(os.path.join(stems_dir, name), "w") as f:
+                    f.write("fake audio")
+
+            mock_client.separate_audio_and_wait.return_value = {
+                "status": "completed",
+                "downloaded_files": [
+                    os.path.join(stems_dir, "gcs-test-001_mixed_vocals.flac"),
+                    os.path.join(stems_dir, "gcs-test-001_mixed_instrumental.flac"),
+                ],
+                "files": {},
+            }
+
+            input_file = os.path.join(temp_dir, "song.flac")
+            with open(input_file, "w") as f:
+                f.write("fake input")
+
+            with patch.object(processor, '_create_stems_directory', return_value=stems_dir):
+                with patch.object(processor, '_normalize_audio_files'):
+                    with patch('karaoke_gen.audio_processor.AudioSeparatorAPIClient', return_value=mock_client):
+                        processor._process_audio_separation_remote(
+                            input_file, "Test - Song", temp_dir, "http://fake-api",
+                        )
+
+            # Verify gcs_uri was passed instead of file_path
+            call_kwargs = mock_client.separate_audio_and_wait.call_args[1]
+            assert call_kwargs["gcs_uri"] == "gs://karaoke-gen-storage-nomadkaraoke/jobs/gcs-test-001/input/song.flac"
+            # Verify file_path was NOT passed as a positional arg
+            call_args = mock_client.separate_audio_and_wait.call_args[0]
+            assert len(call_args) == 0
+
+    def test_stage1_uses_file_upload_when_no_gcs_uri(self):
+        """When input_gcs_uri is not set, Stage 1 uses file upload as before."""
+        from karaoke_gen.audio_processor import AudioProcessor
+        import logging
+
+        processor = AudioProcessor(
+            logger=logging.getLogger("test"),
+            log_level=logging.INFO,
+            log_formatter=None,
+            model_file_dir=None,
+            lossless_output_format="FLAC",
+            clean_instrumental_model="test.ckpt",
+            backing_vocals_models=[],
+            other_stems_models=[],
+            ffmpeg_base_command="ffmpeg",
+        )
+        processor.instrumental_preset = "instrumental_clean"
+        processor.karaoke_preset = None
+        processor.job_id = "file-test-001"
+        # No input_gcs_uri set
+
+        mock_client = Mock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stems_dir = os.path.join(temp_dir, "stems")
+            os.makedirs(stems_dir)
+
+            for name in ["file-test-001_mixed_vocals.flac", "file-test-001_mixed_instrumental.flac"]:
+                with open(os.path.join(stems_dir, name), "w") as f:
+                    f.write("fake audio")
+
+            mock_client.separate_audio_and_wait.return_value = {
+                "status": "completed",
+                "downloaded_files": [
+                    os.path.join(stems_dir, "file-test-001_mixed_vocals.flac"),
+                    os.path.join(stems_dir, "file-test-001_mixed_instrumental.flac"),
+                ],
+                "files": {},
+            }
+
+            input_file = os.path.join(temp_dir, "song.flac")
+            with open(input_file, "w") as f:
+                f.write("fake input")
+
+            with patch.object(processor, '_create_stems_directory', return_value=stems_dir):
+                with patch.object(processor, '_normalize_audio_files'):
+                    with patch('karaoke_gen.audio_processor.AudioSeparatorAPIClient', return_value=mock_client):
+                        processor._process_audio_separation_remote(
+                            input_file, "Test - Song", temp_dir, "http://fake-api",
+                        )
+
+            # Verify file_path was passed as positional arg (old behavior)
+            call_args = mock_client.separate_audio_and_wait.call_args[0]
+            assert call_args[0] == input_file
+            # Verify gcs_uri was NOT in kwargs
+            call_kwargs = mock_client.separate_audio_and_wait.call_args[1]
+            assert "gcs_uri" not in call_kwargs
