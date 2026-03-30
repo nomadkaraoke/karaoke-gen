@@ -9,6 +9,7 @@ import { calculateReferenceLinePositions } from '@/lib/lyrics-review/utils/refer
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
 import { SourceSelector } from './shared/SourceSelector'
 import { HighlightedText } from './shared/HighlightedText'
+import ReferenceEmptyState from './ReferenceEmptyState'
 
 export default function ReferenceView({
   referenceSources,
@@ -24,6 +25,10 @@ export default function ReferenceView({
   gaps,
   corrections,
   onAddLyrics,
+  onAddLyricsInline,
+  onSearchLyrics,
+  defaultArtist = '',
+  defaultTitle = '',
 }: ReferenceViewProps) {
   const availableSources = useMemo(() => Object.keys(referenceSources), [referenceSources])
 
@@ -179,6 +184,15 @@ export default function ReferenceView({
             onAddLyrics={onAddLyrics}
           />
         </div>
+
+        {availableSources.length === 0 && onAddLyricsInline && onSearchLyrics && (
+          <ReferenceEmptyState
+            defaultArtist={defaultArtist}
+            defaultTitle={defaultTitle}
+            onAdd={onAddLyricsInline}
+            onSearch={onSearchLyrics}
+          />
+        )}
 
         <div className="flex flex-col gap-0.5">
           {currentSourceSegments.map((segment, index) => (

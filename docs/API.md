@@ -441,6 +441,61 @@ Content-Type: application/json
 
 Stores annotations to `jobs/{job_id}/lyrics/annotations.json`. Merges with existing annotations if present.
 
+#### Add Reference Lyrics (Paste)
+
+```http
+POST /api/review/{job_id}/add-lyrics
+Content-Type: application/json
+
+{
+  "source": "manual",
+  "lyrics": "Full lyrics text...",
+  "force": false
+}
+```
+
+Adds user-pasted lyrics as a new reference source, re-runs the correction pipeline with all sources, and uploads updated corrections to GCS. The `force` flag (default `false`) bypasses the relevance threshold — use when the transcription is poor and a low match % doesn't mean wrong song.
+
+Returns `{ "status": "success", "data": <CorrectionData> }`.
+
+#### Search Reference Lyrics
+
+```http
+POST /api/review/{job_id}/search-lyrics
+Content-Type: application/json
+
+{
+  "artist": "Billie Eilish",
+  "title": "What Was I Made For",
+  "force_sources": []
+}
+```
+
+Searches all configured lyrics providers (Genius, Spotify, Musixmatch, LRCLIB) with the given artist/title. Results are filtered through the relevance threshold (30% word match minimum) — sources below are rejected as likely wrong-song matches. Sources in `force_sources` bypass the threshold.
+
+**Success response** (at least one source passed):
+```json
+{
+  "status": "success",
+  "data": { "...CorrectionData..." },
+  "sources_added": ["genius", "lrclib"],
+  "sources_rejected": {
+    "spotify": { "relevance": 0.12, "matched_words": 18, "total_words": 150, "track_name": "...", "artist_names": "..." }
+  },
+  "sources_not_found": ["musixmatch"]
+}
+```
+
+**No results response** (all filtered or nothing found):
+```json
+{
+  "status": "no_results",
+  "message": "No matching lyrics found from any provider",
+  "sources_rejected": { "genius": { "relevance": 0.05, "..." } },
+  "sources_not_found": ["lrclib", "musixmatch"]
+}
+```
+
 #### Review Sessions
 
 Server-side backup/restore of lyrics review editing sessions. Correction data is stored in GCS; metadata in Firestore subcollection `jobs/{job_id}/review_sessions/{session_id}`.

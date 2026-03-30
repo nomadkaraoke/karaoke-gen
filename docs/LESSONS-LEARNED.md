@@ -1037,6 +1037,14 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 
 **Key insight:** Long-running workers should avoid re-reading mutable metadata to reconstruct local file paths. If a file was created earlier in the same pipeline, find it by pattern rather than reconstructing its name from state that may have changed. This is a variant of TOCTOU — the "check" (reading artist/title) and "use" (looking for the file) happen at different times, and the underlying data can change between them.
 
+### Reference Lyrics Relevance Filtering: Data-Driven Thresholds (Mar 2026)
+
+**Problem:** Lyrics providers often return wrong-song results for tracks with remixes, "feat." artists, or unusual naming. These irrelevant references pollute anchor/gap statistics and confuse correction tooling.
+
+**Solution:** Added relevance filtering in `LyricsCorrector` — after anchor sequences are found, compute `(reference words in anchors) / (total reference words)` per source. Sources below 30% are rejected. The threshold was determined empirically by analyzing 168 source pairs across 81 production jobs: wrong-song sources maxed at 3.5%, correct-song sources started at 26.8%.
+
+**Key insight:** Don't guess thresholds — measure them. A visual review tool showing side-by-side lyrics with match highlighting made it trivial to classify 168 pairs in minutes. The massive gap between wrong (0-3.5%) and correct (26.8%+) meant any threshold from 5-25% would work, but 30% provides safety margin. Always include a force-add override for edge cases where the transcription is bad (not the reference).
+
 ### Cloud Scheduler OIDC Tokens ≠ Admin Tokens (Mar 2026)
 
 **Problem:** All 4 Cloud Scheduler → backend jobs (stale review processor, stuck job recovery, YouTube queue, disposable domain sync) were silently returning 401 since deployment. The auth system only validated admin tokens, Firestore tokens, and session tokens — it had no OIDC JWT validation. Cloud Scheduler sends a Google-signed OIDC JWT in the `Authorization: Bearer` header, which the auth service didn't recognize.

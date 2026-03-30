@@ -122,6 +122,8 @@ export interface CorrectionData {
     audio_hash?: string
     available_handlers?: CorrectionHandler[]
     enabled_handlers?: string[]
+    artist?: string
+    title?: string
   }
   correction_steps: CorrectionStep[]
   word_id_map: Record<string, string>
@@ -390,6 +392,27 @@ export interface ReferenceViewProps extends BaseViewProps {
   corrected_segments: LyricsSegment[]
   corrections: WordCorrection[]
   onAddLyrics?: () => void
+  onAddLyricsInline?: (source: string, lyrics: string) => Promise<void>
+  onSearchLyrics?: (artist: string, title: string, forceSources: string[]) => Promise<SearchLyricsResponse>
+  defaultArtist?: string
+  defaultTitle?: string
+}
+
+export interface RejectedSource {
+  relevance: number
+  matched_words: number
+  total_words: number
+  track_name: string
+  artist_names: string
+}
+
+export interface SearchLyricsResponse {
+  status: 'success' | 'no_results'
+  data?: CorrectionData
+  message?: string
+  sources_added: string[]
+  sources_rejected: Record<string, RejectedSource>
+  sources_not_found: string[]
 }
 
 export interface HighlightedTextProps extends BaseViewProps {

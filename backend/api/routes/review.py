@@ -19,7 +19,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Dict, Any, Set, Tuple
+from typing import Dict, Any, List, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
@@ -427,8 +427,10 @@ async def add_lyrics(
     
     source = data.get("source", "").strip()
     lyrics_text = data.get("lyrics", "").strip()
-    
-    logger.info(f"Job {job_id}: Adding lyrics source '{source}' with {len(lyrics_text)} characters")
+    raw_force = data.get("force", False)
+    force = raw_force if isinstance(raw_force, bool) else str(raw_force).lower() == "true"
+
+    logger.info(f"Job {job_id}: Adding lyrics source '{source}' with {len(lyrics_text)} characters (force={force})")
     
     # Use tracing and job_log_context for full observability
     with create_span("add-lyrics", {"job_id": job_id, "source": source, "lyrics_length": len(lyrics_text)}) as span:
@@ -465,7 +467,8 @@ async def add_lyrics(
                             source=source,
                             lyrics_text=lyrics_text,
                             cache_dir=cache_dir,
-                            logger=logger
+                            logger=logger,
+                            force=force,
                         )
                         add_span_event("correction_complete", {
                             "new_segments": len(updated_result.corrected_segments) if updated_result.corrected_segments else 0,
@@ -499,6 +502,151 @@ async def add_lyrics(
                 logger.error(f"Job {job_id}: Failed to add lyrics: {e}", exc_info=True)
                 span.set_attribute("error", str(e))
                 raise HTTPException(status_code=500, detail=f"Failed to add lyrics: {str(e)}")
+
+
+@router.post("/{job_id}/search-lyrics")
+async def search_lyrics(
+    job_id: str,
+    data: Dict[str, Any],
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """
+    Search for lyrics using an alternate artist/title and rerun correction.
+
+    Queries all configured lyrics providers (Genius, Spotify, Musixmatch, LRCLIB)
+    with the supplied artist and title, then runs the correction pipeline (which
+    includes the relevance filter). Sources that pass the filter are added to the
+    job's corrections.json and returned to the frontend.
+
+    Request body:
+        artist (str): Artist name to search.
+        title (str): Song title to search.
+        force_sources (list[str], optional): Provider names whose results should
+            bypass the relevance filter.
+
+    Response:
+        200 {"status": "success", "data": {...CorrectionData...}, "sources_added": [...],
+             "sources_rejected": {...}, "sources_not_found": [...]}
+        200 {"status": "no_results", "message": "...", "sources_rejected": {...},
+             "sources_not_found": [...]}
+        400 on invalid request / wrong job state
+        500 on internal error
+    """
+    job_manager = JobManager()
+    storage = StorageService()
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job not in review state (current status: {job.status})"
+        )
+
+    artist = (data.get("artist") or "").strip()
+    title = (data.get("title") or "").strip()
+    force_sources: List[str] = data.get("force_sources") or []
+
+    if not artist or not title:
+        raise HTTPException(status_code=400, detail="artist and title are required")
+
+    logger.info(f"Job {job_id}: Searching lyrics for '{artist}' - '{title}' (force={force_sources})")
+
+    with create_span("search-lyrics", {"job_id": job_id, "artist": artist, "title": title}) as span:
+        with job_log_context(job_id, worker="search-lyrics"):
+            try:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    # Download current corrections.json
+                    with create_span("download-corrections") as download_span:
+                        corrections_gcs = f"jobs/{job_id}/lyrics/corrections.json"
+                        corrections_path = os.path.join(temp_dir, "corrections.json")
+                        storage.download_file(corrections_gcs, corrections_path)
+                        download_span.set_attribute("gcs_path", corrections_gcs)
+
+                    with open(corrections_path, "r", encoding="utf-8") as f:
+                        original_data = json.load(f)
+
+                    correction_result = CorrectionResult.from_dict(original_data)
+                    add_span_event("corrections_loaded", {
+                        "segments": len(correction_result.corrected_segments) if correction_result.corrected_segments else 0,
+                        "reference_sources": len(correction_result.reference_lyrics) if correction_result.reference_lyrics else 0,
+                    })
+
+                    cache_dir = os.path.join(temp_dir, "cache")
+                    os.makedirs(cache_dir, exist_ok=True)
+
+                    with create_span("correction-operations-search-lyrics") as correction_span:
+                        correction_span.set_attribute("artist", artist)
+                        correction_span.set_attribute("title", title)
+                        search_result = CorrectionOperations.search_lyrics_sources(
+                            correction_result=correction_result,
+                            artist=artist,
+                            title=title,
+                            cache_dir=cache_dir,
+                            force_sources=force_sources,
+                            logger=logger,
+                        )
+
+                    sources_added = search_result["sources_added"]
+                    sources_rejected = search_result["sources_rejected"]
+                    sources_not_found = search_result["sources_not_found"]
+                    updated_result = search_result["updated_result"]
+
+                    if not sources_added or updated_result is None:
+                        logger.info(
+                            f"Job {job_id}: No valid lyrics found via search "
+                            f"(rejected={list(sources_rejected.keys())}, not_found={sources_not_found})"
+                        )
+                        span.set_attribute("success", False)
+                        return {
+                            "status": "no_results",
+                            "message": "No matching lyrics found from any provider",
+                            "sources_added": [],
+                            "sources_rejected": sources_rejected,
+                            "sources_not_found": sources_not_found,
+                        }
+
+                    # Add audio hash / job metadata for the frontend
+                    audio_hash = _get_audio_hash(job_id)
+                    if not updated_result.metadata:
+                        updated_result.metadata = {}
+                    updated_result.metadata["audio_hash"] = audio_hash
+                    updated_result.metadata["artist"] = job.artist
+                    updated_result.metadata["title"] = job.title
+
+                    # Upload updated corrections back to GCS
+                    with create_span("upload-corrections") as upload_span:
+                        updated_data = updated_result.to_dict()
+                        storage.upload_json(corrections_gcs, updated_data)
+                        upload_span.set_attribute("gcs_path", corrections_gcs)
+
+                    logger.info(
+                        f"Job {job_id}: Search complete — added={sources_added}, "
+                        f"rejected={list(sources_rejected.keys())}, not_found={sources_not_found}"
+                    )
+                    span.set_attribute("success", True)
+                    span.set_attribute("sources_added", len(sources_added))
+
+                    return {
+                        "status": "success",
+                        "data": updated_data,
+                        "sources_added": sources_added,
+                        "sources_rejected": sources_rejected,
+                        "sources_not_found": sources_not_found,
+                    }
+
+            except HTTPException:
+                raise
+            except ValueError as e:
+                logger.warning(f"Job {job_id}: Invalid search lyrics request: {e}")
+                span.set_attribute("error", str(e))
+                raise HTTPException(status_code=400, detail=str(e))
+            except Exception as e:
+                logger.error(f"Job {job_id}: Failed to search lyrics: {e}", exc_info=True)
+                span.set_attribute("error", str(e))
+                raise HTTPException(status_code=500, detail=f"Failed to search lyrics: {str(e)}")
 
 
 @router.post("/{job_id}/preview-video")
