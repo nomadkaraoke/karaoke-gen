@@ -570,11 +570,11 @@ describe('getDisplayJobs', () => {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
-  it('returns all jobs when fewer than display limit', () => {
+  it('returns all active jobs when fewer than display limit (default hides completed/cancelled)', () => {
     const jobs = createDateSortedJobs([
-      { status: 'complete', date: '2024-01-01T10:00:00Z' },
-      { status: 'complete', date: '2024-01-01T11:00:00Z' },
-      { status: 'complete', date: '2024-01-01T12:00:00Z' },
+      { status: 'rendering_video', date: '2024-01-01T10:00:00Z' },
+      { status: 'awaiting_review', date: '2024-01-01T11:00:00Z' },
+      { status: 'failed', date: '2024-01-01T12:00:00Z' },
     ]);
     const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5);
     expect(displayedJobs).toHaveLength(3);
@@ -589,25 +589,25 @@ describe('getDisplayJobs', () => {
 
   it('limits to displayLimit', () => {
     const jobs = createDateSortedJobs(
-      Array.from({ length: 10 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` }))
+      Array.from({ length: 10 }, (_, i) => ({ status: 'rendering_video', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` }))
     );
     const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5);
     expect(displayedJobs).toHaveLength(5);
     expect(totalFetched).toBe(10);
   });
 
-  it('returns all jobs when displayLimit is -1 (All mode)', () => {
+  it('returns all jobs when displayLimit is -1 and showAll is true', () => {
     const jobs = createDateSortedJobs(
       Array.from({ length: 22 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` }))
     );
-    const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1);
+    const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1, true);
     expect(displayedJobs).toHaveLength(22);
     expect(totalFetched).toBe(22);
   });
 
   it('preserves date sort order from input', () => {
     const jobs = createDateSortedJobs([
-      { status: 'complete', date: '2024-01-03T12:00:00Z' },
+      { status: 'rendering_video', date: '2024-01-03T12:00:00Z' },
       { status: 'failed', date: '2024-01-04T12:00:00Z' },
       { status: 'awaiting_review', date: '2024-01-02T12:00:00Z' },
       { status: 'rendering_video', date: '2024-01-05T12:00:00Z' },
@@ -620,21 +620,23 @@ describe('getDisplayJobs', () => {
     expect(displayedJobs[3].created_at).toBe('2024-01-02T12:00:00Z');
   });
 
-  describe('hideCompleted filter', () => {
-    it('filters out only complete and prep_complete when hideCompleted is true (keeps failed)', () => {
+  describe('default filtering (showAll=false)', () => {
+    it('hides complete, prep_complete, and cancelled by default (keeps failed and active)', () => {
       const jobs = createDateSortedJobs([
-        { status: 'awaiting_review', date: '2024-01-05T12:00:00Z' },
-        { status: 'rendering_video', date: '2024-01-04T12:00:00Z' },
-        { status: 'complete', date: '2024-01-03T12:00:00Z' },
-        { status: 'failed', date: '2024-01-02T12:00:00Z' },
-        { status: 'prep_complete', date: '2024-01-01T12:00:00Z' },
+        { status: 'awaiting_review', date: '2024-01-06T12:00:00Z' },
+        { status: 'rendering_video', date: '2024-01-05T12:00:00Z' },
+        { status: 'complete', date: '2024-01-04T12:00:00Z' },
+        { status: 'failed', date: '2024-01-03T12:00:00Z' },
+        { status: 'prep_complete', date: '2024-01-02T12:00:00Z' },
+        { status: 'cancelled', date: '2024-01-01T12:00:00Z' },
       ]);
-      const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1, true);
-      expect(totalFetched).toBe(5);
-      expect(displayedJobs).toHaveLength(3); // blocking + processing + failed
+      const { displayedJobs, totalFetched } = getDisplayJobs(jobs, -1);
+      expect(totalFetched).toBe(6);
+      expect(displayedJobs).toHaveLength(3); // awaiting_review + rendering_video + failed
       expect(displayedJobs.some(j => j.status === 'failed')).toBe(true);
       expect(displayedJobs.some(j => j.status === 'complete')).toBe(false);
       expect(displayedJobs.some(j => j.status === 'prep_complete')).toBe(false);
+      expect(displayedJobs.some(j => j.status === 'cancelled')).toBe(false);
     });
 
     it('respects display limit after filtering', () => {
@@ -648,42 +650,47 @@ describe('getDisplayJobs', () => {
         { status: 'rendering_video', date: '2024-01-04T12:00:00Z' },
         ...Array.from({ length: 10 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T10:00:00Z` })),
       ]);
-      const { displayedJobs } = getDisplayJobs(jobs, 5, true);
-      // 7 non-complete jobs after filtering, but limit is 5
+      const { displayedJobs } = getDisplayJobs(jobs, 5);
+      // 7 active jobs after filtering, but limit is 5
       expect(displayedJobs).toHaveLength(5);
     });
 
-    it('returns empty when all jobs are complete and hideCompleted is true', () => {
-      const jobs = createDateSortedJobs(
-        Array.from({ length: 10 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` }))
-      );
-      const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5, true);
+    it('returns empty when all jobs are terminal', () => {
+      const jobs = createDateSortedJobs([
+        ...Array.from({ length: 5 }, (_, i) => ({ status: 'complete', date: `2024-01-${String(i + 1).padStart(2, '0')}T12:00:00Z` })),
+        ...Array.from({ length: 3 }, (_, i) => ({ status: 'cancelled', date: `2024-01-${String(i + 6).padStart(2, '0')}T12:00:00Z` })),
+      ]);
+      const { displayedJobs, totalFetched } = getDisplayJobs(jobs, 5);
       expect(displayedJobs).toHaveLength(0);
-      expect(totalFetched).toBe(10);
+      expect(totalFetched).toBe(8);
     });
+  });
 
-    it('does not filter when hideCompleted is false', () => {
+  describe('showAll filter', () => {
+    it('shows all jobs including completed and cancelled when showAll is true', () => {
       const jobs = createDateSortedJobs([
         { status: 'awaiting_review', date: '2024-01-04T12:00:00Z' },
         { status: 'complete', date: '2024-01-03T12:00:00Z' },
-        { status: 'complete', date: '2024-01-02T12:00:00Z' },
+        { status: 'cancelled', date: '2024-01-02T12:00:00Z' },
         { status: 'failed', date: '2024-01-01T12:00:00Z' },
       ]);
-      const { displayedJobs } = getDisplayJobs(jobs, -1, false);
+      const { displayedJobs } = getDisplayJobs(jobs, -1, true);
       expect(displayedJobs).toHaveLength(4);
     });
 
-    it('defaults to showing all when hideCompleted is omitted', () => {
+    it('defaults to filtering when showAll is omitted', () => {
       const jobs = createDateSortedJobs([
         { status: 'complete', date: '2024-01-02T12:00:00Z' },
         { status: 'failed', date: '2024-01-01T12:00:00Z' },
       ]);
       const { displayedJobs } = getDisplayJobs(jobs, -1);
-      expect(displayedJobs).toHaveLength(2);
+      // Only failed should show (complete is hidden by default)
+      expect(displayedJobs).toHaveLength(1);
+      expect(displayedJobs[0].status).toBe('failed');
     });
   });
 
-  it('core bug fix: recently failed job appears at top of list', () => {
+  it('core bug fix: recently failed job appears at top of list (with showAll)', () => {
     // The original bug: a newly failed job was invisible because priority sorting
     // put all 45 complete jobs above it, and the limit of 10 truncated it.
     // With date-based sorting, the newest job (failed) appears first.
@@ -698,7 +705,7 @@ describe('getDisplayJobs', () => {
       })),
     ]);
 
-    const { displayedJobs } = getDisplayJobs(jobs, 10);
+    const { displayedJobs } = getDisplayJobs(jobs, 10, true);
     // The failed job should be first (newest)
     expect(displayedJobs[0].job_id).toBe('new-failed');
     expect(displayedJobs[0].status).toBe('failed');

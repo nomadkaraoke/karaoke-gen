@@ -519,7 +519,7 @@ _SUMMARY_STATE_DATA_KEYS = {
     'backing_vocals_analysis', 'visibility_change_in_progress',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
-_HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete']
+_HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']
 
 
 def _prune_state_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1423,18 +1423,12 @@ async def get_download_urls(
     if not _check_job_ownership(job, auth_result):
         raise HTTPException(status_code=403, detail="You don't have permission to access this job")
 
-    if job.status != JobStatus.COMPLETE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Job not complete (current status: {job.status})"
-        )
-    
     file_urls = job.file_urls or {}
     download_urls = {}
-    
+
     # Build download URLs using the streaming endpoint
     base_url = f"/api/jobs/{job_id}/download"
-    
+
     for category, files in file_urls.items():
         if isinstance(files, dict):
             download_urls[category] = {}
@@ -1444,7 +1438,7 @@ async def get_download_urls(
         elif isinstance(files, str) and files:
             # For single-file categories, use the category name as the file_key
             download_urls[category] = f"{base_url}/{category}/{category}"
-    
+
     return {
         "job_id": job_id,
         "artist": job.artist,
@@ -1490,12 +1484,6 @@ async def download_file(
     if not _check_job_ownership(job, auth_result):
         raise HTTPException(status_code=403, detail="You don't have permission to access this job")
 
-    if job.status != JobStatus.COMPLETE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Job not complete (current status: {job.status})"
-        )
-    
     file_urls = job.file_urls or {}
     category_files = file_urls.get(category)
     

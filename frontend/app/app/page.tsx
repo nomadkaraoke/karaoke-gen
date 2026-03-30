@@ -62,9 +62,9 @@ function AppPageContent() {
     const saved = localStorage.getItem("nomad-karaoke-job-limit")
     return saved ? Number(saved) : 10
   })
-  const [hideCompleted, setHideCompleted] = useState<boolean>(() => {
+  const [showAll, setShowAll] = useState<boolean>(() => {
     if (typeof window === "undefined") return false
-    return localStorage.getItem("nomad-karaoke-hide-completed") === "true"
+    return localStorage.getItem("nomad-karaoke-show-all") === "true"
   })
   const [showAdminControls, setShowAdminControls] = useState<boolean>(() => {
     if (typeof window === "undefined") return false
@@ -87,8 +87,8 @@ function AppPageContent() {
 
   // Derive displayed jobs from visibleJobs + display limit + filter (instant, no re-fetch)
   const { displayedJobs: jobs, totalFetched } = useMemo(
-    () => getDisplayJobs(visibleJobs, jobLimit, hideCompleted),
-    [visibleJobs, jobLimit, hideCompleted]
+    () => getDisplayJobs(visibleJobs, jobLimit, showAll),
+    [visibleJobs, jobLimit, showAll]
   )
 
   // Memoize loadJobs for use with visibility refresh
@@ -104,7 +104,6 @@ function AppPageContent() {
         limit: 100,
         exclude_test: isAdmin ? !showTestData : undefined,
         fields: 'summary',
-        hide_completed: hideCompleted,
       })
       // Sort by creation date (newest first)
       setAllJobs(sortJobsByDate(data))
@@ -117,7 +116,7 @@ function AppPageContent() {
       setIsLoadingJobs(false)
       setIsInitialLoad(false)
     }
-  }, [isAdmin, showTestData, hideCompleted])
+  }, [isAdmin, showTestData])
 
   // Enable notifications for job status changes (sound + title animation)
   useJobNotifications(allJobs)
@@ -402,16 +401,16 @@ function AppPageContent() {
                           className="h-7 w-7 p-0"
                           style={{ color: 'var(--text-muted)' }}
                           onClick={() => {
-                            const next = !hideCompleted
-                            setHideCompleted(next)
-                            localStorage.setItem("nomad-karaoke-hide-completed", String(next))
+                            const next = !showAll
+                            setShowAll(next)
+                            localStorage.setItem("nomad-karaoke-show-all", String(next))
                           }}
                         >
-                          {hideCompleted ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showAll ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
-                        <p>{hideCompleted ? "Show all jobs" : "Hide completed jobs"}</p>
+                        <p>{showAll ? "Hide completed/cancelled" : "Show all jobs"}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -433,8 +432,8 @@ function AppPageContent() {
                 </div>
               </div>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
-                {hideCompleted
-                  ? `${jobs.length} incomplete of ${totalFetched} total`
+                {!showAll
+                  ? `${jobs.length} active of ${totalFetched} total`
                   : jobs.length < totalFetched
                     ? `Showing ${jobs.length} of ${totalFetched} jobs`
                     : `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`}
@@ -444,7 +443,11 @@ function AppPageContent() {
               {jobs.length === 0 ? (
                 <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
                   <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No jobs yet. Create one to get started!</p>
+                  {totalFetched > 0 ? (
+                    <p>No active jobs. Click the eye icon above to show all {totalFetched} job{totalFetched !== 1 ? 's' : ''}.</p>
+                  ) : (
+                    <p>No jobs yet. Create one to get started!</p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">

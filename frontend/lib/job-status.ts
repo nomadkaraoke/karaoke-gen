@@ -295,27 +295,33 @@ export function sortJobsByDate(jobs: Job[]): Job[] {
 }
 
 /**
+ * Statuses hidden by default (shown only when showAll is true).
+ */
+const _HIDDEN_STATUSES = ["complete", "prep_complete", "cancelled"]
+
+/**
  * Select which jobs to display from a sorted list.
- * When sorted by date, simply applies the display limit and hide-completed filter.
+ * By default, hides completed and cancelled jobs. When showAll is true, shows everything.
  *
  * @param sortedJobs - Jobs already sorted by sortJobsByDate
  * @param displayLimit - Max jobs to show (-1 = show all)
+ * @param showAll - When true, show all jobs including completed and cancelled
  * @returns Object with displayedJobs array and totalFetched count
  */
 export function getDisplayJobs(
   sortedJobs: Job[],
   displayLimit: number,
-  hideCompleted: boolean = false
+  showAll: boolean = false
 ): { displayedJobs: Job[]; totalFetched: number } {
   const totalFetched = sortedJobs.length;
 
-  // Filter out successfully completed jobs when toggle is on (keep failed jobs visible)
-  const filteredJobs = hideCompleted
-    ? sortedJobs.filter((job) => {
+  // By default, hide completed and cancelled jobs (keep failed/active visible)
+  const filteredJobs = showAll
+    ? sortedJobs
+    : sortedJobs.filter((job) => {
         const status = job.status?.toLowerCase() || ""
-        return status !== "complete" && status !== "prep_complete"
-      })
-    : sortedJobs;
+        return !_HIDDEN_STATUSES.includes(status)
+      });
 
   // Show all: -1 or fewer jobs than limit
   if (displayLimit === -1 || filteredJobs.length <= displayLimit) {
