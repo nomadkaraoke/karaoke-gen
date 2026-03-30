@@ -93,7 +93,7 @@ def create_deny_policies(
     # Deny destructive operations project-wide
     policies["deny_destructive_ops"] = gcp.iam.DenyPolicy(
         "deny-destructive-operations",
-        parent=f"cloudresourcemanager.googleapis.com/projects/{PROJECT_ID}",
+        parent=f"cloudresourcemanager.googleapis.com/projects/{project_number}",
         name="deny-destructive-operations",
         rules=[
             gcp.iam.DenyPolicyRuleArgs(

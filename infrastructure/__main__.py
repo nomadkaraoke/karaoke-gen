@@ -147,7 +147,12 @@ claude_readonly_impersonation = claude_readonly_sa.grant_impersonation_permissio
 break_glass_service_account = claude_readonly_sa.create_break_glass_service_account()
 
 # IAM deny policies (prevent catastrophic deletes for all principals)
-deny_policies = claude_readonly_sa.create_deny_policies(break_glass_service_account)
+# TODO: Deny policy creation fails via Pulumi (v2beta API 404 / IAM permissions issue).
+# Create manually via gcloud once permissions are sorted:
+#   gcloud iam policies create deny-destructive-operations \
+#     --attachment-point="cloudresourcemanager.googleapis.com/projects/718638054799" \
+#     --kind=denypolicies --policy-file=deny-policy.json
+# deny_policies = claude_readonly_sa.create_deny_policies(break_glass_service_account)
 
 # Worker service accounts (VMs)
 encoding_worker_sa = worker_sas.create_encoding_worker_service_account()
