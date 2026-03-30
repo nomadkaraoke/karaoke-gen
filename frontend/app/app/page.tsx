@@ -111,7 +111,6 @@ function AppPageContent() {
         search: searchQuery || undefined,
       })
       setAllJobs(sortJobsByDate(data))
-      setHasFetchedSuccessfully(true)
     } catch (err: any) {
       if (err?.status !== 401) {
         console.error("Failed to load jobs:", err)
@@ -119,6 +118,7 @@ function AppPageContent() {
     } finally {
       setIsLoadingJobs(false)
       setIsInitialLoad(false)
+      setHasFetchedSuccessfully(true)
     }
   }, [isAdmin, showTestData, jobLimit, statusFilter, searchQuery])
 
@@ -403,6 +403,7 @@ function AppPageContent() {
                     <input
                       type="text"
                       placeholder="Search..."
+                      aria-label="Search jobs"
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                       className="h-7 w-[160px] sm:w-[200px] text-xs rounded-md border pl-7 pr-2"
@@ -417,7 +418,7 @@ function AppPageContent() {
                     setStatusFilter(v)
                     localStorage.setItem("nomad-karaoke-status-filter", v)
                   }}>
-                    <SelectTrigger className="h-7 w-[130px] text-xs">
+                    <SelectTrigger className="h-7 w-[130px] text-xs" aria-label="Filter by status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -435,7 +436,7 @@ function AppPageContent() {
                     setJobLimit(val)
                     localStorage.setItem("nomad-karaoke-job-limit", String(val))
                   }}>
-                    <SelectTrigger className="h-7 w-[70px] text-xs">
+                    <SelectTrigger className="h-7 w-[70px] text-xs" aria-label="Results per page">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
