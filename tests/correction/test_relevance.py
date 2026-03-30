@@ -214,3 +214,44 @@ class TestCorrectorRelevanceIntegration:
         assert "source_a" in result.reference_lyrics
         assert "source_b" in result.reference_lyrics
         assert "rejected_sources" not in result.metadata
+
+    def test_corrector_handles_all_sources_filtered_out(self, tmp_path):
+        """When ALL sources fail relevance, corrector returns empty references and no corrections."""
+        from karaoke_gen.lyrics_transcriber.correction.corrector import LyricsCorrector
+
+        trans_words = _make_words(["hello", "world", "foo", "bar"], "trans")
+        trans_segment = LyricsSegment(
+            id="trans_seg_0",
+            text="hello world foo bar",
+            words=trans_words,
+            start_time=0.0,
+            end_time=1.0,
+        )
+        transcription = TranscriptionData(
+            segments=[trans_segment],
+            words=trans_words,
+            text="hello world foo bar",
+            source="test",
+        )
+
+        # All sources have completely different words — all will be filtered
+        bad_a = _make_lyrics_data([["alpha", "beta", "gamma", "delta"]], "bad_a")
+        bad_b = _make_lyrics_data([["uno", "dos", "tres", "cuatro"]], "bad_b")
+        bad_c = _make_lyrics_data([["eins", "zwei", "drei", "vier"]], "bad_c")
+
+        corrector = LyricsCorrector(cache_dir=str(tmp_path))
+        result = corrector.run(
+            transcription_results=[
+                TranscriptionResult(name="test", priority=1, result=transcription)
+            ],
+            lyrics_results={"bad_a": bad_a, "bad_b": bad_b, "bad_c": bad_c},
+        )
+
+        # All sources should be rejected
+        assert len(result.reference_lyrics) == 0
+        assert "rejected_sources" in result.metadata
+        assert len(result.metadata["rejected_sources"]) == 3
+        # No corrections should have been made (no references to correct against)
+        assert result.corrections_made == 0
+        # Original segments should be preserved
+        assert len(result.original_segments) == 1
