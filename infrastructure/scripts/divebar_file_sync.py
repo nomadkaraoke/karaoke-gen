@@ -56,6 +56,9 @@ GCS_BUCKET = os.environ.get("GCS_BUCKET", "nomadkaraoke-divebar-files")
 DATASET = "karaoke_decide"
 TABLE = "divebar_catalog"
 
+# Files larger than this are skipped (would OOM the sync VM)
+MAX_FILE_SIZE = 3 * 1024 * 1024 * 1024  # 3 GB
+
 
 _thread_local = threading.local()
 
@@ -173,7 +176,14 @@ def sync_file(gcs_bucket, bq_client, row):
     drive_path = row.drive_path
     gcs_path = f"files/{drive_path}"
     full_gcs_path = f"gs://{GCS_BUCKET}/{gcs_path}"
-    size_mb = (row.file_size or 0) / 1024 / 1024
+    file_size = row.file_size or 0
+    size_mb = file_size / 1024 / 1024
+
+    # Skip files too large to buffer in memory (would OOM the VM)
+    if file_size > MAX_FILE_SIZE:
+        update_gcs_path(bq_client, file_id, "skipped:too_large")
+        logger.warning("  ⏭ %s skipped (%.0f MB > 3 GB limit)", drive_path, size_mb)
+        return True, 0
 
     # Check if file already exists in GCS (avoids re-downloading)
     blob = gcs_bucket.blob(gcs_path)
