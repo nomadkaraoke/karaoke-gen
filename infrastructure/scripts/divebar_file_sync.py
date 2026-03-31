@@ -150,11 +150,23 @@ def update_gcs_path(bq_client, file_id, gcs_path):
 
 
 def sync_file(drive_service, gcs_bucket, bq_client, row):
-    """Sync a single file from Drive to GCS."""
+    """Sync a single file from Drive to GCS.
+
+    Checks if the file already exists in GCS before downloading from Drive.
+    If it exists, just updates gcs_path in BigQuery (no re-download needed).
+    """
     file_id = row.file_id
     drive_path = row.drive_path
     gcs_path = f"files/{drive_path}"
+    full_gcs_path = f"gs://{GCS_BUCKET}/{gcs_path}"
     size_mb = (row.file_size or 0) / 1024 / 1024
+
+    # Check if file already exists in GCS (avoids re-downloading)
+    blob = gcs_bucket.blob(gcs_path)
+    if blob.exists():
+        update_gcs_path(bq_client, file_id, full_gcs_path)
+        logger.info("  ⏭ %s already in GCS, updated gcs_path", drive_path)
+        return True, 0
 
     logger.info("Downloading %s (%.1f MB)...", drive_path, size_mb)
     start = time.time()
@@ -166,7 +178,6 @@ def sync_file(drive_service, gcs_bucket, bq_client, row):
     if ok:
         duration = time.time() - start
         speed = actual_size / 1024 / 1024 / duration if duration > 0 else 0
-        full_gcs_path = f"gs://{GCS_BUCKET}/{gcs_path}"
         update_gcs_path(bq_client, file_id, full_gcs_path)
         logger.info(
             "  ✓ %s (%.1f MB in %.1fs, %.1f MB/s)",
@@ -220,54 +231,51 @@ def main():
     gcs_bucket = gcs_client.bucket(GCS_BUCKET)
     drive_service = get_drive_service()
 
-    synced = 0
+    downloaded = 0
+    recovered = 0
     failed = 0
     bytes_synced = 0
     overall_start = time.time()
 
+    def _tally(ok, size):
+        nonlocal downloaded, recovered, failed, bytes_synced
+        if ok:
+            if size > 0:
+                downloaded += 1
+                bytes_synced += size
+            else:
+                recovered += 1
+        else:
+            failed += 1
+
+    def _log_progress():
+        elapsed = time.time() - overall_start
+        logger.info(
+            "Progress: %d downloaded, %d recovered, %d failed (of %d), %.1f GB, %.0f s",
+            downloaded, recovered, failed, len(files),
+            bytes_synced / 1024 / 1024 / 1024, elapsed,
+        )
+
     if args.workers > 1:
-        # Parallel downloads
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
             futures = {
                 executor.submit(sync_file, drive_service, gcs_bucket, bq_client, row): row
                 for row in files
             }
             for future in as_completed(futures):
-                ok, size = future.result()
-                if ok:
-                    synced += 1
-                    bytes_synced += size
-                else:
-                    failed += 1
-
-                if (synced + failed) % 50 == 0:
-                    elapsed = time.time() - overall_start
-                    logger.info(
-                        "Progress: %d/%d synced, %d failed, %.1f GB, %.0f s elapsed",
-                        synced, len(files), failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
-                    )
+                _tally(*future.result())
+                if (downloaded + recovered + failed) % 50 == 0:
+                    _log_progress()
     else:
-        # Sequential downloads
         for i, row in enumerate(files):
-            ok, size = sync_file(drive_service, gcs_bucket, bq_client, row)
-            if ok:
-                synced += 1
-                bytes_synced += size
-            else:
-                failed += 1
-
+            _tally(*sync_file(drive_service, gcs_bucket, bq_client, row))
             if (i + 1) % 50 == 0:
-                elapsed = time.time() - overall_start
-                logger.info(
-                    "Progress: %d/%d synced, %d failed, %.1f GB, %.0f s elapsed",
-                    synced, len(files), failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
-                )
+                _log_progress()
 
     elapsed = time.time() - overall_start
     logger.info(
-        "Done: %d synced, %d failed, %.1f GB in %.0f s (%.1f MB/s avg)",
-        synced, failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
-        bytes_synced / 1024 / 1024 / elapsed if elapsed > 0 else 0,
+        "Done: %d downloaded, %d recovered from GCS, %d failed, %.1f GB in %.0f s",
+        downloaded, recovered, failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
     )
 
 
