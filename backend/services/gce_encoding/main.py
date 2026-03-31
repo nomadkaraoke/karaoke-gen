@@ -287,143 +287,174 @@ def run_preview_encoding(job_id: str, work_dir: Path, request: "EncodePreviewReq
 
 
 def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest"):
-    '''Run video rendering using OutputGenerator from the karaoke-gen wheel.
+    """Run video rendering using OutputGenerator from the karaoke-gen wheel.
 
-    Downloads corrections, audio, and style assets, then uses OutputGenerator
-    to render karaoke video with synchronized lyrics. Uploads video and lyrics
-    output files to GCS.
-    '''
+    Downloads corrections, audio, and style assets from GCS, runs OutputGenerator
+    to produce with_vocals.mkv and subtitle files, then uploads results.
+    Style assets use disk cache to avoid repeated downloads of the same theme.
+
+    This mirrors the logic in render_video_worker.py but runs on the GCE VM
+    instead of Cloud Run, providing more memory and CPU for ffmpeg/libass.
+    """
     jobs[job_id]["status"] = "running"
     jobs[job_id]["progress"] = 5
-    jobs[job_id]["output_files"] = []
 
     try:
-        # Import from karaoke-gen wheel (installed by ensure_latest_wheel)
-        from backend.output_generator import OutputGenerator, OutputConfig
-        from backend.services.countdown_processor import CountdownProcessor
-        from backend.models.correction_result import CorrectionResult
-        from backend.services.correction_operations import CorrectionOperations
-        from backend.utils.style_utils import load_styles_from_gcs
-        from backend.utils.filename_utils import sanitize_filename
-        logger.info("Imported karaoke-gen wheel modules for render-video")
+        # Import from installed karaoke-gen wheel
+        from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
+        from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
+        from karaoke_gen.lyrics_transcriber.types import CorrectionResult
+        from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
+        from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
+        from karaoke_gen.style_loader import load_styles_from_gcs
+        from karaoke_gen.utils import sanitize_filename
 
-        # Download original corrections
+        # 1. Download original corrections
         corrections_path = work_dir / "corrections.json"
         download_single_file_from_gcs(request.original_corrections_gcs_path, corrections_path)
-        correction_result = CorrectionResult.from_json(corrections_path.read_text())
         jobs[job_id]["progress"] = 15
-        logger.info(f"Loaded corrections from {request.original_corrections_gcs_path}")
 
-        # Apply updated corrections if provided
+        with open(corrections_path, 'r', encoding='utf-8') as f:
+            original_data = json.load(f)
+        base_result = CorrectionResult.from_dict(original_data)
+
+        # 2. Apply user corrections if available
         if request.updated_corrections_gcs_path:
-            updated_path = work_dir / "updated_corrections.json"
+            updated_path = work_dir / "corrections_updated.json"
             download_single_file_from_gcs(request.updated_corrections_gcs_path, updated_path)
-            updated_data = json.loads(updated_path.read_text())
+            with open(updated_path, 'r', encoding='utf-8') as f:
+                updated_data = json.load(f)
             correction_result = CorrectionOperations.update_correction_result_with_data(
-                correction_result, updated_data
+                base_result, updated_data
             )
-            logger.info(f"Applied updated corrections from {request.updated_corrections_gcs_path}")
-        jobs[job_id]["progress"] = 20
+            logger.info(f"[job:{job_id}] Applied user corrections")
+        else:
+            correction_result = base_result
 
-        # Download audio
+        jobs[job_id]["progress"] = 25
+
+        # 3. Download audio
         audio_path = work_dir / "audio.flac"
         download_single_file_from_gcs(request.audio_gcs_path, audio_path)
-        jobs[job_id]["progress"] = 30
-        logger.info(f"Downloaded audio from {request.audio_gcs_path}")
+        jobs[job_id]["progress"] = 35
 
-        # Run countdown processor
-        countdown_processor = CountdownProcessor()
-        correction_result, countdown_added, countdown_seconds = countdown_processor.process(
-            correction_result, audio_path
+        # 4. Process countdown intro
+        countdown_processor = CountdownProcessor(cache_dir=str(work_dir), logger=logger)
+        correction_result, audio_path_str, padding_added, padding_seconds = countdown_processor.process(
+            correction_result=correction_result,
+            audio_filepath=str(audio_path),
         )
+        audio_path = Path(audio_path_str)
         jobs[job_id]["progress"] = 40
-        logger.info(f"Countdown processing: added={countdown_added}, seconds={countdown_seconds}")
 
-        # Download style assets via load_styles_from_gcs (with caching)
-        style_config, font_assets = load_styles_from_gcs(
+        # 5. Download style assets (with disk cache for repeated themes)
+        def cached_download(gcs_path, local_path):
+            download_with_cache(gcs_path, Path(local_path), STYLE_CACHE_DIR)
+
+        styles_path, style_data = load_styles_from_gcs(
             style_params_gcs_path=request.style_params_gcs_path,
             style_assets=request.style_assets,
-            download_fn=download_with_cache,
-            work_dir=work_dir,
+            temp_dir=str(work_dir),
+            download_func=cached_download,
+            logger=logger,
         )
+
+        # Register any downloaded fonts with fontconfig
+        for asset_key, gcs_path in (request.style_assets or {}).items():
+            if 'font' in asset_key.lower() and gcs_path.endswith(('.ttf', '.otf', '.woff', '.woff2')):
+                fonts_dir = Path("/usr/local/share/fonts/custom")
+                fonts_dir.mkdir(parents=True, exist_ok=True)
+                font_filename = gcs_path.split("/")[-1]
+                font_dest = fonts_dir / font_filename
+                if not font_dest.exists():
+                    ext = os.path.splitext(gcs_path)[1]
+                    style_font = work_dir / "style" / f"{asset_key}{ext}"
+                    if style_font.exists():
+                        shutil.copy2(str(style_font), str(font_dest))
+                        subprocess.run(["fc-cache", "-fv"], capture_output=True)
+                        logger.info(f"Registered font: {font_filename}")
+
         jobs[job_id]["progress"] = 50
-        logger.info(f"Loaded style config with {len(font_assets)} font assets")
 
-        # Register font assets with fontconfig
-        if font_assets:
-            fonts_dir = Path("/usr/local/share/fonts/custom")
-            fonts_dir.mkdir(parents=True, exist_ok=True)
-            for font_path in font_assets:
-                font_file = Path(font_path)
-                if font_file.exists():
-                    dest_font = fonts_dir / font_file.name
-                    shutil.copy2(str(font_file), str(dest_font))
-                    logger.info(f"Installed font: {dest_font}")
-            subprocess.run(["fc-cache", "-fv"], capture_output=True)
-            logger.info("Updated fontconfig cache with style fonts")
-        jobs[job_id]["progress"] = 55
+        # 6. Configure and run OutputGenerator
+        output_dir = work_dir / "output"
+        cache_dir = work_dir / "cache"
+        output_dir.mkdir(exist_ok=True)
+        cache_dir.mkdir(exist_ok=True)
 
-        # Configure OutputGenerator
-        output_config = OutputConfig(
+        config = OutputConfig(
+            output_dir=str(output_dir),
+            cache_dir=str(cache_dir),
+            output_styles_json=styles_path,
             render_video=True,
             generate_cdg=False,
             generate_plain_text=True,
             generate_lrc=True,
-        )
-
-        output_generator = OutputGenerator(
-            correction_result=correction_result,
-            audio_path=str(audio_path),
-            output_dir=str(work_dir),
-            artist=request.artist,
-            title=request.title,
-            config=output_config,
-            style_config=style_config,
             video_resolution=request.video_resolution,
             subtitle_offset_ms=request.subtitle_offset_ms,
         )
 
-        jobs[job_id]["progress"] = 60
-        logger.info("Starting OutputGenerator.generate_outputs()")
-        output_generator.generate_outputs()
+        output_generator = OutputGenerator(config, logger)
+
+        safe_artist = sanitize_filename(request.artist) if request.artist else "Unknown"
+        safe_title = sanitize_filename(request.title) if request.title else "Unknown"
+        output_prefix = f"{safe_artist} - {safe_title}"
+
+        logger.info(f"[job:{job_id}] Generating outputs with prefix '{output_prefix}'")
+        jobs[job_id]["progress"] = 55
+
+        outputs = output_generator.generate_outputs(
+            transcription_corrected=correction_result,
+            lyrics_results={},
+            output_prefix=output_prefix,
+            audio_filepath=str(audio_path),
+            artist=request.artist,
+            title=request.title,
+        )
+
         jobs[job_id]["progress"] = 85
-        logger.info("OutputGenerator.generate_outputs() complete")
 
-        # Upload outputs to GCS
-        output_prefix = request.output_gcs_prefix.rstrip("/")
-        output_mappings = [
-            (work_dir / "videos" / "with_vocals.mkv", f"{output_prefix}/videos/with_vocals.mkv"),
-            (work_dir / "lyrics" / "karaoke.ass", f"{output_prefix}/lyrics/karaoke.ass"),
-            (work_dir / "lyrics" / "karaoke.lrc", f"{output_prefix}/lyrics/karaoke.lrc"),
-            (work_dir / "lyrics" / "corrected.txt", f"{output_prefix}/lyrics/corrected.txt"),
-        ]
+        # 7. Upload outputs to GCS
+        output_prefix_gcs = request.output_gcs_prefix.rstrip("/")
+        output_files = []
 
-        uploaded_files = []
-        for local_file, gcs_path in output_mappings:
-            if local_file.exists():
-                upload_single_file_to_gcs(local_file, gcs_path)
-                uploaded_files.append(gcs_path)
-                logger.info(f"Uploaded {local_file.name} to {gcs_path}")
-            else:
-                logger.warning(f"Expected output file not found: {local_file}")
+        if outputs.video and os.path.exists(outputs.video):
+            gcs_path = f"{output_prefix_gcs}/videos/with_vocals.mkv"
+            upload_single_file_to_gcs(Path(outputs.video), gcs_path)
+            output_files.append(gcs_path)
+            logger.info(f"[job:{job_id}] Uploaded with_vocals.mkv ({os.path.getsize(outputs.video)} bytes)")
+        else:
+            raise RuntimeError("Video generation failed - no output file produced")
 
-        jobs[job_id]["output_files"] = uploaded_files
+        if outputs.ass and os.path.exists(outputs.ass):
+            gcs_path = f"{output_prefix_gcs}/lyrics/karaoke.ass"
+            upload_single_file_to_gcs(Path(outputs.ass), gcs_path)
+            output_files.append(gcs_path)
+
+        if outputs.lrc and os.path.exists(outputs.lrc):
+            gcs_path = f"{output_prefix_gcs}/lyrics/karaoke.lrc"
+            upload_single_file_to_gcs(Path(outputs.lrc), gcs_path)
+            output_files.append(gcs_path)
+
+        if outputs.corrected_txt and os.path.exists(outputs.corrected_txt):
+            gcs_path = f"{output_prefix_gcs}/lyrics/corrected.txt"
+            upload_single_file_to_gcs(Path(outputs.corrected_txt), gcs_path)
+            output_files.append(gcs_path)
+
         jobs[job_id]["progress"] = 95
-
-        # Store metadata about countdown processing
+        jobs[job_id]["output_files"] = output_files
         jobs[job_id]["metadata"] = {
-            "countdown_padding_added": countdown_added,
-            "countdown_padding_seconds": countdown_seconds,
+            "countdown_padding_added": padding_added,
+            "countdown_padding_seconds": padding_seconds if padding_added else 0,
         }
 
-        logger.info(f"Render video complete for job {job_id}. Uploaded {len(uploaded_files)} files.")
-        return work_dir
+        logger.info(f"[job:{job_id}] Render video complete. Output files: {output_files}")
 
     except ImportError as e:
         error_msg = (
-            f"Karaoke-gen wheel modules not available: {e}. "
+            f"OutputGenerator not available: {e}. "
             "The karaoke-gen wheel must be installed. "
-            "Check that ensure_latest_wheel() succeeded and wheel exists in GCS."
+            "Check that ensure_latest_wheel() succeeded."
         )
         logger.error(error_msg)
         jobs[job_id]["status"] = "failed"
@@ -431,7 +462,7 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
         raise RuntimeError(error_msg) from e
 
     except Exception as e:
-        logger.error(f"Render video failed for job {job_id}: {e}")
+        logger.error(f"[job:{job_id}] Render video failed: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
         raise
