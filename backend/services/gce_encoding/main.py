@@ -536,6 +536,43 @@ def find_file(work_dir: Path, *patterns):
     return None
 
 
+def generate_mov_from_png(png_path: Path, mov_path: Path, duration: int = 5) -> Path:
+    """Generate a MOV video from a static PNG image using FFmpeg.
+
+    This runs on the GCE encoding worker (not Cloud Run) because 4K H.264
+    encoding requires more memory than the right-sized Cloud Run container
+    provides (2Gi). See PR #640 / #647.
+
+    Args:
+        png_path: Path to input PNG image
+        mov_path: Path for output MOV video
+        duration: Video duration in seconds (default 5)
+
+    Returns:
+        Path to generated MOV file
+
+    Raises:
+        RuntimeError: If FFmpeg fails
+    """
+    command = [
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostats", "-y",
+        "-loop", "1", "-framerate", "30", "-i", str(png_path),
+        "-f", "lavfi", "-i", "anullsrc",
+        "-c:v", "libx264", "-r", "30", "-t", str(duration),
+        "-pix_fmt", "yuv420p", "-vf", "scale=3840:2160",
+        "-c:a", "aac", "-shortest",
+        str(mov_path),
+    ]
+    logger.info(f"Generating MOV from PNG: {png_path.name} -> {mov_path.name}")
+    result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    if result.returncode != 0:
+        raise RuntimeError(f"FFmpeg failed to generate {mov_path.name}: {result.stderr}")
+    if not mov_path.exists() or mov_path.stat().st_size < 1024:
+        raise RuntimeError(f"FFmpeg produced invalid output for {mov_path.name}")
+    logger.info(f"Generated MOV: {mov_path.name} ({mov_path.stat().st_size} bytes)")
+    return mov_path
+
+
 def run_encoding(job_id: str, work_dir: Path, config: dict):
     '''Run encoding using LocalEncodingService (single source of truth).
 
@@ -565,9 +602,35 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         logger.info(f"Encoding for: {base_name}")
 
         # Find input files in work_dir
-        # Title/end screens are in screens/ subdirectory
+        # Title/end screens: look for MOV first, fall back to generating from PNG.
+        # Since PR #640 right-sized Cloud Run to 2Gi, the screens_worker only generates
+        # PNG/JPG images — MOV video generation now happens here on the GCE worker.
         title_video = find_file(work_dir, "screens/title.mov", "*Title*.mov", "*title*.mov")
         end_video = find_file(work_dir, "screens/end.mov", "*End*.mov", "*end*.mov")
+
+        # Get intro/end video durations from style config (default 5s)
+        intro_duration = config.get("intro_video_duration", 5)
+        end_duration = config.get("end_video_duration", 5)
+
+        # Generate title MOV from PNG if missing or invalid (< 1KB = empty shell)
+        if not title_video or title_video.stat().st_size < 1024:
+            title_png = find_file(work_dir, "screens/title.png", "*Title*.png", "*title*.png")
+            if title_png:
+                title_mov_path = title_png.parent / "title.mov"
+                logger.info(f"Title MOV missing/invalid, generating from PNG: {title_png}")
+                title_video = generate_mov_from_png(title_png, title_mov_path, duration=intro_duration)
+            elif title_video:
+                logger.warning(f"Title MOV is only {title_video.stat().st_size} bytes and no PNG found")
+
+        # Generate end MOV from PNG if missing or invalid
+        if not end_video or (end_video and end_video.stat().st_size < 1024):
+            end_png = find_file(work_dir, "screens/end.png", "*End*.png", "*end*.png")
+            if end_png:
+                end_mov_path = end_png.parent / "end.mov"
+                logger.info(f"End MOV missing/invalid, generating from PNG: {end_png}")
+                end_video = generate_mov_from_png(end_png, end_mov_path, duration=end_duration)
+            elif end_video:
+                logger.warning(f"End MOV is only {end_video.stat().st_size} bytes and no PNG found")
 
         # Karaoke video - search for With Vocals or main karaoke video
         # IMPORTANT: Search order matters! Search specific paths first to avoid picking up

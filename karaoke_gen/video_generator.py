@@ -452,6 +452,8 @@ class VideoGenerator:
 
     def _create_video_from_image(self, image_path, video_path, duration, resolution=(3840, 2160)):
         """Create a video from a static image."""
+        import subprocess as _subprocess
+
         ffmpeg_command = (
             f'{self.ffmpeg_base_command} -y -loop 1 -framerate 30 -i "{image_path}" '
             f"-f lavfi -i anullsrc -c:v libx264 -r 30 -t {duration} -pix_fmt yuv420p "
@@ -460,7 +462,10 @@ class VideoGenerator:
 
         self.logger.info("Generating video...")
         self.logger.debug(f"Running command: {ffmpeg_command}")
-        os.system(ffmpeg_command)
+        result = _subprocess.run(ffmpeg_command, shell=True, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            self.logger.error(f"FFmpeg video generation failed: {result.stderr}")
+            raise RuntimeError(f"Failed to create video from image: {result.stderr}")
 
     def _transform_text(self, text, transform_type):
         """Helper method to transform text based on specified type."""

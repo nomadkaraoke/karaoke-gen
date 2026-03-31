@@ -17,7 +17,7 @@ class TestVideo:
              patch('PIL.ImageDraw.Draw') as mock_draw, \
              patch('PIL.Image.open'), \
              patch('PIL.ImageFont.truetype') as mock_truetype, \
-             patch('os.system'):
+             patch('subprocess.run', return_value=MagicMock(returncode=0)):
             
             # Configure mock font
             mock_font = MagicMock()
@@ -79,7 +79,7 @@ class TestVideo:
         # Mock dependencies
         with patch('PIL.Image.open') as mock_image_open, \
              patch('shutil.copy2') as mock_copy, \
-             patch('os.system') as mock_os_system: # Assign patch to variable
+             patch('subprocess.run', return_value=MagicMock(returncode=0)) as mock_os_system: # Assign patch to variable
             
             # Configure mock_image_open to return a mock image
             mock_image = MagicMock()
@@ -124,7 +124,7 @@ class TestVideo:
              patch('PIL.ImageDraw.Draw') as mock_draw, \
              patch('PIL.ImageFont.truetype') as mock_truetype, \
              patch('os.path.exists', return_value=True), \
-             patch('os.system') as mock_os_system: # Assign patch
+             patch('subprocess.run', return_value=MagicMock(returncode=0)) as mock_os_system: # Assign patch
             
             # Configure mock font
             mock_font = MagicMock()
@@ -175,7 +175,7 @@ class TestVideo:
         with patch('PIL.Image.new') as mock_image_new, \
              patch('PIL.ImageDraw.Draw') as mock_draw, \
              patch('PIL.ImageFont.truetype') as mock_truetype, \
-             patch('os.system') as mock_os_system: # Assign patch
+             patch('subprocess.run', return_value=MagicMock(returncode=0)) as mock_os_system: # Assign patch
             
             # Configure mock font
             mock_font = MagicMock()
@@ -220,7 +220,7 @@ class TestVideo:
         with patch('PIL.Image.new') as mock_image_new, \
              patch('PIL.ImageDraw.Draw') as mock_draw, \
              patch('PIL.ImageFont.truetype') as mock_truetype, \
-             patch('os.system') as mock_os_system: # Assign patch
+             patch('subprocess.run', return_value=MagicMock(returncode=0)) as mock_os_system: # Assign patch
             
             # Configure mock font
             mock_font = MagicMock()

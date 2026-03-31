@@ -385,7 +385,9 @@ async def _generate_title_screen(
         
         logger.info(f"Job {job_id}: Title format - bg_image: {title_format.get('background_image')}, font: {title_format.get('font')}")
         
-        # Generate title screen (synchronous method)
+        # Generate title screen images only (MOV video is generated on GCE encoding worker)
+        # Pass duration=0 to skip FFmpeg video creation — Cloud Run doesn't have enough
+        # memory for 4K H.264 encoding after right-sizing to 2Gi (PR #640).
         video_generator.create_title_video(
             artist=job.artist,
             title=job.title,
@@ -393,12 +395,13 @@ async def _generate_title_screen(
             output_image_filepath_noext=output_image_filepath_noext,
             output_video_filepath=output_video_filepath,
             existing_title_image=title_format.get('existing_image'),
-            intro_video_duration=intro_duration
+            intro_video_duration=0,
         )
-        
-        if os.path.exists(output_video_filepath):
-            logger.info(f"Job {job_id}: Title screen generated at {output_video_filepath}")
-            return output_video_filepath
+
+        output_png = f"{output_image_filepath_noext}.png"
+        if os.path.exists(output_png):
+            logger.info(f"Job {job_id}: Title screen image generated at {output_png}")
+            return output_png
         else:
             logger.error(f"Job {job_id}: Title screen generation returned no file")
             return None
@@ -457,7 +460,9 @@ async def _generate_end_screen(
         
         logger.info(f"Job {job_id}: End format - bg_image: {end_format.get('background_image')}, font: {end_format.get('font')}")
         
-        # Generate end screen (synchronous method)
+        # Generate end screen images only (MOV video is generated on GCE encoding worker)
+        # Pass duration=0 to skip FFmpeg video creation — Cloud Run doesn't have enough
+        # memory for 4K H.264 encoding after right-sizing to 2Gi (PR #640).
         video_generator.create_end_video(
             artist=job.artist,
             title=job.title,
@@ -465,12 +470,13 @@ async def _generate_end_screen(
             output_image_filepath_noext=output_image_filepath_noext,
             output_video_filepath=output_video_filepath,
             existing_end_image=end_format.get('existing_image'),
-            end_video_duration=end_duration
+            end_video_duration=0,
         )
-        
-        if os.path.exists(output_video_filepath):
-            logger.info(f"Job {job_id}: End screen generated at {output_video_filepath}")
-            return output_video_filepath
+
+        output_png = f"{output_image_filepath_noext}.png"
+        if os.path.exists(output_png):
+            logger.info(f"Job {job_id}: End screen image generated at {output_png}")
+            return output_png
         else:
             logger.error(f"Job {job_id}: End screen generation returned no file")
             return None
@@ -488,46 +494,34 @@ async def _upload_screens(
     end_screen_path: str
 ) -> None:
     """
-    Upload title and end screens to GCS (video + images).
-    
+    Upload title and end screen images to GCS.
+
     Single Responsibility: Only handles uploads.
-    
-    VideoGenerator creates .mov, .jpg, and .png files when configured with
-    output_png=True and output_jpg=True. We upload all three formats
-    for feature parity with the local CLI.
-    
+
+    VideoGenerator creates .jpg and .png files when configured with
+    output_png=True and output_jpg=True. MOV video generation is handled
+    by the GCE encoding worker (not Cloud Run) to avoid OOM with 4K H.264.
+
     Args:
         job_id: Job ID
         job_manager: Job manager instance
         storage: Storage service instance
-        title_screen_path: Path to title screen video (.mov)
-        end_screen_path: Path to end screen video (.mov)
+        title_screen_path: Path to title screen image (.png)
+        end_screen_path: Path to end screen image (.png)
     """
-    # Upload title screen video
-    title_gcs_path = f"jobs/{job_id}/screens/title.mov"
-    title_url = storage.upload_file(title_screen_path, title_gcs_path)
-    job_manager.update_file_url(job_id, 'screens', 'title', title_url)
-    logger.info(f"Job {job_id}: Uploaded title screen video")
-    
-    # Upload title screen images (.jpg and .png - created by VideoGenerator)
-    title_base = title_screen_path.replace('.mov', '')
-    for ext, key in [('.jpg', 'title_jpg'), ('.png', 'title_png')]:
+    # Upload title screen images (.png and .jpg)
+    title_base = title_screen_path.replace('.png', '')
+    for ext, key in [('.png', 'title_png'), ('.jpg', 'title_jpg')]:
         image_path = f"{title_base}{ext}"
         if os.path.exists(image_path):
             gcs_path = f"jobs/{job_id}/screens/title{ext}"
             url = storage.upload_file(image_path, gcs_path)
             job_manager.update_file_url(job_id, 'screens', key, url)
             logger.info(f"Job {job_id}: Uploaded title screen image ({ext})")
-    
-    # Upload end screen video
-    end_gcs_path = f"jobs/{job_id}/screens/end.mov"
-    end_url = storage.upload_file(end_screen_path, end_gcs_path)
-    job_manager.update_file_url(job_id, 'screens', 'end', end_url)
-    logger.info(f"Job {job_id}: Uploaded end screen video")
-    
-    # Upload end screen images (.jpg and .png - created by VideoGenerator)
-    end_base = end_screen_path.replace('.mov', '')
-    for ext, key in [('.jpg', 'end_jpg'), ('.png', 'end_png')]:
+
+    # Upload end screen images (.png and .jpg)
+    end_base = end_screen_path.replace('.png', '')
+    for ext, key in [('.png', 'end_png'), ('.jpg', 'end_jpg')]:
         image_path = f"{end_base}{ext}"
         if os.path.exists(image_path):
             gcs_path = f"jobs/{job_id}/screens/end{ext}"
