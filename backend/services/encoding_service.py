@@ -584,6 +584,116 @@ class EncodingService:
             timeout=timeout,
         )
 
+    async def submit_render_video_job(
+        self,
+        job_id: str,
+        render_config: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Submit a render-video job to the GCE worker.
+
+        Args:
+            job_id: Unique job identifier
+            render_config: Configuration dict containing original_corrections_gcs_path,
+                audio_gcs_path, output_gcs_prefix, artist, title, and any other render params.
+
+        Returns:
+            Response from the encoding worker
+
+        Raises:
+            RuntimeError: If submission fails
+        """
+        self._load_credentials()
+
+        if not self.is_configured:
+            raise RuntimeError("Encoding service not configured")
+
+        url = f"{self._get_worker_url()}/render-video"
+        headers = {"X-API-Key": self._api_key, "Content-Type": "application/json"}
+        payload = {"job_id": job_id, **render_config}
+
+        logger.info(f"[job:{job_id}] Submitting render-video job to GCE worker: {url}")
+
+        resp = await self._request_with_retry(
+            method="POST",
+            url=url,
+            headers=headers,
+            json_payload=payload,
+            timeout=30.0,
+            job_id=job_id,
+        )
+
+        if resp["status"] == 401:
+            raise RuntimeError("Invalid API key for encoding worker")
+        if resp["status"] == 409:
+            # Job already exists on worker — check if it already completed
+            logger.warning(f"[job:{job_id}] GCE worker returned 409, checking job status")
+            try:
+                status = await self.get_job_status(job_id)
+                job_status = status.get("status", "unknown")
+                if job_status == "complete":
+                    logger.info(f"[job:{job_id}] Render-video job already complete on GCE worker, returning cached result")
+                    return {
+                        "status": "cached",
+                        "job_id": job_id,
+                        "output_files": status.get("output_files"),
+                        "metadata": status.get("metadata"),
+                    }
+                elif job_status in ("pending", "running"):
+                    logger.info(f"[job:{job_id}] Render-video job still in progress on GCE worker")
+                    return {"status": "in_progress", "job_id": job_id}
+                else:
+                    raise RuntimeError(f"Render-video job {job_id} already exists with status: {job_status}")
+            except RuntimeError as e:
+                if "not found" in str(e).lower():
+                    raise RuntimeError(f"Render-video job {job_id} conflict: 409 but job not found on status check")
+                raise
+        if resp["status"] != 200:
+            raise RuntimeError(f"Failed to submit render-video job: {resp['status']} - {resp['text']}")
+
+        return resp["json"]
+
+    async def render_video_on_gce(
+        self,
+        job_id: str,
+        render_config: Dict[str, Any],
+        progress_callback=None,
+    ) -> Dict[str, Any]:
+        """
+        Submit render-video job and wait for completion.
+
+        This is a convenience method that combines submit + wait.
+
+        Args:
+            job_id: Unique job identifier
+            render_config: Configuration dict for the render-video worker endpoint
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            Final job status with output files and metadata
+        """
+        # Submit the job
+        submit_result = await self.submit_render_video_job(job_id, render_config)
+
+        # If cached, return immediately — rendering already done
+        submit_status = submit_result.get("status")
+        if submit_status == "cached":
+            logger.info(f"[job:{job_id}] Render-video already cached, returning immediately")
+            return {
+                "status": "complete",
+                "output_files": submit_result.get("output_files"),
+                "metadata": submit_result.get("metadata"),
+            }
+
+        # If in_progress, another request is rendering it — just wait for that
+        if submit_status == "in_progress":
+            logger.info(f"[job:{job_id}] Render-video already in progress, joining poll")
+
+        # Wait for completion
+        return await self.wait_for_completion(
+            job_id, progress_callback=progress_callback
+        )
+
     async def health_check(self) -> Dict[str, Any]:
         """
         Check the health of the encoding worker.
