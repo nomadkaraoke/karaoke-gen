@@ -319,7 +319,7 @@ async def process_render_video(job_id: str) -> bool:
                             with open(updated_path, 'r', encoding='utf-8') as f:
                                 updated_data = json.load(f)
 
-                            if updated_data and "corrections" in updated_data:
+                            if isinstance(updated_data, dict) and "corrections" in updated_data:
                                 # Same construction path as preview — prevents divergence
                                 correction_result = CorrectionOperations.update_correction_result_with_data(
                                     base_result, updated_data

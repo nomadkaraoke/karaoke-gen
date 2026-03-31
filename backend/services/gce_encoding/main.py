@@ -176,21 +176,27 @@ def download_with_cache(gcs_uri: str, local_path: Path, cache_dir: Optional[Path
 
     if cached_path.exists():
         # Validate cached file against GCS object size
-        parts = gcs_uri.replace("gs://", "").split("/", 1)
-        bucket_name = parts[0]
-        blob_name = parts[1] if len(parts) > 1 else ""
-        blob = storage_client.bucket(bucket_name).blob(blob_name)
-        blob.reload()  # Fetch metadata (lightweight HEAD request)
-        gcs_size = blob.size
+        try:
+            parts = gcs_uri.replace("gs://", "").split("/", 1)
+            bucket_name = parts[0]
+            blob_name = parts[1] if len(parts) > 1 else ""
+            blob = storage_client.bucket(bucket_name).blob(blob_name)
+            blob.reload()  # Fetch metadata (lightweight HEAD request)
+            gcs_size = blob.size
 
-        cached_size = cached_path.stat().st_size
-        if gcs_size is not None and cached_size != gcs_size:
-            logger.warning(
-                f"Cache stale for {gcs_uri}: cached={cached_size}B, GCS={gcs_size}B. Re-downloading."
-            )
-            cached_path.unlink()
-        else:
-            logger.info(f"Cache hit for {gcs_uri} -> {cached_path}")
+            cached_size = cached_path.stat().st_size
+            if gcs_size is not None and cached_size != gcs_size:
+                logger.warning(
+                    f"Cache stale for {gcs_uri}: cached={cached_size}B, GCS={gcs_size}B. Re-downloading."
+                )
+                cached_path.unlink()
+            else:
+                logger.info(f"Cache hit for {gcs_uri} -> {cached_path}")
+                shutil.copy2(str(cached_path), str(local_path))
+                return
+        except Exception as e:
+            # On transient GCS errors, serve from cache rather than failing the job
+            logger.warning(f"Cache validation failed for {gcs_uri}: {e}. Serving from cache.")
             shutil.copy2(str(cached_path), str(local_path))
             return
 
@@ -341,7 +347,7 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
             download_single_file_from_gcs(request.updated_corrections_gcs_path, updated_path)
             with open(updated_path, 'r', encoding='utf-8') as f:
                 updated_data = json.load(f)
-            if updated_data and "corrections" in updated_data:
+            if isinstance(updated_data, dict) and "corrections" in updated_data:
                 correction_result = CorrectionOperations.update_correction_result_with_data(
                     base_result, updated_data
                 )
