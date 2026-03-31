@@ -7,6 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# Mock google.cloud.storage.Client before importing main.py to avoid
+# OSError in CI where GCP project is not configured
+patch("google.cloud.storage.Client", MagicMock()).start()
+
 
 class TestDownloadWithCache:
     """Tests for the download_with_cache helper."""
