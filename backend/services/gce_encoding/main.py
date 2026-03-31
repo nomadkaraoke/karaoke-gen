@@ -1,9 +1,11 @@
 import asyncio
 import glob as glob_module
+import hashlib
 import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -134,6 +136,36 @@ def upload_single_file_to_gcs(local_path: Path, gcs_uri: str):
     blob = bucket.blob(blob_name)
     blob.upload_from_filename(str(local_path))
     logger.info(f"Uploaded: {local_path} -> {gcs_uri}")
+
+
+# Style asset disk cache directory
+# Persists across jobs to avoid re-downloading the same theme assets (fonts, backgrounds)
+STYLE_CACHE_DIR = Path("/var/cache/karaoke-gen/styles")
+
+
+def download_with_cache(gcs_uri: str, local_path: Path, cache_dir: Optional[Path] = STYLE_CACHE_DIR):
+    """Download a file from GCS, using a local disk cache to skip repeated downloads.
+
+    Cache key is SHA-256 of the GCS URI. Cache hits copy from disk instead of
+    downloading. When cache_dir is None, downloads directly (no caching).
+    """
+    if cache_dir is None:
+        download_single_file_from_gcs(gcs_uri, local_path)
+        return
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_key = hashlib.sha256(gcs_uri.encode()).hexdigest()
+    cached_path = cache_dir / cache_key
+
+    if cached_path.exists():
+        logger.info(f"Cache hit for {gcs_uri} -> {cached_path}")
+        shutil.copy2(str(cached_path), str(local_path))
+        return
+
+    logger.info(f"Cache miss for {gcs_uri}, downloading...")
+    download_single_file_from_gcs(gcs_uri, local_path)
+    # Store in cache
+    shutil.copy2(str(local_path), str(cached_path))
 
 
 def run_preview_encoding(job_id: str, work_dir: Path, request: "EncodePreviewRequest"):
