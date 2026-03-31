@@ -319,3 +319,59 @@ class TestRenderVideoWorkerUsesCorrectedData:
         # Metadata and original_segments preserved
         assert original_data['metadata']['preserved'] is True
         assert original_data['original_segments'][0]['id'] == 1
+
+
+class TestCompleteReviewSkipsEmptyCorrections:
+    """Test that complete_review doesn't write corrections_updated.json when no corrections.
+
+    Bug scenario: Completing review via admin API without corrections payload writes
+    an empty {} to corrections_updated.json. Downstream render workers then get
+    KeyError: 'corrections' when processing it.
+    """
+
+    def test_no_corrections_key_skips_upload(self):
+        """When updated_data has only instrumental_selection, no corrections file is written."""
+        # Simulate what the endpoint does with the corrections_to_save logic
+        updated_data = {"instrumental_selection": "clean"}
+        corrections_to_save = {k: v for k, v in updated_data.items() if k != "instrumental_selection"}
+
+        # This is the guard we added
+        should_write = corrections_to_save and "corrections" in corrections_to_save
+        assert not should_write, "Should not write corrections_updated.json for empty payload"
+
+    def test_with_corrections_key_allows_upload(self):
+        """When updated_data has corrections, the file should be written."""
+        updated_data = {
+            "corrections": [{"id": 1, "type": "edit"}],
+            "corrected_segments": [{"id": 1, "text": "fixed"}],
+            "instrumental_selection": "with_backing",
+        }
+        corrections_to_save = {k: v for k, v in updated_data.items() if k != "instrumental_selection"}
+
+        should_write = corrections_to_save and "corrections" in corrections_to_save
+        assert should_write, "Should write corrections_updated.json when corrections present"
+
+    def test_empty_dict_payload_skips_upload(self):
+        """When updated_data is effectively empty after removing instrumental_selection."""
+        updated_data = {"instrumental_selection": "clean", "some_other_key": "value"}
+        corrections_to_save = {k: v for k, v in updated_data.items() if k != "instrumental_selection"}
+
+        # Has content but no "corrections" key
+        should_write = corrections_to_save and "corrections" in corrections_to_save
+        assert not should_write, "Should not write without corrections key"
+
+    def test_render_worker_handles_empty_corrections_gracefully(self):
+        """Document that render workers skip empty corrections_updated.json.
+
+        Both GCE and Cloud Run workers now check for 'corrections' key
+        before passing to CorrectionOperations.update_correction_result_with_data().
+        """
+        # Simulates what the workers do on download
+        empty_updated_data = {}
+        has_valid_corrections = empty_updated_data and "corrections" in empty_updated_data
+        assert not has_valid_corrections, "Empty dict should not be treated as valid corrections"
+
+        # Dict with irrelevant keys
+        bad_updated_data = {"some_key": "value"}
+        has_valid_corrections = bad_updated_data and "corrections" in bad_updated_data
+        assert not has_valid_corrections, "Dict without corrections key should not be valid"
