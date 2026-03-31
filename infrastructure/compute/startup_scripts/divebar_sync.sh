@@ -52,5 +52,7 @@ export GOOGLE_CLOUD_PROJECT="nomadkaraoke"
 log "Starting file sync (workers=4)..."
 python3 "$SCRIPT" --workers 4 2>&1 | tee -a "$LOG_FILE"
 
-# The script handles shutdown itself after completion
 log "=== Divebar file sync script exited ==="
+
+log "Shutting down VM after sync completion..."
+shutdown -h now
