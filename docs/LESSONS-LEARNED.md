@@ -1055,3 +1055,18 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 
 **Key insight:** Background cron jobs need monitoring for auth failures — a 401 from a scheduler is silent by default. When adding new Cloud Scheduler endpoints, verify the auth flow end-to-end (check Cloud Logging for 200s after deployment). Don't assume OIDC "just works" with custom auth middleware — Cloud Tasks uses `X-Admin-Token` (custom header) for a reason, while Cloud Scheduler only sends OIDC.
 
+### GCE Disk Cache Must Validate Content, Not Just URI (Mar 2026)
+
+**Problem:** The GCE encoding worker's style asset disk cache (`/var/cache/karaoke-gen/styles/`) keyed on `SHA-256(GCS URI)`. When a file at a GCS path was replaced with different content (e.g., fixing corrupt 106-byte placeholder PNGs with correct 2.8MB files), the cache served the stale version indefinitely.
+
+**Fix:** On cache hit, do a lightweight `blob.reload()` (HEAD request) to get the GCS object's current size. Compare with cached file size — re-download on mismatch. One metadata call per cache hit is a small price vs serving corrupt assets.
+
+**Key insight:** Any local disk cache of remote objects needs a staleness check. URI-only cache keys assume content is immutable at that path — which is rarely guaranteed in GCS/S3. Size is the cheapest validation; for stronger guarantees, compare ETags or generation numbers.
+
+### Don't Write Empty Sentinel Files to GCS (Mar 2026)
+
+**Problem:** The review complete endpoint wrote `corrections_updated.json` to GCS even when no corrections were provided (e.g., admin API reset + complete without correction data). It wrote `{}` (empty dict). Downstream, render workers check `file_exists("corrections_updated.json")` — if present, they download and pass it to `CorrectionOperations.update_correction_result_with_data()` which does `updated_data["corrections"]`, causing `KeyError`.
+
+**Fix:** (1) Root cause: Don't write `corrections_updated.json` unless the payload actually contains a `"corrections"` key. (2) Defensive: Both GCE and Cloud Run workers validate the downloaded JSON has the expected structure before processing, falling back to base result if not.
+
+**Key insight:** When a file's existence is used as a boolean signal ("corrections were updated"), never write it with empty/invalid content. The existence check and content processing must agree on what constitutes a valid file. Apply defense in depth: fix the writer AND validate in readers.
