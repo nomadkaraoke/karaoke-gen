@@ -61,12 +61,27 @@ class EncodePreviewRequest(BaseModel):
     font_gcs_path: Optional[str] = None  # gs://bucket/path/to/custom-font.ttf
 
 
+class RenderVideoRequest(BaseModel):
+    job_id: str
+    original_corrections_gcs_path: str
+    updated_corrections_gcs_path: Optional[str] = None
+    audio_gcs_path: str
+    style_params_gcs_path: Optional[str] = None
+    style_assets: Optional[dict] = None
+    output_gcs_prefix: str
+    artist: str
+    title: str
+    subtitle_offset_ms: int = 0
+    video_resolution: str = "4k"
+
+
 class JobStatus(BaseModel):
     job_id: str
     status: str  # pending, running, complete, failed
     progress: int  # 0-100
     error: Optional[str] = None
     output_files: Optional[list[str]] = None
+    metadata: Optional[dict] = None
 
 
 def download_from_gcs(gcs_uri: str, local_path: Path):
@@ -266,6 +281,157 @@ def run_preview_encoding(job_id: str, work_dir: Path, request: "EncodePreviewReq
 
     except Exception as e:
         logger.error(f"Preview encoding failed: {e}")
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+        raise
+
+
+def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest"):
+    '''Run video rendering using OutputGenerator from the karaoke-gen wheel.
+
+    Downloads corrections, audio, and style assets, then uses OutputGenerator
+    to render karaoke video with synchronized lyrics. Uploads video and lyrics
+    output files to GCS.
+    '''
+    jobs[job_id]["status"] = "running"
+    jobs[job_id]["progress"] = 5
+    jobs[job_id]["output_files"] = []
+
+    try:
+        # Import from karaoke-gen wheel (installed by ensure_latest_wheel)
+        from backend.output_generator import OutputGenerator, OutputConfig
+        from backend.services.countdown_processor import CountdownProcessor
+        from backend.models.correction_result import CorrectionResult
+        from backend.services.correction_operations import CorrectionOperations
+        from backend.utils.style_utils import load_styles_from_gcs
+        from backend.utils.filename_utils import sanitize_filename
+        logger.info("Imported karaoke-gen wheel modules for render-video")
+
+        # Download original corrections
+        corrections_path = work_dir / "corrections.json"
+        download_single_file_from_gcs(request.original_corrections_gcs_path, corrections_path)
+        correction_result = CorrectionResult.from_json(corrections_path.read_text())
+        jobs[job_id]["progress"] = 15
+        logger.info(f"Loaded corrections from {request.original_corrections_gcs_path}")
+
+        # Apply updated corrections if provided
+        if request.updated_corrections_gcs_path:
+            updated_path = work_dir / "updated_corrections.json"
+            download_single_file_from_gcs(request.updated_corrections_gcs_path, updated_path)
+            updated_data = json.loads(updated_path.read_text())
+            correction_result = CorrectionOperations.update_correction_result_with_data(
+                correction_result, updated_data
+            )
+            logger.info(f"Applied updated corrections from {request.updated_corrections_gcs_path}")
+        jobs[job_id]["progress"] = 20
+
+        # Download audio
+        audio_path = work_dir / "audio.flac"
+        download_single_file_from_gcs(request.audio_gcs_path, audio_path)
+        jobs[job_id]["progress"] = 30
+        logger.info(f"Downloaded audio from {request.audio_gcs_path}")
+
+        # Run countdown processor
+        countdown_processor = CountdownProcessor()
+        correction_result, countdown_added, countdown_seconds = countdown_processor.process(
+            correction_result, audio_path
+        )
+        jobs[job_id]["progress"] = 40
+        logger.info(f"Countdown processing: added={countdown_added}, seconds={countdown_seconds}")
+
+        # Download style assets via load_styles_from_gcs (with caching)
+        style_config, font_assets = load_styles_from_gcs(
+            style_params_gcs_path=request.style_params_gcs_path,
+            style_assets=request.style_assets,
+            download_fn=download_with_cache,
+            work_dir=work_dir,
+        )
+        jobs[job_id]["progress"] = 50
+        logger.info(f"Loaded style config with {len(font_assets)} font assets")
+
+        # Register font assets with fontconfig
+        if font_assets:
+            fonts_dir = Path("/usr/local/share/fonts/custom")
+            fonts_dir.mkdir(parents=True, exist_ok=True)
+            for font_path in font_assets:
+                font_file = Path(font_path)
+                if font_file.exists():
+                    dest_font = fonts_dir / font_file.name
+                    shutil.copy2(str(font_file), str(dest_font))
+                    logger.info(f"Installed font: {dest_font}")
+            subprocess.run(["fc-cache", "-fv"], capture_output=True)
+            logger.info("Updated fontconfig cache with style fonts")
+        jobs[job_id]["progress"] = 55
+
+        # Configure OutputGenerator
+        output_config = OutputConfig(
+            render_video=True,
+            generate_cdg=False,
+            generate_plain_text=True,
+            generate_lrc=True,
+        )
+
+        output_generator = OutputGenerator(
+            correction_result=correction_result,
+            audio_path=str(audio_path),
+            output_dir=str(work_dir),
+            artist=request.artist,
+            title=request.title,
+            config=output_config,
+            style_config=style_config,
+            video_resolution=request.video_resolution,
+            subtitle_offset_ms=request.subtitle_offset_ms,
+        )
+
+        jobs[job_id]["progress"] = 60
+        logger.info("Starting OutputGenerator.generate_outputs()")
+        output_generator.generate_outputs()
+        jobs[job_id]["progress"] = 85
+        logger.info("OutputGenerator.generate_outputs() complete")
+
+        # Upload outputs to GCS
+        output_prefix = request.output_gcs_prefix.rstrip("/")
+        output_mappings = [
+            (work_dir / "videos" / "with_vocals.mkv", f"{output_prefix}/videos/with_vocals.mkv"),
+            (work_dir / "lyrics" / "karaoke.ass", f"{output_prefix}/lyrics/karaoke.ass"),
+            (work_dir / "lyrics" / "karaoke.lrc", f"{output_prefix}/lyrics/karaoke.lrc"),
+            (work_dir / "lyrics" / "corrected.txt", f"{output_prefix}/lyrics/corrected.txt"),
+        ]
+
+        uploaded_files = []
+        for local_file, gcs_path in output_mappings:
+            if local_file.exists():
+                upload_single_file_to_gcs(local_file, gcs_path)
+                uploaded_files.append(gcs_path)
+                logger.info(f"Uploaded {local_file.name} to {gcs_path}")
+            else:
+                logger.warning(f"Expected output file not found: {local_file}")
+
+        jobs[job_id]["output_files"] = uploaded_files
+        jobs[job_id]["progress"] = 95
+
+        # Store metadata about countdown processing
+        jobs[job_id]["metadata"] = {
+            "countdown_padding_added": countdown_added,
+            "countdown_padding_seconds": countdown_seconds,
+        }
+
+        logger.info(f"Render video complete for job {job_id}. Uploaded {len(uploaded_files)} files.")
+        return work_dir
+
+    except ImportError as e:
+        error_msg = (
+            f"Karaoke-gen wheel modules not available: {e}. "
+            "The karaoke-gen wheel must be installed. "
+            "Check that ensure_latest_wheel() succeeded and wheel exists in GCS."
+        )
+        logger.error(error_msg)
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = error_msg
+        raise RuntimeError(error_msg) from e
+
+    except Exception as e:
+        logger.error(f"Render video failed for job {job_id}: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
         raise
@@ -616,6 +782,36 @@ async def process_preview_job(job_id: str, request: EncodePreviewRequest):
         jobs[job_id]["error"] = str(e)
 
 
+async def process_render_video_job(job_id: str, request: RenderVideoRequest):
+    # Process a render-video job asynchronously
+    try:
+        # Download and install latest wheel at job start (allows hot updates without restart)
+        ensure_latest_wheel()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            work_dir = Path(temp_dir) / "work"
+            work_dir.mkdir()
+
+            # Run render-video in thread pool (CPU-bound)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                executor,
+                run_render_video,
+                job_id,
+                work_dir,
+                request
+            )
+
+            jobs[job_id]["status"] = "complete"
+            jobs[job_id]["progress"] = 100
+            logger.info(f"Render video job {job_id} complete")
+
+    except Exception as e:
+        logger.error(f"Render video job {job_id} failed: {e}")
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
 @app.post("/encode-preview")
 async def submit_preview_encode_job(request: EncodePreviewRequest, background_tasks: BackgroundTasks, _auth: bool = Depends(verify_api_key)):
     # Submit a preview encoding job
@@ -643,6 +839,37 @@ async def submit_preview_encode_job(request: EncodePreviewRequest, background_ta
     }
 
     background_tasks.add_task(process_preview_job, job_id, request)
+
+    return {"status": "accepted", "job_id": job_id}
+
+
+@app.post("/render-video")
+async def submit_render_video_job(request: RenderVideoRequest, background_tasks: BackgroundTasks, _auth: bool = Depends(verify_api_key)):
+    # Submit a render-video job
+    job_id = request.job_id
+
+    # If job already exists, return cached result or current status
+    if job_id in jobs:
+        existing_job = jobs[job_id]
+        if existing_job["status"] == "complete":
+            return {"status": "cached", "job_id": job_id, "output_files": existing_job.get("output_files")}
+        elif existing_job["status"] == "failed":
+            # Previous attempt failed, allow retry by replacing the job
+            pass
+        else:
+            # Job is still in progress
+            return {"status": "in_progress", "job_id": job_id}
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "pending",
+        "progress": 0,
+        "error": None,
+        "output_files": None,
+        "metadata": None,
+    }
+
+    background_tasks.add_task(process_render_video_job, job_id, request)
 
     return {"status": "accepted", "job_id": job_id}
 
