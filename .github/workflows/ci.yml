@@ -1186,20 +1186,25 @@ jobs:
           API_KEY=$(gcloud secrets versions access latest \
             --secret=encoding-worker-api-key --project=nomadkaraoke)
 
+          DEPLOY_TEST_PATH="gs://karaoke-gen-storage-nomadkaraoke/deploy-test"
+
           echo "Uploading test assets to GCS..."
           gsutil cp infrastructure/encoding-worker/test-assets/test-preview.ass \
-            gs://karaoke-gen-storage-nomadkaraoke/deploy-test/test-preview.ass
+            "${DEPLOY_TEST_PATH}/test-preview.ass"
+          gsutil cp infrastructure/encoding-worker/test-assets/test-audio.flac \
+            "${DEPLOY_TEST_PATH}/test-audio.flac"
 
           echo "Submitting test encode to $SECONDARY_IP..."
           HTTP_CODE=$(curl -s -o /tmp/encode-response.json -w '%{http_code}' \
             -X POST "http://${SECONDARY_IP}:8080/encode-preview" \
             -H "X-API-Key: $API_KEY" \
             -H "Content-Type: application/json" \
-            -d '{
-              "job_id": "deploy-health-check",
-              "ass_gcs_path": "gs://karaoke-gen-storage-nomadkaraoke/deploy-test/test-preview.ass",
-              "duration_seconds": 10
-            }') || HTTP_CODE="000"
+            -d "{
+              \"job_id\": \"deploy-health-check\",
+              \"ass_gcs_path\": \"${DEPLOY_TEST_PATH}/test-preview.ass\",
+              \"audio_gcs_path\": \"${DEPLOY_TEST_PATH}/test-audio.flac\",
+              \"output_gcs_path\": \"${DEPLOY_TEST_PATH}/output-preview.mp4\"
+            }") || HTTP_CODE="000"
           RESPONSE=$(cat /tmp/encode-response.json 2>/dev/null || echo "{}")
 
           echo "Encode response (HTTP $HTTP_CODE): $RESPONSE"
@@ -1211,7 +1216,7 @@ jobs:
 
           STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"')
 
-          if [ "$STATUS" != "accepted" ] && [ "$STATUS" != "completed" ]; then
+          if [ "$STATUS" != "accepted" ] && [ "$STATUS" != "cached" ] && [ "$STATUS" != "in_progress" ]; then
             echo "::error::Encode test failed with status: $STATUS"
             echo "passed=false" >> $GITHUB_OUTPUT
             exit 1
@@ -1223,7 +1228,7 @@ jobs:
               "http://${SECONDARY_IP}:8080/status/deploy-health-check" \
               -H "X-API-Key: $API_KEY" 2>/dev/null | jq -r '.status // "unknown"' 2>/dev/null) || JOB_STATUS="unknown"
             echo "Encode status: $JOB_STATUS (attempt $i/12)"
-            if [ "$JOB_STATUS" = "completed" ]; then
+            if [ "$JOB_STATUS" = "complete" ]; then
               echo "Encode test passed!"
               echo "passed=true" >> $GITHUB_OUTPUT
               gsutil rm -f gs://karaoke-gen-storage-nomadkaraoke/deploy-test/** || true
