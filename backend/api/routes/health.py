@@ -5,10 +5,12 @@ import os
 import logging
 import subprocess
 import platform
-from fastapi import APIRouter
-from typing import Dict, Any, Optional
+from fastapi import APIRouter, Depends
+from typing import Dict, Any, Optional, Tuple
 
-from backend.version import VERSION
+from backend.version import VERSION, COMMIT_SHA, PR_NUMBER, PR_TITLE, STARTUP_TIME
+from backend.api.dependencies import optional_auth
+from backend.services.auth_service import UserType
 from backend.services.flacfetch_client import get_flacfetch_client
 from backend.services.email_service import get_email_service
 from backend.services.stripe_service import get_stripe_service
@@ -308,6 +310,30 @@ async def flacfetch_health() -> Dict[str, Any]:
     }
 
 
+def check_audio_separator_status() -> Dict[str, Any]:
+    """Check audio separator availability without calling the remote GPU service."""
+    from backend.config import get_settings
+
+    settings = get_settings()
+    if not settings.audio_separator_api_url:
+        return {
+            "available": False,
+            "status": "not_configured",
+        }
+
+    try:
+        from importlib.metadata import version
+        pkg_version = version("audio-separator")
+    except Exception:
+        pkg_version = None
+
+    return {
+        "available": True,
+        "status": "ok",
+        "version": pkg_version,
+    }
+
+
 @router.get("/health/audio-separator")
 async def audio_separator_health() -> Dict[str, Any]:
     """
@@ -338,6 +364,118 @@ async def audio_separator_health() -> Dict[str, Any]:
         "available": True,
         "status": "ok",
         "version": pkg_version,
+    }
+
+
+def _get_encoding_worker_manager():
+    """Get the EncodingWorkerManager instance. Separated for testability."""
+    try:
+        encoding_service = get_encoding_service()
+        if hasattr(encoding_service, '_worker_manager') and encoding_service._worker_manager:
+            return encoding_service._worker_manager
+    except Exception:
+        pass
+    return None
+
+
+@router.get("/health/system-status")
+async def system_status(
+    auth: Optional[Tuple] = Depends(optional_auth),
+) -> Dict[str, Any]:
+    """
+    Aggregated system status for all services.
+
+    Returns basic info for everyone. Admin users get additional
+    blue-green deployment details for the encoder.
+    """
+    is_admin = auth is not None and len(auth) >= 2 and auth[1] == UserType.ADMIN
+
+    # Fetch all health statuses concurrently
+    import asyncio
+    encoding_task = check_encoding_worker_status()
+    flacfetch_task = check_flacfetch_service_status()
+    encoding_status, flacfetch_status = await asyncio.gather(
+        encoding_task, flacfetch_task
+    )
+    separator_status = check_audio_separator_status()
+
+    # Build frontend service info (from env vars baked at build time — returned as-is)
+    frontend_svc = {
+        "status": "ok",
+        "version": VERSION,  # Frontend and backend share the same version from pyproject.toml
+    }
+
+    # Build backend service info
+    backend_svc = {
+        "status": "ok",
+        "version": VERSION,
+        "deployed_at": STARTUP_TIME,
+    }
+    if COMMIT_SHA:
+        backend_svc["commit_sha"] = COMMIT_SHA
+    if PR_NUMBER:
+        backend_svc["pr_number"] = PR_NUMBER
+    if PR_TITLE:
+        backend_svc["pr_title"] = PR_TITLE
+
+    # Build encoder service info
+    encoder_svc = {
+        "status": "ok" if encoding_status.get("available") else "offline",
+        "version": encoding_status.get("wheel_version"),
+        "active_jobs": encoding_status.get("active_jobs", 0),
+    }
+
+    # Build flacfetch service info
+    flacfetch_svc = {
+        "status": "ok" if flacfetch_status.get("available") else "offline",
+        "version": flacfetch_status.get("version"),
+    }
+
+    # Build separator service info
+    separator_svc = {
+        "status": "ok" if separator_status.get("available") else "offline",
+        "version": separator_status.get("version"),
+    }
+
+    # Admin-only: blue-green encoder details from Firestore
+    if is_admin:
+        manager = _get_encoding_worker_manager()
+        if manager:
+            try:
+                config = manager.get_config()
+                encoder_svc["admin_details"] = {
+                    "primary_vm": config.primary_vm,
+                    "primary_ip": config.primary_ip,
+                    "primary_version": config.primary_version,
+                    "primary_deployed_at": config.primary_deployed_at,
+                    "secondary_vm": config.secondary_vm,
+                    "secondary_ip": config.secondary_ip,
+                    "secondary_version": config.secondary_version,
+                    "secondary_deployed_at": config.secondary_deployed_at,
+                    "last_swap_at": config.last_swap_at,
+                    "deploy_in_progress": config.deploy_in_progress,
+                    "active_jobs": encoding_status.get("active_jobs", 0),
+                    "queue_length": encoding_status.get("queue_length", 0),
+                }
+            except Exception as e:
+                logger.warning(f"Failed to get blue-green config: {e}")
+
+        # Add error details for offline services
+        if not flacfetch_status.get("available"):
+            flacfetch_svc["admin_details"] = {"error": flacfetch_status.get("error")}
+        if not separator_status.get("available"):
+            separator_svc["admin_details"] = {"error": separator_status.get("error")}
+        if not encoding_status.get("available") and "admin_details" not in encoder_svc:
+            encoder_svc["admin_details"] = {"error": encoding_status.get("error")}
+
+    return {
+        "services": {
+            "frontend": frontend_svc,
+            "backend": backend_svc,
+            "encoder": encoder_svc,
+            "flacfetch": flacfetch_svc,
+            "separator": separator_svc,
+        }
     }
 
 
