@@ -1191,16 +1191,24 @@ jobs:
             gs://karaoke-gen-storage-nomadkaraoke/deploy-test/test-preview.ass
 
           echo "Submitting test encode to $SECONDARY_IP..."
-          RESPONSE=$(curl -sf -X POST "http://${SECONDARY_IP}:8080/encode-preview" \
+          HTTP_CODE=$(curl -s -o /tmp/encode-response.json -w '%{http_code}' \
+            -X POST "http://${SECONDARY_IP}:8080/encode-preview" \
             -H "X-API-Key: $API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
               "job_id": "deploy-health-check",
               "ass_gcs_path": "gs://karaoke-gen-storage-nomadkaraoke/deploy-test/test-preview.ass",
               "duration_seconds": 10
-            }')
+            }') || HTTP_CODE="000"
+          RESPONSE=$(cat /tmp/encode-response.json 2>/dev/null || echo "{}")
 
-          echo "Encode response: $RESPONSE"
+          echo "Encode response (HTTP $HTTP_CODE): $RESPONSE"
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "202" ]; then
+            echo "::error::Encode request failed with HTTP $HTTP_CODE"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
           STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"')
 
           if [ "$STATUS" != "accepted" ] && [ "$STATUS" != "completed" ]; then
@@ -1211,9 +1219,9 @@ jobs:
 
           for i in $(seq 1 12); do
             sleep 5
-            JOB_STATUS=$(curl -sf \
+            JOB_STATUS=$(curl -s \
               "http://${SECONDARY_IP}:8080/status/deploy-health-check" \
-              -H "X-API-Key: $API_KEY" | jq -r '.status // "unknown"')
+              -H "X-API-Key: $API_KEY" 2>/dev/null | jq -r '.status // "unknown"' 2>/dev/null) || JOB_STATUS="unknown"
             echo "Encode status: $JOB_STATUS (attempt $i/12)"
             if [ "$JOB_STATUS" = "completed" ]; then
               echo "Encode test passed!"
@@ -1232,7 +1240,7 @@ jobs:
           exit 1
 
       - name: Rollback on failure
-        if: steps.health.outputs.healthy != 'true' || steps.encode-test.outputs.passed == 'false'
+        if: steps.health.outputs.healthy != 'true' || steps.encode-test.outputs.passed != 'true'
         run: |
           SECONDARY_VM="${{ steps.config.outputs.secondary_vm }}"
           if [ -n "$SECONDARY_VM" ]; then
