@@ -67,11 +67,12 @@
    • Instrumental track selection (clean vs with_backing)
    • Single submit saves both lyrics + instrumental choice
                        ▼
-5. VIDEO RENDERING
+5. VIDEO RENDERING (optionally via GCE for speed + memory)
    • Merge corrections with original data
-   • Generate karaoke video with lyrics
+   • Generate karaoke video with lyrics (OutputGenerator + ffmpeg/libass)
+   • Style assets cached on GCE worker disk between jobs
                        ▼
-6. FINAL VIDEO (INSTRUMENTAL_SELECTED)
+6. FINAL VIDEO (INSTRUMENTAL_SELECTED, via GCE)
    • Remux with selected instrumental
    • Concatenate: title + karaoke + end
    • Encode to 4 formats
