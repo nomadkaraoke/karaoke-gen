@@ -1256,6 +1256,7 @@ class TestCreateOrchestratorConfigFromJob:
         job.gdrive_folder_id = None
         job.keep_brand_code = None
         job.existing_instrumental_gcs_path = None
+        job.file_urls = {'screens': {'title_png': 'jobs/test-123/screens/title.png', 'end_png': 'jobs/test-123/screens/end.png'}}
 
         config = create_orchestrator_config_from_job(
             job=job,
@@ -1269,7 +1270,7 @@ class TestCreateOrchestratorConfigFromJob:
         assert config.title == "Test Title"
         assert config.enable_cdg is True
         assert config.enable_youtube_upload is True
-        assert config.title_video_path == "/tmp/test/Test Artist - Test Title (Title).mov"
+        assert config.title_video_path == "/tmp/test/Test Artist - Test Title (Title).png"
         assert config.instrumental_audio_path == "/tmp/test/Test Artist - Test Title (Instrumental Clean).flac"
 
     def test_create_config_from_job_with_existing_instrumental(self):
@@ -1290,6 +1291,7 @@ class TestCreateOrchestratorConfigFromJob:
         job.gdrive_folder_id = None
         job.keep_brand_code = None
         job.existing_instrumental_gcs_path = "gs://bucket/instrumental.mp3"
+        job.file_urls = {'screens': {'title_png': 'screens/title.png', 'end_png': 'screens/end.png'}}
 
         config = create_orchestrator_config_from_job(
             job=job,
@@ -1329,6 +1331,7 @@ class TestCreateOrchestratorConfigFromJob:
         job.gdrive_folder_id = None
         job.keep_brand_code = None
         job.existing_instrumental_gcs_path = None
+        job.file_urls = {'screens': {'title_png': 'screens/title.png', 'end_png': 'screens/end.png'}}
 
         config = create_orchestrator_config_from_job(
             job=job,
