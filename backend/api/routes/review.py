@@ -331,12 +331,16 @@ async def complete_review(
         # (it's stored separately in state_data)
         corrections_to_save = {k: v for k, v in updated_data.items() if k != "instrumental_selection"}
 
-        # Save updated corrections to GCS
-        corrections_gcs_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
-        storage.upload_json(corrections_gcs_path, corrections_to_save)
-        job_manager.update_file_url(job_id, 'lyrics', 'corrections_updated', corrections_gcs_path)
-
-        logger.info(f"Job {job_id}: Saved updated corrections")
+        # Only write corrections_updated.json if there's actual correction data.
+        # Writing an empty dict causes KeyError downstream when render workers
+        # try to access updated_data["corrections"].
+        if corrections_to_save and "corrections" in corrections_to_save:
+            corrections_gcs_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
+            storage.upload_json(corrections_gcs_path, corrections_to_save)
+            job_manager.update_file_url(job_id, 'lyrics', 'corrections_updated', corrections_gcs_path)
+            logger.info(f"Job {job_id}: Saved updated corrections")
+        else:
+            logger.info(f"Job {job_id}: No corrections data in request, skipping corrections_updated.json")
 
         # === Store instrumental selection in state_data ===
         # This will be used by render_video_worker to skip AWAITING_INSTRUMENTAL_SELECTION

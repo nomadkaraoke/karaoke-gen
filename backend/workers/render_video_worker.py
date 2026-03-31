@@ -319,12 +319,17 @@ async def process_render_video(job_id: str) -> bool:
                             with open(updated_path, 'r', encoding='utf-8') as f:
                                 updated_data = json.load(f)
 
-                            # Same construction path as preview — prevents divergence
-                            correction_result = CorrectionOperations.update_correction_result_with_data(
-                                base_result, updated_data
-                            )
-                            job_log.info("Applied user corrections via CorrectionOperations")
-                            logger.info(f"Job {job_id}: Applied user corrections via CorrectionOperations")
+                            if updated_data and "corrections" in updated_data:
+                                # Same construction path as preview — prevents divergence
+                                correction_result = CorrectionOperations.update_correction_result_with_data(
+                                    base_result, updated_data
+                                )
+                                job_log.info("Applied user corrections via CorrectionOperations")
+                                logger.info(f"Job {job_id}: Applied user corrections via CorrectionOperations")
+                            else:
+                                job_log.warning("corrections_updated.json exists but has no 'corrections' key, using base result")
+                                logger.warning(f"Job {job_id}: corrections_updated.json has no 'corrections' key, using base result")
+                                correction_result = base_result
                         else:
                             correction_result = base_result
 

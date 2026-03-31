@@ -161,8 +161,10 @@ STYLE_CACHE_DIR = Path("/var/cache/karaoke-gen/styles")
 def download_with_cache(gcs_uri: str, local_path: Path, cache_dir: Optional[Path] = STYLE_CACHE_DIR):
     """Download a file from GCS, using a local disk cache to skip repeated downloads.
 
-    Cache key is SHA-256 of the GCS URI. Cache hits copy from disk instead of
-    downloading. When cache_dir is None, downloads directly (no caching).
+    Cache key is SHA-256 of the GCS URI. Cache hits are validated by comparing
+    the cached file size against the GCS object size (via a lightweight metadata
+    call). On size mismatch the stale entry is replaced.
+    When cache_dir is None, downloads directly (no caching).
     """
     if cache_dir is None:
         download_single_file_from_gcs(gcs_uri, local_path)
@@ -173,9 +175,24 @@ def download_with_cache(gcs_uri: str, local_path: Path, cache_dir: Optional[Path
     cached_path = cache_dir / cache_key
 
     if cached_path.exists():
-        logger.info(f"Cache hit for {gcs_uri} -> {cached_path}")
-        shutil.copy2(str(cached_path), str(local_path))
-        return
+        # Validate cached file against GCS object size
+        parts = gcs_uri.replace("gs://", "").split("/", 1)
+        bucket_name = parts[0]
+        blob_name = parts[1] if len(parts) > 1 else ""
+        blob = storage_client.bucket(bucket_name).blob(blob_name)
+        blob.reload()  # Fetch metadata (lightweight HEAD request)
+        gcs_size = blob.size
+
+        cached_size = cached_path.stat().st_size
+        if gcs_size is not None and cached_size != gcs_size:
+            logger.warning(
+                f"Cache stale for {gcs_uri}: cached={cached_size}B, GCS={gcs_size}B. Re-downloading."
+            )
+            cached_path.unlink()
+        else:
+            logger.info(f"Cache hit for {gcs_uri} -> {cached_path}")
+            shutil.copy2(str(cached_path), str(local_path))
+            return
 
     logger.info(f"Cache miss for {gcs_uri}, downloading...")
     download_single_file_from_gcs(gcs_uri, local_path)
@@ -324,10 +341,14 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
             download_single_file_from_gcs(request.updated_corrections_gcs_path, updated_path)
             with open(updated_path, 'r', encoding='utf-8') as f:
                 updated_data = json.load(f)
-            correction_result = CorrectionOperations.update_correction_result_with_data(
-                base_result, updated_data
-            )
-            logger.info(f"[job:{job_id}] Applied user corrections")
+            if updated_data and "corrections" in updated_data:
+                correction_result = CorrectionOperations.update_correction_result_with_data(
+                    base_result, updated_data
+                )
+                logger.info(f"[job:{job_id}] Applied user corrections")
+            else:
+                logger.warning(f"[job:{job_id}] corrections_updated.json exists but has no 'corrections' key, using base result")
+                correction_result = base_result
         else:
             correction_result = base_result
 
