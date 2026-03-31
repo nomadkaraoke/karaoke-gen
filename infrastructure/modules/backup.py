@@ -148,7 +148,8 @@ def create_backup_resources(all_secrets: dict) -> dict:
             ),
         ),
         service_config=cloudfunctionsv2.FunctionServiceConfigArgs(
-            available_memory="1Gi",
+            available_memory="2Gi",
+            available_cpu="1",
             timeout_seconds=3600,
             min_instance_count=0,
             max_instance_count=1,
