@@ -20,6 +20,10 @@ try {
 const nextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_COMMIT_SHA: process.env.NEXT_PUBLIC_COMMIT_SHA || '',
+    NEXT_PUBLIC_PR_NUMBER: process.env.NEXT_PUBLIC_PR_NUMBER || '',
+    NEXT_PUBLIC_PR_TITLE: process.env.NEXT_PUBLIC_PR_TITLE || '',
+    NEXT_PUBLIC_BUILD_TIME: process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString(),
   },
   // Only use static export for production builds (not dev)
   output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
