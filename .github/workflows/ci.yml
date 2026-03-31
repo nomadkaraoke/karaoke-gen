@@ -1545,15 +1545,15 @@ jobs:
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated \
-            --memory 16Gi \
-            --cpu 8 \
+            --memory 2Gi \
+            --cpu 2 \
             --cpu-boost \
-            --no-cpu-throttling \
+            --cpu-throttling \
             --execution-environment gen2 \
             --timeout 1800 \
-            --concurrency 1 \
-            --max-instances 50 \
-            --min-instances 4 \
+            --concurrency 80 \
+            --max-instances 20 \
+            --min-instances 1 \
             --vpc-connector projects/nomadkaraoke/locations/us-central1/connectors/cloud-run-connector \
             --vpc-egress private-ranges-only \
             --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=karaoke-gen-storage-${{ env.PROJECT_ID }},FIRESTORE_COLLECTION=jobs,ENVIRONMENT=production,KARAOKE_GEN_VERSION=$VERSION,DEFAULT_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-Organized,DEFAULT_GDRIVE_FOLDER_ID=1laRKAyxo0v817SstfM5XkpbWiNKNAMSX,ENABLE_CLOUD_TASKS=true,CLOUD_RUN_SERVICE_URL=https://api.nomadkaraoke.com,GCP_REGION=us-central1,DEFAULT_ENABLE_YOUTUBE_UPLOAD=true,DEFAULT_BRAND_PREFIX=NOMAD,DEFAULT_PRIVATE_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-NonPublished,DEFAULT_PRIVATE_BRAND_PREFIX=NOMADNP,USE_GCE_ENCODING=true,USE_GCE_PREVIEW_ENCODING=true,ENABLE_PUSH_NOTIFICATIONS=true,USE_CLOUD_RUN_JOBS_FOR_VIDEO=true" \
