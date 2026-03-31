@@ -304,6 +304,43 @@ export interface AudioSeparatorHealth {
   error?: string;
 }
 
+export interface ServiceStatus {
+  status: string;  // 'ok' | 'offline'
+  version?: string | null;
+  deployed_at?: string | null;
+  commit_sha?: string | null;
+  pr_number?: string | null;
+  pr_title?: string | null;
+  active_jobs?: number;
+  admin_details?: {
+    // Encoder blue-green
+    primary_vm?: string;
+    primary_ip?: string;
+    primary_version?: string;
+    primary_deployed_at?: string;
+    secondary_vm?: string;
+    secondary_ip?: string;
+    secondary_version?: string;
+    secondary_deployed_at?: string;
+    last_swap_at?: string;
+    deploy_in_progress?: boolean;
+    active_jobs?: number;
+    queue_length?: number;
+    // Error details for offline services
+    error?: string | null;
+  };
+}
+
+export interface SystemStatus {
+  services: {
+    frontend: ServiceStatus;
+    backend: ServiceStatus;
+    encoder: ServiceStatus;
+    flacfetch: ServiceStatus;
+    separator: ServiceStatus;
+  };
+}
+
 // Signed URL upload types
 export interface SignedUploadUrl {
   file_type: string;
@@ -1319,6 +1356,16 @@ export const api = {
    */
   async getAudioSeparatorHealth(): Promise<AudioSeparatorHealth> {
     const response = await fetch(`${API_BASE_URL}/api/health/audio-separator`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get aggregated system status for all services
+   */
+  async getSystemStatus(): Promise<SystemStatus> {
+    const response = await fetch(`${API_BASE_URL}/api/health/system-status`, {
+      headers: getAuthHeaders(),
+    });
     return handleResponse(response);
   },
 
