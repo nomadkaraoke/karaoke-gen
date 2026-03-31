@@ -852,7 +852,7 @@ async def submit_render_video_job(request: RenderVideoRequest, background_tasks:
     if job_id in jobs:
         existing_job = jobs[job_id]
         if existing_job["status"] == "complete":
-            return {"status": "cached", "job_id": job_id, "output_files": existing_job.get("output_files")}
+            return {"status": "cached", "job_id": job_id, "output_files": existing_job.get("output_files"), "metadata": existing_job.get("metadata")}
         elif existing_job["status"] == "failed":
             # Previous attempt failed, allow retry by replacing the job
             pass
