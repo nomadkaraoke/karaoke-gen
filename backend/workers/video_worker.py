@@ -121,13 +121,12 @@ async def _encode_via_gce(
 
     def progress_callback(progress: int):
         # Update job progress (encoding is 75-95% of total)
+        # Use update_job instead of transition_to_state since job is already in ENCODING state
         scaled_progress = 75 + int(progress * 0.2)  # Map 0-100 to 75-95
-        job_manager.transition_to_state(
-            job_id=job_id,
-            new_status=JobStatus.ENCODING,
-            progress=scaled_progress,
-            message=f"Encoding videos ({progress}%)"
-        )
+        job_manager.update_job(job_id, {
+            'progress': scaled_progress,
+            'message': f"Encoding videos ({progress}%)",
+        })
 
     try:
         # Submit and wait for encoding
