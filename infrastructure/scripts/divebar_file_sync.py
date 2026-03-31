@@ -35,6 +35,7 @@ import io
 import logging
 import os
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -56,10 +57,22 @@ DATASET = "karaoke_decide"
 TABLE = "divebar_catalog"
 
 
+_thread_local = threading.local()
+
+
 def get_drive_service():
-    """Create Google Drive API service."""
-    credentials, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
-    return build("drive", "v3", credentials=credentials)
+    """Get a thread-local Google Drive API service.
+
+    googleapiclient is NOT thread-safe — sharing a single service object
+    across threads causes SSL errors, bad file descriptors, and heap
+    corruption. Each thread gets its own instance.
+    """
+    svc = getattr(_thread_local, "drive_service", None)
+    if svc is None:
+        credentials, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+        svc = build("drive", "v3", credentials=credentials)
+        _thread_local.drive_service = svc
+    return svc
 
 
 def get_unsynced_files(bq_client, brand=None, limit=None):
@@ -149,9 +162,10 @@ def update_gcs_path(bq_client, file_id, gcs_path):
     bq_client.query(query, job_config=job_config).result()
 
 
-def sync_file(drive_service, gcs_bucket, bq_client, row):
+def sync_file(gcs_bucket, bq_client, row):
     """Sync a single file from Drive to GCS.
 
+    Uses a thread-local Drive service (googleapiclient is not thread-safe).
     Checks if the file already exists in GCS before downloading from Drive.
     If it exists, just updates gcs_path in BigQuery (no re-download needed).
     """
@@ -171,6 +185,7 @@ def sync_file(drive_service, gcs_bucket, bq_client, row):
     logger.info("Downloading %s (%.1f MB)...", drive_path, size_mb)
     start = time.time()
 
+    drive_service = get_drive_service()
     ok, actual_size = download_and_upload(
         drive_service, gcs_bucket, file_id, gcs_path, row.file_size
     )
@@ -229,7 +244,9 @@ def main():
         return
 
     gcs_bucket = gcs_client.bucket(GCS_BUCKET)
-    drive_service = get_drive_service()
+
+    # Warm up the main thread's Drive service (also validates credentials early)
+    get_drive_service()
 
     downloaded = 0
     recovered = 0
@@ -259,7 +276,7 @@ def main():
     if args.workers > 1:
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
             futures = {
-                executor.submit(sync_file, drive_service, gcs_bucket, bq_client, row): row
+                executor.submit(sync_file, gcs_bucket, bq_client, row): row
                 for row in files
             }
             for future in as_completed(futures):
@@ -268,7 +285,7 @@ def main():
                     _log_progress()
     else:
         for i, row in enumerate(files):
-            _tally(*sync_file(drive_service, gcs_bucket, bq_client, row))
+            _tally(*sync_file(gcs_bucket, bq_client, row))
             if (i + 1) % 50 == 0:
                 _log_progress()
 
