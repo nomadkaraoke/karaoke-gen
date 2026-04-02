@@ -300,7 +300,14 @@ test.describe('Demo Video Recording', () => {
         break;
       }
 
-      const statusText = await jobCard.textContent() || '';
+      let statusText: string;
+      try {
+        statusText = await jobCard.textContent({ timeout: 15000 }) || '';
+      } catch {
+        console.log('  Job card temporarily unavailable, retrying...');
+        await page.waitForTimeout(5000);
+        continue;
+      }
       if (statusText.toLowerCase().includes('failed')) {
         throw new Error('Job failed during processing');
       }
@@ -456,7 +463,14 @@ test.describe('Demo Video Recording', () => {
         await page.waitForTimeout(2000);
       }
 
-      const statusText = await jobCard.textContent() || '';
+      let statusText: string;
+      try {
+        statusText = await jobCard.textContent({ timeout: 15000 }) || '';
+      } catch {
+        console.log('  Job card temporarily unavailable, retrying...');
+        await page.waitForTimeout(5000);
+        continue;
+      }
       if (statusText.toLowerCase().includes('complete') && !statusText.toLowerCase().includes('prep')) {
         isComplete = true;
         break;

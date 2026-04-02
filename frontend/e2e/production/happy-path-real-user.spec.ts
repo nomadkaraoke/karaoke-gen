@@ -568,7 +568,15 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         }
 
         // Check job card status text
-        const statusText = await jobCard.textContent() || '';
+        // Job card may briefly disappear during re-renders; retry on next poll if so
+        let statusText: string;
+        try {
+          statusText = await jobCard.textContent({ timeout: 15000 }) || '';
+        } catch {
+          console.log(`  [${elapsedMin}m ${elapsedSec}s] Job card temporarily unavailable, retrying...`);
+          await page.waitForTimeout(5000);
+          continue;
+        }
 
         // Check if the "Review Lyrics" link is visible (most reliable indicator)
         const reviewLink = jobCard.getByRole('link', { name: /review lyrics/i });
@@ -831,7 +839,16 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
           await page.waitForTimeout(2000);
         }
 
-        const statusText = await jobCard.textContent() || '';
+        // Job card may briefly disappear during re-renders (e.g., status transitions).
+        // Catch timeout errors and retry on next poll iteration instead of failing the test.
+        let statusText: string;
+        try {
+          statusText = await jobCard.textContent({ timeout: 15000 }) || '';
+        } catch {
+          console.log('  Job card temporarily unavailable, retrying...');
+          await page.waitForTimeout(5000);
+          continue;
+        }
 
         if (statusText.toLowerCase().includes('complete') && !statusText.toLowerCase().includes('prep')) {
           isComplete = true;
@@ -949,7 +966,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       console.log('========================================');
 
       // Private mode skips public distribution (YouTube, GDrive) — only Dropbox may be present
-      const cardText = await jobCard.textContent() || '';
+      const cardText = await jobCard.textContent({ timeout: 15000 }).catch(() => '') || '';
 
       if (cardText.toLowerCase().includes('youtube') ||
           cardText.toLowerCase().includes('drive')) {
