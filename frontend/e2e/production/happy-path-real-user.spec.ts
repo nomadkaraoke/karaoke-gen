@@ -856,11 +856,12 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
             // Card has been gone too long — the job likely completed and the status filter
             // is hiding it. Switch filter to "All statuses" to make it visible again.
             console.log('  Card missing too long — switching status filter to "All statuses"...');
-            const filterSelect = page.locator('button[aria-label="Filter by status"]');
+            const filterSelect = page.getByRole('combobox', { name: /filter by status/i });
             if (await filterSelect.isVisible().catch(() => false)) {
               await filterSelect.click();
               await page.waitForTimeout(500);
-              const allOption = page.getByRole('option', { name: /all statuses/i });
+              const listbox = page.getByRole('listbox');
+              const allOption = listbox.getByRole('option', { name: /all statuses/i });
               if (await allOption.isVisible().catch(() => false)) {
                 await allOption.click();
                 await page.waitForTimeout(3000);
