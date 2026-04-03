@@ -64,8 +64,8 @@ function AppPageContent() {
     return saved ? Number(saved) : 10
   })
   const [statusFilter, setStatusFilter] = useState<string>(() => {
-    if (typeof window === "undefined") return "active"
-    return localStorage.getItem("nomad-karaoke-status-filter") || "active"
+    if (typeof window === "undefined") return "all"
+    return localStorage.getItem("nomad-karaoke-status-filter") || "all"
   })
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
@@ -453,7 +453,7 @@ function AppPageContent() {
               <CardDescription style={{ color: 'var(--text-muted)' }}>
                 {!hasFetchedSuccessfully
                   ? 'Loading...'
-                  : searchQuery || statusFilter !== 'active'
+                  : searchQuery || (statusFilter !== 'all' && statusFilter !== 'active')
                     ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''} matching filters`
                     : `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`}
               </CardDescription>
@@ -466,7 +466,7 @@ function AppPageContent() {
                       <Loader2 className="w-12 h-12 mx-auto mb-3 opacity-50 animate-spin" />
                       <p>Loading jobs...</p>
                     </>
-                  ) : searchQuery || statusFilter !== 'active' ? (
+                  ) : searchQuery || (statusFilter !== 'all' && statusFilter !== 'active') ? (
                     <>
                       <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No jobs match your filters.</p>

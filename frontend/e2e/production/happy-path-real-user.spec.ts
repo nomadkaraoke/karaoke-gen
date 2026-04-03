@@ -833,6 +833,9 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       // Add extra buffer for variable processing times
       const completionTimeout = TIMEOUTS.videoRendering + TIMEOUTS.finalEncoding + 600_000; // 35 minutes total
 
+      let consecutiveUnavailable = 0;
+      const maxConsecutiveUnavailable = 10; // ~2 minutes of retries before trying recovery
+
       while (Date.now() - encodeStartTime < completionTimeout) {
         if (await refreshBtn.isVisible().catch(() => false)) {
           await refreshBtn.click();
@@ -844,8 +847,31 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         let statusText: string;
         try {
           statusText = await jobCard.textContent({ timeout: 15000 }) || '';
+          consecutiveUnavailable = 0; // Reset counter on success
         } catch {
-          console.log('  Job card temporarily unavailable, retrying...');
+          consecutiveUnavailable++;
+          console.log(`  Job card temporarily unavailable (${consecutiveUnavailable}/${maxConsecutiveUnavailable}), retrying...`);
+
+          if (consecutiveUnavailable >= maxConsecutiveUnavailable) {
+            // Card has been gone too long — the job likely completed and the status filter
+            // is hiding it. Switch filter to "All statuses" to make it visible again.
+            console.log('  Card missing too long — switching status filter to "All statuses"...');
+            const filterSelect = page.locator('button[aria-label="Filter by status"]');
+            if (await filterSelect.isVisible().catch(() => false)) {
+              await filterSelect.click();
+              await page.waitForTimeout(500);
+              const allOption = page.getByRole('option', { name: /all statuses/i });
+              if (await allOption.isVisible().catch(() => false)) {
+                await allOption.click();
+                await page.waitForTimeout(3000);
+                consecutiveUnavailable = 0; // Reset and try again with new filter
+                continue;
+              }
+            }
+            // If we couldn't change the filter, throw a descriptive error
+            throw new Error('Job card disappeared for too long — job may have completed but status filter is hiding it');
+          }
+
           await page.waitForTimeout(5000);
           continue;
         }
