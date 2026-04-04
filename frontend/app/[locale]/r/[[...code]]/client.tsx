@@ -7,37 +7,46 @@ import { getReferralInterstitial } from '@/lib/api';
 import { setReferralCode } from '@/lib/referral';
 import type { ReferralInterstitial } from '@/lib/types';
 
-export default function ReferralInterstitialPage() {
+export function ReferralInterstitialClient() {
   const params = useParams();
   const router = useRouter();
   const t = useTranslations('referrals');
-  const code = params.code as string;
+
+  // Extract code from catch-all slug: /r/CODE → code = ["CODE"]
+  const codeSegments = params.code as string[] | undefined;
+  const code = codeSegments?.[0];
 
   const [data, setData] = useState<ReferralInterstitial | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!code) {
+      // No code provided — redirect to landing
+      router.push('/');
+      return;
+    }
+
     async function fetchData() {
       try {
-        const result = await getReferralInterstitial(code);
+        const result = await getReferralInterstitial(code!);
         setData(result);
         if (result.valid) {
-          setReferralCode(code);
+          setReferralCode(code!);
         }
       } catch {
-        setData({ code, valid: false, display_name: null, custom_message: null, discount_percent: 0, discount_duration_days: 0 });
+        setData({ code: code!, valid: false, display_name: null, custom_message: null, discount_percent: 0, discount_duration_days: 0 });
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [code]);
+  }, [code, router]);
 
   const handleGetStarted = () => {
     router.push('/');
   };
 
-  if (loading) {
+  if (!code || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
