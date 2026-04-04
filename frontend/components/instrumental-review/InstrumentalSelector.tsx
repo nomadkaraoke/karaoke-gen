@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, Link } from "@/i18n/routing"
 import { useTranslations } from 'next-intl'
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { ArrowLeft, Play, Pause, Check } from "lucide-react"
-import Link from "next/link"
 import { toast } from "sonner"
 import {
   api,

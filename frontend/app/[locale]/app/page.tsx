@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "@/i18n/routing"
+import { useSearchParams } from "next/navigation"
 import { api, Job, getAccessToken } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useAdminSettings } from "@/lib/admin-settings"

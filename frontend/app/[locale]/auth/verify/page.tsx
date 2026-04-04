@@ -1,7 +1,8 @@
 "use client"
 
 import { Suspense, useEffect, useState, useRef } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "@/i18n/routing"
+import { useSearchParams } from "next/navigation"
 import { Loader2, CheckCircle, XCircle, Gift, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"

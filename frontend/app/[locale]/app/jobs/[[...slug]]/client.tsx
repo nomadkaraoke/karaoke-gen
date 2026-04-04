@@ -6,7 +6,7 @@ import { api, Job, createLyricsReviewApiClient, lyricsReviewApi } from "@/lib/ap
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, AlertCircle } from "lucide-react"
-import Link from "next/link"
+import { Link } from "@/i18n/routing"
 import { LyricsAnalyzer } from "@/components/lyrics-review"
 import { InstrumentalSelector } from "@/components/instrumental-review"
 import { AudioEditor } from "@/components/audio-editor/AudioEditor"

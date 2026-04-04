@@ -1,6 +1,7 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter, Link } from "@/i18n/routing"
+import NextLink from "next/link"
 import { useAuth } from "@/lib/auth"
 import { Logo } from "./logo"
 import { Button } from "./ui/button"
@@ -13,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { User, LogOut, Settings, Shield, Mail, Phone, HelpCircle, Eye } from "lucide-react"
-import Link from "next/link"
 import LanguageSwitcher from "./LanguageSwitcher"
 import { useTranslations } from "next-intl"
 
@@ -29,7 +29,7 @@ export function AppHeader() {
 
   const handleBackToAdmin = () => {
     endImpersonation()
-    router.push("/admin")
+    window.location.href = "/admin"
   }
 
   if (!user) return null
@@ -49,9 +49,9 @@ export function AppHeader() {
             {t('myJobs')}
           </Link>
           {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
-            <Link href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
+            <NextLink href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
               {t('admin')}
-            </Link>
+            </NextLink>
           )}
         </nav>
 

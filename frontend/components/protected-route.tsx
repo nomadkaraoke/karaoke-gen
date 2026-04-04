@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/routing"
 import { useAuth } from "@/lib/auth"
 
 interface ProtectedRouteProps {

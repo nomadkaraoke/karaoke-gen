@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift } from "lucide-react"
-import Link from "next/link"
+import { Link } from "@/i18n/routing"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

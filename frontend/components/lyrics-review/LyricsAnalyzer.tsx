@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/routing'
 import { Button } from '@/components/ui/button'
 import { Video, Check, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'

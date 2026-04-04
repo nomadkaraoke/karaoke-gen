@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter as useNextRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Eye, Shield } from "lucide-react"
@@ -11,7 +11,7 @@ import { Eye, Shield } from "lucide-react"
  */
 export function ImpersonationBanner() {
   const { isImpersonating, impersonatedUserEmail, endImpersonation } = useAuth()
-  const router = useRouter()
+  const router = useNextRouter()
 
   if (!isImpersonating) {
     return null

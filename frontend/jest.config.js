@@ -36,5 +36,13 @@ const customJestConfig = {
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(customJestConfig)
+// We must override transformIgnorePatterns AFTER next/jest generates its config,
+// because next/jest's defaults would otherwise re-add next-intl to the ignore list.
+module.exports = async () => {
+  const jestConfig = await createJestConfig(customJestConfig)()
+  jestConfig.transformIgnorePatterns = [
+    '/node_modules/(?!(next-intl|use-intl|@formatjs|intl-messageformat)/)',
+  ]
+  return jestConfig
+}
 

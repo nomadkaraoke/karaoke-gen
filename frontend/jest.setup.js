@@ -36,6 +36,29 @@ jest.mock('next-intl', () => ({
   NextIntlClientProvider: ({ children }) => children,
 }))
 
+// Mock @/i18n/routing — locale-aware navigation primitives
+jest.mock('@/i18n/routing', () => {
+  const React = require('react')
+  return {
+    routing: {
+      locales: ['en', 'es', 'de'],
+      defaultLocale: 'en',
+    },
+    Link: ({ children, href, ...props }) =>
+      React.createElement('a', { href, ...props }, children),
+    redirect: jest.fn(),
+    usePathname: () => '/',
+    useRouter: () => ({
+      push: jest.fn(),
+      replace: jest.fn(),
+      prefetch: jest.fn(),
+      back: jest.fn(),
+      forward: jest.fn(),
+      refresh: jest.fn(),
+    }),
+  }
+})
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
