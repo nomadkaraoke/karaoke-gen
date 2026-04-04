@@ -9,4 +9,4 @@
 # Referral links: /r/CODE → landing page with ?ref=CODE
 # The ReferralCapture component on the landing page stores the code in a cookie.
 # This avoids the static export limitation with dynamic routes.
-/r/:code /en/?ref=:code 302
+/r/* /en/?ref=:splat 302
