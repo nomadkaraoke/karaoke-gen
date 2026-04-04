@@ -24,6 +24,7 @@ import { api, setAccessToken, getAccessToken, CreditPackage } from '@/lib/api';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { WarmingUpLoader } from '@/components/WarmingUpLoader';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTenant } from '@/lib/tenant';
 import { TenantLandingPage } from '@/components/TenantLandingPage';
 
@@ -211,6 +212,7 @@ function ConsumerLandingPage() {
             <img src="/nomad-karaoke-logo.svg" alt="Nomad Karaoke" className="h-10" />
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <ThemeToggle />
             <button
               onClick={() => setShowAuthDialog(true)}

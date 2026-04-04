@@ -29,6 +29,7 @@ import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
 import { PushNotificationPrompt } from "@/components/push-notification-prompt"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
+import LanguageSwitcher from "@/components/LanguageSwitcher"
 import { useTheme } from "@/lib/theme"
 import { useTenant } from "@/lib/tenant"
 import {
@@ -292,6 +293,7 @@ function AppPageContent() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <LanguageSwitcher />
             <AuthStatus />
             {mounted && (
               <TooltipProvider>
