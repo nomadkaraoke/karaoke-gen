@@ -414,11 +414,12 @@ class ReferralService:
         )
         payouts = [doc.to_dict() for doc in payouts_query.stream()]
 
-        pending_balance = sum(
-            e.get("earning_amount_cents", 0) for e in earnings if e.get("status") == "pending"
-        )
+        # Compute pending balance from ALL pending earnings (not limited to recent)
+        pending_earnings = self.get_pending_earnings(user_email)
+        pending_balance = sum(e.get("earning_amount_cents", 0) for e in pending_earnings)
         total_earned = link.stats.total_earned_cents
-        total_paid = sum(p.get("amount_cents", 0) for p in payouts if p.get("status") == "completed")
+        # total_paid = total_earned - pending (since total_earned tracks all time)
+        total_paid = total_earned - pending_balance
 
         # Check Connect status
         from backend.services.user_service import get_user_service

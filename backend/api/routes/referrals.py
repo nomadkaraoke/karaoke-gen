@@ -100,15 +100,19 @@ async def update_my_link(
 @router.post("/me/connect")
 async def start_stripe_connect(auth=Depends(require_auth)):
     """Start Stripe Connect onboarding for the authenticated user."""
+    # Check if user already has a Connect account
+    from backend.services.user_service import get_user_service
+    user_service = get_user_service()
+    user = user_service.get_user(auth.user_email)
+    if user and user.stripe_connect_account_id:
+        raise HTTPException(status_code=400, detail="Stripe Connect account already configured")
+
     service = get_referral_service()
     account_id, onboarding_url = service.create_connect_account(auth.user_email)
 
     if not account_id:
         raise HTTPException(status_code=500, detail="Failed to create Stripe Connect account")
 
-    # Save the Connect account ID to the user doc
-    from backend.services.user_service import get_user_service
-    user_service = get_user_service()
     user_service.update_user(auth.user_email, stripe_connect_account_id=account_id)
 
     return {"account_id": account_id, "onboarding_url": onboarding_url}
@@ -131,9 +135,13 @@ async def create_vanity_link(
     service = get_referral_service()
     success, link, message = service.create_vanity_link(
         code=request.vanity_code,
-        owner_email=auth.user_email,
+        owner_email=request.owner_email,
         display_name=request.display_name,
         custom_message=request.custom_message,
+        discount_percent=request.discount_percent,
+        kickback_percent=request.kickback_percent,
+        discount_duration_days=request.discount_duration_days,
+        earning_duration_days=request.earning_duration_days,
     )
 
     if not success:
@@ -166,13 +174,9 @@ async def update_link(
     """Admin: update any referral link's settings."""
     service = get_referral_service()
 
-    update_fields = {}
-    if updates.display_name is not None:
-        update_fields["display_name"] = updates.display_name
-    if updates.custom_message is not None:
-        update_fields["custom_message"] = updates.custom_message
-    if updates.enabled is not None:
-        update_fields["enabled"] = updates.enabled
+    update_fields = {
+        k: v for k, v in updates.model_dump().items() if v is not None
+    }
 
     if not update_fields:
         return {"ok": True, "message": "No changes"}

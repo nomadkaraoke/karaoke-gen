@@ -116,13 +116,13 @@ export default function ReferralDashboard() {
                 {t('save')}
               </button>
               <button onClick={() => setEditing(false)} className="px-4 py-2 rounded text-sm" style={{ backgroundColor: 'var(--secondary)' }}>
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
         ) : (
           <button onClick={() => setEditing(true)} className="text-sm text-primary hover:underline">
-            Edit display name & message
+            {t('editProfile')}
           </button>
         )}
       </div>

@@ -1254,6 +1254,8 @@
     "interstitialDiscount": "Enjoy {percent}% off all credit purchases for {days} days",
     "interstitialCta": "Get Started",
     "discountBadge": "{percent}% referral discount",
-    "discountActive": "Referral discount active — {percent}% off for {days} more days"
+    "discountActive": "Referral discount active — {percent}% off for {days} more days",
+    "cancel": "Cancel",
+    "editProfile": "Edit display name & message"
   }
 }

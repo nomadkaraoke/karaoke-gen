@@ -214,8 +214,11 @@ class TestReferralAPIModels:
     """Test API request/response models exist and have correct shapes."""
 
     def test_create_request(self):
-        req = CreateReferralLinkRequest(display_name="My Link")
+        req = CreateReferralLinkRequest(owner_email="user@example.com", display_name="My Link")
         assert req.display_name == "My Link"
+        assert req.owner_email == "user@example.com"
+        assert req.discount_percent == 10
+        assert req.kickback_percent == 20
 
     def test_update_request(self):
         req = UpdateReferralLinkRequest(enabled=False)

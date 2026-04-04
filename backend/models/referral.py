@@ -96,16 +96,25 @@ class ReferralPayout(BaseModel):
 # ============================================================================
 
 class CreateReferralLinkRequest(BaseModel):
-    """Request to create a referral link."""
+    """Admin request to create a vanity referral link."""
+    vanity_code: Optional[str] = None
+    owner_email: str
     display_name: Optional[str] = None
     custom_message: Optional[str] = None
-    vanity_code: Optional[str] = None  # If set, creates a vanity link
+    discount_percent: int = 10
+    kickback_percent: int = 20
+    discount_duration_days: int = 30
+    earning_duration_days: int = 365
 
 
 class UpdateReferralLinkRequest(BaseModel):
-    """Request to update a referral link."""
+    """Request to update a referral link (user: name/message only, admin: all fields)."""
     display_name: Optional[str] = None
     custom_message: Optional[str] = None
+    discount_percent: Optional[int] = None
+    kickback_percent: Optional[int] = None
+    discount_duration_days: Optional[int] = None
+    earning_duration_days: Optional[int] = None
     enabled: Optional[bool] = None
 
 

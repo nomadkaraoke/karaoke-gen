@@ -221,7 +221,11 @@ class TestStripeConnect:
         mock_service.create_connect_account.return_value = ("acct_123", "https://connect.stripe.com/onboard")
         mock_get_service.return_value = mock_service
 
+        # Mock user without existing Connect account
+        mock_user = Mock()
+        mock_user.stripe_connect_account_id = None
         mock_user_service = Mock()
+        mock_user_service.get_user.return_value = mock_user
         mock_get_user_svc.return_value = mock_user_service
 
         response = client.post("/api/referrals/me/connect")
@@ -252,7 +256,7 @@ class TestAdminVanityLink:
 
         response = client.post(
             "/api/referrals/admin/vanity",
-            json={"vanity_code": "karaoke-king", "display_name": "King of Karaoke"},
+            json={"vanity_code": "karaoke-king", "owner_email": "king@example.com", "display_name": "King of Karaoke"},
         )
 
         assert response.status_code == 200
@@ -267,7 +271,7 @@ class TestAdminVanityLink:
 
         response = client.post(
             "/api/referrals/admin/vanity",
-            json={"display_name": "No Code"},
+            json={"owner_email": "user@example.com", "display_name": "No Code"},
         )
 
         assert response.status_code == 400
