@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -69,6 +70,7 @@ const SyncControls = memo(function SyncControls({
   onTapEnd,
   isTapping = false,
 }: SyncControlsProps) {
+  const t = useTranslations('lyricsReview.synchronizer.controls')
   return (
     <div className="flex flex-col gap-2">
       {/* Row 1: Playback & Sync Mode Controls */}
@@ -76,11 +78,11 @@ const SyncControls = memo(function SyncControls({
         {/* Playback controls */}
         <Button variant="outline" size="sm" onClick={onPlay} disabled={isPlaying}>
           <Play className="h-4 w-4 mr-1" />
-          Play
+          {t('play')}
         </Button>
         <Button variant="outline" size="sm" onClick={onStop} disabled={!isPlaying}>
           <Square className="h-4 w-4 mr-1" />
-          Stop
+          {t('stop')}
         </Button>
 
         {!isMobile && <Separator orientation="vertical" className="h-6" />}
@@ -90,7 +92,7 @@ const SyncControls = memo(function SyncControls({
           <>
             <Button variant="destructive" size="sm" onClick={onStartSync}>
               <Square className="h-4 w-4 mr-1" />
-              Stop Sync
+              {t('stopSync')}
             </Button>
             <Button
               variant={isPaused ? 'default' : 'outline'}
@@ -99,7 +101,7 @@ const SyncControls = memo(function SyncControls({
               className={isPaused ? 'bg-green-600 hover:bg-green-700' : ''}
             >
               {isPaused ? <Play className="h-4 w-4 mr-1" /> : <Pause className="h-4 w-4 mr-1" />}
-              {isPaused ? 'Resume' : 'Pause'}
+              {isPaused ? t('resume') : t('pause')}
             </Button>
             {/* TAP button for mobile - no spacebar on mobile */}
             {isMobile && !isPaused && onTapStart && onTapEnd && (
@@ -119,14 +121,14 @@ const SyncControls = memo(function SyncControls({
                 className={isTapping ? 'bg-yellow-500' : 'bg-green-600'}
               >
                 <Pointer className="h-4 w-4 mr-1" />
-                {isTapping ? 'Release' : 'TAP'}
+                {isTapping ? t('release') : t('tap')}
               </Button>
             )}
           </>
         ) : (
           <Button size="sm" onClick={onStartSync}>
             <PlayCircle className="h-4 w-4 mr-1" />
-            Start Sync
+            {t('startSync')}
           </Button>
         )}
       </div>
@@ -140,7 +142,7 @@ const SyncControls = memo(function SyncControls({
           disabled={isManualSyncing && !isPaused}
         >
           <Trash2 className="h-4 w-4 mr-1" />
-          Clear Sync
+          {t('clearSync')}
         </Button>
 
         <Button
@@ -150,7 +152,7 @@ const SyncControls = memo(function SyncControls({
           disabled={isManualSyncing && !isPaused}
         >
           <FileEdit className="h-4 w-4 mr-1" />
-          Edit Lyrics
+          {t('editLyrics')}
         </Button>
 
         {!isMobile && <Separator orientation="vertical" className="h-6" />}
@@ -162,7 +164,7 @@ const SyncControls = memo(function SyncControls({
           disabled={!canUnsyncFromCursor || (isManualSyncing && !isPaused)}
         >
           <CircleSlash className="h-4 w-4 mr-1" />
-          Unsync from Cursor
+          {t('unsyncFromCursor')}
         </Button>
 
         <Button
@@ -172,7 +174,7 @@ const SyncControls = memo(function SyncControls({
           disabled={!hasSelectedWords || selectedWordCount !== 1}
         >
           <Edit3 className="h-4 w-4 mr-1" />
-          Edit Word
+          {t('editWord')}
         </Button>
 
         <Button
@@ -183,7 +185,9 @@ const SyncControls = memo(function SyncControls({
           className="text-destructive hover:text-destructive"
         >
           <Trash2 className="h-4 w-4 mr-1" />
-          Delete{hasSelectedWords && selectedWordCount > 0 ? ` (${selectedWordCount})` : ''}
+          {hasSelectedWords && selectedWordCount > 0
+            ? t('deleteCount', { count: selectedWordCount })
+            : t('deleteCount', { count: selectedWordCount }).split(' (')[0]}
         </Button>
       </div>
     </div>

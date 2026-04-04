@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -40,61 +41,17 @@ interface CorrectionAnnotationModalProps {
   gapId?: string
 }
 
-const ANNOTATION_TYPES: { value: CorrectionAnnotationType; label: string; description: string }[] = [
-  {
-    value: 'SOUND_ALIKE',
-    label: 'Sound-Alike Error',
-    description: 'Homophones or similar-sounding words (e.g., "out" vs "now")',
-  },
-  {
-    value: 'BACKGROUND_VOCALS',
-    label: 'Background Vocals',
-    description: 'Backing vocals that should be removed from karaoke',
-  },
-  {
-    value: 'EXTRA_WORDS',
-    label: 'Extra Filler Words',
-    description: 'Transcription added words like "And", "But", "Well"',
-  },
-  {
-    value: 'PUNCTUATION_ONLY',
-    label: 'Punctuation/Style Only',
-    description: 'Only punctuation or capitalization differences',
-  },
-  {
-    value: 'REPEATED_SECTION',
-    label: 'Repeated Section',
-    description: 'Chorus or verse repetition not in condensed references',
-  },
-  {
-    value: 'COMPLEX_MULTI_ERROR',
-    label: 'Complex Multi-Error',
-    description: 'Multiple different error types in one section',
-  },
-  {
-    value: 'AMBIGUOUS',
-    label: 'Ambiguous',
-    description: 'Unclear without listening to audio',
-  },
-  {
-    value: 'NO_ERROR',
-    label: 'No Error',
-    description: 'Transcription matches at least one reference source',
-  },
-  {
-    value: 'MANUAL_EDIT',
-    label: 'Manual Edit',
-    description: 'Human-initiated correction not from detected gap',
-  },
+const ANNOTATION_TYPE_KEYS: { value: CorrectionAnnotationType; labelKey: string; descKey: string }[] = [
+  { value: 'SOUND_ALIKE', labelKey: 'soundAlike', descKey: 'soundAlikeDesc' },
+  { value: 'BACKGROUND_VOCALS', labelKey: 'backgroundVocals', descKey: 'backgroundVocalsDesc' },
+  { value: 'EXTRA_WORDS', labelKey: 'extraFiller', descKey: 'extraFillerDesc' },
+  { value: 'PUNCTUATION_ONLY', labelKey: 'punctuation', descKey: 'punctuationDesc' },
+  { value: 'REPEATED_SECTION', labelKey: 'repeatedSection', descKey: 'repeatedSectionDesc' },
+  { value: 'COMPLEX_MULTI_ERROR', labelKey: 'complexMultiError', descKey: 'complexMultiErrorDesc' },
+  { value: 'AMBIGUOUS', labelKey: 'ambiguous', descKey: 'ambiguousDesc' },
+  { value: 'NO_ERROR', labelKey: 'noError', descKey: 'noErrorDesc' },
+  { value: 'MANUAL_EDIT', labelKey: 'manualEdit', descKey: 'manualEditDesc' },
 ]
-
-const CONFIDENCE_LABELS: Record<number, string> = {
-  1: '1 - Very Uncertain',
-  2: '2 - Somewhat Uncertain',
-  3: '3 - Neutral',
-  4: '4 - Fairly Confident',
-  5: '5 - Very Confident',
-}
 
 export default function CorrectionAnnotationModal({
   open,
@@ -112,6 +69,9 @@ export default function CorrectionAnnotationModal({
   sessionId,
   gapId,
 }: CorrectionAnnotationModalProps) {
+  const t = useTranslations('lyricsReview.modals.correctionAnnotation')
+  const tTypes = useTranslations('lyricsReview.modals.correctionAnnotation.types')
+  const tConf = useTranslations('lyricsReview.modals.correctionAnnotation.confidenceLevels')
   const [annotationType, setAnnotationType] = useState<CorrectionAnnotationType>('MANUAL_EDIT')
   const [actionTaken, setActionTaken] = useState<CorrectionAction>('REPLACE')
   const [confidence, setConfidence] = useState(3)
@@ -190,26 +150,26 @@ export default function CorrectionAnnotationModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Annotate Your Correction</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Help improve the AI by explaining your correction
+            {t('description')}
           </p>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Show what changed */}
           <div className="bg-muted p-4 rounded-lg">
-            <h4 className="text-sm font-medium mb-2">Your Correction:</h4>
+            <h4 className="text-sm font-medium mb-2">{t('yourCorrection')}</h4>
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <span className="text-xs text-destructive">Original:</span>
+                <span className="text-xs text-destructive">{t('original')}</span>
                 <p className="font-mono text-sm line-through text-destructive">
                   {originalText || '(empty)'}
                 </p>
               </div>
               <span className="text-lg">→</span>
               <div className="flex-1">
-                <span className="text-xs text-green-500">Corrected:</span>
+                <span className="text-xs text-green-500">{t('corrected')}</span>
                 <p className="font-mono text-sm font-bold text-green-500">
                   {correctedText || '(empty)'}
                 </p>
@@ -221,19 +181,19 @@ export default function CorrectionAnnotationModal({
           {agenticProposal && (
             <Alert variant={agenticAgreed ? 'default' : 'default'}>
               <AlertDescription>
-                <h4 className="font-medium mb-2">AI Suggestion:</h4>
+                <h4 className="font-medium mb-2">{t('aiSuggestion')}</h4>
                 <p className="text-sm">
-                  Category: <strong>{agenticProposal.gap_category}</strong>
+                  {t('category')} <strong>{agenticProposal.gap_category}</strong>
                 </p>
                 <p className="text-sm">
-                  Action: <strong>{agenticProposal.action}</strong>
+                  {t('action')} <strong>{agenticProposal.action}</strong>
                   {agenticProposal.replacement_text && ` → "${agenticProposal.replacement_text}"`}
                 </p>
-                <p className="text-sm">Reason: {agenticProposal.reason}</p>
+                <p className="text-sm">{t('reason')} {agenticProposal.reason}</p>
                 <p className="text-sm mt-2">
                   {agenticAgreed
-                    ? '✓ Your correction matches the AI suggestion'
-                    : '✗ Your correction differs from the AI suggestion'}
+                    ? `✓ ${t('matchesAI')}`
+                    : `✗ ${t('differsFromAI')}`}
                 </p>
               </AlertDescription>
             </Alert>
@@ -242,7 +202,7 @@ export default function CorrectionAnnotationModal({
           {/* Reference sources */}
           {referenceSources.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium mb-2">Reference Sources Consulted:</h4>
+              <h4 className="text-sm font-medium mb-2">{t('referenceSources')}</h4>
               <div className="flex flex-wrap gap-2">
                 {referenceSources.map((source) => (
                   <Badge key={source} variant="secondary">
@@ -255,17 +215,17 @@ export default function CorrectionAnnotationModal({
 
           {/* Annotation type */}
           <div className="space-y-2">
-            <Label>Correction Type *</Label>
+            <Label>{t('correctionType')}</Label>
             <Select value={annotationType} onValueChange={(v) => setAnnotationType(v as CorrectionAnnotationType)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select correction type" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ANNOTATION_TYPES.map((type) => (
+                {ANNOTATION_TYPE_KEYS.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     <div>
-                      <p className="font-medium">{type.label}</p>
-                      <p className="text-xs text-muted-foreground">{type.description}</p>
+                      <p className="font-medium">{tTypes(type.labelKey)}</p>
+                      <p className="text-xs text-muted-foreground">{tTypes(type.descKey)}</p>
                     </div>
                   </SelectItem>
                 ))}
@@ -275,7 +235,7 @@ export default function CorrectionAnnotationModal({
 
           {/* Confidence slider */}
           <div className="space-y-2">
-            <Label>Confidence in Your Correction *</Label>
+            <Label>{t('confidence')}</Label>
             <Slider
               value={[confidence]}
               min={1}
@@ -283,12 +243,12 @@ export default function CorrectionAnnotationModal({
               step={1}
               onValueChange={([v]) => setConfidence(v)}
             />
-            <p className="text-sm text-muted-foreground">{CONFIDENCE_LABELS[confidence]}</p>
+            <p className="text-sm text-muted-foreground">{tConf(String(confidence))}</p>
           </div>
 
           {/* Reasoning text area */}
           <div className="space-y-2">
-            <Label htmlFor="reasoning">Reasoning *</Label>
+            <Label htmlFor="reasoning">{t('reasoning')}</Label>
             <Textarea
               id="reasoning"
               value={reasoning}
@@ -296,21 +256,21 @@ export default function CorrectionAnnotationModal({
                 setReasoning(e.target.value)
                 setError('')
               }}
-              placeholder="Explain why this correction is needed (minimum 10 characters)..."
+              placeholder={t('reasoningPlaceholder')}
               rows={4}
               className={error ? 'border-destructive' : ''}
             />
             <p className={`text-sm ${error ? 'text-destructive' : 'text-muted-foreground'}`}>
-              {error || `${reasoning.length}/10 minimum characters`}
+              {error || t('minChars', { count: reasoning.length })}
             </p>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleSkipAndClose}>
-            Skip
+            {t('skip')}
           </Button>
-          <Button onClick={handleSave}>Save & Continue</Button>
+          <Button onClick={handleSave}>{t('saveAndContinue')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

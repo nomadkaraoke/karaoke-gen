@@ -18,12 +18,15 @@ import { useAdminSettings } from "@/lib/admin-settings"
 import { AuthDialog } from "./AuthDialog"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
+import { useTranslations } from "next-intl"
 
 interface AuthStatusProps {
   onAuthChange?: () => void
 }
 
 export function AuthStatus({ onAuthChange }: AuthStatusProps) {
+  const t = useTranslations('auth.status')
+  const tHeader = useTranslations('header')
   const { user, logout } = useAuth()
   const { showTestData, setShowTestData } = useAdminSettings()
   const [showAuthDialog, setShowAuthDialog] = useState(false)
@@ -77,10 +80,10 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
                 handleBuyCredits()
               }}
               className="flex items-center gap-1 text-warning font-medium hover:text-warning/80 transition-colors cursor-pointer"
-              title="Buy more credits"
+              title={t('buyMoreCredits')}
             >
               <Coins className="w-3 h-3" />
-              {user.credits} {user.credits === 1 ? 'credit' : 'credits'}
+              {t('creditsAvailable', { count: user.credits })}
             </span>
           </Button>
         </DropdownMenuTrigger>
@@ -88,7 +91,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
           <DropdownMenuLabel className="text-muted-foreground font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium text-foreground">
-                {user.display_name || "Karaoke Fan"}
+                {user.display_name || t('defaultName')}
               </p>
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
@@ -99,14 +102,14 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             disabled
           >
             <Coins className="w-4 h-4 mr-2 text-warning" />
-            <span>{user.credits} credits available</span>
+            <span>{t('creditsAvailable', { count: user.credits })}</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={handleBuyCredits}
             className="text-muted-foreground focus:text-foreground focus:bg-secondary"
           >
             <CreditCard className="w-4 h-4 mr-2" />
-            <span>Buy More Credits</span>
+            <span>{t('buyMoreCredits')}</span>
           </DropdownMenuItem>
           {user.feedback_eligible && (
             <DropdownMenuItem
@@ -114,7 +117,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
               className="text-green-500 focus:text-green-400 focus:bg-secondary"
             >
               <Gift className="w-4 h-4 mr-2" />
-              <span>Earn 1 Free Credit</span>
+              <span>{t('earnFreeCredit')}</span>
             </DropdownMenuItem>
           )}
           {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
@@ -123,7 +126,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
               <DropdownMenuItem asChild className="text-muted-foreground focus:text-foreground focus:bg-secondary">
                 <Link href="/admin">
                   <Shield className="w-4 h-4 mr-2" />
-                  <span>Admin Dashboard</span>
+                  <span>{tHeader('adminDashboard')}</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -131,7 +134,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
                 className="text-muted-foreground focus:text-foreground focus:bg-secondary"
               >
                 <FlaskConical className="w-4 h-4 mr-2" />
-                <span className="flex-1">Show Test Jobs</span>
+                <span className="flex-1">{t('showTestJobs')}</span>
                 <Switch
                   checked={showTestData}
                   onCheckedChange={setShowTestData}
@@ -146,7 +149,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             className="text-destructive focus:text-destructive focus:bg-secondary"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            <span>Sign Out</span>
+            <span>{t('signOut')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -171,7 +174,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
         className="text-warning hover:text-warning/80 min-h-[40px] px-2 sm:px-3"
       >
         <KeyRound className="w-4 h-4 sm:mr-2" />
-        <span className="hidden sm:inline">Login</span>
+        <span className="hidden sm:inline">{t('login')}</span>
       </Button>
       <AuthDialog
         open={showAuthDialog}

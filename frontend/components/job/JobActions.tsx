@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from 'next-intl'
 import { Job, api } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ interface JobActionsProps {
 }
 
 export function JobActions({ job, onRefresh }: JobActionsProps) {
+  const t = useTranslations('jobActions')
   const [isRetrying, setIsRetrying] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const { toast } = useToast()
@@ -28,8 +30,8 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
     try {
       await api.retryJob(job.job_id)
       toast({
-        title: "Job retry started",
-        description: "The job is being retried. Refreshing status...",
+        title: t('jobRetryStarted'),
+        description: t('jobRetryStartedDesc'),
         variant: "default",
       })
       onRefresh()
@@ -42,7 +44,7 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
                           "Failed to retry job. Please try again."
 
       toast({
-        title: "Retry failed",
+        title: t('retryFailed'),
         description: errorMessage,
         variant: "destructive",
       })
@@ -52,7 +54,7 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure you want to permanently cancel and delete this job? This cannot be undone.")) return
+    if (!confirm(t('permanentlyCancel'))) return
 
     // Statuses where the backend does NOT refund credits
     const noRefundStatuses = ["complete", "prep_complete", "failed", "cancelled"]
@@ -65,13 +67,13 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
         await fetchUser()
         const remaining = useAuth.getState().user?.credits ?? 0
         toast({
-          title: "Credit refunded",
-          description: `1 credit returned to your account. ${remaining} remaining.`,
+          title: t('creditRefunded'),
+          description: t('creditRefundedDesc', { remaining }),
         })
       } else {
         toast({
-          title: "Job deleted",
-          description: "The job has been permanently deleted.",
+          title: t('jobDeleted'),
+          description: t('jobDeletedDesc'),
         })
       }
       onRefresh()
@@ -83,7 +85,7 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
                           "Failed to delete job. Please try again."
 
       toast({
-        title: "Delete failed",
+        title: t('deleteFailed'),
         description: errorMessage,
         variant: "destructive",
       })
@@ -113,7 +115,7 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
           ) : (
             <Trash2 className="w-3 h-3 mr-1" />
           )}
-          Delete
+          {t('delete')}
         </Button>
       )}
 
@@ -131,7 +133,7 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
           ) : (
             <RotateCcw className="w-3 h-3 mr-1" />
           )}
-          Retry
+          {t('retry')}
         </Button>
       )}
     </div>

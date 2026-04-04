@@ -1,5 +1,6 @@
 import type { JobStatus } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
+import { useTranslations } from "next-intl"
 
 interface StatusBadgeProps {
   status: JobStatus
@@ -7,6 +8,7 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
+  const t = useTranslations('status')
   const getStatusColor = () => {
     switch (status) {
       case "queued":
@@ -28,17 +30,17 @@ export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
   const getStatusLabel = () => {
     switch (status) {
       case "queued":
-        return "Queued"
+        return t('queued')
       case "processing":
-        return "Processing"
+        return t('processing')
       case "awaiting_review":
-        return "Awaiting Review"
+        return t('awaitingReview')
       case "awaiting_instrumental":
-        return "Select Instrumental"
+        return t('selectInstrumental')
       case "completed":
-        return "Completed"
+        return t('completed')
       case "failed":
-        return "Failed"
+        return t('failed')
       default:
         return status
     }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -38,6 +39,7 @@ export default function GuidancePanel({
   statsVisible,
   onStatsToggle,
 }: GuidancePanelProps) {
+  const t = useTranslations('lyricsReview.guidance')
   const [guidanceDismissed, setGuidanceDismissed] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('lyricsReviewGuidanceDismissed') === 'true'
@@ -126,21 +128,21 @@ export default function GuidancePanel({
           onClick={onMetricClick.anchor}
         >
           <span className="w-2.5 h-2.5 rounded-full bg-blue-500/60 inline-block" />
-          <span className="text-muted-foreground">Matched</span>
+          <span className="text-muted-foreground">{t('matched')}</span>
         </button>
         <button
           className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
           onClick={onMetricClick.uncorrected}
         >
           <span className="w-2.5 h-2.5 rounded-full bg-orange-500/60 inline-block" />
-          <span className="text-muted-foreground">Gaps (needs review)</span>
+          <span className="text-muted-foreground">{t('gapsNeedsReview')}</span>
         </button>
         <button
           className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
           onClick={onMetricClick.corrected}
         >
           <span className="w-2.5 h-2.5 rounded-full bg-green-500/60 inline-block" />
-          <span className="text-muted-foreground">Corrected</span>
+          <span className="text-muted-foreground">{t('corrected')}</span>
         </button>
 
         <div className="flex items-center gap-2 ml-auto">
@@ -149,7 +151,7 @@ export default function GuidancePanel({
               className="text-amber-500 hover:text-amber-400 transition-colors text-xs"
               onClick={handleShowTips}
             >
-              Show tips
+              {t('showTips')}
             </button>
           )}
           <button
@@ -161,7 +163,7 @@ export default function GuidancePanel({
             )}
             onClick={onStatsToggle}
           >
-            {statsVisible ? 'Hide Stats' : 'Stats'}
+            {statsVisible ? t('hideStats') : t('stats')}
           </button>
         </div>
       </div>
@@ -172,16 +174,16 @@ export default function GuidancePanel({
           <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground flex-1 leading-relaxed space-y-1.5">
             {totalGaps === 0 && Object.keys(data.reference_lyrics).length === 0 ? (
-              <p>No reference lyrics were found for this track. You can still review the transcription and click any word to edit. Use the <strong>Reference Lyrics</strong> panel on the right to search for lyrics with a different artist/title.</p>
+              <p>{t('noReferenceFound')}</p>
             ) : totalGaps === 0 ? (
-              <p>All lyrics matched the reference — no corrections needed. You can still click any word to edit.</p>
+              <p>{t('allMatched')}</p>
             ) : (
               <>
-                <p>The <strong>Synced Lyrics</strong> on the left are what will appear in the karaoke video.</p>
-                <p>The orange highlighted words are <strong>gaps</strong> — sections that couldn&apos;t be matched to the reference lyrics and may contain errors (e.g. mis-heard words which sound similar).</p>
-                <p>Use <kbd className="px-1 py-0.5 rounded bg-muted text-[0.65rem] font-mono">N</kbd> and <kbd className="px-1 py-0.5 rounded bg-muted text-[0.65rem] font-mono">P</kbd> to jump between gaps. For each one, click play beside the line and compare what you hear with the reference lyrics on the right, then click a word to edit or delete it.</p>
-                <p>Watch out for phantom words like &quot;and&quot; at the start or end of lines — the transcription often adds these.</p>
-                <p>Try the <strong>Timeline</strong> view to spot any unusually long words (10+ seconds), which usually indicate a timing problem.</p>
+                <p>{t('syncedLyricsOnLeft')}</p>
+                <p>{t('orangeHighlightedWords')}</p>
+                <p>{t('useNAndP')}</p>
+                <p>{t('watchOutForPhantomWords')}</p>
+                <p>{t('tryTimelineView')}</p>
               </>
             )}
             <a
@@ -191,7 +193,7 @@ export default function GuidancePanel({
               className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors mt-1"
             >
               <ExternalLink className="h-3 w-3" />
-              Watch full tutorial
+              {t('watchFullTutorial')}
             </a>
           </div>
           <button
@@ -209,7 +211,7 @@ export default function GuidancePanel({
         <div className={cn('flex gap-2 overflow-hidden', isMobile ? 'flex-col' : 'flex-row', isMobile ? 'h-auto' : 'h-[140px]')}>
           {/* Handler panel */}
           <Card className={cn('p-2', isMobile ? 'w-full' : 'w-[280px] min-w-[280px]')}>
-            <h4 className="text-xs text-muted-foreground mb-1">Correction Handlers</h4>
+            <h4 className="text-xs text-muted-foreground mb-1">{t('correctionHandlers')}</h4>
             <div className="flex-1 overflow-auto flex flex-col">
               {availableHandlers.map((handler: { id: string; name: string; description: string }) => (
                 <div key={handler.id} className="mb-1">
@@ -247,21 +249,21 @@ export default function GuidancePanel({
             >
               <div className="flex items-center gap-1 mb-0.5">
                 <div className="w-3 h-3 rounded bg-blue-500/25 shrink-0" />
-                <span className="text-xs text-muted-foreground truncate">Anchor Sequences</span>
+                <span className="text-xs text-muted-foreground truncate">{t('anchorSequences')}</span>
               </div>
               <span className="text-lg font-semibold leading-tight">
                 {data.metadata.anchor_sequences_count ?? '-'} ({anchorPercentage}%)
               </span>
               <span className="text-[10px] text-muted-foreground leading-tight">
-                Matched sections between transcription and reference
+                {t('anchorSequencesDesc')}
               </span>
               <div className="mt-auto space-y-0 text-[10px]">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Words in Anchors</span>
+                  <span className="text-muted-foreground">{t('wordsInAnchors')}</span>
                   <span>{anchorWordCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Multi-source Matches</span>
+                  <span className="text-muted-foreground">{t('multiSourceMatches')}</span>
                   <span>{multiSourceAnchors}</span>
                 </div>
               </div>
@@ -273,21 +275,21 @@ export default function GuidancePanel({
             >
               <div className="flex items-center gap-1 mb-0.5">
                 <div className="w-3 h-3 rounded bg-green-500/25 shrink-0" />
-                <span className="text-xs text-muted-foreground truncate">Corrected Gaps</span>
+                <span className="text-xs text-muted-foreground truncate">{t('correctedGaps')}</span>
               </div>
               <span className="text-lg font-semibold text-green-500 leading-tight">
                 {correctedGapCount} ({correctedPercentage}%)
               </span>
               <span className="text-[10px] text-muted-foreground leading-tight">
-                Successfully corrected sections
+                {t('correctedGapsDesc')}
               </span>
               <div className="mt-auto space-y-0 text-[10px]">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Words Replaced</span>
+                  <span className="text-muted-foreground">{t('wordsReplaced')}</span>
                   <span>{replacedCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Words Added / Deleted</span>
+                  <span className="text-muted-foreground">{t('wordsAddedDeleted')}</span>
                   <span>+{addedCount} / -{deletedCount}</span>
                 </div>
               </div>
@@ -299,21 +301,21 @@ export default function GuidancePanel({
             >
               <div className="flex items-center gap-1 mb-0.5">
                 <div className="w-3 h-3 rounded bg-orange-500/25 shrink-0" />
-                <span className="text-xs text-muted-foreground truncate">Uncorrected Gaps</span>
+                <span className="text-xs text-muted-foreground truncate">{t('uncorrectedGaps')}</span>
               </div>
               <span className="text-lg font-semibold text-amber-500 leading-tight">
                 {uncorrectedGapCount} ({uncorrectedPercentage}%)
               </span>
               <span className="text-[10px] text-muted-foreground leading-tight">
-                Sections that may need manual review
+                {t('uncorrectedGapsDesc')}
               </span>
               <div className="mt-auto space-y-0 text-[10px]">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Words Uncorrected</span>
+                  <span className="text-muted-foreground">{t('wordsUncorrected')}</span>
                   <span>{uncorrectedWordCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Number of Gaps</span>
+                  <span className="text-muted-foreground">{t('numberOfGaps')}</span>
                   <span>{uncorrectedGaps.length}</span>
                 </div>
               </div>

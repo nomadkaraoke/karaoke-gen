@@ -226,7 +226,7 @@ describe('PushNotificationToggle', () => {
 
       render(<PushNotificationToggle />)
 
-      expect(screen.getByText('Enable')).toBeInTheDocument()
+      expect(screen.getByText('Enable notifications')).toBeInTheDocument()
     })
 
     it('shows Disable button when subscribed', () => {
@@ -237,7 +237,7 @@ describe('PushNotificationToggle', () => {
 
       render(<PushNotificationToggle />)
 
-      expect(screen.getByText('Disable')).toBeInTheDocument()
+      expect(screen.getByText('Disable on this device')).toBeInTheDocument()
     })
 
     it('calls subscribe when Enable clicked', async () => {
@@ -250,7 +250,7 @@ describe('PushNotificationToggle', () => {
 
       render(<PushNotificationToggle />)
 
-      fireEvent.click(screen.getByText('Enable'))
+      fireEvent.click(screen.getByText('Enable notifications'))
 
       await waitFor(() => {
         expect(mockSubscribe).toHaveBeenCalledTimes(1)
@@ -267,7 +267,7 @@ describe('PushNotificationToggle', () => {
 
       render(<PushNotificationToggle />)
 
-      fireEvent.click(screen.getByText('Disable'))
+      fireEvent.click(screen.getByText('Disable on this device'))
 
       await waitFor(() => {
         expect(mockUnsubscribe).toHaveBeenCalledTimes(1)

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -96,6 +97,7 @@ export default function Header({
   onAcceptHighConfidenceCorrections,
   onRevertAllCorrections,
 }: HeaderProps) {
+  const t = useTranslations('lyricsReview.header')
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
   // Check if agentic mode is active
@@ -111,7 +113,7 @@ export default function Header({
         {isReadOnly && (
           <div className="flex items-center gap-1 text-muted-foreground text-sm mb-2">
             <Lock className="h-4 w-4" />
-            <span>View Only Mode</span>
+            <span>{t('viewOnlyMode')}</span>
           </div>
         )}
 
@@ -127,20 +129,20 @@ export default function Header({
                     onClick={() => onReviewModeToggle(!reviewMode)}
                   >
                     <Eye className="h-3 w-3 mr-1" />
-                    {reviewMode ? 'Review Mode' : 'Review Off'}
+                    {reviewMode ? t('reviewMode') : t('reviewOff')}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
                   {reviewMode
-                    ? 'Hide inline correction actions'
-                    : 'Show inline actions on all corrections for quick review'}
+                    ? t('hideInlineActions')
+                    : t('showInlineActions')}
                 </TooltipContent>
               </Tooltip>
             )}
             {isReadOnly && (
               <Button variant="outline" size="sm" onClick={onFileLoad} className={cn(isMobile && 'w-full')}>
                 <Upload className="h-4 w-4 mr-1" />
-                Load File
+                {t('loadFile')}
               </Button>
             )}
           </div>
@@ -163,7 +165,7 @@ export default function Header({
           <Card className="p-2 mb-2 bg-accent/50">
             <div className={cn('flex gap-2', isMobile ? 'flex-col' : 'flex-row items-center justify-between')}>
               <span className="text-xs text-muted-foreground">
-                Batch Actions ({data.corrections.length} corrections)
+                {t('batchActions', { count: data.corrections.length })}
               </span>
               <div className="flex gap-2 flex-wrap">
                 {onAcceptHighConfidenceCorrections && (
@@ -173,7 +175,7 @@ export default function Header({
                     className="bg-green-600 hover:bg-green-700 text-xs h-7"
                   >
                     <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Accept High Confidence ({data.corrections.filter((c) => c.confidence >= 0.8).length})
+                    {t('acceptHighConfidence', { count: data.corrections.filter((c) => c.confidence >= 0.8).length })}
                   </Button>
                 )}
                 {onAcceptAllCorrections && (
@@ -184,7 +186,7 @@ export default function Header({
                     className="text-xs h-7"
                   >
                     <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Accept All
+                    {t('acceptAll')}
                   </Button>
                 )}
                 {onRevertAllCorrections && (
@@ -195,7 +197,7 @@ export default function Header({
                     className="text-destructive text-xs h-7"
                   >
                     <XCircle className="h-3 w-3 mr-1" />
-                    Revert All
+                    {t('revertAll')}
                   </Button>
                 )}
               </div>
@@ -219,10 +221,10 @@ export default function Header({
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="sm" onClick={onResetCorrections} className="h-8 text-xs text-amber-500 border-amber-500/50 hover:border-amber-500 hover:bg-amber-500/10">
                       <Undo2 className="h-3.5 w-3.5 mr-1" />
-                      Undo All
+                      {t('undoAll')}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">Reset all changes back to the original AI-corrected lyrics</TooltipContent>
+                  <TooltipContent className="max-w-xs">{t('resetAllChanges')}</TooltipContent>
                 </Tooltip>
               )}
 
@@ -240,7 +242,7 @@ export default function Header({
                         <Undo2 className="h-3.5 w-3.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Undo</TooltipContent>
+                    <TooltipContent>{t('undo')}</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -254,7 +256,7 @@ export default function Header({
                         <Redo2 className="h-3.5 w-3.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Redo</TooltipContent>
+                    <TooltipContent>{t('redo')}</TooltipContent>
                   </Tooltip>
                 </div>
               )}
@@ -264,10 +266,10 @@ export default function Header({
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="sm" onClick={onFindReplace} className="h-8 text-xs">
                       <Search className="h-3.5 w-3.5 mr-1" />
-                      Find/Replace
+                      {t('findReplace')}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">Search for text across all lyrics and replace it. Useful for a word that appears multiple times.</TooltipContent>
+                  <TooltipContent className="max-w-xs">{t('findReplaceDesc')}</TooltipContent>
                 </Tooltip>
               )}
 
@@ -276,10 +278,10 @@ export default function Header({
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="sm" onClick={onEditAll} className="h-8 text-xs">
                       <Edit className="h-3.5 w-3.5 mr-1" />
-                      Edit All
+                      {t('editAll')}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">View and edit all lyrics as plain text. Useful when many lines need changing.</TooltipContent>
+                  <TooltipContent className="max-w-xs">{t('editAllDesc')}</TooltipContent>
                 </Tooltip>
               )}
 
@@ -294,17 +296,17 @@ export default function Header({
                         className={cn('h-8 text-xs', timingOffsetMs !== 0 && 'border-purple-500 text-purple-500')}
                       >
                         <Timer className="h-3.5 w-3.5 mr-1" />
-                        Timing Offset
+                        {t('timingOffset')}
                       </Button>
                       {timingOffsetMs !== 0 && (
                         <span className="ml-1 text-xs font-bold text-purple-500">
                           {timingOffsetMs > 0 ? '+' : ''}
-                          {timingOffsetMs}ms
+                          {t('timingOffsetValue', { ms: timingOffsetMs })}
                         </span>
                       )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">Shift all word timings forward or backward. Use if lyrics appear slightly early or late in the preview.</TooltipContent>
+                  <TooltipContent className="max-w-xs">{t('timingOffsetDesc')}</TooltipContent>
                 </Tooltip>
               )}
 

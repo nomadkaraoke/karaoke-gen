@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from 'next-intl'
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
 
@@ -33,13 +34,14 @@ export function StemComparison({
   uploadedFilename,
   isLoading = false,
 }: StemComparisonProps) {
+  const t = useTranslations('instrumentalReview.stemComparison')
   const options: AudioOption[] = [
-    { type: "original", label: "Original", available: hasOriginal },
-    { type: "backing", label: "Backing Vocals Only", available: true },
-    { type: "clean", label: "Pure Instrumental", available: true },
-    { type: "with_backing", label: "Instrumental + Backing", available: hasWithBacking },
-    { type: "custom", label: "Custom", available: hasCustom },
-    { type: "uploaded", label: "Uploaded", available: hasUploaded, title: uploadedFilename },
+    { type: "original", label: t('original'), available: hasOriginal },
+    { type: "backing", label: t('backingVocalsOnly'), available: true },
+    { type: "clean", label: t('pureInstrumental'), available: true },
+    { type: "with_backing", label: t('instrumentalPlusBacking'), available: hasWithBacking },
+    { type: "custom", label: t('custom'), available: hasCustom },
+    { type: "uploaded", label: t('uploaded'), available: hasUploaded, title: uploadedFilename },
   ]
 
   const availableOptions = options.filter((opt) => opt.available)

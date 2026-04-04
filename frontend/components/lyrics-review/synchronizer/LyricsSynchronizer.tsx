@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -59,6 +60,7 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
   onCancel,
   setModalSpacebarHandler,
 }: LyricsSynchronizerProps) {
+  const t = useTranslations('lyricsReview.synchronizer')
   const isDarkMode = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
 
@@ -738,36 +740,36 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
     if (isManualSyncing) {
       if (isSpacebarPressed) {
         return {
-          primary: '⏱️ Holding... release when word ends',
-          secondary: 'Release spacebar when the word finishes',
+          primary: t('holdingRelease'),
+          secondary: t('releaseSpacebar'),
         }
       }
       if (stats.remaining === 0) {
         return {
-          primary: '✅ All words synced!',
-          secondary: 'Click "Stop Sync" then "Apply" to save',
+          primary: t('allWordsSynced'),
+          secondary: t('clickStopSync'),
         }
       }
       return {
-        primary: '👆 Press SPACEBAR when you hear each word',
-        secondary: 'Tap for short words, hold for longer words',
+        primary: t('pressSpacebar'),
+        secondary: t('tapForShort'),
       }
     }
     if (stats.synced === 0) {
       return {
-        primary: 'Click "Start Sync" to begin timing words',
-        secondary: "Audio will play and you'll tap spacebar for each word",
+        primary: t('clickStartSync'),
+        secondary: t('audioWillPlay'),
       }
     }
     if (stats.remaining > 0) {
       return {
-        primary: `${stats.remaining} words remaining to sync`,
-        secondary: 'Click "Start Sync" to continue, or "Unsync from Cursor" to re-sync from a point',
+        primary: t('wordsRemaining', { remaining: stats.remaining }),
+        secondary: t('clickStartContinue'),
       }
     }
     return {
-      primary: '✅ All words synced!',
-      secondary: 'Click "Apply" to save changes, or make adjustments first',
+      primary: t('allWordsSynced'),
+      secondary: t('allSyncedApply'),
     }
   }, [isManualSyncing, isSpacebarPressed, stats.synced, stats.remaining])
 
@@ -778,8 +780,8 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
       {/* Stats bar */}
       <div className="flex justify-end items-center h-6">
         <span className="text-sm text-muted-foreground">
-          {stats.synced} / {stats.total} words synced
-          {stats.remaining > 0 && ` (${stats.remaining} remaining)`}
+          {t('wordsSynced', { synced: stats.synced, total: stats.total })}
+          {stats.remaining > 0 && ` ${t('remaining', { remaining: stats.remaining })}`}
         </span>
       </div>
 
@@ -889,20 +891,20 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
       <Dialog open={showEditLyricsModal} onOpenChange={setShowEditLyricsModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Lyrics</DialogTitle>
+            <DialogTitle>{t('controls.editLyrics')}</DialogTitle>
           </DialogHeader>
 
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Editing lyrics will reset all timing data. You will need to re-sync the entire song.
+              {t('editingResetsWarning')}
             </AlertDescription>
           </Alert>
 
           <Textarea
             value={editLyricsText}
             onChange={(e) => setEditLyricsText(e.target.value)}
-            placeholder="Enter lyrics, one line per segment..."
+            placeholder={t('lyricsPlaceholder')}
             rows={15}
             className="font-mono"
           />
@@ -912,7 +914,7 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleSaveEditedLyrics}>
-              Save & Reset Timing
+              {t('saveAndResetTiming')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -922,11 +924,11 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
       <Dialog open={showEditWordModal} onOpenChange={setShowEditWordModal}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Edit Word</DialogTitle>
+            <DialogTitle>{t('editWord')}</DialogTitle>
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            Edit the word text. Enter multiple words separated by spaces to split.
+            {t('editWordDesc')}
           </p>
 
           <Input

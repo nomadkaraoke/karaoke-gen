@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from 'next-intl'
 import { useAuth } from "@/lib/auth"
 import { useTenant } from "@/lib/tenant"
 import { api, ApiError } from "@/lib/api"
@@ -19,7 +20,7 @@ interface GuidedJobFlowProps {
 
 type Step = 1 | 2 | 3 | 4
 
-const STEP_LABELS = ["Song Info", "Choose Audio", "Visibility", "Customize & Create"]
+const STEP_LABEL_KEYS = ["songInfo", "chooseAudio", "visibility", "customizeCreate"] as const
 
 /**
  * Upload custom style assets to an already-created job.
@@ -90,6 +91,7 @@ async function uploadStyleAssets(
 }
 
 export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
+  const t = useTranslations('jobFlow')
   const { user } = useAuth()
   const { features } = useTenant()
   const isAdmin = user?.role === "admin"
@@ -191,7 +193,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         })
         createdJobId = response.job_id
       } else {
-        setSubmitError("Missing audio source. Please go back and try again.")
+        setSubmitError(t('missingAudioSource'))
         return
       }
 
@@ -213,12 +215,12 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           setSearchSessionId(null)
           setSelectedResultIndex(null)
           setStep(2)
-          setSubmitError("Your search results expired. Please search again — your song info is still saved.")
+          setSubmitError(t('searchExpired'))
         } else {
           setSubmitError(err.message)
         }
       } else {
-        setSubmitError("Failed to start processing. Please try again.")
+        setSubmitError(t('failedToStartProcessing'))
       }
     } finally {
       setIsSubmitting(false)
@@ -272,7 +274,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           </div>
           <div>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
-              Job Created
+              {t('jobCreated')}
             </h2>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
               <span className="font-medium" style={{ color: 'var(--text)' }}>{effectiveArtist} - {effectiveTitle}</span>
@@ -286,7 +288,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         </div>
 
         {/* Timeline */}
-        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>What happens next</p>
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('whatsHappensNext')}</p>
         <div className="space-y-0 mt-3">
           {/* Step 1: Automated processing */}
           <div className="flex gap-3">
@@ -300,12 +302,12 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
               <div className="w-px flex-1 min-h-[20px]" style={{ backgroundColor: 'var(--card-border)' }} />
             </div>
             <div className="pb-4 pt-1">
-              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>Audio processing</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{t('audioProcessing')}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                We download the audio, separate vocals from the instrumental, and transcribe the lyrics. <span className="font-medium" style={{ color: 'var(--text)' }}>~10 minutes</span>
+                {t('audioProcessingDesc')}
               </p>
               <span className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-500/15 text-blue-400">
-                Automatic
+                {t('automatic')}
               </span>
             </div>
           </div>
@@ -323,20 +325,20 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
                 <div className="w-px flex-1 min-h-[20px]" style={{ backgroundColor: 'var(--card-border)' }} />
               </div>
               <div className="pb-4 pt-1">
-                <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>You edit the audio</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{t('youEditTheAudio')}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Trim, cut, or mute sections of the downloaded audio before processing begins.
+                  {t('youEditDesc')}
                 </p>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(255, 122, 204, 0.15)', color: 'var(--brand-pink)' }}>
-                    You
+                    {t('you')}
                   </span>
                   <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                       <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v.401a1 1 0 0 1-.373.78L8.707 8.79a1 1 0 0 1-1.414 0L2.373 4.68A1 1 0 0 1 2 3.9V3.5Z" fill="currentColor" opacity="0.7"/>
                       <path d="M2 6.12l4.586 3.59a2 2 0 0 0 2.828 0L14 6.12V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5V6.12Z" fill="currentColor" opacity="0.5"/>
                     </svg>
-                    Email + chime when ready
+                    {t('emailChime')}
                   </span>
                 </div>
               </div>
@@ -354,20 +356,20 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
               <div className="w-px flex-1 min-h-[20px]" style={{ backgroundColor: 'var(--card-border)' }} />
             </div>
             <div className="pb-4 pt-1">
-              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>You review the lyrics & instrumental</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{t('youReviewLyrics')}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Check the lyrics and listen to the instrumental. Fix any errors and approve.
+                {t('youReviewDesc')}
               </p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(255, 122, 204, 0.15)', color: 'var(--brand-pink)' }}>
-                  You
+                  {t('you')}
                 </span>
                 <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                     <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v.401a1 1 0 0 1-.373.78L8.707 8.79a1 1 0 0 1-1.414 0L2.373 4.68A1 1 0 0 1 2 3.9V3.5Z" fill="currentColor" opacity="0.7"/>
                     <path d="M2 6.12l4.586 3.59a2 2 0 0 0 2.828 0L14 6.12V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5V6.12Z" fill="currentColor" opacity="0.5"/>
                   </svg>
-                  Email + chime when ready
+                  {t('emailChime')}
                 </span>
               </div>
             </div>
@@ -384,20 +386,20 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
               </div>
             </div>
             <div className="pt-1">
-              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>Video delivered</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{t('videoDelivered')}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                After you approve, your karaoke video is rendered and uploaded. <span className="font-medium" style={{ color: 'var(--text)' }}>~10 minutes</span>
+                {t('videoDeliveredDesc')}
               </p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-500/15 text-green-400">
-                  Automatic
+                  {t('automatic')}
                 </span>
                 <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                     <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v.401a1 1 0 0 1-.373.78L8.707 8.79a1 1 0 0 1-1.414 0L2.373 4.68A1 1 0 0 1 2 3.9V3.5Z" fill="currentColor" opacity="0.7"/>
                     <path d="M2 6.12l4.586 3.59a2 2 0 0 0 2.828 0L14 6.12V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5V6.12Z" fill="currentColor" opacity="0.5"/>
                   </svg>
-                  Email with link to view
+                  {t('emailWithLink')}
                 </span>
               </div>
             </div>
@@ -405,7 +407,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         </div>
 
         <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
-          Track progress in the <span className="font-medium" style={{ color: 'var(--text)' }}>Recent Jobs</span> list. Keep this tab open to hear the chime.
+          {t('trackProgress')}
         </p>
 
         <Button
@@ -415,7 +417,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           style={{ borderColor: 'var(--card-border)', color: 'var(--text)' }}
         >
           <Music className="w-4 h-4 mr-2" />
-          Create Another
+          {t('createAnother')}
         </Button>
       </div>
     )
@@ -428,13 +430,13 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         <div className="flex items-start gap-2 rounded-lg p-3 border border-amber-500/30 bg-amber-500/10">
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-sm" style={{ color: 'var(--text)' }}>
-            <p>You have no credits remaining. Buy credits to create new karaoke videos.</p>
+            <p>{t('noCreditsWarning')}</p>
             <button
               onClick={() => setShowBuyCreditsDialog(true)}
               className="inline-block mt-1 text-sm font-medium underline"
               style={{ color: 'var(--brand-pink)' }}
             >
-              Buy Credits
+              {t('buyCredits')}
             </button>
           </div>
         </div>
@@ -442,13 +444,14 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
 
       {/* Step indicator */}
       <div className="flex items-center gap-1" role="navigation" aria-label="Progress">
-        {STEP_LABELS.map((label, i) => {
+        {STEP_LABEL_KEYS.map((key, i) => {
           const stepNum = (i + 1) as Step
           const isActive = step === stepNum
           const isCompleted = step > stepNum
+          const label = t(`stepLabels.${key}`)
 
           return (
-            <div key={label} className="flex items-center gap-1 flex-1">
+            <div key={key} className="flex items-center gap-1 flex-1">
               <div className="flex items-center gap-1.5 shrink-0">
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 transition-colors ${
@@ -470,7 +473,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
                   {label}
                 </span>
               </div>
-              {i < STEP_LABELS.length - 1 && (
+              {i < STEP_LABEL_KEYS.length - 1 && (
                 <div
                   className="h-px flex-1 mx-1 hidden sm:block"
                   style={{

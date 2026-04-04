@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from 'next-intl'
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 import type { MuteRegion, AudibleSegment } from "@/lib/api"
@@ -38,6 +39,7 @@ export function MuteRegionEditor({
   onHoverRegion,
   onHoverSegment,
 }: MuteRegionEditorProps) {
+  const t = useTranslations('instrumentalReview.muteRegion')
   const hasRegions = regions.length > 0
   const hasSegments = audibleSegments.length > 0
 
@@ -46,7 +48,7 @@ export function MuteRegionEditor({
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">
-          Custom Mix {hasRegions && `(${regions.length} muted)`}
+          {hasRegions ? t('titleWithCount', { count: regions.length }) : t('title')}
         </span>
         {hasRegions && (
           <div className="flex gap-1.5">
@@ -56,7 +58,7 @@ export function MuteRegionEditor({
               onClick={onClearAll}
               className="h-7 text-xs"
             >
-              Clear
+              {t('clear')}
             </Button>
             {!hasCustom && (
               <Button
@@ -65,7 +67,7 @@ export function MuteRegionEditor({
                 disabled={isCreatingCustom}
                 className="h-7 text-xs"
               >
-                {isCreatingCustom ? "Creating..." : "Create Custom"}
+                {isCreatingCustom ? t('creating') : t('createCustom')}
               </Button>
             )}
           </div>
@@ -104,19 +106,14 @@ export function MuteRegionEditor({
           {hasSegments ? (
             <>
               <p>
-                Want backing vocals but hear lead vocal bleed in some sections?
-                Mute those sections to create a custom mix.
+                {t('explanation')}
               </p>
               <p className="text-muted-foreground/70">
-                Click a segment below to mute it, or{" "}
-                <kbd className="px-1 py-0.5 rounded bg-muted text-[0.65rem] font-mono">
-                  Shift
-                </kbd>
-                +drag on the waveform to mark a custom region.
+                {t('clickSegment')}
               </p>
             </>
           ) : (
-            <p>No backing vocals detected — clean instrumental recommended.</p>
+            <p>{t('noBackingDetected')}</p>
           )}
         </div>
       )}
@@ -131,7 +128,7 @@ export function MuteRegionEditor({
               onClick={() => onAddSegment(index)}
               onMouseEnter={() => onHoverSegment?.(index)}
               onMouseLeave={() => onHoverSegment?.(null)}
-              title="Add to mute regions"
+              title={t('addToMuteRegions')}
               className="px-1.5 py-0.5 bg-background border border-border rounded text-[10px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
             >
               {formatTime(segment.start_seconds)} - {formatTime(segment.end_seconds)}

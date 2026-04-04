@@ -1,43 +1,29 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import type { EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
 
-const REASONS_BY_OP: Record<string, { label: string; reason: EditFeedbackReason }[]> = {
+const REASONS_BY_OP: Record<string, { key: string; reason: EditFeedbackReason }[]> = {
   word_change: [
-    { label: 'Mis-heard word', reason: 'misheard_word' },
-    { label: 'Wrong lyrics', reason: 'wrong_lyrics' },
-    { label: 'Spelling/punctuation', reason: 'spelling_punctuation' },
-    { label: 'Other', reason: 'other' },
+    { key: 'misheardWord', reason: 'misheard_word' },
+    { key: 'wrongLyrics', reason: 'wrong_lyrics' },
+    { key: 'spellingPunctuation', reason: 'spelling_punctuation' },
+    { key: 'other', reason: 'other' },
   ],
   word_delete: [
-    { label: 'Phantom word', reason: 'phantom_word' },
-    { label: 'Duplicate', reason: 'duplicate_word' },
-    { label: 'Mis-heard word', reason: 'misheard_word' },
-    { label: 'Other', reason: 'other' },
+    { key: 'phantomWord', reason: 'phantom_word' },
+    { key: 'duplicate', reason: 'duplicate_word' },
+    { key: 'misheardWord', reason: 'misheard_word' },
+    { key: 'other', reason: 'other' },
   ],
   word_add: [
-    { label: 'Missing word', reason: 'missing_word' },
-    { label: 'Split word', reason: 'split_word' },
-    { label: 'Other', reason: 'other' },
+    { key: 'missingWord', reason: 'missing_word' },
+    { key: 'splitWord', reason: 'split_word' },
+    { key: 'other', reason: 'other' },
   ],
-}
-
-function getQuestionText(entry: EditLogEntry): string {
-  const before = entry.text_before.trim()
-  const after = entry.text_after.trim()
-  switch (entry.operation) {
-    case 'word_change':
-      return `Changed "${before}" → "${after}", why?`
-    case 'word_delete':
-      return `Removed "${before}", why?`
-    case 'word_add':
-      return `Added "${after}", why?`
-    default:
-      return `Edit made, why?`
-  }
 }
 
 interface EditFeedbackBarProps {
@@ -53,6 +39,7 @@ export default function EditFeedbackBar({
   onFeedback,
   onDismiss,
 }: EditFeedbackBarProps) {
+  const t = useTranslations('lyricsReview.editFeedback')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const entryIdRef = useRef<string | null>(null)
   const hoveredRef = useRef(false)
@@ -123,7 +110,13 @@ export default function EditFeedbackBar({
     >
       <div className="bg-muted/95 backdrop-blur-sm border-t border-b px-4 py-2 flex items-center gap-3 w-full max-w-4xl">
         <span className="text-sm text-muted-foreground shrink-0 truncate max-w-[280px]">
-          {getQuestionText(entry)}
+          {entry.operation === 'word_change'
+            ? t('changed', { before: entry.text_before.trim(), after: entry.text_after.trim() })
+            : entry.operation === 'word_delete'
+              ? t('removed', { before: entry.text_before.trim() })
+              : entry.operation === 'word_add'
+                ? t('added', { after: entry.text_after.trim() })
+                : t('editMade')}
         </span>
         <div className="flex items-center gap-1.5 flex-wrap">
           {reasons.map((r) => (
@@ -138,7 +131,7 @@ export default function EditFeedbackBar({
                 onDismiss()
               }}
             >
-              {r.label}
+              {t(r.key)}
             </Button>
           ))}
         </div>

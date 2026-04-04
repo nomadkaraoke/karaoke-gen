@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ export default function TranscriptionView({
   advancedMode = false,
   onAdvancedModeToggle,
 }: TranscriptionViewProps) {
+  const t = useTranslations('lyricsReview.transcription')
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'text' | 'duration'>('text')
 
@@ -48,13 +50,13 @@ export default function TranscriptionView({
       <CardContent className="p-0">
         <div className="flex justify-between items-center mb-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">Synced Lyrics</h3>
+            <h3 className="text-sm font-semibold">{t('syncedLyrics')}</h3>
             <Badge
               variant={advancedMode ? 'default' : 'outline'}
               className="cursor-pointer hover:opacity-80 transition-opacity text-[0.65rem] h-5 px-1.5"
               onClick={() => onAdvancedModeToggle?.(!advancedMode)}
             >
-              {advancedMode ? 'Advanced' : 'Simple'}
+              {advancedMode ? t('advanced') : t('simple')}
             </Badge>
           </div>
           <ToggleGroup
@@ -65,7 +67,7 @@ export default function TranscriptionView({
           >
             <ToggleGroupItem value="text" aria-label="text view" className="h-7 px-2.5 text-[0.75rem]">
               <Type className="h-3.5 w-3.5 mr-1" />
-              Text
+              {t('text')}
             </ToggleGroupItem>
             <ToggleGroupItem
               value="duration"
@@ -73,7 +75,7 @@ export default function TranscriptionView({
               className="h-7 px-2.5 text-[0.75rem]"
             >
               <Clock className="h-3.5 w-3.5 mr-1.5" />
-              Timeline
+              {t('timeline')}
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
@@ -160,7 +162,7 @@ export default function TranscriptionView({
                         size="icon"
                         className="h-[18px] w-[18px] min-h-0 min-w-0 p-[1px] text-destructive hover:text-destructive"
                         onClick={() => handleDeleteSegment(segmentIndex)}
-                        title="Delete segment"
+                        title={t('deleteSegment')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -171,7 +173,7 @@ export default function TranscriptionView({
                         size="icon"
                         className="h-[18px] w-[18px] min-h-0 min-w-0 p-[1px]"
                         onClick={() => onPlaySegment?.(segment.start_time!)}
-                        title="Play segment"
+                        title={t('playSegment')}
                       >
                         <Play className="h-3.5 w-3.5" />
                       </Button>

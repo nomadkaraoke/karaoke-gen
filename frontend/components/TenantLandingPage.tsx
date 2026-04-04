@@ -6,6 +6,7 @@ import { TenantLogo } from '@/components/tenant-logo'
 import { AuthDialog } from '@/components/auth/AuthDialog'
 import { useTenant } from '@/lib/tenant'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useTranslations } from 'next-intl'
 
 /**
  * Minimal landing page for whitelabel tenant portals.
@@ -13,6 +14,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
  * No pricing, marketing content, or payment options.
  */
 export function TenantLandingPage() {
+  const t = useTranslations('tenant')
   const router = useRouter()
   const { tenant, branding } = useTenant()
   const [showAuthDialog, setShowAuthDialog] = useState(false)
@@ -48,8 +50,7 @@ export function TenantLandingPage() {
 
         {/* Title */}
         <h1 className="text-2xl md:text-3xl font-semibold text-center mb-3" style={{ color: '#ffffff' }}>
-          Karaoke Generator for{' '}
-          <span style={{ color: primaryColor }}>{tenantName}</span>
+          {t('title', { tenantName })}
         </h1>
 
         {/* Tagline */}
@@ -61,7 +62,7 @@ export function TenantLandingPage() {
 
         {!branding.tagline && (
           <p className="text-muted-foreground text-center text-lg mb-10 max-w-md">
-            Create professional karaoke videos with real instrumentals, precise lyrics sync, and 4K output.
+            {t('description')}
           </p>
         )}
 
@@ -74,7 +75,7 @@ export function TenantLandingPage() {
             color: 'var(--primary-foreground)',
           }}
         >
-          Sign In
+          {t('signIn')}
         </button>
 
         {/* Domain hint */}
@@ -83,7 +84,7 @@ export function TenantLandingPage() {
           if (externalDomains.length === 0) return null
           return (
             <p className="text-muted-foreground text-sm mt-4">
-              Sign in with your {externalDomains.map(d => `@${d}`).join(' or ')} email
+              {t('signInWithDomain', { domains: externalDomains.map(d => `@${d}`).join(' or ') })}
             </p>
           )
         })()}
@@ -92,14 +93,13 @@ export function TenantLandingPage() {
       {/* Footer */}
       <footer className="w-full px-6 py-6 text-center">
         <p className="text-muted-foreground text-xs">
-          Powered by{' '}
           <a
             href="https://gen.nomadkaraoke.com"
             className="underline hover:text-foreground transition-colors"
             target="_blank"
             rel="noopener noreferrer"
           >
-            Nomad Karaoke
+            {t('poweredBy')}
           </a>
         </p>
       </footer>

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { api, CreditPackage } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { useTranslations } from 'next-intl'
 
 interface BuyCreditsDialogProps {
   open: boolean
@@ -17,6 +18,8 @@ const pricePerVideo = (pkg: CreditPackage) =>
   `$${(pkg.price_cents / 100 / pkg.credits).toFixed(2)}`
 
 export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
+  const t = useTranslations('credits')
+  const tCommon = useTranslations('common')
   const { user } = useAuth()
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
@@ -60,10 +63,10 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
         <DialogHeader>
           <DialogTitle className="text-foreground flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-primary" />
-            Buy More Credits
+            {t('title')}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Each credit creates one karaoke video. Pick a package below.
+            {t('description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -100,19 +103,19 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
                     >
                       {isBestValue && (
                         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-2 py-0.5 rounded-full">
-                          Best Value
+                          {t('bestValue')}
                         </span>
                       )}
                       <div className="text-2xl font-bold">{pkg.credits}</div>
                       <div className="text-sm text-muted-foreground mb-1">
-                        {pkg.credits === 1 ? 'credit' : 'credits'}
+                        {pkg.credits === 1 ? tCommon('credit') : tCommon('credits')}
                       </div>
                       <div className="text-lg font-semibold text-primary">
                         {formatPrice(pkg.price_cents)}
                       </div>
-                      <div className="text-xs text-muted-foreground">{pricePerVideo(pkg)}/video</div>
+                      <div className="text-xs text-muted-foreground">{t('pricePerVideo', { price: pricePerVideo(pkg) })}</div>
                       {savings > 0 && (
-                        <div className="text-xs text-green-500 mt-1">Save {savings}%</div>
+                        <div className="text-xs text-green-500 mt-1">{t('savePct', { savings })}</div>
                       )}
                     </button>
                   )
@@ -127,12 +130,12 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
                 {checkoutLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Redirecting to payment...
+                    {t('redirecting')}
                   </>
                 ) : selectedPackage ? (
-                  `Continue to Payment — ${formatPrice(selectedPackage.price_cents)}`
+                  t('continuePayment', { price: formatPrice(selectedPackage.price_cents) })
                 ) : (
-                  'Select a package'
+                  t('selectPackage')
                 )}
               </Button>
             </>

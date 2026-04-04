@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from 'next-intl'
 import { api } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import type { VideoThemeSummary } from "@/lib/video-themes"
@@ -17,6 +18,7 @@ interface ThemeSelectorProps {
 }
 
 export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps) {
+  const t = useTranslations('themeSelector')
   const { defaults, isDefault: isDefaultTenant } = useTenant()
   const [themes, setThemes] = useState<VideoThemeSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,7 +53,7 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
         }
       } catch (err) {
         console.error("Failed to load themes:", err)
-        setError("Failed to load themes")
+        setError(t('failedToLoadThemes'))
       } finally {
         setLoading(false)
       }
@@ -67,7 +69,7 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
       <div className="space-y-2">
         <Label className="flex items-center gap-2" style={{ color: 'var(--text)' }}>
           <Palette className="w-4 h-4" />
-          Video Theme
+          {t('videoTheme')}
         </Label>
         <Skeleton className="h-10 w-full" style={{ backgroundColor: 'var(--secondary)' }} />
       </div>
@@ -79,11 +81,11 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
       <div className="space-y-2">
         <Label className="flex items-center gap-2" style={{ color: 'var(--text)' }}>
           <Palette className="w-4 h-4" />
-          Video Theme
+          {t('videoTheme')}
         </Label>
         <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 rounded p-2">
           <AlertCircle className="w-4 h-4" />
-          {error || "No themes available"}
+          {error || t('noThemesAvailable')}
         </div>
       </div>
     )
@@ -95,7 +97,7 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
       <div className="space-y-2">
         <Label className="flex items-center gap-2" style={{ color: 'var(--text)' }}>
           <Palette className="w-4 h-4" />
-          Video Theme
+          {t('videoTheme')}
         </Label>
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-md border"
@@ -134,7 +136,7 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
           id="theme-select"
           style={{ backgroundColor: 'var(--secondary)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
         >
-          <SelectValue placeholder="Select a theme..." />
+          <SelectValue placeholder={t('selectATheme')} />
         </SelectTrigger>
         <SelectContent style={{ backgroundColor: 'var(--card)', borderColor: 'var(--card-border)' }}>
           {themes.map((theme) => (
@@ -146,7 +148,7 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
               <div className="flex items-center gap-2">
                 <span>{theme.name}</span>
                 {theme.is_default && (
-                  <span className="text-xs text-amber-400">(Default)</span>
+                  <span className="text-xs text-amber-400">{t('default')}</span>
                 )}
               </div>
             </SelectItem>
@@ -166,9 +168,9 @@ export function ThemeSelector({ value, onChange, disabled }: ThemeSelectorProps)
             style={{ color: 'var(--text-muted)' }}
           >
             {showPreview ? (
-              <><EyeOff className="w-4 h-4 mr-1.5" />Hide preview</>
+              <><EyeOff className="w-4 h-4 mr-1.5" />{t('hidePreview')}</>
             ) : (
-              <><Eye className="w-4 h-4 mr-1.5" />Show preview</>
+              <><Eye className="w-4 h-4 mr-1.5" />{t('showPreview')}</>
             )}
           </Button>
 

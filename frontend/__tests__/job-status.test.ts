@@ -24,7 +24,7 @@ describe('getJobStep', () => {
       const result = getJobStep(job);
       expect(result.step).toBe(1);
       expect(result.total).toBe(10);
-      expect(result.label).toBe('Setting up');
+      expect(result.label).toBe('settingUp');
       expect(result.isBlocking).toBe(false);
       expect(result.color).toBe('text-muted-foreground');
     });
@@ -35,7 +35,7 @@ describe('getJobStep', () => {
       const job = createJob('searching_audio');
       const result = getJobStep(job);
       expect(result.step).toBe(2);
-      expect(result.label).toBe('Searching for audio');
+      expect(result.label).toBe('searchingForAudio');
       expect(result.isBlocking).toBe(false);
     });
 
@@ -43,7 +43,7 @@ describe('getJobStep', () => {
       const job = createJob('awaiting_audio_selection');
       const result = getJobStep(job);
       expect(result.step).toBe(2);
-      expect(result.label).toBe('Select audio source');
+      expect(result.label).toBe('selectAudioSource');
       expect(result.isBlocking).toBe(true);
       expect(result.color).toBe('text-amber-400');
     });
@@ -54,21 +54,21 @@ describe('getJobStep', () => {
       const job = createJob('downloading_audio');
       const result = getJobStep(job);
       expect(result.step).toBe(3);
-      expect(result.label).toBe('Downloading audio');
+      expect(result.label).toBe('downloadingAudio');
     });
 
     it('returns step 3 for downloading status without worker progress', () => {
       const job = createJob('downloading');
       const result = getJobStep(job);
       expect(result.step).toBe(3);
-      expect(result.label).toBe('Downloading');
+      expect(result.label).toBe('downloading');
     });
 
     it('returns step 3 for downloading with empty state_data', () => {
       const job = createJob('downloading', {});
       const result = getJobStep(job);
       expect(result.step).toBe(3);
-      expect(result.label).toBe('Downloading');
+      expect(result.label).toBe('downloading');
     });
   });
 
@@ -101,7 +101,7 @@ describe('getJobStep', () => {
       });
       const result = getJobStep(job);
       expect(result.step).toBe(4);
-      expect(result.label).toMatch(/Audio.*\+.*Transcribing|Transcribing.*\+.*Audio/);
+      expect(result.label).toMatch(/audio.*\+.*transcribing|transcribing.*\+.*audio/);
     });
 
     it('shows only active worker when one is complete', () => {
@@ -112,7 +112,7 @@ describe('getJobStep', () => {
       });
       const result = getJobStep(job);
       expect(result.step).toBe(4);
-      expect(result.label).toBe('Transcribing');
+      expect(result.label).toBe('transcribing');
     });
 
     it('shows processing complete when both workers done', () => {
@@ -124,7 +124,7 @@ describe('getJobStep', () => {
       });
       const result = getJobStep(job);
       expect(result.step).toBe(4);
-      expect(result.label).toBe('Processing complete');
+      expect(result.label).toBe('processingComplete');
     });
 
     it('returns step 3 when state_data has no stage info', () => {
@@ -135,7 +135,7 @@ describe('getJobStep', () => {
       });
       const result = getJobStep(job);
       expect(result.step).toBe(3);
-      expect(result.label).toBe('Downloading');
+      expect(result.label).toBe('downloading');
     });
   });
 
@@ -144,28 +144,28 @@ describe('getJobStep', () => {
       const job = createJob('separating_stage1');
       const result = getJobStep(job);
       expect(result.step).toBe(4);
-      expect(result.label).toBe('Separating audio (1/2)');
+      expect(result.label).toBe('separatingAudio1');
     });
 
     it('returns step 4 for separating_stage2', () => {
       const job = createJob('separating_stage2');
       const result = getJobStep(job);
       expect(result.step).toBe(4);
-      expect(result.label).toBe('Separating audio (2/2)');
+      expect(result.label).toBe('separatingAudio2');
     });
 
     it('returns step 4 for transcribing', () => {
       const job = createJob('transcribing');
       const result = getJobStep(job);
       expect(result.step).toBe(4);
-      expect(result.label).toBe('Transcribing lyrics');
+      expect(result.label).toBe('transcribingLyrics');
     });
 
     it('returns step 4 for correcting', () => {
       const job = createJob('correcting');
       const result = getJobStep(job);
       expect(result.step).toBe(4);
-      expect(result.label).toBe('Correcting lyrics');
+      expect(result.label).toBe('correctingLyrics');
     });
 
     it('shows combined progress when both audio and lyrics are in progress', () => {
@@ -176,7 +176,7 @@ describe('getJobStep', () => {
       const result = getJobStep(job);
       expect(result.step).toBe(4);
       // Should show combined label
-      expect(result.label).toMatch(/Audio|Transcribing/);
+      expect(result.label).toMatch(/audio|transcribing/);
     });
 
     it('shows combined status when audio done but lyrics in progress', () => {
@@ -195,14 +195,14 @@ describe('getJobStep', () => {
       const job = createJob('generating_screens');
       const result = getJobStep(job);
       expect(result.step).toBe(5);
-      expect(result.label).toBe('Generating screens');
+      expect(result.label).toBe('generatingScreens');
     });
 
     it('returns step 5 for applying_padding', () => {
       const job = createJob('applying_padding');
       const result = getJobStep(job);
       expect(result.step).toBe(5);
-      expect(result.label).toBe('Syncing countdown');
+      expect(result.label).toBe('syncingCountdown');
     });
   });
 
@@ -211,7 +211,7 @@ describe('getJobStep', () => {
       const job = createJob('awaiting_review');
       const result = getJobStep(job);
       expect(result.step).toBe(6);
-      expect(result.label).toBe('Review lyrics');
+      expect(result.label).toBe('reviewLyrics');
       expect(result.isBlocking).toBe(true);
       expect(result.color).toBe('text-amber-400');
     });
@@ -220,7 +220,7 @@ describe('getJobStep', () => {
       const job = createJob('in_review');
       const result = getJobStep(job);
       expect(result.step).toBe(6);
-      expect(result.label).toBe('In review');
+      expect(result.label).toBe('inReview');
       expect(result.isBlocking).toBe(true);
     });
   });
@@ -230,14 +230,14 @@ describe('getJobStep', () => {
       const job = createJob('review_complete');
       const result = getJobStep(job);
       expect(result.step).toBe(7);
-      expect(result.label).toBe('Starting render');
+      expect(result.label).toBe('startingRender');
     });
 
     it('returns step 7 for rendering_video', () => {
       const job = createJob('rendering_video');
       const result = getJobStep(job);
       expect(result.step).toBe(7);
-      expect(result.label).toBe('Rendering video');
+      expect(result.label).toBe('renderingVideo');
     });
   });
 
@@ -246,7 +246,7 @@ describe('getJobStep', () => {
       const job = createJob('awaiting_instrumental_selection');
       const result = getJobStep(job);
       expect(result.step).toBe(8);
-      expect(result.label).toBe('Select instrumental');
+      expect(result.label).toBe('selectInstrumental');
       expect(result.isBlocking).toBe(true);
       expect(result.color).toBe('text-amber-400');
     });
@@ -257,28 +257,28 @@ describe('getJobStep', () => {
       const job = createJob('instrumental_selected');
       const result = getJobStep(job);
       expect(result.step).toBe(9);
-      expect(result.label).toBe('Starting final encode');
+      expect(result.label).toBe('startingFinalEncode');
     });
 
     it('returns step 9 for generating_video', () => {
       const job = createJob('generating_video');
       const result = getJobStep(job);
       expect(result.step).toBe(9);
-      expect(result.label).toBe('Generating final video');
+      expect(result.label).toBe('generatingFinalVideo');
     });
 
     it('returns step 9 for encoding', () => {
       const job = createJob('encoding');
       const result = getJobStep(job);
       expect(result.step).toBe(9);
-      expect(result.label).toBe('Encoding video');
+      expect(result.label).toBe('encodingVideo');
     });
 
     it('returns step 9 for packaging', () => {
       const job = createJob('packaging');
       const result = getJobStep(job);
       expect(result.step).toBe(9);
-      expect(result.label).toBe('Packaging files');
+      expect(result.label).toBe('packagingFiles');
     });
   });
 
@@ -287,7 +287,7 @@ describe('getJobStep', () => {
       const job = createJob('uploading');
       const result = getJobStep(job);
       expect(result.step).toBe(10);
-      expect(result.label).toBe('Uploading');
+      expect(result.label).toBe('uploading');
       expect(result.color).toBe('text-green-400');
     });
 
@@ -295,14 +295,14 @@ describe('getJobStep', () => {
       const job = createJob('notifying');
       const result = getJobStep(job);
       expect(result.step).toBe(10);
-      expect(result.label).toBe('Sending notifications');
+      expect(result.label).toBe('sendingNotifications');
     });
 
     it('returns step 10 for complete', () => {
       const job = createJob('complete');
       const result = getJobStep(job);
       expect(result.step).toBe(10);
-      expect(result.label).toBe('Complete');
+      expect(result.label).toBe('complete');
       expect(result.color).toBe('text-green-400');
     });
 
@@ -310,7 +310,7 @@ describe('getJobStep', () => {
       const job = createJob('prep_complete');
       const result = getJobStep(job);
       expect(result.step).toBe(10);
-      expect(result.label).toBe('Prep complete');
+      expect(result.label).toBe('prepComplete');
     });
   });
 
@@ -319,7 +319,7 @@ describe('getJobStep', () => {
       const job = createJob('failed');
       const result = getJobStep(job);
       expect(result.step).toBe(0);
-      expect(result.label).toBe('Failed');
+      expect(result.label).toBe('failed');
       expect(result.color).toBe('text-red-400');
     });
 
@@ -327,7 +327,7 @@ describe('getJobStep', () => {
       const job = createJob('cancelled');
       const result = getJobStep(job);
       expect(result.step).toBe(0);
-      expect(result.label).toBe('Cancelled');
+      expect(result.label).toBe('cancelled');
       expect(result.color).toBe('text-muted-foreground');
     });
   });
@@ -372,19 +372,19 @@ describe('getJobStep', () => {
 
 describe('formatStepIndicator', () => {
   it('formats active step correctly', () => {
-    expect(formatStepIndicator(4, 10, 'Processing')).toBe('[4/10] Processing');
+    expect(formatStepIndicator(4, 10, 'processing')).toBe('[4/10] processing');
   });
 
   it('omits step number for terminal states (step 0)', () => {
-    expect(formatStepIndicator(0, 10, 'Failed')).toBe('Failed');
+    expect(formatStepIndicator(0, 10, 'failed')).toBe('failed');
   });
 
   it('formats first step correctly', () => {
-    expect(formatStepIndicator(1, 10, 'Setting up')).toBe('[1/10] Setting up');
+    expect(formatStepIndicator(1, 10, 'settingUp')).toBe('[1/10] settingUp');
   });
 
   it('formats last step correctly', () => {
-    expect(formatStepIndicator(10, 10, 'Complete')).toBe('[10/10] Complete');
+    expect(formatStepIndicator(10, 10, 'complete')).toBe('[10/10] complete');
   });
 });
 

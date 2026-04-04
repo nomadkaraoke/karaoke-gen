@@ -155,7 +155,7 @@ describe("AudioEditor", () => {
     mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
     render(<AudioEditor job={mockJob} />)
     await waitFor(() => {
-      expect(screen.getByText("Audio Editor Tips")).toBeInTheDocument()
+      expect(screen.getByText("Keyboard shortcuts:")).toBeInTheDocument()
     })
   })
 
@@ -186,7 +186,7 @@ describe("AudioEditor", () => {
     mockApi.getInputAudioInfo.mockResolvedValue(infoWithEdits)
     render(<AudioEditor job={mockJob} />)
     await waitFor(() => {
-      expect(screen.getByText("Submit & Continue")).toBeInTheDocument()
+      expect(screen.getByText("Submit for Review")).toBeInTheDocument()
     })
   })
 
@@ -229,12 +229,12 @@ describe("AudioEditor", () => {
     mockApi.getInputAudioInfo.mockResolvedValue(infoWithEdits)
     render(<AudioEditor job={mockJob} />)
     await waitFor(() => {
-      expect(screen.getByText("Submit & Continue")).toBeInTheDocument()
+      expect(screen.getByText("Submit for Review")).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText("Submit & Continue"))
+    fireEvent.click(screen.getByText("Submit for Review"))
     await waitFor(() => {
-      expect(screen.getByText("Submit Edited Audio?")).toBeInTheDocument()
+      expect(screen.getByText("Submit your audio edits for review?")).toBeInTheDocument()
     })
   })
 

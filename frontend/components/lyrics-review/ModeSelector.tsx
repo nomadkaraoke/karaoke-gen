@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Tooltip,
@@ -16,10 +17,11 @@ interface ModeSelectorProps {
 }
 
 export default function ModeSelector({ effectiveMode, onChange }: ModeSelectorProps) {
+  const t = useTranslations('lyricsReview.modeSelector')
   return (
     <TooltipProvider>
       <div className="flex items-center gap-1.5 h-8">
-        <span className="text-[0.75rem] text-muted-foreground">Mode:</span>
+        <span className="text-[0.75rem] text-muted-foreground">{t('mode')}</span>
         <ToggleGroup
           type="single"
           value={effectiveMode}
@@ -33,11 +35,11 @@ export default function ModeSelector({ effectiveMode, onChange }: ModeSelectorPr
                 className="h-8 px-2.5 text-[0.75rem] !flex-none aria-checked:font-semibold aria-checked:bg-blue-600 aria-checked:text-white dark:aria-checked:bg-blue-500"
               >
                 <Pencil className="h-3.5 w-3.5 mr-1" />
-                Edit
+                {t('edit')}
               </ToggleGroupItem>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
-              <p>Click any word to edit that lyrics line. Default mode for correcting misheard words.</p>
+              <p>{t('editDesc')}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -48,11 +50,11 @@ export default function ModeSelector({ effectiveMode, onChange }: ModeSelectorPr
                 className="h-8 px-2.5 text-[0.75rem] !flex-none aria-checked:font-semibold aria-checked:bg-blue-600 aria-checked:text-white dark:aria-checked:bg-blue-500"
               >
                 <Highlighter className="h-3.5 w-3.5 mr-1" />
-                Highlight
+                {t('highlight')}
               </ToggleGroupItem>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
-              <p>Click any word to see where it matches in the reference lyrics. Shortcut: hold SHIFT.</p>
+              <p>{t('highlightDesc')}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -63,11 +65,11 @@ export default function ModeSelector({ effectiveMode, onChange }: ModeSelectorPr
                 className="h-8 px-2.5 text-[0.75rem] !flex-none aria-checked:font-semibold aria-checked:bg-blue-600 aria-checked:text-white dark:aria-checked:bg-blue-500"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Delete
+                {t('delete')}
               </ToggleGroupItem>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
-              <p>Click any word to instantly delete it. Great for removing phantom words like &quot;And&quot; during instrumental sections. Shortcut: hold CTRL.</p>
+              <p>{t('deleteDesc')}</p>
             </TooltipContent>
           </Tooltip>
         </ToggleGroup>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -49,6 +50,8 @@ export default function EditModal({
   isGlobal = false,
   isLoading = false,
 }: EditModalProps) {
+  const t = useTranslations('lyricsReview.modals.editAll')
+  const tActions = useTranslations('lyricsReview.editActionBar')
   const [editedSegment, setEditedSegment] = useState<LyricsSegment | null>(segment)
   const [isPlaying, setIsPlaying] = useState(false)
   const currentTimeRef = useRef(currentTime)
@@ -358,7 +361,7 @@ export default function EditModal({
       <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col" onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Edit {isGlobal ? 'All Words' : `Segment ${segmentIndex}`}
+            {isGlobal ? t('title') : t('editSegment', { index: segmentIndex ?? 0 })}
             {segment && segment.start_time !== null && onPlaySegment && (
               <Button
                 variant="ghost"
@@ -376,7 +379,7 @@ export default function EditModal({
           <div className="flex flex-col items-center justify-center flex-1 py-12">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="mt-4 text-lg font-semibold">
-              Loading {isGlobal ? 'all words' : 'segment'}...
+              {isGlobal ? t('loadingAll') : t('loadingSegment')}
             </p>
           </div>
         ) : editedSegment ? (
@@ -421,7 +424,7 @@ export default function EditModal({
           </div>
         ) : (
           <div className="flex items-center justify-center flex-1">
-            <p className="text-lg">No segment data available</p>
+            <p className="text-lg">{t('noData')}</p>
           </div>
         )}
 
@@ -434,27 +437,27 @@ export default function EditModal({
               className="text-orange-600 border-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-400 dark:hover:bg-orange-950"
             >
               <RotateCcw className="h-4 w-4 mr-1" />
-              Reset
+              {tActions('reset')}
             </Button>
             {originalTranscribedSegment && (
               <Button variant="outline" size="sm" onClick={handleRevertToOriginal}>
                 <History className="h-4 w-4 mr-1" />
-                Un-Correct
+                {t('unCorrect')}
               </Button>
             )}
             {!isGlobal && onDelete && (
               <Button variant="destructive" size="sm" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-1" />
-                Delete Segment
+                {tActions('deleteSegment')}
               </Button>
             )}
           </div>
           <div className="flex gap-2 ml-auto">
             <Button variant="outline" onClick={handleClose}>
-              Cancel
+              {tActions('cancel')}
             </Button>
             <Button onClick={handleSave} disabled={isLoading || !editedSegment || editedSegment.words.length === 0}>
-              Save
+              {tActions('save')}
             </Button>
           </div>
         </DialogFooter>

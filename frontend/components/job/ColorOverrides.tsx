@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from 'next-intl'
 import type { ColorOverrides } from "@/lib/video-themes"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ interface ColorFieldProps {
 }
 
 function ColorField({ id, label, description, value, onChange, disabled }: ColorFieldProps) {
+  const t = useTranslations('colorOverrides')
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
@@ -42,7 +44,7 @@ function ColorField({ id, label, description, value, onChange, disabled }: Color
             style={{ color: 'var(--text-muted)' }}
             disabled={disabled}
           >
-            Reset
+            {t('reset')}
           </button>
         )}
       </div>
@@ -82,6 +84,7 @@ function ColorField({ id, label, description, value, onChange, disabled }: Color
 }
 
 export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverridesProps) {
+  const t = useTranslations('colorOverrides')
   const [isOpen, setIsOpen] = useState(false)
 
   const hasAnyOverrides = !!(
@@ -113,10 +116,10 @@ export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverride
         >
           <span className="flex items-center gap-2">
             <Paintbrush className="w-4 h-4" />
-            Customize Colors
+            {t('title')}
             {hasAnyOverrides && (
               <span className="text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">
-                Modified
+                {t('modified')}
               </span>
             )}
           </span>
@@ -132,7 +135,7 @@ export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverride
         <div className="space-y-4 p-4 rounded-lg border" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--secondary)' }}>
           <div className="flex items-center justify-between">
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Override theme colors (optional)
+              {t('overrideThemeColors')}
             </p>
             {hasAnyOverrides && (
               <Button
@@ -144,7 +147,7 @@ export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverride
                 style={{ color: 'var(--text-muted)' }}
               >
                 <RotateCcw className="w-3 h-3 mr-1" />
-                Reset All
+                {t('resetAll')}
               </Button>
             )}
           </div>
@@ -152,8 +155,8 @@ export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverride
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ColorField
               id="artist-color"
-              label="Artist Color"
-              description="Color for artist name on title/end screens"
+              label={t('artistColor')}
+              description={t('artistColorDesc')}
               value={value.artist_color}
               onChange={(v) => updateField("artist_color", v)}
               disabled={disabled}
@@ -161,8 +164,8 @@ export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverride
 
             <ColorField
               id="title-color"
-              label="Title Color"
-              description="Color for song title on title/end screens"
+              label={t('titleColor')}
+              description={t('titleColorDesc')}
               value={value.title_color}
               onChange={(v) => updateField("title_color", v)}
               disabled={disabled}
@@ -170,8 +173,8 @@ export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverride
 
             <ColorField
               id="sung-lyrics-color"
-              label="Sung Lyrics Color"
-              description="Color for lyrics being sung (highlighted)"
+              label={t('sungLyricsColor')}
+              description={t('sungLyricsColorDesc')}
               value={value.sung_lyrics_color}
               onChange={(v) => updateField("sung_lyrics_color", v)}
               disabled={disabled}
@@ -179,8 +182,8 @@ export function ColorOverridesPanel({ value, onChange, disabled }: ColorOverride
 
             <ColorField
               id="unsung-lyrics-color"
-              label="Unsung Lyrics Color"
-              description="Color for lyrics not yet sung"
+              label={t('unsungLyricsColor')}
+              description={t('unsungLyricsColorDesc')}
               value={value.unsung_lyrics_color}
               onChange={(v) => updateField("unsung_lyrics_color", v)}
               disabled={disabled}

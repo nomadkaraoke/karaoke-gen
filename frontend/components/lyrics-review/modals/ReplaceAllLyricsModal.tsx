@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,7 @@ export default function ReplaceAllLyricsModal({
   setModalSpacebarHandler,
   existingSegments = [],
 }: ReplaceAllLyricsModalProps) {
+  const t = useTranslations('lyricsReview.modals.replaceAllLyrics')
   const [mode, setMode] = useState<ModalMode>('selection')
   const [inputText, setInputText] = useState('')
   const [newSegments, setNewSegments] = useState<LyricsSegment[]>([])
@@ -220,7 +222,7 @@ export default function ReplaceAllLyricsModal({
               <Button variant="ghost" size="icon" onClick={handleBackToSelection} className="h-8 w-8">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <span className="flex-1">Replace All Lyrics</span>
+              <span className="flex-1">{t('replaceAll')}</span>
               <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
                 <X className="h-4 w-4" />
               </Button>
@@ -229,26 +231,26 @@ export default function ReplaceAllLyricsModal({
 
           <div className="flex-1 overflow-hidden flex flex-col gap-4">
             <div>
-              <h3 className="text-lg font-semibold">Paste your new lyrics below:</h3>
+              <h3 className="text-lg font-semibold">{t('pastePrompt')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Each line will become a separate segment. Words will be separated by spaces.
+                {t('eachLineNote')}
               </p>
             </div>
 
             <div className="flex items-center gap-4">
               <Button variant="outline" size="sm" onClick={handlePasteFromClipboard}>
                 <ClipboardPaste className="h-4 w-4 mr-2" />
-                Paste from Clipboard
+                {t('pasteFromClipboard')}
               </Button>
               <span className="text-sm text-muted-foreground font-medium">
-                {parseInfo.lines} lines, {parseInfo.words} words
+                {t('lineWordCount', { lines: parseInfo.lines, words: parseInfo.words })}
               </span>
             </div>
 
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={`Paste your lyrics here...\nEach line will become a segment\nWords will be separated by spaces`}
+              placeholder={t('placeholder')}
               className="flex-1 resize-none font-mono text-sm min-h-[300px]"
             />
           </div>
@@ -259,7 +261,7 @@ export default function ReplaceAllLyricsModal({
             </Button>
             <Button onClick={processLyrics} disabled={!inputText.trim()}>
               <Sparkles className="h-4 w-4 mr-2" />
-              Continue to Sync
+              {t('continueToSync')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -273,7 +275,7 @@ export default function ReplaceAllLyricsModal({
               <Button variant="ghost" size="icon" onClick={handleBackToSelection} className="h-8 w-8">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <span className="flex-1">Replace Segment Lyrics</span>
+              <span className="flex-1">{t('replaceSegment')}</span>
               <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
                 <X className="h-4 w-4" />
               </Button>
@@ -284,17 +286,14 @@ export default function ReplaceAllLyricsModal({
             <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 text-sm text-muted-foreground">
               <Info className="h-4 w-4 mt-0.5 shrink-0" />
               <p>
-                Edit lyrics line by line. Each line corresponds to a timed segment.
-                The number of lines must stay the same (currently: {replaceSegmentsInfo.expectedLineCount} lines).
-                Changed lines will get new word timing estimated from the segment duration.
-                Unchanged lines are left as-is.
+                {t('editLineByLine', { count: replaceSegmentsInfo.expectedLineCount })}
               </p>
             </div>
 
             <div className="flex items-center gap-4">
               <Button variant="outline" size="sm" onClick={handlePasteFromClipboard}>
                 <ClipboardPaste className="h-4 w-4 mr-2" />
-                Paste from Clipboard
+                {t('pasteFromClipboard')}
               </Button>
               <span className={`text-sm font-medium ${replaceSegmentsInfo.lineDiff === 0 ? 'text-green-500' : 'text-destructive'}`}>
                 {replaceSegmentsInfo.lineDiff === 0 ? (
@@ -322,10 +321,9 @@ export default function ReplaceAllLyricsModal({
               <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-sm text-destructive">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <p>
-                  You have {Math.abs(replaceSegmentsInfo.lineDiff)} too{' '}
-                  {replaceSegmentsInfo.lineDiff > 0 ? 'many' : 'few'} lines (expected{' '}
-                  {replaceSegmentsInfo.expectedLineCount}, got {replaceSegmentsInfo.currentLineCount}).
-                  Each line maps to a timed segment, so the count must match exactly.
+                  {replaceSegmentsInfo.lineDiff > 0
+                    ? t('tooManyLines', { diff: Math.abs(replaceSegmentsInfo.lineDiff), expected: replaceSegmentsInfo.expectedLineCount, actual: replaceSegmentsInfo.currentLineCount })
+                    : t('tooFewLines', { diff: Math.abs(replaceSegmentsInfo.lineDiff), expected: replaceSegmentsInfo.expectedLineCount, actual: replaceSegmentsInfo.currentLineCount })}
                 </p>
               </div>
             )}
@@ -354,7 +352,7 @@ export default function ReplaceAllLyricsModal({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <span className="flex-1">
-                {newSegments.length > 0 ? 'Sync New Lyrics' : 'Re-sync Existing Lyrics'}
+                {newSegments.length > 0 ? t('syncNewLyrics') : t('resyncExisting')}
               </span>
               <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
                 <X className="h-4 w-4" />
@@ -374,13 +372,13 @@ export default function ReplaceAllLyricsModal({
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-4">
-                <h3 className="text-lg font-semibold text-muted-foreground">No lyrics to sync</h3>
+                <h3 className="text-lg font-semibold text-muted-foreground">{t('noLyricsToSync')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Go back and paste new lyrics, or close this modal.
+                  {t('goBackAndPaste')}
                 </p>
                 <Button variant="outline" onClick={handleBackToSelection}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Selection
+                  {t('backToSelection')}
                 </Button>
               </div>
             )}

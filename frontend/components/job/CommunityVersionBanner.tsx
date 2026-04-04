@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from 'next-intl'
 import { X, ExternalLink, Youtube, AlertTriangle } from "lucide-react"
 import type { CommunityCheckResponse } from "@/lib/api"
 
@@ -9,6 +10,7 @@ interface CommunityVersionBannerProps {
 }
 
 export function CommunityVersionBanner({ data, onDismiss }: CommunityVersionBannerProps) {
+  const t = useTranslations('communityVersion')
   if (!data.has_community || data.songs.length === 0) return null
 
   // Collect all community tracks across songs, take top 3
@@ -42,10 +44,10 @@ export function CommunityVersionBanner({ data, onDismiss }: CommunityVersionBann
       <div className="pr-6">
         <p className="text-sm font-medium flex items-center gap-1.5" style={{ color: "rgb(34, 197, 94)" }}>
           <AlertTriangle className="w-4 h-4 shrink-0" />
-          A karaoke version of this song already exists!
+          {t('exists')}
         </p>
         <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-          Check if an existing version works for you before using a credit.
+          {t('checkFirst')}
         </p>
 
         <div className="mt-2 space-y-1.5">
@@ -69,13 +71,13 @@ export function CommunityVersionBanner({ data, onDismiss }: CommunityVersionBann
                       color: "rgb(34, 197, 94)",
                     }}
                   >
-                    Community
+                    {t('community')}
                   </span>
                 )}
               </span>
               <span className="ml-auto shrink-0 text-[10px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
                 <Youtube className="w-3 h-3 text-red-500" />
-                Watch on YouTube
+                {t('watchOnYoutube')}
               </span>
             </a>
           ))}
@@ -83,7 +85,7 @@ export function CommunityVersionBanner({ data, onDismiss }: CommunityVersionBann
 
         {allTracks.length > 3 && (
           <p className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>
-            +{allTracks.length - 3} more version{allTracks.length - 3 > 1 ? "s" : ""}
+            {t('moreVersions', { count: allTracks.length - 3 })}
           </p>
         )}
       </div>

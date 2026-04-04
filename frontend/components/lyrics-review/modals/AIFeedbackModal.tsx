@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,7 @@ export default function AIFeedbackModal({
   onSubmit,
   suggestion,
 }: AIFeedbackModalProps) {
+  const t = useTranslations('lyricsReview.modals.aiFeedback')
   const [reviewerAction, setAction] = useState('ACCEPT')
   const [finalText, setFinalText] = useState('')
   const [reasonCategory, setReason] = useState('AI_CORRECT')
@@ -62,7 +64,7 @@ export default function AIFeedbackModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-md" ref={contentRef}>
         <DialogHeader>
-          <DialogTitle>AI Suggestion</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -79,54 +81,54 @@ export default function AIFeedbackModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="action">Action</Label>
+            <Label htmlFor="action">{t('action')}</Label>
             <Select value={reviewerAction} onValueChange={setAction}>
               <SelectTrigger id="action">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACCEPT">Accept</SelectItem>
-                <SelectItem value="REJECT">Reject</SelectItem>
-                <SelectItem value="MODIFY">Modify</SelectItem>
+                <SelectItem value="ACCEPT">{t('accept')}</SelectItem>
+                <SelectItem value="REJECT">{t('reject')}</SelectItem>
+                <SelectItem value="MODIFY">{t('modify')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {reviewerAction === 'MODIFY' && (
             <div className="space-y-2">
-              <Label htmlFor="finalText">Final Text</Label>
+              <Label htmlFor="finalText">{t('finalText')}</Label>
               <Input
                 id="finalText"
                 value={finalText}
                 onChange={(e) => setFinalText(e.target.value)}
-                placeholder="Enter the modified text..."
+                placeholder={t('finalTextPlaceholder')}
               />
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="reason">Reason</Label>
+            <Label htmlFor="reason">{t('reason')}</Label>
             <Select value={reasonCategory} onValueChange={setReason}>
               <SelectTrigger id="reason">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="AI_CORRECT">AI_CORRECT</SelectItem>
-                <SelectItem value="AI_INCORRECT">AI_INCORRECT</SelectItem>
-                <SelectItem value="AI_SUBOPTIMAL">AI_SUBOPTIMAL</SelectItem>
-                <SelectItem value="CONTEXT_NEEDED">CONTEXT_NEEDED</SelectItem>
-                <SelectItem value="SUBJECTIVE_PREFERENCE">SUBJECTIVE_PREFERENCE</SelectItem>
+                <SelectItem value="AI_CORRECT">{t('aiCorrect')}</SelectItem>
+                <SelectItem value="AI_INCORRECT">{t('aiIncorrect')}</SelectItem>
+                <SelectItem value="AI_SUBOPTIMAL">{t('aiSuboptimal')}</SelectItem>
+                <SelectItem value="CONTEXT_NEEDED">{t('contextNeeded')}</SelectItem>
+                <SelectItem value="SUBJECTIVE_PREFERENCE">{t('subjectivePreference')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="details">Details</Label>
+            <Label htmlFor="details">{t('details')}</Label>
             <Textarea
               id="details"
               value={reasonDetail}
               onChange={(e) => setDetail(e.target.value)}
-              placeholder="Additional details..."
+              placeholder={t('detailsPlaceholder')}
               rows={3}
             />
           </div>
@@ -136,7 +138,7 @@ export default function AIFeedbackModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>Submit</Button>
+          <Button onClick={handleSubmit}>{t('submit')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

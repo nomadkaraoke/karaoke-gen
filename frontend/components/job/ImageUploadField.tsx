@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
+import { useTranslations } from 'next-intl'
 import { Upload, X, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -23,19 +24,20 @@ function formatFileSize(bytes: number): string {
 }
 
 export function ImageUploadField({ label, description, file, onChange, disabled, hidePreview }: ImageUploadFieldProps) {
+  const t = useTranslations('imageUpload')
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const validate = useCallback((f: File): string | null => {
     if (!ALLOWED_TYPES.includes(f.type)) {
-      return "Only PNG and JPG images are allowed."
+      return t('onlyPngJpg')
     }
     if (f.size > MAX_SIZE_BYTES) {
-      return `File too large (${formatFileSize(f.size)}). Maximum is 10 MB.`
+      return t('fileTooLarge', { size: formatFileSize(f.size) })
     }
     return null
-  }, [])
+  }, [t])
 
   const handleFile = useCallback((f: File) => {
     const err = validate(f)
@@ -126,10 +128,10 @@ export function ImageUploadField({ label, description, file, onChange, disabled,
         >
           <Upload className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
           <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-            Drop an image here or <span style={{ color: 'var(--brand-pink)' }}>browse</span>
+            {t('dropOrBrowse')}
           </p>
           <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            PNG or JPG, max 10 MB
+            {t('maxSize')}
           </p>
         </div>
       )}

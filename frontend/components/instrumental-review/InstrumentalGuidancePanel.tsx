@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from 'next-intl'
 import { ExternalLink, Lightbulb, X } from "lucide-react"
 import type { BackingVocalAnalysis, AudibleSegment } from "@/lib/api"
 
@@ -13,6 +14,7 @@ export function InstrumentalGuidancePanel({
   analysis,
   audibleSegments,
 }: InstrumentalGuidancePanelProps) {
+  const t = useTranslations('instrumentalReview.guidance')
   const [guidanceDismissed, setGuidanceDismissed] = useState(() => {
     if (typeof window === "undefined") return false
     return localStorage.getItem("instrumentalReviewGuidanceDismissed") === "true"
@@ -43,7 +45,7 @@ export function InstrumentalGuidancePanel({
           className="text-amber-500 hover:text-amber-400 transition-colors"
           onClick={handleShowTips}
         >
-          Show tips
+          {t('showTips')}
         </button>
       </div>
     )
@@ -56,19 +58,13 @@ export function InstrumentalGuidancePanel({
         <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
         <div className="text-xs text-muted-foreground flex-1 leading-relaxed space-y-1.5">
           <p>
-            <strong>Choose your karaoke backing track.</strong> The AI separated
-            the vocals from the music — now pick which version sounds best.
+            <strong>{t('chooseBackingTrack')}</strong>
           </p>
           <p>
-            This track has very little backing vocal content ({percentage.toFixed(0)}%).
-            We recommend the <strong>Clean Instrumental</strong> — just confirm
-            below to proceed.
+            {t('littleBackingVocals', { percentage: percentage.toFixed(0) })}
           </p>
           <p className="text-muted-foreground/70">
-            Want to hear the difference? Use the audio buttons above to compare,
-            or click the{" "}
-            <span className="inline-block w-2 h-2 rounded-full bg-pink-500/60 align-middle" />{" "}
-            pink sections in the waveform to listen to the backing vocals.
+            {t('hearDifference')}
           </p>
           <a
             href="https://www.youtube.com/watch?v=-dI3r7qXo3A"
@@ -77,13 +73,13 @@ export function InstrumentalGuidancePanel({
             className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors mt-1"
           >
             <ExternalLink className="h-3 w-3" />
-            Watch full tutorial
+            {t('watchFullTutorial')}
           </a>
         </div>
         <button
           className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
           onClick={handleDismiss}
-          aria-label="Dismiss tip"
+          aria-label={t('dismissTip')}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -97,33 +93,20 @@ export function InstrumentalGuidancePanel({
       <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
       <div className="text-xs text-muted-foreground flex-1 leading-relaxed space-y-1.5">
         <p>
-          <strong>Choose your karaoke backing track.</strong> The AI separated
-          the vocals from the music — now pick which version sounds best.
+          <strong>{t('chooseBackingTrack')}</strong>
         </p>
         <p>
-          <strong>Backing vocals</strong> are the harmony/chorus voices that sing
-          along with the lead. Some karaoke singers prefer to keep them for guidance,
-          others prefer a clean instrumental.
+          {t('backingVocalsExplanation')}
         </p>
         <div className="space-y-1 pl-2 border-l-2 border-amber-500/30">
           <p>
-            <strong>Step 1:</strong> Click the{" "}
-            <span className="inline-block w-2 h-2 rounded-full bg-pink-500/60 align-middle" />{" "}
-            pink sections in the waveform to hear the backing vocals
-            {hasSegments && ` (${audibleSegments.length} detected)`}.
+            {t('step1', { segments: hasSegments ? ` (${audibleSegments.length} detected)` : '' })}
           </p>
           <p>
-            <strong>Step 2:</strong> Decide — keep them or use the clean
-            instrumental? Use the audio toggle buttons above to compare.
+            {t('step2')}
           </p>
           <p>
-            <strong>Step 3</strong> (if needed): If you want backing vocals but
-            some sections have unwanted lead vocal bleed,{" "}
-            <kbd className="px-1 py-0.5 rounded bg-muted text-[0.65rem] font-mono">
-              Shift
-            </kbd>
-            +drag on the waveform to mark those sections, then click{" "}
-            <strong>Create Custom</strong>.
+            {t('step3')}
           </p>
         </div>
         <a
@@ -133,13 +116,13 @@ export function InstrumentalGuidancePanel({
           className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors mt-1"
         >
           <ExternalLink className="h-3 w-3" />
-          Watch full tutorial
+          {t('watchFullTutorial')}
         </a>
       </div>
       <button
         className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
         onClick={handleDismiss}
-        aria-label="Dismiss tip"
+        aria-label={t('dismissTip')}
       >
         <X className="h-3.5 w-3.5" />
       </button>

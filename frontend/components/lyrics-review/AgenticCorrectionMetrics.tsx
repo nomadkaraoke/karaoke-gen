@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +31,7 @@ export default function AgenticCorrectionMetrics({
   onCategoryClick,
   onConfidenceFilterClick,
 }: AgenticCorrectionMetricsProps) {
+  const t = useTranslations('lyricsReview.agenticMetrics')
   const metrics = useMemo(() => {
     // Filter only agentic corrections
     const agenticCorrections = corrections.filter((c) => c.handler === 'AgenticCorrector')
@@ -109,15 +111,15 @@ export default function AgenticCorrectionMetrics({
   return (
     <TooltipProvider>
       <Card className="p-2 h-full flex flex-col">
-        <span className="text-xs text-muted-foreground mb-1">Agentic AI Corrections</span>
+        <span className="text-xs text-muted-foreground mb-1">{t('title')}</span>
 
         {/* Overall stats */}
         <div className="mb-2">
           <p className="text-xs mb-1">
-            Total: <strong>{metrics.totalCorrections}</strong>
+            {t('total')} <strong>{metrics.totalCorrections}</strong>
           </p>
           <p className="text-xs mb-1">
-            Avg Confidence: <strong>{(metrics.avgConfidence * 100).toFixed(0)}%</strong>
+            {t('avgConfidence')} <strong>{(metrics.avgConfidence * 100).toFixed(0)}%</strong>
           </p>
 
           {/* Quick filters */}
@@ -127,20 +129,20 @@ export default function AgenticCorrectionMetrics({
               className="text-[0.65rem] h-5 cursor-pointer hover:bg-muted/30"
               onClick={() => onConfidenceFilterClick?.('low')}
             >
-              Low (&lt;60%): {metrics.lowConfidenceCount}
+              {t('low')} {metrics.lowConfidenceCount}
             </Badge>
             <Badge
               variant="outline"
               className="text-[0.65rem] h-5 cursor-pointer hover:bg-muted/30 text-green-600"
               onClick={() => onConfidenceFilterClick?.('high')}
             >
-              High (&ge;80%): {metrics.highConfidenceCount}
+              {t('high')} {metrics.highConfidenceCount}
             </Badge>
           </div>
         </div>
 
         {/* Category breakdown */}
-        <span className="text-xs text-muted-foreground mb-1">By Category</span>
+        <span className="text-xs text-muted-foreground mb-1">{t('byCategory')}</span>
         <div className="flex-1 overflow-auto">
           {metrics.categories.map((metric) => (
             <Tooltip key={metric.category}>
@@ -174,7 +176,7 @@ export default function AgenticCorrectionMetrics({
             </Tooltip>
           ))}
           {metrics.categories.length === 0 && (
-            <p className="text-xs text-muted-foreground italic">No agentic corrections</p>
+            <p className="text-xs text-muted-foreground italic">{t('noCorrections')}</p>
           )}
         </div>
       </Card>

@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Music2, RefreshCw, Loader2, Moon, Sun, Search, Gift, X, Shield, ShieldOff, HelpCircle, Mail, Phone } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { sortJobsByDate } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
@@ -45,6 +46,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 function AppPageContent() {
+  const t = useTranslations('dashboard')
+  const tHeader = useTranslations('header')
   const router = useRouter()
   const searchParams = useSearchParams()
   const [allJobs, setAllJobs] = useState<Job[]>([])
@@ -218,7 +221,7 @@ function AppPageContent() {
             )}
             <div className="min-w-0">
               <h1 className="text-base sm:text-xl font-bold truncate" style={{ color: 'var(--text)' }}>
-                {isDefaultTenant ? "Karaoke Generator" : branding.site_title}
+                {isDefaultTenant ? t('title') : branding.site_title}
               </h1>
             </div>
           </div>
@@ -232,7 +235,7 @@ function AppPageContent() {
               style={{ color: 'var(--text-muted)' }}
             >
               <RefreshCw className={`w-4 h-4 sm:mr-2 ${isLoadingJobs ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <span className="hidden sm:inline">{t('refresh')}</span>
             </Button>
             {isAdmin && (
               <TooltipProvider>
@@ -253,7 +256,7 @@ function AppPageContent() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    <p>{showAdminControls ? "Hide admin controls" : "Show admin controls"}</p>
+                    <p>{showAdminControls ? t('hideAdminControls') : t('showAdminControls')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -271,7 +274,7 @@ function AppPageContent() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel className="text-sm font-normal">
-                  Something confusing or not working? Reach out anytime!
+                  {tHeader('helpPrompt')}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
@@ -308,7 +311,7 @@ function AppPageContent() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    <p>{isDarkMode ? "Switch to light mode" : "Switch to dark mode"}</p>
+                    <p>{isDarkMode ? t('switchToLightMode') : t('switchToDarkMode')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -338,9 +341,9 @@ function AppPageContent() {
             <div className="flex items-center gap-3 min-w-0">
               <Gift className="w-5 h-5 text-green-500 shrink-0" />
               <p className="text-sm" style={{ color: 'var(--text)' }}>
-                <strong>Earn 1 free credit!</strong>{' '}
+                <strong>{t('earnFreeCredit')}</strong>{' '}
                 <span style={{ color: 'var(--text-muted)' }}>
-                  Share your feedback on the karaoke creation experience.
+                  {t('feedbackPrompt')}
                 </span>
               </p>
             </div>
@@ -351,7 +354,7 @@ function AppPageContent() {
                 onClick={() => setShowFeedbackDialog(true)}
                 className="text-green-500 border-green-500/30 hover:bg-green-500/10"
               >
-                Give Feedback
+                {t('giveFeedback')}
               </Button>
               <button
                 onClick={() => {
@@ -372,12 +375,12 @@ function AppPageContent() {
           <Card className="backdrop-blur min-w-0" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
             <CardHeader>
               <CardTitle style={{ color: 'var(--text)' }}>
-                {isDefaultTenant ? "Create Karaoke Video" : "Submit Track"}
+                {isDefaultTenant ? t('createKaraokeVideo') : t('submitTrack')}
               </CardTitle>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
                 {isDefaultTenant
-                  ? "Turn any song into a karaoke video with synced lyrics"
-                  : "Upload your mixed audio and instrumental"}
+                  ? t('createDescription')
+                  : t('submitDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -394,7 +397,7 @@ function AppPageContent() {
             <CardHeader className="px-3 sm:px-6">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <CardTitle style={{ color: 'var(--text)' }}>Recent Jobs</CardTitle>
+                  <CardTitle style={{ color: 'var(--text)' }}>{t('recentJobs')}</CardTitle>
                   {isLoadingJobs && <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -402,8 +405,8 @@ function AppPageContent() {
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
                     <input
                       type="text"
-                      placeholder="Search..."
-                      aria-label="Search jobs"
+                      placeholder={t('searchPlaceholder')}
+                      aria-label={t('searchPlaceholder')}
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                       className="h-7 w-[160px] sm:w-[200px] text-xs rounded-md border pl-7 pr-2"
@@ -418,17 +421,17 @@ function AppPageContent() {
                     setStatusFilter(v)
                     localStorage.setItem("nomad-karaoke-status-filter", v)
                   }}>
-                    <SelectTrigger className="h-7 w-[130px] text-xs" aria-label="Filter by status">
+                    <SelectTrigger className="h-7 w-[130px] text-xs" aria-label={t('filterByStatus')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All statuses</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                      <SelectItem value="complete">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="awaiting_review">Awaiting review</SelectItem>
-                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="all">{t('allStatuses')}</SelectItem>
+                      <SelectItem value="active">{t('active')}</SelectItem>
+                      <SelectItem value="failed">{t('failed')}</SelectItem>
+                      <SelectItem value="complete">{t('completed')}</SelectItem>
+                      <SelectItem value="cancelled">{t('cancelled')}</SelectItem>
+                      <SelectItem value="awaiting_review">{t('awaitingReview')}</SelectItem>
+                      <SelectItem value="processing">{t('processing')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={String(jobLimit)} onValueChange={(v) => {
@@ -436,7 +439,7 @@ function AppPageContent() {
                     setJobLimit(val)
                     localStorage.setItem("nomad-karaoke-job-limit", String(val))
                   }}>
-                    <SelectTrigger className="h-7 w-[70px] text-xs" aria-label="Results per page">
+                    <SelectTrigger className="h-7 w-[70px] text-xs" aria-label={t('resultsPerPage')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -452,10 +455,10 @@ function AppPageContent() {
               </div>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
                 {!hasFetchedSuccessfully
-                  ? 'Loading...'
+                  ? t('loadingJobs')
                   : searchQuery || (statusFilter !== 'all' && statusFilter !== 'active')
-                    ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''} matching filters`
-                    : `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`}
+                    ? t('jobsMatchingFilters', { count: jobs.length })
+                    : t('jobsCount', { count: jobs.length })}
               </CardDescription>
             </CardHeader>
             <CardContent className="px-3 sm:px-6">
@@ -464,17 +467,17 @@ function AppPageContent() {
                   {!hasFetchedSuccessfully ? (
                     <>
                       <Loader2 className="w-12 h-12 mx-auto mb-3 opacity-50 animate-spin" />
-                      <p>Loading jobs...</p>
+                      <p>{t('loadingJobs')}</p>
                     </>
                   ) : searchQuery || (statusFilter !== 'all' && statusFilter !== 'active') ? (
                     <>
                       <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No jobs match your filters.</p>
+                      <p>{t('noJobsMatchFilters')}</p>
                     </>
                   ) : (
                     <>
                       <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No jobs yet. Create one to get started!</p>
+                      <p>{t('noJobsYet')}</p>
                     </>
                   )}
                 </div>

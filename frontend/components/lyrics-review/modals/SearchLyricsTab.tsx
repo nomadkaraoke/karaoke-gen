@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,7 @@ export default function SearchLyricsTab({
   onClose,
   disabled = false,
 }: SearchLyricsTabProps) {
+  const t = useTranslations('lyricsReview.modals.searchLyrics')
   const [artist, setArtist] = useState(defaultArtist)
   const [title, setTitle] = useState(defaultTitle)
   const [isSearching, setIsSearching] = useState(false)
@@ -78,30 +80,29 @@ export default function SearchLyricsTab({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="search-artist">Artist</Label>
+        <Label htmlFor="search-artist">{t('artist')}</Label>
         <Input
           id="search-artist"
           value={artist}
           onChange={(e) => setArtist(e.target.value)}
-          placeholder="Artist name"
+          placeholder={t('artistPlaceholder')}
           disabled={isSearching || disabled}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="search-title">Title</Label>
+        <Label htmlFor="search-title">{t('title')}</Label>
         <Input
           id="search-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Song title"
+          placeholder={t('titlePlaceholder')}
           disabled={isSearching || disabled}
         />
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Searches all configured lyrics providers (Genius, AZLyrics, etc.) and adds any
-        results that are a close match to this song.
+        {t('searchDesc')}
       </p>
 
       {error && (
@@ -114,20 +115,20 @@ export default function SearchLyricsTab({
         <div className="space-y-3">
           <Alert>
             <AlertDescription>
-              {searchResult.message || 'No matching lyrics found across all providers.'}
+              {searchResult.message || t('noMatches')}
             </AlertDescription>
           </Alert>
 
           {notFoundSources.length > 0 && (
             <p className="text-xs text-muted-foreground">
-              Not found: {notFoundSources.join(', ')}
+              {t('notFound', { sources: notFoundSources.join(', ') })}
             </p>
           )}
 
           {rejectedEntries.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-medium">
-                Low-confidence results — select any to force-add:
+                {t('lowConfidence')}
               </p>
               {rejectedEntries.map(([source, info]: [string, RejectedSource]) => (
                 <div
@@ -151,8 +152,7 @@ export default function SearchLyricsTab({
                       &ldquo;{info.track_name}&rdquo; by {info.artist_names}
                     </p>
                     <p className="text-muted-foreground">
-                      Match: {info.matched_words}/{info.total_words} words (
-                      {Math.round(info.relevance * 100)}% relevance)
+                      {t('matched', { matched: info.matched_words, total: info.total_words, relevance: Math.round(info.relevance * 100) })}
                     </p>
                   </div>
                 </div>
@@ -173,10 +173,10 @@ export default function SearchLyricsTab({
               {isSearching ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4" />
-                  Searching...
+                  {t('searching')}
                 </>
               ) : (
-                'Search Again'
+                t('searchAgain')
               )}
             </Button>
             {rejectedEntries.length > 0 && (
@@ -190,7 +190,7 @@ export default function SearchLyricsTab({
                     Adding...
                   </>
                 ) : (
-                  `Add Selected (${selectedForce.size})`
+                  t('addSelected', { count: selectedForce.size })
                 )}
               </Button>
             )}
@@ -203,10 +203,10 @@ export default function SearchLyricsTab({
             {isSearching ? (
               <>
                 <Spinner className="mr-2 h-4 w-4" />
-                Searching...
+                {t('searching')}
               </>
             ) : (
-              'Search All Providers'
+              t('searchAll')
             )}
           </Button>
         )}

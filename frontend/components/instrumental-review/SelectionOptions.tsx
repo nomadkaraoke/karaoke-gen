@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from 'next-intl'
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import type { InstrumentalSelectionType, BackingVocalAnalysis, MuteRegion } from "@/lib/api"
@@ -34,35 +35,36 @@ export function SelectionOptions({
   muteRegionsCount,
   backingVocalAnalysis,
 }: SelectionOptionsProps) {
+  const t = useTranslations('instrumentalReview.options')
   const options: SelectionOption[] = [
     {
       value: "clean",
-      label: "Clean Instrumental",
-      description: "No backing vocals",
+      label: t('cleanInstrumental'),
+      description: t('noBackingVocals'),
       available: true,
     },
     {
       value: "with_backing",
-      label: "With Backing Vocals",
-      description: "All backing vocals included",
+      label: t('withBackingVocals'),
+      description: t('allBackingVocalsIncluded'),
       available: hasWithBacking,
     },
     {
       value: "original",
-      label: "Original Audio",
-      description: "Full original with lead vocals",
+      label: t('originalAudio'),
+      description: t('fullOriginalWithVocals'),
       available: hasOriginal,
     },
     {
       value: "custom",
-      label: "Custom",
-      description: `${muteRegionsCount} region${muteRegionsCount !== 1 ? "s" : ""} muted`,
+      label: t('custom'),
+      description: t('customRegionsMuted', { count: muteRegionsCount }),
       available: hasCustom,
     },
     {
       value: "uploaded",
-      label: "Uploaded",
-      description: uploadedFilename || "Custom instrumental file",
+      label: t('uploaded'),
+      description: uploadedFilename || t('customFile'),
       available: hasUploaded,
     },
   ]
@@ -71,7 +73,7 @@ export function SelectionOptions({
 
   return (
     <div className="flex flex-col gap-2">
-      <Label className="text-sm font-semibold">Final Selection</Label>
+      <Label className="text-sm font-semibold">{t('finalSelection')}</Label>
       <div className="flex flex-col gap-2">
         {availableOptions.map((option) => (
           <button
@@ -103,7 +105,7 @@ export function SelectionOptions({
                 {option.label}
                 {backingVocalAnalysis?.recommended_selection === option.value && (
                   <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-500 rounded">
-                    Recommended
+                    {t('recommended')}
                   </span>
                 )}
               </div>
@@ -113,8 +115,8 @@ export function SelectionOptions({
               {backingVocalAnalysis?.recommended_selection === option.value && (
                 <div className="text-[10px] text-green-500/80 mt-0.5">
                   {option.value === "clean"
-                    ? `Very few backing vocals detected (${backingVocalAnalysis.audible_percentage.toFixed(0)}%)`
-                    : `Significant backing vocals (${backingVocalAnalysis.audible_percentage.toFixed(0)}%) — may enhance the karaoke experience`}
+                    ? t('veryFewVocals', { percentage: backingVocalAnalysis.audible_percentage.toFixed(0) })
+                    : t('significantVocals', { percentage: backingVocalAnalysis.audible_percentage.toFixed(0) })}
                 </div>
               )}
             </div>

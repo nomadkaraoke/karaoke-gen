@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ export default function ReferenceView({
   defaultArtist = '',
   defaultTitle = '',
 }: ReferenceViewProps) {
+  const t = useTranslations('lyricsReview.reference')
   const availableSources = useMemo(() => Object.keys(referenceSources), [referenceSources])
 
   const effectiveCurrentSource = useMemo(
@@ -166,13 +168,13 @@ export default function ReferenceView({
       <CardContent className="p-0">
         <div className="flex justify-between items-center mb-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">Reference Lyrics</h3>
+            <h3 className="text-sm font-semibold">{t('title')}</h3>
             <Button
               variant="ghost"
               size="icon"
               className="h-5 w-5 min-h-0 min-w-0 p-0.5"
               onClick={copyAllReferenceText}
-              title="Copy all reference lyrics"
+              title={t('copyAll')}
             >
               <Copy className="h-4 w-4" />
             </Button>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -24,6 +25,7 @@ export default function AddLyricsModal({
   defaultArtist,
   defaultTitle,
 }: AddLyricsModalProps) {
+  const t = useTranslations('lyricsReview.modals.addLyrics')
   const [activeTab, setActiveTab] = useState('search')
 
   const handleClose = () => {
@@ -35,16 +37,16 @@ export default function AddLyricsModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Reference Lyrics</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full">
             <TabsTrigger value="search" className="flex-1">
-              Search
+              {t('search')}
             </TabsTrigger>
             <TabsTrigger value="paste" className="flex-1">
-              Paste
+              {t('paste')}
             </TabsTrigger>
           </TabsList>
 

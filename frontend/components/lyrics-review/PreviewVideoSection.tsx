@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, RefObject } from 'react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -31,6 +32,7 @@ export default function PreviewVideoSection({
   videoRef,
   timingOffsetMs = 0,
 }: PreviewVideoSectionProps) {
+  const t = useTranslations('lyricsReview.previewVideo')
   const [previewState, setPreviewState] = useState<{
     status: 'loading' | 'warming_up' | 'ready' | 'error'
     videoUrl?: string
@@ -99,7 +101,7 @@ export default function PreviewVideoSection({
       {previewState.status === 'loading' && (
         <div className="flex items-center gap-3 p-4">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Generating preview video...</span>
+          <span>{t('generating')}</span>
         </div>
       )}
 
@@ -107,7 +109,7 @@ export default function PreviewVideoSection({
         <div className="flex flex-col items-center justify-center p-8 text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500 mb-4" />
           <p className="text-sm text-gray-600">
-            Starting encoding worker... This usually takes about a minute.
+            {t('startingEncoder')}
           </p>
         </div>
       )}
@@ -136,7 +138,7 @@ export default function PreviewVideoSection({
             src={previewState.videoUrl}
             className="block w-full h-auto"
           >
-            Your browser does not support the video tag.
+            {t('unsupportedBrowser')}
           </video>
         </div>
       )}

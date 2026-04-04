@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -110,6 +111,7 @@ export default function LyricsAnalyzer({
   jobId,
   hasExistingInstrumental = false,
 }: LyricsAnalyzerProps) {
+  const t = useTranslations('lyricsReview')
   const router = useRouter()
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 

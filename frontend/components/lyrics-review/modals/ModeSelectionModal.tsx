@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, ClipboardPaste, TextCursorInput, X } from 'lucide-react'
@@ -22,12 +23,13 @@ export default function ModeSelectionModal({
   onSelectReplaceSegments,
   hasExistingLyrics,
 }: ModeSelectionModalProps) {
+  const t = useTranslations('lyricsReview.modals.modeSelection')
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Edit All Lyrics</span>
+            <span>{t('title')}</span>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <X className="h-4 w-4" />
             </Button>
@@ -35,7 +37,7 @@ export default function ModeSelectionModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Choose how you want to edit the lyrics:</p>
+          <p className="text-sm text-muted-foreground">{t('chooseMethod')}</p>
 
           <div className="flex flex-col gap-3">
             {/* Re-sync Existing option - only show if there are existing lyrics */}
@@ -50,12 +52,11 @@ export default function ModeSelectionModal({
                 <div className="flex items-start gap-3">
                   <RefreshCw className="h-10 w-10 text-primary mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-primary">Re-sync Existing Lyrics</h3>
+                    <h3 className="text-lg font-semibold text-primary">{t('resyncTitle')}</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Keep the current lyrics text and fix timing issues. Use this when lyrics are
-                      correct but timing has drifted, especially in the second half of the song.
+                      {t('resyncDesc')}
                     </p>
-                    <p className="text-xs text-green-500 mt-2">Recommended for fixing timing drift</p>
+                    <p className="text-xs text-green-500 mt-2">{t('resyncRecommended')}</p>
                   </div>
                 </div>
               </div>
@@ -73,12 +74,11 @@ export default function ModeSelectionModal({
                 <div className="flex items-start gap-3">
                   <TextCursorInput className="h-10 w-10 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold">Replace Segment Lyrics</h3>
+                    <h3 className="text-lg font-semibold">{t('replaceSegmentTitle')}</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Edit or paste new lyrics for each line. Timing is preserved — only the words
-                      change. Best for custom lyrics, translations, or fixing multiple lines at once.
+                      {t('replaceSegmentDesc')}
                     </p>
-                    <p className="text-xs text-green-500 mt-2">Recommended for custom lyrics</p>
+                    <p className="text-xs text-green-500 mt-2">{t('replaceSegmentRecommended')}</p>
                   </div>
                 </div>
               </div>
@@ -95,13 +95,12 @@ export default function ModeSelectionModal({
               <div className="flex items-start gap-3">
                 <ClipboardPaste className="h-10 w-10 text-muted-foreground mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold">Replace All Lyrics</h3>
+                  <h3 className="text-lg font-semibold">{t('replaceAllTitle')}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Paste completely new lyrics from clipboard and manually sync timing for all
-                    words from scratch.
+                    {t('replaceAllDesc')}
                   </p>
                   <p className="text-xs text-yellow-500 mt-2">
-                    All existing timing data will be lost
+                    {t('replaceAllWarning')}
                   </p>
                 </div>
               </div>

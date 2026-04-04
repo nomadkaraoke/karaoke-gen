@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from 'next-intl'
 import { api, Job } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
@@ -23,6 +24,8 @@ interface EditTrackModalProps {
 }
 
 export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditTrackModalProps) {
+  const t = useTranslations('editTrack')
+  const tc = useTranslations('common')
   const [updateMetadata, setUpdateMetadata] = useState(false)
   const [artist, setArtist] = useState(job.artist || "")
   const [title, setTitle] = useState(job.title || "")
@@ -77,10 +80,9 @@ export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditT
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[480px]" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
-          <DialogTitle>Edit Completed Track</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>
-            This will remove the current video from YouTube, Dropbox, and Google Drive.
-            After you complete the review again, a new version will be rendered and re-distributed.
+            {t('description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -94,7 +96,7 @@ export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditT
               className="rounded"
             />
             <Label htmlFor="update-metadata" className="cursor-pointer">
-              I need to update the artist or title
+              {t('updateArtistTitle')}
             </Label>
           </div>
 
@@ -102,7 +104,7 @@ export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditT
             <div className="grid gap-3 pl-6">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-artist" className="text-right">
-                  Artist
+                  {t('artist')}
                 </Label>
                 <Input
                   id="edit-artist"
@@ -113,7 +115,7 @@ export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditT
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-title" className="text-right">
-                  Title
+                  {t('songTitle')}
                 </Label>
                 <Input
                   id="edit-title"
@@ -137,7 +139,7 @@ export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditT
             onClick={() => handleOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button
             type="button"
@@ -147,10 +149,10 @@ export function EditTrackModal({ job, open, onOpenChange, onEditStarted }: EditT
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Cleaning up...
+                {t('cleaningUp')}
               </>
             ) : (
-              "Confirm & Edit"
+              t('confirmEdit')
             )}
           </Button>
         </DialogFooter>

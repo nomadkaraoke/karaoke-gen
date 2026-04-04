@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { useTranslations } from 'next-intl'
 
 interface FeedbackDialogProps {
   open: boolean
@@ -46,6 +47,7 @@ function StarRating({ value, onChange, label }: {
 }
 
 export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
+  const t = useTranslations('feedback')
   const { fetchUser } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -138,17 +140,17 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
           <div className="text-center py-6 space-y-4">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
             <DialogHeader>
-              <DialogTitle className="text-foreground text-xl">Thank You!</DialogTitle>
+              <DialogTitle className="text-foreground text-xl">{t('thankYou')}</DialogTitle>
               <DialogDescription className="text-muted-foreground text-base">
-                Your feedback helps us improve Nomad Karaoke for everyone.
+                {t('thankYouDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mx-auto max-w-xs">
               <p className="text-2xl font-bold text-green-500">+{creditsGranted}</p>
-              <p className="text-sm text-muted-foreground">credits added to your account</p>
+              <p className="text-sm text-muted-foreground">{t('creditsAdded', { count: creditsGranted })}</p>
             </div>
             <Button onClick={handleClose} className="mt-4">
-              Done
+              {t('done')}
             </Button>
           </div>
         ) : (
@@ -156,10 +158,10 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
                 <Gift className="w-5 h-5 text-green-500" />
-                Share Your Feedback — Earn 1 Free Credit
+                {t('title')}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Tell us about your experience creating karaoke videos. Your feedback directly shapes what we build next.
+                {t('description')}
               </DialogDescription>
             </DialogHeader>
 
@@ -167,22 +169,22 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
               {/* Star Ratings */}
               <div className="grid grid-cols-2 gap-4">
                 <StarRating
-                  label="Overall Experience"
+                  label={t('overallExperience')}
                   value={overallRating}
                   onChange={setOverallRating}
                 />
                 <StarRating
-                  label="Ease of Use"
+                  label={t('easeOfUse')}
                   value={easeOfUseRating}
                   onChange={setEaseOfUseRating}
                 />
                 <StarRating
-                  label="Lyrics Accuracy"
+                  label={t('lyricsAccuracy')}
                   value={lyricsAccuracyRating}
                   onChange={setLyricsAccuracyRating}
                 />
                 <StarRating
-                  label="Correction Experience"
+                  label={t('correctionExperience')}
                   value={correctionRating}
                   onChange={setCorrectionRating}
                 />
@@ -191,38 +193,38 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
               {/* Text Fields */}
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="went-well">What went well?</Label>
+                  <Label htmlFor="went-well">{t('whatWentWell')}</Label>
                   <Textarea
                     id="went-well"
                     value={whatWentWell}
                     onChange={(e) => setWhatWentWell(e.target.value)}
-                    placeholder="What did you enjoy about creating karaoke videos?"
+                    placeholder={t('whatWentWellPlaceholder')}
                     rows={2}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="could-improve">What could be better?</Label>
+                  <Label htmlFor="could-improve">{t('whatCouldBeBetter')}</Label>
                   <Textarea
                     id="could-improve"
                     value={whatCouldImprove}
                     onChange={(e) => setWhatCouldImprove(e.target.value)}
-                    placeholder="What would make the experience better?"
+                    placeholder={t('whatCouldBeBetterPlaceholder')}
                     rows={2}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="additional">Additional comments</Label>
+                  <Label htmlFor="additional">{t('additionalComments')}</Label>
                   <Textarea
                     id="additional"
                     value={additionalComments}
                     onChange={(e) => setAdditionalComments(e.target.value)}
-                    placeholder="Anything else you'd like us to know?"
+                    placeholder={t('additionalCommentsPlaceholder')}
                     rows={2}
                   />
                 </div>
                 {!hasDetailedFeedback && (
                   <p className="text-xs text-muted-foreground">
-                    Please write at least 50 characters in one of the fields above ({longestText}/50)
+                    {t('minCharsWarning', { count: longestText })}
                   </p>
                 )}
               </div>
@@ -236,7 +238,7 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
                     onCheckedChange={(checked) => setWouldRecommend(checked === true)}
                   />
                   <Label htmlFor="would-recommend" className="text-sm font-normal cursor-pointer">
-                    I would recommend Nomad Karaoke to others
+                    {t('wouldRecommend')}
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -246,7 +248,7 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
                     onCheckedChange={(checked) => setWouldUseAgain(checked === true)}
                   />
                   <Label htmlFor="would-use-again" className="text-sm font-normal cursor-pointer">
-                    I would use Nomad Karaoke again
+                    {t('wouldUseAgain')}
                   </Label>
                 </div>
               </div>
@@ -265,10 +267,10 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Submitting...
+                    {t('submitting')}
                   </>
                 ) : (
-                  'Submit Feedback & Earn 1 Credit'
+                  t('submitButton')
                 )}
               </Button>
             </div>

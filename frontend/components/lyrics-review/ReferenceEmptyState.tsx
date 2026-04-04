@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Info } from 'lucide-react'
@@ -20,6 +21,7 @@ export default function ReferenceEmptyState({
   onAdd,
   onSearch,
 }: ReferenceEmptyStateProps) {
+  const t = useTranslations('lyricsReview.referenceEmpty')
   // onClose is a no-op here — it's inline, not a modal
   const handleClose = () => {}
 
@@ -28,18 +30,17 @@ export default function ReferenceEmptyState({
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          No reference lyrics were found for this song. Search all configured lyrics providers or
-          paste lyrics manually to enable gap correction.
+          {t('noReferenceFound')}
         </AlertDescription>
       </Alert>
 
       <Tabs defaultValue="search">
         <TabsList className="w-full">
           <TabsTrigger value="search" className="flex-1">
-            Search
+            {t('search')}
           </TabsTrigger>
           <TabsTrigger value="paste" className="flex-1">
-            Paste
+            {t('paste')}
           </TabsTrigger>
         </TabsList>
 

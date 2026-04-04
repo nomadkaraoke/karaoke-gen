@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { Bell, X, Smartphone, Share } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { useTranslations } from 'next-intl';
 
 /**
  * Soft-ask banner prompting users to enable push notifications.
  * Shows different UI for iOS (Add to Home Screen instructions) vs other browsers.
  */
 export function PushNotificationPrompt() {
+  const t = useTranslations('push');
   const {
     isLoading,
     isPushEnabled,
@@ -37,26 +39,26 @@ export function PushNotificationPrompt() {
         <div className="flex items-start gap-3">
           <Smartphone className="h-5 w-5 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-medium mb-1">Get notifications on your iPhone</p>
+            <p className="font-medium mb-1">{t('iosTitle')}</p>
             <p className="text-sm text-[var(--text-muted)] mb-3">
-              To receive push notifications on iOS, install this app to your home screen:
+              {t('iosInstructions')}
             </p>
             <ol className="text-sm text-[var(--text-muted)] space-y-2 mb-3">
               <li className="flex items-center gap-2">
                 <span className="bg-blue-500/20 rounded-full w-5 h-5 flex items-center justify-center text-xs">1</span>
-                <span>Tap the <Share className="inline h-4 w-4" /> Share button in Safari</span>
+                <span>{t('iosStep1')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="bg-blue-500/20 rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
-                <span>Scroll down and tap &quot;Add to Home Screen&quot;</span>
+                <span>{t('iosStep2')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="bg-blue-500/20 rounded-full w-5 h-5 flex items-center justify-center text-xs">3</span>
-                <span>Open the app from your home screen</span>
+                <span>{t('iosStep3')}</span>
               </li>
             </ol>
             <p className="text-xs text-[var(--text-muted)]">
-              iOS requires apps to be installed for push notifications to work.
+              {t('iosNote')}
             </p>
           </div>
           <button
@@ -99,9 +101,9 @@ export function PushNotificationPrompt() {
       <div className="flex items-start gap-3">
         <Bell className="h-5 w-5 mt-0.5 flex-shrink-0" />
         <div className="flex-1">
-          <p className="font-medium mb-1">Get notified when your video is ready</p>
+          <p className="font-medium mb-1">{t('promptTitle')}</p>
           <p className="text-sm text-[var(--text-muted)] mb-3">
-            We&apos;ll send you a notification when your karaoke video needs attention or is ready to download.
+            {t('promptDescription')}
           </p>
           {error && (
             <p className="text-sm text-red-400 mb-3">{error}</p>
@@ -113,7 +115,7 @@ export function PushNotificationPrompt() {
               disabled={isSubscribing}
               className="bg-purple-600 hover:bg-purple-700 text-white"
             >
-              {isSubscribing ? 'Enabling...' : 'Enable Notifications'}
+              {isSubscribing ? t('enabling') : t('enable')}
             </Button>
             <Button
               variant="ghost"
@@ -121,7 +123,7 @@ export function PushNotificationPrompt() {
               onClick={handleDismiss}
               className="text-[var(--text-muted)] hover:text-[var(--text)]"
             >
-              Not now
+              {t('notNow')}
             </Button>
             <Button
               variant="ghost"
@@ -129,7 +131,7 @@ export function PushNotificationPrompt() {
               onClick={handleNeverAsk}
               className="text-[var(--text-muted)] hover:text-[var(--text)] text-xs"
             >
-              Don&apos;t ask again
+              {t('dontAskAgain')}
             </Button>
           </div>
         </div>
@@ -149,6 +151,7 @@ export function PushNotificationPrompt() {
  * Compact version of the prompt for use in menus/settings.
  */
 export function PushNotificationToggle() {
+  const t = useTranslations('push');
   const {
     isLoading,
     isPushEnabled,
@@ -184,9 +187,9 @@ export function PushNotificationToggle() {
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2 text-[var(--text-muted)]">
           <Bell className="h-4 w-4" />
-          <span>Push Notifications</span>
+          <span>{t('settingsTitle')}</span>
         </div>
-        <span className="text-xs text-[var(--text-muted)]">Blocked in browser</span>
+        <span className="text-xs text-[var(--text-muted)]">{t('blockedInBrowser')}</span>
       </div>
     );
   }
@@ -195,7 +198,7 @@ export function PushNotificationToggle() {
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
         <Bell className="h-4 w-4 text-[var(--text-muted)]" />
-        <span className="text-sm">Push Notifications</span>
+        <span className="text-sm">{t('settingsTitle')}</span>
       </div>
       <Button
         variant="outline"
@@ -204,7 +207,7 @@ export function PushNotificationToggle() {
         disabled={isProcessing}
         className="h-7 text-xs"
       >
-        {isProcessing ? '...' : isSubscribed ? 'Disable' : 'Enable'}
+        {isProcessing ? '...' : isSubscribed ? t('disableOnDevice') : t('enableNotifications')}
       </Button>
     </div>
   );

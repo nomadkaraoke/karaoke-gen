@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface WarmingUpLoaderProps {
   /** Custom class name for the container */
@@ -24,6 +25,7 @@ export function WarmingUpLoader({
   warmUpDelay = 5000,
   almostThereDelay = 15000,
 }: WarmingUpLoaderProps) {
+  const t = useTranslations('warmingUp');
   const [phase, setPhase] = useState<'initial' | 'warming' | 'almost'>('initial');
 
   useEffect(() => {
@@ -49,14 +51,14 @@ export function WarmingUpLoader({
       />
       {phase === 'warming' && (
         <p className="text-sm animate-fade-in" style={{ color: 'var(--text-muted)' }}>
-          Warming up the generator...
+          {t('title')}
         </p>
       )}
       {phase === 'almost' && (
         <div className="text-center animate-fade-in">
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Almost there...</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('almostThere')}</p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
-            First load can take up to 30 seconds
+            {t('firstLoadNote')}
           </p>
         </div>
       )}

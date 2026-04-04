@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from 'next-intl'
 import { Job } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Zap } from "lucide-react"
@@ -17,15 +18,21 @@ import { useAuth } from "@/lib/auth"
  * Displays: "[4/10] Processing..." with colored text and optional progress bar
  */
 function StatusIndicator({ job }: { job: Job }) {
+  const t = useTranslations('jobCard')
+  const tStatus = useTranslations('jobStatus')
   const { step, total, label, isBlocking, color } = getJobStep(job)
-  const formattedStatus = formatStepIndicator(step, total, label)
+  // Translate status label(s) — may contain " + " for combined parallel status
+  const translatedLabel = label.includes(' + ')
+    ? label.split(' + ').map(k => tStatus(k as any)).join(' + ')
+    : tStatus(label as any)
+  const formattedStatus = formatStepIndicator(step, total, translatedLabel)
 
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className={color}>{formattedStatus}</span>
       {isBlocking && (
         <span className="text-amber-400 text-[10px] font-medium uppercase tracking-wide">
-          Action needed
+          {t('actionNeeded')}
         </span>
       )}
     </span>
@@ -76,6 +83,7 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
+  const t = useTranslations('jobCard')
   const [showAudioSearch, setShowAudioSearch] = useState(false)
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -97,9 +105,9 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
       return (
         <div className="flex items-center gap-1 text-xs text-amber-400">
           <Zap className="w-3 h-3" />
-          Will auto-{job.status === "awaiting_review" || job.status === "in_review" ? "accept" :
-                     job.status === "awaiting_instrumental_selection" ? "select" :
-                     "select first"}
+          {job.status === "awaiting_review" || job.status === "in_review" ? t('autoAccept') :
+                     job.status === "awaiting_instrumental_selection" ? t('autoSelect') :
+                     t('willAutoSelectFirst')}
         </div>
       )
     }
@@ -111,7 +119,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
           href={`/app/jobs#/${job.job_id}/review`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
-          Review Lyrics
+          {t('reviewLyrics')}
         </a>
       )
     }
@@ -122,7 +130,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
           href={`/app/jobs#/${job.job_id}/audio-edit`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
-          Edit Audio
+          {t('editAudio')}
         </a>
       )
     }
@@ -134,7 +142,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
           onClick={() => setShowAudioSearch(true)}
           className="text-xs h-7 px-3 bg-primary-500 hover:bg-primary-600"
         >
-          Select Audio
+          {t('selectAudio')}
         </Button>
       )
     }
@@ -146,7 +154,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
           href={`/app/jobs#/${job.job_id}/instrumental`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
-          Select Instrumental
+          {t('selectInstrumental')}
         </a>
       )
     }

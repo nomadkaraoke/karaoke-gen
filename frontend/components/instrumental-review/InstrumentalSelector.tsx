@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from 'next-intl'
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { ArrowLeft, Play, Pause, Check } from "lucide-react"
@@ -49,6 +50,7 @@ function formatTime(seconds: number): string {
 
 export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalSelectorProps) {
   const router = useRouter()
+  const t = useTranslations('instrumentalReview')
   const audioRef = useRef<HTMLAudioElement>(null)
 
   // Data state
@@ -518,10 +520,9 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md">
           <Spinner className="w-8 h-8 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Audio Separation In Progress</h2>
+          <h2 className="text-lg font-semibold mb-2">{t('separationInProgress')}</h2>
           <p className="text-muted-foreground">
-            The audio stems are still being separated. This usually takes a few minutes.
-            This page will automatically update when the separation is complete.
+            {t('separationInProgressDesc')}
           </p>
         </div>
       </div>
@@ -534,7 +535,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Spinner className="w-8 h-8 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading instrumental analysis...</p>
+          <p className="text-muted-foreground">{t('loadingAnalysis')}</p>
         </div>
       </div>
     )
@@ -550,7 +551,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
             <Button variant="outline" asChild>
               <Link href="/app">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to dashboard
+                {t('backToDashboard')}
               </Link>
             </Button>
           )}
@@ -562,11 +563,11 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
   // Success screen
   if (showSuccess) {
     const selectionLabels: Record<string, string> = {
-      clean: "Clean Instrumental",
-      with_backing: "With Backing Vocals",
-      custom: "Custom",
-      uploaded: "Uploaded Instrumental",
-      original: "Original Audio",
+      clean: t('options.cleanInstrumental'),
+      with_backing: t('options.withBackingVocals'),
+      custom: t('options.custom'),
+      uploaded: t('options.uploaded'),
+      original: t('options.originalAudio'),
     }
     const selectionLabel = selectionLabels[selectedOption] || selectedOption
 
@@ -575,19 +576,19 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
         <div className="text-center">
           <h2 className="text-2xl font-semibold text-green-500 mb-4">
             <Check className="w-8 h-8 inline-block mr-2" />
-            Selection Submitted
+            {t('selectionSubmitted')}
           </h2>
           <p className="mb-2">
-            You selected: <strong>{selectionLabel}</strong>
+            {t('youSelected', { label: selectionLabel })}
           </p>
           <p className="text-muted-foreground">
             {countdown > 0
               ? isLocalMode
-                ? `Closing in ${countdown}s...`
-                : `Redirecting in ${countdown}s...`
+                ? t('closingIn', { countdown })
+                : t('redirectingIn', { countdown })
               : isLocalMode
-                ? "You can close this window now."
-                : "Redirecting..."}
+                ? t('canCloseWindow')
+                : t('redirecting')}
           </p>
         </div>
       </div>
@@ -610,8 +611,8 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
                 e.currentTarget.style.display = "none"
               }}
             />
-            <span className="sm:hidden">Review</span>
-            <span className="hidden sm:inline">Instrumental Review</span>
+            <span className="sm:hidden">{t('review')}</span>
+            <span className="hidden sm:inline">{t('title')}</span>
           </span>
           <span className="text-xs md:text-sm text-muted-foreground truncate">
             {job.artist} {job.artist && job.title ? "-" : ""} {job.title}
@@ -626,8 +627,8 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
             }`}
           >
             {analysisData?.analysis.recommended_selection === "clean"
-              ? "Clean recommended"
-              : "Review backing vocals"}
+              ? t('cleanRecommended')
+              : t('reviewBackingVocals')}
           </span>
         </div>
       </header>
@@ -693,13 +694,10 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
               ))}
             </div>
             <span className="hidden md:inline text-[10px] text-muted-foreground">
-              <kbd className="px-1.5 py-0.5 bg-background border border-border rounded text-[10px] font-mono">
-                Shift
-              </kbd>
-              +drag
+              {t('shiftDrag')}
             </span>
             <kbd className="hidden md:inline px-1.5 py-0.5 bg-background border border-border rounded text-[10px] font-mono">
-              Space
+              {t('space')}
             </kbd>
           </div>
         </div>
@@ -722,7 +720,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
             <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Spinner className="w-4 h-4" />
-                Loading audio...
+                {t('loadingAudio')}
               </div>
             </div>
           )}
@@ -757,17 +755,15 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
           {/* Alternate Instrumental section */}
           <div className="bg-card border border-border rounded-lg p-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Alternate Instrumental</span>
+              <span className="text-sm font-semibold">{t('alternateInstrumental')}</span>
               <CustomUpload onUpload={handleUpload} isUploading={isUploading} />
             </div>
             <p className="text-xs text-muted-foreground mt-1.5">
-              Have your own instrumental track? Upload it here. The file must be the
-              same duration as the original audio ({formatTime(duration)}) so the
-              synced lyrics stay aligned.
+              {t('uploadYourOwn', { duration: formatTime(duration) })}
             </p>
             {hasUploaded && uploadedFilename && (
               <p className="text-xs text-green-500 mt-1">
-                ✓ Using: {uploadedFilename}
+                ✓ {t('usingFile', { filename: uploadedFilename })}
               </p>
             )}
           </div>
@@ -794,7 +790,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
             className="mt-auto w-full min-h-[44px] text-base font-semibold"
           >
             <Check className="w-5 h-5 mr-2" />
-            {isSubmitting ? "Submitting..." : "Confirm & Continue"}
+            {isSubmitting ? t('submitting') : t('confirmContinue')}
           </Button>
         </div>
       </div>

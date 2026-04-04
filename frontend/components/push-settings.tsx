@@ -5,12 +5,15 @@ import { Bell, Smartphone, Monitor, Trash2, RefreshCw, Check, X } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { api, PushSubscriptionInfo } from '@/lib/api';
+import { useTranslations } from 'next-intl';
 
 /**
  * Full settings panel for managing push notification subscriptions.
  * Shows list of subscribed devices and allows enabling/disabling.
  */
 export function PushSettings() {
+  const t = useTranslations('push');
+  const tCommon = useTranslations('common');
   const {
     isLoading: hookLoading,
     isPushEnabled,
@@ -119,7 +122,7 @@ export function PushSettings() {
   if (hookLoading) {
     return (
       <div className="p-4 text-center text-[var(--text-muted)]">
-        Loading...
+        {tCommon('loading')}
       </div>
     );
   }
@@ -129,7 +132,7 @@ export function PushSettings() {
       <div className="p-4 bg-[var(--card)] rounded-lg border border-[var(--card-border)]">
         <div className="flex items-center gap-2 text-[var(--text-muted)]">
           <Bell className="h-5 w-5" />
-          <span>Push notifications are not available on this server.</span>
+          <span>{t('notAvailable')}</span>
         </div>
       </div>
     );
@@ -142,28 +145,28 @@ export function PushSettings() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            <h3 className="font-medium">Push Notifications</h3>
+            <h3 className="font-medium">{t('settingsTitle')}</h3>
           </div>
           <div className="flex items-center gap-2">
             {isSubscribed ? (
               <span className="flex items-center gap-1 text-sm text-green-400">
                 <Check className="h-4 w-4" />
-                Enabled
+                {t('enabled')}
               </span>
             ) : permission === 'denied' ? (
               <span className="flex items-center gap-1 text-sm text-red-400">
                 <X className="h-4 w-4" />
-                Blocked
+                {t('blockedInBrowser')}
               </span>
             ) : (
-              <span className="text-sm text-[var(--text-muted)]">Disabled</span>
+              <span className="text-sm text-[var(--text-muted)]">{t('disabled')}</span>
             )}
           </div>
         </div>
 
         {permission === 'denied' ? (
           <div className="text-sm text-[var(--text-muted)] mb-4">
-            Notifications are blocked in your browser. To enable them, you&apos;ll need to allow notifications in your browser settings.
+            {t('blockedDescription')}
           </div>
         ) : (
           <div className="flex gap-2">
@@ -174,7 +177,7 @@ export function PushSettings() {
                 onClick={handleDisable}
                 disabled={isProcessing}
               >
-                {isProcessing ? 'Processing...' : 'Disable on this device'}
+                {isProcessing ? tCommon('processing') : t('disableOnDevice')}
               </Button>
             ) : (
               <Button
@@ -182,7 +185,7 @@ export function PushSettings() {
                 onClick={handleEnable}
                 disabled={isProcessing}
               >
-                {isProcessing ? 'Processing...' : 'Enable notifications'}
+                {isProcessing ? tCommon('processing') : t('enableNotifications')}
               </Button>
             )}
           </div>
@@ -196,24 +199,24 @@ export function PushSettings() {
       {/* Subscriptions List */}
       <div className="p-4 bg-[var(--card)] rounded-lg border border-[var(--card-border)]">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium">Subscribed Devices</h3>
+          <h3 className="font-medium">{t('subscribedDevices')}</h3>
           <Button
             variant="ghost"
             size="sm"
             onClick={loadSubscriptions}
             disabled={isLoadingList}
             className="h-8 w-8 p-0"
-            title="Refresh"
+            title={t('refresh')}
           >
             <RefreshCw className={`h-4 w-4 ${isLoadingList ? 'animate-spin' : ''}`} />
           </Button>
         </div>
 
         {isLoadingList ? (
-          <div className="text-sm text-[var(--text-muted)]">Loading...</div>
+          <div className="text-sm text-[var(--text-muted)]">{tCommon('loading')}</div>
         ) : subscriptions.length === 0 ? (
           <div className="text-sm text-[var(--text-muted)]">
-            No devices are subscribed to push notifications.
+            {t('noDevicesSubscribed')}
           </div>
         ) : (
           <ul className="space-y-2">
@@ -226,11 +229,11 @@ export function PushSettings() {
                   {getDeviceIcon(sub.device_name)}
                   <div>
                     <div className="text-sm font-medium">
-                      {sub.device_name || `Device ${index + 1}`}
+                      {sub.device_name || t('deviceLabel', { index: index + 1 })}
                     </div>
                     <div className="text-xs text-[var(--text-muted)]">
-                      Added {formatDate(sub.created_at)}
-                      {sub.last_used_at && ` • Last used ${formatDate(sub.last_used_at)}`}
+                      {t('addedDate', { date: formatDate(sub.created_at) })}
+                      {sub.last_used_at && ` • ${t('lastUsedDate', { date: formatDate(sub.last_used_at) })}`}
                     </div>
                   </div>
                 </div>
@@ -239,7 +242,7 @@ export function PushSettings() {
                   size="sm"
                   onClick={() => handleRemoveSubscription(sub.endpoint)}
                   className="h-8 w-8 p-0 text-[var(--text-muted)] hover:text-red-400"
-                  title="Remove this device"
+                  title={t('removeDevice')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -249,7 +252,7 @@ export function PushSettings() {
         )}
 
         <p className="text-xs text-[var(--text-muted)] mt-4">
-          You can have up to 5 devices subscribed. Adding more will remove the oldest subscription.
+          {t('maxDevicesNote')}
         </p>
       </div>
     </div>

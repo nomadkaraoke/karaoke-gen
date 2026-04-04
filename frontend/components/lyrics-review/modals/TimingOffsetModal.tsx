@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ export default function TimingOffsetModal({
   currentOffset,
   onApply,
 }: TimingOffsetModalProps) {
+  const t = useTranslations('lyricsReview.modals.timingOffset')
   const [offset, setOffset] = useState(currentOffset)
 
   const handleApply = () => {
@@ -35,12 +37,12 @@ export default function TimingOffsetModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Adjust Timing Offset</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label>Offset (milliseconds)</Label>
+            <Label>{t('offsetLabel')}</Label>
             <div className="flex gap-4 items-center">
               <Slider
                 value={[offset]}
@@ -58,21 +60,21 @@ export default function TimingOffsetModal({
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              Positive values shift lyrics later, negative values shift them earlier.
+              {t('offsetDesc')}
             </p>
           </div>
 
           <div className="bg-muted p-3 rounded space-y-1">
             <p className="text-sm">
-              <span className="text-muted-foreground">Current offset:</span>{' '}
+              <span className="text-muted-foreground">{t('currentOffset')}</span>{' '}
               <span className="font-mono">{currentOffset}ms</span>
             </p>
             <p className="text-sm">
-              <span className="text-muted-foreground">New offset:</span>{' '}
+              <span className="text-muted-foreground">{t('newOffset')}</span>{' '}
               <span className="font-mono font-medium">{offset}ms</span>
             </p>
             <p className="text-sm">
-              <span className="text-muted-foreground">Change:</span>{' '}
+              <span className="text-muted-foreground">{t('change')}</span>{' '}
               <span className="font-mono">{offset - currentOffset}ms</span>
             </p>
           </div>
@@ -80,7 +82,7 @@ export default function TimingOffsetModal({
 
         <DialogFooter className="flex gap-2 sm:justify-between">
           <Button variant="outline" onClick={handleReset}>
-            Reset to 0
+            {t('resetTo0')}
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,7 @@ export default function FindReplaceModal({
   onReplace,
   data,
 }: FindReplaceModalProps) {
+  const t = useTranslations('lyricsReview.modals.findReplace')
   const [findText, setFindText] = useState('')
   const [replaceText, setReplaceText] = useState('')
   const [caseSensitive, setCaseSensitive] = useState(false)
@@ -124,17 +126,17 @@ export default function FindReplaceModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-2xl" onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle>Find and Replace</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="find">Find</Label>
+            <Label htmlFor="find">{t('find')}</Label>
             <Input
               id="find"
               value={findText}
               onChange={(e) => setFindText(e.target.value)}
-              placeholder="Text to find..."
+              placeholder={t('findPlaceholder')}
               autoFocus
               className={regexError ? 'border-destructive' : ''}
             />
@@ -142,12 +144,12 @@ export default function FindReplaceModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="replace">Replace with</Label>
+            <Label htmlFor="replace">{t('replaceWith')}</Label>
             <Input
               id="replace"
               value={replaceText}
               onChange={(e) => setReplaceText(e.target.value)}
-              placeholder="Replacement text..."
+              placeholder={t('replacePlaceholder')}
             />
           </div>
 
@@ -158,11 +160,11 @@ export default function FindReplaceModal({
                 checked={caseSensitive}
                 onCheckedChange={setCaseSensitive}
               />
-              <Label htmlFor="caseSensitive">Case sensitive</Label>
+              <Label htmlFor="caseSensitive">{t('caseSensitive')}</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch id="useRegex" checked={useRegex} onCheckedChange={setUseRegex} />
-              <Label htmlFor="useRegex">Use regex</Label>
+              <Label htmlFor="useRegex">{t('useRegex')}</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
@@ -170,13 +172,13 @@ export default function FindReplaceModal({
                 checked={fullTextMode}
                 onCheckedChange={setFullTextMode}
               />
-              <Label htmlFor="fullTextMode">Full text mode</Label>
+              <Label htmlFor="fullTextMode">{t('fullTextMode')}</Label>
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <h4 className="font-medium">Preview</h4>
+              <h4 className="font-medium">{t('preview')}</h4>
               {isSearching && <Loader2 className="h-4 w-4 animate-spin" />}
             </div>
 
@@ -184,21 +186,21 @@ export default function FindReplaceModal({
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Some replacements will result in empty words, which will be removed.
+                  {t('emptyWordsWarning')}
                 </AlertDescription>
               </Alert>
             )}
 
             {!isSearching && findText && matchPreviews.length === 0 && !regexError && (
               <Alert>
-                <AlertDescription>No matches found</AlertDescription>
+                <AlertDescription>{t('noMatches')}</AlertDescription>
               </Alert>
             )}
 
             {!isSearching && matchPreviews.length > 0 && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  {matchPreviews.length} {matchPreviews.length === 1 ? 'match' : 'matches'} found
+                  {t('matchesFound', { count: matchPreviews.length })}
                 </p>
                 <ScrollArea className="h-48 border rounded-md p-2">
                   <div className="space-y-2">
@@ -238,7 +240,7 @@ export default function FindReplaceModal({
             onClick={handleReplace}
             disabled={!findText || !!regexError || matchPreviews.length === 0}
           >
-            Replace All ({matchPreviews.length})
+            {t('replaceAll', { count: matchPreviews.length })}
           </Button>
         </DialogFooter>
       </DialogContent>

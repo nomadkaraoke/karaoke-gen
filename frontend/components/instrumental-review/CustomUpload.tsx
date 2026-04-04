@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef } from "react"
+import { useTranslations } from 'next-intl'
 import { Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -15,6 +16,7 @@ export function CustomUpload({
   isUploading,
   acceptedFormats = [".flac", ".mp3", ".wav", ".m4a", ".ogg"],
 }: CustomUploadProps) {
+  const t = useTranslations('instrumentalReview.customUpload')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,7 +43,7 @@ export function CustomUpload({
     >
       <label className="cursor-pointer">
         <Upload className="w-3.5 h-3.5 mr-1.5" />
-        {isUploading ? "Uploading..." : "Upload"}
+        {isUploading ? t('uploading') : t('upload')}
         <input
           ref={inputRef}
           type="file"

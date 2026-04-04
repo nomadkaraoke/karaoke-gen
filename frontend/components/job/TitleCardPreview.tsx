@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useCallback } from "react"
+import { useTranslations } from 'next-intl'
 
 interface TitleCardPreviewProps {
   artist: string
@@ -123,6 +124,7 @@ function drawTextBlock(
 }
 
 export function TitleCardPreview({ artist, title, customBackgroundUrl, backgroundColor, titleColor, artistColor }: TitleCardPreviewProps) {
+  const t = useTranslations('titleCardPreview')
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const effectiveTitleColor = titleColor || TITLE_COLOR
@@ -172,8 +174,8 @@ export function TitleCardPreview({ artist, title, customBackgroundUrl, backgroun
     }
 
     // Apply uppercase transform (matching style_params.json title_text_transform/artist_text_transform)
-    const titleText = (title || "Song Title").toUpperCase()
-    const artistText = (artist || "Artist").toUpperCase()
+    const titleText = (title || t('songTitle')).toUpperCase()
+    const artistText = (artist || t('artist')).toUpperCase()
 
     // Draw title
     drawTextBlock(

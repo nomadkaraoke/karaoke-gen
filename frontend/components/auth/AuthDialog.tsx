@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 
 interface AuthDialogProps {
   open: boolean
@@ -22,6 +23,8 @@ interface AuthDialogProps {
 type AuthStep = "email" | "sent" | "token"
 
 export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
+  const t = useTranslations('auth.dialog')
+  const tCommon = useTranslations('common')
   const [step, setStep] = useState<AuthStep>("email")
   const [email, setEmail] = useState("")
   const [token, setToken] = useState("")
@@ -85,17 +88,17 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
                 <Mail className="w-5 h-5 text-primary" />
-                Sign In
+                {t('title')}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Enter your email to receive a sign-in link
+                {t('emailPrompt')}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSendMagicLink} className="space-y-4">
               <div>
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t('emailPlaceholder')}
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value)
@@ -109,14 +112,12 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
                 {displayError && (
                   displayError === "disposable_email_not_allowed" ? (
                     <div className="mt-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30 text-sm space-y-2">
-                      <p className="font-medium text-amber-400">We don&apos;t support disposable email addresses</p>
+                      <p className="font-medium text-amber-400">{t('disposableEmailWarning')}</p>
                       <p className="text-muted-foreground">
-                        We&apos;d love to help you create karaoke videos! Please use your regular email
-                        address so we can send you a notification when your video is ready.
+                        {t('disposableEmailExplanation')}
                       </p>
                       <p className="text-muted-foreground">
-                        We promise — no spam, no marketing emails, ever. We only email you about
-                        your karaoke videos.
+                        {t('noSpamPromise')}
                       </p>
                     </div>
                   ) : (
@@ -133,10 +134,10 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending...
+                      {t('sending')}
                     </>
                   ) : (
-                    "Send Sign-In Link"
+                    t('sendSignInLink')
                   )}
                 </Button>
                 <Button
@@ -146,11 +147,11 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <KeyRound className="w-4 h-4 mr-2" />
-                  Use Access Token Instead
+                  {t('useAccessToken')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground text-center">
-                No account? Just enter your email to get started.
+                {t('noAccount')}
               </p>
             </form>
           </>
@@ -161,18 +162,18 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-success" />
-                Check Your Email
+                {t('checkEmailTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <p className="text-foreground">
-                We sent a sign-in link to:
+                {t('checkEmailSent')}
               </p>
               <p className="text-foreground font-medium bg-secondary px-4 py-2 rounded-md">
                 {email}
               </p>
               <p className="text-sm text-muted-foreground">
-                Click the link in the email to sign in. The link expires in 15 minutes.
+                {t('checkEmailExpiry')}
               </p>
               <div className="pt-4 border-t border-border space-y-2">
                 <Button
@@ -181,14 +182,14 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
                   className="w-full border-border text-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Try a Different Email
+                  {t('tryDifferentEmail')}
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={handleClose}
                   className="w-full text-muted-foreground"
                 >
-                  Close
+                  {tCommon('close')}
                 </Button>
               </div>
             </div>
@@ -200,17 +201,17 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
                 <KeyRound className="w-5 h-5 text-warning" />
-                Access Token
+                {t('accessTokenTitle')}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Enter your access token to authenticate
+                {t('accessTokenPrompt')}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleTokenSubmit} className="space-y-4">
               <div>
                 <Input
                   type="password"
-                  placeholder="Enter access token"
+                  placeholder={t('accessTokenPlaceholder')}
                   value={token}
                   onChange={(e) => {
                     setToken(e.target.value)
@@ -234,10 +235,10 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Authenticating...
+                      {t('authenticating')}
                     </>
                   ) : (
-                    "Authenticate"
+                    t('authenticate')
                   )}
                 </Button>
                 <Button
@@ -247,11 +248,11 @@ export function AuthDialog({ open, onClose, onSuccess }: AuthDialogProps) {
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Email Sign-In
+                  {t('backToEmail')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground text-center">
-                Contact an admin to get an access token
+                {t('contactAdmin')}
               </p>
             </form>
           </>

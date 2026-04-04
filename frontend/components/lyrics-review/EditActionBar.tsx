@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Trash2, RotateCcw, History } from 'lucide-react'
 import { LyricsSegment } from '@/lib/lyrics-review/types'
@@ -26,6 +27,7 @@ export default function EditActionBar({
   originalTranscribedSegment,
   isGlobal = false,
 }: EditActionBarProps) {
+  const t = useTranslations('lyricsReview.editActionBar')
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
 
   return (
@@ -43,12 +45,12 @@ export default function EditActionBar({
       >
         <Button variant="outline" size={isMobile ? 'sm' : 'default'} onClick={onReset}>
           <RotateCcw className="h-4 w-4 mr-1" />
-          Reset
+          {t('reset')}
         </Button>
         {originalTranscribedSegment && (
           <Button variant="outline" size={isMobile ? 'sm' : 'default'} onClick={onRevertToOriginal}>
             <History className="h-4 w-4 mr-1" />
-            Un-Correct
+            {t('unCorrect')}
           </Button>
         )}
         {!isGlobal && onDelete && (
@@ -59,7 +61,7 @@ export default function EditActionBar({
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-1" />
-            Delete Segment
+            {t('deleteSegment')}
           </Button>
         )}
       </div>
@@ -67,14 +69,14 @@ export default function EditActionBar({
         className={cn('flex gap-2', isMobile ? 'justify-center ml-0' : 'justify-end ml-auto')}
       >
         <Button variant="outline" size={isMobile ? 'sm' : 'default'} onClick={onClose}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           size={isMobile ? 'sm' : 'default'}
           onClick={onSave}
           disabled={!editedSegment || editedSegment.words.length === 0}
         >
-          Save
+          {t('save')}
         </Button>
       </div>
     </div>

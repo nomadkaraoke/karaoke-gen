@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ export default function PasteLyricsTab({
   onClose,
   disabled = false,
 }: PasteLyricsTabProps) {
+  const t = useTranslations('lyricsReview.modals.pasteLyrics')
   const [source, setSource] = useState('')
   const [lyrics, setLyrics] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -53,23 +55,23 @@ export default function PasteLyricsTab({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="paste-source">Source Name</Label>
+        <Label htmlFor="paste-source">{t('sourceName')}</Label>
         <Input
           id="paste-source"
           value={source}
           onChange={(e) => setSource(e.target.value)}
-          placeholder="e.g., manual, genius, azlyrics..."
+          placeholder={t('sourceNamePlaceholder')}
           disabled={isAdding || disabled}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="paste-lyrics">Lyrics</Label>
+        <Label htmlFor="paste-lyrics">{t('lyrics')}</Label>
         <Textarea
           id="paste-lyrics"
           value={lyrics}
           onChange={(e) => setLyrics(e.target.value)}
-          placeholder="Paste lyrics here..."
+          placeholder={t('lyricsPlaceholder')}
           rows={10}
           disabled={isAdding || disabled}
           className="font-mono text-sm"
@@ -89,10 +91,10 @@ export default function PasteLyricsTab({
           {isAdding ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Adding...
+              {t('adding')}
             </>
           ) : (
-            'Add Lyrics'
+            t('addLyrics')
           )}
         </Button>
       </div>

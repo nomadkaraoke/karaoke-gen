@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import {
   Dialog,
   DialogContent,
@@ -74,6 +75,7 @@ export default function CorrectionDetailCard({
   onEdit,
   onAccept,
 }: CorrectionDetailCardProps) {
+  const t = useTranslations('lyricsReview.correctionDetail')
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
 
   return (
@@ -81,7 +83,7 @@ export default function CorrectionDetailCard({
       <DialogContent className={cn('max-w-md', isMobile && 'max-h-[85vh]')}>
         <DialogHeader>
           <DialogTitle className="flex justify-between items-center">
-            <span className="text-lg font-semibold">Correction Details</span>
+            <span className="text-lg font-semibold">{t('title')}</span>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <X className="h-4 w-4" />
             </Button>
@@ -91,7 +93,7 @@ export default function CorrectionDetailCard({
         <div className="space-y-4">
           {/* Original -> Corrected */}
           <div>
-            <span className="text-xs text-muted-foreground mb-1 block">Change</span>
+            <span className="text-xs text-muted-foreground mb-1 block">{t('change')}</span>
             <div className="flex items-center gap-3">
               <div className="flex-1 px-3 py-2 bg-red-100 dark:bg-red-900/30 rounded text-center line-through">
                 <span className="font-medium">{originalWord}</span>
@@ -106,7 +108,7 @@ export default function CorrectionDetailCard({
           {/* Category */}
           {category && (
             <div>
-              <span className="text-xs text-muted-foreground mb-1 block">Category</span>
+              <span className="text-xs text-muted-foreground mb-1 block">{t('category')}</span>
               <Badge variant="outline" className="text-sm">
                 {getCategoryIcon(category)} {formatCategory(category)}
               </Badge>
@@ -116,7 +118,7 @@ export default function CorrectionDetailCard({
           {/* Confidence */}
           <div>
             <div className="flex justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Confidence</span>
+              <span className="text-xs text-muted-foreground">{t('confidence')}</span>
               <span className="text-xs font-semibold">{(confidence * 100).toFixed(0)}%</span>
             </div>
             <Progress value={confidence * 100} className="h-2" />
@@ -124,17 +126,17 @@ export default function CorrectionDetailCard({
 
           {/* Reasoning */}
           <div>
-            <span className="text-xs text-muted-foreground mb-1 block">Reasoning</span>
+            <span className="text-xs text-muted-foreground mb-1 block">{t('reasoning')}</span>
             <div className="p-3 bg-muted rounded border text-sm leading-relaxed">{reason}</div>
           </div>
 
           {/* Metadata */}
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="text-xs">
-              Handler: {handler}
+              {t('handler', { handler })}
             </Badge>
             <Badge variant="outline" className="text-xs">
-              Source: {source}
+              {t('source', { source })}
             </Badge>
           </div>
         </div>
@@ -148,7 +150,7 @@ export default function CorrectionDetailCard({
             }}
             className={cn('text-destructive', isMobile && 'w-full h-11')}
           >
-            Revert to Original
+            {t('revertToOriginal')}
           </Button>
           <Button
             variant="outline"
@@ -158,7 +160,7 @@ export default function CorrectionDetailCard({
             }}
             className={cn(isMobile && 'w-full h-11')}
           >
-            Edit Correction
+            {t('editCorrection')}
           </Button>
           <Button
             onClick={() => {
@@ -167,7 +169,7 @@ export default function CorrectionDetailCard({
             }}
             className={cn('bg-green-600 hover:bg-green-700', isMobile && 'w-full h-11')}
           >
-            Mark as Correct
+            {t('markAsCorrect')}
           </Button>
         </DialogFooter>
       </DialogContent>

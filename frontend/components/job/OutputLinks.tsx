@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useCallback, useEffect, useState } from "react"
+import { useTranslations } from 'next-intl'
 import { api, adminApi, Job } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
@@ -34,6 +35,9 @@ interface OutputLinksProps {
 }
 
 export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
+  const t = useTranslations('outputLinks')
+  const tc = useTranslations('common')
+  const tCard = useTranslations('jobCard')
   // Use file_urls from job directly - no API call needed
   const downloadUrls = job.file_urls || null
   // Use state_data from job directly - no API call needed
@@ -207,16 +211,16 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <ExternalLink className="w-3 h-3" />
-                      YouTube
+                      {t('youtube')}
                     </a>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); copyToClipboard(youtubeUrl) }}
                       className="inline-flex items-center text-xs px-2 py-1.5 rounded-r bg-red-700 hover:bg-red-600 text-white transition-colors"
-                      title="Copy YouTube URL"
-                      aria-label={copiedUrl === youtubeUrl ? "YouTube URL copied" : "Copy YouTube URL"}
+                      title={t('copyYoutubeUrl')}
+                      aria-label={copiedUrl === youtubeUrl ? t('youtubeUrlCopied') : t('copyYoutubeUrl')}
                     >
-                      {copiedUrl === youtubeUrl ? <span className="text-[10px]">Copied!</span> : <Copy className="w-3 h-3" />}
+                      {copiedUrl === youtubeUrl ? <span className="text-[10px]">{t('copied')}</span> : <Copy className="w-3 h-3" />}
                     </button>
                   </div>
                 )}
@@ -230,16 +234,16 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <FolderOpen className="w-3 h-3" />
-                      Dropbox
+                      {t('dropbox')}
                     </a>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); copyToClipboard(dropboxUrl) }}
                       className="inline-flex items-center text-xs px-2 py-1.5 rounded-r bg-[#0052d6] hover:bg-[#0047ba] text-white transition-colors"
-                      title="Copy Dropbox URL"
-                      aria-label={copiedUrl === dropboxUrl ? "Dropbox URL copied" : "Copy Dropbox URL"}
+                      title={t('copyDropboxUrl')}
+                      aria-label={copiedUrl === dropboxUrl ? t('dropboxUrlCopied') : t('copyDropboxUrl')}
                     >
-                      {copiedUrl === dropboxUrl ? <span className="text-[10px]">Copied!</span> : <Copy className="w-3 h-3" />}
+                      {copiedUrl === dropboxUrl ? <span className="text-[10px]">{t('copied')}</span> : <Copy className="w-3 h-3" />}
                     </button>
                   </div>
                 )}
@@ -256,7 +260,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    4K Video
+                    {t('video4k')}
                   </a>
                 )}
                 {downloadUrls?.finals?.lossy_720p_mp4 && (
@@ -266,7 +270,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    720p Video
+                    {t('video720p')}
                   </a>
                 )}
                 {(downloadUrls?.finals?.with_vocals_mp4 || downloadUrls?.videos?.with_vocals) && (
@@ -279,7 +283,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    With Vocals
+                    {t('withVocals')}
                   </a>
                 )}
                 {downloadUrls?.packages?.cdg_zip && (
@@ -289,7 +293,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    CDG
+                    {t('cdg')}
                   </a>
                 )}
                 {downloadUrls?.packages?.txt_zip && (
@@ -299,7 +303,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Download className="w-3 h-3" />
-                    TXT
+                    {t('txt')}
                   </a>
                 )}
             </>
@@ -322,8 +326,8 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                 <Lock className="w-3 h-3" />
               )}
               {isChangingVisibility
-                ? (isPrivate ? "Making Public..." : "Making Private...")
-                : (isPrivate ? "Make Public" : "Make Private")
+                ? (isPrivate ? t('makingPublic') : t('makingPrivate'))
+                : (isPrivate ? t('makePublic') : t('makePrivate'))
               }
             </button>
           )}
@@ -338,19 +342,19 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                     title="Send completion email"
                   >
                     <Mail className="w-3 h-3" />
-                    Email
+                    {t('email')}
                   </button>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); copyCompletionMessage() }}
                     disabled={isLoadingMessage}
                     className="inline-flex items-center text-xs px-2 py-1.5 rounded-r bg-[#1a1a1a] hover:bg-[#2a2a2a] text-[var(--text)] border border-[var(--card-border)] disabled:opacity-50 transition-colors"
-                    title="Copy completion message to clipboard"
+                    title={t('copyCompletionMessage')}
                   >
                     {isLoadingMessage ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
                     ) : copiedMessage ? (
-                      <span className="text-[10px]">Copied!</span>
+                      <span className="text-[10px]">{t('copied')}</span>
                     ) : (
                       <Copy className="w-3 h-3" />
                     )}
@@ -380,36 +384,36 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                   title="View job details in admin"
                 >
                   <Settings className="w-3 h-3" />
-                  Admin
+                  {t('admin')}
                 </a>
           )}
         </div>
       )}
 
       {!hasOutputs && !isAdmin && !canChangeVisibility && (
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No outputs available yet</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{tCard('noOutputsAvailable')}</p>
       )}
 
       {/* Send Email Dialog */}
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
         <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>Send Completion Email</DialogTitle>
+            <DialogTitle>{t('sendCompletionEmail')}</DialogTitle>
             <DialogDescription>
-              Send the job completion message to an email address. The email will be CC&apos;d to gen@nomadkaraoke.com.
+              {t('sendToEmailDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
-                Email
+                {t('emailAddress')}
               </Label>
               <Input
                 id="email"
                 type="email"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="customer@example.com"
+                placeholder={t('emailPlaceholder')}
                 className="col-span-3"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -426,7 +430,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
               onClick={() => setShowEmailDialog(false)}
               disabled={isSendingEmail}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               type="button"
@@ -436,12 +440,12 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
               {isSendingEmail ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sending...
+                  {t('sending')}
                 </>
               ) : emailSent ? (
-                "Sent!"
+                t('sent')
               ) : (
-                "Send Email"
+                t('sendEmail')
               )}
             </Button>
           </DialogFooter>
@@ -453,36 +457,36 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isPrivate ? "Make This Track Public?" : "Make This Track Private?"}
+              {isPrivate ? t('makePublicTitle') : t('makePrivateTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 {isPrivate ? (
                   <>
-                    <p>This will:</p>
+                    <p>{t('thisWill')}</p>
                     <ul className="list-disc pl-5 space-y-1">
-                      <li>Remove any custom styling (backgrounds, colors) and reset to the standard Nomad Karaoke theme</li>
-                      <li>Regenerate title and end screens</li>
-                      <li>Re-render the karaoke video with default branding</li>
-                      <li>Publish to YouTube, Google Drive, and Dropbox</li>
+                      <li>{t('removeCustomStyling')}</li>
+                      <li>{t('regenerateTitleEndScreens')}</li>
+                      <li>{t('reRenderWithDefault')}</li>
+                      <li>{t('publishToAll')}</li>
                     </ul>
-                    <p>This process takes approximately 15-30 minutes. You&apos;ll receive an email when it&apos;s complete.</p>
+                    <p>{t('takes15To30Minutes')}</p>
                     <p className="font-medium" style={{ color: 'var(--text)' }}>
-                      Any custom styling you applied will be permanently removed.
+                      {t('customStylingRemoved')}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p>This will:</p>
+                    <p>{t('thisWill')}</p>
                     <ul className="list-disc pl-5 space-y-1">
-                      <li>Remove the video from YouTube</li>
-                      <li>Remove files from Google Drive</li>
-                      <li>Move Dropbox files from the public folder to the private folder</li>
-                      <li>Assign a new private brand code</li>
+                      <li>{t('removeFromYoutube')}</li>
+                      <li>{t('removeFromGoogleDrive')}</li>
+                      <li>{t('moveDropboxPrivate')}</li>
+                      <li>{t('assignPrivateBrand')}</li>
                     </ul>
-                    <p>The video content won&apos;t change. This usually takes about 1-2 minutes.</p>
+                    <p>{t('videoContentWontChange')}</p>
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                      You can change it back to public later, but that will require re-rendering the video (~15-30 minutes).
+                      {t('canChangeBack')}
                     </p>
                   </>
                 )}
@@ -490,9 +494,9 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleChangeVisibility}>
-              {isPrivate ? "Make Public" : "Make Private"}
+              {isPrivate ? t('makePublic') : t('makePrivate')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

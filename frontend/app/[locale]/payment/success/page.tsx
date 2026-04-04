@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle, Loader2, Coins } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 
 function PaymentSuccessContent() {
+  const t = useTranslations('payment')
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
@@ -29,24 +31,24 @@ function PaymentSuccessContent() {
       <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
 
       <h1 className="text-2xl font-bold text-foreground mb-2">
-        Payment Successful!
+        {t('title')}
       </h1>
 
       <p className="text-muted-foreground mb-6">
-        Thank you for your purchase. Your credits have been added to your account.
+        {t('description')}
       </p>
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 text-muted-foreground mb-6">
           <Loader2 className="w-4 h-4 animate-spin" />
-          Loading your balance...
+          {t('loadingBalance')}
         </div>
       ) : user ? (
         <div className="bg-secondary rounded-lg p-4 mb-6">
           <div className="flex items-center justify-center gap-2 text-warning">
             <Coins className="w-5 h-5" />
             <span className="text-2xl font-bold">{user.credits}</span>
-            <span className="text-muted-foreground">credits available</span>
+            <span className="text-muted-foreground">{t('creditsAvailable')}</span>
           </div>
         </div>
       ) : null}
@@ -56,13 +58,23 @@ function PaymentSuccessContent() {
           onClick={() => router.push("/app")}
           className="w-full bg-primary hover:bg-primary/90"
         >
-          Start Creating Karaoke
+          {t('startCreating')}
         </Button>
 
         <p className="text-xs text-muted-foreground">
-          A confirmation email has been sent to your email address.
+          {t('confirmationEmail')}
         </p>
       </div>
+    </div>
+  )
+}
+
+function PaymentLoadingFallback() {
+  const tCommon = useTranslations('common')
+  return (
+    <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
+      <Loader2 className="w-16 h-16 text-primary mx-auto mb-4 animate-spin" />
+      <p className="text-muted-foreground">{tCommon('loading')}</p>
     </div>
   )
 }
@@ -70,14 +82,7 @@ function PaymentSuccessContent() {
 export default function PaymentSuccessPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Suspense
-        fallback={
-          <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
-            <Loader2 className="w-16 h-16 text-primary mx-auto mb-4 animate-spin" />
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        }
-      >
+      <Suspense fallback={<PaymentLoadingFallback />}>
         <PaymentSuccessContent />
       </Suspense>
     </div>

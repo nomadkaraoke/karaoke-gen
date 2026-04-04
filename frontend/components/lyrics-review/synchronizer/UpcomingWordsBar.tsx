@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { memo, useMemo } from 'react'
 import { Word } from '@/lib/lyrics-review/types'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,7 @@ const UpcomingWordsBar = memo(function UpcomingWordsBar({
   isManualSyncing,
   maxWordsToShow = 20,
 }: UpcomingWordsBarProps) {
+  const t = useTranslations('lyricsReview.synchronizer')
   // Get upcoming unsynced words
   const upcomingWords = useMemo(() => {
     if (!isManualSyncing || syncWordIndex < 0) return []
@@ -55,7 +57,7 @@ const UpcomingWordsBar = memo(function UpcomingWordsBar({
 
       {totalRemaining > maxWordsToShow && (
         <span className="text-xs text-muted-foreground ml-2">
-          +{totalRemaining - maxWordsToShow} more
+          {t('upcomingMore', { count: totalRemaining - maxWordsToShow })}
         </span>
       )}
     </div>

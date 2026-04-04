@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
+import { useTranslations } from 'next-intl'
 import { api, ApiError } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import { CheckCircle2, Upload, Music, Loader2, AlertTriangle } from "lucide-react"
@@ -22,6 +23,7 @@ interface TenantJobFlowProps {
 type SubmitPhase = "idle" | "creating" | "uploading-mixed" | "uploading-instrumental" | "completing" | "done"
 
 export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
+  const t = useTranslations('jobFlow')
   const { branding } = useTenant()
 
   // Form fields
@@ -139,7 +141,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
           </div>
           <div>
             <h2 className="text-lg font-semibold" style={{ color: "var(--text)" }}>
-              Track Submitted
+              {t('trackSubmitted')}
             </h2>
             <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               <span className="font-medium" style={{ color: "var(--text)" }}>
@@ -156,7 +158,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
 
         {/* Timeline — simplified for tenant (no audio processing step) */}
         <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-          What happens next
+          {t('whatsHappensNext')}
         </p>
         <div className="space-y-0 mt-3">
           {/* Step 1: Lyrics transcription */}
@@ -171,12 +173,12 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
               <div className="w-px flex-1 min-h-[20px]" style={{ backgroundColor: "var(--card-border)" }} />
             </div>
             <div className="pb-4 pt-1">
-              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>Lyrics transcription</p>
+              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>{t('lyricsTranscription')}</p>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                We transcribe and sync lyrics from your audio. <span className="font-medium" style={{ color: "var(--text)" }}>~5 minutes</span>
+                {t('lyricsTranscriptionDesc')}
               </p>
               <span className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-500/15 text-blue-400">
-                Automatic
+                {t('automatic')}
               </span>
             </div>
           </div>
@@ -192,20 +194,20 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
               <div className="w-px flex-1 min-h-[20px]" style={{ backgroundColor: "var(--card-border)" }} />
             </div>
             <div className="pb-4 pt-1">
-              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>Review lyrics</p>
+              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>{t('reviewLyrics')}</p>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                Check the synced lyrics and fix any errors.
+                {t('reviewLyricsDesc')}
               </p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: "rgba(255, 122, 204, 0.15)", color: "var(--brand-pink)" }}>
-                  You
+                  {t('you')}
                 </span>
                 <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                     <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v.401a1 1 0 0 1-.373.78L8.707 8.79a1 1 0 0 1-1.414 0L2.373 4.68A1 1 0 0 1 2 3.9V3.5Z" fill="currentColor" opacity="0.7"/>
                     <path d="M2 6.12l4.586 3.59a2 2 0 0 0 2.828 0L14 6.12V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5V6.12Z" fill="currentColor" opacity="0.5"/>
                   </svg>
-                  Email when ready
+                  {t('emailWhenReady')}
                 </span>
               </div>
             </div>
@@ -222,19 +224,19 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
               </div>
             </div>
             <div className="pt-1">
-              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>Video delivered</p>
+              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>{t('videoDelivered')}</p>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                After approval, your karaoke video is rendered and delivered. <span className="font-medium" style={{ color: "var(--text)" }}>~10 minutes</span>
+                {t('afterApproval')}
               </p>
               <span className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-500/15 text-green-400">
-                Automatic
+                {t('automatic')}
               </span>
             </div>
           </div>
         </div>
 
         <p className="text-[10px] text-center" style={{ color: "var(--text-muted)" }}>
-          Track progress in the <span className="font-medium" style={{ color: "var(--text)" }}>Recent Jobs</span> list.
+          {t('trackProgressTenant')}
         </p>
 
         <Button
@@ -244,7 +246,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
           style={{ borderColor: "var(--card-border)", color: "var(--text)" }}
         >
           <Music className="w-4 h-4 mr-2" />
-          Submit Another Track
+          {t('submitAnother')}
         </Button>
       </div>
     )
@@ -256,7 +258,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
     <div className="space-y-4">
       {/* Artist */}
       <div className="space-y-1.5">
-        <Label htmlFor="tenant-artist" style={{ color: "var(--text)" }}>Artist</Label>
+        <Label htmlFor="tenant-artist" style={{ color: "var(--text)" }}>{t('artist')}</Label>
         <Input
           id="tenant-artist"
           placeholder="e.g. Adele"
@@ -269,7 +271,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
 
       {/* Title */}
       <div className="space-y-1.5">
-        <Label htmlFor="tenant-title" style={{ color: "var(--text)" }}>Title</Label>
+        <Label htmlFor="tenant-title" style={{ color: "var(--text)" }}>{t('title')}</Label>
         <Input
           id="tenant-title"
           placeholder="e.g. Someone Like You"
@@ -318,10 +320,10 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
           <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>
-              {phase === "creating" && "Creating job..."}
-              {phase === "uploading-mixed" && "Uploading mixed audio..."}
-              {phase === "uploading-instrumental" && "Uploading instrumental..."}
-              {phase === "completing" && "Finalizing..."}
+              {phase === "creating" && t('creating')}
+              {phase === "uploading-mixed" && t('creating')}
+              {phase === "uploading-instrumental" && t('creating')}
+              {phase === "completing" && t('creating')}
             </span>
           </div>
           {(phase === "uploading-mixed" || phase === "uploading-instrumental") && (

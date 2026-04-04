@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo } from "react"
+import { useTranslations } from 'next-intl'
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -41,11 +42,6 @@ interface InstrumentalSelectorEmbeddedProps {
   disabled?: boolean
 }
 
-const OPTION_DESCRIPTIONS: Record<string, string> = {
-  clean: "No backing vocals - pure instrumental",
-  with_backing: "Includes backing vocals from original",
-}
-
 export function InstrumentalSelectorEmbedded({
   options,
   analysis,
@@ -54,6 +50,7 @@ export function InstrumentalSelectorEmbedded({
   compact = false,
   disabled = false,
 }: InstrumentalSelectorEmbeddedProps) {
+  const t = useTranslations('instrumentalReview')
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [audioElement] = useState<HTMLAudioElement | null>(() =>
     typeof window !== 'undefined' ? new Audio() : null
@@ -95,7 +92,7 @@ export function InstrumentalSelectorEmbedded({
     return (
       <Card className="p-4">
         <div className="text-sm text-muted-foreground">
-          No instrumental options available.
+          {t('noOptionsAvailable')}
         </div>
       </Card>
     )
@@ -106,11 +103,11 @@ export function InstrumentalSelectorEmbedded({
       <div className="flex items-center gap-2 mb-3">
         <Music className="h-4 w-4 text-muted-foreground" />
         <Label className={cn("font-semibold", compact ? "text-sm" : "text-base")}>
-          Select Instrumental Track
+          {t('selectTrack')}
         </Label>
         {!value && (
           <Badge variant="destructive" className="ml-auto text-xs">
-            Required
+            {t('required')}
           </Badge>
         )}
       </div>
@@ -119,10 +116,10 @@ export function InstrumentalSelectorEmbedded({
       {analysis && (analysis.audible_percentage ?? 0) > 0 && (
         <div className="mb-3 text-xs text-muted-foreground">
           <span className="font-medium">
-            {(analysis.audible_percentage ?? 0).toFixed(0)}% backing vocals detected
+            {t('backingVocalsDetected', { percentage: (analysis.audible_percentage ?? 0).toFixed(0) })}
           </span>
           {(analysis.audible_segments?.length ?? 0) > 0 && (
-            <span> ({analysis.audible_segments?.length ?? 0} segments)</span>
+            <span> {t('segmentsCount', { count: analysis.audible_segments?.length ?? 0 })}</span>
           )}
         </div>
       )}
@@ -173,12 +170,12 @@ export function InstrumentalSelectorEmbedded({
                   {option.label}
                   {isRecommended && (
                     <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-600">
-                      Recommended
+                      {t('options.recommended')}
                     </Badge>
                   )}
                 </div>
                 <div className={cn("text-muted-foreground", compact ? "text-xs" : "text-xs")}>
-                  {OPTION_DESCRIPTIONS[option.id] || `Instrumental option: ${option.id}`}
+                  {option.id === 'clean' ? t('cleanDescription') : option.id === 'with_backing' ? t('backingVocalsIncluded') : option.label}
                 </div>
               </div>
 

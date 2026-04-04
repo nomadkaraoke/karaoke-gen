@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useTranslations } from 'next-intl'
 import { api, Job, AudioEditInfo, AudioEditResponse, AudioEditEntry, AudioEditSessionMeta } from "@/lib/api"
 import { useAudioEditAutoSave } from "@/hooks/use-audio-edit-autosave"
 import { AudioEditRestoreDialog } from "./AudioEditRestoreDialog"
@@ -325,6 +326,8 @@ interface AudioEditorProps {
 }
 
 export function AudioEditor({ job }: AudioEditorProps) {
+  const t = useTranslations('audioEditor')
+  const tc = useTranslations('common')
   // Loading state
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -551,7 +554,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
       const resp = await api.applyAudioEdit(job.job_id, operation, params)
       updateFromResponse(resp)
     } catch (err) {
-      setOperationError(err instanceof Error ? err.message : "Edit failed")
+      setOperationError(err instanceof Error ? err.message : t('editFailed'))
     } finally {
       setIsOperating(false)
     }
@@ -565,7 +568,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
       const resp = await api.undoAudioEdit(job.job_id)
       updateFromResponse(resp)
     } catch (err) {
-      setOperationError(err instanceof Error ? err.message : "Undo failed")
+      setOperationError(err instanceof Error ? err.message : t('undoFailed'))
     } finally {
       setIsOperating(false)
     }
@@ -579,7 +582,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
       const resp = await api.redoAudioEdit(job.job_id)
       updateFromResponse(resp)
     } catch (err) {
-      setOperationError(err instanceof Error ? err.message : "Redo failed")
+      setOperationError(err instanceof Error ? err.message : t('redoFailed'))
     } finally {
       setIsOperating(false)
     }
@@ -629,7 +632,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
       setShowJoinDialog(false)
       setJoinFile(null)
     } catch (err) {
-      setOperationError(err instanceof Error ? err.message : "Join failed")
+      setOperationError(err instanceof Error ? err.message : t('editFailed'))
     } finally {
       setIsUploading(false)
     }
@@ -649,7 +652,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
         updateFromResponse(resp)
       }
     } catch (err) {
-      setOperationError(err instanceof Error ? err.message : "Restore failed — some edits may not have been applied")
+      setOperationError(err instanceof Error ? err.message : t('restoreFailed'))
     } finally {
       setIsRestoringSession(false)
     }
@@ -668,7 +671,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
       setSubmitSuccess(true)
       setShowSubmitConfirm(false)
     } catch (err) {
-      setOperationError(err instanceof Error ? err.message : "Submit failed")
+      setOperationError(err instanceof Error ? err.message : t('submitFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -705,7 +708,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Spinner className="w-8 h-8 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading audio editor...</p>
+          <p className="text-muted-foreground">{t('loading')}</p>
         </div>
       </div>
     )
@@ -716,12 +719,12 @@ export function AudioEditor({ job }: AudioEditorProps) {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md p-6">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-          <h1 className="text-xl font-semibold mb-2">Failed to load audio</h1>
-          <p className="text-muted-foreground mb-4">{error || "Could not load audio data."}</p>
+          <h1 className="text-xl font-semibold mb-2">{t('failedToLoad')}</h1>
+          <p className="text-muted-foreground mb-4">{error || t('couldNotLoadData')}</p>
           <Button variant="outline" asChild>
             <Link href="/app">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to dashboard
+              {t('backToDashboard')}
             </Link>
           </Button>
         </div>
@@ -739,16 +742,15 @@ export function AudioEditor({ job }: AudioEditorProps) {
           >
             <Check className="w-8 h-8 text-green-500" />
           </div>
-          <h1 className="text-xl font-semibold">Audio edit complete!</h1>
+          <h1 className="text-xl font-semibold">{t('editComplete')}</h1>
           <p className="text-muted-foreground">
-            Processing will continue with your edited audio.
-            You&apos;ll receive an email when lyrics are ready for review.
+            {t('editsWillBeReviewed')}
           </p>
           <p className="text-sm text-muted-foreground">
-            Redirecting in {redirectCountdown}...
+            {t('redirectingIn', { count: redirectCountdown })}
           </p>
           <Button variant="outline" asChild>
-            <Link href="/app">Back to dashboard</Link>
+            <Link href="/app">{t('backToDashboard')}</Link>
           </Button>
         </div>
       </div>
@@ -807,14 +809,13 @@ export function AudioEditor({ job }: AudioEditorProps) {
             <div className="flex items-start gap-2">
               <Scissors className="w-4 h-4 mt-0.5 shrink-0 text-blue-400" />
               <div className="space-y-1.5">
-                <p className="font-medium" style={{ color: "var(--text)" }}>Audio Editor Tips</p>
+                <p className="font-medium" style={{ color: "var(--text)" }}>{t('keyboardShortcuts')}</p>
                 <ul className="space-y-1 text-xs text-muted-foreground">
-                  <li><strong>Select:</strong> Click and drag on the waveform to select a region</li>
-                  <li><strong>Trim:</strong> Select a region near the start or end, then click Trim Start/End</li>
-                  <li><strong>Cut:</strong> Select a region and press Delete or click Cut</li>
-                  <li><strong>Mute:</strong> Select a region and press M or click Mute</li>
-                  <li><strong>Undo/Redo:</strong> Ctrl+Z / Ctrl+Shift+Z</li>
-                  <li><strong>Play/Pause:</strong> Spacebar or click anywhere to seek</li>
+                  <li>{t('shortcutSpace')}</li>
+                  <li>{t('shortcutUndo')}</li>
+                  <li>{t('shortcutRedo')}</li>
+                  <li>{t('shortcutDelete')}</li>
+                  <li>{t('shortcutMute')}</li>
                 </ul>
               </div>
             </div>
@@ -841,7 +842,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
               size="sm"
               disabled={!canUndo || isOperating}
               onClick={handleUndo}
-              title="Undo (Ctrl+Z)"
+              title={t('undo')}
             >
               <Undo2 className="w-4 h-4" />
             </Button>
@@ -850,7 +851,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
               size="sm"
               disabled={!canRedo || isOperating}
               onClick={handleRedo}
-              title="Redo (Ctrl+Shift+Z)"
+              title={t('redo')}
             >
               <Redo2 className="w-4 h-4" />
             </Button>
@@ -873,7 +874,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                   onClick={handleTrimStart}
                   className="text-xs h-7"
                 >
-                  Trim Start
+                  {t('trimStart')}
                 </Button>
               )}
               {selection.endSeconds > currentDuration - 1 && (
@@ -884,7 +885,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                   onClick={handleTrimEnd}
                   className="text-xs h-7"
                 >
-                  Trim End
+                  {t('trimEnd')}
                 </Button>
               )}
               <Button
@@ -893,7 +894,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 disabled={isOperating}
                 onClick={handleCut}
                 className="text-xs h-7"
-                title="Cut selection (Delete)"
+                title={t('cutSelection')}
               >
                 <Scissors className="w-3 h-3 mr-1" />
                 Cut
@@ -904,7 +905,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 disabled={isOperating}
                 onClick={handleMute}
                 className="text-xs h-7"
-                title="Mute selection (M)"
+                title={t('muteSelection')}
               >
                 <VolumeX className="w-3 h-3 mr-1" />
                 Mute
@@ -968,7 +969,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
             className="text-xs h-7 bg-green-600 hover:bg-green-700 text-white"
           >
             <Check className="w-3 h-3 mr-1" />
-            {hasEdits ? "Submit & Continue" : "Continue Without Editing"}
+            {hasEdits ? t('submitForReview') : t('continueWithoutEditing')}
           </Button>
         </div>
 
@@ -982,7 +983,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Original ({formatTime(audioInfo.original_duration_seconds)})
+            {t('original')} ({formatTime(audioInfo.original_duration_seconds)})
           </button>
           <button
             onClick={() => setActiveTab("edited")}
@@ -992,7 +993,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Edited ({formatTime(audioInfo.current_duration_seconds)})
+            {t('edited')} ({formatTime(audioInfo.current_duration_seconds)})
             {hasEdits && durationChange !== 0 && (
               <span className={`ml-1 ${durationChange < 0 ? "text-green-400" : "text-amber-400"}`}>
                 ({durationChange > 0 ? "+" : ""}{formatTimePrecise(durationChange)})
@@ -1090,7 +1091,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
             style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
           >
             <h2 className="text-lg font-semibold" style={{ color: "var(--text)" }}>
-              Submit Edited Audio?
+              {t('submitConfirmation')}
             </h2>
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>Original duration: {formatTime(audioInfo.original_duration_seconds)}</p>
@@ -1174,7 +1175,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                   onClick={() => handleJoin("start")}
                   disabled={isUploading}
                 >
-                  {isUploading ? <Spinner className="w-4 h-4" /> : "Add to Start"}
+                  {isUploading ? <Spinner className="w-4 h-4" /> : t('addToStart')}
                 </Button>
                 <Button
                   size="sm"
@@ -1182,7 +1183,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                   onClick={() => handleJoin("end")}
                   disabled={isUploading}
                 >
-                  {isUploading ? <Spinner className="w-4 h-4" /> : "Add to End"}
+                  {isUploading ? <Spinner className="w-4 h-4" /> : t('addToEnd')}
                 </Button>
               </div>
             )}

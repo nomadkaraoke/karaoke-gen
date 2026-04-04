@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useTranslations } from 'next-intl'
 import { api, ApiError } from "@/lib/api"
 import type { CatalogArtistResult, CatalogTrackResult, CommunityCheckResponse } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
@@ -20,6 +21,8 @@ interface JobSubmissionProps {
 }
 
 export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
+  const t = useTranslations('jobSubmission')
+  const tFlow = useTranslations('jobFlow')
   const { user, fetchUser } = useAuth()
   const { features, isDefault, tenant } = useTenant()
   const { toast } = useToast()
@@ -186,11 +189,11 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setIsCreditError(true)
-        setError("You're out of credits. Buy more to continue creating karaoke videos.")
+        setError(t('outOfCredits'))
       } else if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError("Failed to create job")
+        setError(t('failedToCreateJob'))
       }
     } finally {
       setIsSubmitting(false)
@@ -229,11 +232,11 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setIsCreditError(true)
-        setError("You're out of credits. Buy more to continue creating karaoke videos.")
+        setError(t('outOfCredits'))
       } else if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError("Failed to create job")
+        setError(t('failedToCreateJob'))
       }
     } finally {
       setIsSubmitting(false)
@@ -267,11 +270,11 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setIsCreditError(true)
-        setError("You're out of credits. Buy more to continue creating karaoke videos.")
+        setError(t('outOfCredits'))
       } else if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError("Failed to search for audio")
+        setError(t('failedToCreateJob'))
       }
     } finally {
       setIsSubmitting(false)
@@ -294,13 +297,13 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
         <div className="flex items-start gap-2 rounded-lg p-3 mb-4 border border-amber-500/30 bg-amber-500/10">
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-sm" style={{ color: 'var(--text)' }}>
-            <p>You have no credits remaining. Buy credits to create new karaoke videos.</p>
+            <p>{tFlow('noCreditsWarning')}</p>
             <button
               onClick={() => setShowBuyCreditsDialog(true)}
               className="inline-block mt-1 text-sm font-medium underline"
               style={{ color: 'var(--brand-pink)' }}
             >
-              Buy Credits
+              {tFlow('buyCredits')}
             </button>
           </div>
         </div>
@@ -321,7 +324,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               style={{ color: activeTab === 'search' ? 'white' : 'var(--text-muted)' }}
             >
               <Music className="w-4 h-4 shrink-0" />
-              <span className="truncate">Search</span>
+              <span className="truncate">{t('search')}</span>
             </TabsTrigger>
           )}
           {availableTabs.includes("upload") && (
@@ -331,7 +334,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               style={{ color: activeTab === 'upload' ? 'white' : 'var(--text-muted)' }}
             >
               <Upload className="w-4 h-4 shrink-0" />
-              <span className="truncate">Upload</span>
+              <span className="truncate">{t('upload')}</span>
             </TabsTrigger>
           )}
           {availableTabs.includes("url") && (
@@ -341,7 +344,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               style={{ color: activeTab === 'url' ? 'white' : 'var(--text-muted)' }}
             >
               <Youtube className="w-4 h-4 shrink-0" />
-              <span className="truncate">URL</span>
+              <span className="truncate">{t('url')}</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -351,7 +354,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
         <TabsContent value="upload" className={availableTabs.length === 1 ? "" : "mt-4"}>
           <form onSubmit={handleUploadSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="audio-file" style={{ color: 'var(--text)' }}>Audio File</Label>
+              <Label htmlFor="audio-file" style={{ color: 'var(--text)' }}>{t('audioFile')}</Label>
             <div
               className="relative border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer"
               style={{
@@ -375,8 +378,8 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
                 </div>
               ) : (
                 <div>
-                  <p className="font-medium mb-1" style={{ color: 'var(--text)' }}>Click to upload</p>
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>MP3, WAV, FLAC, M4A, or OGG</p>
+                  <p className="font-medium mb-1" style={{ color: 'var(--text)' }}>{t('clickToUpload')}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('supportedFormats')}</p>
                 </div>
               )}
             </div>
@@ -384,7 +387,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="upload-artist" style={{ color: 'var(--text)' }}>Artist</Label>
+              <Label htmlFor="upload-artist" style={{ color: 'var(--text)' }}>{tFlow('artist')}</Label>
               <AutocompleteInput
                 id="upload-artist"
                 placeholder="Artist name"
@@ -396,7 +399,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="upload-title" style={{ color: 'var(--text)' }}>Title</Label>
+              <Label htmlFor="upload-title" style={{ color: 'var(--text)' }}>{tFlow('title')}</Label>
               <AutocompleteInput
                 id="upload-title"
                 placeholder="Song title"
@@ -409,7 +412,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             </div>
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span className="text-amber-500 font-medium">Tip:</span> Start typing and select from suggestions for correct formatting, or type freely.
+            <span className="text-amber-500 font-medium">Tip:</span> {t('artistTip')}
           </p>
 
           {/* Private (no YouTube upload) mode */}
@@ -425,10 +428,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               />
               <div>
                 <Label htmlFor="private-upload" className="cursor-pointer" style={{ color: 'var(--text)' }}>
-                  Private (no YouTube upload)
+                  {t('privateNoYoutubeUpload')}
                 </Label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Files delivered via Dropbox only. No YouTube or Google Drive upload.
+                  {t('filesDropboxOnly')}
                 </p>
               </div>
             </div>
@@ -451,10 +454,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating Job...
+                {t('creatingJob')}
               </>
             ) : (
-              "Create Karaoke Video"
+              tFlow('createKaraokeVideo')
             )}
           </Button>
           </form>
@@ -465,13 +468,13 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
         <TabsContent value="url" className={availableTabs.length === 1 ? "" : "mt-4"}>
           <form onSubmit={handleUrlSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="youtube-url" style={{ color: 'var(--text)' }}>YouTube URL</Label>
+              <Label htmlFor="youtube-url" style={{ color: 'var(--text)' }}>{t('youtubeUrlLabel')}</Label>
             <div className="relative">
               <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               <Input
                 id="youtube-url"
                 type="url"
-                placeholder="https://youtube.com/watch?v=..."
+                placeholder={t('youtubeUrlPlaceholder')}
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
                 className="pl-10"
@@ -483,7 +486,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="youtube-artist" style={{ color: 'var(--text)' }}>Artist</Label>
+              <Label htmlFor="youtube-artist" style={{ color: 'var(--text)' }}>{tFlow('artist')}</Label>
               <AutocompleteInput
                 id="youtube-artist"
                 placeholder="Artist name"
@@ -495,7 +498,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="youtube-title" style={{ color: 'var(--text)' }}>Title</Label>
+              <Label htmlFor="youtube-title" style={{ color: 'var(--text)' }}>{tFlow('title')}</Label>
               <AutocompleteInput
                 id="youtube-title"
                 placeholder="Song title"
@@ -508,7 +511,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             </div>
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span className="text-amber-500 font-medium">Tip:</span> Start typing and select from suggestions for correct formatting, or type freely.
+            <span className="text-amber-500 font-medium">Tip:</span> {t('artistTip')}
           </p>
 
           {/* Private (no YouTube upload) mode */}
@@ -524,10 +527,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               />
               <div>
                 <Label htmlFor="private-url" className="cursor-pointer" style={{ color: 'var(--text)' }}>
-                  Private (no YouTube upload)
+                  {t('privateNoYoutubeUpload')}
                 </Label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Files delivered via Dropbox only. No YouTube or Google Drive upload.
+                  {t('filesDropboxOnly')}
                 </p>
               </div>
             </div>
@@ -550,10 +553,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating Job...
+                {t('creatingJob')}
               </>
             ) : (
-              "Create Karaoke Video"
+              tFlow('createKaraokeVideo')
             )}
             </Button>
           </form>
@@ -565,10 +568,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
           <form onSubmit={handleSearchSubmit} className="space-y-4">
             {/* Search For section */}
             <div className="space-y-2">
-              <Label style={{ color: 'var(--text)' }}>Search For Audio Online</Label>
+              <Label style={{ color: 'var(--text)' }}>{t('searchForAudioOnline')}</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="search-artist" className="text-xs" style={{ color: 'var(--text-muted)' }}>Artist</Label>
+                <Label htmlFor="search-artist" className="text-xs" style={{ color: 'var(--text-muted)' }}>{tFlow('artist')}</Label>
                 <AutocompleteInput
                   id="search-artist"
                   data-testid="search-artist-input"
@@ -581,7 +584,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="search-title" className="text-xs" style={{ color: 'var(--text-muted)' }}>Title</Label>
+                <Label htmlFor="search-title" className="text-xs" style={{ color: 'var(--text-muted)' }}>{tFlow('title')}</Label>
                 <AutocompleteInput
                   id="search-title"
                   data-testid="search-title-input"
@@ -596,7 +599,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             </div>
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span className="text-amber-500 font-medium">Tip:</span> Start typing and select from suggestions for correct formatting, or type freely.
+            <span className="text-amber-500 font-medium">Tip:</span> {t('artistTip')}
           </p>
 
           {/* Community version check banner */}
@@ -621,7 +624,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               ) : (
                 <ChevronRight className="w-4 h-4" />
               )}
-              Use different artist/title for title screen
+              {t('useDisplayAs')}
             </button>
             {showDisplayAs && (
               <div className="space-y-2 pl-6">
@@ -630,10 +633,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="display-artist" className="text-xs" style={{ color: 'var(--text-muted)' }}>Display Artist</Label>
+                    <Label htmlFor="display-artist" className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('displayArtist')}</Label>
                     <Input
                       id="display-artist"
-                      placeholder="e.g., Footloose (Broadway Cast)"
+                      placeholder={t('displayArtistPlaceholder')}
                       value={displayArtist}
                       onChange={(e) => setDisplayArtist(e.target.value)}
                       disabled={isSubmitting}
@@ -641,10 +644,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="display-title" className="text-xs" style={{ color: 'var(--text-muted)' }}>Display Title</Label>
+                    <Label htmlFor="display-title" className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('displayTitle')}</Label>
                     <Input
                       id="display-title"
-                      placeholder="e.g., I Can't Stand Still"
+                      placeholder={t('displayTitlePlaceholder')}
                       value={displayTitle}
                       onChange={(e) => setDisplayTitle(e.target.value)}
                       disabled={isSubmitting}
@@ -669,10 +672,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
               />
               <div>
                 <Label htmlFor="private-search" className="cursor-pointer" style={{ color: 'var(--text)' }}>
-                  Private (no YouTube upload)
+                  {t('privateNoYoutubeUpload')}
                 </Label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Files delivered via Dropbox only. No YouTube or Google Drive upload.
+                  {t('filesDropboxOnly')}
                 </p>
               </div>
             </div>
@@ -695,10 +698,10 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Searching...
+                {t('searching')}
               </>
             ) : (
-              "Search & Create Job"
+              t('searchCreateJob')
             )}
             </Button>
           </form>

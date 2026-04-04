@@ -20,6 +20,10 @@ const customJestConfig = {
     '/node_modules/',
     '/e2e/',  // E2E tests run via Playwright, not Jest
   ],
+  // Allow Jest to transform ESM packages (next-intl uses ESM exports)
+  transformIgnorePatterns: [
+    '/node_modules/(?!(next-intl|use-intl)/)',
+  ],
   collectCoverageFrom: [
     'components/**/*.{js,jsx,ts,tsx}',
     'lib/**/*.{js,jsx,ts,tsx}',

@@ -10,6 +10,7 @@ import type { Job } from "./api";
 export interface JobStep {
   step: number;
   total: number;
+  /** Translation key(s) from the "jobStatus" namespace. May contain " + " for combined parallel status labels. */
   label: string;
   isBlocking: boolean;
   color: string;
@@ -35,59 +36,59 @@ const STATUS_CONFIG: Record<
   { step: number; label: string; isBlocking: boolean; color: string }
 > = {
   // Step 1: Setup
-  pending: { step: 1, label: "Setting up", isBlocking: false, color: "text-muted-foreground" },
+  pending: { step: 1, label: "settingUp", isBlocking: false, color: "text-muted-foreground" },
 
   // Step 2: Audio Search (optional path)
-  searching_audio: { step: 2, label: "Searching for audio", isBlocking: false, color: "text-blue-400" },
-  awaiting_audio_selection: { step: 2, label: "Select audio source", isBlocking: true, color: "text-amber-400" },
+  searching_audio: { step: 2, label: "searchingForAudio", isBlocking: false, color: "text-blue-400" },
+  awaiting_audio_selection: { step: 2, label: "selectAudioSource", isBlocking: true, color: "text-amber-400" },
 
   // Step 3: Download
-  downloading_audio: { step: 3, label: "Downloading audio", isBlocking: false, color: "text-blue-400" },
-  downloading: { step: 3, label: "Downloading", isBlocking: false, color: "text-blue-400" },
+  downloading_audio: { step: 3, label: "downloadingAudio", isBlocking: false, color: "text-blue-400" },
+  downloading: { step: 3, label: "downloading", isBlocking: false, color: "text-blue-400" },
 
   // Step 3.5: Audio Editing (optional, BLOCKING)
-  awaiting_audio_edit: { step: 3, label: "Edit audio", isBlocking: true, color: "text-amber-400" },
-  in_audio_edit: { step: 3, label: "Editing audio", isBlocking: true, color: "text-blue-400" },
-  audio_edit_complete: { step: 3, label: "Audio edited", isBlocking: false, color: "text-teal-400" },
+  awaiting_audio_edit: { step: 3, label: "editAudio", isBlocking: true, color: "text-amber-400" },
+  in_audio_edit: { step: 3, label: "editingAudio", isBlocking: true, color: "text-blue-400" },
+  audio_edit_complete: { step: 3, label: "audioEdited", isBlocking: false, color: "text-teal-400" },
 
   // Step 4: Parallel Processing (Audio + Lyrics)
-  separating_stage1: { step: 4, label: "Separating audio (1/2)", isBlocking: false, color: "text-purple-400" },
-  separating_stage2: { step: 4, label: "Separating audio (2/2)", isBlocking: false, color: "text-purple-400" },
-  audio_complete: { step: 4, label: "Audio ready, processing lyrics", isBlocking: false, color: "text-purple-400" },
-  transcribing: { step: 4, label: "Transcribing lyrics", isBlocking: false, color: "text-blue-400" },
-  correcting: { step: 4, label: "Correcting lyrics", isBlocking: false, color: "text-blue-400" },
-  lyrics_complete: { step: 4, label: "Lyrics ready, processing audio", isBlocking: false, color: "text-teal-400" },
+  separating_stage1: { step: 4, label: "separatingAudio1", isBlocking: false, color: "text-purple-400" },
+  separating_stage2: { step: 4, label: "separatingAudio2", isBlocking: false, color: "text-purple-400" },
+  audio_complete: { step: 4, label: "audioReadyProcessingLyrics", isBlocking: false, color: "text-purple-400" },
+  transcribing: { step: 4, label: "transcribingLyrics", isBlocking: false, color: "text-blue-400" },
+  correcting: { step: 4, label: "correctingLyrics", isBlocking: false, color: "text-blue-400" },
+  lyrics_complete: { step: 4, label: "lyricsReadyProcessingAudio", isBlocking: false, color: "text-teal-400" },
 
   // Step 5: Screen Generation
-  generating_screens: { step: 5, label: "Generating screens", isBlocking: false, color: "text-cyan-400" },
-  applying_padding: { step: 5, label: "Syncing countdown", isBlocking: false, color: "text-cyan-400" },
+  generating_screens: { step: 5, label: "generatingScreens", isBlocking: false, color: "text-cyan-400" },
+  applying_padding: { step: 5, label: "syncingCountdown", isBlocking: false, color: "text-cyan-400" },
 
   // Step 6: Review (BLOCKING - requires user action)
-  awaiting_review: { step: 6, label: "Review lyrics", isBlocking: true, color: "text-amber-400" },
-  in_review: { step: 6, label: "In review", isBlocking: true, color: "text-blue-400" },
+  awaiting_review: { step: 6, label: "reviewLyrics", isBlocking: true, color: "text-amber-400" },
+  in_review: { step: 6, label: "inReview", isBlocking: true, color: "text-blue-400" },
 
   // Step 7: Video Rendering
-  review_complete: { step: 7, label: "Starting render", isBlocking: false, color: "text-teal-400" },
-  rendering_video: { step: 7, label: "Rendering video", isBlocking: false, color: "text-indigo-400" },
+  review_complete: { step: 7, label: "startingRender", isBlocking: false, color: "text-teal-400" },
+  rendering_video: { step: 7, label: "renderingVideo", isBlocking: false, color: "text-indigo-400" },
 
   // Step 8: Instrumental Selection (BLOCKING - requires user action)
-  awaiting_instrumental_selection: { step: 8, label: "Select instrumental", isBlocking: true, color: "text-amber-400" },
+  awaiting_instrumental_selection: { step: 8, label: "selectInstrumental", isBlocking: true, color: "text-amber-400" },
 
   // Step 9: Final Encoding
-  instrumental_selected: { step: 9, label: "Starting final encode", isBlocking: false, color: "text-pink-400" },
-  generating_video: { step: 9, label: "Generating final video", isBlocking: false, color: "text-violet-400" },
-  encoding: { step: 9, label: "Encoding video", isBlocking: false, color: "text-violet-400" },
-  packaging: { step: 9, label: "Packaging files", isBlocking: false, color: "text-violet-400" },
+  instrumental_selected: { step: 9, label: "startingFinalEncode", isBlocking: false, color: "text-pink-400" },
+  generating_video: { step: 9, label: "generatingFinalVideo", isBlocking: false, color: "text-violet-400" },
+  encoding: { step: 9, label: "encodingVideo", isBlocking: false, color: "text-violet-400" },
+  packaging: { step: 9, label: "packagingFiles", isBlocking: false, color: "text-violet-400" },
 
   // Step 10: Distribution / Complete
-  uploading: { step: 10, label: "Uploading", isBlocking: false, color: "text-green-400" },
-  notifying: { step: 10, label: "Sending notifications", isBlocking: false, color: "text-green-400" },
-  complete: { step: 10, label: "Complete", isBlocking: false, color: "text-green-400" },
-  prep_complete: { step: 10, label: "Prep complete", isBlocking: false, color: "text-green-400" },
+  uploading: { step: 10, label: "uploading", isBlocking: false, color: "text-green-400" },
+  notifying: { step: 10, label: "sendingNotifications", isBlocking: false, color: "text-green-400" },
+  complete: { step: 10, label: "complete", isBlocking: false, color: "text-green-400" },
+  prep_complete: { step: 10, label: "prepComplete", isBlocking: false, color: "text-green-400" },
 
   // Terminal states (no step progression)
-  failed: { step: 0, label: "Failed", isBlocking: false, color: "text-red-400" },
-  cancelled: { step: 0, label: "Cancelled", isBlocking: false, color: "text-muted-foreground" },
+  failed: { step: 0, label: "failed", isBlocking: false, color: "text-red-400" },
+  cancelled: { step: 0, label: "cancelled", isBlocking: false, color: "text-muted-foreground" },
 };
 
 const TOTAL_STEPS = 10;
@@ -184,7 +185,7 @@ function getParallelProcessingLabel(job: Job, defaultLabel: string): string {
     const lyricsDone = lyricsStage === "lyrics_complete" || job.state_data?.lyrics_complete;
 
     if (audioDone && lyricsDone) {
-      return "Processing complete";
+      return "processingComplete";
     }
 
     // Show what's still running
@@ -207,26 +208,26 @@ function getParallelProcessingLabel(job: Job, defaultLabel: string): string {
 function getShortAudioStatus(stage: string): string {
   switch (stage) {
     case "separating_stage1":
-      return "Audio 1/2";
+      return "audio1of2";
     case "separating_stage2":
-      return "Audio 2/2";
+      return "audio2of2";
     case "audio_complete":
-      return "Audio done";
+      return "audioDone";
     default:
-      return "Audio";
+      return "audio";
   }
 }
 
 function getShortLyricsStatus(stage: string): string {
   switch (stage) {
     case "transcribing":
-      return "Transcribing";
+      return "transcribing";
     case "correcting":
-      return "Correcting";
+      return "correcting";
     case "lyrics_complete":
-      return "Lyrics done";
+      return "lyricsDone";
     default:
-      return "Lyrics";
+      return "lyrics";
   }
 }
 

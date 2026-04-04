@@ -15,8 +15,10 @@ import {
 import { User, LogOut, Settings, Shield, Mail, Phone, HelpCircle, Eye } from "lucide-react"
 import Link from "next/link"
 import LanguageSwitcher from "./LanguageSwitcher"
+import { useTranslations } from "next-intl"
 
 export function AppHeader() {
+  const t = useTranslations('header')
   const { user, logout, isImpersonating, impersonatedUserEmail, endImpersonation } = useAuth()
   const router = useRouter()
 
@@ -41,14 +43,14 @@ export function AppHeader() {
 
         <nav className="hidden md:flex items-center gap-6">
           <Link href="/app" className="text-sm font-medium hover:text-primary transition-colors">
-            Dashboard
+            {t('dashboard')}
           </Link>
           <Link href="/jobs" className="text-sm font-medium hover:text-primary transition-colors">
-            My Jobs
+            {t('myJobs')}
           </Link>
           {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
             <Link href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
-              Admin
+              {t('admin')}
             </Link>
           )}
         </nav>
@@ -64,7 +66,7 @@ export function AppHeader() {
               className="h-8 gap-1.5 border-purple-500/40 text-purple-300 hover:text-white hover:bg-purple-800/40"
             >
               <Shield className="w-3.5 h-3.5" />
-              Back to Admin
+              {t('backToAdmin')}
             </Button>
           )}
 
@@ -72,12 +74,12 @@ export function AppHeader() {
             <DropdownMenuTrigger asChild>
               <button className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                 <HelpCircle className="w-3.5 h-3.5" />
-                <span>Need help?</span>
+                <span>{t('needHelp')}</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel className="text-sm">
-                Something confusing or not working? Reach out anytime!
+                {t('helpPrompt')}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
@@ -97,7 +99,7 @@ export function AppHeader() {
 
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-sm font-medium text-primary">{user.credits} credits</span>
+            <span className="text-sm font-medium text-primary">{t('credits', { count: user.credits })}</span>
           </div>
 
           <DropdownMenu>
@@ -109,28 +111,28 @@ export function AppHeader() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">Account</p>
-                  <p className="text-xs text-muted-foreground">{user.role === "admin" ? "Admin" : "User"}</p>
+                  <p className="text-sm font-medium">{t('account')}</p>
+                  <p className="text-xs text-muted-foreground">{user.role === "admin" ? t('adminRole') : t('userRole')}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="sm:hidden">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary" />
-                  <span>{user.credits} credits</span>
+                  <span>{t('credits', { count: user.credits })}</span>
                 </div>
               </DropdownMenuItem>
               {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
                 <DropdownMenuItem asChild>
                   <Link href="/admin">
                     <Shield className="w-4 h-4 mr-2" />
-                    Admin Dashboard
+                    {t('adminDashboard')}
                   </Link>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem>
                 <Settings className="w-4 h-4 mr-2" />
-                Settings
+                {t('settings')}
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a href="mailto:andrew@nomadkaraoke.com">
@@ -147,7 +149,7 @@ export function AppHeader() {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                 <LogOut className="w-4 h-4 mr-2" />
-                Logout
+                {t('logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

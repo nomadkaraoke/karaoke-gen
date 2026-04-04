@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2, CheckCircle, XCircle, Gift, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 
 type VerifyState = "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
 
 function VerifyMagicLinkContent() {
+  const t = useTranslations('auth')
   const router = useRouter()
   const searchParams = useSearchParams()
   const [state, setState] = useState<VerifyState>("verifying")
@@ -27,7 +29,7 @@ function VerifyMagicLinkContent() {
 
     if (!token) {
       setState("error")
-      setErrorMessage("No verification token provided")
+      setErrorMessage(t('noVerificationToken'))
       return
     }
 
@@ -73,7 +75,7 @@ function VerifyMagicLinkContent() {
       } else {
         setState("error")
         const authStore = useAuth.getState()
-        setErrorMessage(authStore.error || "Invalid or expired link")
+        setErrorMessage(authStore.error || t('linkExpiredOrUsed'))
       }
     }
 
@@ -90,10 +92,10 @@ function VerifyMagicLinkContent() {
         <>
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-foreground mb-2">
-            Verifying your sign-in link...
+            {t('verifying')}
           </h1>
           <p className="text-muted-foreground">
-            Please wait while we sign you in.
+            {t('verifyingWait')}
           </p>
         </>
       )}
@@ -103,10 +105,10 @@ function VerifyMagicLinkContent() {
         <>
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-foreground mb-2">
-            Preparing your account...
+            {t('preparingAccount')}
           </h1>
           <p className="text-muted-foreground">
-            Just a moment while we set things up for you.
+            {t('preparingWait')}
           </p>
         </>
       )}
@@ -118,24 +120,23 @@ function VerifyMagicLinkContent() {
             <Gift className="w-16 h-16 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            Welcome to Nomad Karaoke!
+            {t('welcomeTitle')}
           </h1>
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
             <p className="text-3xl font-bold text-primary">{creditsGranted}</p>
-            <p className="text-sm font-medium text-primary/80">free credits to get started</p>
+            <p className="text-sm font-medium text-primary/80">{t('freeCreditsGranted', { count: creditsGranted })}</p>
           </div>
           <p className="text-sm text-muted-foreground mb-2">
-            Each credit creates one professional karaoke video.
+            {t('freeCreditsExplanation')}
           </p>
           <p className="text-xs text-muted-foreground mb-6">
-            These credits cost us real money to fulfil, so please use them wisely
-            and let us know what you think!
+            {t('freeCreditsRequest')}
           </p>
           <Button
             onClick={goToApp}
             className="w-full bg-primary hover:bg-primary/90"
           >
-            Start Creating Karaoke
+            {t('startCreating')}
           </Button>
         </>
       )}
@@ -145,16 +146,13 @@ function VerifyMagicLinkContent() {
         <>
           <XCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-foreground mb-2">
-            Welcome to Nomad Karaoke
+            {t('welcomeBack')}
           </h1>
           <p className="text-muted-foreground mb-4">
-            We weren&apos;t able to grant free credits this time.
-            Karaoke generation costs us real money for every job,
-            so we need to be careful about free credit distribution.
+            {t('creditsDeniedExplanation')}
           </p>
           <p className="text-sm text-muted-foreground mb-6">
-            If you think this is a mistake, check your email — we&apos;ve sent you
-            details on how to reach out to get this resolved.
+            {t('creditsDeniedHelp')}
           </p>
           <div className="space-y-2">
             <Button
@@ -162,14 +160,14 @@ function VerifyMagicLinkContent() {
               className="w-full bg-primary hover:bg-primary/90"
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              Buy Credits
+              {t('buyCredits')}
             </Button>
             <Button
               onClick={goToApp}
               variant="ghost"
               className="w-full"
             >
-              Go to Dashboard
+              {t('goToDashboard')}
             </Button>
           </div>
         </>
@@ -180,15 +178,13 @@ function VerifyMagicLinkContent() {
         <>
           <Loader2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-foreground mb-2">
-            Welcome to Nomad Karaoke!
+            {t('creditsPendingTitle')}
           </h1>
           <p className="text-muted-foreground mb-4">
-            We weren&apos;t able to assign your free credits automatically this time.
-            Our team will review your signup shortly and assign credits if we&apos;re able to.
+            {t('creditsPendingExplanation')}
           </p>
           <p className="text-sm text-muted-foreground mb-6">
-            You can still explore the app while you wait, or purchase credits
-            to get started right away.
+            {t('creditsPendingHint')}
           </p>
           <div className="space-y-2">
             <Button
@@ -196,14 +192,14 @@ function VerifyMagicLinkContent() {
               className="w-full bg-primary hover:bg-primary/90"
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              Buy Credits
+              {t('buyCredits')}
             </Button>
             <Button
               onClick={goToApp}
               variant="ghost"
               className="w-full"
             >
-              Explore the App
+              {t('exploreApp')}
             </Button>
           </div>
         </>
@@ -214,13 +210,13 @@ function VerifyMagicLinkContent() {
         <>
           <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-foreground mb-2">
-            Successfully signed in!
+            {t('successSignedIn')}
           </h1>
           <p className="text-muted-foreground mb-4">
-            Welcome back{user?.email ? `, ${user.email}` : ""}!
+            {t('welcomeBackUser', { email: user?.email ? `, ${user.email}` : "" })}
           </p>
           <p className="text-sm text-muted-foreground">
-            Redirecting you to the app...
+            {t('redirectingToApp')}
           </p>
         </>
       )}
@@ -230,20 +226,20 @@ function VerifyMagicLinkContent() {
         <>
           <XCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-foreground mb-2">
-            Sign-in failed
+            {t('signInFailed')}
           </h1>
           <p className="text-muted-foreground mb-6">
-            {errorMessage || "The link may have expired or already been used."}
+            {errorMessage || t('linkExpiredOrUsed')}
           </p>
           <div className="space-y-2">
             <Button
               onClick={() => router.push("/app")}
               className="w-full bg-primary hover:bg-primary/90"
             >
-              Go to App
+              {t('goToApp')}
             </Button>
             <p className="text-xs text-muted-foreground">
-              You can request a new sign-in link from the app.
+              {t('requestNewLink')}
             </p>
           </div>
         </>
@@ -253,14 +249,15 @@ function VerifyMagicLinkContent() {
 }
 
 function VerifyLoadingFallback() {
+  const t = useTranslations('auth')
   return (
     <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
       <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
       <h1 className="text-xl font-semibold text-foreground mb-2">
-        Loading...
+        {t('pleaseWait')}
       </h1>
       <p className="text-muted-foreground">
-        Please wait.
+        {t('pleaseWait')}
       </p>
     </div>
   )

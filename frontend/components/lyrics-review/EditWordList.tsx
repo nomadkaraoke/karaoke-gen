@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,6 +44,7 @@ const WordRow = memo(function WordRow({
   onTabNavigation: (currentIndex: number) => void
   isMobile: boolean
 }) {
+  const t = useTranslations('lyricsReview.editWordList')
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Tab' && !e.shiftKey) {
       e.preventDefault()
@@ -58,7 +60,7 @@ const WordRow = memo(function WordRow({
       <div className={`flex gap-2 items-end ${isMobile ? '' : 'flex-1'}`}>
         <div className="flex-1">
           <Label htmlFor={`word-text-${index}`} className="text-xs text-muted-foreground mb-1">
-            Word {index}
+            {t('wordLabel', { index })}
           </Label>
           <Input
             id={`word-text-${index}`}
@@ -75,7 +77,7 @@ const WordRow = memo(function WordRow({
               variant="ghost"
               size="icon"
               onClick={() => onSplitWord(index)}
-              title="Split Word"
+              title={t('splitWord')}
               className="h-8 w-8 text-primary"
             >
               <Split className="h-4 w-4" />
@@ -85,7 +87,7 @@ const WordRow = memo(function WordRow({
               size="icon"
               onClick={() => onRemoveWord(index)}
               disabled={wordsLength <= 1}
-              title="Remove Word"
+              title={t('removeWord')}
               className="h-8 w-8 text-destructive"
             >
               <Trash2 className="h-4 w-4" />
@@ -101,13 +103,13 @@ const WordRow = memo(function WordRow({
         <TimeInput
           value={word.start_time ?? null}
           onChange={(val) => onWordUpdate(index, { start_time: val ?? undefined })}
-          label="Start"
+          label={t('start')}
           widthClass={isMobile ? 'w-20' : 'w-24'}
         />
         <TimeInput
           value={word.end_time ?? null}
           onChange={(val) => onWordUpdate(index, { end_time: val ?? undefined })}
-          label="End"
+          label={t('end')}
           widthClass={isMobile ? 'w-20' : 'w-24'}
         />
         {/* Action buttons on desktop only */}
@@ -117,7 +119,7 @@ const WordRow = memo(function WordRow({
               variant="ghost"
               size="icon"
               onClick={() => onSplitWord(index)}
-              title="Split Word"
+              title={t('splitWord')}
               className="h-8 w-8 text-primary"
             >
               <Split className="h-4 w-4" />
@@ -127,7 +129,7 @@ const WordRow = memo(function WordRow({
               size="icon"
               onClick={() => onRemoveWord(index)}
               disabled={wordsLength <= 1}
-              title="Remove Word"
+              title={t('removeWord')}
               className="h-8 w-8 text-destructive"
             >
               <Trash2 className="h-4 w-4" />
@@ -222,6 +224,7 @@ export default function EditWordList({
   onMergeSegment,
   isGlobal = false,
 }: EditWordListProps) {
+  const t = useTranslations('lyricsReview.editWordList')
   // Simple mobile detection
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
 
@@ -327,10 +330,10 @@ export default function EditWordList({
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
           >
-            Previous
+            {t('previous')}
           </Button>
           <span className="text-sm">
-            Page {page} of {pageCount}
+            {t('pageCount', { current: page, total: pageCount })}
           </span>
           <Button
             variant="outline"
@@ -338,10 +341,10 @@ export default function EditWordList({
             onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
             disabled={page === pageCount}
           >
-            Next
+            {t('next')}
           </Button>
           <span className="text-sm text-muted-foreground ml-2">
-            Words {startIndex + 1}-{endIndex} of {words.length}
+            {t('wordsRange', { start: startIndex + 1, end: endIndex, total: words.length })}
           </span>
         </div>
       )}
@@ -358,12 +361,12 @@ export default function EditWordList({
               handleReplaceAllWords()
             }
           }}
-          placeholder="Replace all words"
+          placeholder={t('replaceAllWords')}
           className="flex-grow"
         />
         <Button onClick={handleReplaceAllWords} size="sm" className="whitespace-nowrap">
           <Wand2 className="h-4 w-4 mr-1" />
-          Replace All
+          {t('replaceAll')}
         </Button>
       </div>
     </div>

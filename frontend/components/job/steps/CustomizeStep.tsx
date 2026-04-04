@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslations } from 'next-intl'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -212,6 +213,8 @@ export function CustomizeStep({
   isSubmitting,
   disabled,
 }: CustomizeStepProps) {
+  const t = useTranslations('jobFlow')
+  const tc = useTranslations('common')
   const previewArtist = displayArtist.trim() || artist
   const previewTitle = displayTitle.trim() || title
 
@@ -293,10 +296,10 @@ export function CustomizeStep({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
-              Customize & Create
+              {t('stepLabels.customizeCreate')}
             </h2>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Confirm the artist and title for your title card.
+              {t('confirmArtistTitle')}
             </p>
           </div>
           <Button
@@ -307,7 +310,7 @@ export function CustomizeStep({
             style={{ color: 'var(--text-muted)' }}
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Back
+            {tc('back')}
           </Button>
         </div>
 
@@ -323,14 +326,14 @@ export function CustomizeStep({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="guided-display-artist" className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Title Card Artist
+              {t('titleCardArtist')}
               {!displayArtist.trim() && artist.trim() && (
-                <span className="ml-1 opacity-50">(same as above)</span>
+                <span className="ml-1 opacity-50">{t('sameAsAbove')}</span>
               )}
             </Label>
             <Input
               id="guided-display-artist"
-              placeholder={artist || "Artist on title card"}
+              placeholder={artist || t('artistOnTitleCard')}
               value={displayArtist}
               onChange={(e) => onDisplayArtistChange(e.target.value)}
               disabled={disabled || isSubmitting}
@@ -339,14 +342,14 @@ export function CustomizeStep({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="guided-display-title" className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Title Card Title
+              {t('titleCardTitle')}
               {!displayTitle.trim() && title.trim() && (
-                <span className="ml-1 opacity-50">(same as above)</span>
+                <span className="ml-1 opacity-50">{t('sameAsAbove')}</span>
               )}
             </Label>
             <Input
               id="guided-display-title"
-              placeholder={title || "Title on title card"}
+              placeholder={title || t('titleOnTitleCard')}
               value={displayTitle}
               onChange={(e) => onDisplayTitleChange(e.target.value)}
               disabled={disabled || isSubmitting}
@@ -355,7 +358,7 @@ export function CustomizeStep({
           </div>
         </div>
         <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-          These default to your search values. Override for soundtracks, covers, or alternate formatting.
+          {t('defaultsToSearchValues')}
         </p>
 
         <Button
@@ -366,10 +369,10 @@ export function CustomizeStep({
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating...
+              {t('creating')}
             </>
           ) : (
-            "Create Karaoke Video"
+            t('createKaraokeVideo')
           )}
         </Button>
       </div>
@@ -382,10 +385,10 @@ export function CustomizeStep({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
-            Customize & Create
+            {t('stepLabels.customizeCreate')}
           </h2>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Customize your private video&apos;s appearance.
+            {t('confirmArtistTitle')}
           </p>
         </div>
         <Button
@@ -396,7 +399,7 @@ export function CustomizeStep({
           style={{ color: 'var(--text-muted)' }}
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Back
+          {tc('back')}
         </Button>
       </div>
 
@@ -411,7 +414,7 @@ export function CustomizeStep({
           </Label>
           <Input
             id="guided-display-artist"
-            placeholder={artist || "Artist on title card"}
+            placeholder={artist || t('artistOnTitleCard')}
             value={displayArtist}
             onChange={(e) => onDisplayArtistChange(e.target.value)}
             disabled={disabled || isSubmitting}
@@ -427,7 +430,7 @@ export function CustomizeStep({
           </Label>
           <Input
             id="guided-display-title"
-            placeholder={title || "Title on title card"}
+            placeholder={title || t('titleOnTitleCard')}
             value={displayTitle}
             onChange={(e) => onDisplayTitleChange(e.target.value)}
             disabled={disabled || isSubmitting}
@@ -447,7 +450,7 @@ export function CustomizeStep({
         <div className="flex items-center gap-2">
           <Palette className="w-4 h-4" style={{ color: 'var(--brand-pink)' }} />
           <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-            Custom Video Style
+            {t('customVideoStyle')}
           </h3>
         </div>
 
@@ -457,7 +460,7 @@ export function CustomizeStep({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Title Card
+                {t('titleCard')}
               </Label>
               <BgModeToggle
                 mode={introBgMode}
@@ -523,7 +526,7 @@ export function CustomizeStep({
             <div className="grid grid-cols-2 gap-3">
               <ColorPickerField
                 id="artist-color"
-                label="Artist Color"
+                label={t('artistColor')}
                 value={colorOverrides.artist_color}
                 defaultColor="#ffdf6b"
                 onChange={(val) => onColorOverridesChange({ ...colorOverrides, artist_color: val })}
@@ -531,7 +534,7 @@ export function CustomizeStep({
               />
               <ColorPickerField
                 id="title-color"
-                label="Title Color"
+                label={t('titleColor')}
                 value={colorOverrides.title_color}
                 defaultColor="#ffffff"
                 onChange={(val) => onColorOverridesChange({ ...colorOverrides, title_color: val })}
@@ -544,7 +547,7 @@ export function CustomizeStep({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Karaoke Video
+                {t('karaokeVideo')}
               </Label>
               <BgModeToggle
                 mode={karaokeBgMode}
@@ -608,7 +611,7 @@ export function CustomizeStep({
             <div className="grid grid-cols-2 gap-3">
               <ColorPickerField
                 id="sung-lyrics-color"
-                label="Highlight Color"
+                label={t('highlightColor')}
                 value={colorOverrides.sung_lyrics_color}
                 defaultColor="#7070F7"
                 onChange={(val) => onColorOverridesChange({ ...colorOverrides, sung_lyrics_color: val })}
@@ -616,7 +619,7 @@ export function CustomizeStep({
               />
               <ColorPickerField
                 id="unsung-lyrics-color"
-                label="Lyrics Color"
+                label={t('lyricsColor')}
                 value={colorOverrides.unsung_lyrics_color}
                 defaultColor="#ffffff"
                 onChange={(val) => onColorOverridesChange({ ...colorOverrides, unsung_lyrics_color: val })}
@@ -627,7 +630,7 @@ export function CustomizeStep({
         </div>
 
         <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-          Leave colors blank to use default Nomad theme. Previews are approximate &mdash; final rendering may differ slightly.
+          {t('leaveColorsBlank')}
         </p>
       </div>
 

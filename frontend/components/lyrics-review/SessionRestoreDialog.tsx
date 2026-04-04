@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -54,13 +55,14 @@ function TriggerBadge({ trigger }: { trigger: string }) {
 }
 
 function EditPreview({ session }: { session: ReviewSession }) {
+  const t = useTranslations('lyricsReview.sessionRestore')
   const { summary } = session
   const changedWords = summary?.changed_words || []
 
   if (changedWords.length === 0) {
     return (
       <div className="text-sm text-muted-foreground italic p-4">
-        No word-level changes recorded in this session.
+        {t('noWordChanges')}
       </div>
     )
   }
@@ -98,6 +100,7 @@ export default function SessionRestoreDialog({
   currentAudioDuration,
   isLoading = false,
 }: SessionRestoreDialogProps) {
+  const t = useTranslations('lyricsReview.sessionRestore')
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [isRestoring, setIsRestoring] = useState(false)
   const [searchMode, setSearchMode] = useState<'this-job' | 'all-jobs'>('this-job')
@@ -221,7 +224,7 @@ export default function SessionRestoreDialog({
       <Dialog open={open && !durationWarning} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Saved Review Sessions</DialogTitle>
+            <DialogTitle>{t('title')}</DialogTitle>
           </DialogHeader>
 
           {/* Tab switcher */}
@@ -231,14 +234,14 @@ export default function SessionRestoreDialog({
               size="sm"
               onClick={() => setSearchMode('this-job')}
             >
-              This Job ({sessions.length})
+              {t('thisJob', { count: sessions.length })}
             </Button>
             <Button
               variant={searchMode === 'all-jobs' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSearchMode('all-jobs')}
             >
-              All Jobs
+              {t('allJobs')}
             </Button>
           </div>
 
@@ -246,7 +249,7 @@ export default function SessionRestoreDialog({
           {searchMode === 'all-jobs' && (
             <div className="flex gap-2">
               <Input
-                placeholder="Search by artist, title, or job ID..."
+                placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -263,7 +266,7 @@ export default function SessionRestoreDialog({
             </div>
           ) : displayedSessions.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              {searchMode === 'all-jobs' ? 'Search for sessions across all jobs' : 'No saved sessions found'}
+              {searchMode === 'all-jobs' ? t('searchAcrossAllJobs') : t('noSessions')}
             </div>
           ) : (
             /* Split pane: session list (left) + preview (right) */
@@ -302,7 +305,7 @@ export default function SessionRestoreDialog({
                   <EditPreview session={selectedSession} />
                 ) : (
                   <div className="text-sm text-muted-foreground p-4 italic">
-                    Select a session to preview changes
+                    {t('selectToPreview')}
                   </div>
                 )}
               </div>
@@ -311,14 +314,14 @@ export default function SessionRestoreDialog({
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>
-              Start Fresh
+              {t('startFresh')}
             </Button>
             <Button
               onClick={handleRestore}
               disabled={!selectedSession || isRestoring}
             >
               {isRestoring && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Restore Selected
+              {t('restoreSelected')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -330,20 +333,20 @@ export default function SessionRestoreDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Duration Mismatch
+              {t('durationMismatchTitle')}
             </DialogTitle>
           </DialogHeader>
           {durationWarning && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                The selected session is from a track with a different duration:
+                {t('durationMismatchDesc')}
               </p>
               <div className="bg-muted rounded-md p-3 text-sm space-y-1">
-                <div>This job: <strong>{formatDuration(durationWarning.current)}</strong> ({Math.round(durationWarning.current)}s)</div>
-                <div>Source session: <strong>{formatDuration(durationWarning.source)}</strong> ({Math.round(durationWarning.source)}s)</div>
+                <div>{t('thisJobDuration')} <strong>{formatDuration(durationWarning.current)}</strong> ({Math.round(durationWarning.current)}s)</div>
+                <div>{t('sourceSessionDuration')} <strong>{formatDuration(durationWarning.source)}</strong> ({Math.round(durationWarning.source)}s)</div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Timing alignment may not match. Word timestamps from the source session will be preserved as-is.
+                {t('timingMayNotMatch')}
               </p>
             </div>
           )}
@@ -353,7 +356,7 @@ export default function SessionRestoreDialog({
             </Button>
             <Button onClick={doRestore} disabled={isRestoring}>
               {isRestoring && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Restore Anyway
+              {t('restoreAnyway')}
             </Button>
           </DialogFooter>
         </DialogContent>

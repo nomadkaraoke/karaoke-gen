@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -21,6 +22,7 @@ export default function GapNavigator({
   onPrevGap,
   onNextGap,
 }: GapNavigatorProps) {
+  const t = useTranslations('lyricsReview.gapNavigator')
   if (totalGaps === 0) return null
 
   const displayIndex = currentGapIndex !== null ? currentGapIndex + 1 : 0
@@ -40,10 +42,10 @@ export default function GapNavigator({
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Previous gap (P)</TooltipContent>
+        <TooltipContent>{t('previousGap')}</TooltipContent>
       </Tooltip>
       <span className="text-xs text-muted-foreground whitespace-nowrap">
-        Gap {displayIndex} of {totalGaps}
+        {t('gapCount', { current: displayIndex, total: totalGaps })}
       </span>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -58,7 +60,7 @@ export default function GapNavigator({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Next gap (N)</TooltipContent>
+        <TooltipContent>{t('nextGap')}</TooltipContent>
       </Tooltip>
     </div>
   )

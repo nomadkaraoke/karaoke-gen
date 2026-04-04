@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api, SystemStatus, ServiceStatus } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 interface SystemStatusModalProps {
   open: boolean;
@@ -51,6 +52,7 @@ function ServiceCard({
   service: ServiceStatus;
   children?: React.ReactNode;
 }) {
+  const t = useTranslations('status');
   const isOk = service.status === "ok";
   return (
     <div
@@ -66,7 +68,7 @@ function ServiceCard({
           <span className="font-medium text-sm">{name}</span>
         </div>
         <span className="text-xs opacity-60">
-          {isOk ? "Healthy" : "Offline"}
+          {isOk ? t('healthy') : t('offline')}
         </span>
       </div>
 
@@ -76,7 +78,7 @@ function ServiceCard({
 
       {service.deployed_at && (
         <div className="text-xs opacity-50 mt-0.5">
-          Deployed {formatRelativeTime(service.deployed_at)}
+          {t('deployed', { time: formatRelativeTime(service.deployed_at) })}
         </div>
       )}
 
@@ -105,6 +107,7 @@ function ServiceCard({
 }
 
 function BlueGreenSection({ details }: { details: NonNullable<ServiceStatus["admin_details"]> }) {
+  const t = useTranslations('status');
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -114,9 +117,9 @@ function BlueGreenSection({ details }: { details: NonNullable<ServiceStatus["adm
         className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1"
       >
         <span>{expanded ? "\u25BE" : "\u25B8"}</span>
-        Blue-Green Deployment
+        {t('blueGreenDeployment')}
         {details.deploy_in_progress && (
-          <span className="text-amber-400 animate-pulse ml-1">\u26A0 deploying...</span>
+          <span className="text-amber-400 animate-pulse ml-1">{'\u26A0'} {t('deploying')}</span>
         )}
       </button>
 
@@ -131,7 +134,7 @@ function BlueGreenSection({ details }: { details: NonNullable<ServiceStatus["adm
             }}
           >
             <div className="text-green-500 text-[10px] font-semibold uppercase tracking-wider">
-              Primary
+              {t('primary')}
             </div>
             <div className="mt-1 font-mono">{details.primary_vm}</div>
             <div className="opacity-60">v{details.primary_version}</div>
@@ -151,7 +154,7 @@ function BlueGreenSection({ details }: { details: NonNullable<ServiceStatus["adm
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-wider opacity-50">
-              Secondary (stopped)
+              {t('secondaryStopped')}
             </div>
             <div className="mt-1 font-mono">{details.secondary_vm}</div>
             {details.secondary_version && (
@@ -162,10 +165,10 @@ function BlueGreenSection({ details }: { details: NonNullable<ServiceStatus["adm
           {/* Metadata row */}
           <div className="col-span-2 text-[10px] opacity-40 mt-1">
             {details.last_swap_at && (
-              <span>Last swap: {formatRelativeTime(details.last_swap_at)}</span>
+              <span>{t('lastSwap', { time: formatRelativeTime(details.last_swap_at) })}</span>
             )}
             {details.active_jobs != null && details.active_jobs > 0 && (
-              <span className="ml-3">Active jobs: {details.active_jobs}</span>
+              <span className="ml-3">{t('activeJobs', { count: details.active_jobs })}</span>
             )}
           </div>
         </div>
@@ -175,6 +178,8 @@ function BlueGreenSection({ details }: { details: NonNullable<ServiceStatus["adm
 }
 
 export function SystemStatusModal({ open, onClose }: SystemStatusModalProps) {
+  const t = useTranslations('status');
+  const tCommon = useTranslations('common');
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -213,11 +218,11 @@ export function SystemStatusModal({ open, onClose }: SystemStatusModalProps) {
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-lg" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--card-border)" }}>
         <DialogHeader>
-          <DialogTitle className="text-foreground">System Status</DialogTitle>
+          <DialogTitle className="text-foreground">{t('systemStatus')}</DialogTitle>
         </DialogHeader>
 
         {loading && (
-          <div className="py-8 text-center text-sm opacity-60">Loading...</div>
+          <div className="py-8 text-center text-sm opacity-60">{tCommon('loading')}</div>
         )}
 
         {error && (
@@ -226,16 +231,16 @@ export function SystemStatusModal({ open, onClose }: SystemStatusModalProps) {
 
         {services && !loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-            <ServiceCard name="Frontend" service={frontendService} />
-            <ServiceCard name="Backend" service={services.backend} />
-            <ServiceCard name="Encoder" service={services.encoder}>
+            <ServiceCard name={t('frontend')} service={frontendService} />
+            <ServiceCard name={t('backend')} service={services.backend} />
+            <ServiceCard name={t('encoder')} service={services.encoder}>
               {services.encoder.admin_details &&
                 services.encoder.admin_details.primary_vm && (
                   <BlueGreenSection details={services.encoder.admin_details} />
                 )}
             </ServiceCard>
-            <ServiceCard name="Flacfetch" service={services.flacfetch} />
-            <ServiceCard name="Separator" service={services.separator} />
+            <ServiceCard name={t('flacfetch')} service={services.flacfetch} />
+            <ServiceCard name={t('separator')} service={services.separator} />
           </div>
         )}
       </DialogContent>

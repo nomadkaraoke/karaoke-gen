@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Card } from '@/components/ui/card'
 import { COLORS } from '@/lib/lyrics-review/constants'
 import { cn } from '@/lib/utils'
@@ -87,6 +88,7 @@ export default function CorrectionMetrics({
   totalWords = 0,
   onMetricClick,
 }: CorrectionMetricsProps) {
+  const t = useTranslations('lyricsReview.guidance')
   // Calculate percentages based on word counts
   const anchorPercentage = totalWords > 0 ? Math.round((anchorWordCount / totalWords) * 100) : 0
   const uncorrectedWordCount = uncorrectedGaps?.reduce((sum, gap) => sum + gap.length, 0) ?? 0
@@ -102,12 +104,12 @@ export default function CorrectionMetrics({
         <div className="flex-1 h-full">
           <Metric
             color={COLORS.anchor}
-            label="Anchor Sequences"
+            label={t('anchorSequences')}
             value={`${anchorCount ?? '-'} (${anchorPercentage}%)`}
-            description="Matched sections between transcription and reference"
+            description={t('anchorSequencesDesc')}
             details={[
-              { label: 'Words in Anchors', value: anchorWordCount },
-              { label: 'Multi-source Matches', value: multiSourceAnchors },
+              { label: t('wordsInAnchors'), value: anchorWordCount },
+              { label: t('multiSourceMatches'), value: multiSourceAnchors },
             ]}
             onClick={onMetricClick?.anchor}
           />
@@ -115,12 +117,12 @@ export default function CorrectionMetrics({
         <div className="flex-1 h-full">
           <Metric
             color={COLORS.corrected}
-            label="Corrected Gaps"
+            label={t('correctedGaps')}
             value={`${correctedGapCount} (${correctedPercentage}%)`}
-            description="Successfully corrected sections"
+            description={t('correctedGapsDesc')}
             details={[
-              { label: 'Words Replaced', value: replacedCount },
-              { label: 'Words Added / Deleted', value: `+${addedCount} / -${deletedCount}` },
+              { label: t('wordsReplaced'), value: replacedCount },
+              { label: t('wordsAddedDeleted'), value: `+${addedCount} / -${deletedCount}` },
             ]}
             onClick={onMetricClick?.corrected}
           />
@@ -128,12 +130,12 @@ export default function CorrectionMetrics({
         <div className="flex-1 h-full">
           <Metric
             color={COLORS.uncorrectedGap}
-            label="Uncorrected Gaps"
+            label={t('uncorrectedGaps')}
             value={`${uncorrectedGapCount} (${uncorrectedPercentage}%)`}
-            description="Sections that may need manual review"
+            description={t('uncorrectedGapsDesc')}
             details={[
-              { label: 'Words Uncorrected', value: uncorrectedWordCount },
-              { label: 'Number of Gaps', value: uncorrectedGaps.length },
+              { label: t('wordsUncorrected'), value: uncorrectedWordCount },
+              { label: t('numberOfGaps'), value: uncorrectedGaps.length },
             ]}
             onClick={onMetricClick?.uncorrected}
           />

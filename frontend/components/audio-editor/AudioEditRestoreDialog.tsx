@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from 'next-intl'
 import { api, AudioEditSessionMeta, AudioEditSessionWithData, AudioEditEntry } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -35,6 +36,7 @@ export function AudioEditRestoreDialog({
   onRestore,
   onStartFresh,
 }: AudioEditRestoreDialogProps) {
+  const t = useTranslations('audioEditRestore')
   const [sessions, setSessions] = useState<AudioEditSessionMeta[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
@@ -91,7 +93,7 @@ export function AudioEditRestoreDialog({
           style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
         >
           <Spinner className="w-6 h-6 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Checking for saved sessions...</p>
+          <p className="text-sm text-muted-foreground">{t('checking')}</p>
         </div>
       </div>
     )
@@ -108,7 +110,7 @@ export function AudioEditRestoreDialog({
           <div className="flex items-center gap-2">
             <History className="w-5 h-5 text-blue-400" />
             <h2 className="text-lg font-semibold" style={{ color: "var(--text)" }}>
-              Saved Audio Edit Sessions
+              {t('title')}
             </h2>
           </div>
           <button onClick={onStartFresh} className="text-muted-foreground hover:text-foreground">
@@ -142,7 +144,7 @@ export function AudioEditRestoreDialog({
                     <p className="text-muted-foreground">
                       {session.edit_count} edit{session.edit_count !== 1 ? "s" : ""} · {session.trigger}
                       {i === 0 && (
-                        <span className="ml-1 text-blue-400">[Latest]</span>
+                        <span className="ml-1 text-blue-400">{t('latest')}</span>
                       )}
                     </p>
                   </div>
@@ -160,7 +162,7 @@ export function AudioEditRestoreDialog({
             ) : selectedSession?.edit_data?.entries ? (
               <div className="space-y-3">
                 <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
-                  Operations applied:
+                  {t('editsApplied')}
                 </p>
                 <div className="space-y-1.5">
                   {selectedSession.edit_data.entries.map((entry: AudioEditEntry, i: number) => (
@@ -180,17 +182,16 @@ export function AudioEditRestoreDialog({
                 {selectedSession.summary && (
                   <div className="text-xs text-muted-foreground pt-2 border-t" style={{ borderColor: "var(--card-border)" }}>
                     <p>
-                      Duration change: {formatDuration(selectedSession.summary.duration_change_seconds)}
+                      {t('durationChange', { change: formatDuration(selectedSession.summary.duration_change_seconds) })}
                     </p>
                     <p>
-                      Net duration: {Math.floor(selectedSession.summary.net_duration_seconds / 60)}:
-                      {String(Math.floor(selectedSession.summary.net_duration_seconds % 60)).padStart(2, "0")}
+                      {t('netDuration', { duration: `${Math.floor(selectedSession.summary.net_duration_seconds / 60)}:${String(Math.floor(selectedSession.summary.net_duration_seconds % 60)).padStart(2, "0")}` })}
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Select a session to preview</p>
+              <p className="text-sm text-muted-foreground">{t('selectToPreview')}</p>
             )}
           </div>
         </div>
@@ -198,7 +199,7 @@ export function AudioEditRestoreDialog({
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 p-4 border-t" style={{ borderColor: "var(--card-border)" }}>
           <Button variant="outline" onClick={onStartFresh} disabled={isRestoring}>
-            Start Fresh
+            {t('startFresh')}
           </Button>
           <Button
             onClick={handleRestore}
@@ -207,10 +208,10 @@ export function AudioEditRestoreDialog({
             {isRestoring ? (
               <>
                 <Spinner className="w-4 h-4 mr-1" />
-                Restoring...
+                {t('restoring')}
               </>
             ) : (
-              "Restore Selected"
+              t('restoreSelected')
             )}
           </Button>
         </div>
