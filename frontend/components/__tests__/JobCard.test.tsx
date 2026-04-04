@@ -105,7 +105,7 @@ describe('JobCard', () => {
       const href = reviewLink.closest('a')?.getAttribute('href') || ''
       // Uses hash-based routing for static hosting
       // Uses <a> tag (not Next.js Link) to ensure hashchange event fires
-      expect(href).toBe('/app/jobs#/123/review')
+      expect(href).toBe('/en/app/jobs#/123/review')
     })
 
     it('shows audio search button for awaiting_audio_selection status', () => {
@@ -128,7 +128,7 @@ describe('JobCard', () => {
       const href = instrumentalLink.closest('a')?.getAttribute('href') || ''
       // Uses hash-based routing for static hosting
       // Uses <a> tag (not Next.js Link) to ensure hashchange event fires
-      expect(href).toBe('/app/jobs#/123/instrumental')
+      expect(href).toBe('/en/app/jobs#/123/instrumental')
     })
 
     it('does not show Auto badge for regular jobs', () => {

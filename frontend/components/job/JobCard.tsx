@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Job } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Zap } from "lucide-react"
@@ -84,6 +84,7 @@ interface JobCardProps {
 
 export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
   const t = useTranslations('jobCard')
+  const locale = useLocale()
   const [showAudioSearch, setShowAudioSearch] = useState(false)
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -116,7 +117,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
       // Use <a> instead of Link for hash-based URLs to ensure hashchange event fires
       return (
         <a
-          href={`/app/jobs#/${job.job_id}/review`}
+          href={`/${locale}/app/jobs#/${job.job_id}/review`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
           {t('reviewLyrics')}
@@ -127,7 +128,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
     if (job.status === "awaiting_audio_edit" || job.status === "in_audio_edit") {
       return (
         <a
-          href={`/app/jobs#/${job.job_id}/audio-edit`}
+          href={`/${locale}/app/jobs#/${job.job_id}/audio-edit`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
           {t('editAudio')}
@@ -151,7 +152,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
       // Use <a> instead of Link for hash-based URLs to ensure hashchange event fires
       return (
         <a
-          href={`/app/jobs#/${job.job_id}/instrumental`}
+          href={`/${locale}/app/jobs#/${job.job_id}/instrumental`}
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-600 text-white"
         >
           {t('selectInstrumental')}

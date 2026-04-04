@@ -132,7 +132,12 @@ export const useAuth = create<AuthStore>()(
 
           set({ user, isLoading: false })
           return true
-        } catch {
+        } catch (err) {
+          // Don't clear auth on abort errors (e.g., page navigation during fetch)
+          if (err instanceof DOMException && err.name === 'AbortError') {
+            set({ isLoading: false })
+            return false
+          }
           // Session may have expired
           clearAccessToken()
           set({ user: null, isLoading: false })
