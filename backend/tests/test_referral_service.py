@@ -6,10 +6,12 @@ Tests cover:
 - Vanity code validation (length, chars, reserved words, hyphens)
 - get_or_create_link (returns existing, creates new)
 - get_link_by_code (found, not found, disabled)
+- get_or_create_stripe_coupon (delegates to stripe service)
+- should_apply_discount (active, expired, no referral)
 """
 import pytest
 from unittest.mock import MagicMock
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from backend.services.referral_service import (
     ReferralService,
@@ -260,3 +262,39 @@ class TestAttributeReferral:
 
         assert success is False
         assert "invalid" in msg.lower() or "disabled" in msg.lower()
+
+
+# ============================================================================
+# TestGetOrCreateStripeCoupon
+# ============================================================================
+
+class TestGetOrCreateStripeCoupon:
+    def test_creates_coupon_for_new_percentage(self, service, mock_stripe_service):
+        mock_stripe_service.get_or_create_referral_coupon.return_value = "referral-10pct"
+        coupon_id = service.get_or_create_stripe_coupon(10)
+        assert coupon_id == "referral-10pct"
+        mock_stripe_service.get_or_create_referral_coupon.assert_called_once_with(10)
+
+
+# ============================================================================
+# TestShouldApplyDiscount
+# ============================================================================
+
+class TestShouldApplyDiscount:
+    def test_active_discount(self, service):
+        user_data = {
+            "referred_by_code": "abc12345",
+            "referral_discount_expires_at": datetime.utcnow() + timedelta(days=15),
+        }
+        assert service.should_apply_discount(user_data) is True
+
+    def test_expired_discount(self, service):
+        user_data = {
+            "referred_by_code": "abc12345",
+            "referral_discount_expires_at": datetime.utcnow() - timedelta(days=1),
+        }
+        assert service.should_apply_discount(user_data) is False
+
+    def test_no_referral(self, service):
+        user_data = {}
+        assert service.should_apply_discount(user_data) is False

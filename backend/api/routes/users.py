@@ -564,9 +564,21 @@ async def create_checkout(
     if not stripe_service.is_configured():
         raise HTTPException(status_code=503, detail="Payment processing is not available")
 
+    # Check for referral discount
+    referral_coupon_id = None
+    try:
+        from backend.services.referral_service import get_referral_service
+        referral_svc = get_referral_service()
+        discount_info = referral_svc.get_discount_for_checkout(request.email)
+        if discount_info:
+            referral_coupon_id = discount_info["coupon_id"]
+    except Exception as ref_err:
+        logger.warning(f"Referral discount lookup failed: {ref_err}")
+
     success, checkout_url, message = stripe_service.create_checkout_session(
         package_id=request.package_id,
         user_email=request.email,
+        coupon_id=referral_coupon_id,
     )
 
     if not success or not checkout_url:

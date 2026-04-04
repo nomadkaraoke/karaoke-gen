@@ -230,6 +230,41 @@ class ReferralService:
             "referral_discount_expires_at": now + timedelta(days=link.discount_duration_days),
         }
 
+    def get_or_create_stripe_coupon(self, discount_percent: int) -> Optional[str]:
+        if not self.stripe_service:
+            return None
+        return self.stripe_service.get_or_create_referral_coupon(discount_percent)
+
+    def should_apply_discount(self, user_data: dict) -> bool:
+        if not user_data.get("referred_by_code"):
+            return False
+        expires_at = user_data.get("referral_discount_expires_at")
+        if not expires_at:
+            return False
+        if isinstance(expires_at, datetime):
+            return expires_at > datetime.utcnow()
+        return False
+
+    def get_discount_for_checkout(self, user_email: str) -> Optional[dict]:
+        from backend.services.user_service import get_user_service
+        user_service = get_user_service()
+        user = user_service.get_user(user_email)
+        if not user or not user.referred_by_code:
+            return None
+        user_data = {
+            "referred_by_code": user.referred_by_code,
+            "referral_discount_expires_at": user.referral_discount_expires_at,
+        }
+        if not self.should_apply_discount(user_data):
+            return None
+        link = self.get_link_by_code(user.referred_by_code)
+        if not link:
+            return None
+        coupon_id = self.get_or_create_stripe_coupon(link.discount_percent)
+        if not coupon_id:
+            return None
+        return {"coupon_id": coupon_id, "discount_percent": link.discount_percent}
+
     def list_links(self, limit: int = 50, offset: int = 0) -> list[ReferralLink]:
         """List referral links for admin view."""
         query = (

@@ -96,6 +96,7 @@ class StripeService:
         user_email: str,
         success_url: Optional[str] = None,
         cancel_url: Optional[str] = None,
+        coupon_id: Optional[str] = None,
     ) -> Tuple[bool, Optional[str], str]:
         """
         Create a Stripe Checkout session for purchasing credits.
@@ -150,6 +151,11 @@ class StripeService:
                 # Allow promotion codes
                 'allow_promotion_codes': True,
             }
+
+            # If a referral coupon is applied, use discounts instead of allow_promotion_codes
+            if coupon_id:
+                session_params.pop('allow_promotion_codes', None)
+                session_params['discounts'] = [{'coupon': coupon_id}]
 
             # Add payment method configuration if set (enables Google Pay, Link, etc.)
             if self.payment_method_config:
@@ -350,6 +356,28 @@ class StripeService:
         except Exception as e:
             logger.error(f"Error retrieving session {session_id}: {e}")
             return None
+
+    def get_or_create_referral_coupon(self, discount_percent: int) -> Optional[str]:
+        """Get or create a Stripe coupon for a referral discount percentage."""
+        if not self.is_configured():
+            return None
+        coupon_id = f"referral-{discount_percent}pct"
+        try:
+            stripe.Coupon.retrieve(coupon_id)
+            return coupon_id
+        except stripe.error.InvalidRequestError:
+            try:
+                stripe.Coupon.create(
+                    id=coupon_id,
+                    percent_off=discount_percent,
+                    duration="once",
+                    name=f"Referral {discount_percent}% off",
+                )
+                logger.info(f"Created Stripe coupon: {coupon_id}")
+                return coupon_id
+            except stripe.error.StripeError as e:
+                logger.error(f"Failed to create coupon {coupon_id}: {e}")
+                return None
 
     def create_customer(self, email: str, name: Optional[str] = None) -> Optional[str]:
         """
