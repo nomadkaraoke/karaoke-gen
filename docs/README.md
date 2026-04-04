@@ -37,6 +37,7 @@
 | **Review session backup/restore** | Working (auto-save + restore UI) |
 | **Review reminder & auto-expiry** | Working (24h reminder, 48h cancel + refund) |
 | **i18n / Multilingual (frontend)** | Working (next-intl, en/es/de, 1062 strings, [locale] routing) |
+| **Referral system** | Working (referral links with configurable discounts, 20% cash kickback via Stripe Connect, auto-payout at $20) |
 
 ## Known Issues
 

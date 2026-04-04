@@ -1856,6 +1856,87 @@ POST /api/internal/process-stale-reviews
 ```
 Called by Cloud Scheduler hourly. Queries for jobs in `awaiting_review` or `in_review` status, sends reminder emails at 24h, and auto-cancels with credit refund at 48h. Excludes made-for-you and tenant jobs. Returns `{status: "started", message: "..."}` immediately; processing runs in background.
 
+## Referral System
+
+### Get Referral Interstitial (Public)
+
+```http
+GET /api/referrals/r/{code}
+```
+
+No auth required. Returns referral link data for the interstitial page. Increments click count. Returns `valid: false` if code not found or disabled.
+
+### Get Referral Dashboard
+
+```http
+GET /api/referrals/me
+Authorization: Bearer TOKEN
+```
+
+Returns the current user's referral link, stats (clicks, signups, purchases), pending balance, recent earnings, recent payouts, and Stripe Connect status.
+
+### Update Referral Link
+
+```http
+PUT /api/referrals/me
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{"display_name": "DJ Tommy", "custom_message": "Best karaoke tool!"}
+```
+
+Update the current user's referral link display name and custom message (shown on interstitial page).
+
+### Start Stripe Connect Onboarding
+
+```http
+POST /api/referrals/me/connect
+Authorization: Bearer TOKEN
+```
+
+Creates a Stripe Connect Express account and returns an onboarding URL. Saves the Connect account ID to the user doc.
+
+### Create Vanity Link (Admin)
+
+```http
+POST /api/referrals/admin/vanity
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{"code": "djtommy", "owner_email": "tommy@example.com", "discount_percent": 15, "kickback_percent": 25}
+```
+
+Admin creates a custom vanity referral link with optional override rates.
+
+### List Referral Links (Admin)
+
+```http
+GET /api/referrals/admin/links?limit=50&offset=0
+Authorization: Bearer ADMIN_TOKEN
+```
+
+### Update Any Link (Admin)
+
+```http
+PUT /api/referrals/admin/links/{code}
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{"discount_percent": 20, "enabled": false}
+```
+
+### Referral Attribution
+
+Referral codes are passed via the `x-referral-code` HTTP header during magic link verification. Attribution is one-time on first login only.
+
+### Referral Discounts at Checkout
+
+Referred users with an active discount window (default 30 days) automatically receive a Stripe coupon at checkout. The discount replaces `allow_promotion_codes` on the checkout session.
+
+### Referral Earnings
+
+After a credit purchase by a referred user, earnings are recorded automatically in the Stripe webhook handler. When a referrer's pending balance reaches $20 and they have a Stripe Connect account, a payout is triggered automatically.
+
 ## Webhooks
 
 Stripe webhooks implemented at `/api/users/webhooks/stripe`.
