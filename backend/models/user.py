@@ -108,6 +108,13 @@ class User(BaseModel):
     # Flag to prevent duplicate welcome credit grants (idempotency)
     welcome_credits_granted: bool = False
 
+    # Referral system
+    referral_code: Optional[str] = None  # User's own referral code
+    referred_by_code: Optional[str] = None  # Code used when this user signed up
+    referred_at: Optional[datetime] = None  # When the referral was applied
+    referral_discount_expires_at: Optional[datetime] = None  # When referral discount ends
+    stripe_connect_account_id: Optional[str] = None  # For receiving referral payouts
+
 
 class MagicLinkToken(BaseModel):
     """
@@ -202,6 +209,8 @@ class UserPublic(BaseModel):
     tenant_id: Optional[str] = None
     feedback_eligible: bool = False
     total_spent: int = 0
+    referral_code: Optional[str] = None
+    has_active_referral_discount: bool = False
     created_at: Optional[str] = None
     last_login_at: Optional[str] = None
 
