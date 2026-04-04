@@ -124,10 +124,10 @@ export function AppHeader() {
               </DropdownMenuItem>
               {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
                 <DropdownMenuItem asChild>
-                  <Link href="/admin">
+                  <NextLink href="/admin">
                     <Shield className="w-4 h-4 mr-2" />
                     {t('adminDashboard')}
-                  </Link>
+                  </NextLink>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem>
