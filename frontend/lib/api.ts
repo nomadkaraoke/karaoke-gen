@@ -3,7 +3,7 @@
  */
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
-import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard } from './types';
+import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
@@ -2512,6 +2512,41 @@ export const adminApi = {
     const url = `${API_BASE_URL}/api/admin/feedback${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     const response = await fetch(url, {
       headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  // Referral Management
+  async listReferralLinks(params?: { limit?: number; offset?: number }): Promise<{ links: ReferralLink[]; count: number }> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const url = `${API_BASE_URL}/api/referrals/admin/links${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(response);
+  },
+
+  async createVanityLink(data: {
+    vanity_code: string;
+    owner_email: string;
+    display_name?: string;
+    custom_message?: string;
+    discount_percent?: number;
+    kickback_percent?: number;
+  }): Promise<{ ok: boolean; code: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/vanity`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async updateReferralLink(code: string, updates: Record<string, any>): Promise<{ ok: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/links/${encodeURIComponent(code)}`, {
+      method: 'PUT',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
     });
     return handleResponse(response);
   },

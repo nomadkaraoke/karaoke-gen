@@ -15,6 +15,7 @@ import {
   Scissors,
   Fingerprint,
   MessageSquare,
+  Share2,
 } from "lucide-react"
 
 import {
@@ -51,6 +52,11 @@ const navItems = [
     title: "Payments",
     href: "/admin/payments",
     icon: DollarSign,
+  },
+  {
+    title: "Referrals",
+    href: "/admin/referrals",
+    icon: Share2,
   },
   {
     title: "Audio Searches",

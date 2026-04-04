@@ -51,6 +51,8 @@ function AdminBreadcrumb() {
           }
         } else if (segments[1] === "payments") {
           breadcrumbs.push({ label: "Payments" })
+        } else if (segments[1] === "referrals") {
+          breadcrumbs.push({ label: "Referrals" })
         } else if (segments[1] === "searches") {
           breadcrumbs.push({ label: "Audio Searches" })
         } else if (segments[1] === "payments") {
