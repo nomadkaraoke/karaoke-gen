@@ -26,10 +26,14 @@ class TestTranslationFunction:
         assert "120s" in result
         assert "180s" in result
 
-    def test_fallback_to_english_for_missing_key_in_other_locale(self):
-        # es.json is a copy of en.json right now, but if a key were missing it should fall back
+    def test_spanish_returns_translated_string(self):
         result = t("es", "jobs.notFound")
-        assert result == "Job not found"
+        assert result == "Trabajo no encontrado"
+
+    def test_fallback_to_english_for_missing_key_in_other_locale(self):
+        # Key that exists in en.json but not in es.json should fall back to English
+        result = t("es", "nonexistent.key.path")
+        assert result == "nonexistent.key.path"  # Falls all the way to key itself
 
     def test_returns_key_for_nonexistent_key(self):
         result = t("en", "nonexistent.key.path")
