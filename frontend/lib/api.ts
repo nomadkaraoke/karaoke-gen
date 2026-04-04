@@ -38,8 +38,16 @@ export function clearAccessToken() {
   }
 }
 
+function getLocaleFromPath(): string {
+  if (typeof window === 'undefined') return 'en';
+  const match = window.location.pathname.match(/^\/(en|es|de)\//);
+  return match ? match[1] : 'en';
+}
+
 function getAuthHeaders(): HeadersInit {
-  const headers: HeadersInit = {};
+  const headers: HeadersInit = {
+    'Accept-Language': getLocaleFromPath(),
+  };
   const token = getAccessToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

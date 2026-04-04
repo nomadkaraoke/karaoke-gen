@@ -36,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html suppressHydrationWarning>
       <body className={`font-sans antialiased ${titleCardFont.variable}`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
         <GoogleAnalytics />
         <ServiceWorkerRegistration />

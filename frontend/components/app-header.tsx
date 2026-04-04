@@ -14,6 +14,7 @@ import {
 } from "./ui/dropdown-menu"
 import { User, LogOut, Settings, Shield, Mail, Phone, HelpCircle, Eye } from "lucide-react"
 import Link from "next/link"
+import LanguageSwitcher from "./LanguageSwitcher"
 
 export function AppHeader() {
   const { user, logout, isImpersonating, impersonatedUserEmail, endImpersonation } = useAuth()
@@ -53,6 +54,8 @@ export function AppHeader() {
         </nav>
 
         <div className="flex items-center gap-4">
+          <LanguageSwitcher />
+
           {isImpersonating && (
             <Button
               variant="outline"
