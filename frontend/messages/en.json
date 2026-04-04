@@ -1222,5 +1222,37 @@
       "noBackingDetected": "No backing vocals detected — clean instrumental recommended.",
       "addToMuteRegions": "Add to mute regions"
     }
+  },
+  "referrals": {
+    "title": "Referrals",
+    "yourLink": "Your Referral Link",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "displayName": "Display Name",
+    "customMessage": "Custom Message",
+    "customMessagePlaceholder": "Tell your friends why they should try Nomad Karaoke...",
+    "save": "Save",
+    "stats": "Stats",
+    "clicks": "Clicks",
+    "signups": "Signups",
+    "purchases": "Purchases",
+    "earnings": "Earnings",
+    "pendingBalance": "Pending Balance",
+    "totalEarned": "Total Earned",
+    "totalPaid": "Total Paid Out",
+    "recentEarnings": "Recent Earnings",
+    "recentPayouts": "Recent Payouts",
+    "noEarnings": "No earnings yet. Share your link to start earning!",
+    "noPayouts": "No payouts yet.",
+    "connectBank": "Connect Bank Account",
+    "connectDescription": "Connect your bank account via Stripe to receive referral payouts when your balance reaches $20.",
+    "connectComplete": "Bank account connected!",
+    "payoutThreshold": "Payouts are automatically sent when your balance reaches $20.",
+    "interstitialTitle": "You've been referred!",
+    "interstitialReferred": "Referred by {name}",
+    "interstitialDiscount": "Enjoy {percent}% off all credit purchases for {days} days",
+    "interstitialCta": "Get Started",
+    "discountBadge": "{percent}% referral discount",
+    "discountActive": "Referral discount active — {percent}% off for {days} more days"
   }
 }

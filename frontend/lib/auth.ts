@@ -4,6 +4,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { User, UserPublic } from "./types"
 import { api, adminApi, setAccessToken, clearAccessToken, getAccessToken } from "./api"
+import { getReferralCode, clearReferralCode } from './referral'
 
 interface AuthStore {
   user: User | null
@@ -71,10 +72,14 @@ export const useAuth = create<AuthStore>()(
       verifyMagicLink: async (token: string) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await api.verifyMagicLink(token)
+          const referralCode = getReferralCode();
+          const response = await api.verifyMagicLink(token, referralCode)
 
           // Store the session token
           setAccessToken(response.session_token)
+
+          // Clear referral code after successful verification
+          clearReferralCode();
 
           // Store verify response data for cross-domain redirect and welcome credits
           if (typeof window !== 'undefined') {

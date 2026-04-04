@@ -3,7 +3,7 @@
  */
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
-import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse } from './types';
+import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
@@ -1291,9 +1291,14 @@ export const api = {
   /**
    * Verify a magic link token and get a session
    */
-  async verifyMagicLink(token: string): Promise<VerifyMagicLinkResponse> {
+  async verifyMagicLink(token: string, referralCode?: string | null): Promise<VerifyMagicLinkResponse> {
+    const headers: HeadersInit = {};
+    if (referralCode) {
+      headers['x-referral-code'] = referralCode;
+    }
     const response = await fetch(`${API_BASE_URL}/api/users/auth/verify?token=${encodeURIComponent(token)}`, {
       method: 'GET',
+      headers,
     });
     return handleResponse(response);
   },
@@ -3467,4 +3472,43 @@ export interface AdminFeedbackListResponse {
 }
 
 export { ApiError };
+
+// ============================================================================
+// Referral API
+// ============================================================================
+
+export async function getReferralInterstitial(code: string): Promise<ReferralInterstitial> {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/r/${encodeURIComponent(code)}`);
+  if (!response.ok) throw new Error('Failed to fetch referral info');
+  return response.json();
+}
+
+export async function getReferralDashboard(): Promise<ReferralDashboard> {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/me`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error('Failed to fetch referral dashboard');
+  return response.json();
+}
+
+export async function updateReferralLink(updates: {
+  display_name?: string;
+  custom_message?: string;
+}): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/me`, {
+    method: 'PUT',
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error('Failed to update referral link');
+}
+
+export async function startConnectOnboarding(): Promise<{ account_id: string; onboarding_url: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/me/connect`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error('Failed to start Connect onboarding');
+  return response.json();
+}
 

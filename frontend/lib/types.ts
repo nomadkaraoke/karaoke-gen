@@ -19,6 +19,8 @@ export interface UserPublic {
   total_jobs_created?: number
   total_jobs_completed?: number
   feedback_eligible?: boolean
+  referral_code?: string
+  has_active_referral_discount?: boolean
 }
 
 export interface MagicLinkResponse {
@@ -65,4 +67,60 @@ export interface JobStage {
   status: "pending" | "in_progress" | "completed" | "failed"
   progress: number
   message?: string
+}
+
+// Referral system types
+export interface ReferralLinkStats {
+  clicks: number;
+  signups: number;
+  purchases: number;
+  total_earned_cents: number;
+}
+
+export interface ReferralLink {
+  code: string;
+  display_name: string | null;
+  custom_message: string | null;
+  discount_percent: number;
+  kickback_percent: number;
+  discount_duration_days: number;
+  earning_duration_days: number;
+  stats: ReferralLinkStats;
+  enabled: boolean;
+  is_vanity: boolean;
+}
+
+export interface ReferralEarning {
+  id: string;
+  referred_email: string;
+  purchase_amount_cents: number;
+  earning_amount_cents: number;
+  status: 'pending' | 'paid' | 'refunded';
+  created_at: string;
+}
+
+export interface ReferralPayout {
+  id: string;
+  amount_cents: number;
+  status: 'processing' | 'completed' | 'failed';
+  created_at: string;
+}
+
+export interface ReferralDashboard {
+  link: ReferralLink;
+  pending_balance_cents: number;
+  total_earned_cents: number;
+  total_paid_cents: number;
+  recent_earnings: ReferralEarning[];
+  recent_payouts: ReferralPayout[];
+  stripe_connect_configured: boolean;
+}
+
+export interface ReferralInterstitial {
+  code: string;
+  display_name: string | null;
+  custom_message: string | null;
+  discount_percent: number;
+  discount_duration_days: number;
+  valid: boolean;
 }
