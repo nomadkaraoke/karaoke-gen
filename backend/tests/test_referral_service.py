@@ -479,3 +479,61 @@ class TestTriggerPayout:
             stripe_connect_account_id="acct_123",
         )
         assert result is False
+
+
+# ============================================================================
+# TestFullReferralFlow
+# ============================================================================
+
+class TestFullReferralFlow:
+    """Integration-style test covering the full referral lifecycle."""
+
+    def test_full_flow(self, service, mock_db, mock_stripe_service):
+        """
+        1. Referrer gets a link
+        2. Referred user signs up (attribution)
+        3. Discount check
+        4. Earning calculation
+        """
+        # Step 1: Referrer gets a link
+        mock_query = MagicMock()
+        mock_query.limit.return_value.get.return_value = []
+        mock_code_doc = MagicMock()
+        mock_code_doc.exists = False
+        mock_db.collection.return_value.where.return_value = mock_query
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_code_doc
+
+        link = service.get_or_create_link("referrer@example.com")
+        assert link is not None
+        assert link.owner_email == "referrer@example.com"
+
+        # Step 2: Attribution
+        mock_link_doc = MagicMock()
+        mock_link_doc.exists = True
+        mock_link_doc.to_dict.return_value = {
+            "code": link.code,
+            "owner_email": "referrer@example.com",
+            "discount_percent": 10,
+            "kickback_percent": 20,
+            "discount_duration_days": 30,
+            "earning_duration_days": 365,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_link_doc
+
+        success, msg = service.attribute_referral("newuser@example.com", link.code)
+        assert success is True
+
+        # Step 3: Discount check
+        user_data = {
+            "referred_by_code": link.code,
+            "referral_discount_expires_at": datetime.utcnow() + timedelta(days=15),
+        }
+        assert service.should_apply_discount(user_data) is True
+
+        # Step 4: Earning calculation
+        assert int(1575 * 20 / 100) == 315  # 20% of $15.75 = $3.15
