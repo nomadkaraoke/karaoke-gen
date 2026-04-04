@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react"
-import { useRouter } from "@/i18n/routing"
+import { useRouter, Link } from "@/i18n/routing"
 import { useSearchParams } from "next/navigation"
 import { api, Job, getAccessToken } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Moon, Sun, Search, Gift, X, Shield, ShieldOff, HelpCircle, Mail, Phone } from "lucide-react"
+import { Music2, RefreshCw, Loader2, Moon, Sun, Search, Gift, X, Shield, ShieldOff, HelpCircle, Mail, Phone, Users } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { sortJobsByDate } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
@@ -293,6 +293,10 @@ function AppPageContent() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Link href="/app/referrals" className="flex items-center gap-1.5 text-sm hover:underline min-h-[40px] px-2 sm:px-3" style={{ color: 'var(--text-muted)' }}>
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('referrals')}</span>
+            </Link>
             <LanguageSwitcher />
             <AuthStatus />
             {mounted && (

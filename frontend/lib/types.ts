@@ -9,6 +9,7 @@ export interface User {
   total_jobs_created?: number
   total_jobs_completed?: number
   feedback_eligible?: boolean
+  has_active_referral_discount?: boolean
 }
 
 export interface UserPublic {

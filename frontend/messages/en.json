@@ -231,7 +231,8 @@
     "jobsCount": "{count} {count, plural, one {job} other {jobs}}",
     "loadingJobs": "Loading jobs...",
     "noJobsMatchFilters": "No jobs match your filters.",
-    "noJobsYet": "No jobs yet. Create one to get started!"
+    "noJobsYet": "No jobs yet. Create one to get started!",
+    "referrals": "Referrals"
   },
   "auth": {
     "noVerificationToken": "No verification token provided",

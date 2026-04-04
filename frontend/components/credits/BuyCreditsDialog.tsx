@@ -20,6 +20,7 @@ const pricePerVideo = (pkg: CreditPackage) =>
 export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
   const t = useTranslations('credits')
   const tCommon = useTranslations('common')
+  const tRef = useTranslations('referrals')
   const { user } = useAuth()
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
@@ -71,6 +72,14 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
+          {user?.has_active_referral_discount && (
+            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
+              <p className="text-green-600 dark:text-green-400 text-sm font-medium">
+                {tRef('discountBadge', { percent: 10 })}
+              </p>
+            </div>
+          )}
+
           {loading && (
             <div className="flex justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
