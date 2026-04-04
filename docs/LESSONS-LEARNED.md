@@ -1086,3 +1086,11 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 **Fix:** Mock `next-intl` in `jest.setup.js` with a function that loads the actual `messages/en.json` and resolves dotted key paths to real English strings. Tests see the same text users see, no test assertions need updating. The mock supports interpolation (`{count}`, ICU plurals).
 
 **Key insight:** For i18n refactors, make the test mock return real translations, not keys. This lets existing tests validate that the i18n wiring produces correct output without changing every assertion. The mock is ~20 lines and eliminates hundreds of test updates.
+
+### i18n: Non-Locale Links + Module-Level Fetch = Auth Wipe Race Condition (Apr 2026)
+
+**Problem:** After adding `[locale]` routing, hash-based review links (`/app/jobs#/{id}/review`) in JobCard lacked the locale prefix. Clicking them loaded a redirect page (`LocaleRedirect`), which triggered the module-level `fetchUser()` in `auth.ts`. The redirect fired `window.location.replace()` almost immediately, aborting the in-flight fetch. The `fetchUser` catch block unconditionally called `clearAccessToken()`, wiping the user's session from localStorage. The user landed on the review page logged out.
+
+**Fix:** (1) Add locale prefix to all hash-based links via `useLocale()`. (2) Make `fetchUser` check for `AbortError` before clearing auth — navigation-triggered aborts should not destroy the session.
+
+**Key insight:** Module-level side effects that start async work (like `fetchUser()` on import) are dangerous when pages exist solely to redirect. The async work starts, the redirect fires, the fetch aborts, and error handlers run with destructive consequences. Either guard redirecting pages from triggering side effects, or make error handlers resilient to abort errors.
