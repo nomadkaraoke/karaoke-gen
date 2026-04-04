@@ -365,6 +365,24 @@ async def verify_magic_link(
     elif credit_status == "denied":
         logger.info(f"Welcome credits denied for {_mask_email(user.email)}")
 
+    # Referral attribution (first login only, if referral code provided)
+    referral_code = http_request.headers.get("x-referral-code")
+    if referral_code and is_first_login:
+        try:
+            from backend.services.referral_service import get_referral_service
+            referral_svc = get_referral_service()
+            attr_success, attr_msg = referral_svc.attribute_referral(
+                referred_email=user.email,
+                referral_code=referral_code,
+            )
+            if attr_success:
+                attr_data = referral_svc.get_attribution_data(referral_code)
+                if attr_data:
+                    user_service.update_user(user.email, **attr_data)
+                    logger.info(f"Referral attributed for {_mask_email(user.email)} via code '{referral_code}'")
+        except Exception as ref_err:
+            logger.warning(f"Referral attribution failed for {_mask_email(user.email)}: {ref_err}")
+
     # Persist user's locale preference (from Accept-Language header)
     if locale and locale != (user.locale or "en"):
         try:
