@@ -56,7 +56,7 @@ class TestSendMagicLinkTenantParams:
         assert "Nomad Karaoke" in html_content
         assert "Nomad Karaoke" in text_content
         # Default URL should be used
-        assert f"{email_service.frontend_url}/auth/verify" in html_content
+        assert f"{email_service.frontend_url}/en/auth/verify" in html_content
 
     def test_tenant_url_used_in_magic_link(self, email_service):
         """When tenant_frontend_url is provided, magic link points to tenant domain."""
@@ -70,8 +70,8 @@ class TestSendMagicLinkTenantParams:
         html_content = call_args[0][2]
         text_content = call_args[0][3]
 
-        assert "https://vocalstar.nomadkaraoke.com/auth/verify?token=abc123" in html_content
-        assert "https://vocalstar.nomadkaraoke.com/auth/verify?token=abc123" in text_content
+        assert "https://vocalstar.nomadkaraoke.com/en/auth/verify?token=abc123" in html_content
+        assert "https://vocalstar.nomadkaraoke.com/en/auth/verify?token=abc123" in text_content
         # Should NOT contain default URL
         assert "gen.nomadkaraoke.com" not in html_content
 
@@ -124,7 +124,7 @@ class TestSendMagicLinkTenantParams:
         html_content = call_args[0][2]
 
         assert subject == "Sign in to Vocal Star"
-        assert "https://vocalstar.nomadkaraoke.com/auth/verify?token=token123" in html_content
+        assert "https://vocalstar.nomadkaraoke.com/en/auth/verify?token=token123" in html_content
         # Check sender email override was passed through
         assert call_args[1]["from_email_override"] == "vocalstar@nomadkaraoke.com"
 

@@ -12,8 +12,10 @@ import logging
 import os
 from typing import Optional, Dict, Any
 
+from backend.i18n import get_locale_prefix
 from backend.services.email_service import get_email_service
 from backend.services.template_service import get_template_service
+from backend.services.user_service import get_user_service
 
 
 logger = logging.getLogger(__name__)
@@ -51,19 +53,30 @@ class JobNotificationService:
         self.frontend_url = os.getenv("FRONTEND_URL", "https://gen.nomadkaraoke.com")
         self.backend_url = os.getenv("BACKEND_URL", "https://api.nomadkaraoke.com")
 
-    def _build_review_url(self, job_id: str, audio_hash: Optional[str] = None, review_token: Optional[str] = None) -> str:
+    def _get_user_locale(self, user_email: str) -> str:
+        """Look up user's locale preference from Firestore, defaulting to 'en'."""
+        try:
+            user_service = get_user_service()
+            user = user_service.get_user(user_email)
+            if user and user.locale:
+                return user.locale
+        except Exception:
+            pass  # Fall back to English
+        return "en"
+
+    def _build_review_url(self, job_id: str, audio_hash: Optional[str] = None, review_token: Optional[str] = None, locale: str = "en") -> str:
         """Build the lyrics review URL for a job."""
         # Use hash-based routing for static hosting compatibility
-        return f"{self.frontend_url}/app/jobs#/{job_id}/review"
+        return f"{self.frontend_url}{get_locale_prefix(locale)}/app/jobs#/{job_id}/review"
 
-    def _build_instrumental_url(self, job_id: str, instrumental_token: Optional[str] = None) -> str:
+    def _build_instrumental_url(self, job_id: str, instrumental_token: Optional[str] = None, locale: str = "en") -> str:
         """Build the instrumental selection URL for a job."""
         # Use hash-based routing for static hosting compatibility
-        return f"{self.frontend_url}/app/jobs#/{job_id}/instrumental"
+        return f"{self.frontend_url}{get_locale_prefix(locale)}/app/jobs#/{job_id}/instrumental"
 
-    def _build_audio_edit_url(self, job_id: str) -> str:
+    def _build_audio_edit_url(self, job_id: str, locale: str = "en") -> str:
         """Build the audio edit URL for a job."""
-        return f"{self.frontend_url}/app/jobs#/{job_id}/audio-edit"
+        return f"{self.frontend_url}{get_locale_prefix(locale)}/app/jobs#/{job_id}/audio-edit"
 
     async def send_job_completion_email(
         self,
@@ -105,6 +118,9 @@ class JobNotificationService:
             return False
 
         try:
+            # Get user locale for email
+            user_locale = self._get_user_locale(user_email)
+
             # Render the completion message using template service
             message_content = self.template_service.render_job_completion(
                 name=user_name,
@@ -126,6 +142,7 @@ class JobNotificationService:
                 title=title,
                 brand_code=brand_code,
                 cc_admin=True,
+                locale=user_locale,
             )
 
             if success:
@@ -171,6 +188,9 @@ class JobNotificationService:
             return False
 
         try:
+            # Get user locale for email
+            user_locale = self._get_user_locale(user_email)
+
             message_content = self.template_service.render_youtube_upload_complete(
                 artist=artist,
                 title=title,
@@ -183,6 +203,7 @@ class JobNotificationService:
                 artist=artist,
                 title=title,
                 brand_code=brand_code,
+                locale=user_locale,
             )
 
             if success:
@@ -237,9 +258,12 @@ class JobNotificationService:
             return False
 
         try:
+            # Get user locale for email
+            user_locale = self._get_user_locale(user_email)
+
             # Render the appropriate template
             if action_type == "lyrics":
-                review_url = self._build_review_url(job_id, audio_hash, review_token)
+                review_url = self._build_review_url(job_id, audio_hash, review_token, locale=user_locale)
                 message_content = self.template_service.render_action_needed_lyrics(
                     name=user_name,
                     artist=artist,
@@ -247,7 +271,7 @@ class JobNotificationService:
                     review_url=review_url,
                 )
             elif action_type == "instrumental":
-                instrumental_url = self._build_instrumental_url(job_id, instrumental_token)
+                instrumental_url = self._build_instrumental_url(job_id, instrumental_token, locale=user_locale)
                 message_content = self.template_service.render_action_needed_instrumental(
                     name=user_name,
                     artist=artist,
@@ -255,7 +279,7 @@ class JobNotificationService:
                     instrumental_url=instrumental_url,
                 )
             elif action_type == "audio_edit":
-                audio_edit_url = self._build_audio_edit_url(job_id)
+                audio_edit_url = self._build_audio_edit_url(job_id, locale=user_locale)
                 # Reuse the lyrics template but with the audio edit URL and different subject
                 message_content = self.template_service.render_action_needed_lyrics(
                     name=user_name,
@@ -274,6 +298,7 @@ class JobNotificationService:
                 action_type=action_type,
                 artist=artist,
                 title=title,
+                locale=user_locale,
             )
 
             if success:

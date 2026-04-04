@@ -19,6 +19,7 @@ from typing import Optional, List
 from zoneinfo import ZoneInfo
 
 from backend.config import get_settings
+from backend.i18n import t, get_locale_prefix
 from karaoke_gen.utils import sanitize_filename
 
 
@@ -249,6 +250,7 @@ class EmailService:
         sender_email: Optional[str] = None,
         tenant_frontend_url: Optional[str] = None,
         tenant_name: Optional[str] = None,
+        locale: str = "en",
     ) -> bool:
         """
         Send a magic link email for authentication.
@@ -264,10 +266,10 @@ class EmailService:
             True if email was sent successfully
         """
         base_url = tenant_frontend_url or self.frontend_url
-        magic_link_url = f"{base_url}/auth/verify?token={token}"
+        magic_link_url = f"{base_url}{get_locale_prefix(locale)}/auth/verify?token={token}"
 
         brand_name = tenant_name or "Nomad Karaoke"
-        subject = f"Sign in to {brand_name}"
+        subject = t(locale, "emails.magicLink.subject", brand_name=brand_name)
 
         extra_styles = """
         .warning {
@@ -322,7 +324,7 @@ If you didn't request this email, you can safely ignore it.
             email, subject, html_content, text_content, from_email_override=sender_email
         )
 
-    def send_credits_added(self, email: str, credits: int, total_credits: int) -> bool:
+    def send_credits_added(self, email: str, credits: int, total_credits: int, locale: str = "en") -> bool:
         """
         Send notification when credits are added to account.
 
@@ -334,7 +336,7 @@ If you didn't request this email, you can safely ignore it.
         Returns:
             True if email was sent successfully
         """
-        subject = f"🎉 {credits} credits added to your Nomad Karaoke account"
+        subject = t(locale, "emails.creditsAdded.subject", credits=credits)
 
         extra_styles = f"""
         .credits-box {{
@@ -372,7 +374,7 @@ If you didn't request this email, you can safely ignore it.
     </ul>
 
     <p style="text-align: center;">
-        <a href="{self.frontend_url}" class="button">Create Karaoke Now</a>
+        <a href="{self.frontend_url}{get_locale_prefix(locale)}" class="button">Create Karaoke Now</a>
     </p>
 """
 
@@ -385,7 +387,7 @@ Your new balance: {total_credits} credits
 
 Each credit lets you create one professional karaoke video.
 
-Start creating: {self.frontend_url}
+Start creating: {self.frontend_url}{get_locale_prefix(locale)}
 
 ---
 © {self._get_year()} Nomad Karaoke
@@ -393,7 +395,7 @@ Start creating: {self.frontend_url}
 
         return self.provider.send_email(email, subject, html_content, text_content)
 
-    def send_welcome_email(self, email: str, credits: int = 0) -> bool:
+    def send_welcome_email(self, email: str, credits: int = 0, locale: str = "en") -> bool:
         """
         Send welcome email to new users.
 
@@ -404,7 +406,7 @@ Start creating: {self.frontend_url}
         Returns:
             True if email was sent successfully
         """
-        subject = "Welcome to Nomad Karaoke! 🎤"
+        subject = t(locale, "emails.welcome.subject")
 
         extra_styles = """
         .credits-box {
@@ -498,7 +500,7 @@ Start creating: {self.frontend_url}
     </p>
 
     <p style="text-align: center;">
-        <a href="{self.frontend_url}" class="button">Get Started</a>
+        <a href="{self.frontend_url}{get_locale_prefix(locale)}" class="button">Get Started</a>
     </p>
 """
 
@@ -527,7 +529,7 @@ Here's how it works:
 
 Complete 2 videos and earn 2 more free credits by sharing your feedback!
 
-Get started: {self.frontend_url}
+Get started: {self.frontend_url}{get_locale_prefix(locale)}
 
 ---
 © {self._get_year()} Nomad Karaoke
@@ -870,6 +872,7 @@ Get started: {self.frontend_url}
         title: Optional[str] = None,
         brand_code: Optional[str] = None,
         cc_admin: bool = True,
+        locale: str = "en",
     ) -> bool:
         """
         Send job completion email with the rendered template content.
@@ -891,11 +894,11 @@ Get started: {self.frontend_url}
         safe_artist = sanitize_filename(artist) if artist else None
         safe_title = sanitize_filename(title) if title else None
         if brand_code and safe_artist and safe_title:
-            subject = f"{brand_code}: {safe_artist} - {safe_title} (Your karaoke video is ready!)"
+            subject = t(locale, "emails.jobCompletion.subjectWithBrand", brand_code=brand_code, artist=safe_artist, title=safe_title)
         elif safe_artist and safe_title:
-            subject = f"{safe_artist} - {safe_title} (Your karaoke video is ready!)"
+            subject = t(locale, "emails.jobCompletion.subject", artist=safe_artist, title=safe_title)
         else:
-            subject = "Your karaoke video is ready!"
+            subject = t(locale, "emails.jobCompletion.subjectFallback")
 
         extra_styles = """
         .content {
@@ -927,6 +930,7 @@ Get started: {self.frontend_url}
         action_type: str,
         artist: Optional[str] = None,
         title: Optional[str] = None,
+        locale: str = "en",
     ) -> bool:
         """
         Send action-needed reminder email.
@@ -942,13 +946,26 @@ Get started: {self.frontend_url}
             True if email was sent successfully
         """
         # Build subject based on action type
-        song_info = f" for {artist} - {title}" if artist and title else ""
         if action_type == "lyrics":
-            subject = f"Action needed: Review lyrics{song_info}"
+            if artist and title:
+                subject = t(locale, "emails.actionReminder.lyricsSubject", artist=artist, title=title)
+            else:
+                subject = t(locale, "emails.actionReminder.lyricsSubjectFallback")
         elif action_type == "instrumental":
-            subject = f"Action needed: Select instrumental{song_info}"
+            if artist and title:
+                subject = t(locale, "emails.actionReminder.instrumentalSubject", artist=artist, title=title)
+            else:
+                subject = t(locale, "emails.actionReminder.instrumentalSubjectFallback")
+        elif action_type == "audio_edit":
+            if artist and title:
+                subject = t(locale, "emails.actionReminder.audioEditSubject", artist=artist, title=title)
+            else:
+                subject = t(locale, "emails.actionReminder.audioEditSubjectFallback")
         else:
-            subject = f"Action needed{song_info}"
+            if artist and title:
+                subject = t(locale, "emails.actionReminder.audioEditSubject", artist=artist, title=title)
+            else:
+                subject = t(locale, "emails.actionReminder.audioEditSubjectFallback")
 
         extra_styles = """
         .alert {
@@ -987,6 +1004,7 @@ Get started: {self.frontend_url}
         artist: Optional[str] = None,
         title: Optional[str] = None,
         job_id: Optional[str] = None,
+        locale: str = "en",
     ) -> bool:
         """
         Send 24h review reminder email with expiry warning.
@@ -1003,10 +1021,13 @@ Get started: {self.frontend_url}
         Returns:
             True if email was sent successfully
         """
-        song_info = f" — {artist} - {title}" if artist and title else ""
-        subject = f"Reminder: Your karaoke video is waiting for review{song_info}"
+        if artist and title:
+            subject = t(locale, "emails.reviewReminder.subject", artist=artist, title=title)
+        else:
+            subject = t(locale, "emails.reviewReminder.subjectFallback")
 
-        review_url = f"{self.frontend_url}/app/jobs#/{job_id}/review" if job_id else f"{self.frontend_url}/app"
+        locale_prefix = get_locale_prefix(locale)
+        review_url = f"{self.frontend_url}{locale_prefix}/app/jobs#/{job_id}/review" if job_id else f"{self.frontend_url}{locale_prefix}/app"
 
         extra_styles = """
         .alert {
@@ -1084,6 +1105,7 @@ Get started: {self.frontend_url}
         artist: Optional[str] = None,
         title: Optional[str] = None,
         credits_balance: int = 0,
+        locale: str = "en",
     ) -> bool:
         """
         Send review expiry notification email.
@@ -1100,8 +1122,10 @@ Get started: {self.frontend_url}
         Returns:
             True if email was sent successfully
         """
-        song_info = f" — {artist} - {title}" if artist and title else ""
-        subject = f"Your karaoke video has expired{song_info}"
+        if artist and title:
+            subject = t(locale, "emails.reviewExpired.subject", artist=artist, title=title)
+        else:
+            subject = t(locale, "emails.reviewExpired.subjectFallback")
 
         extra_styles = """
         .info-box {
@@ -1146,7 +1170,7 @@ Get started: {self.frontend_url}
     <p>You can create a new karaoke video anytime using your credits:</p>
 
     <p style="text-align: center;">
-        <a href="{html.escape(self.frontend_url)}/app" class="create-btn">Create New Video</a>
+        <a href="{html.escape(self.frontend_url)}{get_locale_prefix(locale)}/app" class="create-btn">Create New Video</a>
     </p>
 
     <p>If you had any trouble with the review process or need help, just reply to this email — I'd love to help!</p>
@@ -1158,7 +1182,7 @@ Get started: {self.frontend_url}
             f"Your karaoke video{' for ' + artist + ' - ' + title if artist and title else ''} has been "
             "automatically cancelled because the review wasn't completed within 48 hours.\n\n"
             f"Your credit has been refunded. Current balance: {credits_balance} credit{'s' if credits_balance != 1 else ''}.\n\n"
-            f"Create a new video anytime: {self.frontend_url}/app\n\n"
+            f"Create a new video anytime: {self.frontend_url}{get_locale_prefix(locale)}/app\n\n"
             "If you had any trouble or need help, just reply to this email."
         )
 
@@ -1176,6 +1200,7 @@ Get started: {self.frontend_url}
         artist: Optional[str] = None,
         title: Optional[str] = None,
         brand_code: Optional[str] = None,
+        locale: str = "en",
     ) -> bool:
         """
         Send follow-up email when a deferred YouTube upload completes.
@@ -1193,11 +1218,11 @@ Get started: {self.frontend_url}
         safe_artist = sanitize_filename(artist) if artist else None
         safe_title = sanitize_filename(title) if title else None
         if brand_code and safe_artist and safe_title:
-            subject = f"{brand_code}: {safe_artist} - {safe_title} (YouTube upload ready!)"
+            subject = t(locale, "emails.youtubeUpload.subjectWithBrand", brand_code=brand_code, artist=safe_artist, title=safe_title)
         elif safe_artist and safe_title:
-            subject = f"{safe_artist} - {safe_title} (YouTube upload ready!)"
+            subject = t(locale, "emails.youtubeUpload.subject", artist=safe_artist, title=safe_title)
         else:
-            subject = "Your YouTube upload is ready!"
+            subject = t(locale, "emails.youtubeUpload.subjectFallback")
 
         extra_styles = """
         .content {
@@ -1226,6 +1251,7 @@ Get started: {self.frontend_url}
         title: str,
         job_id: str,
         notes: Optional[str] = None,
+        locale: str = "en",
     ) -> bool:
         """
         Send order confirmation email to customer for made-for-you orders.
@@ -1240,7 +1266,7 @@ Get started: {self.frontend_url}
         Returns:
             True if email was sent successfully
         """
-        subject = f"Order Confirmed: {artist} - {title} | Nomad Karaoke"
+        subject = t(locale, "emails.madeForYouConfirmation.subject", artist=artist, title=title)
 
         extra_styles = """
         .order-details {
@@ -1662,14 +1688,14 @@ If the user looks legitimate, grant them credits from their admin page.
             text_content=text_content,
         )
 
-    def send_credit_denied_email(self, email: str, grant_type: str = "welcome") -> bool:
+    def send_credit_denied_email(self, email: str, grant_type: str = "welcome", locale: str = "en") -> bool:
         """
         Send a friendly-but-firm email when free credits are denied due to abuse signals.
 
         CC'd to andrew@beveridge.uk so he can intervene if it's a false positive.
         The tone invites the user to reply if it's a mistake.
         """
-        subject = "About your Nomad Karaoke free credits"
+        subject = t(locale, "emails.creditDenied.subject")
 
         credit_type = "welcome credits" if grant_type == "welcome" else "feedback bonus credits"
 

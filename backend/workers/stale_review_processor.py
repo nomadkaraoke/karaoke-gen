@@ -117,11 +117,21 @@ async def process_stale_reviews() -> Dict[str, Any]:
                             user_service = get_user_service()
                             credits_balance = user_service.check_credits(job.user_email)
 
+                            # Look up user locale for email
+                            user_locale = "en"
+                            try:
+                                user = user_service.get_user(job.user_email)
+                                if user and user.locale:
+                                    user_locale = user.locale
+                            except Exception:
+                                pass
+
                             email_service.send_review_expired(
                                 to_email=job.user_email,
                                 artist=job.artist,
                                 title=job.title,
                                 credits_balance=credits_balance,
+                                locale=user_locale,
                             )
                         except Exception as email_err:
                             logger.error(
@@ -143,11 +153,23 @@ async def process_stale_reviews() -> Dict[str, Any]:
                 # Send reminder email
                 if job.user_email:
                     try:
+                        # Look up user locale for email
+                        user_locale = "en"
+                        try:
+                            from backend.services.user_service import get_user_service
+                            user_service = get_user_service()
+                            user = user_service.get_user(job.user_email)
+                            if user and user.locale:
+                                user_locale = user.locale
+                        except Exception:
+                            pass
+
                         email_service.send_review_reminder(
                             to_email=job.user_email,
                             artist=job.artist,
                             title=job.title,
                             job_id=job.job_id,
+                            locale=user_locale,
                         )
                     except Exception as email_err:
                         logger.error(

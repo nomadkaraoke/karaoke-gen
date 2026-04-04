@@ -273,6 +273,7 @@ async def send_magic_link(
         sender_email=sender_email,
         tenant_frontend_url=tenant_frontend_url,
         tenant_name=tenant_name,
+        locale=locale,
     )
 
     if not sent:
@@ -364,6 +365,13 @@ async def verify_magic_link(
     elif credit_status == "denied":
         logger.info(f"Welcome credits denied for {_mask_email(user.email)}")
 
+    # Persist user's locale preference (from Accept-Language header)
+    if locale and locale != (user.locale or "en"):
+        try:
+            user_service.update_user(user.email, locale=locale)
+        except Exception:
+            pass  # Non-critical — don't block login
+
     # Create session with tenant context and device fingerprint from the magic link
     magic_link_fingerprint = magic_link_data.get('device_fingerprint') if magic_link_doc.exists else None
     session = user_service.create_session(
@@ -376,7 +384,7 @@ async def verify_magic_link(
 
     # Send welcome email to first-time users
     if is_first_login:
-        email_service.send_welcome_email(user.email, user.credits)
+        email_service.send_welcome_email(user.email, user.credits, locale=locale)
 
     # Return user info with tenant_id
     user_public = UserPublic(

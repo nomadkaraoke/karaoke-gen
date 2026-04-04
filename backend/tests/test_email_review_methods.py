@@ -59,8 +59,8 @@ class TestSendReviewReminder:
             job_id="abc123",
         )
         call_args = service.provider.send_email.call_args
-        assert "gen.nomadkaraoke.com/app/jobs#/abc123/review" in call_args.kwargs["html_content"]
-        assert "gen.nomadkaraoke.com/app/jobs#/abc123/review" in call_args.kwargs["text_content"]
+        assert "gen.nomadkaraoke.com/en/app/jobs#/abc123/review" in call_args.kwargs["html_content"]
+        assert "gen.nomadkaraoke.com/en/app/jobs#/abc123/review" in call_args.kwargs["text_content"]
 
     def test_content_includes_expiry_warning(self):
         """Content should warn about 24h expiry."""
@@ -153,4 +153,4 @@ class TestSendReviewExpired:
             credits_balance=2,
         )
         call_args = service.provider.send_email.call_args
-        assert "gen.nomadkaraoke.com/app" in call_args.kwargs["html_content"]
+        assert "gen.nomadkaraoke.com/en/app" in call_args.kwargs["html_content"]

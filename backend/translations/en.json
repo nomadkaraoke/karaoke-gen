@@ -191,5 +191,48 @@
   "errors": {
     "insufficientCredits": "Insufficient credits for this operation",
     "insufficientCreditsBuyUrl": "/#pricing"
+  },
+  "emails": {
+    "magicLink": {
+      "subject": "Sign in to {brand_name}"
+    },
+    "welcome": {
+      "subject": "Welcome to Nomad Karaoke!"
+    },
+    "creditsAdded": {
+      "subject": "{credits} credits added to your Nomad Karaoke account"
+    },
+    "jobCompletion": {
+      "subjectWithBrand": "{brand_code}: {artist} - {title} (Your karaoke video is ready!)",
+      "subject": "{artist} - {title} (Your karaoke video is ready!)",
+      "subjectFallback": "Your karaoke video is ready!"
+    },
+    "youtubeUpload": {
+      "subjectWithBrand": "{brand_code}: {artist} - {title} (YouTube upload ready!)",
+      "subject": "{artist} - {title} (YouTube upload ready!)",
+      "subjectFallback": "Your YouTube upload is ready!"
+    },
+    "actionReminder": {
+      "lyricsSubject": "Action needed: Review lyrics for {artist} - {title}",
+      "lyricsSubjectFallback": "Action needed: Review lyrics",
+      "instrumentalSubject": "Action needed: Select instrumental for {artist} - {title}",
+      "instrumentalSubjectFallback": "Action needed: Select instrumental",
+      "audioEditSubject": "Action needed for {artist} - {title}",
+      "audioEditSubjectFallback": "Action needed"
+    },
+    "reviewReminder": {
+      "subject": "Reminder: Your karaoke video is waiting for review — {artist} - {title}",
+      "subjectFallback": "Reminder: Your karaoke video is waiting for review"
+    },
+    "reviewExpired": {
+      "subject": "Your karaoke video has expired — {artist} - {title}",
+      "subjectFallback": "Your karaoke video has expired"
+    },
+    "creditDenied": {
+      "subject": "About your Nomad Karaoke free credits"
+    },
+    "madeForYouConfirmation": {
+      "subject": "Order Confirmed: {artist} - {title} | Nomad Karaoke"
+    }
   }
 }

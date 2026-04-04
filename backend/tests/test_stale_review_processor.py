@@ -120,12 +120,12 @@ class TestProcessStaleReviews:
         mock_job_manager.cancel_job.assert_called_once_with(
             "job-123", reason="Review not completed within 48 hours"
         )
-        mock_email_service.send_review_expired.assert_called_once_with(
-            to_email="user@test.com",
-            artist="Test Artist",
-            title="Test Song",
-            credits_balance=2,
-        )
+        call_kwargs = mock_email_service.send_review_expired.call_args.kwargs
+        assert call_kwargs["to_email"] == "user@test.com"
+        assert call_kwargs["artist"] == "Test Artist"
+        assert call_kwargs["title"] == "Test Song"
+        assert call_kwargs["credits_balance"] == 2
+        assert "locale" in call_kwargs  # locale now passed from user profile
 
     async def test_expires_job_over_48h_with_reminder_already_sent(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should expire job >48h even if reminder was already sent (no duplicate reminder)."""
@@ -153,12 +153,12 @@ class TestProcessStaleReviews:
 
         assert result["reminders_sent"] == 1
         assert result["jobs_expired"] == 0
-        mock_email_service.send_review_reminder.assert_called_once_with(
-            to_email="user@test.com",
-            artist="Test Artist",
-            title="Test Song",
-            job_id="job-123",
-        )
+        call_kwargs = mock_email_service.send_review_reminder.call_args.kwargs
+        assert call_kwargs["to_email"] == "user@test.com"
+        assert call_kwargs["artist"] == "Test Artist"
+        assert call_kwargs["title"] == "Test Song"
+        assert call_kwargs["job_id"] == "job-123"
+        assert "locale" in call_kwargs
         # Should update state_data with expiry_reminder_sent flag
         mock_firestore.update_job.assert_called_once()
         call_args = mock_firestore.update_job.call_args
