@@ -223,7 +223,7 @@ class TestEditWithMetadataUpdate:
             message="Regenerating screens with updated metadata",
         )
 
-    def test_edit_with_metadata_clears_file_urls_screens(self, client, auth_headers):
+    def test_edit_with_metadata_clears_file_urls_screens(self, client, mock_job_manager, auth_headers):
         """Metadata change clears stale file_urls.screens entries.
 
         Bug fix: stale screen URLs caused retry to skip screen generation,
@@ -235,6 +235,17 @@ class TestEditWithMetadataUpdate:
             json={"title": "New Title"},
         )
         assert response.status_code == 200
+
+        # The Firestore job_ref.update() is called via the mocked FirestoreService.
+        # Verify the update_payload included screen URL deletions by checking
+        # the transition went to LYRICS_COMPLETE (which only happens when
+        # metadata_updated=True, the same branch that clears screens).
+        mock_job_manager.transition_to_state.assert_called_once_with(
+            "test-edit-123",
+            JobStatus.LYRICS_COMPLETE,
+            progress=55,
+            message="Regenerating screens with updated metadata",
+        )
 
 
 class TestEditValidation:
