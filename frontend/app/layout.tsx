@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import localFont from "next/font/local"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TenantProvider } from "@/components/tenant-provider"
+import { DefaultIntlProvider } from "@/components/default-intl-provider"
 import { ImpersonationBannerWrapper } from "@/components/impersonation-banner-wrapper"
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
 import { GoogleAnalytics } from "@/components/google-analytics"
@@ -40,17 +41,19 @@ export default function RootLayout({
       <body className={`font-sans antialiased ${titleCardFont.variable}`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
         <GoogleAnalytics />
         <ServiceWorkerRegistration />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TenantProvider>
-            <ImpersonationBannerWrapper />
-            {children}
-          </TenantProvider>
-        </ThemeProvider>
+        <DefaultIntlProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TenantProvider>
+              <ImpersonationBannerWrapper />
+              {children}
+            </TenantProvider>
+          </ThemeProvider>
+        </DefaultIntlProvider>
       </body>
     </html>
   )
