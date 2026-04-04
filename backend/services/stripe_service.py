@@ -379,6 +379,46 @@ class StripeService:
                 logger.error(f"Failed to create coupon {coupon_id}: {e}")
                 return None
 
+    def create_connect_account(self, email: str) -> Tuple[Optional[str], Optional[str]]:
+        """Create a Stripe Connect Express account. Returns (account_id, onboarding_url)."""
+        if not self.is_configured():
+            return None, None
+        try:
+            account = stripe.Account.create(
+                type="express",
+                email=email,
+                capabilities={"transfers": {"requested": True}},
+                metadata={"source": "nomad_karaoke_referrals"},
+            )
+            account_link = stripe.AccountLink.create(
+                account=account.id,
+                refresh_url=f"{self.frontend_url}/app?tab=referrals&connect=refresh",
+                return_url=f"{self.frontend_url}/app?tab=referrals&connect=complete",
+                type="account_onboarding",
+            )
+            logger.info(f"Created Connect account {account.id} for {email}")
+            return account.id, account_link.url
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to create Connect account for {email}: {e}")
+            return None, None
+
+    def create_transfer(self, amount_cents: int, destination_account_id: str, description: str = "Nomad Karaoke referral payout") -> Optional[str]:
+        """Create a transfer to a Connect account. Returns transfer ID."""
+        if not self.is_configured():
+            return None
+        try:
+            transfer = stripe.Transfer.create(
+                amount=amount_cents,
+                currency="usd",
+                destination=destination_account_id,
+                description=description,
+            )
+            logger.info(f"Created transfer {transfer.id}: ${amount_cents / 100:.2f} to {destination_account_id}")
+            return transfer.id
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to create transfer to {destination_account_id}: {e}")
+            return None
+
     def create_customer(self, email: str, name: Optional[str] = None) -> Optional[str]:
         """
         Create or get a Stripe customer for a user.

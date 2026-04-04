@@ -406,3 +406,76 @@ class TestRecordEarning:
             purchase_amount_cents=1750,
         )
         assert result is None
+
+
+# ============================================================================
+# TestStripeConnectOnboarding
+# ============================================================================
+
+class TestStripeConnectOnboarding:
+    def test_create_connect_account(self, service, mock_stripe_service):
+        mock_stripe_service.create_connect_account.return_value = ("acct_123", "https://connect.stripe.com/onboard")
+        account_id, onboard_url = service.create_connect_account("referrer@example.com")
+        assert account_id == "acct_123"
+        assert "stripe.com" in onboard_url
+
+
+# ============================================================================
+# TestTriggerPayout
+# ============================================================================
+
+class TestTriggerPayout:
+    def test_payout_triggered_at_threshold(self, service, mock_db, mock_stripe_service):
+        """Payout is triggered when pending earnings >= $20."""
+        earning_docs = []
+        for i in range(4):
+            doc = MagicMock()
+            doc.to_dict.return_value = {
+                "id": f"earn-{i}",
+                "referrer_email": "referrer@example.com",
+                "referred_email": f"user{i}@example.com",
+                "referral_code": "abc12345",
+                "stripe_session_id": f"cs_{i}",
+                "purchase_amount_cents": 1750,
+                "earning_amount_cents": 525,  # $5.25 each, 4 = $21.00
+                "status": "pending",
+                "created_at": datetime.utcnow(),
+            }
+            doc.reference = MagicMock()
+            earning_docs.append(doc)
+
+        mock_query = MagicMock()
+        mock_query.where.return_value = mock_query
+        mock_query.get.return_value = earning_docs
+        mock_db.collection.return_value = mock_query
+
+        mock_stripe_service.create_transfer.return_value = "tr_123"
+
+        result = service.check_and_trigger_payout(
+            referrer_email="referrer@example.com",
+            stripe_connect_account_id="acct_123",
+        )
+        assert result is True
+
+    def test_no_payout_below_threshold(self, service, mock_db, mock_stripe_service):
+        """No payout when pending earnings < $20."""
+        earning_doc = MagicMock()
+        earning_doc.to_dict.return_value = {
+            "id": "earn-1",
+            "referrer_email": "referrer@example.com",
+            "earning_amount_cents": 315,
+            "status": "pending",
+            "created_at": datetime.utcnow(),
+        }
+        earning_doc.reference = MagicMock()
+
+        mock_query = MagicMock()
+        mock_query.where.return_value = mock_query
+        mock_query.get.return_value = [earning_doc]
+        mock_db.collection.return_value = mock_query
+
+        result = service.check_and_trigger_payout(
+            referrer_email="referrer@example.com",
+            stripe_connect_account_id="acct_123",
+        )
+        assert result is False

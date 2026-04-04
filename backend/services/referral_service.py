@@ -12,7 +12,7 @@ import re
 import secrets
 import string
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from google.cloud import firestore
 
@@ -324,6 +324,72 @@ class ReferralService:
 
         logger.info(f"Referral earning recorded: ${earning_amount / 100:.2f} for {link.owner_email}")
         return {"earning_id": earning_id, "referrer_email": link.owner_email, "earning_amount_cents": earning_amount}
+
+    # ========================================================================
+    # Stripe Connect & Payouts
+    # ========================================================================
+
+    def create_connect_account(self, email: str) -> Tuple[Optional[str], Optional[str]]:
+        """Create Stripe Connect account for a referrer."""
+        if not self.stripe_service:
+            return None, None
+        return self.stripe_service.create_connect_account(email)
+
+    def get_pending_earnings(self, referrer_email: str) -> List[dict]:
+        """Get all pending earnings for a referrer."""
+        query = (
+            self.db.collection(REFERRAL_EARNINGS_COLLECTION)
+            .where("referrer_email", "==", referrer_email.lower())
+            .where("status", "==", "pending")
+        )
+        return [
+            {**doc.to_dict(), "_ref": doc.reference}
+            for doc in query.get()
+        ]
+
+    def check_and_trigger_payout(self, referrer_email: str, stripe_connect_account_id: str) -> bool:
+        """Check if pending earnings meet threshold and trigger payout."""
+        pending = self.get_pending_earnings(referrer_email)
+        total_pending = sum(e.get("earning_amount_cents", 0) for e in pending)
+
+        if total_pending < PAYOUT_THRESHOLD_CENTS:
+            return False
+
+        if not self.stripe_service:
+            return False
+
+        transfer_id = self.stripe_service.create_transfer(
+            amount_cents=total_pending,
+            destination_account_id=stripe_connect_account_id,
+        )
+        if not transfer_id:
+            return False
+
+        import uuid
+        payout_id = str(uuid.uuid4())
+        earning_ids = [e["id"] for e in pending]
+
+        payout = ReferralPayout(
+            id=payout_id,
+            referrer_email=referrer_email.lower(),
+            stripe_transfer_id=transfer_id,
+            amount_cents=total_pending,
+            earnings_included=earning_ids,
+        )
+        self.db.collection(REFERRAL_PAYOUTS_COLLECTION).document(payout_id).set(
+            payout.model_dump(mode="json")
+        )
+
+        for earning in pending:
+            if "_ref" in earning:
+                earning["_ref"].update({
+                    "status": "paid",
+                    "paid_at": datetime.utcnow(),
+                    "payout_id": payout_id,
+                })
+
+        logger.info(f"Payout triggered: ${total_pending / 100:.2f} to {referrer_email} (transfer: {transfer_id})")
+        return True
 
     def list_links(self, limit: int = 50, offset: int = 0) -> list[ReferralLink]:
         """List referral links for admin view."""
