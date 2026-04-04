@@ -321,6 +321,9 @@ class VideoWorkerOrchestrator:
         base_name = f"{safe_artist} - {safe_title}"
         packaging_service = self._get_packaging_service()
 
+        # Track the actual MP3 path from CDG generation for use by TXT
+        cdg_mp3_path = None
+
         # Generate CDG package
         if self.config.enable_cdg:
             if self.config.lrc_has_countdown_padding:
@@ -343,12 +346,15 @@ class VideoWorkerOrchestrator:
                     f"{base_name} (Karaoke).cdg"
                 )
 
+                # Pass sanitized artist/title to ensure filenames inside the ZIP
+                # match what we expect (the CDG generator has its own sanitization
+                # that may differ, e.g. not stripping trailing periods)
                 zip_file, mp3_file, cdg_file = packaging_service.create_cdg_package(
                     lrc_file=self.config.lrc_file_path,
                     audio_file=self.config.instrumental_audio_path,
                     output_zip_path=cdg_zip_path,
-                    artist=self.config.artist,
-                    title=self.config.title,
+                    artist=safe_artist,
+                    title=safe_title,
                     output_mp3_path=mp3_path,
                     output_cdg_path=cdg_path,
                     lrc_has_countdown_padding=self.config.lrc_has_countdown_padding,
@@ -356,6 +362,7 @@ class VideoWorkerOrchestrator:
                 )
 
                 self.result.final_karaoke_cdg_zip = zip_file
+                cdg_mp3_path = mp3_file
                 self.job_log.info(f"CDG package created: {zip_file}")
 
             except Exception as e:
@@ -366,8 +373,9 @@ class VideoWorkerOrchestrator:
         if self.config.enable_txt:
             self.job_log.info("Generating TXT package")
             try:
-                # TXT package needs MP3 file (from CDG generation or create it)
-                mp3_path = os.path.join(
+                # TXT package needs MP3 file from CDG generation.
+                # Prefer the actual path returned by CDG, fall back to constructed path.
+                mp3_path = cdg_mp3_path or os.path.join(
                     self.config.output_dir,
                     f"{base_name} (Karaoke).mp3"
                 )

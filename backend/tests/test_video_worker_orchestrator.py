@@ -621,6 +621,111 @@ class TestPackagingValidation:
         assert orchestrator.result.final_karaoke_cdg_zip is None
 
 
+class TestPackagingTrailingPeriodRegression:
+    """Regression test for job 4117228f: title ending with period caused TXT failure.
+
+    Root cause: The orchestrator's sanitize_filename() strips trailing periods,
+    but the CDG generator's internal _sanitize_filename() did not, causing a
+    filename mismatch between the MP3 inside the CDG ZIP and what TXT expected.
+    Fix: Pass sanitized artist/title to CDG generator and use returned MP3 path.
+    """
+
+    @pytest.mark.asyncio
+    async def test_cdg_packaging_uses_sanitized_artist_title(self):
+        """Test that CDG packaging passes sanitized (not raw) artist/title."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            lrc_file = os.path.join(temp_dir, "test.lrc")
+            audio_file = os.path.join(temp_dir, "test.flac")
+
+            with open(lrc_file, "w") as f:
+                f.write("[00:00.00]Test lyrics")
+            with open(audio_file, "w") as f:
+                f.write("dummy audio")
+
+            # Title ends with period - this triggered the bug
+            config = OrchestratorConfig(
+                job_id="test-job",
+                artist="KARAOKE",
+                title="Song Title.",  # Trailing period
+                title_video_path="/path/title.mov",
+                karaoke_video_path="/path/karaoke.mov",
+                instrumental_audio_path=audio_file,
+                lrc_file_path=lrc_file,
+                output_dir=temp_dir,
+                enable_cdg=True,
+                cdg_styles={"background_color": "black"},
+            )
+            orchestrator = VideoWorkerOrchestrator(config)
+
+            with patch.object(orchestrator, "_get_packaging_service") as mock_get:
+                mock_service = MagicMock()
+                mock_service.create_cdg_package.return_value = (
+                    f"{temp_dir}/cdg.zip",
+                    f"{temp_dir}/test.mp3",
+                    f"{temp_dir}/test.cdg",
+                )
+                mock_get.return_value = mock_service
+
+                await orchestrator._run_packaging()
+
+                call_kwargs = mock_service.create_cdg_package.call_args[1]
+                # Artist/title should be sanitized (trailing period stripped)
+                assert call_kwargs["artist"] == "KARAOKE"
+                assert call_kwargs["title"] == "Song Title"  # No trailing period
+
+    @pytest.mark.asyncio
+    async def test_txt_uses_mp3_path_from_cdg_generation(self):
+        """Test that TXT generation uses the actual MP3 path returned by CDG, not a constructed one."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            lrc_file = os.path.join(temp_dir, "test.lrc")
+            audio_file = os.path.join(temp_dir, "test.flac")
+            # Create a real MP3 file at the path CDG would return
+            mp3_from_cdg = os.path.join(temp_dir, "actual_cdg_output.mp3")
+
+            with open(lrc_file, "w") as f:
+                f.write("[00:00.00]Test lyrics")
+            with open(audio_file, "w") as f:
+                f.write("dummy audio")
+            with open(mp3_from_cdg, "w") as f:
+                f.write("dummy mp3")
+
+            config = OrchestratorConfig(
+                job_id="test-job",
+                artist="KARAOKE",
+                title="Song Title.",  # Trailing period
+                title_video_path="/path/title.mov",
+                karaoke_video_path="/path/karaoke.mov",
+                instrumental_audio_path=audio_file,
+                lrc_file_path=lrc_file,
+                output_dir=temp_dir,
+                enable_cdg=True,
+                enable_txt=True,
+                cdg_styles={"background_color": "black"},
+            )
+            orchestrator = VideoWorkerOrchestrator(config)
+
+            with patch.object(orchestrator, "_get_packaging_service") as mock_get:
+                mock_service = MagicMock()
+                # CDG returns a path that differs from constructed path
+                mock_service.create_cdg_package.return_value = (
+                    f"{temp_dir}/cdg.zip",
+                    mp3_from_cdg,  # Actual MP3 path from CDG
+                    f"{temp_dir}/test.cdg",
+                )
+                mock_service.create_txt_package.return_value = (
+                    f"{temp_dir}/txt.zip",
+                    f"{temp_dir}/test.txt",
+                )
+                mock_get.return_value = mock_service
+
+                await orchestrator._run_packaging()
+
+                # TXT should have been called with the actual CDG MP3 path
+                mock_service.create_txt_package.assert_called_once()
+                txt_call_kwargs = mock_service.create_txt_package.call_args[1]
+                assert txt_call_kwargs["mp3_file"] == mp3_from_cdg
+
+
 class TestVideoWorkerOrchestratorEncoding:
     """Test encoding stage."""
 
