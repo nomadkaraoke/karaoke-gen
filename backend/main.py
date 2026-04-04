@@ -159,6 +159,8 @@ app.include_router(auth.router, prefix="/api")  # OAuth credential management
 app.include_router(audio_search.router, prefix="/api")  # Audio search (artist+title mode)
 app.include_router(themes.router, prefix="/api")  # Theme selection for styles
 app.include_router(users.router, prefix="/api")  # User auth, credits, and Stripe webhooks
+from backend.api.routes import referrals
+app.include_router(referrals.router, prefix="/api")  # Referral links and payouts
 app.include_router(admin.router, prefix="/api")  # Admin dashboard and management
 app.include_router(rate_limits.router, prefix="/api")  # Rate limits admin management
 app.include_router(push.router, prefix="/api")  # Push notification subscription management

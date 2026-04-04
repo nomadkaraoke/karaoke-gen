@@ -391,6 +391,79 @@ class ReferralService:
         logger.info(f"Payout triggered: ${total_pending / 100:.2f} to {referrer_email} (transfer: {transfer_id})")
         return True
 
+    def get_dashboard_data(self, user_email: str) -> dict:
+        """Get full referral dashboard data for a user."""
+        user_email = user_email.lower()
+        link = self.get_or_create_link(user_email)
+
+        # Get recent earnings (last 20)
+        earnings_query = (
+            self.db.collection(REFERRAL_EARNINGS_COLLECTION)
+            .where("referrer_email", "==", user_email)
+            .order_by("created_at", direction=firestore.Query.DESCENDING)
+            .limit(20)
+        )
+        earnings = [doc.to_dict() for doc in earnings_query.stream()]
+
+        # Get recent payouts (last 10)
+        payouts_query = (
+            self.db.collection(REFERRAL_PAYOUTS_COLLECTION)
+            .where("referrer_email", "==", user_email)
+            .order_by("created_at", direction=firestore.Query.DESCENDING)
+            .limit(10)
+        )
+        payouts = [doc.to_dict() for doc in payouts_query.stream()]
+
+        pending_balance = sum(
+            e.get("earning_amount_cents", 0) for e in earnings if e.get("status") == "pending"
+        )
+        total_earned = link.stats.total_earned_cents
+        total_paid = sum(p.get("amount_cents", 0) for p in payouts if p.get("status") == "completed")
+
+        # Check Connect status
+        from backend.services.user_service import get_user_service
+        user = get_user_service().get_user(user_email)
+        has_connect = bool(user and user.stripe_connect_account_id)
+
+        return {
+            "link": {
+                "code": link.code,
+                "display_name": link.display_name,
+                "custom_message": link.custom_message,
+                "discount_percent": link.discount_percent,
+                "kickback_percent": link.kickback_percent,
+                "discount_duration_days": link.discount_duration_days,
+                "earning_duration_days": link.earning_duration_days,
+                "stats": link.stats.model_dump(),
+                "enabled": link.enabled,
+                "is_vanity": link.is_vanity,
+            },
+            "pending_balance_cents": pending_balance,
+            "total_earned_cents": total_earned,
+            "total_paid_cents": total_paid,
+            "recent_earnings": [
+                {
+                    "id": e["id"],
+                    "referred_email": e.get("referred_email", ""),
+                    "purchase_amount_cents": e.get("purchase_amount_cents", 0),
+                    "earning_amount_cents": e.get("earning_amount_cents", 0),
+                    "status": e.get("status", "pending"),
+                    "created_at": str(e.get("created_at", "")),
+                }
+                for e in earnings
+            ],
+            "recent_payouts": [
+                {
+                    "id": p["id"],
+                    "amount_cents": p.get("amount_cents", 0),
+                    "status": p.get("status", "processing"),
+                    "created_at": str(p.get("created_at", "")),
+                }
+                for p in payouts
+            ],
+            "stripe_connect_configured": has_connect,
+        }
+
     def list_links(self, limit: int = 50, offset: int = 0) -> list[ReferralLink]:
         """List referral links for admin view."""
         query = (

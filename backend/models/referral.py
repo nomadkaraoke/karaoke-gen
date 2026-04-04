@@ -161,8 +161,9 @@ class ReferralDashboardResponse(BaseModel):
 
 class ReferralInterstitialResponse(BaseModel):
     """Data for the referral landing/interstitial page."""
-    referral_code: str
+    valid: bool = True
+    referral_code: str = ""
     referrer_display_name: Optional[str] = None
-    discount_percent: int
-    discount_duration_days: int
+    discount_percent: int = 0
+    discount_duration_days: int = 0
     custom_message: Optional[str] = None
