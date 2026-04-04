@@ -9,10 +9,11 @@ before job creation.
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from backend.models.theme import ThemeDetailResponse, ThemesListResponse
 from backend.services.theme_service import get_theme_service
+from backend.i18n import t, get_locale_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/themes", tags=["themes"])
 
 
 @router.get("", response_model=ThemesListResponse)
-async def list_themes() -> ThemesListResponse:
+async def list_themes(request: Request) -> ThemesListResponse:
     """
     List all available themes.
 
@@ -29,6 +30,7 @@ async def list_themes() -> ThemesListResponse:
 
     This endpoint is public and does not require authentication.
     """
+    locale = get_locale_from_request(request)
     try:
         theme_service = get_theme_service()
         themes = theme_service.list_themes()
@@ -37,12 +39,12 @@ async def list_themes() -> ThemesListResponse:
         logger.error(f"Error listing themes: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to load themes"
+            detail=t(locale, "themes.themesLoadError")
         )
 
 
 @router.get("/{theme_id}", response_model=ThemeDetailResponse)
-async def get_theme(theme_id: str) -> ThemeDetailResponse:
+async def get_theme(theme_id: str, request: Request) -> ThemeDetailResponse:
     """
     Get detailed information about a specific theme.
 
@@ -58,6 +60,7 @@ async def get_theme(theme_id: str) -> ThemeDetailResponse:
     Raises:
         404: Theme not found
     """
+    locale = get_locale_from_request(request)
     try:
         theme_service = get_theme_service()
         theme = theme_service.get_theme(theme_id)
@@ -65,7 +68,7 @@ async def get_theme(theme_id: str) -> ThemeDetailResponse:
         if theme is None:
             raise HTTPException(
                 status_code=404,
-                detail=f"Theme not found: {theme_id}"
+                detail=t(locale, "themes.themeNotFound", theme_id=theme_id)
             )
 
         return ThemeDetailResponse(theme=theme)
@@ -75,12 +78,12 @@ async def get_theme(theme_id: str) -> ThemeDetailResponse:
         logger.error(f"Error getting theme {theme_id}: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to load theme"
+            detail=t(locale, "themes.themeLoadError")
         )
 
 
 @router.get("/{theme_id}/preview")
-async def get_theme_preview(theme_id: str) -> dict:
+async def get_theme_preview(theme_id: str, request: Request) -> dict:
     """
     Get a signed URL for the theme's preview image.
 
@@ -96,20 +99,21 @@ async def get_theme_preview(theme_id: str) -> dict:
     Raises:
         404: Theme not found or no preview available
     """
+    locale = get_locale_from_request(request)
     try:
         theme_service = get_theme_service()
 
         if not theme_service.theme_exists(theme_id):
             raise HTTPException(
                 status_code=404,
-                detail=f"Theme not found: {theme_id}"
+                detail=t(locale, "themes.themeNotFound", theme_id=theme_id)
             )
 
         theme = theme_service.get_theme(theme_id)
         if theme is None or theme.preview_url is None:
             raise HTTPException(
                 status_code=404,
-                detail=f"No preview available for theme: {theme_id}"
+                detail=t(locale, "themes.previewNotAvailable", theme_id=theme_id)
             )
 
         return {"preview_url": theme.preview_url}
@@ -119,12 +123,12 @@ async def get_theme_preview(theme_id: str) -> dict:
         logger.error(f"Error getting preview for theme {theme_id}: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to load theme preview"
+            detail=t(locale, "themes.previewLoadError")
         )
 
 
 @router.get("/{theme_id}/youtube-description")
-async def get_theme_youtube_description(theme_id: str) -> dict:
+async def get_theme_youtube_description(theme_id: str, request: Request) -> dict:
     """
     Get the YouTube description template for a theme.
 
@@ -141,13 +145,14 @@ async def get_theme_youtube_description(theme_id: str) -> dict:
     Raises:
         404: Theme not found
     """
+    locale = get_locale_from_request(request)
     try:
         theme_service = get_theme_service()
 
         if not theme_service.theme_exists(theme_id):
             raise HTTPException(
                 status_code=404,
-                detail=f"Theme not found: {theme_id}"
+                detail=t(locale, "themes.youtubeDescriptionNotFound", theme_id=theme_id)
             )
 
         description = theme_service.get_youtube_description(theme_id)
@@ -158,5 +163,5 @@ async def get_theme_youtube_description(theme_id: str) -> dict:
         logger.error(f"Error getting YouTube description for theme {theme_id}: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to load YouTube description"
+            detail=t(locale, "themes.youtubeDescriptionLoadError")
         )

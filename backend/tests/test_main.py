@@ -90,12 +90,16 @@ class TestExceptionHandlers:
             credits_required=1,
         )
 
-        response = await insufficient_credits_exception_handler(request=None, exc=exc)
+        from unittest.mock import MagicMock
+        mock_request = MagicMock()
+        mock_request.headers = {"accept-language": "en"}
+
+        response = await insufficient_credits_exception_handler(request=mock_request, exc=exc)
 
         assert response.status_code == 402
         import json
         body = json.loads(response.body)
-        assert body["detail"] == "No credits remaining"
+        assert body["detail"] == "Insufficient credits for this operation"
         assert body["credits_available"] == 0
         assert body["credits_required"] == 1
         assert body["buy_url"] == "/#pricing"

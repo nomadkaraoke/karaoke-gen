@@ -45,6 +45,7 @@ from backend.services.youtube_download_service import (
     get_youtube_download_service,
     YouTubeDownloadError,
 )
+from backend.i18n import t, get_locale_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -350,7 +351,8 @@ async def _trigger_audio_worker_only(job_id: str) -> None:
 def _prepare_theme_for_job(
     job_id: str,
     theme_id: str,
-    color_overrides: Optional[Dict[str, str]] = None
+    color_overrides: Optional[Dict[str, str]] = None,
+    locale: str = "en"
 ) -> Tuple[str, Dict[str, str], Optional[str]]:
     """
     Prepare theme style files for a job.
@@ -359,6 +361,7 @@ def _prepare_theme_for_job(
         job_id: The job ID
         theme_id: Theme identifier
         color_overrides: Optional color override dict
+        locale: Locale for error messages
 
     Returns:
         Tuple of (style_params_gcs_path, style_assets, youtube_description)
@@ -372,7 +375,7 @@ def _prepare_theme_for_job(
     if not theme_service.theme_exists(theme_id):
         raise HTTPException(
             status_code=400,
-            detail=f"Theme not found: {theme_id}. Use GET /api/themes to list available themes."
+            detail=t(locale, "fileUpload.invalidTheme", theme_id=theme_id)
         )
 
     # Convert dict to ColorOverrides model if provided
@@ -465,6 +468,8 @@ async def upload_and_create_job(
     The style_params JSON can reference the uploaded images/fonts by their original
     filenames, and the backend will update the paths to GCS locations.
     """
+    locale = get_locale_from_request(request)
+
     # Check tenant feature flag
     tenant_config = get_tenant_config_from_request(request)
     if tenant_config and not tenant_config.features.file_upload:
@@ -699,7 +704,7 @@ async def upload_and_create_job(
         if effective_theme_id and not has_custom_style_files:
             try:
                 theme_style_params_path, theme_style_assets, theme_youtube_desc = _prepare_theme_for_job(
-                    job_id, effective_theme_id, parsed_color_overrides or None
+                    job_id, effective_theme_id, parsed_color_overrides or None, locale=locale
                 )
                 logger.info(f"Applied theme '{effective_theme_id}' to job {job_id}")
             except HTTPException:
@@ -896,7 +901,7 @@ async def upload_and_create_job(
         return {
             "status": "success",
             "job_id": job_id,
-            "message": "Files uploaded successfully. Processing started.",
+            "message": t(locale, "fileUpload.uploadSuccess"),
             "filename": file.filename,
             "style_assets_uploaded": list(style_assets.keys()) if style_assets else [],
             "server_version": VERSION,
@@ -909,7 +914,7 @@ async def upload_and_create_job(
         raise
     except Exception as e:
         logger.error(f"Error uploading files: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail=t(locale, "fileUpload.uploadError", error=str(e))) from e
 
 
 # ============================================================================
@@ -1110,6 +1115,8 @@ async def create_job_with_upload_urls(
     - Works with any HTTP client (no HTTP/2 required)
     - Resumable uploads possible with GCS
     """
+    locale = get_locale_from_request(request)
+
     # Check tenant feature flag
     tenant_config = get_tenant_config_from_request(request)
     if tenant_config and not tenant_config.features.file_upload:
@@ -1121,14 +1128,14 @@ async def create_job_with_upload_urls(
     try:
         # Validate files list
         if not body.files:
-            raise HTTPException(status_code=400, detail="At least one file is required")
-        
+            raise HTTPException(status_code=400, detail=t(locale, "fileUpload.noAudioFileProvided"))
+
         # Check that audio file is included
         audio_files = [f for f in body.files if f.file_type == 'audio']
         if not audio_files:
-            raise HTTPException(status_code=400, detail="An audio file is required")
+            raise HTTPException(status_code=400, detail=t(locale, "fileUpload.noAudioFileProvided"))
         if len(audio_files) > 1:
-            raise HTTPException(status_code=400, detail="Only one audio file is allowed")
+            raise HTTPException(status_code=400, detail=t(locale, "fileUpload.multipleAudioFilesNotAllowed"))
         
         # Validate file types and extensions
         for file_info in body.files:
@@ -1271,7 +1278,7 @@ async def create_job_with_upload_urls(
         # If theme is set and no style_params uploaded, prepare theme style now
         if effective_theme_id and not has_style_params_upload:
             style_params_path, style_assets, youtube_desc = _prepare_theme_for_job(
-                job_id, effective_theme_id, body.color_overrides
+                job_id, effective_theme_id, body.color_overrides, locale=locale
             )
             # Update job with theme style data
             update_data = {
@@ -1307,7 +1314,7 @@ async def create_job_with_upload_urls(
         return CreateJobWithUploadUrlsResponse(
             status="success",
             job_id=job_id,
-            message="Job created. Upload files to the provided URLs, then call /api/jobs/{job_id}/uploads-complete",
+            message=t(locale, "fileUpload.urlCreationSuccess"),
             upload_urls=upload_urls,
             server_version=VERSION
         )
@@ -1318,12 +1325,13 @@ async def create_job_with_upload_urls(
         raise
     except Exception as e:
         logger.error(f"Error creating job with upload URLs: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail=t(locale, "fileUpload.urlCreationError", error=str(e))) from e
 
 
 @router.post("/jobs/{job_id}/uploads-complete")
 async def mark_uploads_complete(
     job_id: str,
+    request: Request,
     background_tasks: BackgroundTasks,
     body: UploadsCompleteRequest,
     auth_result: AuthResult = Depends(require_auth)
@@ -1342,22 +1350,23 @@ async def mark_uploads_complete(
     - Update job with GCS paths
     - Trigger audio and lyrics workers
     """
+    locale = get_locale_from_request(request)
     try:
         # Get job and verify it exists
         job = job_manager.get_job(job_id)
         if not job:
-            raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-        
+            raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+
         # Verify job is in pending state
         if job.status != JobStatus.PENDING:
             raise HTTPException(
                 status_code=400,
-                detail=f"Job {job_id} is not in pending state (current: {job.status}). Cannot complete uploads."
+                detail=t(locale, "jobs.notCompleted", status=job.status)
             )
-        
+
         # Validate required files
         if 'audio' not in body.uploaded_files:
-            raise HTTPException(status_code=400, detail="Audio file upload is required")
+            raise HTTPException(status_code=400, detail=t(locale, "fileUpload.noAudioFileProvided"))
         
         # Build GCS paths for uploaded files and validate they exist
         update_data = {}
@@ -1495,7 +1504,7 @@ async def mark_uploads_complete(
         return {
             "status": "success",
             "job_id": job_id,
-            "message": "Uploads validated. Processing started.",
+            "message": t(locale, "fileUpload.uploadsCompleteSuccess"),
             "files_validated": body.uploaded_files,
             "style_assets": list(style_assets.keys()) if style_assets else [],
             "server_version": VERSION,
@@ -1506,7 +1515,7 @@ async def mark_uploads_complete(
         raise
     except Exception as e:
         logger.error(f"Error completing uploads for job {job_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail=t(locale, "fileUpload.uploadsCompleteError", error=str(e))) from e
 
 
 # ============================================================================
@@ -1589,6 +1598,8 @@ async def create_job_from_url(
     Note: YouTube rate limiting may cause occasional download failures.
     The backend will retry automatically.
     """
+    locale = get_locale_from_request(request)
+
     # Check tenant feature flag
     tenant_config = get_tenant_config_from_request(request)
     if tenant_config and not tenant_config.features.youtube_url:
@@ -1744,7 +1755,7 @@ async def create_job_from_url(
         # If theme is set, prepare theme style now
         if effective_theme_id:
             style_params_path, style_assets, youtube_desc = _prepare_theme_for_job(
-                job_id, effective_theme_id, body.color_overrides
+                job_id, effective_theme_id, body.color_overrides, locale=locale
             )
             # Update job with theme style data
             update_data = {
@@ -1803,7 +1814,7 @@ async def create_job_from_url(
                 job_manager.fail_job(job_id, f"YouTube download failed: {e}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"YouTube download failed: {e}"
+                    detail=t(locale, "audioSearch.youtubeDownloadError", error=str(e))
                 )
         else:
             # For non-YouTube URLs, transition to DOWNLOADING and trigger audio worker
@@ -1897,6 +1908,8 @@ async def create_finalise_only_job(
     
     The endpoint returns signed URLs for uploading all the prep files.
     """
+    locale = get_locale_from_request(request)
+
     # Check tenant feature flag - finalise-only requires file upload capability
     tenant_config = get_tenant_config_from_request(request)
     if tenant_config and not tenant_config.features.file_upload:
@@ -2057,7 +2070,7 @@ async def create_finalise_only_job(
         # If theme is set and no style_params uploaded, prepare theme style now
         if effective_theme_id and not has_style_params_upload:
             style_params_path, style_assets, youtube_desc = _prepare_theme_for_job(
-                job_id, effective_theme_id, body.color_overrides
+                job_id, effective_theme_id, body.color_overrides, locale=locale
             )
             # Update job with theme style data
             update_data = {

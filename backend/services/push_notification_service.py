@@ -12,6 +12,7 @@ from pywebpush import webpush, WebPushException
 
 from backend.config import get_settings
 from backend.models.user import User, PushSubscription
+from backend.i18n import t
 
 
 logger = logging.getLogger(__name__)
@@ -239,15 +240,16 @@ class PushNotificationService:
         artist = job.get("artist", "Unknown Artist")
         title = job.get("title", "Unknown Title")
         tenant_id = job.get("tenant_id") or None
+        locale = job.get("locale", "en")
 
         if action_type == "lyrics":
-            notif_title = "Review Lyrics"
-            notif_body = f'"{title}" by {artist} needs lyrics review'
+            notif_title = t(locale, "pushNotifications.reviewLyricsTitle")
+            notif_body = t(locale, "pushNotifications.reviewLyricsBody", title=title, artist=artist)
             url = f"/app/jobs#/{job_id}/review"
             tag = f"lyrics-{job_id}"
         else:  # instrumental
-            notif_title = "Select Instrumental"
-            notif_body = f'"{title}" by {artist} needs instrumental selection'
+            notif_title = t(locale, "pushNotifications.selectInstrumentalTitle")
+            notif_body = t(locale, "pushNotifications.selectInstrumentalBody", title=title, artist=artist)
             url = f"/app/jobs#/{job_id}/instrumental"
             tag = f"instrumental-{job_id}"
 
@@ -278,11 +280,12 @@ class PushNotificationService:
         artist = job.get("artist", "Unknown Artist")
         title = job.get("title", "Unknown Title")
         tenant_id = job.get("tenant_id") or None
+        locale = job.get("locale", "en")
 
         return await self.send_push(
             user_email=user_email,
-            title="Video Ready!",
-            body=f'Your karaoke video for "{title}" by {artist} is ready to download',
+            title=t(locale, "pushNotifications.videoReadyTitle"),
+            body=t(locale, "pushNotifications.videoReadyBody", title=title, artist=artist),
             url=f"/app/?job={job_id}",
             tag=f"complete-{job_id}",
             tenant_id=tenant_id,

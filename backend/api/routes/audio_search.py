@@ -53,6 +53,7 @@ from backend.exceptions import InsufficientCreditsError
 from backend.services.tracing import add_span_attribute
 from backend.services.firestore_service import FirestoreService
 from pathlib import Path
+from backend.i18n import t, get_locale_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -309,17 +310,17 @@ def _validate_and_prepare_selection(
     """
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail=t("en", "audioSearch.jobNotFound", job_id=job_id))
 
     # Get search results from state_data
     search_results = job.state_data.get('audio_search_results', [])
     if not search_results:
-        raise HTTPException(status_code=400, detail="No search results available")
+        raise HTTPException(status_code=400, detail=t("en", "audioSearch.noSearchResults"))
 
     if selection_index < 0 or selection_index >= len(search_results):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid selection index {selection_index}. Valid range: 0-{len(search_results)-1}"
+            detail=t("en", "audioSearch.invalidSelectionIndex", selection_index=selection_index, max=len(search_results)-1)
         )
 
     selected = search_results[selection_index]
@@ -594,12 +595,14 @@ async def search_audio(
     - Interactive mode (default): Returns results, user calls /select endpoint
     - Auto mode (auto_download=True): Automatically selects and downloads best
     """
+    locale = get_locale_from_request(request)
+
     # Check tenant feature flag
     tenant_config = get_tenant_config_from_request(request)
     if tenant_config and not tenant_config.features.audio_search:
         raise HTTPException(
             status_code=403,
-            detail="Audio search is not available for this portal"
+            detail=t(locale, "audioSearch.notEnabled")
         )
 
     try:
@@ -966,12 +969,14 @@ async def search_audio_standalone(
     Credits are checked here (early feedback) but NOT deducted — deduction
     happens when the job is created via create-from-search.
     """
+    locale = get_locale_from_request(request)
+
     # Check tenant feature flag
     tenant_config = get_tenant_config_from_request(request)
     if tenant_config and not tenant_config.features.audio_search:
         raise HTTPException(
             status_code=403,
-            detail="Audio search is not available for this portal"
+            detail=t(locale, "audioSearch.notEnabled")
         )
 
     try:
@@ -1098,14 +1103,14 @@ async def get_audio_search_results(
     """
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    
+        raise HTTPException(status_code=404, detail=t("en", "audioSearch.jobNotFound", job_id=job_id))
+
     search_results = job.state_data.get('audio_search_results', [])
-    
+
     if not search_results:
         raise HTTPException(
             status_code=400,
-            detail="No search results available for this job"
+            detail=t("en", "audioSearch.noSearchResults")
         )
     
     return {
@@ -1136,7 +1141,7 @@ async def select_audio_source(
     """
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail=t("en", "audioSearch.jobNotFound", job_id=job_id))
 
     # Verify job is awaiting selection
     if job.status != JobStatus.AWAITING_AUDIO_SELECTION:

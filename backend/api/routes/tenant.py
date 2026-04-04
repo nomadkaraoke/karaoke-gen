@@ -12,6 +12,7 @@ from fastapi import APIRouter, Query, Request
 
 from backend.models.tenant import TenantConfigResponse, TenantPublicConfig
 from backend.services.tenant_service import get_tenant_service
+from backend.i18n import t, get_locale_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,6 @@ async def get_tenant_asset(tenant_id: str, asset_name: str):
     if not url:
         from fastapi import HTTPException
 
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise HTTPException(status_code=404, detail=t("en", "tenant.assetNotFound"))
 
     return RedirectResponse(url=url)

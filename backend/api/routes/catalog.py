@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from backend.api.dependencies import require_auth
 from backend.services.auth_service import AuthResult
+from backend.i18n import t, get_locale_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ RATE_LIMIT_MAX_REQUESTS = 20
 RATE_LIMIT_WINDOW_SECONDS = 60
 
 
-def _check_rate_limit(user_email: str) -> None:
+def _check_rate_limit(user_email: str, locale: str = "en") -> None:
     """Check per-user rate limit. Raises 429 if exceeded."""
     now = time.monotonic()
     window_start = now - RATE_LIMIT_WINDOW_SECONDS
@@ -37,12 +38,12 @@ def _check_rate_limit(user_email: str) -> None:
 
     # Remove expired entries
     timestamps = _rate_limit_windows[user_email]
-    _rate_limit_windows[user_email] = [t for t in timestamps if t > window_start]
+    _rate_limit_windows[user_email] = [ts for ts in timestamps if ts > window_start]
 
     if len(_rate_limit_windows[user_email]) >= RATE_LIMIT_MAX_REQUESTS:
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit exceeded. Maximum {RATE_LIMIT_MAX_REQUESTS} catalog requests per minute.",
+            detail=t(locale, "catalog.rateLimitExceeded", max_requests=RATE_LIMIT_MAX_REQUESTS),
         )
 
     _rate_limit_windows[user_email].append(now)
@@ -107,6 +108,7 @@ class CommunityCheckResponse(BaseModel):
 
 @router.get("/artists", response_model=list[ArtistResult])
 async def search_artists(
+    request: Request,
     q: str = Query(..., min_length=2, description="Artist name search query"),
     limit: int = Query(10, ge=1, le=50, description="Maximum results"),
     auth_result: AuthResult = Depends(require_auth),
@@ -115,7 +117,8 @@ async def search_artists(
     Search for artists by name. Returns canonical MusicBrainz/Spotify artist data
     for autocomplete in job creation forms.
     """
-    _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown")
+    locale = get_locale_from_request(request)
+    _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown", locale)
 
     from backend.services.catalog_proxy_service import search_artists
     results = await search_artists(q, limit)
@@ -124,6 +127,7 @@ async def search_artists(
 
 @router.get("/tracks", response_model=list[TrackResult])
 async def search_tracks(
+    request: Request,
     q: str = Query(..., min_length=2, description="Track name search query"),
     artist: Optional[str] = Query(None, description="Filter by artist name"),
     limit: int = Query(10, ge=1, le=50, description="Maximum results"),
@@ -133,7 +137,8 @@ async def search_tracks(
     Search for tracks by name, optionally filtered by artist.
     Returns canonical Spotify track data for autocomplete in job creation forms.
     """
-    _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown")
+    locale = get_locale_from_request(request)
+    _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown", locale)
 
     from backend.services.catalog_proxy_service import search_tracks
     results = await search_tracks(q, artist, limit)
@@ -142,6 +147,7 @@ async def search_tracks(
 
 @router.post("/community-check", response_model=CommunityCheckResponse)
 async def check_community_versions(
+    request: Request,
     body: CommunityCheckRequest,
     auth_result: AuthResult = Depends(require_auth),
 ):
@@ -149,7 +155,8 @@ async def check_community_versions(
     Check if a song already has community-approved karaoke versions on YouTube
     via karaokenerds.com. Non-blocking — just informs the user.
     """
-    _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown")
+    locale = get_locale_from_request(request)
+    _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown", locale)
 
     from backend.services.karaokenerds_service import check_community_versions
     result = await check_community_versions(body.artist, body.title)

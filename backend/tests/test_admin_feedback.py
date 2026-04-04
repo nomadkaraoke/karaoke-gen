@@ -282,7 +282,7 @@ class TestSubmitFeedbackEmailIntegration:
 
         with patch.object(uuid_mod, "uuid4", return_value="fake-uuid"):
             result = asyncio.get_event_loop().run_until_complete(
-                submit_user_feedback(request, authorization="Bearer test-token", user_service=mock_user_svc)
+                submit_user_feedback(http_request=MagicMock(headers={"accept-language": "en"}), request=request, authorization="Bearer test-token", user_service=mock_user_svc)
             )
 
         # Verify email notification was called with matching args
@@ -339,7 +339,7 @@ class TestSubmitFeedbackEmailIntegration:
 
         with patch.object(uuid_mod, "uuid4", return_value="fake-uuid"):
             result = asyncio.get_event_loop().run_until_complete(
-                submit_user_feedback(request, authorization="Bearer test-token", user_service=mock_user_svc)
+                submit_user_feedback(http_request=MagicMock(headers={"accept-language": "en"}), request=request, authorization="Bearer test-token", user_service=mock_user_svc)
             )
 
         # User still gets credits even though email failed

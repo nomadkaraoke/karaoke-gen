@@ -18,6 +18,7 @@ from backend.config import get_settings
 from backend.api.dependencies import require_auth, require_admin
 from backend.services.auth_service import AuthResult
 from backend.services.push_notification_service import get_push_notification_service
+from backend.i18n import t, get_locale_from_request
 
 
 logger = logging.getLogger(__name__)
@@ -127,18 +128,20 @@ async def subscribe_push(
     1. Request body tenant_id field (explicit from frontend)
     2. Tenant middleware (X-Tenant-ID header or subdomain detection)
     """
+    locale = get_locale_from_request(http_request)
+
     settings = get_settings()
     if not settings.enable_push_notifications:
-        raise HTTPException(status_code=503, detail="Push notifications are not enabled")
+        raise HTTPException(status_code=503, detail=t(locale, "push.disabled"))
 
     if not auth_result.user_email:
-        raise HTTPException(status_code=401, detail="User email not available")
+        raise HTTPException(status_code=401, detail=t(locale, "push.userEmailNotAvailable"))
 
     push_service = get_push_notification_service()
 
     # Validate keys
     if "p256dh" not in subscribe_request.keys or "auth" not in subscribe_request.keys:
-        raise HTTPException(status_code=400, detail="Missing required keys (p256dh, auth)")
+        raise HTTPException(status_code=400, detail=t(locale, "push.missingEncryptionKeys"))
 
     # Resolve tenant_id: prefer explicit from body, fall back to middleware
     tenant_id = subscribe_request.tenant_id
@@ -154,17 +157,18 @@ async def subscribe_push(
     )
 
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to save subscription")
+        raise HTTPException(status_code=500, detail=t(locale, "push.subscriptionSaveFailed"))
 
     return SubscribeResponse(
         status="success",
-        message="Push subscription registered successfully"
+        message=t(locale, "push.subscriptionRegistered")
     )
 
 
 @router.post("/unsubscribe", response_model=UnsubscribeResponse)
 async def unsubscribe_push(
     request: UnsubscribeRequest,
+    http_request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ):
     """
@@ -172,8 +176,10 @@ async def unsubscribe_push(
 
     Requires authentication. Users can only remove their own subscriptions.
     """
+    locale = get_locale_from_request(http_request)
+
     if not auth_result.user_email:
-        raise HTTPException(status_code=401, detail="User email not available")
+        raise HTTPException(status_code=401, detail=t(locale, "push.userEmailNotAvailable"))
 
     push_service = get_push_notification_service()
 
@@ -186,17 +192,18 @@ async def unsubscribe_push(
         # Don't error if subscription wasn't found - might already be removed
         return UnsubscribeResponse(
             status="success",
-            message="Subscription removed (or was not found)"
+            message=t(locale, "push.subscriptionNotFound")
         )
 
     return UnsubscribeResponse(
         status="success",
-        message="Push subscription removed successfully"
+        message=t(locale, "push.subscriptionRemoved")
     )
 
 
 @router.get("/subscriptions", response_model=SubscriptionsListResponse)
 async def list_subscriptions(
+    request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ):
     """
@@ -204,8 +211,10 @@ async def list_subscriptions(
 
     Requires authentication.
     """
+    locale = get_locale_from_request(request)
+
     if not auth_result.user_email:
-        raise HTTPException(status_code=401, detail="User email not available")
+        raise HTTPException(status_code=401, detail=t(locale, "push.userEmailNotAvailable"))
 
     push_service = get_push_notification_service()
 
@@ -220,6 +229,7 @@ async def list_subscriptions(
 @router.post("/test", response_model=TestNotificationResponse)
 async def send_test_notification(
     request: TestNotificationRequest,
+    http_request: Request,
     auth_result: AuthResult = Depends(require_admin)
 ):
     """
@@ -227,12 +237,14 @@ async def send_test_notification(
 
     Admin only. Useful for testing push notification setup.
     """
+    locale = get_locale_from_request(http_request)
+
     settings = get_settings()
     if not settings.enable_push_notifications:
-        raise HTTPException(status_code=503, detail="Push notifications are not enabled")
+        raise HTTPException(status_code=503, detail=t(locale, "push.disabled"))
 
     if not auth_result.user_email:
-        raise HTTPException(status_code=401, detail="User email not available")
+        raise HTTPException(status_code=401, detail=t(locale, "push.userEmailNotAvailable"))
 
     push_service = get_push_notification_service()
 
@@ -247,5 +259,5 @@ async def send_test_notification(
     return TestNotificationResponse(
         status="success",
         sent_count=sent_count,
-        message=f"Test notification sent to {sent_count} device(s)"
+        message=t(locale, "push.testNotificationSent", sent_count=sent_count)
     )

@@ -10,12 +10,13 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.api.dependencies import require_admin
 from backend.services.auth_service import AuthResult
 from backend.services.email_validation_service import get_email_validation_service, EmailValidationService
+from backend.i18n import t, get_locale_from_request
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/rate-limits", tags=["admin", "rate-limits"])
@@ -106,13 +107,13 @@ async def add_disposable_domain(
 
     domain = request.domain.lower().strip()
     if not domain or "." not in domain:
-        raise HTTPException(status_code=400, detail="Invalid domain format")
+        raise HTTPException(status_code=400, detail=t("en", "admin.invalidDomainFormat"))
 
     email_validation.add_disposable_domain(domain, auth_result.user_email)
 
     return SuccessResponse(
         success=True,
-        message=f"Domain '{domain}' added to disposable domains blocklist"
+        message=t("en", "admin.domainAddedToBl", domain=domain)
     )
 
 
@@ -126,11 +127,11 @@ async def remove_disposable_domain(
 
     domain = domain.lower().strip()
     if not email_validation.remove_disposable_domain(domain, auth_result.user_email):
-        raise HTTPException(status_code=404, detail="Domain not found in blocklist")
+        raise HTTPException(status_code=404, detail=t("en", "admin.domainNotFoundInBl"))
 
     return SuccessResponse(
         success=True,
-        message=f"Domain '{domain}' removed from disposable domains blocklist"
+        message=t("en", "admin.domainRemovedFromBl", domain=domain)
     )
 
 
@@ -143,9 +144,9 @@ async def add_allowlisted_domain(
     email_validation = get_email_validation_service()
     domain = request.domain.lower().strip()
     if not domain or "." not in domain:
-        raise HTTPException(status_code=400, detail="Invalid domain format")
+        raise HTTPException(status_code=400, detail=t("en", "admin.invalidDomainFormat"))
     email_validation.add_allowlisted_domain(domain, auth_result.user_email)
-    return SuccessResponse(success=True, message=f"Domain '{domain}' added to allowlist")
+    return SuccessResponse(success=True, message=t("en", "admin.domainAddedToAllowlist", domain=domain))
 
 
 @router.delete("/blocklists/allowlisted-domains/{domain}", response_model=SuccessResponse)
@@ -157,8 +158,8 @@ async def remove_allowlisted_domain(
     email_validation = get_email_validation_service()
     domain = domain.lower().strip()
     if not email_validation.remove_allowlisted_domain(domain, auth_result.user_email):
-        raise HTTPException(status_code=404, detail="Domain not found in allowlist")
-    return SuccessResponse(success=True, message=f"Domain '{domain}' removed from allowlist")
+        raise HTTPException(status_code=404, detail=t("en", "admin.domainNotFoundInAllowlist"))
+    return SuccessResponse(success=True, message=t("en", "admin.domainRemovedFromAllowlist", domain=domain))
 
 
 @router.post("/blocklists/sync", response_model=SuccessResponse)
@@ -181,7 +182,7 @@ async def trigger_sync(
 
     return SuccessResponse(
         success=True,
-        message=f"Synced {result['external_count']} external domains ({result['added']} added, {result['removed']} removed)"
+        message=t("en", "admin.syncComplete", external_count=result['external_count'], added=result['added'], removed=result['removed'])
     )
 
 
@@ -195,13 +196,13 @@ async def add_blocked_email(
 
     email = request.email.lower().strip()
     if not email or "@" not in email:
-        raise HTTPException(status_code=400, detail="Invalid email format")
+        raise HTTPException(status_code=400, detail=t("en", "admin.invalidEmailFormat"))
 
     email_validation.add_blocked_email(email, auth_result.user_email)
 
     return SuccessResponse(
         success=True,
-        message=f"Email '{email}' added to blocked emails list"
+        message=t("en", "admin.emailAddedToBl", email=email)
     )
 
 
@@ -215,11 +216,11 @@ async def remove_blocked_email(
 
     email = email.lower().strip()
     if not email_validation.remove_blocked_email(email, auth_result.user_email):
-        raise HTTPException(status_code=404, detail="Email not found in blocklist")
+        raise HTTPException(status_code=404, detail=t("en", "admin.emailNotFoundInBl"))
 
     return SuccessResponse(
         success=True,
-        message=f"Email '{email}' removed from blocked emails list"
+        message=t("en", "admin.emailRemovedFromBl", email=email)
     )
 
 
@@ -233,13 +234,13 @@ async def add_blocked_ip(
 
     ip_address = request.ip_address.strip()
     if not ip_address:
-        raise HTTPException(status_code=400, detail="Invalid IP address")
+        raise HTTPException(status_code=400, detail=t("en", "admin.invalidIPAddress"))
 
     email_validation.add_blocked_ip(ip_address, auth_result.user_email)
 
     return SuccessResponse(
         success=True,
-        message=f"IP '{ip_address}' added to blocked IPs list"
+        message=t("en", "admin.ipAddedToBl", ip_address=ip_address)
     )
 
 
@@ -253,11 +254,11 @@ async def remove_blocked_ip(
 
     ip_address = ip_address.strip()
     if not email_validation.remove_blocked_ip(ip_address, auth_result.user_email):
-        raise HTTPException(status_code=404, detail="IP not found in blocklist")
+        raise HTTPException(status_code=404, detail=t("en", "admin.ipNotFoundInBl"))
 
     return SuccessResponse(
         success=True,
-        message=f"IP '{ip_address}' removed from blocked IPs list"
+        message=t("en", "admin.ipRemovedFromBl", ip_address=ip_address)
     )
 
 
@@ -303,12 +304,12 @@ async def retry_youtube_upload(
     if not queue_service.retry_upload(job_id):
         raise HTTPException(
             status_code=404,
-            detail=f"Upload not found or not in retryable state for job {job_id}"
+            detail=t("en", "admin.youtubeUploadNotFound", job_id=job_id)
         )
 
     return SuccessResponse(
         success=True,
-        message=f"YouTube upload for job {job_id} queued for retry"
+        message=t("en", "admin.youtubeUploadQueuedForRetry", job_id=job_id)
     )
 
 
@@ -341,5 +342,5 @@ async def trigger_youtube_queue_processing(
 
     return SuccessResponse(
         success=True,
-        message="YouTube queue processing started in background"
+        message=t("en", "admin.youtubeQueueProcessingStarted")
     )

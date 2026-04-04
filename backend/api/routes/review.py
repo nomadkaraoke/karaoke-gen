@@ -36,6 +36,7 @@ from backend.services.encoding_service import get_encoding_service
 from backend.api.dependencies import require_auth, require_review_auth
 from backend.services.auth_service import UserType
 from backend.config import get_settings
+from backend.i18n import t, get_locale_from_request
 
 # LyricsTranscriber imports for preview generation
 from karaoke_gen.lyrics_transcriber.types import CorrectionResult
@@ -113,12 +114,12 @@ async def get_correction_data(
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not ready for review (current status: {job.status})"
+            detail=t("en", "review.reviewNotReady", status=job.status)
         )
 
     # Check for updated corrections first (from previous review sessions where user edited lyrics)
@@ -139,7 +140,7 @@ async def get_correction_data(
             if not storage.file_exists(corrections_gcs):
                 raise HTTPException(
                     status_code=404,
-                    detail="Corrections data not found. Lyrics processing may not be complete."
+                    detail=t("en", "review.correctionsNotFound")
                 )
 
     # Download and return corrections data
@@ -224,7 +225,7 @@ async def get_correction_data(
 
     except Exception as e:
         logger.error(f"Job {job_id}: Error loading corrections: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error loading corrections: {str(e)}")
+        raise HTTPException(status_code=500, detail=t("en", "review.correctionsLoadFailed", error=str(e)))
 
 
 @router.get("/{job_id}/audio/{audio_hash}")
@@ -260,11 +261,11 @@ async def _stream_audio(job_id: str):
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     audio_gcs_path = job.input_media_gcs_path
     if not audio_gcs_path:
-        raise HTTPException(status_code=404, detail="Audio file not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
 
     try:
         transcoding = AudioTranscodingService()
@@ -274,7 +275,7 @@ async def _stream_audio(job_id: str):
 
     except Exception as e:
         logger.error(f"Job {job_id}: Error generating audio signed URL: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error serving audio: {str(e)}")
+        raise HTTPException(status_code=500, detail=t("en", "review.audioServeError", error=str(e)))
 
 
 @router.post("/{job_id}/complete")
@@ -298,12 +299,12 @@ async def complete_review(
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t("en", "review.reviewNotReady", status=job.status)
         )
 
     # === Require instrumental selection ===
@@ -311,7 +312,7 @@ async def complete_review(
     if not instrumental_selection:
         raise HTTPException(
             status_code=400,
-            detail="instrumental_selection is required. Must be 'clean' or 'with_backing'."
+            detail=t("en", "review.instrumentalSelectionRequired")
         )
 
     valid_selections = ["clean", "with_backing"]
@@ -323,7 +324,7 @@ async def complete_review(
     if instrumental_selection not in valid_selections:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid instrumental_selection. Must be one of: {valid_selections}"
+            detail=t("en", "review.invalidInstrumentalSelection", valid_selections=valid_selections)
         )
 
     try:
@@ -384,7 +385,7 @@ async def complete_review(
         raise
     except Exception as e:
         logger.error(f"Job {job_id}: Error completing review: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error completing review: {str(e)}")
+        raise HTTPException(status_code=500, detail=t("en", "review.reviewCompletedError", error=str(e)))
 
 
 @router.post("/{job_id}/handlers")
@@ -400,7 +401,7 @@ async def update_handlers(
     would require re-running correction.
     """
     logger.info(f"Job {job_id}: Handler update requested (not implemented)")
-    return {"status": "success", "message": "Handler updates not yet implemented"}
+    return {"status": "success", "message": t("en", "review.handlersUpdateNotImplemented")}
 
 
 @router.post("/{job_id}/add-lyrics")
@@ -420,13 +421,13 @@ async def add_lyrics(
     
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
+
     # Job must be in review state to add lyrics
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t("en", "review.reviewNotReady", status=job.status)
         )
     
     source = data.get("source", "").strip()
@@ -501,11 +502,11 @@ async def add_lyrics(
                 # ValueError from CorrectionOperations (e.g., duplicate source name)
                 logger.warning(f"Job {job_id}: Invalid add lyrics request: {e}")
                 span.set_attribute("error", str(e))
-                raise HTTPException(status_code=400, detail=str(e))
+                raise HTTPException(status_code=400, detail=t("en", "review.lyricsAddInvalidRequest", error=str(e)))
             except Exception as e:
                 logger.error(f"Job {job_id}: Failed to add lyrics: {e}", exc_info=True)
                 span.set_attribute("error", str(e))
-                raise HTTPException(status_code=500, detail=f"Failed to add lyrics: {str(e)}")
+                raise HTTPException(status_code=500, detail=t("en", "review.lyricsAddError", error=str(e)))
 
 
 @router.post("/{job_id}/search-lyrics")
@@ -541,12 +542,12 @@ async def search_lyrics(
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t("en", "review.reviewNotReady", status=job.status)
         )
 
     artist = (data.get("artist") or "").strip()
@@ -606,7 +607,7 @@ async def search_lyrics(
                         span.set_attribute("success", False)
                         return {
                             "status": "no_results",
-                            "message": "No matching lyrics found from any provider",
+                            "message": t("en", "review.lyricsSearchNoResults"),
                             "sources_added": [],
                             "sources_rejected": sources_rejected,
                             "sources_not_found": sources_not_found,
@@ -646,11 +647,11 @@ async def search_lyrics(
             except ValueError as e:
                 logger.warning(f"Job {job_id}: Invalid search lyrics request: {e}")
                 span.set_attribute("error", str(e))
-                raise HTTPException(status_code=400, detail=str(e))
+                raise HTTPException(status_code=400, detail=t("en", "review.lyricsSearchInvalidRequest", error=str(e)))
             except Exception as e:
                 logger.error(f"Job {job_id}: Failed to search lyrics: {e}", exc_info=True)
                 span.set_attribute("error", str(e))
-                raise HTTPException(status_code=500, detail=f"Failed to search lyrics: {str(e)}")
+                raise HTTPException(status_code=500, detail=t("en", "review.lyricsSearchError", error=str(e)))
 
 
 @router.post("/{job_id}/preview-video")
@@ -675,13 +676,13 @@ async def generate_preview_video(
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     # Job must be in review state to generate preview
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t("en", "review.reviewNotReady", status=job.status)
         )
 
     # Check if GCE preview encoding is enabled
@@ -855,7 +856,7 @@ async def generate_preview_video(
                 span.set_attribute("error", str(e))
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to generate preview video: {e}"
+                    detail=t("en", "review.previewVideoGenerationError", error=str(e))
                 ) from e
 
 
@@ -876,7 +877,7 @@ async def get_preview_video(
         # Try standard path
         preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
         if not storage.file_exists(preview_gcs_path):
-            raise HTTPException(status_code=404, detail="Preview video not found")
+            raise HTTPException(status_code=404, detail=t("en", "review.previewVideoNotFound"))
     
     try:
         # Download to temp file and stream
@@ -901,7 +902,7 @@ async def get_preview_video(
         
     except Exception as e:
         logger.error(f"Job {job_id}: Error streaming preview video: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error streaming preview video: {str(e)}")
+        raise HTTPException(status_code=500, detail=t("en", "review.previewVideoStreamError", error=str(e)))
 
 
 @router.post("/{job_id}/v1/annotations")
@@ -941,7 +942,7 @@ async def submit_annotation(
 
     except Exception as e:
         logger.error(f"Job {job_id}: Error saving annotations: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t("en", "review.annotationSaveError", error=str(e)))
 
 
 @router.get("/{job_id}/v1/annotations/stats")
@@ -982,7 +983,7 @@ async def get_instrumental_analysis(
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     # Get backing vocals analysis from state_data
     backing_analysis = job.state_data.get('backing_vocals_analysis', {})
@@ -1050,7 +1051,7 @@ async def get_waveform_data(
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     # Get backing vocals path
     stems = job.file_urls.get('stems', {})
@@ -1061,7 +1062,7 @@ async def get_waveform_data(
         backing_vocals_path = job.input_media_gcs_path
 
     if not backing_vocals_path:
-        raise HTTPException(status_code=404, detail="No audio available for waveform")
+        raise HTTPException(status_code=404, detail=t("en", "review.waveformNoAudio"))
 
     try:
         analysis_service = AudioAnalysisService()
@@ -1079,7 +1080,7 @@ async def get_waveform_data(
         }
     except Exception as e:
         logger.error(f"Job {job_id}: Error generating waveform data: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error generating waveform: {str(e)}")
+        raise HTTPException(status_code=500, detail=t("en", "review.waveformGenerationError", error=str(e)))
 
 
 # ============================================
@@ -1111,11 +1112,11 @@ async def save_review_session(
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     correction_data = data.get("correction_data")
     if not correction_data:
-        raise HTTPException(status_code=400, detail="correction_data is required")
+        raise HTTPException(status_code=400, detail=t("en", "review.sessionSaveError"))
 
     # Compute hash for deduplication
     data_json = json.dumps(correction_data, sort_keys=True, default=str)
@@ -1284,7 +1285,7 @@ async def save_audio_edit_session(
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     user_email = auth_info[0] if isinstance(auth_info, tuple) else ""
     edit_data = data.get("edit_data", {})
@@ -1477,7 +1478,7 @@ async def get_input_audio_info(
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if not job.input_media_gcs_path:
         raise HTTPException(status_code=404, detail="No input audio available")
@@ -1584,7 +1585,7 @@ async def apply_audio_edit(
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
         raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
@@ -1681,7 +1682,7 @@ async def undo_audio_edit(
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
         raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
@@ -1728,7 +1729,7 @@ async def redo_audio_edit(
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
         raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
@@ -1784,7 +1785,7 @@ async def upload_audio_for_join(
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
         raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")
@@ -1877,7 +1878,7 @@ async def submit_audio_edit(
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     if job.status not in (JobStatus.AWAITING_AUDIO_EDIT, JobStatus.IN_AUDIO_EDIT):
         raise HTTPException(status_code=400, detail=f"Job is not in audio edit state (current: {job.status})")

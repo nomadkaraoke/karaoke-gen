@@ -170,18 +170,20 @@ app.include_router(tenant.router)  # Tenant/white-label configuration (no /api p
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from backend.exceptions import InsufficientCreditsError
+from backend.i18n import t, get_locale_from_request
 
 
 @app.exception_handler(InsufficientCreditsError)
 async def insufficient_credits_exception_handler(request: Request, exc: InsufficientCreditsError):
     """Handle insufficient credits errors with 402 Payment Required status."""
+    locale = get_locale_from_request(request)
     return JSONResponse(
         status_code=402,
         content={
-            "detail": exc.message,
+            "detail": t(locale, "errors.insufficientCredits"),
             "credits_available": exc.credits_available,
             "credits_required": exc.credits_required,
-            "buy_url": "/#pricing",
+            "buy_url": t(locale, "errors.insufficientCreditsBuyUrl"),
         },
     )
 

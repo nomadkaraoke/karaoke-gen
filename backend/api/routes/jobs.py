@@ -38,6 +38,7 @@ from backend.services.tracing import add_span_attribute
 from backend.api.dependencies import require_admin, require_auth
 from backend.services.auth_service import AuthResult
 from backend.services.metrics import metrics
+from backend.i18n import t, get_locale_from_request
 from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
 from backend.exceptions import InsufficientCreditsError
@@ -84,6 +85,7 @@ async def create_job(
     3. Both workers update job state as they progress
     4. When both complete, job transitions to AWAITING_REVIEW
     """
+    locale = get_locale_from_request(http_request)
     try:
         # Determine job owner email:
         # All authentication methods must provide a user_email for job ownership
@@ -95,7 +97,7 @@ async def create_job(
             logger.error("Authentication succeeded but no user_email provided")
             raise HTTPException(
                 status_code=500,
-                detail="Authentication error: no user identity available"
+                detail=t(locale, "jobs.authError")
             )
 
         # Admins can optionally create jobs on behalf of other users
@@ -114,7 +116,7 @@ async def create_job(
         if not effective_theme_id:
             raise HTTPException(
                 status_code=422,
-                detail="No default theme configured. Please contact support or specify a theme_id."
+                detail=t(locale, "jobs.noDefaultTheme")
             )
         logger.info(f"Applying default theme: {effective_theme_id}")
 
@@ -156,7 +158,7 @@ async def create_job(
         return JobResponse(
             status="success",
             job_id=job.job_id,
-            message="Job created successfully. Processing started."
+            message=t(locale, "jobs.created")
         )
     except InsufficientCreditsError:
         raise
@@ -172,16 +174,18 @@ async def create_job(
 @router.get("/{job_id}", response_model=Job)
 async def get_job(
     job_id: str,
+    request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ) -> Job:
     """Get job status and details."""
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership - users can only see their own jobs, admins can see all
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to access this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
     # If job is complete, include download URLs
     if job.status == JobStatus.COMPLETE:
@@ -236,6 +240,7 @@ class EditTrackResponse(BaseModel):
 async def edit_completed_track(
     job_id: str,
     request: EditTrackRequest,
+    http_request: Request,
     background_tasks: BackgroundTasks,
     auth_result: AuthResult = Depends(require_auth),
 ):
@@ -249,30 +254,31 @@ async def edit_completed_track(
 
     No additional credits are consumed — the original credit covers re-edits.
     """
+    locale = get_locale_from_request(http_request)
     import re
     from datetime import timezone
     from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to edit this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionEdit"))
 
     # Only completed jobs can be edited
     if job.status != JobStatus.COMPLETE.value and job.status != "complete":
         raise HTTPException(
             status_code=400,
-            detail=f"Only completed jobs can be edited. Current status: {job.status}"
+            detail=t(locale, "jobs.notCompleted", status=job.status)
         )
 
     # Prevent editing if outputs already deleted (edit already in progress)
     if job.outputs_deleted_at:
         raise HTTPException(
             status_code=400,
-            detail="This job is already being edited (outputs were already deleted)"
+            detail=t(locale, "jobs.alreadyBeingEdited")
         )
 
     user_email = auth_result.user_email or "unknown"
@@ -397,8 +403,7 @@ async def edit_completed_track(
     if critical_failures:
         raise HTTPException(
             status_code=500,
-            detail=f"Cleanup failed for {', '.join(critical_failures)}. "
-            f"Job not modified. Please try again or contact support."
+            detail=t(locale, "jobs.cleanupFailed", services=", ".join(critical_failures))
         )
 
     # --- Phase 2: Update job record ---
@@ -504,7 +509,7 @@ async def edit_completed_track(
     return EditTrackResponse(
         status="success",
         job_id=job_id,
-        message="Track reopened for editing. Previous outputs have been removed.",
+        message=t(locale, "jobs.reopened"),
         review_url=f"/app/jobs#/{job_id}/review",
         review_token=review_token,
         metadata_updated=metadata_updated,
@@ -598,17 +603,19 @@ async def list_jobs(
         created_after_dt = None
         created_before_dt = None
 
+        locale = get_locale_from_request(request)
+
         if created_after:
             try:
                 created_after_dt = datetime.fromisoformat(created_after.replace('Z', '+00:00'))
             except ValueError as e:
-                raise HTTPException(status_code=400, detail=f"Invalid created_after format: {created_after}") from e
+                raise HTTPException(status_code=400, detail=t(locale, "jobs.invalidDatetimeFormat", field="created_after", value=created_after)) from e
 
         if created_before:
             try:
                 created_before_dt = datetime.fromisoformat(created_before.replace('Z', '+00:00'))
             except ValueError as e:
-                raise HTTPException(status_code=400, detail=f"Invalid created_before format: {created_before}") from e
+                raise HTTPException(status_code=400, detail=t(locale, "jobs.invalidDatetimeFormat", field="created_before", value=created_before)) from e
 
         # Determine user_email filter based on admin status
         # Admins see all jobs, regular users only see their own
@@ -683,24 +690,26 @@ async def list_jobs(
         raise
     except Exception as e:
         logger.error(f"Error listing jobs: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.listError", error=str(e)))
 
 
 @router.delete("/{job_id}")
 async def delete_job(
     job_id: str,
+    request: Request,
     delete_files: bool = True,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
     """Delete a job and optionally its output files."""
+    locale = get_locale_from_request(request)
     try:
         job = job_manager.get_job(job_id)
         if not job:
-            raise HTTPException(status_code=404, detail="Job not found")
+            raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
         # Check ownership - users can only delete their own jobs
         if not _check_job_ownership(job, auth_result):
-            raise HTTPException(status_code=403, detail="You don't have permission to delete this job")
+            raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionDelete"))
 
         # Recycle any unreturned brand code before deleting the job record
         state_data = job.state_data or {}
@@ -727,11 +736,12 @@ async def delete_job(
         raise
     except Exception as e:
         logger.error(f"Error deleting job {job_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.deleteError", job_id=job_id, error=str(e)))
 
 
 @router.delete("")
 async def bulk_delete_jobs(
+    request: Request,
     environment: Optional[str] = None,
     client_id: Optional[str] = None,
     status: Optional[JobStatus] = None,
@@ -763,13 +773,15 @@ async def bulk_delete_jobs(
     """
     from datetime import datetime
     
+    locale = get_locale_from_request(request)
+
     # Require at least one filter to prevent accidental deletion of all jobs
     if not any([environment, client_id, status, created_before]):
         raise HTTPException(
             status_code=400,
-            detail="At least one filter (environment, client_id, status, created_before) is required"
+            detail=t(locale, "jobs.deletionRequiresFilters")
         )
-    
+
     # Require explicit confirmation
     if not confirm:
         # Return preview of what would be deleted
@@ -790,7 +802,7 @@ async def bulk_delete_jobs(
         
         return {
             "status": "preview",
-            "message": "Add &confirm=true to execute deletion",
+            "message": t(locale, "jobs.deletionPreview"),
             "jobs_to_delete": len(jobs),
             "sample_jobs": [
                 {
@@ -832,7 +844,7 @@ async def bulk_delete_jobs(
         
     except Exception as e:
         logger.error(f"Error bulk deleting jobs: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.bulkDeleteError", error=str(e)))
 
 
 # ============================================================================
@@ -842,6 +854,7 @@ async def bulk_delete_jobs(
 @router.get("/{job_id}/review-data")
 async def get_review_data(
     job_id: str,
+    request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
@@ -850,18 +863,19 @@ async def get_review_data(
     Returns corrections JSON URL and audio URL.
     Frontend loads these to render the review UI.
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to access this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not ready for review (current status: {job.status})"
+            detail=t(locale, "jobs.reviewNotReady", status=job.status)
         )
     
     # Get URLs from file_urls
@@ -880,13 +894,13 @@ async def get_review_data(
     if not corrections_url:
         raise HTTPException(
             status_code=500,
-            detail="Corrections data not available"
+            detail=t(locale, "jobs.correctionsUnavailable")
         )
 
     if not audio_url:
         raise HTTPException(
             status_code=500,
-            detail="Audio not available for review"
+            detail=t(locale, "jobs.audioUnavailable")
         )
     
     # Generate signed URLs for direct access
@@ -906,6 +920,7 @@ async def get_review_data(
 async def start_review(
     job_id: str,
     request: StartReviewRequest,
+    http_request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
     """
@@ -913,22 +928,23 @@ async def start_review(
 
     This helps track that the user is actively working on the review.
     """
+    locale = get_locale_from_request(http_request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to access this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
     success = job_manager.transition_to_state(
         job_id=job_id,
         new_status=JobStatus.IN_REVIEW,
         message="User started reviewing lyrics"
     )
-    
+
     if not success:
-        raise HTTPException(status_code=400, detail="Cannot start review")
+        raise HTTPException(status_code=400, detail=t(locale, "jobs.reviewCannotStart"))
     
     return {"status": "success", "job_status": "in_review"}
 
@@ -937,6 +953,7 @@ async def start_review(
 async def submit_corrections(
     job_id: str,
     submission: CorrectionsSubmission,
+    http_request: Request,
     background_tasks: BackgroundTasks,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
@@ -948,18 +965,19 @@ async def submit_corrections(
 
     Can be called multiple times to save progress.
     """
+    locale = get_locale_from_request(http_request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to modify this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t(locale, "jobs.jobNotInReviewState", status=job.status)
         )
     
     try:
@@ -995,7 +1013,7 @@ async def submit_corrections(
         return {
             "status": "success",
             "job_status": "in_review",
-            "message": "Corrections saved. Call /complete-review when done."
+            "message": t(locale, "jobs.correctionsProcessing")
         }
         
     except Exception as e:
@@ -1007,6 +1025,7 @@ async def submit_corrections(
 async def submit_edit_log(
     job_id: str,
     edit_log: Dict[str, Any],
+    request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
     """
@@ -1017,12 +1036,13 @@ async def submit_edit_log(
 
     Stored to GCS as jobs/{job_id}/lyrics/edit_log_{session_id}.json.
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to modify this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
     session_id = edit_log.get("session_id", "unknown")
     entries = edit_log.get("entries", [])
@@ -1049,13 +1069,14 @@ async def submit_edit_log(
 
     except Exception as e:
         logger.error(f"Error saving edit log for job {job_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.editLogSaveFailed", job_id=job_id, error=str(e)))
 
 
 @router.post("/{job_id}/create-custom-instrumental")
 async def create_custom_instrumental(
     job_id: str,
     request: CreateCustomInstrumentalRequest,
+    http_request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
     """
@@ -1064,17 +1085,18 @@ async def create_custom_instrumental(
     Downloads the clean instrumental and backing vocals stems, applies mute
     regions, combines them, uploads to GCS, and returns a signed URL for playback.
     """
+    locale = get_locale_from_request(http_request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to modify this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t(locale, "jobs.jobNotInReviewState", status=job.status)
         )
 
     # Get stem paths from job
@@ -1085,7 +1107,7 @@ async def create_custom_instrumental(
     if not clean_path or not backing_path:
         raise HTTPException(
             status_code=400,
-            detail="Job missing required stems (instrumental_clean and/or backing_vocals)"
+            detail=t(locale, "jobs.stemsMissing")
         )
 
     try:
@@ -1133,12 +1155,13 @@ async def create_custom_instrumental(
 
     except Exception as e:
         logger.error(f"Error creating custom instrumental for job {job_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.customInstrumentalFailed", job_id=job_id, error=str(e)))
 
 
 @router.post("/{job_id}/upload-instrumental")
 async def upload_custom_instrumental(
     job_id: str,
+    request: Request,
     file: UploadFile = File(...),
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
@@ -1149,17 +1172,18 @@ async def upload_custom_instrumental(
     The file is stored to GCS and its path recorded in the job's stems metadata.
     The user can then select 'custom' as their instrumental_selection when completing review.
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to modify this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t(locale, "jobs.reviewNotInState", status=job.status)
         )
 
     # Determine extension from filename or content type
@@ -1202,11 +1226,9 @@ async def upload_custom_instrumental(
             if diff > 0.5:
                 raise HTTPException(
                     status_code=400,
-                    detail=(
-                        f"Duration mismatch: uploaded file is {upload_duration:.1f}s "
-                        f"but original audio is {original_duration:.1f}s. "
-                        f"The instrumental must be exactly {original_duration:.1f}s (±0.5s)."
-                    ),
+                    detail=t(locale, "jobs.durationMismatch",
+                             upload_duration=f"{upload_duration:.1f}",
+                             original_duration=f"{original_duration:.1f}"),
                 )
 
         # Convert to FLAC for consistency with the rest of the pipeline
@@ -1225,7 +1247,7 @@ async def upload_custom_instrumental(
         raise
     except Exception as e:
         logger.error(f"Job {job_id}: Error processing uploaded instrumental: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to process audio file: {str(e)}")
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.audioProcessingFailed", error=str(e)))
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
@@ -1278,6 +1300,7 @@ async def _get_audio_duration_ffprobe_signed(job_id: str, job, storage: StorageS
 @router.post("/{job_id}/complete-review")
 async def complete_review(
     job_id: str,
+    request: Request,
     background_tasks: BackgroundTasks,
     auth_result: AuthResult = Depends(require_auth),
     body: Optional[CompleteReviewRequest] = None
@@ -1294,18 +1317,19 @@ async def complete_review(
     3. Worker uses OutputGenerator to create with_vocals.mkv
     4. Job transitions to INSTRUMENTAL_SELECTED then GENERATING_VIDEO
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to modify this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
     if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not in review state (current status: {job.status})"
+            detail=t(locale, "jobs.reviewNotInState", status=job.status)
         )
 
     # Check for 0-segment lyrics — fail early with user-friendly message
@@ -1320,12 +1344,7 @@ async def complete_review(
         if segment_count == 0 and len(corrected_segments) == 0:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "Cannot complete review: no lyrics were detected in the audio. "
-                    "This can happen when the input audio has no vocals (e.g. a karaoke track or instrumental). "
-                    "You can go back and paste lyrics manually using 'Replace All', "
-                    "or cancel this job and try again with an audio file that contains vocals."
-                )
+                detail=t(locale, "jobs.noLyricsDetected")
             )
 
     try:
@@ -1352,18 +1371,19 @@ async def complete_review(
         return {
             "status": "success",
             "job_status": "review_complete",
-            "message": "Review complete. Video rendering started."
+            "message": t(locale, "jobs.reviewCompleteStartRendering")
         }
 
     except Exception as e:
         logger.error(f"Error completing review for job {job_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.reviewCompleteError", job_id=job_id, error=str(e)))
 
 
 @router.post("/{job_id}/select-instrumental")
 async def select_instrumental(
     job_id: str,
     selection: InstrumentalSelection,
+    request: Request,
     background_tasks: BackgroundTasks,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
@@ -1383,18 +1403,19 @@ async def select_instrumental(
     Returns:
         Status and confirmation of selection
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to access this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
     if job.status != JobStatus.AWAITING_INSTRUMENTAL_SELECTION:
         raise HTTPException(
             status_code=400,
-            detail=f"Job not awaiting instrumental selection (current status: {job.status})"
+            detail=t(locale, "jobs.reviewNotInState", status=job.status)
         )
 
     try:
@@ -1420,17 +1441,18 @@ async def select_instrumental(
             "status": "success",
             "job_status": "instrumental_selected",
             "selection": selection.selection,
-            "message": "Instrumental selected. Video generation started."
+            "message": t(locale, "jobs.instrumentalSelected")
         }
 
     except Exception as e:
         logger.error(f"Error selecting instrumental for job {job_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.instrumentalSelectionError", job_id=job_id, error=str(e)))
 
 
 @router.get("/{job_id}/download-urls")
 async def get_download_urls(
     job_id: str,
+    request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
     """
@@ -1439,13 +1461,14 @@ async def get_download_urls(
     Returns a dictionary mapping file types to download URLs.
     Uses the streaming download endpoint which proxies through the backend.
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to access this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
     file_urls = job.file_urls or {}
     download_urls = {}
@@ -1489,6 +1512,7 @@ async def download_file(
     job_id: str,
     category: str,
     file_key: str,
+    request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ):
     """
@@ -1497,16 +1521,17 @@ async def download_file(
     This endpoint proxies the file from GCS through the backend,
     so no client-side authentication is required.
     """
+    locale = get_locale_from_request(request)
     from fastapi.responses import StreamingResponse
     import tempfile
 
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to access this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
     file_urls = job.file_urls or {}
     category_files = file_urls.get(category)
@@ -1599,6 +1624,7 @@ async def download_file(
 async def cancel_job(
     job_id: str,
     request: CancelJobRequest,
+    http_request: Request,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
     """
@@ -1606,13 +1632,14 @@ async def cancel_job(
 
     Jobs can be cancelled at any stage before completion.
     """
+    locale = get_locale_from_request(http_request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to cancel this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
     success = job_manager.cancel_job(job_id, reason=request.reason)
     
@@ -1629,6 +1656,7 @@ async def cancel_job(
 @router.post("/{job_id}/retry")
 async def retry_job(
     job_id: str,
+    request: Request,
     background_tasks: BackgroundTasks,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
@@ -1644,20 +1672,21 @@ async def retry_job(
     The retry logic determines the appropriate stage to resume from
     based on what files/state already exist.
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to retry this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
     if job.status not in [JobStatus.FAILED, JobStatus.CANCELLED]:
         raise HTTPException(
             status_code=400,
-            detail=f"Only failed or cancelled jobs can be retried (current status: {job.status})"
+            detail=t(locale, "jobs.notCompleted", status=job.status)
         )
-    
+
     try:
         # Determine retry point based on what's already complete
         error_details = job.error_details or {}
@@ -1906,6 +1935,7 @@ async def retry_job(
 @router.get("/{job_id}/logs")
 async def get_worker_logs(
     job_id: str,
+    request: Request,
     since_index: int = 0,
     worker: Optional[str] = None,
     auth_result: AuthResult = Depends(require_auth)
@@ -1932,13 +1962,14 @@ async def get_worker_logs(
             "total_logs": 42
         }
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     # Check ownership - users can only see logs for their own jobs
     if not _check_job_ownership(job, auth_result):
-        raise HTTPException(status_code=403, detail="You don't have permission to access logs for this job")
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
     logs = job_manager.get_worker_logs(job_id, since_index=since_index, worker=worker)
     total = job_manager.get_worker_logs_count(job_id)
@@ -1953,6 +1984,7 @@ async def get_worker_logs(
 @router.post("/{job_id}/cleanup-distribution")
 async def cleanup_distribution(
     job_id: str,
+    request: Request,
     delete_job: bool = True,
     auth_result: AuthResult = Depends(require_admin)
 ) -> dict:
@@ -1972,9 +2004,10 @@ async def cleanup_distribution(
     Returns:
         Cleanup results for each service
     """
+    locale = get_locale_from_request(request)
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     state_data = job.state_data or {}
     results = {
@@ -2191,6 +2224,8 @@ async def create_job_from_search(
 
     Credit deduction happens here (inside job_manager.create_job).
     """
+    locale = get_locale_from_request(request)
+
     # Lazy imports from audio_search to avoid circular imports at module level
     from backend.api.routes.audio_search import (
         _validate_and_prepare_selection,
@@ -2201,7 +2236,7 @@ async def create_job_from_search(
     try:
         user_email = auth_result.user_email
         if not user_email:
-            raise HTTPException(status_code=401, detail="Authentication required")
+            raise HTTPException(status_code=401, detail=t(locale, "jobs.authError"))
 
         # Read the session non-destructively for validation.
         # consume_search_session (atomic read+delete) is called later, just before job creation,
@@ -2328,7 +2363,7 @@ async def create_job_from_search(
             from backend.api.routes.file_upload import _prepare_theme_for_job
             try:
                 style_params_path, theme_style_assets, youtube_desc = _prepare_theme_for_job(
-                    job_id, effective_theme_id, {}
+                    job_id, effective_theme_id, {}, locale=locale
                 )
                 theme_update = {
                     'style_params_gcs_path': style_params_path,
@@ -2389,6 +2424,7 @@ async def create_job_from_search(
 async def change_visibility(
     job_id: str,
     request: ChangeVisibilityRequest,
+    http_request: Request,
     auth_result: AuthResult = Depends(require_auth),
 ):
     """
@@ -2402,10 +2438,11 @@ async def change_visibility(
     - Resets custom styling to default Nomad theme
     - Regenerates screens, re-renders video, publishes publicly
     """
+    locale = get_locale_from_request(http_request)
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
     user_email = auth_result.user_email or "unknown"
     is_admin = auth_result.is_admin

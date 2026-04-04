@@ -11,10 +11,11 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Tuple, List, Optional, Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.api.dependencies import require_admin
+from backend.i18n import t, get_locale_from_request
 from backend.services.auth_service import UserType, AuthResult
 from backend.services.user_service import get_user_service, UserService, USERS_COLLECTION
 from backend.services.job_manager import JobManager

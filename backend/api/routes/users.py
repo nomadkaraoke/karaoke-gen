@@ -35,6 +35,7 @@ def _mask_email(email: str) -> str:
 from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from pydantic import BaseModel, EmailStr
 
+from backend.i18n import t, get_locale_from_request
 from backend.services.email_validation_service import get_email_validation_service
 from backend.models.user import (
     UserRole,
@@ -182,18 +183,20 @@ async def send_magic_link(
     # (done before email service check so we can reject without needing email config)
     email_validation = get_email_validation_service()
 
+    locale = get_locale_from_request(http_request)
+
     if email_validation.is_disposable_domain(email):
         logger.warning(f"Blocked disposable email signup attempt: {_mask_email(email)}")
         raise HTTPException(
             status_code=422,
-            detail="disposable_email_not_allowed"
+            detail=t(locale, "users.disposableEmailBlocked")
         )
 
     if email_validation.is_email_blocked(email):
         logger.warning(f"Blocked email signup attempt: {_mask_email(email)}")
         return SendMagicLinkResponse(
             status="success",
-            message="If this email is registered, you will receive a sign-in link shortly."
+            message=t(locale, "users.magicLinkSent")
         )
 
     ip_address = get_client_ip(http_request)
@@ -201,7 +204,7 @@ async def send_magic_link(
         logger.warning(f"Blocked IP signup attempt: {ip_address}")
         return SendMagicLinkResponse(
             status="success",
-            message="If this email is registered, you will receive a sign-in link shortly."
+            message=t(locale, "users.magicLinkSent")
         )
 
     # Per-IP and per-fingerprint signup rate limit (only for new users)
@@ -217,7 +220,7 @@ async def send_magic_link(
             # Silent reject (anti-enumeration)
             return SendMagicLinkResponse(
                 status="success",
-                message="If this email is registered, you will receive a sign-in link shortly."
+                message=t(locale, "users.magicLinkSent")
             )
 
     # Check if email service is configured
@@ -225,7 +228,7 @@ async def send_magic_link(
         logger.error("Email service not configured - cannot send magic links")
         raise HTTPException(
             status_code=503,
-            detail="Email service is not available. Please contact support."
+            detail=t(locale, "users.emailServiceNotConfigured")
         )
 
     # Get tenant context from middleware
@@ -239,7 +242,7 @@ async def send_magic_link(
             # Return success anyway to prevent email enumeration
             return SendMagicLinkResponse(
                 status="success",
-                message="If this email is registered, you will receive a sign-in link shortly."
+                message=t(locale, "users.magicLinkSent")
             )
 
     # Get client info for security logging (ip_address already extracted above for blocklist check)
@@ -291,7 +294,7 @@ async def send_magic_link(
 
     return SendMagicLinkResponse(
         status="success",
-        message="If this email is registered, you will receive a sign-in link shortly."
+        message=t(locale, "users.magicLinkSent")
     )
 
 
@@ -308,9 +311,11 @@ async def verify_magic_link(
     Returns a session token that should be stored and used for subsequent requests.
     The session will be associated with the tenant from the magic link.
     """
+    locale = get_locale_from_request(http_request)
+
     # Reject empty tokens early to avoid invalid Firestore document paths
     if not token or not token.strip():
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail=t(locale, "users.invalidToken"))
 
     # Get client info
     ip_address = get_client_ip(http_request)
@@ -334,7 +339,7 @@ async def verify_magic_link(
     success, user, message = user_service.verify_magic_link(token)
 
     if not success or not user:
-        raise HTTPException(status_code=401, detail=message)
+        raise HTTPException(status_code=401, detail=t(locale, "users.verifyError", message=message))
 
     # Grant welcome credits on first verification (with AI abuse evaluation)
     # Use pre-computed evaluation from magic link if available (computed at send time)
@@ -397,7 +402,7 @@ async def verify_magic_link(
         status="success",
         session_token=session.token,
         user=user_public,
-        message="Successfully signed in",
+        message=t(locale, "users.magicLinkSuccess"),
         tenant_subdomain=tenant_subdomain,
         credits_granted=credits_granted,
         credit_status=credit_status,
@@ -406,21 +411,23 @@ async def verify_magic_link(
 
 @router.post("/auth/logout", response_model=LogoutResponse)
 async def logout(
+    request: Request,
     authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Logout and invalidate the current session.
     """
+    locale = get_locale_from_request(request)
     if not authorization:
-        return LogoutResponse(status="success", message="Already logged out")
+        return LogoutResponse(status="success", message=t(locale, "users.logoutSuccess"))
 
     # Extract token from "Bearer <token>"
     token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
 
     user_service.revoke_session(token)
 
-    return LogoutResponse(status="success", message="Successfully logged out")
+    return LogoutResponse(status="success", message=t(locale, "users.logoutSuccess"))
 
 
 # =============================================================================
@@ -429,6 +436,7 @@ async def logout(
 
 @router.get("/me", response_model=UserProfileResponse)
 async def get_current_user(
+    request: Request,
     authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -437,10 +445,11 @@ async def get_current_user(
 
     Requires a valid session token or admin token.
     """
+    locale = get_locale_from_request(request)
     from backend.services.auth_service import get_auth_service
 
     if not authorization:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail=t(locale, "users.userNotFound"))
 
     # Extract token
     token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
@@ -471,7 +480,7 @@ async def get_current_user(
     valid, user, message = user_service.validate_session(token)
 
     if not valid or not user:
-        raise HTTPException(status_code=401, detail=message)
+        raise HTTPException(status_code=401, detail=t(locale, "users.userNotFound"))
 
     feedback_eligible = (
         user.total_jobs_completed >= 2
@@ -1144,6 +1153,7 @@ async def stripe_webhook(
 
 @router.get("/feedback/eligibility", response_model=FeedbackEligibilityResponse)
 async def check_feedback_eligibility(
+    request: Request,
     authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -1152,8 +1162,9 @@ async def check_feedback_eligibility(
 
     Eligible if: total_jobs_completed >= 2 AND has not already submitted feedback.
     """
+    locale = get_locale_from_request(request)
     if not authorization:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise HTTPException(status_code=401, detail=t(locale, "users.userNotFound"))
 
     token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
 
@@ -1168,7 +1179,7 @@ async def check_feedback_eligibility(
     else:
         valid, user, message = user_service.validate_session(token)
         if not valid or not user:
-            raise HTTPException(status_code=401, detail=message)
+            raise HTTPException(status_code=401, detail=t(locale, "users.userNotFound"))
 
     eligible = user.total_jobs_completed >= 2 and not user.has_submitted_feedback
 
@@ -1182,6 +1193,7 @@ async def check_feedback_eligibility(
 
 @router.post("/feedback", response_model=UserFeedbackResponse)
 async def submit_user_feedback(
+    http_request: Request,
     request: UserFeedbackRequest,
     authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
@@ -1193,8 +1205,9 @@ async def submit_user_feedback(
     not have already submitted feedback. At least one text field
     must have >50 characters.
     """
+    locale = get_locale_from_request(http_request)
     if not authorization:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise HTTPException(status_code=401, detail=t(locale, "users.userNotFound"))
 
     token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
 
@@ -1209,20 +1222,20 @@ async def submit_user_feedback(
     else:
         valid, user, message = user_service.validate_session(token)
         if not valid or not user:
-            raise HTTPException(status_code=401, detail=message)
+            raise HTTPException(status_code=401, detail=t(locale, "users.userNotFound"))
 
     # Check eligibility: must have completed 2+ jobs
     if user.total_jobs_completed < 2:
         raise HTTPException(
             status_code=400,
-            detail="You need to complete at least 2 karaoke videos before submitting feedback."
+            detail=t(locale, "users.feedbackNotEligible")
         )
 
     # Check if already submitted
     if user.has_submitted_feedback:
         raise HTTPException(
             status_code=400,
-            detail="You have already submitted feedback. Thank you!"
+            detail=t(locale, "users.feedbackNotEligible")
         )
 
     # Validate: at least one text field has >50 characters
@@ -1495,12 +1508,14 @@ async def list_users(
 @router.get("/admin/users/{email}/detail", response_model=UserDetailResponse)
 async def get_user_detail(
     email: str,
+    request: Request,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Get detailed user information including credit history and recent jobs (admin only).
     """
+    locale = get_locale_from_request(request)
     from google.cloud import firestore
     from google.cloud.firestore_v1 import FieldFilter
     from urllib.parse import unquote
@@ -1510,7 +1525,7 @@ async def get_user_detail(
 
     user = user_service.get_user(email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t(locale, "users.userNotFound"))
 
     db = user_service.db
 
@@ -1627,18 +1642,20 @@ async def add_credits_to_user(
 @router.post("/admin/users/{email}/disable")
 async def disable_user(
     email: str,
+    request: Request,
     auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Disable a user account (admin only).
     """
+    locale = get_locale_from_request(request)
     admin_id = auth_data.user_email or "admin:unknown"
 
     success = user_service.disable_user(email, admin_email=admin_id)
 
     if not success:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t(locale, "users.userNotFound"))
 
     return {"status": "success", "message": f"User {email} has been disabled"}
 
@@ -1646,18 +1663,20 @@ async def disable_user(
 @router.post("/admin/users/{email}/enable")
 async def enable_user(
     email: str,
+    request: Request,
     auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Enable a user account (admin only).
     """
+    locale = get_locale_from_request(request)
     admin_id = auth_data.user_email or "admin:unknown"
 
     success = user_service.enable_user(email, admin_email=admin_id)
 
     if not success:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t(locale, "users.userNotFound"))
 
     return {"status": "success", "message": f"User {email} has been enabled"}
 
@@ -1665,6 +1684,7 @@ async def enable_user(
 @router.delete("/admin/users/{email}")
 async def delete_user(
     email: str,
+    request: Request,
     auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -1673,6 +1693,7 @@ async def delete_user(
 
     Jobs are NOT deleted - they remain as historical records.
     """
+    locale = get_locale_from_request(request)
     admin_id = auth_data.user_email or "admin:unknown"
 
     try:
@@ -1681,7 +1702,7 @@ async def delete_user(
         raise HTTPException(status_code=400, detail=str(e))
 
     if not success:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t(locale, "users.userNotFound"))
 
     return {"status": "success", "message": f"User {email} has been deleted"}
 
@@ -1690,18 +1711,20 @@ async def delete_user(
 async def set_user_role(
     email: str,
     role: UserRole,
+    request: Request,
     auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Set a user's role (admin only).
     """
+    locale = get_locale_from_request(request)
     admin_id = auth_data.user_email or "admin:unknown"
 
     success = user_service.set_user_role(email, role, admin_email=admin_id)
 
     if not success:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t(locale, "users.userNotFound"))
 
     return {"status": "success", "message": f"User {email} role set to {role.value}"}
 

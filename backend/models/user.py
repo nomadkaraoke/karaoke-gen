@@ -91,6 +91,9 @@ class User(BaseModel):
     # Optional profile fields for future use
     display_name: Optional[str] = None
 
+    # i18n locale preference (set from Accept-Language on login, used for emails/push)
+    locale: Optional[str] = None
+
     # Push notification subscriptions (Web Push API)
     # Users can subscribe from multiple devices/browsers
     push_subscriptions: List[PushSubscription] = Field(default_factory=list)
