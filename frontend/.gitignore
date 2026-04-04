@@ -17,3 +17,6 @@ e2e/fixtures/data/search-results/*.json
 
 # Chrome profile for interactive fixture review (auto-created by playwright.review.config.ts)
 .review-profile/
+
+# Translation snapshot for incremental delta mode
+messages/.en-snapshot.json
