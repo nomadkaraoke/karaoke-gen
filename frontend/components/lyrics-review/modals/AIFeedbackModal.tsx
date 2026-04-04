@@ -38,6 +38,7 @@ export default function AIFeedbackModal({
   suggestion,
 }: AIFeedbackModalProps) {
   const t = useTranslations('lyricsReview.modals.aiFeedback')
+  const tc = useTranslations('common')
   const [reviewerAction, setAction] = useState('ACCEPT')
   const [finalText, setFinalText] = useState('')
   const [reasonCategory, setReason] = useState('AI_CORRECT')
@@ -136,7 +137,7 @@ export default function AIFeedbackModal({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button onClick={handleSubmit}>{t('submit')}</Button>
         </DialogFooter>

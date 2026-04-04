@@ -80,7 +80,7 @@ function VerifyMagicLinkContent() {
     }
 
     verify()
-  }, [searchParams, verifyMagicLink, router])
+  }, [searchParams, verifyMagicLink, router, t])
 
   const goToApp = () => router.push("/app")
   const goToBuy = () => router.push("/app?buy=true")

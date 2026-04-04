@@ -194,7 +194,7 @@ export function TitleCardPreview({ artist, title, customBackgroundUrl, backgroun
       artist ? effectiveArtistColor : "rgba(255,223,107,0.25)",
       fontFamily,
     )
-  }, [artist, title, customBackgroundUrl, backgroundColor, effectiveTitleColor, effectiveArtistColor])
+  }, [artist, title, customBackgroundUrl, backgroundColor, effectiveTitleColor, effectiveArtistColor, t])
 
   useEffect(() => {
     draw()
