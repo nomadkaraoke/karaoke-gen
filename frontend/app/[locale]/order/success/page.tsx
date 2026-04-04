@@ -4,10 +4,11 @@ import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { CheckCircle, Loader2, Mail, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 
 function OrderSuccessContent() {
   const t = useTranslations('order')
+  const locale = useLocale()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
 
@@ -50,7 +51,7 @@ function OrderSuccessContent() {
           asChild
           className="w-full bg-primary hover:bg-primary/90"
         >
-          <a href="https://nomadkaraoke.com">
+          <a href={`https://nomadkaraoke.com/${locale}/`}>
             {t('backToNomadKaraoke')}
           </a>
         </Button>

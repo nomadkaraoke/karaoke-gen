@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from '@/i18n/routing';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import {
   Music,
@@ -44,6 +44,7 @@ export default function LandingPage() {
 function ConsumerLandingPage() {
   const router = useRouter();
   const t = useTranslations('landing');
+  const locale = useLocale();
   const { isDefault: isDefaultTenant, isLoading: tenantLoading, isInitialized: tenantInitialized } = useTenant();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
@@ -847,7 +848,7 @@ function ConsumerLandingPage() {
             <a href="mailto:support@nomadkaraoke.com" className="hover:text-primary-400 transition-colors">
               {t('footer.supportLink')}
             </a>
-            <a href="https://nomadkaraoke.com" className="hover:text-primary-400 transition-colors">
+            <a href={`https://nomadkaraoke.com/${locale}/`} className="hover:text-primary-400 transition-colors">
               {t('footer.aboutLink')}
             </a>
           </div>
