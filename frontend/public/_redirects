@@ -5,3 +5,42 @@
 # no server-side redirects are needed. The hash portion is never sent
 # to the server, so all requests go to /app/jobs/ and routing is
 # handled client-side.
+
+# Bare /r/CODE (no locale prefix) → redirect to /en/r/CODE
+/r/* /en/r/:splat 302
+
+# Referral interstitial — dynamic /r/CODE paths rewrite to the base /r/ page
+# which reads the code from the URL client-side via catch-all routing
+/en/r/* /en/r/index.html 200
+/es/r/* /es/r/index.html 200
+/de/r/* /de/r/index.html 200
+/pt/r/* /pt/r/index.html 200
+/fr/r/* /fr/r/index.html 200
+/ja/r/* /ja/r/index.html 200
+/ko/r/* /ko/r/index.html 200
+/zh/r/* /zh/r/index.html 200
+/it/r/* /it/r/index.html 200
+/nl/r/* /nl/r/index.html 200
+/pl/r/* /pl/r/index.html 200
+/tr/r/* /tr/r/index.html 200
+/ru/r/* /ru/r/index.html 200
+/th/r/* /th/r/index.html 200
+/id/r/* /id/r/index.html 200
+/vi/r/* /vi/r/index.html 200
+/tl/r/* /tl/r/index.html 200
+/hi/r/* /hi/r/index.html 200
+/ar/r/* /ar/r/index.html 200
+/sv/r/* /sv/r/index.html 200
+/nb/r/* /nb/r/index.html 200
+/da/r/* /da/r/index.html 200
+/fi/r/* /fi/r/index.html 200
+/cs/r/* /cs/r/index.html 200
+/ro/r/* /ro/r/index.html 200
+/hu/r/* /hu/r/index.html 200
+/el/r/* /el/r/index.html 200
+/he/r/* /he/r/index.html 200
+/ms/r/* /ms/r/index.html 200
+/uk/r/* /uk/r/index.html 200
+/hr/r/* /hr/r/index.html 200
+/sk/r/* /sk/r/index.html 200
+/ca/r/* /ca/r/index.html 200
