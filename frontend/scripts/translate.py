@@ -44,45 +44,44 @@ LOCATION = "global"
 MAX_CONCURRENT = 5
 MAX_RETRIES = 3
 
-# All supported locales and their display names
+# All supported locales and their display names (33 total, excluding 'en')
 LOCALE_NAMES = {
     "ar": "Arabic",
-    "bn": "Bengali",
+    "ca": "Catalan",
+    "cs": "Czech",
+    "da": "Danish",
     "de": "German",
     "el": "Greek",
     "es": "Spanish",
-    "fa": "Persian",
-    "fil": "Filipino",
+    "fi": "Finnish",
     "fr": "French",
     "he": "Hebrew",
     "hi": "Hindi",
+    "hr": "Croatian",
     "hu": "Hungarian",
     "id": "Indonesian",
     "it": "Italian",
     "ja": "Japanese",
     "ko": "Korean",
     "ms": "Malay",
+    "nb": "Norwegian",
     "nl": "Dutch",
-    "no": "Norwegian",
     "pl": "Polish",
     "pt": "Portuguese",
     "ro": "Romanian",
     "ru": "Russian",
+    "sk": "Slovak",
     "sv": "Swedish",
     "th": "Thai",
-    "tl": "Tagalog",
+    "tl": "Filipino",
     "tr": "Turkish",
     "uk": "Ukrainian",
-    "ur": "Urdu",
     "vi": "Vietnamese",
-    "zh-CN": "Simplified Chinese",
-    "zh-TW": "Traditional Chinese",
-    "cs": "Czech",
-    "da": "Danish",
+    "zh": "Chinese (Simplified)",
 }
 
-# RTL languages (for form-of-address guidance)
-RTL_LOCALES = {"ar", "he", "fa", "ur"}
+# RTL languages
+RTL_LOCALES = {"ar", "he"}
 
 # Informal "you" forms per language (where it matters)
 INFORMAL_YOU = {
@@ -96,14 +95,19 @@ INFORMAL_YOU = {
     "ru": 'ты',
     "uk": 'ти',
     "cs": 'ty',
+    "sk": 'ty',
+    "hr": 'ti',
     "ro": 'tu',
     "hu": 'te',
     "el": 'εσύ',
     "tr": 'sen',
     "hi": 'तुम',
-    "bn": 'তুমি',
     "vi": 'bạn',
-    "th": 'คุณ',
+    "sv": 'du',
+    "nb": 'du',
+    "da": 'du',
+    "fi": 'sinä',
+    "ca": 'tu',
 }
 
 
@@ -503,15 +507,18 @@ async def async_main(args):
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Save snapshot after successful run
-    with open(snapshot_path, "w", encoding="utf-8") as f:
-        json.dump(english_data, f, ensure_ascii=False, indent=2)
-        f.write("\n")
-    print(f"\nSnapshot saved: {snapshot_path}")
-
     # Summary
     succeeded = sum(1 for r in results if r is True)
     failed = sum(1 for r in results if r is not True)
+
+    # Only save snapshot if all translations succeeded
+    if failed == 0:
+        with open(snapshot_path, "w", encoding="utf-8") as f:
+            json.dump(english_data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        print(f"\nSnapshot saved: {snapshot_path}")
+    else:
+        print(f"\nSnapshot NOT saved (some translations failed — will retry on next run)")
     print(f"\nDone! {succeeded}/{total} locales succeeded", end="")
     if failed:
         print(f", {failed} failed")
