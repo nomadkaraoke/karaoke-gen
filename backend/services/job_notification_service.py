@@ -132,6 +132,7 @@ class JobNotificationService:
                 feedback_url=FEEDBACK_FORM_URL,
                 is_private=is_private,
                 youtube_queued=youtube_queued,
+                locale=user_locale,
             )
 
             # Send the email with CC to admin
@@ -195,6 +196,7 @@ class JobNotificationService:
                 artist=artist,
                 title=title,
                 youtube_url=youtube_url,
+                locale=user_locale,
             )
 
             success = self.email_service.send_youtube_upload_complete(
@@ -269,6 +271,7 @@ class JobNotificationService:
                     artist=artist,
                     title=title,
                     review_url=review_url,
+                    locale=user_locale,
                 )
             elif action_type == "instrumental":
                 instrumental_url = self._build_instrumental_url(job_id, instrumental_token, locale=user_locale)
@@ -277,6 +280,7 @@ class JobNotificationService:
                     artist=artist,
                     title=title,
                     instrumental_url=instrumental_url,
+                    locale=user_locale,
                 )
             elif action_type == "audio_edit":
                 audio_edit_url = self._build_audio_edit_url(job_id, locale=user_locale)
@@ -286,6 +290,7 @@ class JobNotificationService:
                     artist=artist,
                     title=title,
                     review_url=audio_edit_url,
+                    locale=user_locale,
                 )
             else:
                 logger.error(f"Unknown action type: {action_type}")

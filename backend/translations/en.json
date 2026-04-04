@@ -194,13 +194,44 @@
   },
   "emails": {
     "magicLink": {
-      "subject": "Sign in to {brand_name}"
+      "subject": "Sign in to {brand_name}",
+      "greeting": "Hi there,",
+      "signInPrompt": "Click the button below to sign in to {brand_name}:",
+      "signInButton": "Sign In",
+      "expiryWarning": "This link expires in 15 minutes and can only be used once.",
+      "fallbackLink": "If the button doesn't work, copy and paste this link into your browser:",
+      "ignoreNote": "If you didn't request this email, you can safely ignore it."
     },
     "welcome": {
-      "subject": "Welcome to Nomad Karaoke!"
+      "subject": "Welcome to Nomad Karaoke!",
+      "welcomeGreeting": "Welcome to Nomad Karaoke!",
+      "turnAnySong": "Turn any song into a professional karaoke video in minutes.",
+      "freeCreditsLabel": "Free Credits",
+      "freeCreditsNote": "Each credit creates one professional karaoke video",
+      "howItWorks": "Here's how it works:",
+      "step1Title": "1. Search for a song",
+      "step1Desc": "Enter the artist and title, and we'll find high-quality audio.",
+      "step2Title": "2. Our system works its magic",
+      "step2Desc": "We separate vocals, transcribe lyrics, and sync everything perfectly.",
+      "step3Title": "3. Review & customize",
+      "step3Desc": "Fine-tune the lyrics if needed, choose your instrumental.",
+      "step4Title": "4. Get your video",
+      "step4Desc": "Download your 4K karaoke video or upload directly to YouTube.",
+      "feedbackBonus": "Complete 2 videos and earn 2 more free credits by sharing your feedback!",
+      "getStartedButton": "Get Started"
     },
     "creditsAdded": {
-      "subject": "{credits} credits added to your Nomad Karaoke account"
+      "subject": "{credits} credits added to your Nomad Karaoke account",
+      "greatNews": "Great news!",
+      "creditsAddedMessage": "{credits} credits have been added to your account.",
+      "yourBalance": "Your balance:",
+      "credits": "credits",
+      "eachCreditLets": "Each credit lets you create one professional karaoke video with:",
+      "featureVocalSeparation": "AI-powered vocal/instrumental separation",
+      "featureLyrics": "Synchronized lyrics with word-level timing",
+      "feature4k": "4K video output",
+      "featureYoutube": "YouTube upload",
+      "createButton": "Create Karaoke Now"
     },
     "jobCompletion": {
       "subjectWithBrand": "{brand_code}: {artist} - {title} (Your karaoke video is ready!)",
@@ -218,21 +249,90 @@
       "instrumentalSubject": "Action needed: Select instrumental for {artist} - {title}",
       "instrumentalSubjectFallback": "Action needed: Select instrumental",
       "audioEditSubject": "Action needed for {artist} - {title}",
-      "audioEditSubjectFallback": "Action needed"
+      "audioEditSubjectFallback": "Action needed",
+      "alertHeading": "Your karaoke video needs input from you!"
     },
     "reviewReminder": {
       "subject": "Reminder: Your karaoke video is waiting for review — {artist} - {title}",
-      "subjectFallback": "Reminder: Your karaoke video is waiting for review"
+      "subjectFallback": "Reminder: Your karaoke video is waiting for review",
+      "alertHeading": "Your karaoke video is waiting for you!",
+      "reminderIntro": "Just a friendly reminder that your karaoke video{song_name} is ready for review.",
+      "reviewButton": "Review Your Video",
+      "reviewInstructions": "During the review, you can check the lyrics are correct and choose your preferred instrumental track. It usually only takes a few minutes!",
+      "helpOffer": "If you're having any trouble with the review process, just reply to this email and I'll be happy to help you out.",
+      "expiryWarning": "Please note: if the review isn't completed within the next 24 hours, the job will automatically expire and your credit will be refunded."
     },
     "reviewExpired": {
       "subject": "Your karaoke video has expired — {artist} - {title}",
-      "subjectFallback": "Your karaoke video has expired"
+      "subjectFallback": "Your karaoke video has expired",
+      "cancelNotice": "Your karaoke video{song_name} has been automatically cancelled because the review wasn't completed within 48 hours.",
+      "refundNotice": "Don't worry — your credit has been refunded! Your current balance is {credits_balance} {credits_word}.",
+      "creditSingular": "credit",
+      "creditPlural": "credits",
+      "createNewPrompt": "You can create a new karaoke video anytime using your credits:",
+      "createButton": "Create New Video",
+      "helpOffer": "If you had any trouble with the review process or need help, just reply to this email — I'd love to help!"
     },
     "creditDenied": {
-      "subject": "About your Nomad Karaoke free credits"
+      "subject": "About your Nomad Karaoke free credits",
+      "greeting": "Hi there,",
+      "thankYou": "Thanks for signing up for Nomad Karaoke!",
+      "deniedMessage": "Unfortunately, we weren't able to grant your free {credit_type} this time. Our system detected patterns that suggest this may not be your first account with us, and each karaoke generation job costs us real money in cloud computing and API fees.",
+      "mistakeNote": "We totally understand if this is a mistake! If you're a genuine new user, please just reply to this email and let Andrew (the founder) know. He built this service and is happy to grant you some free credits to try it out — he just asks that you provide honest feedback on the experience in return.",
+      "buyPrompt": "If you'd like to get started right away, you can also purchase credits:",
+      "buyButton": "Buy Credits",
+      "costNote": "We keep costs low so we can offer the service affordably, which means we need to be careful about free credit abuse. Thanks for understanding!",
+      "welcomeCredits": "welcome credits",
+      "feedbackCredits": "feedback bonus credits"
     },
     "madeForYouConfirmation": {
-      "subject": "Order Confirmed: {artist} - {title} | Nomad Karaoke"
+      "subject": "Order Confirmed: {artist} - {title} | Nomad Karaoke",
+      "thankYou": "Thank You for Your Order!",
+      "orderDetails": "Order Details",
+      "orderId": "Order ID:",
+      "artist": "Artist:",
+      "title": "Title:",
+      "yourNotes": "Your Notes:",
+      "deliveryTime": "Our team will create your custom karaoke video within {hours} hours.",
+      "deliveryNotice": "You'll receive an email with download links as soon as your video is ready.",
+      "noAction": "No action needed — sit back and we'll take care of everything!"
+    },
+    "shared": {
+      "footerHelp": "If anything isn't perfect, just reply to this email and I'll fix it!"
+    },
+    "templates": {
+      "jobCompletion": {
+        "greeting": "Hi {name},",
+        "thanks": "Thanks for your order!",
+        "youtubeLink": "Here's the link for the karaoke video published to YouTube:",
+        "dropboxIntro": "Here's the dropbox folder with all the finished files and source files, including:",
+        "fileList": "- \"(Final Karaoke Lossless).mkv\": combined karaoke video in 4k H264 with lossless FLAC audio\n- \"(Final Karaoke).mp4\": combined karaoke video with title/end screen in 4k H264/AAC\n- \"(Final Karaoke 720p).mp4\": combined karaoke video in 720p H264/AAC (smaller file for older systems)\n- \"(With Vocals).mp4\": sing along video in 4k H264/AAC with original vocals\n- \"(Karaoke).mov\": karaoke video output from MidiCo (no title/end screen)\n- \"(Title).mov\"/\"(End).mov\": title card and end screen videos\n- \"(Final Karaoke CDG).zip\": CDG+MP3 format for older/commercial karaoke systems\n- \"(Final Karaoke TXT).zip\": TXT+MP3 format for Power Karaoke\n- stems/*.flac: various separated instrumental and vocal audio stems in lossless format\n- lyrics/*.txt song lyrics from various sources in plain text format",
+        "fixOffer": "Let me know if anything isn't perfect and I'll happily tweak / fix, or if you need it in any other format I can probably convert it for you!",
+        "feedbackRequest": "If you have a moment, I'd really appreciate your feedback (takes 2 minutes):",
+        "signOff": "Thanks again and have a great day!\n-Andrew",
+        "youtubeQueued": "Your YouTube upload is queued and will be processed automatically. You'll receive a follow-up email with the link shortly."
+      },
+      "actionLyrics": {
+        "greeting": "Hi {name},",
+        "ready": "Your karaoke video for \"{artist} - {title}\" is ready for review!",
+        "instructions": "Our system has transcribed and synchronized the lyrics, but they may need some corrections. You'll also be able to select your preferred instrumental track (with or without backing vocals).",
+        "reviewPrompt": "Please review your lyrics and select an instrumental:",
+        "duration": "This usually takes just a few minutes.",
+        "signOff": "Thanks!\n-Andrew"
+      },
+      "actionInstrumental": {
+        "greeting": "Hi {name},",
+        "almostDone": "Your karaoke video for \"{artist} - {title}\" is almost done!",
+        "instructions": "We've separated the audio into different versions. Please select which instrumental track you'd like to use for the final video.",
+        "selectPrompt": "Select your instrumental here:",
+        "signOff": "Thanks!\n-Andrew"
+      },
+      "youtubeComplete": {
+        "greeting": "Hi {name},",
+        "greatNews": "Great news! Your karaoke video for \"{artist} - {title}\" has been uploaded to YouTube:",
+        "delayNote": "This upload was briefly delayed while our systems processed other uploads, but everything is all set now.",
+        "signOff": "Thanks!\n-Andrew"
+      }
     }
   }
 }

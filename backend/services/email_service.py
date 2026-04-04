@@ -283,38 +283,38 @@ class EmailService:
 """
 
         content = f"""
-    <p>Hi there,</p>
+    <p>{t(locale, "emails.magicLink.greeting")}</p>
 
-    <p>Click the button below to sign in to {html.escape(brand_name)}:</p>
+    <p>{t(locale, "emails.magicLink.signInPrompt", brand_name=html.escape(brand_name))}</p>
 
     <p style="text-align: center;">
-        <a href="{magic_link_url}" class="button">Sign In</a>
+        <a href="{magic_link_url}" class="button">{t(locale, "emails.magicLink.signInButton")}</a>
     </p>
 
     <div class="warning">
-        ⏰ This link expires in 15 minutes and can only be used once.
+        ⏰ {t(locale, "emails.magicLink.expiryWarning")}
     </div>
 
-    <p>If the button doesn't work, copy and paste this link into your browser:</p>
+    <p>{t(locale, "emails.magicLink.fallbackLink")}</p>
     <p style="word-break: break-all; font-size: 14px; color: #666;">
         {magic_link_url}
     </p>
 
-    <p>If you didn't request this email, you can safely ignore it.</p>
+    <p>{t(locale, "emails.magicLink.ignoreNote")}</p>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         text_content = f"""
-Sign in to {brand_name}
+{t(locale, "emails.magicLink.signInButton")}
 ========================
 
-Click this link to sign in:
+{t(locale, "emails.magicLink.signInPrompt", brand_name=brand_name)}
 {magic_link_url}
 
-This link expires in 15 minutes and can only be used once.
+{t(locale, "emails.magicLink.expiryWarning")}
 
-If you didn't request this email, you can safely ignore it.
+{t(locale, "emails.magicLink.ignoreNote")}
 
 ---
 © {self._get_year()} {brand_name}
@@ -355,39 +355,39 @@ If you didn't request this email, you can safely ignore it.
 """
 
         content = f"""
-    <p>Great news!</p>
+    <p>{t(locale, "emails.creditsAdded.greatNews")}</p>
 
-    <p><strong>{credits} credits</strong> have been added to your account.</p>
+    <p><strong>{t(locale, "emails.creditsAdded.creditsAddedMessage", credits=credits)}</strong></p>
 
     <div class="credits-box">
-        <div>Your balance:</div>
+        <div>{t(locale, "emails.creditsAdded.yourBalance")}</div>
         <div class="credits-number">{total_credits}</div>
-        <div>credits</div>
+        <div>{t(locale, "emails.creditsAdded.credits")}</div>
     </div>
 
-    <p>Each credit lets you create one professional karaoke video with:</p>
+    <p>{t(locale, "emails.creditsAdded.eachCreditLets")}</p>
     <ul>
-        <li>AI-powered vocal/instrumental separation</li>
-        <li>Synchronized lyrics with word-level timing</li>
-        <li>4K video output</li>
-        <li>YouTube upload</li>
+        <li>{t(locale, "emails.creditsAdded.featureVocalSeparation")}</li>
+        <li>{t(locale, "emails.creditsAdded.featureLyrics")}</li>
+        <li>{t(locale, "emails.creditsAdded.feature4k")}</li>
+        <li>{t(locale, "emails.creditsAdded.featureYoutube")}</li>
     </ul>
 
     <p style="text-align: center;">
-        <a href="{self.frontend_url}{get_locale_prefix(locale)}" class="button">Create Karaoke Now</a>
+        <a href="{self.frontend_url}{get_locale_prefix(locale)}" class="button">{t(locale, "emails.creditsAdded.createButton")}</a>
     </p>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         text_content = f"""
-{credits} credits added to your Nomad Karaoke account!
+{t(locale, "emails.creditsAdded.creditsAddedMessage", credits=credits)}
 
-Your new balance: {total_credits} credits
+{t(locale, "emails.creditsAdded.yourBalance")} {total_credits} {t(locale, "emails.creditsAdded.credits")}
 
-Each credit lets you create one professional karaoke video.
+{t(locale, "emails.creditsAdded.eachCreditLets")}
 
-Start creating: {self.frontend_url}{get_locale_prefix(locale)}
+{self.frontend_url}{get_locale_prefix(locale)}
 
 ---
 © {self._get_year()} Nomad Karaoke
@@ -449,87 +449,87 @@ Start creating: {self.frontend_url}{get_locale_prefix(locale)}
             credits_box = f"""
     <div class="credits-box">
         <div class="credits-number">{credits}</div>
-        <div class="credits-label">Free Credits</div>
-        <div class="credits-note">Each credit creates one professional karaoke video</div>
+        <div class="credits-label">{t(locale, "emails.welcome.freeCreditsLabel")}</div>
+        <div class="credits-note">{t(locale, "emails.welcome.freeCreditsNote")}</div>
     </div>
 """
 
         content = f"""
-    <p>Welcome to Nomad Karaoke!</p>
+    <p>{t(locale, "emails.welcome.welcomeGreeting")}</p>
 
-    <p>Turn any song into a professional karaoke video in minutes.</p>
+    <p>{t(locale, "emails.welcome.turnAnySong")}</p>
 
     {credits_box}
 
-    <p><strong>Here's how it works:</strong></p>
+    <p><strong>{t(locale, "emails.welcome.howItWorks")}</strong></p>
 
     <div class="feature">
         <span class="feature-icon">🎵</span>
         <div>
-            <strong>1. Search for a song</strong><br>
-            Enter the artist and title, and we'll find high-quality audio.
+            <strong>{t(locale, "emails.welcome.step1Title")}</strong><br>
+            {t(locale, "emails.welcome.step1Desc")}
         </div>
     </div>
 
     <div class="feature">
         <span class="feature-icon">✨</span>
         <div>
-            <strong>2. Our system works its magic</strong><br>
-            We separate vocals, transcribe lyrics, and sync everything perfectly.
+            <strong>{t(locale, "emails.welcome.step2Title")}</strong><br>
+            {t(locale, "emails.welcome.step2Desc")}
         </div>
     </div>
 
     <div class="feature">
         <span class="feature-icon">✏️</span>
         <div>
-            <strong>3. Review & customize</strong><br>
-            Fine-tune the lyrics if needed, choose your instrumental.
+            <strong>{t(locale, "emails.welcome.step3Title")}</strong><br>
+            {t(locale, "emails.welcome.step3Desc")}
         </div>
     </div>
 
     <div class="feature">
         <span class="feature-icon">🎬</span>
         <div>
-            <strong>4. Get your video</strong><br>
-            Download your 4K karaoke video or upload directly to YouTube.
+            <strong>{t(locale, "emails.welcome.step4Title")}</strong><br>
+            {t(locale, "emails.welcome.step4Desc")}
         </div>
     </div>
 
     <p style="text-align: center; font-size: 14px; color: #999; margin-top: 20px;">
-        Complete 2 videos and earn 2 more free credits by sharing your feedback!
+        {t(locale, "emails.welcome.feedbackBonus")}
     </p>
 
     <p style="text-align: center;">
-        <a href="{self.frontend_url}{get_locale_prefix(locale)}" class="button">Get Started</a>
+        <a href="{self.frontend_url}{get_locale_prefix(locale)}" class="button">{t(locale, "emails.welcome.getStartedButton")}</a>
     </p>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
-        credits_text = f"\nYou have {credits} free credits to get started!\nEach credit creates one professional karaoke video.\n" if credits > 0 else ""
+        credits_text = f"\n{t(locale, 'emails.welcome.freeCreditsNote')}: {credits}\n" if credits > 0 else ""
 
         text_content = f"""
-Welcome to Nomad Karaoke!
+{t(locale, "emails.welcome.welcomeGreeting")}
 
-Turn any song into a professional karaoke video in minutes.
+{t(locale, "emails.welcome.turnAnySong")}
 {credits_text}
-Here's how it works:
+{t(locale, "emails.welcome.howItWorks")}
 
-1. Search for a song
-   Enter the artist and title, and we'll find high-quality audio.
+{t(locale, "emails.welcome.step1Title")}
+   {t(locale, "emails.welcome.step1Desc")}
 
-2. Our system works its magic
-   We separate vocals, transcribe lyrics, and sync everything perfectly.
+{t(locale, "emails.welcome.step2Title")}
+   {t(locale, "emails.welcome.step2Desc")}
 
-3. Review & customize
-   Fine-tune the lyrics if needed, choose your instrumental.
+{t(locale, "emails.welcome.step3Title")}
+   {t(locale, "emails.welcome.step3Desc")}
 
-4. Get your video
-   Download your 4K karaoke video or upload directly to YouTube.
+{t(locale, "emails.welcome.step4Title")}
+   {t(locale, "emails.welcome.step4Desc")}
 
-Complete 2 videos and earn 2 more free credits by sharing your feedback!
+{t(locale, "emails.welcome.feedbackBonus")}
 
-Get started: {self.frontend_url}{get_locale_prefix(locale)}
+{self.frontend_url}{get_locale_prefix(locale)}
 
 ---
 © {self._get_year()} Nomad Karaoke
@@ -555,10 +555,10 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
     </div>
 """
 
-    def _get_email_footer(self) -> str:
+    def _get_email_footer(self, locale: str = "en") -> str:
         """Get the standard email footer with support message and signature."""
         return f"""
-    <p style="margin-top: 30px; font-style: italic; color: #666;">If anything isn't perfect, just reply to this email and I'll fix it!</p>
+    <p style="margin-top: 30px; font-style: italic; color: #666;">{t(locale, "emails.shared.footerHelp")}</p>
 
     <div class="signature">
         {self._get_email_signature()}
@@ -601,13 +601,14 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
         }}
 """
 
-    def _build_email_html(self, content: str, extra_styles: str = "", extra_header_content: str = "") -> str:
+    def _build_email_html(self, content: str, extra_styles: str = "", extra_header_content: str = "", locale: str = "en") -> str:
         """Build a complete HTML email with standard header, footer, and styles.
 
         Args:
             content: The main body content of the email
             extra_styles: Additional CSS styles specific to this email type
             extra_header_content: Optional extra content to add in header (e.g., beta badge)
+            locale: Locale for footer localization
 
         Returns:
             Complete HTML email string
@@ -626,7 +627,7 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
 
     {content}
 
-    {self._get_email_footer()}
+    {self._get_email_footer(locale)}
 </body>
 </html>
 """
@@ -910,7 +911,7 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
     <div class="content">{html.escape(message_content)}</div>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         cc_emails = ["gen@nomadkaraoke.com"] if cc_admin else None
 
@@ -983,13 +984,13 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
 
         content = f"""
     <div class="alert">
-        ⏰ Your karaoke video needs input from you!
+        ⏰ {t(locale, "emails.actionReminder.alertHeading")}
     </div>
 
     <div class="content">{html.escape(message_content)}</div>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         return self.provider.send_email(
             to_email=to_email,
@@ -1060,36 +1061,35 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
 """
 
         song_name = f" for <strong>{html.escape(artist)} - {html.escape(title)}</strong>" if artist and title else ""
+        song_name_text = f" for {artist} - {title}" if artist and title else ""
 
         content = f"""
     <div class="alert">
-        ⏰ Your karaoke video is waiting for you!
+        ⏰ {t(locale, "emails.reviewReminder.alertHeading")}
     </div>
 
-    <p>Hi there! Just a friendly reminder that your karaoke video{song_name} is ready for review.</p>
+    <p>{t(locale, "emails.reviewReminder.reminderIntro", song_name=song_name)}</p>
 
     <p style="text-align: center;">
-        <a href="{html.escape(review_url)}" class="review-btn">Review Your Video</a>
+        <a href="{html.escape(review_url)}" class="review-btn">{t(locale, "emails.reviewReminder.reviewButton")}</a>
     </p>
 
-    <p>During the review, you can check the lyrics are correct and choose your preferred instrumental track. It usually only takes a few minutes!</p>
+    <p>{t(locale, "emails.reviewReminder.reviewInstructions")}</p>
 
-    <p>If you're having any trouble with the review process, just reply to this email and I'll be happy to help you out.</p>
+    <p>{t(locale, "emails.reviewReminder.helpOffer")}</p>
 
     <div class="expiry-warning">
-        ⚠️ Please note: if the review isn't completed within the next <strong>24 hours</strong>,
-        the job will automatically expire and your credit will be refunded.
+        ⚠️ {t(locale, "emails.reviewReminder.expiryWarning")}
     </div>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         text_content = (
-            f"Reminder: Your karaoke video{' for ' + artist + ' - ' + title if artist and title else ''} is ready for review.\n\n"
-            f"Review it here: {review_url}\n\n"
-            "If you're having trouble with the review process, just reply to this email and I'll help you out.\n\n"
-            "Please note: if the review isn't completed within the next 24 hours, "
-            "the job will automatically expire and your credit will be refunded."
+            f"{t(locale, 'emails.reviewReminder.reminderIntro', song_name=song_name_text)}\n\n"
+            f"{t(locale, 'emails.reviewReminder.reviewButton')}: {review_url}\n\n"
+            f"{t(locale, 'emails.reviewReminder.helpOffer')}\n\n"
+            f"{t(locale, 'emails.reviewReminder.expiryWarning')}"
         )
 
         return self.provider.send_email(
@@ -1157,33 +1157,32 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
 """
 
         song_name = f" for <strong>{html.escape(artist)} - {html.escape(title)}</strong>" if artist and title else ""
+        song_name_text = f" for {artist} - {title}" if artist and title else ""
+        credits_word = t(locale, "emails.reviewExpired.creditSingular") if credits_balance == 1 else t(locale, "emails.reviewExpired.creditPlural")
 
         content = f"""
     <div class="info-box">
-        Your karaoke video{song_name} has been automatically cancelled because the review
-        wasn't completed within 48 hours.
+        {t(locale, "emails.reviewExpired.cancelNotice", song_name=song_name)}
     </div>
 
-    <p>Don't worry — your credit has been refunded! Your current balance is
-    <span class="credit-badge">{credits_balance} credit{'s' if credits_balance != 1 else ''}</span>.</p>
+    <p>{t(locale, "emails.reviewExpired.refundNotice", credits_balance=credits_balance, credits_word=credits_word)}</p>
 
-    <p>You can create a new karaoke video anytime using your credits:</p>
+    <p>{t(locale, "emails.reviewExpired.createNewPrompt")}</p>
 
     <p style="text-align: center;">
-        <a href="{html.escape(self.frontend_url)}{get_locale_prefix(locale)}/app" class="create-btn">Create New Video</a>
+        <a href="{html.escape(self.frontend_url)}{get_locale_prefix(locale)}/app" class="create-btn">{t(locale, "emails.reviewExpired.createButton")}</a>
     </p>
 
-    <p>If you had any trouble with the review process or need help, just reply to this email — I'd love to help!</p>
+    <p>{t(locale, "emails.reviewExpired.helpOffer")}</p>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         text_content = (
-            f"Your karaoke video{' for ' + artist + ' - ' + title if artist and title else ''} has been "
-            "automatically cancelled because the review wasn't completed within 48 hours.\n\n"
-            f"Your credit has been refunded. Current balance: {credits_balance} credit{'s' if credits_balance != 1 else ''}.\n\n"
-            f"Create a new video anytime: {self.frontend_url}{get_locale_prefix(locale)}/app\n\n"
-            "If you had any trouble or need help, just reply to this email."
+            f"{t(locale, 'emails.reviewExpired.cancelNotice', song_name=song_name_text)}\n\n"
+            f"{t(locale, 'emails.reviewExpired.refundNotice', credits_balance=credits_balance, credits_word=credits_word)}\n\n"
+            f"{self.frontend_url}{get_locale_prefix(locale)}/app\n\n"
+            f"{t(locale, 'emails.reviewExpired.helpOffer')}"
         )
 
         return self.provider.send_email(
@@ -1234,7 +1233,7 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
     <div class="content">{html.escape(message_content)}</div>
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         return self.provider.send_email(
             to_email=to_email,
@@ -1292,42 +1291,42 @@ Get started: {self.frontend_url}{get_locale_prefix(locale)}
         notes_html = ""
         notes_text = ""
         if notes:
-            notes_html = f"<p><strong>Your Notes:</strong> {html.escape(notes)}</p>"
-            notes_text = f"\nYour Notes: {notes}"
+            notes_html = f"<p><strong>{t(locale, 'emails.madeForYouConfirmation.yourNotes')}</strong> {html.escape(notes)}</p>"
+            notes_text = f"\n{t(locale, 'emails.madeForYouConfirmation.yourNotes')} {notes}"
 
         content = f"""
-    <h2>Thank You for Your Order!</h2>
+    <h2>{t(locale, "emails.madeForYouConfirmation.thankYou")}</h2>
 
     <div class="order-details">
-        <h3>Order Details</h3>
-        <p><strong>Order ID:</strong> {html.escape(job_id)}</p>
-        <p><strong>Artist:</strong> {html.escape(artist)}</p>
-        <p><strong>Title:</strong> {html.escape(title)}</p>
+        <h3>{t(locale, "emails.madeForYouConfirmation.orderDetails")}</h3>
+        <p><strong>{t(locale, "emails.madeForYouConfirmation.orderId")}</strong> {html.escape(job_id)}</p>
+        <p><strong>{t(locale, "emails.madeForYouConfirmation.artist")}</strong> {html.escape(artist)}</p>
+        <p><strong>{t(locale, "emails.madeForYouConfirmation.title")}</strong> {html.escape(title)}</p>
         {notes_html}
     </div>
 
-    <p>Our team will create your custom karaoke video within <span class="highlight">24 hours</span>.</p>
+    <p>{t(locale, "emails.madeForYouConfirmation.deliveryTime", hours=24)}</p>
 
-    <p>You'll receive an email with download links as soon as your video is ready.</p>
+    <p>{t(locale, "emails.madeForYouConfirmation.deliveryNotice")}</p>
 
-    <p><strong>No action needed</strong> - sit back and we'll take care of everything!</p>
+    <p><strong>{t(locale, "emails.madeForYouConfirmation.noAction")}</strong></p>
 """
 
-        text_content = f"""Thank You for Your Order!
+        text_content = f"""{t(locale, "emails.madeForYouConfirmation.thankYou")}
 
-Order Details:
-Order ID: {job_id}
-Artist: {artist}
-Title: {title}{notes_text}
+{t(locale, "emails.madeForYouConfirmation.orderDetails")}:
+{t(locale, "emails.madeForYouConfirmation.orderId")} {job_id}
+{t(locale, "emails.madeForYouConfirmation.artist")} {artist}
+{t(locale, "emails.madeForYouConfirmation.title")} {title}{notes_text}
 
-Our team will create your custom karaoke video within 24 hours.
+{t(locale, "emails.madeForYouConfirmation.deliveryTime", hours=24)}
 
-You'll receive an email with download links as soon as your video is ready.
+{t(locale, "emails.madeForYouConfirmation.deliveryNotice")}
 
-No action needed - sit back and we'll take care of everything!
+{t(locale, "emails.madeForYouConfirmation.noAction")}
 """
 
-        html_content = self._build_email_html(content, extra_styles)
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         return self.provider.send_email(
             to_email=to_email,
@@ -1697,50 +1696,44 @@ If the user looks legitimate, grant them credits from their admin page.
         """
         subject = t(locale, "emails.creditDenied.subject")
 
-        credit_type = "welcome credits" if grant_type == "welcome" else "feedback bonus credits"
+        credit_type = t(locale, "emails.creditDenied.welcomeCredits") if grant_type == "welcome" else t(locale, "emails.creditDenied.feedbackCredits")
 
         content = f"""
-    <p>Hi there,</p>
+    <p>{t(locale, "emails.creditDenied.greeting")}</p>
 
-    <p>Thanks for signing up for Nomad Karaoke!</p>
+    <p>{t(locale, "emails.creditDenied.thankYou")}</p>
 
-    <p>Unfortunately, we weren't able to grant your free {credit_type} this time. Our system detected
-    patterns that suggest this may not be your first account with us, and each karaoke generation job
-    costs us real money in cloud computing and API fees.</p>
+    <p>{t(locale, "emails.creditDenied.deniedMessage", credit_type=credit_type)}</p>
 
-    <p>We totally understand if this is a mistake! If you're a genuine new user, please just
-    <strong>reply to this email</strong> and let Andrew (the founder) know. He built this service and is
-    happy to grant you some free credits to try it out — he just asks that you provide honest feedback
-    on the experience in return.</p>
+    <p>{t(locale, "emails.creditDenied.mistakeNote")}</p>
 
-    <p>If you'd like to get started right away, you can also purchase credits:</p>
+    <p>{t(locale, "emails.creditDenied.buyPrompt")}</p>
 
     <p style="text-align: center;">
-        <a href="{self.buy_url}" class="button">Buy Credits</a>
+        <a href="{self.buy_url}" class="button">{t(locale, "emails.creditDenied.buyButton")}</a>
     </p>
 
-    <p style="color: #999; font-size: 14px;">We keep costs low so we can offer the service affordably,
-    which means we need to be careful about free credit abuse. Thanks for understanding!</p>
+    <p style="color: #999; font-size: 14px;">{t(locale, "emails.creditDenied.costNote")}</p>
 
     {self._get_email_signature()}
 """
 
-        text_content = f"""Hi there,
+        text_content = f"""{t(locale, "emails.creditDenied.greeting")}
 
-Thanks for signing up for Nomad Karaoke!
+{t(locale, "emails.creditDenied.thankYou")}
 
-Unfortunately, we weren't able to grant your free {credit_type} this time. Our system detected patterns that suggest this may not be your first account with us, and each karaoke generation job costs us real money in cloud computing and API fees.
+{t(locale, "emails.creditDenied.deniedMessage", credit_type=credit_type)}
 
-We totally understand if this is a mistake! If you're a genuine new user, please just reply to this email and let Andrew (the founder) know. He built this service and is happy to grant you some free credits to try it out - he just asks that you provide honest feedback on the experience in return.
+{t(locale, "emails.creditDenied.mistakeNote")}
 
-If you'd like to get started right away, you can also purchase credits:
+{t(locale, "emails.creditDenied.buyPrompt")}
 {self.buy_url}
 
 ---
 © {self._get_year()} Nomad Karaoke
 """
 
-        html_content = self._build_email_html(content)
+        html_content = self._build_email_html(content, locale=locale)
 
         return self.provider.send_email(
             to_email=email,

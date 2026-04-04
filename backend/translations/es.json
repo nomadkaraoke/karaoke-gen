@@ -1,16 +1,16 @@
 {
   "auth": {
     "unknownService": "Servicio desconocido: {service}",
-    "invalidCredentials": "Los siguientes servicios necesitan volver a autorizarse: {services}",
+    "invalidCredentials": "Los siguientes servicios necesitan reautorización: {services}",
     "validCredentials": "Todas las credenciales solicitadas son válidas",
     "youtubeAuthInstructions": "Visita {verification_url} e ingresa el código: {user_code}",
-    "youtubeAuthStartFailed": "Error al iniciar la autorización del dispositivo de YouTube: {error}",
+    "youtubeAuthStartFailed": "Error al iniciar la autenticación del dispositivo en YouTube: {error}",
     "gdriveLinkInstructions": "Visita {verification_url} e ingresa el código: {user_code}",
-    "gdriveAuthStartFailed": "Error al iniciar la autorización del dispositivo de Google Drive: {error}",
-    "discordAlertNotConfigured": "El webhook de alerta de Discord no está configurado"
+    "gdriveAuthStartFailed": "Error al iniciar la autenticación del dispositivo en Google Drive: {error}",
+    "discordAlertNotConfigured": "Webhook de alerta de Discord no configurado"
   },
   "jobs": {
-    "created": "Trabajo creado con éxito. El procesamiento ha comenzado.",
+    "created": "Trabajo creado con éxito. Se ha iniciado el procesamiento.",
     "authError": "Error de autenticación: no hay identidad de usuario disponible",
     "noDefaultTheme": "No hay un tema predeterminado configurado. Por favor, contacta a soporte o especifica un theme_id.",
     "notFound": "Trabajo no encontrado",
@@ -19,43 +19,43 @@
     "noPermissionDelete": "No tienes permiso para eliminar este trabajo",
     "noPermissionModify": "No tienes permiso para modificar este trabajo",
     "notCompleted": "Solo se pueden editar los trabajos completados. Estado actual: {status}",
-    "alreadyBeingEdited": "Este trabajo ya está siendo editado (los resultados ya fueron eliminados)",
-    "cleanupFailed": "La limpieza falló para {services}. El trabajo no fue modificado. Por favor, inténtalo de nuevo o contacta a soporte.",
-    "reopened": "Pista reabierta para edición. Los resultados anteriores han sido eliminados.",
+    "alreadyBeingEdited": "Este trabajo ya se está editando (los archivos de salida ya fueron eliminados)",
+    "cleanupFailed": "Error en la limpieza de {services}. El trabajo no fue modificado. Por favor, intenta de nuevo o contacta a soporte.",
+    "reopened": "Pista reabierta para edición. Los archivos de salida anteriores han sido eliminados.",
     "invalidDatetimeFormat": "Formato de {field} inválido: {value}",
-    "listError": "Error al listar los trabajos: {error}",
+    "listError": "Error al listar trabajos: {error}",
     "deleteError": "Error al eliminar el trabajo {job_id}: {error}",
     "deletionPreview": "Agrega &confirm=true para ejecutar la eliminación",
     "deletionRequiresFilters": "Se requiere al menos un filtro (environment, client_id, status, created_before)",
     "bulkDeleteError": "Error al eliminar trabajos en masa: {error}",
     "reviewNotReady": "El trabajo no está listo para revisión (estado actual: {status})",
-    "correctionsUnavailable": "Datos de correcciones no disponibles",
+    "correctionsUnavailable": "Datos de corrección no disponibles",
     "audioUnavailable": "Audio no disponible para revisión",
     "reviewCannotStart": "No se puede iniciar la revisión",
     "jobNotInReviewState": "El trabajo no está en estado de revisión (estado actual: {status})",
     "correctionsProcessing": "Correcciones guardadas. Llama a /complete-review cuando termines.",
     "editLogSaveFailed": "Error al guardar el registro de edición para el trabajo {job_id}: {error}",
     "stemsMissing": "Al trabajo le faltan pistas de audio requeridas (instrumental_clean y/o backing_vocals)",
-    "customInstrumentalFailed": "Error al crear instrumental personalizado para el trabajo {job_id}: {error}",
+    "customInstrumentalFailed": "Error al crear el instrumental personalizado para el trabajo {job_id}: {error}",
     "audioProcessingFailed": "Error al procesar el archivo de audio: {error}",
-    "durationMismatch": "Diferencia de duración: el archivo subido dura {upload_duration}s pero el audio original dura {original_duration}s. El instrumental debe durar exactamente {original_duration}s (±0.5s).",
+    "durationMismatch": "Discrepancia de duración: el archivo subido dura {upload_duration}s pero el audio original dura {original_duration}s. El instrumental debe durar exactamente {original_duration}s (±0.5s).",
     "reviewNotInState": "El trabajo no está en estado de revisión (estado actual: {status})",
-    "noLyricsDetected": "No se puede completar la revisión: no se detectaron letras en el audio. Esto puede suceder cuando el audio de entrada no tiene voces (por ejemplo, una pista de karaoke o instrumental). Puedes regresar y pegar las letras manualmente usando 'Reemplazar todo', o cancelar este trabajo e intentarlo de nuevo con un archivo de audio que contenga voces.",
-    "reviewCompleteStartRendering": "Revisión completa. El renderizado de video ha comenzado.",
+    "noLyricsDetected": "No se puede completar la revisión: no se detectaron letras en el audio. Esto puede suceder cuando el audio de entrada no tiene voces (ej. una pista de karaoke o instrumental). Puedes volver y pegar las letras manualmente usando 'Reemplazar todo', o cancelar este trabajo e intentar de nuevo con un archivo de audio que contenga voces.",
+    "reviewCompleteStartRendering": "Revisión completada. Se ha iniciado el renderizado de video.",
     "reviewCompleteError": "Error al completar la revisión para el trabajo {job_id}: {error}",
     "instrumentalSelectionRequired": "Se requiere instrumental_selection. Debe ser 'clean' o 'with_backing'.",
     "invalidInstrumentalSelection": "instrumental_selection inválido. Debe ser uno de: {valid_selections}",
-    "instrumentalSelected": "Instrumental seleccionado. La generación de video ha comenzado.",
-    "instrumentalSelectionError": "Error al seleccionar instrumental para el trabajo {job_id}: {error}",
+    "instrumentalSelected": "Instrumental seleccionado. Se ha iniciado la generación de video.",
+    "instrumentalSelectionError": "Error al seleccionar el instrumental para el trabajo {job_id}: {error}",
     "downloadUrlsError": "Error al obtener las URLs de descarga: {error}"
   },
   "review": {
     "jobNotFound": "Trabajo no encontrado",
     "reviewNotReady": "El trabajo no está listo para revisión (estado actual: {status})",
-    "correctionsNotFound": "Datos de correcciones no encontrados. El procesamiento de letras puede no estar completo.",
+    "correctionsNotFound": "Datos de corrección no encontrados. El procesamiento de letras puede no estar completo.",
     "correctionsLoadFailed": "Error al cargar las correcciones: {error}",
     "audioNotFound": "Archivo de audio no encontrado",
-    "audioServeError": "Error al cargar el audio: {error}",
+    "audioServeError": "Error al servir el audio: {error}",
     "instrumentalSelectionRequired": "Se requiere instrumental_selection. Debe ser 'clean' o 'with_backing'.",
     "invalidInstrumentalSelection": "instrumental_selection inválido. Debe ser uno de: {valid_selections}",
     "reviewCompletedError": "Error al completar la revisión: {error}",
@@ -63,7 +63,7 @@
     "lyricsAddError": "Error al agregar letras: {error}",
     "lyricsAddInvalidRequest": "Solicitud para agregar letras inválida: {error}",
     "lyricsSearchError": "Error al buscar letras: {error}",
-    "lyricsSearchInvalidRequest": "Solicitud para buscar letras inválida: {error}",
+    "lyricsSearchInvalidRequest": "Solicitud de búsqueda de letras inválida: {error}",
     "lyricsSearchNoResults": "No se encontraron letras coincidentes en ningún proveedor",
     "previewVideoGenerationError": "Error al generar el video de vista previa: {error}",
     "previewVideoNotFound": "Video de vista previa no encontrado",
@@ -76,42 +76,42 @@
   "audioSearch": {
     "notEnabled": "La búsqueda de audio no está habilitada para este inquilino",
     "disabled": "La búsqueda de audio no está disponible",
-    "downloadError": "La descarga falló para el trabajo {job_id}: {error}",
+    "downloadError": "Error de descarga para el trabajo {job_id}: {error}",
     "jobNotFound": "Trabajo {job_id} no encontrado",
     "noSearchResults": "No hay resultados de búsqueda disponibles",
     "invalidSelectionIndex": "Índice de selección inválido {selection_index}. Rango válido: 0-{max}",
     "selectionError": "Error durante la selección de audio para el trabajo {job_id}: {error}",
-    "youtubeDownloadError": "La descarga de YouTube falló: {error}",
+    "youtubeDownloadError": "Error en la descarga de YouTube: {error}",
     "torrentDownloadError": "No se puede descargar de {source} sin el servicio remoto flacfetch. Configura FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "No hay source_id o remote_search_id disponible para la descarga de {source}",
     "remoteDownloadCompleteNoPath": "Descarga remota completada pero no se devolvió la ruta del archivo",
     "spotifyDownloadError": "No se puede descargar de Spotify sin el servicio remoto flacfetch. Configura FLACFETCH_API_URL.",
     "genericDownloadError": "Tipo de fuente desconocido: {source}, intentando descarga genérica",
     "jobNotFoundDuringDownload": "Trabajo {job_id} no encontrado durante la descarga en segundo plano",
-    "selectAudioError": "Error al seleccionar audio para el trabajo {job_id}: {error}",
+    "selectAudioError": "Error al seleccionar el audio para el trabajo {job_id}: {error}",
     "searchAudioError": "Error al buscar audio: {error}",
     "searchCreatedSuccessfully": "Trabajo creado. Buscando audio...",
     "autoDownloadStarted": "Mejor resultado seleccionado automáticamente. Iniciando descarga..."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",
-    "magicLinkSent": "Si este correo electrónico está registrado, recibirás un enlace de inicio de sesión en breve.",
+    "magicLinkSent": "Si este correo está registrado, recibirás un enlace de inicio de sesión en breve.",
     "emailServiceNotConfigured": "El servicio de correo electrónico no está disponible. Por favor, contacta a soporte.",
-    "emailDomainNotAllowed": "Dominio de correo electrónico no permitido para este inquilino",
+    "emailDomainNotAllowed": "Dominio de correo no permitido para este inquilino",
     "invalidToken": "Token inválido",
-    "verifyError": "La verificación falló: {message}",
-    "magicLinkSuccess": "Has iniciado sesión con éxito",
-    "logoutSuccess": "Has cerrado sesión con éxito",
+    "verifyError": "Verificación fallida: {message}",
+    "magicLinkSuccess": "Sesión iniciada con éxito",
+    "logoutSuccess": "Sesión cerrada con éxito",
     "userNotFound": "Usuario no encontrado",
     "creditPackagesError": "Error al cargar los paquetes de créditos: {error}",
     "stripeSendError": "Error al enviar el enlace de pago de Stripe: {error}",
     "stripeWebhookProcessingError": "Error al procesar el webhook de Stripe: {error}",
     "feedbackSaveError": "Error al guardar los comentarios: {error}",
-    "feedbackNotEligible": "El usuario no es elegible para dejar comentarios"
+    "feedbackNotEligible": "Usuario no elegible para dar comentarios"
   },
   "fileUpload": {
     "invalidTheme": "Tema no encontrado: {theme_id}. Usa GET /api/themes para listar los temas disponibles.",
-    "uploadSuccess": "Archivo subido con éxito. El procesamiento ha comenzado.",
+    "uploadSuccess": "Archivo subido con éxito. Se ha iniciado el procesamiento.",
     "uploadError": "Error al subir el archivo: {error}",
     "urlDownloadError": "Error al descargar desde la URL: {error}",
     "invalidContentType": "Tipo de contenido inválido: {content_type}",
@@ -121,17 +121,17 @@
     "noAudioFileProvided": "No se proporcionó ningún archivo de audio",
     "urlCreationSuccess": "Trabajo creado. URLs de subida generadas.",
     "urlCreationError": "Error al crear el trabajo con URLs de subida: {error}",
-    "uploadsCompleteSuccess": "Subidas completadas. El procesamiento ha comenzado.",
+    "uploadsCompleteSuccess": "Subidas completadas. Se ha iniciado el procesamiento.",
     "uploadsCompleteError": "Error al completar las subidas: {error}",
     "noUploadedFiles": "No se especificaron archivos subidos",
     "styleUploadUrlsSuccess": "URLs de subida de estilo generadas.",
-    "styleUploadsCompleteSuccess": "Archivos de estilo actualizados. El procesamiento se ha reiniciado.",
+    "styleUploadsCompleteSuccess": "Archivos de estilo actualizados. Se ha reiniciado el procesamiento.",
     "styleUploadsCompleteError": "Error al completar las subidas de estilo: {error}"
   },
   "catalog": {
-    "rateLimitExceeded": "Límite de solicitudes excedido. Máximo {max_requests} solicitudes de catálogo por minuto.",
+    "rateLimitExceeded": "Límite de tasa excedido. Máximo {max_requests} solicitudes de catálogo por minuto.",
     "catalogSearchError": "Error al buscar en el catálogo: {error}",
-    "communityCheckError": "Error al comprobar versiones de la comunidad: {error}"
+    "communityCheckError": "Error al comprobar las versiones de la comunidad: {error}"
   },
   "themes": {
     "themesLoadError": "Error al cargar los temas",
@@ -147,7 +147,7 @@
   },
   "push": {
     "disabled": "Las notificaciones push no están habilitadas",
-    "userEmailNotAvailable": "El correo electrónico del usuario no está disponible",
+    "userEmailNotAvailable": "Correo del usuario no disponible",
     "missingEncryptionKeys": "Faltan claves requeridas (p256dh, auth)",
     "subscriptionSaveFailed": "Error al guardar la suscripción",
     "subscriptionRegistered": "Suscripción push registrada con éxito",
@@ -171,22 +171,22 @@
     "domainAddedToAllowlist": "Dominio '{domain}' agregado a la lista de permitidos",
     "domainNotFoundInAllowlist": "Dominio no encontrado en la lista de permitidos",
     "domainRemovedFromAllowlist": "Dominio '{domain}' eliminado de la lista de permitidos",
-    "syncComplete": "Se sincronizaron {external_count} dominios externos ({added} agregados, {removed} eliminados)",
-    "invalidEmailFormat": "Formato de correo electrónico inválido",
-    "emailAddedToBl": "Correo electrónico '{email}' agregado a la lista de correos bloqueados",
-    "emailNotFoundInBl": "Correo electrónico no encontrado en la lista de bloqueo",
-    "emailRemovedFromBl": "Correo electrónico '{email}' eliminado de la lista de correos bloqueados",
+    "syncComplete": "Sincronizados {external_count} dominios externos ({added} agregados, {removed} eliminados)",
+    "invalidEmailFormat": "Formato de correo inválido",
+    "emailAddedToBl": "Correo '{email}' agregado a la lista de correos bloqueados",
+    "emailNotFoundInBl": "Correo no encontrado en la lista de bloqueo",
+    "emailRemovedFromBl": "Correo '{email}' eliminado de la lista de correos bloqueados",
     "invalidIPAddress": "Dirección IP inválida",
     "ipAddedToBl": "IP '{ip_address}' agregada a la lista de IPs bloqueadas",
     "ipNotFoundInBl": "IP no encontrada en la lista de bloqueo",
     "ipRemovedFromBl": "IP '{ip_address}' eliminada de la lista de IPs bloqueadas",
-    "youtubeUploadNotFound": "Subida no encontrada o no en estado de reintento para el trabajo {job_id}",
+    "youtubeUploadNotFound": "Subida no encontrada o no en estado reintentable para el trabajo {job_id}",
     "youtubeUploadQueuedForRetry": "Subida a YouTube para el trabajo {job_id} en cola para reintento",
     "youtubeQueueProcessingStarted": "Procesamiento de la cola de YouTube iniciado en segundo plano"
   },
   "rateLimits": {
-    "configNotFound": "Configuración de límite de solicitudes no encontrada: {config_id}",
-    "configUpdateError": "Error al actualizar la configuración de límite de solicitudes: {error}"
+    "configNotFound": "Configuración de límite de tasa no encontrada: {config_id}",
+    "configUpdateError": "Error al actualizar la configuración de límite de tasa: {error}"
   },
   "errors": {
     "insufficientCredits": "Créditos insuficientes para esta operación",
@@ -194,13 +194,44 @@
   },
   "emails": {
     "magicLink": {
-      "subject": "Inicia sesión en {brand_name}"
+      "subject": "Inicia sesión en {brand_name}",
+      "greeting": "Hola,",
+      "signInPrompt": "Haz clic en el botón de abajo para iniciar sesión en {brand_name}:",
+      "signInButton": "Iniciar sesión",
+      "expiryWarning": "Este enlace expira en 15 minutos y solo puede usarse una vez.",
+      "fallbackLink": "Si el botón no funciona, copia y pega este enlace en tu navegador:",
+      "ignoreNote": "Si no solicitaste este correo, puedes ignorarlo de forma segura."
     },
     "welcome": {
-      "subject": "¡Bienvenido a Nomad Karaoke!"
+      "subject": "¡Bienvenido a Nomad Karaoke!",
+      "welcomeGreeting": "¡Bienvenido a Nomad Karaoke!",
+      "turnAnySong": "Convierte cualquier canción en un video de karaoke profesional en minutos.",
+      "freeCreditsLabel": "Créditos gratis",
+      "freeCreditsNote": "Cada crédito crea un video de karaoke profesional",
+      "howItWorks": "Así es como funciona:",
+      "step1Title": "1. Busca una canción",
+      "step1Desc": "Ingresa el artista y el título, y encontraremos audio de alta calidad.",
+      "step2Title": "2. Nuestro sistema hace su magia",
+      "step2Desc": "Hacemos la separación vocal, transcribimos las letras y sincronizamos todo perfectamente.",
+      "step3Title": "3. Revisa y personaliza",
+      "step3Desc": "Ajusta las letras si es necesario, elige tu instrumental.",
+      "step4Title": "4. Obtén tu video",
+      "step4Desc": "Descarga tu video de karaoke en 4K o súbelo directamente a YouTube.",
+      "feedbackBonus": "¡Completa 2 videos y gana 2 créditos gratis más compartiendo tus comentarios!",
+      "getStartedButton": "Comenzar"
     },
     "creditsAdded": {
-      "subject": "{credits} créditos agregados a tu cuenta de Nomad Karaoke"
+      "subject": "{credits} créditos agregados a tu cuenta de Nomad Karaoke",
+      "greatNews": "¡Excelentes noticias!",
+      "creditsAddedMessage": "Se han agregado {credits} créditos a tu cuenta.",
+      "yourBalance": "Tu saldo:",
+      "credits": "créditos",
+      "eachCreditLets": "Cada crédito te permite crear un video de karaoke profesional con:",
+      "featureVocalSeparation": "Separación vocal/instrumental impulsada por IA",
+      "featureLyrics": "Letras sincronizadas con tiempo a nivel de palabra",
+      "feature4k": "Salida de video en 4K",
+      "featureYoutube": "Subida a YouTube",
+      "createButton": "Crear karaoke ahora"
     },
     "jobCompletion": {
       "subjectWithBrand": "{brand_code}: {artist} - {title} (¡Tu video de karaoke está listo!)",
@@ -213,26 +244,95 @@
       "subjectFallback": "¡Tu subida a YouTube está lista!"
     },
     "actionReminder": {
-      "lyricsSubject": "Acción necesaria: Revisar letras para {artist} - {title}",
-      "lyricsSubjectFallback": "Acción necesaria: Revisar letras",
-      "instrumentalSubject": "Acción necesaria: Seleccionar instrumental para {artist} - {title}",
-      "instrumentalSubjectFallback": "Acción necesaria: Seleccionar instrumental",
-      "audioEditSubject": "Acción necesaria para {artist} - {title}",
-      "audioEditSubjectFallback": "Acción necesaria"
+      "lyricsSubject": "Acción requerida: Revisión de letras para {artist} - {title}",
+      "lyricsSubjectFallback": "Acción requerida: Revisión de letras",
+      "instrumentalSubject": "Acción requerida: Seleccionar instrumental para {artist} - {title}",
+      "instrumentalSubjectFallback": "Acción requerida: Seleccionar instrumental",
+      "audioEditSubject": "Acción requerida para {artist} - {title}",
+      "audioEditSubjectFallback": "Acción requerida",
+      "alertHeading": "¡Tu video de karaoke necesita tu atención!"
     },
     "reviewReminder": {
       "subject": "Recordatorio: Tu video de karaoke está esperando revisión — {artist} - {title}",
-      "subjectFallback": "Recordatorio: Tu video de karaoke está esperando revisión"
+      "subjectFallback": "Recordatorio: Tu video de karaoke está esperando revisión",
+      "alertHeading": "¡Tu video de karaoke te está esperando!",
+      "reminderIntro": "Solo un recordatorio amistoso de que tu video de karaoke{song_name} está listo para revisión.",
+      "reviewButton": "Revisar tu video",
+      "reviewInstructions": "Durante la revisión, puedes comprobar que las letras son correctas y elegir tu pista instrumental preferida. ¡Normalmente solo toma unos minutos!",
+      "helpOffer": "Si tienes algún problema con el proceso de revisión, solo responde a este correo y estaré encantado de ayudarte.",
+      "expiryWarning": "Ten en cuenta: si la revisión no se completa dentro de las próximas 24 horas, el trabajo expirará automáticamente y se te reembolsará tu crédito."
     },
     "reviewExpired": {
       "subject": "Tu video de karaoke ha expirado — {artist} - {title}",
-      "subjectFallback": "Tu video de karaoke ha expirado"
+      "subjectFallback": "Tu video de karaoke ha expirado",
+      "cancelNotice": "Tu video de karaoke{song_name} ha sido cancelado automáticamente porque la revisión no se completó en 48 horas.",
+      "refundNotice": "No te preocupes — ¡tu crédito ha sido reembolsado! Tu saldo actual es de {credits_balance} {credits_word}.",
+      "creditSingular": "crédito",
+      "creditPlural": "créditos",
+      "createNewPrompt": "Puedes crear un nuevo video de karaoke en cualquier momento usando tus créditos:",
+      "createButton": "Crear nuevo video",
+      "helpOffer": "Si tuviste algún problema con el proceso de revisión o necesitas ayuda, solo responde a este correo — ¡me encantaría ayudar!"
     },
     "creditDenied": {
-      "subject": "Sobre tus créditos gratis de Nomad Karaoke"
+      "subject": "Sobre tus créditos gratis de Nomad Karaoke",
+      "greeting": "Hola,",
+      "thankYou": "¡Gracias por registrarte en Nomad Karaoke!",
+      "deniedMessage": "Lamentablemente, no pudimos otorgar tus {credit_type} gratis esta vez. Nuestro sistema detectó patrones que sugieren que esta podría no ser tu primera cuenta con nosotros, y cada trabajo de generación de karaoke nos cuesta dinero real en computación en la nube y tarifas de API.",
+      "mistakeNote": "¡Entendemos totalmente si esto es un error! Si eres un usuario nuevo genuino, por favor solo responde a este correo y házselo saber a Andrew (el fundador). Él construyó este servicio y estará feliz de otorgarte algunos créditos gratis para que lo pruebes — solo te pide que a cambio proporciones comentarios honestos sobre la experiencia.",
+      "buyPrompt": "Si deseas comenzar de inmediato, también puedes comprar créditos:",
+      "buyButton": "Comprar créditos",
+      "costNote": "Mantenemos los costos bajos para poder ofrecer el servicio de manera asequible, lo que significa que debemos tener cuidado con el abuso de créditos gratis. ¡Gracias por entender!",
+      "welcomeCredits": "créditos de bienvenida",
+      "feedbackCredits": "créditos de bonificación por comentarios"
     },
     "madeForYouConfirmation": {
-      "subject": "Pedido confirmado: {artist} - {title} | Nomad Karaoke"
+      "subject": "Pedido confirmado: {artist} - {title} | Nomad Karaoke",
+      "thankYou": "¡Gracias por tu pedido!",
+      "orderDetails": "Detalles del pedido",
+      "orderId": "ID del pedido:",
+      "artist": "Artista:",
+      "title": "Título:",
+      "yourNotes": "Tus notas:",
+      "deliveryTime": "Nuestro equipo creará tu video de karaoke personalizado en {hours} horas.",
+      "deliveryNotice": "Recibirás un correo con enlaces de descarga tan pronto como tu video esté listo.",
+      "noAction": "No se necesita ninguna acción — ¡relájate y nos encargaremos de todo!"
+    },
+    "shared": {
+      "footerHelp": "Si algo no es perfecto, ¡solo responde a este correo y lo arreglaré!"
+    },
+    "templates": {
+      "jobCompletion": {
+        "greeting": "Hola {name},",
+        "thanks": "¡Gracias por tu pedido!",
+        "youtubeLink": "Aquí tienes el enlace del video de karaoke publicado en YouTube:",
+        "dropboxIntro": "Aquí tienes la carpeta de Dropbox con todos los archivos terminados y archivos fuente, incluyendo:",
+        "fileList": "- \"(Final Karaoke Lossless).mkv\": video de karaoke combinado en 4K H264 con audio FLAC sin pérdida\n- \"(Final Karaoke).mp4\": video de karaoke combinado con pantalla de título/pantalla final en 4K H264/AAC\n- \"(Final Karaoke 720p).mp4\": video de karaoke combinado en 720p H264/AAC (archivo más pequeño para sistemas más antiguos)\n- \"(With Vocals).mp4\": video para cantar junto en 4K H264/AAC con voces originales\n- \"(Karaoke).mov\": salida de video de karaoke de MidiCo (sin pantalla de título/pantalla final)\n- \"(Title).mov\"/\"(End).mov\": videos de tarjeta de título y pantalla final\n- \"(Final Karaoke CDG).zip\": formato CDG+MP3 para sistemas de karaoke más antiguos/comerciales\n- \"(Final Karaoke TXT).zip\": formato TXT+MP3 para Power Karaoke\n- stems/*.flac: varias pistas de audio instrumentales y vocales separadas en formato sin pérdida\n- lyrics/*.txt letras de canciones de varias fuentes en formato de texto sin formato",
+        "fixOffer": "Avísame si algo no es perfecto y con gusto lo ajustaré / arreglaré, o si lo necesitas en cualquier otro formato, ¡probablemente pueda convertirlo para ti!",
+        "feedbackRequest": "Si tienes un momento, realmente apreciaría tus comentarios (toma 2 minutos):",
+        "signOff": "¡Gracias de nuevo y que tengas un gran día!\n-Andrew",
+        "youtubeQueued": "Tu subida a YouTube está en cola y se procesará automáticamente. Recibirás un correo de seguimiento con el enlace en breve."
+      },
+      "actionLyrics": {
+        "greeting": "Hola {name},",
+        "ready": "¡Tu video de karaoke para \"{artist} - {title}\" está listo para revisión!",
+        "instructions": "Nuestro sistema ha transcrito y sincronizado las letras, pero pueden necesitar algunas correcciones. También podrás seleccionar tu pista instrumental preferida (con o sin coros).",
+        "reviewPrompt": "Por favor revisa tus letras y selecciona un instrumental:",
+        "duration": "Esto normalmente toma solo unos minutos.",
+        "signOff": "¡Gracias!\n-Andrew"
+      },
+      "actionInstrumental": {
+        "greeting": "Hola {name},",
+        "almostDone": "¡Tu video de karaoke para \"{artist} - {title}\" está casi listo!",
+        "instructions": "Hemos separado el audio en diferentes versiones. Por favor selecciona qué pista instrumental te gustaría usar para el video final.",
+        "selectPrompt": "Selecciona tu instrumental aquí:",
+        "signOff": "¡Gracias!\n-Andrew"
+      },
+      "youtubeComplete": {
+        "greeting": "Hola {name},",
+        "greatNews": "¡Excelentes noticias! Tu video de karaoke para \"{artist} - {title}\" ha sido subido a YouTube:",
+        "delayNote": "Esta subida se retrasó brevemente mientras nuestros sistemas procesaban otras subidas, pero todo está listo ahora.",
+        "signOff": "¡Gracias!\n-Andrew"
+      }
     }
   }
 }

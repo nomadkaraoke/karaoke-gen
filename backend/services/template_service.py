@@ -14,6 +14,7 @@ import re
 from typing import Optional, Dict, Any
 
 from backend.config import get_settings
+from backend.i18n import t
 
 
 logger = logging.getLogger(__name__)
@@ -154,29 +155,48 @@ class TemplateService:
             logger.error(f"Failed to fetch template {blob_path}: {e}")
             return None
 
-    def get_job_completion_template(self) -> str:
+    def get_job_completion_template(self, locale: str = "en") -> str:
         """Get the job completion email template."""
+        # Try locale-specific GCS template first, then default GCS, then localized default
+        if locale != "en":
+            template = self._fetch_template_from_gcs(f"{locale}/job-completion.txt")
+            if template is not None:
+                return template
         template = self._fetch_template_from_gcs("job-completion.txt")
-        if template is None:
-            logger.info("Using default job completion template")
+        if template is not None:
+            return template
+        logger.info("Using default job completion template")
+        if locale == "en":
             return DEFAULT_JOB_COMPLETION_TEMPLATE
-        return template
+        return self._build_localized_job_completion_template(locale)
 
-    def get_action_needed_lyrics_template(self) -> str:
+    def get_action_needed_lyrics_template(self, locale: str = "en") -> str:
         """Get the lyrics review reminder template."""
+        if locale != "en":
+            template = self._fetch_template_from_gcs(f"{locale}/action-needed-lyrics.txt")
+            if template is not None:
+                return template
         template = self._fetch_template_from_gcs("action-needed-lyrics.txt")
-        if template is None:
-            logger.info("Using default lyrics reminder template")
+        if template is not None:
+            return template
+        logger.info("Using default lyrics reminder template")
+        if locale == "en":
             return DEFAULT_ACTION_NEEDED_LYRICS_TEMPLATE
-        return template
+        return self._build_localized_action_lyrics_template(locale)
 
-    def get_action_needed_instrumental_template(self) -> str:
+    def get_action_needed_instrumental_template(self, locale: str = "en") -> str:
         """Get the instrumental selection reminder template."""
+        if locale != "en":
+            template = self._fetch_template_from_gcs(f"{locale}/action-needed-instrumental.txt")
+            if template is not None:
+                return template
         template = self._fetch_template_from_gcs("action-needed-instrumental.txt")
-        if template is None:
-            logger.info("Using default instrumental reminder template")
+        if template is not None:
+            return template
+        logger.info("Using default instrumental reminder template")
+        if locale == "en":
             return DEFAULT_ACTION_NEEDED_INSTRUMENTAL_TEMPLATE
-        return template
+        return self._build_localized_action_instrumental_template(locale)
 
     def render_template(self, template: str, variables: Dict[str, Any]) -> str:
         """
@@ -215,6 +235,74 @@ class TemplateService:
 
         return result.strip()
 
+    def _build_localized_job_completion_template(self, locale: str) -> str:
+        """Build a localized job completion template from translation keys."""
+        ns = "emails.templates.jobCompletion"
+        return f"""{t(locale, f"{ns}.greeting")}
+
+{t(locale, f"{ns}.thanks")}
+
+{t(locale, f"{ns}.youtubeLink")}
+{{youtube_url}}
+
+{t(locale, f"{ns}.dropboxIntro")}
+{t(locale, f"{ns}.fileList")}
+
+{{dropbox_url}}
+
+{t(locale, f"{ns}.fixOffer")}
+
+{t(locale, f"{ns}.feedbackRequest")}
+{{feedback_url}}
+
+{t(locale, f"{ns}.signOff")}
+"""
+
+    def _build_localized_action_lyrics_template(self, locale: str) -> str:
+        """Build a localized action-needed lyrics template."""
+        ns = "emails.templates.actionLyrics"
+        return f"""{t(locale, f"{ns}.greeting")}
+
+{t(locale, f"{ns}.ready")}
+
+{t(locale, f"{ns}.instructions")}
+
+{t(locale, f"{ns}.reviewPrompt")}
+{{review_url}}
+
+{t(locale, f"{ns}.duration")}
+
+{t(locale, f"{ns}.signOff")}
+"""
+
+    def _build_localized_action_instrumental_template(self, locale: str) -> str:
+        """Build a localized action-needed instrumental template."""
+        ns = "emails.templates.actionInstrumental"
+        return f"""{t(locale, f"{ns}.greeting")}
+
+{t(locale, f"{ns}.almostDone")}
+
+{t(locale, f"{ns}.instructions")}
+
+{t(locale, f"{ns}.selectPrompt")}
+{{instrumental_url}}
+
+{t(locale, f"{ns}.signOff")}
+"""
+
+    def _build_localized_youtube_complete_template(self, locale: str) -> str:
+        """Build a localized YouTube upload complete template."""
+        ns = "emails.templates.youtubeComplete"
+        return f"""{t(locale, f"{ns}.greeting")}
+
+{t(locale, f"{ns}.greatNews")}
+{{youtube_url}}
+
+{t(locale, f"{ns}.delayNote")}
+
+{t(locale, f"{ns}.signOff")}
+"""
+
     def render_job_completion(
         self,
         name: Optional[str] = None,
@@ -226,6 +314,7 @@ class TemplateService:
         feedback_url: Optional[str] = None,
         is_private: bool = False,
         youtube_queued: bool = False,
+        locale: str = "en",
     ) -> str:
         """
         Render the job completion email template.
@@ -244,7 +333,7 @@ class TemplateService:
         Returns:
             Rendered email content
         """
-        template = self.get_job_completion_template()
+        template = self.get_job_completion_template(locale)
 
         # For private tracks, remove the YouTube section entirely
         if is_private:
@@ -255,11 +344,18 @@ class TemplateService:
             )
         elif youtube_queued and not youtube_url:
             # Replace YouTube URL with pending message
+            queued_msg = t(locale, "emails.templates.jobCompletion.youtubeQueued")
+            youtube_link_text = t(locale, "emails.templates.jobCompletion.youtubeLink")
             template = template.replace(
-                "Here's the link for the karaoke video published to YouTube:\n{youtube_url}",
-                "Your YouTube upload is queued and will be processed automatically. "
-                "You'll receive a follow-up email with the link shortly."
+                f"{youtube_link_text}\n{{youtube_url}}",
+                queued_msg
             )
+            # Also handle the English default template pattern
+            if "{youtube_url}" in template:
+                template = template.replace(
+                    "Here's the link for the karaoke video published to YouTube:\n{youtube_url}",
+                    queued_msg
+                )
 
         variables = {
             "name": name or "there",
@@ -278,6 +374,7 @@ class TemplateService:
         artist: Optional[str] = None,
         title: Optional[str] = None,
         review_url: str = "",
+        locale: str = "en",
     ) -> str:
         """
         Render the combined review reminder template.
@@ -294,7 +391,7 @@ class TemplateService:
         Returns:
             Rendered email content
         """
-        template = self.get_action_needed_lyrics_template()
+        template = self.get_action_needed_lyrics_template(locale)
         variables = {
             "name": name or "there",
             "artist": artist or "Unknown Artist",
@@ -309,6 +406,7 @@ class TemplateService:
         artist: Optional[str] = None,
         title: Optional[str] = None,
         instrumental_url: str = "",
+        locale: str = "en",
     ) -> str:
         """
         Render the instrumental selection reminder template.
@@ -326,7 +424,7 @@ class TemplateService:
         Returns:
             Rendered email content
         """
-        template = self.get_action_needed_instrumental_template()
+        template = self.get_action_needed_instrumental_template(locale)
         variables = {
             "name": name or "there",
             "artist": artist or "Unknown Artist",
@@ -341,6 +439,7 @@ class TemplateService:
         artist: Optional[str] = None,
         title: Optional[str] = None,
         youtube_url: Optional[str] = None,
+        locale: str = "en",
     ) -> str:
         """
         Render the YouTube upload complete follow-up email template.
@@ -356,9 +455,16 @@ class TemplateService:
         Returns:
             Rendered email content
         """
-        template = self._fetch_template_from_gcs("youtube-upload-complete.txt")
+        if locale != "en":
+            template = self._fetch_template_from_gcs(f"{locale}/youtube-upload-complete.txt")
+            if template is not None:
+                pass  # Use locale-specific GCS template
+            else:
+                template = self._fetch_template_from_gcs("youtube-upload-complete.txt")
+        else:
+            template = self._fetch_template_from_gcs("youtube-upload-complete.txt")
         if template is None:
-            template = DEFAULT_YOUTUBE_UPLOAD_COMPLETE_TEMPLATE
+            template = DEFAULT_YOUTUBE_UPLOAD_COMPLETE_TEMPLATE if locale == "en" else self._build_localized_youtube_complete_template(locale)
 
         variables = {
             "name": name or "there",
