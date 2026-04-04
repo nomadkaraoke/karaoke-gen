@@ -455,6 +455,11 @@ async def edit_completed_track(
         if "screens_progress" in state_data:
             update_payload[f"state_data.screens_progress"] = DELETE_FIELD
 
+        # Clear stale file_urls.screens so retry logic doesn't skip screen generation
+        file_urls = job.file_urls or {}
+        for key in list(file_urls.get('screens', {}).keys()):
+            update_payload[f"file_urls.screens.{key}"] = DELETE_FIELD
+
     # Add timeline event with structured metadata
     edit_number = (job.edit_count if hasattr(job, 'edit_count') else 0) + 1
     timeline_event = {
@@ -474,23 +479,32 @@ async def edit_completed_track(
     # Apply Firestore update
     job_ref.update(update_payload)
 
-    # --- Phase 4: Transition state to AWAITING_REVIEW ---
-    # This auto-generates a review token via transition_to_state
-    job_manager.transition_to_state(
-        job_id,
-        JobStatus.AWAITING_REVIEW,
-        progress=60,
-        message="Track reopened for editing",
-    )
-
-    # If metadata changed, trigger screens worker in background
+    # --- Phase 4: Transition state ---
     if metadata_updated:
+        # Metadata changed → screens need regeneration.
+        # Transition to LYRICS_COMPLETE so screens worker can run
+        # (LYRICS_COMPLETE → GENERATING_SCREENS is a valid transition;
+        #  AWAITING_REVIEW → GENERATING_SCREENS is not).
+        job_manager.transition_to_state(
+            job_id,
+            JobStatus.LYRICS_COMPLETE,
+            progress=55,
+            message="Regenerating screens with updated metadata",
+        )
         background_tasks.add_task(worker_service.trigger_screens_worker, job_id)
+    else:
+        # No metadata change → screens still valid, go straight to review
+        job_manager.transition_to_state(
+            job_id,
+            JobStatus.AWAITING_REVIEW,
+            progress=60,
+            message="Track reopened for editing",
+        )
 
     # Fetch updated job to get the review token
     updated_job = job_manager.get_job(job_id)
     if not updated_job:
-        logger.error(f"Job {job_id} not found after state transition to AWAITING_REVIEW")
+        logger.error(f"Job {job_id} not found after state transition")
         raise HTTPException(status_code=500, detail="Job state update failed unexpectedly")
     review_token = updated_job.review_token or ""
 

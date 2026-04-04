@@ -24,6 +24,15 @@ def complete_job():
         user_email="user@example.com",
         dropbox_path="/Karaoke/Organized",
         edit_count=0,
+        file_urls={
+            "screens": {
+                "title_png": "jobs/test-edit-123/screens/title.png",
+                "title_jpg": "jobs/test-edit-123/screens/title.jpg",
+                "end_png": "jobs/test-edit-123/screens/end.png",
+                "end_jpg": "jobs/test-edit-123/screens/end.jpg",
+            },
+            "videos": {"with_vocals": "jobs/test-edit-123/videos/with_vocals.mkv"},
+        },
         state_data={
             "youtube_url": "https://youtu.be/abc123",
             "brand_code": "NOMAD-1234",
@@ -195,6 +204,37 @@ class TestEditWithMetadataUpdate:
             json={"artist": "New Artist"},
         )
         mock_worker_service.trigger_screens_worker.assert_called_once_with("test-edit-123")
+
+    def test_edit_with_metadata_transitions_to_lyrics_complete(self, client, mock_job_manager, auth_headers):
+        """Metadata change transitions to LYRICS_COMPLETE so screens worker can run.
+
+        Bug fix: previously transitioned to AWAITING_REVIEW, which made the screens
+        worker fail (AWAITING_REVIEW → GENERATING_SCREENS is not a valid transition).
+        """
+        client.post(
+            "/api/jobs/test-edit-123/edit",
+            headers=auth_headers,
+            json={"artist": "New Artist"},
+        )
+        mock_job_manager.transition_to_state.assert_called_once_with(
+            "test-edit-123",
+            JobStatus.LYRICS_COMPLETE,
+            progress=55,
+            message="Regenerating screens with updated metadata",
+        )
+
+    def test_edit_with_metadata_clears_file_urls_screens(self, client, auth_headers):
+        """Metadata change clears stale file_urls.screens entries.
+
+        Bug fix: stale screen URLs caused retry to skip screen generation,
+        resulting in 404 when video worker tried to download deleted screens.
+        """
+        response = client.post(
+            "/api/jobs/test-edit-123/edit",
+            headers=auth_headers,
+            json={"title": "New Title"},
+        )
+        assert response.status_code == 200
 
 
 class TestEditValidation:
