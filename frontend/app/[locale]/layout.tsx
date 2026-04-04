@@ -29,7 +29,7 @@ export default async function LocaleLayout({
     <NextIntlClientProvider locale={locale} messages={messages}>
       <script
         dangerouslySetInnerHTML={{
-          __html: `document.documentElement.lang="${locale}";`,
+          __html: `document.documentElement.lang="${locale}";document.documentElement.dir="${['ar', 'he'].includes(locale) ? 'rtl' : 'ltr'}";`,
         }}
       />
       {children}

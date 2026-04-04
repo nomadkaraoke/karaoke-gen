@@ -41,7 +41,12 @@ jest.mock('@/i18n/routing', () => {
   const React = require('react')
   return {
     routing: {
-      locales: ['en', 'es', 'de'],
+      locales: [
+        'en', 'es', 'de', 'pt', 'fr', 'ja', 'ko', 'zh', 'it', 'nl',
+        'pl', 'tr', 'ru', 'th', 'id', 'vi', 'tl', 'hi', 'ar', 'sv',
+        'nb', 'da', 'fi', 'cs', 'ro', 'hu', 'el', 'he', 'ms', 'uk',
+        'hr', 'sk', 'ca',
+      ],
       defaultLocale: 'en',
     },
     Link: ({ children, href, ...props }) =>

@@ -244,7 +244,7 @@ function ConsumerLandingPage() {
               >
                 <Video className="w-5 h-5" />
                 {t('heroCTA.createYourself')}
-                <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-sm">{t('heroCTA.createYourselfPrice')}</span>
+                <span className="ms-1 px-2 py-0.5 bg-white/20 rounded-full text-sm">{t('heroCTA.createYourselfPrice')}</span>
               </button>
               <span className="text-green-400 text-sm">{t('heroCTA.createYourselfNote')}</span>
             </div>
@@ -255,7 +255,7 @@ function ConsumerLandingPage() {
               >
                 <Gift className="w-5 h-5" />
                 {t('heroCTA.makeForYou')}
-                <span className="ml-1 px-2 py-0.5 bg-yellow-500/20 rounded-full text-sm">{t('heroCTA.makeForYouPrice')}</span>
+                <span className="ms-1 px-2 py-0.5 bg-yellow-500/20 rounded-full text-sm">{t('heroCTA.makeForYouPrice')}</span>
               </a>
               <span className="text-yellow-400/70 text-sm">{t('heroCTA.makeForYouNote')}</span>
             </div>
@@ -514,14 +514,14 @@ function ConsumerLandingPage() {
                   {t('pricing.emailLabel')}
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Mail className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <input
                     type="email"
                     id="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('pricing.emailPlaceholder')}
-                    className="w-full pl-10 pr-4 py-3 bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder:text-muted-foreground"
+                    className="w-full ps-10 pe-4 py-3 bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder:text-muted-foreground"
                     required
                   />
                 </div>

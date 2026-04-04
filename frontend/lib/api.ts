@@ -40,8 +40,19 @@ export function clearAccessToken() {
 
 function getLocaleFromPath(): string {
   if (typeof window === 'undefined') return 'en';
-  const match = window.location.pathname.match(/^\/(en|es|de)\//);
-  return match ? match[1] : 'en';
+  const match = window.location.pathname.match(/^\/([a-z]{2})\//);
+  if (match) {
+    const knownLocales = [
+      'en', 'es', 'de', 'pt', 'fr', 'ja', 'ko', 'zh', 'it', 'nl',
+      'pl', 'tr', 'ru', 'th', 'id', 'vi', 'tl', 'hi', 'ar', 'sv',
+      'nb', 'da', 'fi', 'cs', 'ro', 'hu', 'el', 'he', 'ms', 'uk',
+      'hr', 'sk', 'ca',
+    ];
+    if (knownLocales.includes(match[1])) {
+      return match[1];
+    }
+  }
+  return 'en';
 }
 
 function getAuthHeaders(): HeadersInit {

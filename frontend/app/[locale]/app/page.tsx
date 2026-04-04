@@ -236,7 +236,7 @@ function AppPageContent() {
               className="min-h-[40px] px-2 sm:px-3"
               style={{ color: 'var(--text-muted)' }}
             >
-              <RefreshCw className={`w-4 h-4 sm:mr-2 ${isLoadingJobs ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 sm:me-2 ${isLoadingJobs ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{t('refresh')}</span>
             </Button>
             {isAdmin && (
@@ -281,13 +281,13 @@ function AppPageContent() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <a href="mailto:andrew@nomadkaraoke.com">
-                    <Mail className="w-4 h-4 mr-2" />
+                    <Mail className="w-4 h-4 me-2" />
                     andrew@nomadkaraoke.com
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <a href="tel:+18036363267">
-                    <Phone className="w-4 h-4 mr-2" />
+                    <Phone className="w-4 h-4 me-2" />
                     +1 (803) 636-3267
                   </a>
                 </DropdownMenuItem>
@@ -405,14 +405,14 @@ function AppPageContent() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                    <Search className="absolute start-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
                     <input
                       type="text"
                       placeholder={t('searchPlaceholder')}
                       aria-label={t('searchPlaceholder')}
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
-                      className="h-7 w-[160px] sm:w-[200px] text-xs rounded-md border pl-7 pr-2"
+                      className="h-7 w-[160px] sm:w-[200px] text-xs rounded-md border ps-7 pe-2"
                       style={{
                         backgroundColor: 'var(--input)',
                         borderColor: 'var(--border)',
