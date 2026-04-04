@@ -29,6 +29,8 @@ tmp/
 # Google Cloud
 .gcloud/
 *.json
+# Allow i18n translation files
+!translations/*.json
 
 # Testing
 .pytest_cache/
