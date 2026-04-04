@@ -10,7 +10,9 @@ Tests cover:
 - should_apply_discount (active, expired, no referral)
 """
 import pytest
-from unittest.mock import MagicMock
+import sys
+import types
+from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
 
 from backend.services.referral_service import (
@@ -41,6 +43,16 @@ def service(mock_db, mock_stripe_service):
     svc.db = mock_db
     svc.stripe_service = mock_stripe_service
     return svc
+
+
+@pytest.fixture
+def mock_user_service():
+    """Inject a fake backend.services.user_service module so local imports resolve."""
+    mock_get_user_svc = MagicMock()
+    fake_module = types.ModuleType("backend.services.user_service")
+    fake_module.get_user_service = mock_get_user_svc
+    with patch.dict(sys.modules, {"backend.services.user_service": fake_module}):
+        yield mock_get_user_svc
 
 
 # ============================================================================
@@ -537,3 +549,306 @@ class TestFullReferralFlow:
 
         # Step 4: Earning calculation
         assert int(1575 * 20 / 100) == 315  # 20% of $15.75 = $3.15
+
+
+# ============================================================================
+# TestGetAttributionData
+# ============================================================================
+
+class TestGetAttributionData:
+    """Tests for get_attribution_data() — returns dict for user doc update."""
+
+    def test_returns_attribution_dict(self, service, mock_db):
+        """Attribution data includes correct fields and timedelta calculation."""
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "discount_percent": 10,
+            "kickback_percent": 20,
+            "discount_duration_days": 30,
+            "earning_duration_days": 365,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        data = service.get_attribution_data("abc12345")
+        assert data is not None
+        assert data["referred_by_code"] == "abc12345"
+        assert "referred_at" in data
+        assert "referral_discount_expires_at" in data
+        # Discount should expire ~30 days from now
+        delta = data["referral_discount_expires_at"] - data["referred_at"]
+        assert delta.days == 30
+
+    def test_returns_none_for_invalid_code(self, service, mock_db):
+        mock_doc = MagicMock()
+        mock_doc.exists = False
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        data = service.get_attribution_data("nonexistent")
+        assert data is None
+
+    def test_custom_discount_duration(self, service, mock_db):
+        """Links with custom duration calculate correct expiry."""
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "code": "custom90",
+            "owner_email": "referrer@example.com",
+            "discount_percent": 15,
+            "kickback_percent": 25,
+            "discount_duration_days": 90,  # Custom 90-day duration
+            "earning_duration_days": 365,
+            "is_vanity": True,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        data = service.get_attribution_data("custom90")
+        delta = data["referral_discount_expires_at"] - data["referred_at"]
+        assert delta.days == 90
+
+
+# ============================================================================
+# TestGetDiscountForCheckout
+# ============================================================================
+
+class TestGetDiscountForCheckout:
+    """Tests for get_discount_for_checkout() — coupon lookup for Stripe checkout."""
+
+    def test_returns_discount_for_active_referred_user(self, service, mock_db, mock_stripe_service, mock_user_service):
+        """Returns coupon info when user has active referral discount."""
+        mock_user = MagicMock()
+        mock_user.referred_by_code = "abc12345"
+        mock_user.referral_discount_expires_at = datetime.utcnow() + timedelta(days=15)
+
+        mock_user_svc = MagicMock()
+        mock_user_svc.get_user.return_value = mock_user
+        mock_user_service.return_value = mock_user_svc
+
+        # Mock referral link lookup
+        mock_doc = MagicMock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "discount_percent": 10,
+            "kickback_percent": 20,
+            "discount_duration_days": 30,
+            "earning_duration_days": 365,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+        mock_stripe_service.get_or_create_referral_coupon.return_value = "referral-10pct"
+
+        result = service.get_discount_for_checkout("referred@example.com")
+
+        assert result is not None
+        assert result["coupon_id"] == "referral-10pct"
+        assert result["discount_percent"] == 10
+
+    def test_returns_none_for_expired_discount(self, service, mock_db, mock_user_service):
+        """Returns None when user's discount has expired."""
+        mock_user = MagicMock()
+        mock_user.referred_by_code = "abc12345"
+        mock_user.referral_discount_expires_at = datetime.utcnow() - timedelta(days=1)
+
+        mock_user_svc = MagicMock()
+        mock_user_svc.get_user.return_value = mock_user
+        mock_user_service.return_value = mock_user_svc
+
+        result = service.get_discount_for_checkout("referred@example.com")
+
+        assert result is None
+
+    def test_returns_none_for_non_referred_user(self, service, mock_db, mock_user_service):
+        """Returns None when user has no referral."""
+        mock_user = MagicMock()
+        mock_user.referred_by_code = None
+        mock_user.referral_discount_expires_at = None
+
+        mock_user_svc = MagicMock()
+        mock_user_svc.get_user.return_value = mock_user
+        mock_user_service.return_value = mock_user_svc
+
+        result = service.get_discount_for_checkout("regular@example.com")
+
+        assert result is None
+
+
+# ============================================================================
+# TestGetDashboardData
+# ============================================================================
+
+class TestGetDashboardData:
+    """Tests for get_dashboard_data() — full referral dashboard payload."""
+
+    def test_returns_complete_dashboard(self, service, mock_db, mock_user_service):
+        """Dashboard data includes link, earnings, payouts, and balances."""
+        # Mock user service for Connect status check
+        mock_user = MagicMock()
+        mock_user.stripe_connect_account_id = None
+        mock_user_svc = MagicMock()
+        mock_user_svc.get_user.return_value = mock_user
+        mock_user_service.return_value = mock_user_svc
+
+        # Mock get_or_create_link: query stream returns existing link doc
+        mock_link_doc = MagicMock()
+        mock_link_doc.to_dict.return_value = {
+            "code": "mycode12",
+            "owner_email": "user@example.com",
+            "discount_percent": 10,
+            "kickback_percent": 20,
+            "discount_duration_days": 30,
+            "earning_duration_days": 365,
+            "is_vanity": False,
+            "enabled": True,
+            "display_name": None,
+            "custom_message": None,
+            "stripe_coupon_id": None,
+            "stats": {"clicks": 5, "signups": 2, "purchases": 1, "total_earned_cents": 350},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        # Complex mock setup for multiple collection queries
+        mock_link_query = MagicMock()
+        mock_link_query.limit.return_value.stream.return_value = [mock_link_doc]
+
+        mock_earnings_query = MagicMock()
+        mock_earnings_query.order_by.return_value.limit.return_value.stream.return_value = []
+
+        mock_payouts_query = MagicMock()
+        mock_payouts_query.order_by.return_value.limit.return_value.stream.return_value = []
+
+        def collection_side_effect(name):
+            mock_col = MagicMock()
+            if name == "referral_links":
+                mock_col.where.return_value = mock_link_query
+            elif name == "referral_earnings":
+                mock_col.where.return_value = mock_earnings_query
+            elif name == "referral_payouts":
+                mock_col.where.return_value = mock_payouts_query
+            return mock_col
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        data = service.get_dashboard_data("user@example.com")
+
+        assert "link" in data
+        assert data["link"]["code"] == "mycode12"
+        assert data["link"]["stats"]["clicks"] == 5
+        assert data["pending_balance_cents"] == 0
+        assert data["total_earned_cents"] == 350
+        assert data["stripe_connect_configured"] is False
+        assert isinstance(data["recent_earnings"], list)
+        assert isinstance(data["recent_payouts"], list)
+
+
+# ============================================================================
+# TestEarningCalculationEdgeCases
+# ============================================================================
+
+class TestEarningCalculationEdgeCases:
+    """Edge cases for record_earning() — rounding and zero amounts."""
+
+    def test_earning_rounds_down(self, service, mock_db):
+        """Earning calculation truncates fractional cents."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            "email": "referred@example.com",
+            "referred_by_code": "abc12345",
+            "referred_at": datetime.utcnow() - timedelta(days=10),
+        }
+
+        mock_link_doc = MagicMock()
+        mock_link_doc.exists = True
+        mock_link_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "kickback_percent": 20,
+            "earning_duration_days": 365,
+            "discount_percent": 10,
+            "discount_duration_days": 30,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        def collection_side_effect(name):
+            mock_col = MagicMock()
+            if name == "gen_users":
+                mock_col.document.return_value.get.return_value = mock_user_doc
+            elif name == REFERRAL_LINKS_COLLECTION:
+                mock_col.document.return_value.get.return_value = mock_link_doc
+            return mock_col
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        # 1999 * 20 / 100 = 399.8 -> should truncate to 399
+        result = service.record_earning(
+            referred_email="referred@example.com",
+            stripe_session_id="cs_edge_1",
+            purchase_amount_cents=1999,
+        )
+        assert result is not None
+        assert result["earning_amount_cents"] == 399
+
+    def test_zero_amount_returns_none(self, service, mock_db):
+        """Zero purchase amount produces no earning."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            "email": "referred@example.com",
+            "referred_by_code": "abc12345",
+            "referred_at": datetime.utcnow() - timedelta(days=10),
+        }
+
+        mock_link_doc = MagicMock()
+        mock_link_doc.exists = True
+        mock_link_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "kickback_percent": 20,
+            "earning_duration_days": 365,
+            "discount_percent": 10,
+            "discount_duration_days": 30,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        def collection_side_effect(name):
+            mock_col = MagicMock()
+            if name == "gen_users":
+                mock_col.document.return_value.get.return_value = mock_user_doc
+            elif name == REFERRAL_LINKS_COLLECTION:
+                mock_col.document.return_value.get.return_value = mock_link_doc
+            return mock_col
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        result = service.record_earning(
+            referred_email="referred@example.com",
+            stripe_session_id="cs_edge_2",
+            purchase_amount_cents=0,
+        )
+        assert result is None
