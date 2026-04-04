@@ -1070,3 +1070,19 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 **Fix:** (1) Root cause: Don't write `corrections_updated.json` unless the payload actually contains a `"corrections"` key. (2) Defensive: Both GCE and Cloud Run workers validate the downloaded JSON has the expected structure before processing, falling back to base result if not.
 
 **Key insight:** When a file's existence is used as a boolean signal ("corrections were updated"), never write it with empty/invalid content. The existence check and content processing must agree on what constitutes a valid file. Apply defense in depth: fix the writer AND validate in readers.
+
+### i18n: Keep Providers in Root Layout When Admin Pages Exist (Apr 2026)
+
+**Problem:** The Phase 1/2 i18n pattern (public-website, karaoke-decide) stripped the root `app/layout.tsx` bare and moved all providers into `app/[locale]/layout.tsx`. This doesn't work for karaoke-gen because admin pages at `app/admin/` sit outside the `[locale]` route segment and need ThemeProvider/TenantProvider.
+
+**Fix:** Keep shared providers (ThemeProvider, TenantProvider, ImpersonationBannerWrapper, ServiceWorkerRegistration, GoogleAnalytics) in root layout. Only add NextIntlClientProvider to `[locale]/layout.tsx`. Admin pages inherit root providers without locale context.
+
+**Key insight:** When adding `[locale]` routing to a project with routes that should NOT be locale-prefixed (admin, API, etc.), don't blindly follow the "strip root layout" pattern. Keep shared providers in root so all route segments can access them.
+
+### i18n: Mock next-intl in Jest by Loading en.json (Apr 2026)
+
+**Problem:** Adding `useTranslations` to components caused 27 test suites to fail — Jest can't handle ESM exports from `next-intl`, and even after fixing that, tests that assert on English text (e.g., `screen.getByText("Review Lyrics")`) fail because the mock returns translation keys instead of English strings.
+
+**Fix:** Mock `next-intl` in `jest.setup.js` with a function that loads the actual `messages/en.json` and resolves dotted key paths to real English strings. Tests see the same text users see, no test assertions need updating. The mock supports interpolation (`{count}`, ICU plurals).
+
+**Key insight:** For i18n refactors, make the test mock return real translations, not keys. This lets existing tests validate that the i18n wiring produces correct output without changing every assertion. The mock is ~20 lines and eliminates hundreds of test updates.

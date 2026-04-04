@@ -36,6 +36,7 @@
 | **Community version detection** | Working (via karaokenerds.com) |
 | **Review session backup/restore** | Working (auto-save + restore UI) |
 | **Review reminder & auto-expiry** | Working (24h reminder, 48h cancel + refund) |
+| **i18n / Multilingual (frontend)** | Working (next-intl, en/es/de, 1062 strings, [locale] routing) |
 
 ## Known Issues
 
