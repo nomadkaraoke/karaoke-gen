@@ -265,6 +265,66 @@ class ReferralService:
             return None
         return {"coupon_id": coupon_id, "discount_percent": link.discount_percent}
 
+    # ========================================================================
+    # Earnings
+    # ========================================================================
+
+    def record_earning(self, referred_email: str, stripe_session_id: str, purchase_amount_cents: int) -> Optional[dict]:
+        """Record a referral earning after a credit purchase."""
+        referred_email = referred_email.lower()
+
+        # Look up the referred user
+        user_doc = self.db.collection("gen_users").document(referred_email).get()
+        if not user_doc.exists:
+            return None
+
+        user_data = user_doc.to_dict()
+        referral_code = user_data.get("referred_by_code")
+        if not referral_code:
+            return None
+
+        referred_at = user_data.get("referred_at")
+        if not referred_at:
+            return None
+
+        link = self.get_link_by_code(referral_code)
+        if not link:
+            return None
+
+        # Check earning window
+        earning_expires = referred_at + timedelta(days=link.earning_duration_days)
+        if datetime.utcnow() > earning_expires:
+            return None
+
+        # Calculate earning
+        earning_amount = int(purchase_amount_cents * link.kickback_percent / 100)
+        if earning_amount <= 0:
+            return None
+
+        import uuid
+        earning_id = str(uuid.uuid4())
+        earning = ReferralEarning(
+            id=earning_id,
+            referrer_email=link.owner_email,
+            referred_email=referred_email,
+            referral_code=referral_code,
+            stripe_session_id=stripe_session_id,
+            purchase_amount_cents=purchase_amount_cents,
+            earning_amount_cents=earning_amount,
+        )
+
+        self.db.collection(REFERRAL_EARNINGS_COLLECTION).document(earning_id).set(
+            earning.model_dump(mode="json")
+        )
+
+        self.db.collection(REFERRAL_LINKS_COLLECTION).document(referral_code).update({
+            "stats.purchases": firestore.Increment(1),
+            "stats.total_earned_cents": firestore.Increment(earning_amount),
+        })
+
+        logger.info(f"Referral earning recorded: ${earning_amount / 100:.2f} for {link.owner_email}")
+        return {"earning_id": earning_id, "referrer_email": link.owner_email, "earning_amount_cents": earning_amount}
+
     def list_links(self, limit: int = 50, offset: int = 0) -> list[ReferralLink]:
         """List referral links for admin view."""
         query = (

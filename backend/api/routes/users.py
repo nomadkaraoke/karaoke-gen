@@ -1047,6 +1047,25 @@ async def stripe_webhook(
                         # Send confirmation email
                         email_service.send_credits_added(user_email, credits, new_balance)
                         logger.info(f"Added {credits} credits to {user_email}, new balance: {new_balance}")
+
+                        # Record referral earning if applicable
+                        try:
+                            from backend.services.referral_service import get_referral_service
+                            referral_svc = get_referral_service()
+                            amount_charged = session.get("amount_total", 0)
+                            if amount_charged > 0:
+                                earning_result = referral_svc.record_earning(
+                                    referred_email=user_email,
+                                    stripe_session_id=session_id,
+                                    purchase_amount_cents=amount_charged,
+                                )
+                                if earning_result:
+                                    logger.info(
+                                        f"Referral earning: ${earning_result['earning_amount_cents'] / 100:.2f} "
+                                        f"for {earning_result['referrer_email']}"
+                                    )
+                        except Exception as ref_err:
+                            logger.warning(f"Referral earning recording failed: {ref_err}")
                     else:
                         logger.error(f"Failed to add credits: {credit_msg}")
 

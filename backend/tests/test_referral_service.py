@@ -298,3 +298,111 @@ class TestShouldApplyDiscount:
     def test_no_referral(self, service):
         user_data = {}
         assert service.should_apply_discount(user_data) is False
+
+
+# ============================================================================
+# TestRecordEarning
+# ============================================================================
+
+class TestRecordEarning:
+    def test_creates_earning_within_window(self, service, mock_db):
+        """Earning is created when purchase is within earning window."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            "email": "referred@example.com",
+            "referred_by_code": "abc12345",
+            "referred_at": datetime.utcnow() - timedelta(days=30),
+        }
+
+        mock_link_doc = MagicMock()
+        mock_link_doc.exists = True
+        mock_link_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "kickback_percent": 20,
+            "earning_duration_days": 365,
+            "discount_percent": 10,
+            "discount_duration_days": 30,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        def collection_side_effect(name):
+            mock_col = MagicMock()
+            if name == "gen_users":
+                mock_col.document.return_value.get.return_value = mock_user_doc
+            elif name == REFERRAL_LINKS_COLLECTION:
+                mock_col.document.return_value.get.return_value = mock_link_doc
+            return mock_col
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        result = service.record_earning(
+            referred_email="referred@example.com",
+            stripe_session_id="cs_test_123",
+            purchase_amount_cents=1575,
+        )
+        assert result is not None
+        assert result["earning_amount_cents"] == 315  # 20% of 1575
+
+    def test_no_earning_outside_window(self, service, mock_db):
+        """No earning created when purchase is outside earning window."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            "email": "referred@example.com",
+            "referred_by_code": "abc12345",
+            "referred_at": datetime.utcnow() - timedelta(days=400),
+        }
+
+        mock_link_doc = MagicMock()
+        mock_link_doc.exists = True
+        mock_link_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "kickback_percent": 20,
+            "earning_duration_days": 365,
+            "discount_percent": 10,
+            "discount_duration_days": 30,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        def collection_side_effect(name):
+            mock_col = MagicMock()
+            if name == "gen_users":
+                mock_col.document.return_value.get.return_value = mock_user_doc
+            elif name == REFERRAL_LINKS_COLLECTION:
+                mock_col.document.return_value.get.return_value = mock_link_doc
+            return mock_col
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        result = service.record_earning(
+            referred_email="referred@example.com",
+            stripe_session_id="cs_test_456",
+            purchase_amount_cents=1575,
+        )
+        assert result is None
+
+    def test_no_earning_for_non_referred_user(self, service, mock_db):
+        """No earning for users without referral attribution."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {"email": "user@example.com"}
+
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
+
+        result = service.record_earning(
+            referred_email="user@example.com",
+            stripe_session_id="cs_test_789",
+            purchase_amount_cents=1750,
+        )
+        assert result is None
