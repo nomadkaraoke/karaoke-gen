@@ -102,7 +102,7 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
                   const isSelected = selectedPackage?.id === pkg.id
                   const isBestValue = pkg.credits === 5
                   const savings = pkg.credits > 1
-                    ? Math.round((1 - pkg.price_cents / (pkg.credits * 500)) * 100)
+                    ? Math.round((1 - pkg.price_cents / (pkg.credits * 1000)) * 100)
                     : 0
 
                   return (

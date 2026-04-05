@@ -108,7 +108,7 @@ test.describe('Mobile - Landing Page', () => {
             response: {
               body: {
                 packages: [
-                  { id: 'credit_1', credits: 1, price_cents: 500 },
+                  { id: 'credit_1', credits: 1, price_cents: 1000 },
                 ],
               },
             },

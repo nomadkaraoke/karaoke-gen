@@ -36,10 +36,10 @@ test.describe('Landing Page', () => {
           response: {
             body: {
               packages: [
-                { id: 'credit_1', credits: 1, price_cents: 500 },
-                { id: 'credit_3', credits: 3, price_cents: 1200 },
-                { id: 'credit_5', credits: 5, price_cents: 1750 },
-                { id: 'credit_10', credits: 10, price_cents: 3000 },
+                { id: 'credit_1', credits: 1, price_cents: 1000 },
+                { id: 'credit_3', credits: 3, price_cents: 2400 },
+                { id: 'credit_5', credits: 5, price_cents: 3500 },
+                { id: 'credit_10', credits: 10, price_cents: 6000 },
               ],
             },
           },
@@ -71,10 +71,10 @@ test.describe('Landing Page', () => {
           response: {
             body: {
               packages: [
-                { id: 'credit_1', credits: 1, price_cents: 500 },
-                { id: 'credit_3', credits: 3, price_cents: 1200 },
-                { id: 'credit_5', credits: 5, price_cents: 1750 },
-                { id: 'credit_10', credits: 10, price_cents: 3000 },
+                { id: 'credit_1', credits: 1, price_cents: 1000 },
+                { id: 'credit_3', credits: 3, price_cents: 2400 },
+                { id: 'credit_5', credits: 5, price_cents: 3500 },
+                { id: 'credit_10', credits: 10, price_cents: 6000 },
               ],
             },
           },
@@ -175,7 +175,7 @@ test.describe('Landing Page', () => {
           response: {
             body: {
               packages: [
-                { id: 'credit_5', credits: 5, price_cents: 1750 },
+                { id: 'credit_5', credits: 5, price_cents: 3500 },
               ],
             },
           },

@@ -22,25 +22,25 @@ logger = logging.getLogger(__name__)
 CREDIT_PACKAGES = {
     "1_credit": {
         "credits": 1,
-        "price_cents": 500,  # $5.00
+        "price_cents": 1000,  # $10.00
         "name": "1 Karaoke Credit",
         "description": "Create 1 professional karaoke video",
     },
     "3_credits": {
         "credits": 3,
-        "price_cents": 1200,  # $12.00 (20% discount)
+        "price_cents": 2400,  # $24.00 (20% discount)
         "name": "3 Karaoke Credits",
         "description": "Create 3 professional karaoke videos (Save 20%)",
     },
     "5_credits": {
         "credits": 5,
-        "price_cents": 1750,  # $17.50 (30% discount)
+        "price_cents": 3500,  # $35.00 (30% discount)
         "name": "5 Karaoke Credits",
         "description": "Create 5 professional karaoke videos (Save 30%)",
     },
     "10_credits": {
         "credits": 10,
-        "price_cents": 3000,  # $30.00 (40% discount)
+        "price_cents": 6000,  # $60.00 (40% discount)
         "name": "10 Karaoke Credits",
         "description": "Create 10 professional karaoke videos (Save 40%)",
     },
