@@ -99,7 +99,7 @@ The dialog uses `max-w-2xl` (wider than the default `max-w-lg`) to accommodate t
 |                    |  [3 clickable thumbnails]    |
 |                    |                              |
 |                    |  Corner Dot                  |
-|                    |  [3 clickable options]       |
+|                    |  [2 clickable options]       |
 |                    |                              |
 |                    |  Colors                      |
 |                    |  FG: [picker] BG: [picker]   |

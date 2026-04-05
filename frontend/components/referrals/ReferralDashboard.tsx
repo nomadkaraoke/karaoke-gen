@@ -96,10 +96,12 @@ export default function ReferralDashboard() {
             {copied ? t('copied') : t('copyLink')}
           </button>
           <button
+            type="button"
             onClick={() => setQrOpen(true)}
             className="px-3 py-2 rounded text-sm border"
             style={{ borderColor: 'var(--card-border)', color: 'var(--text)' }}
             title={t('qrCode')}
+            aria-label={t('qrCode')}
           >
             <QrCode className="w-4 h-4" />
           </button>
