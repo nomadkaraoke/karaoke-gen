@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import QRCodeDialog from '../QRCodeDialog';
 
@@ -51,12 +52,13 @@ describe('QRCodeDialog', () => {
 
   it('renders all dot style options', () => {
     renderDialog();
-    expect(screen.getByText('Square')).toBeInTheDocument();
+    // "Square" appears multiple times (dot style, corner frame, corner dot) — use getAllByText
+    expect(screen.getAllByText('Square').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Rounded')).toBeInTheDocument();
     expect(screen.getByText('Dots')).toBeInTheDocument();
     expect(screen.getByText('Classy')).toBeInTheDocument();
     expect(screen.getByText('Classy Rounded')).toBeInTheDocument();
-    expect(screen.getByText('Extra Rounded')).toBeInTheDocument();
+    expect(screen.getAllByText('Extra Rounded').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders corner frame and corner dot style sections', () => {
@@ -84,13 +86,15 @@ describe('QRCodeDialog', () => {
   });
 
   it('saves style prefs to localStorage on change', async () => {
+    jest.useFakeTimers();
     renderDialog();
     // Click "Rounded" dot style
     fireEvent.click(screen.getByText('Rounded'));
-    await waitFor(() => {
-      const saved = JSON.parse(localStorage.getItem('nk-qr-style-prefs') || '{}');
-      expect(saved.dotStyle).toBe('rounded');
-    });
+    // Flush the debounce timer
+    act(() => { jest.runAllTimers(); });
+    const saved = JSON.parse(localStorage.getItem('nk-qr-style-prefs') || '{}');
+    expect(saved.dotStyle).toBe('rounded');
+    jest.useRealTimers();
   });
 
   it('restores style prefs from localStorage on open', () => {
@@ -109,8 +113,9 @@ describe('QRCodeDialog', () => {
   });
 
   it('calls download with PNG extension when Download PNG clicked', async () => {
+    const user = userEvent.setup();
     renderDialog();
-    fireEvent.click(screen.getByText('Download PNG'));
+    await user.click(screen.getByText('Download PNG'));
     await waitFor(() => {
       expect(mockDownload).toHaveBeenCalledWith({
         name: 'referral-qr',
@@ -120,8 +125,9 @@ describe('QRCodeDialog', () => {
   });
 
   it('calls download with SVG extension when Download SVG clicked', async () => {
+    const user = userEvent.setup();
     renderDialog();
-    fireEvent.click(screen.getByText('Download SVG'));
+    await user.click(screen.getByText('Download SVG'));
     await waitFor(() => {
       expect(mockDownload).toHaveBeenCalledWith({
         name: 'referral-qr',
