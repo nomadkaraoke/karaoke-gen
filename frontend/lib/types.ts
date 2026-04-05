@@ -124,8 +124,8 @@ export interface ReferralDashboard {
 }
 
 export interface ReferralInterstitial {
-  code: string;
-  display_name: string | null;
+  referral_code: string;
+  referrer_display_name: string | null;
   custom_message: string | null;
   discount_percent: number;
   discount_duration_days: number;
