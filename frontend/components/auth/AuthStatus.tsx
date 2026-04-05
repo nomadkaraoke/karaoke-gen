@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift } from "lucide-react"
-import { Link } from "@/i18n/routing"
+import NextLink from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -124,10 +124,10 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             <>
               <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem asChild className="text-muted-foreground focus:text-foreground focus:bg-secondary">
-                <Link href="/admin">
+                <NextLink href="/admin">
                   <Shield className="w-4 h-4 mr-2" />
                   <span>{tHeader('adminDashboard')}</span>
-                </Link>
+                </NextLink>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={(e) => e.preventDefault()}
