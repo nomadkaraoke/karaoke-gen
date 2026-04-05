@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { Loader2, CheckCircle, XCircle, Gift, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { setReferralCode } from "@/lib/referral"
 import { useTranslations } from "next-intl"
 
 type VerifyState = "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
@@ -27,6 +28,12 @@ function VerifyMagicLinkContent() {
     hasVerified.current = true
 
     const token = searchParams.get("token")
+
+    // Store referral code from magic link URL (cross-device path)
+    const ref = searchParams.get("ref")
+    if (ref) {
+      setReferralCode(ref)
+    }
 
     if (!token) {
       setState("error")

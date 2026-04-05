@@ -251,6 +251,7 @@ class EmailService:
         tenant_frontend_url: Optional[str] = None,
         tenant_name: Optional[str] = None,
         locale: str = "en",
+        referral_code: Optional[str] = None,
     ) -> bool:
         """
         Send a magic link email for authentication.
@@ -267,6 +268,8 @@ class EmailService:
         """
         base_url = tenant_frontend_url or self.frontend_url
         magic_link_url = f"{base_url}{get_locale_prefix(locale)}/auth/verify?token={token}"
+        if referral_code:
+            magic_link_url += f"&ref={referral_code}"
 
         brand_name = tenant_name or "Nomad Karaoke"
         subject = t(locale, "emails.magicLink.subject", brand_name=brand_name)
@@ -290,6 +293,8 @@ class EmailService:
     <p style="text-align: center;">
         <a href="{magic_link_url}" class="button">{t(locale, "emails.magicLink.signInButton")}</a>
     </p>
+
+    {"<div style='background: linear-gradient(135deg, #7c3aed10, #a855f710); border: 1px solid #a855f730; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center;'><p style=\"color: #a855f7; font-weight: 600; margin: 0;\">&#127873; Your referral discount is waiting!</p><p style=\"color: #666; font-size: 14px; margin: 4px 0 0;\">Sign in to claim your discount on credit purchases</p></div>" if referral_code else ""}
 
     <div class="warning">
         ⏰ {t(locale, "emails.magicLink.expiryWarning")}

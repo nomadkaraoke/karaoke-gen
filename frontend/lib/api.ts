@@ -1273,10 +1273,13 @@ export const api = {
   /**
    * Send a magic link email for passwordless login
    */
-  async sendMagicLink(email: string, deviceFingerprint?: string | null): Promise<MagicLinkResponse> {
+  async sendMagicLink(email: string, deviceFingerprint?: string | null, referralCode?: string | null): Promise<MagicLinkResponse> {
     const body: Record<string, string> = { email }
     if (deviceFingerprint) {
       body.device_fingerprint = deviceFingerprint
+    }
+    if (referralCode) {
+      body.referral_code = referralCode
     }
     const response = await fetch(`${API_BASE_URL}/api/users/auth/magic-link`, {
       method: 'POST',

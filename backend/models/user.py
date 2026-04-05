@@ -139,6 +139,9 @@ class MagicLinkToken(BaseModel):
     # Multi-tenant support (None = default Nomad Karaoke)
     tenant_id: Optional[str] = None
 
+    # Referral attribution (travels with magic link for cross-device support)
+    referral_code: Optional[str] = None
+
     # Pre-computed credit evaluation (set asynchronously after magic link is sent)
     credit_eval_decision: Optional[str] = None  # "grant", "deny", "pending_review"
     credit_eval_reasoning: Optional[str] = None
@@ -174,6 +177,7 @@ class SendMagicLinkRequest(BaseModel):
     """Request to send a magic link email."""
     email: str
     device_fingerprint: Optional[str] = None
+    referral_code: Optional[str] = None  # From referral interstitial
 
 
 class SendMagicLinkResponse(BaseModel):

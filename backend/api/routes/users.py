@@ -298,6 +298,7 @@ async def send_magic_link(
         user_agent=user_agent,
         tenant_id=tenant_id,
         device_fingerprint=device_fingerprint,
+        referral_code=request.referral_code,
     )
 
     # Get tenant-specific email configuration
@@ -317,6 +318,7 @@ async def send_magic_link(
         tenant_frontend_url=tenant_frontend_url,
         tenant_name=tenant_name,
         locale=locale,
+        referral_code=request.referral_code,
     )
 
     if not sent:
@@ -408,8 +410,11 @@ async def verify_magic_link(
     elif credit_status == "denied":
         logger.info(f"Welcome credits denied for {_mask_email(user.email)}")
 
-    # Referral attribution (if referral code provided and user not already referred)
-    referral_code = http_request.headers.get("x-referral-code")
+    # Referral attribution: try header first (cookie path), then magic link token (email path), then URL param
+    referral_code = (
+        http_request.headers.get("x-referral-code")
+        or (magic_link_data.get("referral_code") if magic_link_doc.exists else None)
+    )
     if referral_code and not user.referred_by_code:
         try:
             from backend.services.referral_service import get_referral_service

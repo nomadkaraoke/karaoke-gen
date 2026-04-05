@@ -57,7 +57,8 @@ export const useAuth = create<AuthStore>()(
           // Get device fingerprint for anti-abuse rate limiting
           const { getDeviceFingerprint } = await import('./fingerprint')
           const fingerprint = await getDeviceFingerprint()
-          await api.sendMagicLink(email, fingerprint)
+          const referralCode = getReferralCode()
+          await api.sendMagicLink(email, fingerprint, referralCode)
           set({ isLoading: false })
           return true
         } catch (err) {
