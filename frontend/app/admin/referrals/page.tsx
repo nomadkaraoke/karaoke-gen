@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   Share2, Link as LinkIcon, Users, MousePointerClick, DollarSign,
-  Plus, Copy, Check, RefreshCw, Loader2, ToggleLeft, ToggleRight,
+  Plus, Copy, Check, RefreshCw, Loader2, ToggleLeft, ToggleRight, Pencil,
 } from "lucide-react"
 
 function formatCents(cents: number): string {
@@ -39,6 +39,16 @@ export default function ReferralsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editLink, setEditLink] = useState<AdminReferralLink | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  // Edit form state
+  const [editDisplayName, setEditDisplayName] = useState("")
+  const [editMessage, setEditMessage] = useState("")
+  const [editDiscount, setEditDiscount] = useState("10")
+  const [editKickback, setEditKickback] = useState("20")
 
   // Create form state
   const [formCode, setFormCode] = useState("")
@@ -113,6 +123,39 @@ export default function ReferralsPage() {
       setCreateError(err instanceof Error ? err.message : "Failed to create link")
     } finally {
       setCreating(false)
+    }
+  }
+
+  const openEdit = (link: AdminReferralLink) => {
+    setEditLink(link)
+    setEditDisplayName(link.display_name || "")
+    setEditMessage(link.custom_message || "")
+    setEditDiscount(String(link.discount_percent))
+    setEditKickback(String(link.kickback_percent))
+    setEditError(null)
+    setEditOpen(true)
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editLink) return
+    setSaving(true)
+    setEditError(null)
+    try {
+      await adminApi.updateReferralLink(editLink.code, {
+        display_name: editDisplayName || null,
+        custom_message: editMessage || null,
+        discount_percent: Number(editDiscount) || 10,
+        kickback_percent: Number(editKickback) || 20,
+      })
+      setEditOpen(false)
+      setEditLink(null)
+      await loadData()
+    } catch (err) {
+      console.error("Failed to update link:", err)
+      setEditError(err instanceof Error ? err.message : "Failed to update link")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -301,7 +344,7 @@ export default function ReferralsPage() {
                   <TableHead className="text-right">Purchases</TableHead>
                   <TableHead className="text-right">Earned</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -363,22 +406,33 @@ export default function ReferralsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleToggle(link)}
-                          disabled={togglingCode === link.code}
-                          title={link.enabled ? "Disable link" : "Enable link"}
-                        >
-                          {togglingCode === link.code ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : link.enabled ? (
-                            <ToggleRight className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEdit(link)}
+                            title="Edit link"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleToggle(link)}
+                            disabled={togglingCode === link.code}
+                            title={link.enabled ? "Disable link" : "Enable link"}
+                          >
+                            {togglingCode === link.code ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : link.enabled ? (
+                              <ToggleRight className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <ToggleLeft className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -388,6 +442,74 @@ export default function ReferralsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Link Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditLink(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Referral Link: {editLink?.code}</DialogTitle>
+            <DialogDescription>
+              Update settings for this referral link. Owner: {editLink?.owner_email}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editDisplayName">Display Name</Label>
+              <Input
+                id="editDisplayName"
+                placeholder="Shown on the interstitial page"
+                value={editDisplayName}
+                onChange={(e) => setEditDisplayName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editMessage">Custom Message</Label>
+              <Input
+                id="editMessage"
+                placeholder="Welcome message for referred users"
+                value={editMessage}
+                onChange={(e) => setEditMessage(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editDiscount">Discount %</Label>
+                <Input
+                  id="editDiscount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={editDiscount}
+                  onChange={(e) => setEditDiscount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editKickback">Kickback %</Label>
+                <Input
+                  id="editKickback"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={editKickback}
+                  onChange={(e) => setEditKickback(e.target.value)}
+                />
+              </div>
+            </div>
+            {editError && (
+              <p className="text-sm text-destructive">{editError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
