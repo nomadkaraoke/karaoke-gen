@@ -77,9 +77,12 @@ def _build_user_public(user, role_override=None, feedback_eligible=False):
     if user.referral_discount_expires_at:
         expires = user.referral_discount_expires_at
         if isinstance(expires, datetime):
-            has_discount = expires > datetime.utcnow()
+            # Firestore returns timezone-aware datetimes; ensure comparison is compatible
+            now = datetime.utcnow()
+            if expires.tzinfo is not None:
+                now = now.replace(tzinfo=expires.tzinfo)
+            has_discount = expires > now
             discount_expires = expires.isoformat() if has_discount else None
-        # Firestore may return DatetimeWithNanoseconds (subclass of datetime)
 
     if has_discount and user.referred_by_code:
         # Look up the discount percent from the referral link
