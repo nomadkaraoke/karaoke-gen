@@ -10,6 +10,9 @@ export interface User {
   total_jobs_completed?: number
   feedback_eligible?: boolean
   has_active_referral_discount?: boolean
+  referral_discount_percent?: number
+  referral_discount_expires_at?: string
+  referred_by_code?: string
 }
 
 export interface UserPublic {
@@ -22,6 +25,9 @@ export interface UserPublic {
   feedback_eligible?: boolean
   referral_code?: string
   has_active_referral_discount?: boolean
+  referral_discount_percent?: number
+  referral_discount_expires_at?: string
+  referred_by_code?: string
 }
 
 export interface MagicLinkResponse {

@@ -64,6 +64,49 @@ from backend.services.auth_service import AuthResult
 from backend.api.routes.file_upload import _prepare_theme_for_job
 from backend.services.auth_service import UserType
 from backend.utils.test_data import is_test_email
+
+
+def _build_user_public(user, role_override=None, feedback_eligible=False):
+    """Build UserPublic with computed referral discount status."""
+    from datetime import datetime
+
+    has_discount = False
+    discount_percent = None
+    discount_expires = None
+
+    if user.referral_discount_expires_at:
+        expires = user.referral_discount_expires_at
+        if isinstance(expires, datetime):
+            has_discount = expires > datetime.utcnow()
+            discount_expires = expires.isoformat() if has_discount else None
+        # Firestore may return DatetimeWithNanoseconds (subclass of datetime)
+
+    if has_discount and user.referred_by_code:
+        # Look up the discount percent from the referral link
+        try:
+            from backend.services.referral_service import get_referral_service
+            link = get_referral_service().get_link_by_code(user.referred_by_code)
+            if link:
+                discount_percent = link.discount_percent
+        except Exception:
+            discount_percent = 10  # default fallback
+
+    return UserPublic(
+        email=user.email,
+        role=role_override or user.role,
+        credits=user.credits,
+        display_name=user.display_name,
+        total_jobs_created=user.total_jobs_created,
+        total_jobs_completed=user.total_jobs_completed,
+        tenant_id=getattr(user, 'tenant_id', None),
+        feedback_eligible=feedback_eligible,
+        total_spent=getattr(user, 'total_spent', 0),
+        referral_code=user.referral_code,
+        has_active_referral_discount=has_discount,
+        referral_discount_percent=discount_percent,
+        referral_discount_expires_at=discount_expires,
+        referred_by_code=user.referred_by_code,
+    )
 from backend.services.youtube_download_service import (
     get_youtube_download_service,
     YouTubeDownloadError,
@@ -405,15 +448,7 @@ async def verify_magic_link(
         email_service.send_welcome_email(user.email, user.credits, locale=locale)
 
     # Return user info with tenant_id
-    user_public = UserPublic(
-        email=user.email,
-        role=user.role,
-        credits=user.credits,
-        display_name=user.display_name,
-        total_jobs_created=user.total_jobs_created,
-        total_jobs_completed=user.total_jobs_completed,
-        tenant_id=user.tenant_id,
-    )
+    user_public = _build_user_public(user)
 
     # Resolve tenant subdomain for cross-domain redirect safety
     tenant_subdomain = None
@@ -491,13 +526,9 @@ async def get_current_user(
             user.total_jobs_completed >= 2
             and not user.has_submitted_feedback
         )
-        user_public = UserPublic(
-            email=user.email,
-            role=user.role if not auth_result.is_admin else UserRole.ADMIN,
-            credits=user.credits,
-            display_name=user.display_name,
-            total_jobs_created=user.total_jobs_created,
-            total_jobs_completed=user.total_jobs_completed,
+        user_public = _build_user_public(
+            user,
+            role_override=UserRole.ADMIN if auth_result.is_admin else None,
             feedback_eligible=feedback_eligible,
         )
         return UserProfileResponse(user=user_public, has_session=True)
@@ -512,15 +543,7 @@ async def get_current_user(
         user.total_jobs_completed >= 2
         and not user.has_submitted_feedback
     )
-    user_public = UserPublic(
-        email=user.email,
-        role=user.role,
-        credits=user.credits,
-        display_name=user.display_name,
-        total_jobs_created=user.total_jobs_created,
-        total_jobs_completed=user.total_jobs_completed,
-        feedback_eligible=feedback_eligible,
-    )
+    user_public = _build_user_public(user, feedback_eligible=feedback_eligible)
 
     return UserProfileResponse(user=user_public, has_session=True)
 

@@ -211,6 +211,9 @@ class UserPublic(BaseModel):
     total_spent: int = 0
     referral_code: Optional[str] = None
     has_active_referral_discount: bool = False
+    referral_discount_percent: Optional[int] = None
+    referral_discount_expires_at: Optional[str] = None  # ISO string
+    referred_by_code: Optional[str] = None
     created_at: Optional[str] = None
     last_login_at: Optional[str] = None
 

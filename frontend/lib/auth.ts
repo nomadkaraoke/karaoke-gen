@@ -100,6 +100,10 @@ export const useAuth = create<AuthStore>()(
             total_jobs_created: response.user.total_jobs_created,
             total_jobs_completed: response.user.total_jobs_completed,
             feedback_eligible: response.user.feedback_eligible,
+            has_active_referral_discount: response.user.has_active_referral_discount,
+            referral_discount_percent: response.user.referral_discount_percent,
+            referral_discount_expires_at: response.user.referral_discount_expires_at,
+            referred_by_code: response.user.referred_by_code,
           }
 
           set({ user, isLoading: false })
@@ -133,6 +137,10 @@ export const useAuth = create<AuthStore>()(
             total_jobs_created: response.user.total_jobs_created,
             total_jobs_completed: response.user.total_jobs_completed,
             feedback_eligible: response.user.feedback_eligible,
+            has_active_referral_discount: response.user.has_active_referral_discount,
+            referral_discount_percent: response.user.referral_discount_percent,
+            referral_discount_expires_at: response.user.referral_discount_expires_at,
+            referred_by_code: response.user.referred_by_code,
           }
 
           set({ user, isLoading: false })
@@ -186,6 +194,10 @@ export const useAuth = create<AuthStore>()(
             total_jobs_created: response.user.total_jobs_created,
             total_jobs_completed: response.user.total_jobs_completed,
             feedback_eligible: response.user.feedback_eligible,
+            has_active_referral_discount: response.user.has_active_referral_discount,
+            referral_discount_percent: response.user.referral_discount_percent,
+            referral_discount_expires_at: response.user.referral_discount_expires_at,
+            referred_by_code: response.user.referred_by_code,
           }
 
           set({ user, isLoading: false })
@@ -248,6 +260,10 @@ export const useAuth = create<AuthStore>()(
             total_jobs_created: userResponse.user.total_jobs_created,
             total_jobs_completed: userResponse.user.total_jobs_completed,
             feedback_eligible: userResponse.user.feedback_eligible,
+            has_active_referral_discount: userResponse.user.has_active_referral_discount,
+            referral_discount_percent: userResponse.user.referral_discount_percent,
+            referral_discount_expires_at: userResponse.user.referral_discount_expires_at,
+            referred_by_code: userResponse.user.referred_by_code,
           }
 
           set({

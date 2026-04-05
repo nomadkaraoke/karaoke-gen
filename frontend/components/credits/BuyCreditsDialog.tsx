@@ -72,11 +72,16 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          {user?.has_active_referral_discount && (
+          {user?.has_active_referral_discount && user?.referral_discount_percent && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
               <p className="text-green-600 dark:text-green-400 text-sm font-medium">
-                {tRef('discountBadge', { percent: 10 })}
+                {tRef('discountBadge', { percent: user.referral_discount_percent })}
               </p>
+              {user.referral_discount_expires_at && (
+                <p className="text-green-600/70 dark:text-green-400/70 text-xs mt-1">
+                  Applied automatically at checkout · Expires {new Date(user.referral_discount_expires_at).toLocaleDateString()}
+                </p>
+              )}
             </div>
           )}
 
