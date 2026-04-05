@@ -1492,6 +1492,10 @@ class UserDetailResponse(BaseModel):
     device_fingerprint: Optional[str] = None
     welcome_credits_granted: bool = False
     has_submitted_feedback: bool = False
+    # Referral fields
+    referred_by_code: Optional[str] = None
+    referral_discount_expires_at: Optional[str] = None
+    referral_code: Optional[str] = None
     # Recent session details (IP, user agent, fingerprint)
     recent_sessions: list[dict] = []
 
@@ -1687,6 +1691,9 @@ async def get_user_detail(
         device_fingerprint=user.device_fingerprint,
         welcome_credits_granted=user.welcome_credits_granted,
         has_submitted_feedback=user.has_submitted_feedback,
+        referred_by_code=user.referred_by_code,
+        referral_discount_expires_at=user.referral_discount_expires_at.isoformat() if user.referral_discount_expires_at and hasattr(user.referral_discount_expires_at, 'isoformat') else str(user.referral_discount_expires_at) if user.referral_discount_expires_at else None,
+        referral_code=user.referral_code,
         recent_sessions=active_sessions,
     )
 

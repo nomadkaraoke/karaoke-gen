@@ -47,6 +47,7 @@ import {
   Trash2,
   DollarSign,
   LogIn,
+  Tag,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
@@ -73,6 +74,13 @@ export default function AdminUserDetailPage() {
   const [creditDialogOpen, setCreditDialogOpen] = useState(false)
   const [creditAmount, setCreditAmount] = useState("")
   const [creditReason, setCreditReason] = useState("")
+
+  // Discount dialog
+  const [discountDialogOpen, setDiscountDialogOpen] = useState(false)
+  const [discountPercent, setDiscountPercent] = useState("50")
+  const [discountDays, setDiscountDays] = useState("365")
+  const [discountCode, setDiscountCode] = useState("loyalty")
+  const [applyingDiscount, setApplyingDiscount] = useState(false)
 
   const loadUser = async () => {
     if (!email) {
@@ -145,6 +153,28 @@ export default function AdminUserDetailPage() {
       })
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  const handleApplyDiscount = async () => {
+    setApplyingDiscount(true)
+    try {
+      const result = await adminApi.applyDiscount(email, {
+        discount_percent: Number(discountPercent) || 50,
+        duration_days: Number(discountDays) || 365,
+        referral_code: discountCode || "loyalty",
+      })
+      toast({ title: "Discount Applied", description: result.message })
+      setDiscountDialogOpen(false)
+      loadUser()
+    } catch (err) {
+      toast({
+        title: "Failed",
+        description: err instanceof Error ? err.message : "Failed to apply discount",
+        variant: "destructive",
+      })
+    } finally {
+      setApplyingDiscount(false)
     }
   }
 
@@ -312,6 +342,15 @@ export default function AdminUserDetailPage() {
           Add Credits
         </Button>
         <Button
+          variant="outline"
+          onClick={() => setDiscountDialogOpen(true)}
+          disabled={actionLoading}
+          title="Apply a referral discount to this user"
+        >
+          <Tag className="w-4 h-4 mr-2" />
+          Apply Discount
+        </Button>
+        <Button
           variant={user.is_active ? "destructive" : "outline"}
           onClick={handleToggleStatus}
           disabled={actionLoading}
@@ -425,6 +464,16 @@ export default function AdminUserDetailPage() {
                 {user.has_submitted_feedback ? "Yes" : "No"}
               </Badge>
             </div>
+            {user.referral_discount_expires_at && (
+              <div className="flex items-center gap-2 text-sm">
+                <Tag className="w-4 h-4 text-purple-500" />
+                <span>
+                  Referral discount active
+                  {user.referred_by_code && <> (code: <code className="bg-muted px-1 rounded">{user.referred_by_code}</code>)</>}
+                  {' · '}Expires {new Date(user.referral_discount_expires_at).toLocaleDateString()}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -670,6 +719,59 @@ export default function AdminUserDetailPage() {
             >
               {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Add Credits
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Apply Discount Dialog */}
+      <Dialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Apply Discount</DialogTitle>
+            <DialogDescription>
+              Apply a referral discount to {email}. This sets the same discount fields as if they used a referral link.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Discount %</Label>
+              <Input
+                type="number"
+                min="1"
+                max="100"
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Percentage off credit purchases at Stripe checkout</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Duration (days)</Label>
+              <Input
+                type="number"
+                min="1"
+                value={discountDays}
+                onChange={(e) => setDiscountDays(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">How long the discount stays active. Use 3650 for ~10 years.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Referral Code</Label>
+              <Input
+                value={discountCode}
+                onChange={(e) => setDiscountCode(e.target.value)}
+                placeholder="loyalty"
+              />
+              <p className="text-xs text-muted-foreground">Shows as the referral source. Use &quot;loyalty&quot; for grandfathered pricing, or an actual referral code.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscountDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleApplyDiscount} disabled={applyingDiscount}>
+              {applyingDiscount && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Apply Discount
             </Button>
           </DialogFooter>
         </DialogContent>

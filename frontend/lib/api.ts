@@ -1677,6 +1677,10 @@ export interface AdminUserDetail {
   device_fingerprint?: string | null;
   welcome_credits_granted?: boolean;
   has_submitted_feedback?: boolean;
+  // Referral fields
+  referred_by_code?: string | null;
+  referral_discount_expires_at?: string | null;
+  referral_code?: string | null;
   recent_sessions?: Array<{
     ip_address?: string;
     user_agent?: string;
@@ -1821,6 +1825,22 @@ export const adminApi = {
         ...getAuthHeaders()
       },
       body: JSON.stringify({ email, amount, reason }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Apply a referral discount to a user (admin only)
+   */
+  async applyDiscount(email: string, data: {
+    discount_percent?: number;
+    duration_days?: number;
+    referral_code?: string;
+  }): Promise<{ ok: boolean; message: string; discount_expires_at: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/apply-discount`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, ...data }),
     });
     return handleResponse(response);
   },

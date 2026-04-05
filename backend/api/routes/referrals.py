@@ -10,7 +10,7 @@ Handles:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.api.dependencies import require_auth, require_admin
 from backend.models.referral import (
@@ -162,6 +162,51 @@ async def list_links(
     return {
         "links": [link.model_dump(mode="json") for link in links],
         "count": len(links),
+    }
+
+
+@router.post("/admin/apply-discount")
+async def admin_apply_discount(
+    request: Request,
+    auth=Depends(require_admin),
+):
+    """Admin: apply a referral discount to any user, even without a referral link."""
+    from backend.services.user_service import get_user_service
+
+    body = await request.json()
+    user_email = body.get("email", "").lower()
+    discount_percent = body.get("discount_percent", 10)
+    duration_days = body.get("duration_days", 30)
+    referral_code = body.get("referral_code", "admin-grant")
+
+    if not user_email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    user_service = get_user_service()
+    user = user_service.get_user(user_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+
+    user_service.update_user(
+        user_email,
+        referred_by_code=referral_code,
+        referred_at=now,
+        referral_discount_expires_at=now + timedelta(days=duration_days),
+    )
+
+    # Create/ensure the Stripe coupon exists for this discount percent
+    service = get_referral_service()
+    service.get_or_create_stripe_coupon(discount_percent)
+
+    logger.info(f"Admin applied {discount_percent}% discount for {duration_days} days to {user_email}")
+
+    return {
+        "ok": True,
+        "message": f"Applied {discount_percent}% discount for {duration_days} days",
+        "discount_expires_at": (now + timedelta(days=duration_days)).isoformat(),
     }
 
 
