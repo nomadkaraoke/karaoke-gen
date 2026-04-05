@@ -8,6 +8,8 @@ import {
   startConnectOnboarding,
 } from '@/lib/api';
 import type { ReferralDashboard as ReferralDashboardData } from '@/lib/types';
+import { QrCode } from 'lucide-react';
+import QRCodeDialog from './QRCodeDialog';
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -21,6 +23,7 @@ export default function ReferralDashboard() {
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [customMessage, setCustomMessage] = useState('');
+  const [qrOpen, setQrOpen] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -91,6 +94,14 @@ export default function ReferralDashboard() {
           />
           <button onClick={copyLink} className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm">
             {copied ? t('copied') : t('copyLink')}
+          </button>
+          <button
+            onClick={() => setQrOpen(true)}
+            className="px-3 py-2 rounded text-sm border"
+            style={{ borderColor: 'var(--card-border)', color: 'var(--text)' }}
+            title={t('qrCode')}
+          >
+            <QrCode className="w-4 h-4" />
           </button>
         </div>
 
@@ -208,6 +219,12 @@ export default function ReferralDashboard() {
           </div>
         </div>
       )}
+
+      <QRCodeDialog
+        referralUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/r/${data.link.code}`}
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+      />
     </div>
   );
 }
