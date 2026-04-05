@@ -111,9 +111,9 @@ export function ReferralInterstitialClient() {
         </h1>
 
         {/* Referrer name */}
-        {data.display_name && (
+        {data.referrer_display_name && (
           <p className="text-lg" style={{ color: 'var(--text-muted)' }}>
-            {t('interstitialReferred', { name: data.display_name })}
+            {t('interstitialReferred', { name: data.referrer_display_name })}
           </p>
         )}
 
