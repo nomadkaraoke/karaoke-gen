@@ -49,6 +49,8 @@ export default function ReferralsPage() {
   const [editMessage, setEditMessage] = useState("")
   const [editDiscount, setEditDiscount] = useState("10")
   const [editKickback, setEditKickback] = useState("20")
+  const [editDiscountDays, setEditDiscountDays] = useState("30")
+  const [editEarningDays, setEditEarningDays] = useState("365")
 
   // Create form state
   const [formCode, setFormCode] = useState("")
@@ -57,6 +59,8 @@ export default function ReferralsPage() {
   const [formMessage, setFormMessage] = useState("")
   const [formDiscount, setFormDiscount] = useState("10")
   const [formKickback, setFormKickback] = useState("20")
+  const [formDiscountDays, setFormDiscountDays] = useState("30")
+  const [formEarningDays, setFormEarningDays] = useState("365")
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -114,6 +118,8 @@ export default function ReferralsPage() {
         custom_message: formMessage || undefined,
         discount_percent: Number(formDiscount) || 10,
         kickback_percent: Number(formKickback) || 20,
+        discount_duration_days: Number(formDiscountDays) || 30,
+        earning_duration_days: Number(formEarningDays) || 365,
       })
       setCreateOpen(false)
       resetForm()
@@ -132,6 +138,8 @@ export default function ReferralsPage() {
     setEditMessage(link.custom_message || "")
     setEditDiscount(String(link.discount_percent))
     setEditKickback(String(link.kickback_percent))
+    setEditDiscountDays(String(link.discount_duration_days))
+    setEditEarningDays(String(link.earning_duration_days))
     setEditError(null)
     setEditOpen(true)
   }
@@ -147,6 +155,8 @@ export default function ReferralsPage() {
         custom_message: editMessage || null,
         discount_percent: Number(editDiscount) || 10,
         kickback_percent: Number(editKickback) || 20,
+        discount_duration_days: Number(editDiscountDays) || 30,
+        earning_duration_days: Number(editEarningDays) || 365,
       })
       setEditOpen(false)
       setEditLink(null)
@@ -166,6 +176,8 @@ export default function ReferralsPage() {
     setFormMessage("")
     setFormDiscount("10")
     setFormKickback("20")
+    setFormDiscountDays("30")
+    setFormEarningDays("365")
     setCreateError(null)
   }
 
@@ -262,6 +274,30 @@ export default function ReferralsPage() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="formDiscountDays">Discount Duration (days)</Label>
+                    <Input
+                      id="formDiscountDays"
+                      type="number"
+                      min="1"
+                      value={formDiscountDays}
+                      onChange={(e) => setFormDiscountDays(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">How long referred users get the discount</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="formEarningDays">Earning Duration (days)</Label>
+                    <Input
+                      id="formEarningDays"
+                      type="number"
+                      min="1"
+                      value={formEarningDays}
+                      onChange={(e) => setFormEarningDays(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">How long referrer earns from purchases</p>
+                  </div>
+                </div>
                 {createError && (
                   <p className="text-sm text-destructive">{createError}</p>
                 )}
@@ -338,7 +374,7 @@ export default function ReferralsPage() {
                   <TableHead>Code</TableHead>
                   <TableHead>Owner</TableHead>
                   <TableHead>Display Name</TableHead>
-                  <TableHead className="text-center">Discount / Kickback</TableHead>
+                  <TableHead className="text-center">Rates</TableHead>
                   <TableHead className="text-right">Clicks</TableHead>
                   <TableHead className="text-right">Signups</TableHead>
                   <TableHead className="text-right">Purchases</TableHead>
@@ -392,7 +428,10 @@ export default function ReferralsPage() {
                         {link.display_name || "-"}
                       </TableCell>
                       <TableCell className="text-center text-sm">
-                        {link.discount_percent}% / {link.kickback_percent}%
+                        <div>
+                          <span>{link.discount_percent}% / {link.kickback_percent}%</span>
+                          <span className="block text-xs text-muted-foreground">{link.discount_duration_days}d / {link.earning_duration_days}d</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right text-sm">{link.stats?.clicks ?? 0}</TableCell>
                       <TableCell className="text-right text-sm">{link.stats?.signups ?? 0}</TableCell>
@@ -493,6 +532,30 @@ export default function ReferralsPage() {
                   value={editKickback}
                   onChange={(e) => setEditKickback(e.target.value)}
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editDiscountDays">Discount Duration (days)</Label>
+                <Input
+                  id="editDiscountDays"
+                  type="number"
+                  min="1"
+                  value={editDiscountDays}
+                  onChange={(e) => setEditDiscountDays(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">How long referred users get the discount</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editEarningDays">Earning Duration (days)</Label>
+                <Input
+                  id="editEarningDays"
+                  type="number"
+                  min="1"
+                  value={editEarningDays}
+                  onChange={(e) => setEditEarningDays(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">How long referrer earns from purchases</p>
               </div>
             </div>
             {editError && (

@@ -140,6 +140,26 @@ export default function ReferralDashboard() {
         )}
       </div>
 
+      {/* Link Terms */}
+      <div className="rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)' }}>
+        <div>
+          <p className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{data.link.discount_percent}%</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Discount for referrals</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold">{data.link.discount_duration_days}d</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Discount window</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{data.link.kickback_percent}%</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Your kickback</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold">{data.link.earning_duration_days}d</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Earning window</p>
+        </div>
+      </div>
+
       {/* Stats */}
       <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)' }}>
         <h3 className="font-semibold mb-3">{t('stats')}</h3>
