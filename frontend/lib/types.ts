@@ -113,6 +113,14 @@ export interface ReferralPayout {
   created_at: string;
 }
 
+export interface StripeConnectAccount {
+  account_id: string;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  details_submitted: boolean;
+  email: string;
+}
+
 export interface ReferralDashboard {
   link: ReferralLink;
   pending_balance_cents: number;
@@ -121,6 +129,7 @@ export interface ReferralDashboard {
   recent_earnings: ReferralEarning[];
   recent_payouts: ReferralPayout[];
   stripe_connect_configured: boolean;
+  stripe_connect_account: StripeConnectAccount | null;
 }
 
 export interface ReferralInterstitial {

@@ -1894,7 +1894,25 @@ POST /api/referrals/me/connect
 Authorization: Bearer TOKEN
 ```
 
-Creates a Stripe Connect Express account and returns an onboarding URL. Saves the Connect account ID to the user doc.
+Creates a Stripe Connect Express account and returns an onboarding URL. Saves the Connect account ID to the user doc. The dashboard response (`GET /api/referrals/me`) includes `stripe_connect_account` with account status details (payouts_enabled, details_submitted, etc.).
+
+### Get Stripe Connect Dashboard Link
+
+```http
+POST /api/referrals/me/connect/dashboard-link
+Authorization: Bearer TOKEN
+```
+
+Returns a one-time login URL to the Stripe Express dashboard where the user can manage their payout settings, view transfer history, and update bank details.
+
+### Get Stripe Connect Update Link
+
+```http
+POST /api/referrals/me/connect/update-link
+Authorization: Bearer TOKEN
+```
+
+Returns a Stripe AccountLink URL for re-onboarding — allows the user to update their bank account or complete setup if they didn't finish initially.
 
 ### Create Vanity Link (Admin)
 

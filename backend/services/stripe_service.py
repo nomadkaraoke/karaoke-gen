@@ -392,8 +392,8 @@ class StripeService:
             )
             account_link = stripe.AccountLink.create(
                 account=account.id,
-                refresh_url=f"{self.frontend_url}/app?tab=referrals&connect=refresh",
-                return_url=f"{self.frontend_url}/app?tab=referrals&connect=complete",
+                refresh_url=f"{self.frontend_url}/app/referrals?connect=refresh",
+                return_url=f"{self.frontend_url}/app/referrals?connect=complete",
                 type="account_onboarding",
             )
             logger.info(f"Created Connect account {account.id} for {email}")
@@ -401,6 +401,50 @@ class StripeService:
         except stripe.error.StripeError as e:
             logger.error(f"Failed to create Connect account for {email}: {e}")
             return None, None
+
+    def get_connect_account_status(self, account_id: str) -> Optional[dict]:
+        """Retrieve Stripe Connect account status. Returns dict with account details."""
+        if not self.is_configured():
+            return None
+        try:
+            account = stripe.Account.retrieve(account_id)
+            return {
+                "account_id": account.id,
+                "charges_enabled": account.charges_enabled,
+                "payouts_enabled": account.payouts_enabled,
+                "details_submitted": account.details_submitted,
+                "email": account.email,
+            }
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to retrieve Connect account {account_id}: {e}")
+            return None
+
+    def create_connect_login_link(self, account_id: str) -> Optional[str]:
+        """Create a login link to the Stripe Express dashboard. Returns URL."""
+        if not self.is_configured():
+            return None
+        try:
+            link = stripe.Account.create_login_link(account_id)
+            return link.url
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to create login link for {account_id}: {e}")
+            return None
+
+    def create_connect_update_link(self, account_id: str) -> Optional[str]:
+        """Create an account link for updating Connect account info. Returns URL."""
+        if not self.is_configured():
+            return None
+        try:
+            account_link = stripe.AccountLink.create(
+                account=account_id,
+                refresh_url=f"{self.frontend_url}/app/referrals?connect=refresh",
+                return_url=f"{self.frontend_url}/app/referrals?connect=complete",
+                type="account_onboarding",
+            )
+            return account_link.url
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to create update link for {account_id}: {e}")
+            return None
 
     def create_transfer(self, amount_cents: int, destination_account_id: str, description: str = "Nomad Karaoke referral payout") -> Optional[str]:
         """Create a transfer to a Connect account. Returns transfer ID."""

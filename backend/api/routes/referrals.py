@@ -126,6 +126,38 @@ async def start_stripe_connect(auth=Depends(require_auth)):
     return {"account_id": account_id, "onboarding_url": onboarding_url}
 
 
+@router.post("/me/connect/dashboard-link")
+async def get_connect_dashboard_link(auth=Depends(require_auth)):
+    """Get a login link to the Stripe Express dashboard for managing payout settings."""
+    from backend.services.user_service import get_user_service
+    user = get_user_service().get_user(auth.user_email)
+    if not user or not user.stripe_connect_account_id:
+        raise HTTPException(status_code=400, detail="No Stripe Connect account configured")
+
+    service = get_referral_service()
+    url = service.create_connect_login_link(user.stripe_connect_account_id)
+    if not url:
+        raise HTTPException(status_code=500, detail="Failed to create dashboard link")
+
+    return {"url": url}
+
+
+@router.post("/me/connect/update-link")
+async def get_connect_update_link(auth=Depends(require_auth)):
+    """Get a link to update Stripe Connect account info (re-onboarding)."""
+    from backend.services.user_service import get_user_service
+    user = get_user_service().get_user(auth.user_email)
+    if not user or not user.stripe_connect_account_id:
+        raise HTTPException(status_code=400, detail="No Stripe Connect account configured")
+
+    service = get_referral_service()
+    url = service.create_connect_update_link(user.stripe_connect_account_id)
+    if not url:
+        raise HTTPException(status_code=500, detail="Failed to create update link")
+
+    return {"url": url}
+
+
 class VanityRequest(BaseModel):
     desired_code: str = Field(..., min_length=2, max_length=30, pattern="^[a-z0-9-]+$")
 

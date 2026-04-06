@@ -3583,6 +3583,24 @@ export async function startConnectOnboarding(): Promise<{ account_id: string; on
   return response.json();
 }
 
+export async function getConnectDashboardLink(): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/me/connect/dashboard-link`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error('Failed to get dashboard link');
+  return response.json();
+}
+
+export async function getConnectUpdateLink(): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/me/connect/update-link`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error('Failed to get update link');
+  return response.json();
+}
+
 export async function requestVanityUrl(desiredCode: string): Promise<{ ok: boolean; message: string }> {
   const response = await fetch(`${API_BASE_URL}/api/referrals/me/vanity-request`, {
     method: 'POST',

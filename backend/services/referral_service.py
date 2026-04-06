@@ -339,6 +339,24 @@ class ReferralService:
             return None, None
         return self.stripe_service.create_connect_account(email)
 
+    def get_connect_account_status(self, account_id: str) -> Optional[dict]:
+        """Get Stripe Connect account status."""
+        if not self.stripe_service:
+            return None
+        return self.stripe_service.get_connect_account_status(account_id)
+
+    def create_connect_login_link(self, account_id: str) -> Optional[str]:
+        """Create login link for Stripe Express dashboard."""
+        if not self.stripe_service:
+            return None
+        return self.stripe_service.create_connect_login_link(account_id)
+
+    def create_connect_update_link(self, account_id: str) -> Optional[str]:
+        """Create account link for updating Connect info."""
+        if not self.stripe_service:
+            return None
+        return self.stripe_service.create_connect_update_link(account_id)
+
     def get_pending_earnings(self, referrer_email: str) -> List[dict]:
         """Get all pending earnings for a referrer."""
         query = (
@@ -425,10 +443,16 @@ class ReferralService:
         # total_paid = total_earned - pending (since total_earned tracks all time)
         total_paid = total_earned - pending_balance
 
-        # Check Connect status
+        # Check Connect status and fetch account details
         from backend.services.user_service import get_user_service
         user = get_user_service().get_user(user_email)
         has_connect = bool(user and user.stripe_connect_account_id)
+
+        connect_account = None
+        if has_connect and self.stripe_service:
+            connect_account = self.stripe_service.get_connect_account_status(
+                user.stripe_connect_account_id
+            )
 
         return {
             "link": {
@@ -467,6 +491,7 @@ class ReferralService:
                 for p in payouts
             ],
             "stripe_connect_configured": has_connect,
+            "stripe_connect_account": connect_account,
         }
 
     def list_links(self, limit: int = 50, offset: int = 0) -> list[ReferralLink]:

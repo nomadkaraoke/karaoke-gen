@@ -1,15 +1,21 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   getReferralDashboard,
   updateReferralLink,
   startConnectOnboarding,
+  getConnectDashboardLink,
+  getConnectUpdateLink,
   requestVanityUrl,
 } from '@/lib/api';
 import type { ReferralDashboard as ReferralDashboardData } from '@/lib/types';
-import { QrCode, Gift, DollarSign, Users, Clock, Share2, Sparkles, ExternalLink } from 'lucide-react';
+import {
+  QrCode, Sparkles, ExternalLink, CheckCircle, AlertCircle,
+  Loader2, Banknote, Settings,
+} from 'lucide-react';
 import QRCodeDialog from './QRCodeDialog';
 
 function formatCents(cents: number): string {
@@ -18,6 +24,7 @@ function formatCents(cents: number): string {
 
 export default function ReferralDashboard() {
   const t = useTranslations('referrals');
+  const searchParams = useSearchParams();
   const [data, setData] = useState<ReferralDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -30,6 +37,10 @@ export default function ReferralDashboard() {
   const [vanitySubmitting, setVanitySubmitting] = useState(false);
   const [desiredVanity, setDesiredVanity] = useState('');
   const [showVanityForm, setShowVanityForm] = useState(false);
+  const [connectStatus, setConnectStatus] = useState<'complete' | 'refresh' | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [connectError, setConnectError] = useState('');
+  const [dashboardLinkLoading, setDashboardLinkLoading] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -47,6 +58,18 @@ export default function ReferralDashboard() {
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
+
+  // Handle Stripe Connect redirect params
+  useEffect(() => {
+    const connect = searchParams.get('connect');
+    if (connect === 'complete') {
+      setConnectStatus('complete');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (connect === 'refresh') {
+      setConnectStatus('refresh');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [searchParams]);
 
   const copyLink = () => {
     if (!data) return;
@@ -67,11 +90,38 @@ export default function ReferralDashboard() {
   };
 
   const handleConnectBank = async () => {
+    setConnectLoading(true);
+    setConnectError('');
     try {
       const { onboarding_url } = await startConnectOnboarding();
       window.location.href = onboarding_url;
     } catch (err) {
       console.error('Failed to start Connect onboarding:', err);
+      setConnectError(t('connectFailed'));
+      setConnectLoading(false);
+    }
+  };
+
+  const handleManagePayouts = async () => {
+    setDashboardLinkLoading(true);
+    try {
+      const { url } = await getConnectDashboardLink();
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('Failed to get dashboard link:', err);
+    } finally {
+      setDashboardLinkLoading(false);
+    }
+  };
+
+  const handleUpdateAccount = async () => {
+    setConnectLoading(true);
+    try {
+      const { url } = await getConnectUpdateLink();
+      window.location.href = url;
+    } catch (err) {
+      console.error('Failed to get update link:', err);
+      setConnectLoading(false);
     }
   };
 
@@ -99,6 +149,8 @@ export default function ReferralDashboard() {
   }
 
   if (!data) return null;
+
+  const connectAccount = data.stripe_connect_account;
 
   return (
     <div className="space-y-6">
@@ -300,25 +352,117 @@ export default function ReferralDashboard() {
         </div>
       </div>
 
-      {/* Payout section */}
-      <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)' }}>
+      {/* Payout & Bank Account section */}
+      <div className="rounded-lg p-4 space-y-4" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)' }}>
         <div className="flex justify-between items-center">
-          <h3 className="font-semibold">{t('earnings')}</h3>
+          <h3 className="font-semibold flex items-center gap-2">
+            <Banknote className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+            {t('payoutTitle')}
+          </h3>
           <div className="text-right">
             <p className="text-lg font-bold">{formatCents(data.pending_balance_cents)}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('pendingBalance')}</p>
           </div>
         </div>
 
-        {!data.stripe_connect_configured ? (
-          <div className="rounded-lg p-4 space-y-2" style={{ backgroundColor: 'var(--secondary)' }}>
-            <p className="text-sm">{t('connectDescription')}</p>
-            <button onClick={handleConnectBank} className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm">
-              {t('connectBank')}
-            </button>
+        {/* Connect complete banner */}
+        {connectStatus === 'complete' && (
+          <div className="rounded-lg p-3 flex items-center gap-2 border border-green-500/30" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+            <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+            <p className="text-sm text-green-500">{t('connectComplete')}</p>
+          </div>
+        )}
+
+        {/* Connect refresh banner */}
+        {connectStatus === 'refresh' && !data.stripe_connect_configured && (
+          <div className="rounded-lg p-3 flex items-center gap-2 border" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--secondary)' }}>
+            <AlertCircle className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('connectRefresh')}</p>
+          </div>
+        )}
+
+        {data.stripe_connect_configured ? (
+          /* Connected state — show account status and management */
+          <div className="space-y-3">
+            {/* Account status */}
+            <div className="rounded-lg p-3 space-y-2" style={{ backgroundColor: 'var(--secondary)' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${connectAccount?.payouts_enabled ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                  <span className="text-sm font-medium">
+                    {connectAccount?.payouts_enabled ? t('connectStatusActive') : t('connectStatusPending')}
+                  </span>
+                </div>
+                {connectAccount?.email && (
+                  <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                    {connectAccount.email}
+                  </span>
+                )}
+              </div>
+
+              {connectAccount && !connectAccount.details_submitted && (
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {t('connectDetailsNeeded')}
+                </p>
+              )}
+            </div>
+
+            {/* Payout info */}
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('payoutThreshold')}</p>
+
+            {/* Management buttons */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleManagePayouts}
+                disabled={dashboardLinkLoading}
+                className="px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 hover:bg-white/5 transition-colors disabled:opacity-50"
+                style={{ borderColor: 'var(--card-border)', color: 'var(--text)' }}
+              >
+                {dashboardLinkLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-3.5 h-3.5" />
+                )}
+                {t('managePayouts')}
+              </button>
+              <button
+                onClick={handleUpdateAccount}
+                disabled={connectLoading}
+                className="px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 hover:bg-white/5 transition-colors disabled:opacity-50"
+                style={{ borderColor: 'var(--card-border)', color: 'var(--text-muted)' }}
+              >
+                {connectLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Settings className="w-3.5 h-3.5" />
+                )}
+                {t('updateBankAccount')}
+              </button>
+            </div>
           </div>
         ) : (
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('payoutThreshold')}</p>
+          /* Not connected — show setup prompt */
+          <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: 'var(--secondary)' }}>
+            <p className="text-sm">{t('connectDescription')}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('connectStripeNote')}</p>
+            <button
+              onClick={handleConnectBank}
+              disabled={connectLoading}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm flex items-center gap-2 disabled:opacity-70"
+            >
+              {connectLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('connectBankLoading')}
+                </>
+              ) : (
+                t('connectBank')
+              )}
+            </button>
+            {connectError && (
+              <p className="text-sm text-red-500">{connectError}</p>
+            )}
+          </div>
         )}
       </div>
 

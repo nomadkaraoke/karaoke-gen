@@ -1,9 +1,10 @@
 'use client';
 
+import { Suspense } from 'react';
 import ReferralDashboard from '@/components/referrals/ReferralDashboard';
 import { AppHeader } from '@/components/app-header';
 import { Link } from '@/i18n/routing';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 export default function ReferralsPage() {
@@ -21,7 +22,9 @@ export default function ReferralsPage() {
           <ChevronLeft className="w-4 h-4" />
           {t('backToDashboard')}
         </Link>
-        <ReferralDashboard />
+        <Suspense fallback={<Loader2 className="w-6 h-6 animate-spin mx-auto mt-8" style={{ color: 'var(--text-muted)' }} />}>
+          <ReferralDashboard />
+        </Suspense>
       </main>
     </div>
   );
