@@ -126,6 +126,44 @@ async def start_stripe_connect(auth=Depends(require_auth)):
     return {"account_id": account_id, "onboarding_url": onboarding_url}
 
 
+class VanityRequest(BaseModel):
+    desired_code: str = Field(..., min_length=2, max_length=30, pattern="^[a-z0-9-]+$")
+
+
+@router.post("/me/vanity-request")
+async def request_vanity_url(
+    request: VanityRequest,
+    auth=Depends(require_auth),
+):
+    """Request a custom vanity referral URL. Sends email to admin for review."""
+    from backend.services.email_service import get_email_service
+
+    service = get_referral_service()
+    link = service.get_or_create_link(auth.user_email)
+
+    # Check if code is already taken
+    existing = service.get_link_by_code(request.desired_code)
+    if existing:
+        raise HTTPException(status_code=409, detail="That code is already taken. Please try another.")
+
+    email_service = get_email_service()
+    email_service.provider.send_email(
+        to_email="andrew@nomadkaraoke.com",
+        subject=f"Vanity referral URL request: {request.desired_code}",
+        html_content=f"""
+        <h2>Vanity Referral URL Request</h2>
+        <p><strong>User:</strong> {auth.user_email}</p>
+        <p><strong>Current code:</strong> {link.code}</p>
+        <p><strong>Desired vanity code:</strong> {request.desired_code}</p>
+        <p>To approve, create the vanity link in the <a href="https://gen.nomadkaraoke.com/admin/referrals">admin dashboard</a>.</p>
+        """,
+        text_content=f"Vanity URL request from {auth.user_email}: {request.desired_code} (current: {link.code})",
+    )
+
+    logger.info("Vanity URL request from %s: %s", auth.user_email, request.desired_code)
+    return {"ok": True, "message": "Request sent"}
+
+
 @router.post("/me/flyer")
 async def generate_flyer(
     request: GenerateFlyerRequest,

@@ -3583,6 +3583,19 @@ export async function startConnectOnboarding(): Promise<{ account_id: string; on
   return response.json();
 }
 
+export async function requestVanityUrl(desiredCode: string): Promise<{ ok: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/me/vanity-request`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ desired_code: desiredCode }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+    throw new Error(error.detail || 'Request failed');
+  }
+  return response.json();
+}
+
 export async function generateFlyer(theme: 'light' | 'dark', qrDataUrl: string): Promise<Blob> {
   const response = await fetch(`${API_BASE_URL}/api/referrals/me/flyer`, {
     method: 'POST',

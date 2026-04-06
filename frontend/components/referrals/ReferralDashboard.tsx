@@ -6,6 +6,7 @@ import {
   getReferralDashboard,
   updateReferralLink,
   startConnectOnboarding,
+  requestVanityUrl,
 } from '@/lib/api';
 import type { ReferralDashboard as ReferralDashboardData } from '@/lib/types';
 import { QrCode, Gift, DollarSign, Users, Clock, Share2, Sparkles, ExternalLink } from 'lucide-react';
@@ -25,6 +26,8 @@ export default function ReferralDashboard() {
   const [customMessage, setCustomMessage] = useState('');
   const [qrOpen, setQrOpen] = useState(false);
   const [vanityRequested, setVanityRequested] = useState(false);
+  const [vanityError, setVanityError] = useState('');
+  const [vanitySubmitting, setVanitySubmitting] = useState(false);
   const [desiredVanity, setDesiredVanity] = useState('');
   const [showVanityForm, setShowVanityForm] = useState(false);
 
@@ -72,16 +75,20 @@ export default function ReferralDashboard() {
     }
   };
 
-  const handleVanityRequest = () => {
+  const handleVanityRequest = async () => {
     if (!data || !desiredVanity.trim()) return;
-    const subject = encodeURIComponent(`Vanity referral URL request: ${desiredVanity.trim()}`);
-    const body = encodeURIComponent(
-      `Hi!\n\nI'd like to request a custom referral URL.\n\nDesired URL: ${window.location.origin}/r/${desiredVanity.trim()}\nCurrent code: ${data.link.code}\n\nThanks!`
-    );
-    window.open(`mailto:andrew@nomadkaraoke.com?subject=${subject}&body=${body}`, '_self');
-    setVanityRequested(true);
-    setShowVanityForm(false);
-    setDesiredVanity('');
+    setVanityError('');
+    setVanitySubmitting(true);
+    try {
+      await requestVanityUrl(desiredVanity.trim());
+      setVanityRequested(true);
+      setShowVanityForm(false);
+      setDesiredVanity('');
+    } catch (err) {
+      setVanityError(err instanceof Error ? err.message : 'Request failed');
+    } finally {
+      setVanitySubmitting(false);
+    }
   };
 
   if (loading) {
@@ -173,32 +180,37 @@ export default function ReferralDashboard() {
                 {t('vanityRequested')}
               </p>
             ) : showVanityForm ? (
-              <div className="flex gap-2 items-center">
-                <span className="text-sm font-mono shrink-0" style={{ color: 'var(--text-muted)' }}>
-                  {typeof window !== 'undefined' ? window.location.origin : ''}/r/
-                </span>
-                <input
-                  value={desiredVanity}
-                  onChange={(e) => setDesiredVanity(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder={t('vanityPlaceholder')}
-                  className="flex-1 rounded px-3 py-1.5 text-sm font-mono"
-                  style={{ backgroundColor: 'var(--secondary)', color: 'var(--text)' }}
-                  maxLength={30}
-                />
-                <button
-                  onClick={handleVanityRequest}
-                  disabled={!desiredVanity.trim()}
-                  className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm disabled:opacity-50"
-                >
-                  {t('vanitySubmit')}
-                </button>
-                <button
-                  onClick={() => { setShowVanityForm(false); setDesiredVanity(''); }}
-                  className="px-3 py-1.5 rounded text-sm"
-                  style={{ backgroundColor: 'var(--secondary)' }}
-                >
-                  {t('cancel')}
-                </button>
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <span className="text-sm font-mono shrink-0" style={{ color: 'var(--text-muted)' }}>
+                    {typeof window !== 'undefined' ? window.location.origin : ''}/r/
+                  </span>
+                  <input
+                    value={desiredVanity}
+                    onChange={(e) => { setDesiredVanity(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setVanityError(''); }}
+                    placeholder={t('vanityPlaceholder')}
+                    className="flex-1 rounded px-3 py-1.5 text-sm font-mono"
+                    style={{ backgroundColor: 'var(--secondary)', color: 'var(--text)' }}
+                    maxLength={30}
+                  />
+                  <button
+                    onClick={handleVanityRequest}
+                    disabled={!desiredVanity.trim() || vanitySubmitting}
+                    className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm disabled:opacity-50"
+                  >
+                    {vanitySubmitting ? '...' : t('vanitySubmit')}
+                  </button>
+                  <button
+                    onClick={() => { setShowVanityForm(false); setDesiredVanity(''); setVanityError(''); }}
+                    className="px-3 py-1.5 rounded text-sm"
+                    style={{ backgroundColor: 'var(--secondary)' }}
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+                {vanityError && (
+                  <p className="text-sm text-red-500">{vanityError}</p>
+                )}
               </div>
             ) : (
               <button
