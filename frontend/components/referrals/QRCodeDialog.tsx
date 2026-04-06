@@ -120,6 +120,7 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flyerTheme, setFlyerTheme] = useState<'light' | 'dark'>('light');
   const [flyerLoading, setFlyerLoading] = useState(false);
+  const [flyerError, setFlyerError] = useState('');
 
   // Load prefs from localStorage on open
   useEffect(() => {
@@ -193,6 +194,13 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
     }
   }, [open]);
 
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   const updatePref = <K extends keyof QRStylePrefs>(key: K, value: QRStylePrefs[K]) => {
     setPrefs(prev => {
       const next = { ...prev, [key]: value };
@@ -205,14 +213,16 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
 
   const handleGenerateFlyer = async () => {
     setFlyerLoading(true);
+    setFlyerError('');
     try {
       let qrDataUrl: string;
       if (qrRef.current) {
         const blob = await qrRef.current.getRawData('svg');
         if (blob) {
-          qrDataUrl = await new Promise<string>((resolve) => {
+          qrDataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('Failed to read QR code data'));
             reader.readAsDataURL(blob);
           });
         } else {
@@ -230,6 +240,8 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate flyer';
+      setFlyerError(message);
       console.error('Failed to generate flyer:', err);
     } finally {
       setFlyerLoading(false);
@@ -418,6 +430,9 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
                 {flyerLoading ? t('flyerGenerating') : t('flyerGenerate')}
               </button>
             </div>
+            {flyerError && (
+              <p className="text-xs text-destructive">{flyerError}</p>
+            )}
             {/* QR download buttons */}
             <div className="flex gap-2 sm:justify-end">
               <button
