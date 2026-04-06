@@ -97,6 +97,20 @@ See `docs/TESTING.md` § "Ad-Hoc Production Debugging" for full details.
 - `gcloud` CLI for reading/debugging only (e.g., checking logs, SSH to VMs)
 - Stop and notify user on auth issues
 
+### Internationalization (i18n)
+
+- All user-facing strings live in `frontend/messages/{locale}.json` (33 locales), NOT in components
+- Backend strings live in `backend/translations/{locale}.json` (currently 3 locales: en, es, de)
+- Components use `useTranslations('namespace')` from next-intl
+- Pages are under `frontend/src/app/[locale]/` — locale-aware routing
+- Admin pages (under `/admin/`, `/app/`) use DefaultIntlProvider (English-only, excluded from i18n)
+- Internal links use `Link` from `@/i18n/routing` (locale-aware)
+- After adding/changing English strings: `python frontend/scripts/translate.py --messages-dir frontend/messages --target all`
+- Translation uses Gemini 3.1 Pro via Vertex AI with GCS cache for efficiency
+- CI validates all locale files have matching keys — **PR will fail if translations are missing**
+- Pre-commit hook auto-translates when en.json changes (enable: `git config core.hooksPath .githooks`)
+- Don't hardcode user-facing strings — add to `messages/en.json` and use `t('key')`
+
 ## API Authentication (for Agents)
 
 When you need to call backend APIs programmatically:
