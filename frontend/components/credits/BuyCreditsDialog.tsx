@@ -14,8 +14,9 @@ interface BuyCreditsDialogProps {
 }
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`
-const pricePerVideo = (pkg: CreditPackage) =>
-  `$${(pkg.price_cents / 100 / pkg.credits).toFixed(2)}`
+const formatPriceFull = (cents: number) => `$${(cents / 100).toFixed(2)}`
+const pricePerVideo = (cents: number, credits: number) =>
+  `$${(cents / 100 / credits).toFixed(2)}`
 
 export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
   const t = useTranslations('credits')
@@ -95,14 +96,21 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
             <div className="text-center py-4 text-sm text-destructive">{error}</div>
           )}
 
-          {!loading && !error && packages.length > 0 && (
+          {!loading && !error && packages.length > 0 && (() => {
+            const discountPct = user?.has_active_referral_discount ? (user.referral_discount_percent ?? 0) : 0
+            const applyDiscount = (cents: number) =>
+              discountPct > 0 ? Math.round(cents * (1 - discountPct / 100)) : cents
+
+            return (
             <>
               <div className="grid grid-cols-2 gap-3">
                 {packages.map((pkg) => {
                   const isSelected = selectedPackage?.id === pkg.id
                   const isBestValue = pkg.credits === 5
+                  const discountedCents = applyDiscount(pkg.price_cents)
+                  const hasDiscount = discountedCents < pkg.price_cents
                   const savings = pkg.credits > 1
-                    ? Math.round((1 - pkg.price_cents / (pkg.credits * 1000)) * 100)
+                    ? Math.round((1 - discountedCents / (pkg.credits * applyDiscount(1000))) * 100)
                     : 0
 
                   return (
@@ -124,10 +132,28 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
                       <div className="text-sm text-muted-foreground mb-1">
                         {pkg.credits === 1 ? tCommon('credit') : tCommon('credits')}
                       </div>
-                      <div className="text-lg font-semibold text-primary">
-                        {formatPrice(pkg.price_cents)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{t('pricePerVideo', { price: pricePerVideo(pkg) })}</div>
+                      {hasDiscount ? (
+                        <>
+                          <div className="text-lg font-semibold text-green-500">
+                            {formatPrice(discountedCents)}
+                          </div>
+                          <div className="text-xs text-muted-foreground line-through">
+                            {formatPrice(pkg.price_cents)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t('pricePerVideo', { price: pricePerVideo(discountedCents, pkg.credits) })}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-lg font-semibold text-primary">
+                            {formatPrice(pkg.price_cents)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t('pricePerVideo', { price: pricePerVideo(pkg.price_cents, pkg.credits) })}
+                          </div>
+                        </>
+                      )}
                       {savings > 0 && (
                         <div className="text-xs text-green-500 mt-1">{t('savePct', { savings })}</div>
                       )}
@@ -147,13 +173,14 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
                     {t('redirecting')}
                   </>
                 ) : selectedPackage ? (
-                  t('continuePayment', { price: formatPrice(selectedPackage.price_cents) })
+                  t('continuePayment', { price: formatPrice(applyDiscount(selectedPackage.price_cents)) })
                 ) : (
                   t('selectPackage')
                 )}
               </Button>
             </>
-          )}
+            )
+          })()}
         </div>
       </DialogContent>
     </Dialog>

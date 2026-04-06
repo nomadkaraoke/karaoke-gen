@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift } from "lucide-react"
+import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag } from "lucide-react"
 import NextLink from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -104,6 +104,15 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             <Coins className="w-4 h-4 mr-2 text-warning" />
             <span>{t('creditsAvailable', { count: user.credits })}</span>
           </DropdownMenuItem>
+          {user.has_active_referral_discount && user.referral_discount_percent && (
+            <DropdownMenuItem
+              className="text-green-500 focus:text-green-400 focus:bg-secondary cursor-default"
+              disabled
+            >
+              <Tag className="w-4 h-4 mr-2" />
+              <span>{user.referral_discount_percent}% {t('discountActive')}</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={handleBuyCredits}
             className="text-muted-foreground focus:text-foreground focus:bg-secondary"

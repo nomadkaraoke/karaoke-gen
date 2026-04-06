@@ -77,6 +77,10 @@ function AppPageContent() {
     if (typeof window === "undefined") return false
     return localStorage.getItem("nomad-feedback-banner-dismissed") === "true"
   })
+  const [discountBannerDismissed, setDiscountBannerDismissed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("nomad-discount-banner-dismissed") === "true"
+  })
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
 
   // Check if user is admin (for exclude_test parameter)
@@ -257,7 +261,7 @@ function AppPageContent() {
         <PushNotificationPrompt />
 
         {/* Referral discount banner */}
-        {user?.has_active_referral_discount && user?.referral_discount_percent && user?.referral_discount_expires_at && (
+        {user?.has_active_referral_discount && user?.referral_discount_percent && user?.referral_discount_expires_at && !discountBannerDismissed && (
           <div
             className="rounded-xl p-4 flex items-center gap-3 border"
             style={{
@@ -266,7 +270,7 @@ function AppPageContent() {
             }}
           >
             <Gift className="w-5 h-5 shrink-0" style={{ color: 'var(--accent)' }} />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
                 {user.referral_discount_percent}% referral discount active
               </p>
@@ -275,6 +279,16 @@ function AppPageContent() {
                 Expires {new Date(user.referral_discount_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
+            <button
+              onClick={() => {
+                localStorage.setItem("nomad-discount-banner-dismissed", "true")
+                setDiscountBannerDismissed(true)
+              }}
+              className="shrink-0 p-1 rounded-md hover:bg-white/10 transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
