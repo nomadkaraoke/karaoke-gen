@@ -34,6 +34,8 @@ import sys
 import time
 from pathlib import Path
 
+from translation_cache import TranslationCache
+
 from google import genai
 from google.genai import types
 
@@ -344,6 +346,8 @@ async def translate_locale(
     snapshot_data: dict | None,
     completed: list,
     total: int,
+    cache: TranslationCache | None = None,
+    dry_run: bool = False,
 ) -> bool:
     """Translate a single locale. Returns True on success."""
     async with semaphore:
@@ -376,6 +380,72 @@ async def translate_locale(
                 print(f"[{target_locale}] Delta mode: {len(delta_keys)} changed keys (of {count_keys(english_data)} total)")
             else:
                 print(f"[{target_locale}] No existing translation, doing full translation")
+
+        # --- Cache lookup ---
+        cached_translations: dict[str, str] = {}  # dot_key -> translated string
+        uncached_english: dict[str, str] = {}  # dot_key -> english string
+        if cache is not None:
+            cache.download(target_locale)
+            # Flatten the strings we need to translate
+            flat_to_translate = flatten_keys(json.loads(json_to_translate))
+            for dot_key, en_value in flat_to_translate.items():
+                if not isinstance(en_value, str):
+                    continue
+                hit = cache.lookup(en_value, target_locale)
+                if hit is not None:
+                    cached_translations[dot_key] = hit
+                else:
+                    uncached_english[dot_key] = en_value
+
+            stats = cache.stats(target_locale)
+            total_strings = len(cached_translations) + len(uncached_english)
+            print(f"[{target_locale}] Cache: {stats['hits']} hits, {stats['misses']} misses out of {total_strings} strings")
+
+            if dry_run:
+                completed.append(target_locale)
+                print(f"[{target_locale}] DRY RUN — would translate {len(uncached_english)} strings via Gemini ({len(completed)}/{total})")
+                return True
+
+            if uncached_english:
+                # Build subset JSON with only uncached strings for Gemini
+                uncached_keys = set(uncached_english.keys())
+                data_to_translate = json.loads(json_to_translate)
+                subset = extract_subset(data_to_translate, uncached_keys)
+                json_to_translate = json.dumps(subset, ensure_ascii=False, indent=2)
+                print(f"[{target_locale}] Sending {len(uncached_english)} uncached strings to Gemini (skipping {len(cached_translations)} cached)")
+            elif cached_translations:
+                # All strings cached — reconstruct from cache, skip Gemini entirely
+                print(f"[{target_locale}] All {len(cached_translations)} strings found in cache, skipping Gemini")
+                # Reconstruct nested dict from cached flat translations
+                parsed = {}
+                for dot_key, translated_value in cached_translations.items():
+                    parts = dot_key.split(".")
+                    dst = parsed
+                    for part in parts[:-1]:
+                        dst = dst.setdefault(part, {})
+                    dst[parts[-1]] = translated_value
+
+                # Merge with existing data if in delta mode
+                if existing_data is not None and delta_keys is not None:
+                    parsed = merge_deep(existing_data, parsed)
+
+                # Write output
+                out_path = messages_dir / f"{target_locale}.json"
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump(parsed, f, ensure_ascii=False, indent=2)
+                    f.write("\n")
+
+                completed.append(target_locale)
+                en_keys = count_keys(english_data)
+                tr_keys = count_keys(parsed)
+                pct = (tr_keys / en_keys * 100) if en_keys else 0
+                print(f"[{target_locale}] Saved (from cache): {out_path} — Keys: {tr_keys}/{en_keys} ({pct:.0f}%) ({len(completed)}/{total})")
+                return True
+        elif dry_run:
+            flat_to_translate = flatten_keys(json.loads(json_to_translate))
+            completed.append(target_locale)
+            print(f"[{target_locale}] DRY RUN — would translate {len(flat_to_translate)} strings via Gemini ({len(completed)}/{total})")
+            return True
 
         # Pass 1: Translate
         print(f"[{target_locale}] Pass 1: Translating...")
@@ -415,6 +485,29 @@ async def translate_locale(
                 print(f"[{target_locale}] Warning: Pass 2 produced invalid JSON: {e}")
                 print(f"[{target_locale}] Using Pass 1 output instead.")
                 parsed = json.loads(translated)
+
+        # Store new translations in cache and merge cached translations back
+        if cache is not None:
+            # Store Gemini-translated strings in cache (keyed by English text)
+            flat_parsed = flatten_keys(parsed)
+            # We need the English source for these keys to use as cache key
+            flat_english_source = flatten_keys(json.loads(json_to_translate))
+            for dot_key, translated_value in flat_parsed.items():
+                if isinstance(translated_value, str) and dot_key in flat_english_source:
+                    en_text = flat_english_source[dot_key]
+                    if isinstance(en_text, str):
+                        cache.store(en_text, target_locale, translated_value)
+
+            # Merge cached translations back into parsed result
+            if cached_translations:
+                for dot_key, translated_value in cached_translations.items():
+                    parts = dot_key.split(".")
+                    dst = parsed
+                    for part in parts[:-1]:
+                        dst = dst.setdefault(part, {})
+                    dst[parts[-1]] = translated_value
+
+            cache.upload(target_locale)
 
         # Merge delta into existing if applicable
         if existing_data is not None and delta_keys is not None:
@@ -476,11 +569,19 @@ async def async_main(args):
         location=LOCATION,
     )
 
+    cache = TranslationCache(
+        bucket_name=args.cache_bucket,
+        enabled=not args.no_cache,
+    )
+
     print(f"Using model: {MODEL}")
     print(f"Project: {PROJECT}, Location: {LOCATION}")
     print(f"Locales: {', '.join(locales)} ({len(locales)} total)")
     print(f"Mode: {'full' if args.full or snapshot_data is None else 'incremental (delta)'}")
     print(f"Review: {'skip' if args.skip_review else 'enabled'}")
+    print(f"Cache: {'disabled' if args.no_cache else 'enabled'} (bucket: {args.cache_bucket})")
+    if args.dry_run:
+        print(f"DRY RUN: will report stats without translating")
     print(f"Max concurrent: {MAX_CONCURRENT}")
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
@@ -501,6 +602,8 @@ async def async_main(args):
             snapshot_data=snapshot_data,
             completed=completed,
             total=total,
+            cache=cache,
+            dry_run=args.dry_run,
         )
         for locale in locales
     ]
@@ -557,6 +660,21 @@ def main():
         "--full",
         action="store_true",
         help="Force full retranslation (ignore snapshot/delta)",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Bypass GCS translation cache (force fresh Gemini translation)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be translated without calling Gemini or writing files",
+    )
+    parser.add_argument(
+        "--cache-bucket",
+        default="nomadkaraoke-translation-cache",
+        help="GCS bucket name for translation cache (default: nomadkaraoke-translation-cache)",
     )
     args = parser.parse_args()
 
