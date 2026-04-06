@@ -50,7 +50,7 @@ export default function ReferralDashboard() {
 
   const copyLink = () => {
     if (!data) return;
-    const url = `${window.location.origin}/r/${data.link.code}`;
+    const url = `https://nomadkaraoke.com/r/${data.link.code}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -154,7 +154,7 @@ export default function ReferralDashboard() {
         <div className="flex gap-2">
           <input
             readOnly
-            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/r/${data.link.code}`}
+            value={`https://nomadkaraoke.com/r/${data.link.code}`}
             className="flex-1 rounded px-3 py-2 text-sm font-mono"
             style={{ backgroundColor: 'var(--secondary)', color: 'var(--text)' }}
           />
@@ -183,7 +183,7 @@ export default function ReferralDashboard() {
               <div className="space-y-2">
                 <div className="flex gap-2 items-center">
                   <span className="text-sm font-mono shrink-0" style={{ color: 'var(--text-muted)' }}>
-                    {typeof window !== 'undefined' ? window.location.origin : ''}/r/
+                    nomadkaraoke.com/r/
                   </span>
                   <input
                     value={desiredVanity}
@@ -360,7 +360,7 @@ export default function ReferralDashboard() {
       )}
 
       <QRCodeDialog
-        referralUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/r/${data.link.code}`}
+        referralUrl={`https://nomadkaraoke.com/r/${data.link.code}`}
         open={qrOpen}
         onOpenChange={setQrOpen}
       />

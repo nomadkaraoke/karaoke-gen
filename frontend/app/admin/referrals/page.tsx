@@ -499,7 +499,7 @@ export default function ReferralsPage() {
       {qrDialogCode && (
         <NextIntlClientProvider locale="en" messages={enMessages}>
           <QRCodeDialog
-            referralUrl={`https://gen.nomadkaraoke.com/r/${qrDialogCode}`}
+            referralUrl={`https://nomadkaraoke.com/r/${qrDialogCode}`}
             open={!!qrDialogCode}
             onOpenChange={(open) => { if (!open) setQrDialogCode(null) }}
             onGenerateFlyer={(theme, qrDataUrl) => adminApi.generateFlyer(qrDialogCode, theme, qrDataUrl)}
