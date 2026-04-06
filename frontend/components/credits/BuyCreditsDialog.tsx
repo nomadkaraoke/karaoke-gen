@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { api, CreditPackage, getReferralInterstitial } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 interface BuyCreditsDialogProps {
   open: boolean
@@ -22,6 +22,7 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
   const t = useTranslations('credits')
   const tCommon = useTranslations('common')
   const tRef = useTranslations('referrals')
+  const locale = useLocale()
   const { user } = useAuth()
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
@@ -48,10 +49,11 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
       .finally(() => setLoading(false))
 
     // Fetch referrer details if user has an active referral discount
+    setReferrerName(null)
     if (user?.referred_by_code) {
       getReferralInterstitial(user.referred_by_code, true)
         .then((info) => setReferrerName(info.referrer_display_name))
-        .catch(() => {}) // Silently fail — referrer name is non-critical
+        .catch(() => setReferrerName(null))
     }
   }, [open, user?.referred_by_code])
 
@@ -99,7 +101,7 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
               )}
               {user.referral_discount_expires_at && (
                 <p className="text-green-600/70 dark:text-green-400/70 text-xs mt-1">
-                  {tRef('appliedAtCheckout')} · {tRef('expires', { date: new Date(user.referral_discount_expires_at).toLocaleDateString() })}
+                  {tRef('appliedAtCheckout')} · {tRef('expires', { date: new Date(user.referral_discount_expires_at).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) })}
                 </p>
               )}
             </div>
