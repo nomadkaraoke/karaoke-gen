@@ -3,9 +3,8 @@
 import Image from "next/image"
 import { useTenant } from "@/lib/tenant"
 
-// Default Nomad Karaoke logo URL
-const DEFAULT_LOGO_URL =
-  "https://nomadkaraoke.com/wp-content/uploads/2024/07/Nomad-Karaoke-Logo-TextOnly-Cropped-FromSVG-HQ-2048x1088.png"
+// Default Nomad Karaoke logo URL (local SVG in /public)
+const DEFAULT_LOGO_URL = "/nomad-karaoke-logo.svg"
 
 interface TenantLogoProps {
   className?: string

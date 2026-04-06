@@ -6,7 +6,7 @@ export function Logo({ className = "", size = "sm" }: { className?: string; size
   return (
     <div className={`flex items-center ${className}`}>
       <Image
-        src="https://nomadkaraoke.com/wp-content/uploads/2024/07/Nomad-Karaoke-Logo-TextOnly-Cropped-FromSVG-HQ-2048x1088.png"
+        src="/nomad-karaoke-logo.svg"
         alt="Nomad Karaoke"
         width={200}
         height={106}
