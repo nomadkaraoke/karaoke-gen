@@ -152,9 +152,14 @@ export const useAuth = create<AuthStore>()(
             set({ isLoading: false })
             return false
           }
-          // Session may have expired
-          clearAccessToken()
-          set({ user: null, isLoading: false })
+          // Only clear token on explicit 401 (session expired/invalid)
+          // Network errors, timeouts, cold-start delays, etc. should not log the user out
+          if (err && typeof err === 'object' && 'status' in err && (err as any).status === 401) {
+            clearAccessToken()
+            set({ user: null, isLoading: false })
+          } else {
+            set({ isLoading: false })
+          }
           return false
         }
       },
