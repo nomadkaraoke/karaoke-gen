@@ -41,6 +41,7 @@ export default function ReferralDashboard() {
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState('');
   const [dashboardLinkLoading, setDashboardLinkLoading] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -104,11 +105,13 @@ export default function ReferralDashboard() {
 
   const handleManagePayouts = async () => {
     setDashboardLinkLoading(true);
+    setActionError('');
     try {
       const { url } = await getConnectDashboardLink();
       window.open(url, '_blank');
     } catch (err) {
       console.error('Failed to get dashboard link:', err);
+      setActionError(t('connectFailed'));
     } finally {
       setDashboardLinkLoading(false);
     }
@@ -116,11 +119,13 @@ export default function ReferralDashboard() {
 
   const handleUpdateAccount = async () => {
     setConnectLoading(true);
+    setActionError('');
     try {
       const { url } = await getConnectUpdateLink();
       window.location.href = url;
     } catch (err) {
       console.error('Failed to get update link:', err);
+      setActionError(t('connectFailed'));
       setConnectLoading(false);
     }
   };
@@ -439,6 +444,9 @@ export default function ReferralDashboard() {
                 {t('updateBankAccount')}
               </button>
             </div>
+            {actionError && (
+              <p className="text-sm text-red-500">{actionError}</p>
+            )}
           </div>
         ) : (
           /* Not connected — show setup prompt */
