@@ -1,7 +1,8 @@
 /**
  * Tests for auth store's fetchUser() behavior, specifically:
  * - Abort errors (from page navigation) should NOT clear auth
- * - Other errors (expired session) SHOULD clear auth
+ * - 401 errors (expired session) SHOULD clear auth
+ * - Network errors (fetch failures) should NOT clear auth
  */
 
 // Mock api module before importing auth
@@ -50,15 +51,28 @@ describe('fetchUser', () => {
     expect(useAuth.getState().isLoading).toBe(false)
   })
 
-  it('clears auth state when API returns a non-abort error (expired session)', async () => {
-    mockGetCurrentUser.mockRejectedValueOnce(new Error('Unauthorized'))
+  it('clears auth state when API returns 401 (expired session)', async () => {
+    const err = new Error('Unauthorized') as Error & { status: number }
+    err.status = 401
+    mockGetCurrentUser.mockRejectedValueOnce(err)
 
     const result = await useAuth.getState().fetchUser()
 
     expect(result).toBe(false)
-    // Auth SHOULD be cleared
+    // Auth SHOULD be cleared on explicit 401
     expect(clearAccessToken).toHaveBeenCalled()
     expect(useAuth.getState().user).toBeNull()
+    expect(useAuth.getState().isLoading).toBe(false)
+  })
+
+  it('preserves auth state on network errors (non-401)', async () => {
+    mockGetCurrentUser.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    const result = await useAuth.getState().fetchUser()
+
+    expect(result).toBe(false)
+    // Auth should NOT be cleared on network errors
+    expect(clearAccessToken).not.toHaveBeenCalled()
     expect(useAuth.getState().isLoading).toBe(false)
   })
 
