@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { adminApi, AdminUserDetail, UserPaymentHistory } from "@/lib/api"
+import type { ReferralLink } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +35,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   ArrowLeft,
   RefreshCw,
@@ -77,10 +85,11 @@ export default function AdminUserDetailPage() {
 
   // Discount dialog
   const [discountDialogOpen, setDiscountDialogOpen] = useState(false)
-  const [discountPercent, setDiscountPercent] = useState("50")
+  const [discountCode, setDiscountCode] = useState("")
   const [discountDays, setDiscountDays] = useState("365")
-  const [discountCode, setDiscountCode] = useState("loyalty")
   const [applyingDiscount, setApplyingDiscount] = useState(false)
+  const [referralLinks, setReferralLinks] = useState<ReferralLink[]>([])
+  const [referralLinksLoading, setReferralLinksLoading] = useState(false)
 
   const loadUser = async () => {
     if (!email) {
@@ -113,6 +122,18 @@ export default function AdminUserDetailPage() {
       console.error("Failed to load payment history:", err)
     } finally {
       setPaymentsLoading(false)
+    }
+  }
+
+  const loadReferralLinks = async () => {
+    try {
+      setReferralLinksLoading(true)
+      const data = await adminApi.listReferralLinks({ limit: 200 })
+      setReferralLinks(data.links.filter((l) => l.enabled))
+    } catch (err) {
+      console.error("Failed to load referral links:", err)
+    } finally {
+      setReferralLinksLoading(false)
     }
   }
 
@@ -157,12 +178,17 @@ export default function AdminUserDetailPage() {
   }
 
   const handleApplyDiscount = async () => {
+    const selectedLink = referralLinks.find((l) => l.code === discountCode)
+    if (!selectedLink) {
+      toast({ title: "Error", description: "Please select a referral code", variant: "destructive" })
+      return
+    }
     setApplyingDiscount(true)
     try {
       const result = await adminApi.applyDiscount(email, {
-        discount_percent: Number(discountPercent) || 50,
+        discount_percent: selectedLink.discount_percent,
         duration_days: Number(discountDays) || 365,
-        referral_code: discountCode || "loyalty",
+        referral_code: discountCode,
       })
       toast({ title: "Discount Applied", description: result.message })
       setDiscountDialogOpen(false)
@@ -725,26 +751,58 @@ export default function AdminUserDetailPage() {
       </Dialog>
 
       {/* Apply Discount Dialog */}
-      <Dialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen}>
+      <Dialog open={discountDialogOpen} onOpenChange={(open) => {
+        setDiscountDialogOpen(open)
+        if (open && referralLinks.length === 0) loadReferralLinks()
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Apply Discount</DialogTitle>
             <DialogDescription>
-              Apply a referral discount to {email}. This sets the same discount fields as if they used a referral link.
+              Link {email} to an existing referral code. They&apos;ll get the code&apos;s discount on credit purchases.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Discount %</Label>
-              <Input
-                type="number"
-                min="1"
-                max="100"
-                value={discountPercent}
-                onChange={(e) => setDiscountPercent(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Percentage off credit purchases at Stripe checkout</p>
+              <Label>Referral Code</Label>
+              {referralLinksLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading codes…
+                </div>
+              ) : (
+                <Select value={discountCode} onValueChange={(code) => {
+                  setDiscountCode(code)
+                  const link = referralLinks.find((l) => l.code === code)
+                  if (link) setDiscountDays(String(link.discount_duration_days))
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a referral code…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {referralLinks.map((link) => (
+                      <SelectItem key={link.code} value={link.code}>
+                        {link.code} — {link.discount_percent}% off
+                        {link.display_name ? ` (${link.display_name})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {referralLinks.length > 0 && !referralLinksLoading && referralLinks.every((l) => l.code !== discountCode) && !discountCode && (
+                <p className="text-xs text-muted-foreground">
+                  Create codes in <a href="/admin/referrals" className="underline">Referral Management</a> first.
+                </p>
+              )}
             </div>
+            {discountCode && (() => {
+              const sel = referralLinks.find((l) => l.code === discountCode)
+              return sel ? (
+                <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+                  <p><strong>Discount:</strong> {sel.discount_percent}% off credit purchases</p>
+                  <p><strong>Default duration:</strong> {sel.discount_duration_days} days (override below)</p>
+                </div>
+              ) : null
+            })()}
             <div className="space-y-2">
               <Label>Duration (days)</Label>
               <Input
@@ -755,21 +813,12 @@ export default function AdminUserDetailPage() {
               />
               <p className="text-xs text-muted-foreground">How long the discount stays active. Use 3650 for ~10 years.</p>
             </div>
-            <div className="space-y-2">
-              <Label>Referral Code</Label>
-              <Input
-                value={discountCode}
-                onChange={(e) => setDiscountCode(e.target.value)}
-                placeholder="loyalty"
-              />
-              <p className="text-xs text-muted-foreground">Shows as the referral source. Use &quot;loyalty&quot; for grandfathered pricing, or an actual referral code.</p>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiscountDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleApplyDiscount} disabled={applyingDiscount}>
+            <Button onClick={handleApplyDiscount} disabled={applyingDiscount || !discountCode}>
               {applyingDiscount && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Apply Discount
             </Button>
