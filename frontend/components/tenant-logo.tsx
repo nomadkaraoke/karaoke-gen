@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useTenant } from "@/lib/tenant"
 
 // Default Nomad Karaoke logo URL (local SVG in /public)
@@ -29,45 +28,17 @@ export function TenantLogo({ className = "", size = "sm" }: TenantLogoProps) {
       logoUrl = DEFAULT_LOGO_URL
     }
   }
-  const logoHeight = branding.logo_height || 40
 
-  // Size classes based on size prop - use static Tailwind classes only
-  // Dynamic height is applied via inline style
-  const sizeClasses =
-    size === "lg"
-      ? "max-w-[600px]"
-      : "max-w-[200px]"
+  const heightClass = size === "lg" ? "h-20 sm:h-[120px]" : "h-8 sm:h-10"
+  const maxWidthClass = size === "lg" ? "max-w-[600px]" : "max-w-[200px]"
 
-  // Compute max height for inline style
-  const maxHeight = size === "lg" ? 120 : logoHeight
-
-  // For tenant logos, use img tag since they come from GCS signed URLs
-  // For default logo, use Next.js Image for optimization
-  if (!isDefault && branding.logo_url) {
-    return (
-      <div className={`flex items-center ${className}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={logoUrl}
-          alt={tenant?.name || "Logo"}
-          className={`w-auto h-auto ${sizeClasses} object-contain`}
-          style={{ maxHeight }}
-        />
-      </div>
-    )
-  }
-
-  // Default Nomad Karaoke logo with Next.js Image optimization
   return (
     <div className={`flex items-center ${className}`}>
-      <Image
-        src={DEFAULT_LOGO_URL}
-        alt="Nomad Karaoke"
-        width={200}
-        height={106}
-        className={`w-auto h-auto ${sizeClasses} object-contain`}
-        style={{ maxHeight }}
-        priority
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logoUrl}
+        alt={(!isDefault && tenant?.name) ? tenant.name : "Nomad Karaoke"}
+        className={`${heightClass} ${maxWidthClass} w-auto object-contain shrink-0`}
       />
     </div>
   )
