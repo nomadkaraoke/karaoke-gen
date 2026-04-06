@@ -130,6 +130,49 @@ When two sequential human review steps can be combined into one, do it. We origi
 
 ## Common Gotchas
 
+### Firestore Timezone-Aware vs Naive Datetime Comparison (Apr 2026)
+**What happened**: `_build_user_public()` compared `referral_discount_expires_at` (from Firestore, timezone-aware) with `datetime.utcnow()` (naive), causing `TypeError: can't compare offset-naive and offset-aware datetimes`. This crashed the `verify_magic_link` endpoint, **blocking ALL logins for referred users** in production.
+
+**Fix**: Check `expires.tzinfo` and apply it to `now` before comparing:
+```python
+now = datetime.utcnow()
+if expires.tzinfo is not None:
+    now = now.replace(tzinfo=expires.tzinfo)
+has_discount = expires > now
+```
+
+**Pattern**: Always handle timezone-awareness when comparing Firestore datetimes with Python datetimes. Firestore returns `DatetimeWithNanoseconds` (timezone-aware). The codebase uses `datetime.utcnow()` (naive) everywhere. Any comparison between the two will crash.
+
+### Firestore Composite Indexes Must Be Created for Multi-Field Queries (Apr 2026)
+**What happened**: `get_dashboard_data()` queried `referral_earnings` with `.where("referrer_email", "==", ...).order_by("created_at", ...)` which requires a composite index. Without it, Firestore returns `FailedPrecondition: 400 The query requires an index`. This manifested as a 500 error on `/api/referrals/me` with CORS headers suppressed (frontend saw CORS error, not the real error).
+
+**Fix**: Create indexes via `gcloud firestore indexes composite create`. Firestore error messages include a direct URL to create the needed index.
+
+**Pattern**: Any Firestore query combining `.where()` + `.order_by()` on different fields needs a composite index. Create them proactively when adding new collection queries. Required indexes for the referral system:
+- `referral_earnings`: (referrer_email ASC, created_at DESC), (referrer_email ASC, status ASC)
+- `referral_payouts`: (referrer_email ASC, created_at DESC)
+
+### Cloudflare Pages _redirects Can't Interpolate in Query Strings (Apr 2026)
+**What happened**: Tried `/r/* /en/?ref=:splat 302` in Cloudflare Pages `_redirects` file. The `:splat` was passed literally as the string `:splat` instead of being replaced with the captured wildcard value. Multiple attempts with `:code`, `:splat`, and named params all failed.
+
+**Fix**: Use a Cloudflare Worker (`worker.js` with `env.ASSETS.fetch()` fallback) for any redirect that needs to inject values into query parameters. Workers have full JS string manipulation.
+
+**Pattern**: Cloudflare Pages `_redirects` `:splat` substitution only works in **path segments**, not in query strings, fragments, or other URL parts. For anything beyond simple path-to-path redirects, use a Worker.
+
+### Next.js Static Export Cannot Serve Dynamic Routes on Cloudflare Pages (Apr 2026)
+**What happened**: Created `/app/[locale]/r/[code]/page.tsx` for referral interstitials. Build failed: `Page "/[locale]/r/[code]" is missing "generateStaticParams()"`. Added `generateStaticParams` returning empty array — page existed at `/en/r/` but `/en/r/bevvy` still 404'd because no HTML file was generated for it.
+
+**Fix**: Use a static page that reads dynamic values from **query parameters** instead of path segments. The interstitial page at `/en/r/page.tsx` reads `?code=bevvy` from `useSearchParams()`. The Cloudflare Worker redirects `/r/bevvy` → `/en/r?code=bevvy`.
+
+**Pattern**: With `output: 'export'`, every URL must map to a pre-rendered HTML file. Truly dynamic paths (where you can't enumerate all values at build time) must use query params, hash fragments, or catch-all routes with known static paths.
+
+### CI Deploy Cancellations Can Silently Skip Backend Deploys (Apr 2026)
+**What happened**: PR #677 merged backend changes (referral attribution fix). The CI run was cancelled by a subsequent push, and the backend deploy job was skipped. The frontend deployed (from a later PR), but the backend was still running old code. Users couldn't get referral attribution because the backend fix never deployed.
+
+**Fix**: After merging backend changes, verify the deploy job completed successfully — check for `completed (cancelled)` vs `completed (success)`. If cancelled, trigger a manual re-run or push a no-op commit.
+
+**Pattern**: When multiple PRs merge in quick succession, earlier CI runs get cancelled. Frontend-only PRs won't trigger backend deploys. Always verify backend deploy status after merging backend changes.
+
 ### Gate Resource Recycling on Full Cleanup Confirmation (Feb 2026)
 **What happened**: Brand code NOMAD-1271 was recycled and reused for a real song while old E2E test job files still existed in Google Drive, creating a duplicate in the public share.
 
