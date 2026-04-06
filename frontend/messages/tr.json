@@ -293,7 +293,9 @@
       "earnFreeCredit": "1 Ücretsiz Kredi Kazan",
       "showTestJobs": "Test İşlerini Göster",
       "signOut": "Çıkış Yap",
-      "login": "Giriş"
+      "login": "Giriş",
+      "discountActive": "indirim aktif",
+      "discountActiveHint": "İndirim afişini göstermek için tıkla"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Açık",
     "flyerThemeDark": "Koyu",
     "flyerGenerate": "El İlanı Oluştur",
-    "flyerGenerating": "Oluşturuluyor..."
+    "flyerGenerating": "Oluşturuluyor...",
+    "appliedAtCheckout": "Ödeme sırasında otomatik olarak uygulanır",
+    "expires": "{date} tarihinde sona eriyor",
+    "referredBy": "Öneren: {name}",
+    "usingCode": "Kod: {code}"
   }
 }

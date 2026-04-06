@@ -293,7 +293,9 @@
       "earnFreeCredit": "اكسب 1 رصيد مجاني",
       "showTestJobs": "إظهار مهام الاختبار",
       "signOut": "تسجيل الخروج",
-      "login": "تسجيل الدخول"
+      "login": "تسجيل الدخول",
+      "discountActive": "خصم فعّال",
+      "discountActiveHint": "انقر لعرض شريط الخصم"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "فاتح",
     "flyerThemeDark": "داكن",
     "flyerGenerate": "إنشاء نشرة إعلانية",
-    "flyerGenerating": "جاري الإنشاء..."
+    "flyerGenerating": "جاري الإنشاء...",
+    "appliedAtCheckout": "يُطبق تلقائياً عند الدفع",
+    "expires": "ينتهي في {date}",
+    "referredBy": "بإحالة من {name}",
+    "usingCode": "الرمز: {code}"
   }
 }

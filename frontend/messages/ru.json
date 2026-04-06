@@ -293,7 +293,9 @@
       "earnFreeCredit": "Заработай 1 бесплатный кредит",
       "showTestJobs": "Показать тестовые задачи",
       "signOut": "Выйти",
-      "login": "Войти"
+      "login": "Войти",
+      "discountActive": "скидка активна",
+      "discountActiveHint": "Нажми, чтобы показать баннер со скидкой"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Светлая",
     "flyerThemeDark": "Темная",
     "flyerGenerate": "Сгенерировать флаер",
-    "flyerGenerating": "Генерация..."
+    "flyerGenerating": "Генерация...",
+    "appliedAtCheckout": "Применяется автоматически при оплате",
+    "expires": "Действует до {date}",
+    "referredBy": "Пригласил(а) {name}",
+    "usingCode": "Код: {code}"
   }
 }

@@ -293,7 +293,9 @@
       "earnFreeCredit": "Câștigă 1 credit gratuit",
       "showTestJobs": "Arată joburile de test",
       "signOut": "Deconectează-te",
-      "login": "Autentificare"
+      "login": "Autentificare",
+      "discountActive": "reducere activă",
+      "discountActiveHint": "Dă click pentru a afișa bannerul de reducere"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Luminos",
     "flyerThemeDark": "Întunecat",
     "flyerGenerate": "Generează pliant",
-    "flyerGenerating": "Se generează..."
+    "flyerGenerating": "Se generează...",
+    "appliedAtCheckout": "Aplicat automat la finalizarea comenzii",
+    "expires": "Expiră la {date}",
+    "referredBy": "Recomandat de {name}",
+    "usingCode": "Cod: {code}"
   }
 }

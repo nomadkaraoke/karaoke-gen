@@ -293,7 +293,9 @@
       "earnFreeCredit": "1 मुफ़्त क्रेडिट कमाओ",
       "showTestJobs": "टेस्ट जॉब्स दिखाओ",
       "signOut": "साइन आउट करो",
-      "login": "लॉगिन करो"
+      "login": "लॉगिन करो",
+      "discountActive": "डिस्काउंट सक्रिय",
+      "discountActiveHint": "डिस्काउंट बैनर देखने के लिए क्लिक करो"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "लाइट",
     "flyerThemeDark": "डार्क",
     "flyerGenerate": "फ़्लायर जनरेट करो",
-    "flyerGenerating": "जनरेट हो रहा है..."
+    "flyerGenerating": "जनरेट हो रहा है...",
+    "appliedAtCheckout": "चेकआउट पर अपने आप लागू",
+    "expires": "{date} को समाप्त",
+    "referredBy": "{name} द्वारा रेफर किया गया",
+    "usingCode": "कोड: {code}"
   }
 }

@@ -293,7 +293,9 @@
       "earnFreeCredit": "1無料クレジットを獲得",
       "showTestJobs": "テストジョブを表示",
       "signOut": "サインアウト",
-      "login": "ログイン"
+      "login": "ログイン",
+      "discountActive": "割引適用中",
+      "discountActiveHint": "クリックして割引バナーを表示"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "ライト",
     "flyerThemeDark": "ダーク",
     "flyerGenerate": "フライヤーを生成",
-    "flyerGenerating": "生成中..."
+    "flyerGenerating": "生成中...",
+    "appliedAtCheckout": "チェックアウト時に自動的に適用されます",
+    "expires": "有効期限: {date}",
+    "referredBy": "{name}さんからの紹介",
+    "usingCode": "コード: {code}"
   }
 }

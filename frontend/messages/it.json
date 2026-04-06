@@ -293,7 +293,9 @@
       "earnFreeCredit": "Guadagna 1 credito gratuito",
       "showTestJobs": "Mostra lavori di test",
       "signOut": "Esci",
-      "login": "Accedi"
+      "login": "Accedi",
+      "discountActive": "sconto attivo",
+      "discountActiveHint": "Clicca per mostrare il banner dello sconto"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Chiaro",
     "flyerThemeDark": "Scuro",
     "flyerGenerate": "Genera volantino",
-    "flyerGenerating": "Generazione..."
+    "flyerGenerating": "Generazione...",
+    "appliedAtCheckout": "Applicato automaticamente al checkout",
+    "expires": "Scade {date}",
+    "referredBy": "Invitato da {name}",
+    "usingCode": "Codice: {code}"
   }
 }

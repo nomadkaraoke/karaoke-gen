@@ -293,7 +293,9 @@
       "earnFreeCredit": "1 kostenloses Guthaben verdienen",
       "showTestJobs": "Testaufträge anzeigen",
       "signOut": "Abmelden",
-      "login": "Anmelden"
+      "login": "Anmelden",
+      "discountActive": "Rabatt aktiv",
+      "discountActiveHint": "Klicke, um das Rabatt-Banner anzuzeigen"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Hell",
     "flyerThemeDark": "Dunkel",
     "flyerGenerate": "Flyer generieren",
-    "flyerGenerating": "Generiere..."
+    "flyerGenerating": "Generiere...",
+    "appliedAtCheckout": "Wird an der Kasse automatisch angewendet",
+    "expires": "Läuft am {date} ab",
+    "referredBy": "Empfohlen von {name}",
+    "usingCode": "Code: {code}"
   }
 }

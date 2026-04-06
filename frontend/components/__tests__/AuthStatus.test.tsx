@@ -7,6 +7,12 @@ import { AuthStatus } from '../auth/AuthStatus'
 import { AuthDialog } from '../auth/AuthDialog'
 import { useAuth } from '@/lib/auth'
 
+// Mock next/navigation
+const mockPush = jest.fn()
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}))
+
 // Mock the auth module
 jest.mock('@/lib/auth', () => ({
   useAuth: jest.fn(),

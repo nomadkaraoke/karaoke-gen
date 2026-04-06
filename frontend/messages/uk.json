@@ -293,7 +293,9 @@
       "earnFreeCredit": "Отримати 1 безкоштовний кредит",
       "showTestJobs": "Показати тестові завдання",
       "signOut": "Вийти",
-      "login": "Увійти"
+      "login": "Увійти",
+      "discountActive": "знижка активна",
+      "discountActiveHint": "Натисни, щоб показати банер зі знижкою"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Світла",
     "flyerThemeDark": "Темна",
     "flyerGenerate": "Згенерувати флаєр",
-    "flyerGenerating": "Генерація..."
+    "flyerGenerating": "Генерація...",
+    "appliedAtCheckout": "Застосовується автоматично під час оплати",
+    "expires": "Діє до {date}",
+    "referredBy": "За рекомендацією {name}",
+    "usingCode": "Код: {code}"
   }
 }

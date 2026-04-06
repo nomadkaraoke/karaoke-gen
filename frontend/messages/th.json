@@ -293,7 +293,9 @@
       "earnFreeCredit": "รับฟรี 1 เครดิต",
       "showTestJobs": "แสดงงานทดสอบ",
       "signOut": "ออกจากระบบ",
-      "login": "เข้าสู่ระบบ"
+      "login": "เข้าสู่ระบบ",
+      "discountActive": "ส่วนลดที่ใช้งานอยู่",
+      "discountActiveHint": "คลิกเพื่อแสดงแบนเนอร์ส่วนลด"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "สว่าง",
     "flyerThemeDark": "มืด",
     "flyerGenerate": "สร้างใบปลิว",
-    "flyerGenerating": "กำลังสร้าง..."
+    "flyerGenerating": "กำลังสร้าง...",
+    "appliedAtCheckout": "ใช้งานอัตโนมัติเมื่อชำระเงิน",
+    "expires": "หมดอายุ {date}",
+    "referredBy": "แนะนำโดย {name}",
+    "usingCode": "รหัส: {code}"
   }
 }

@@ -293,7 +293,9 @@
       "earnFreeCredit": "무료 크레딧 1개 받기",
       "showTestJobs": "테스트 작업 표시",
       "signOut": "로그아웃",
-      "login": "로그인"
+      "login": "로그인",
+      "discountActive": "할인 적용 중",
+      "discountActiveHint": "할인 배너를 보려면 클릭하세요"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "라이트",
     "flyerThemeDark": "다크",
     "flyerGenerate": "전단지 생성",
-    "flyerGenerating": "생성 중..."
+    "flyerGenerating": "생성 중...",
+    "appliedAtCheckout": "결제 시 자동으로 적용됩니다",
+    "expires": "{date} 만료",
+    "referredBy": "{name}님의 추천",
+    "usingCode": "코드: {code}"
   }
 }

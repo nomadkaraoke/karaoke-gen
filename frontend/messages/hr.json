@@ -293,7 +293,9 @@
       "earnFreeCredit": "Zaradi 1 besplatan kredit",
       "showTestJobs": "Prikaži testne poslove",
       "signOut": "Odjavi se",
-      "login": "Prijava"
+      "login": "Prijava",
+      "discountActive": "popust aktivan",
+      "discountActiveHint": "Klikni za prikaz bannera s popustom"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Svijetlo",
     "flyerThemeDark": "Tamno",
     "flyerGenerate": "Generiraj letak",
-    "flyerGenerating": "Generiranje..."
+    "flyerGenerating": "Generiranje...",
+    "appliedAtCheckout": "Primjenjuje se automatski pri plaćanju",
+    "expires": "Ističe {date}",
+    "referredBy": "Preporučio/la {name}",
+    "usingCode": "Kod: {code}"
   }
 }

@@ -293,7 +293,9 @@
       "earnFreeCredit": "Verdien 1 gratis credit",
       "showTestJobs": "Toon testtaken",
       "signOut": "Uitloggen",
-      "login": "Inloggen"
+      "login": "Inloggen",
+      "discountActive": "korting actief",
+      "discountActiveHint": "Klik om de kortingsbanner te tonen"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Licht",
     "flyerThemeDark": "Donker",
     "flyerGenerate": "Genereer flyer",
-    "flyerGenerating": "Genereren..."
+    "flyerGenerating": "Genereren...",
+    "appliedAtCheckout": "Wordt automatisch toegepast bij het afrekenen",
+    "expires": "Verloopt op {date}",
+    "referredBy": "Doorverwezen door {name}",
+    "usingCode": "Code: {code}"
   }
 }

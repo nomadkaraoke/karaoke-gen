@@ -293,7 +293,9 @@
       "earnFreeCredit": "Dapatkan 1 Kredit Percuma",
       "showTestJobs": "Tunjukkan Kerja Ujian",
       "signOut": "Log Keluar",
-      "login": "Log Masuk"
+      "login": "Log Masuk",
+      "discountActive": "diskaun aktif",
+      "discountActiveHint": "Klik untuk papar sepanduk diskaun"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Terang",
     "flyerThemeDark": "Gelap",
     "flyerGenerate": "Jana Risalah",
-    "flyerGenerating": "Menjana..."
+    "flyerGenerating": "Menjana...",
+    "appliedAtCheckout": "Digunakan secara automatik semasa pembayaran",
+    "expires": "Tamat tempoh {date}",
+    "referredBy": "Dirujuk oleh {name}",
+    "usingCode": "Kod: {code}"
   }
 }

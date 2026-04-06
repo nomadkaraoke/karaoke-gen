@@ -361,6 +361,12 @@ async def translate_locale(
         delta_keys = None
         existing_data = None
 
+        # Load existing translation if it exists
+        locale_path = messages_dir / f"{target_locale}.json"
+        if locale_path.exists():
+            with open(locale_path) as f:
+                existing_data = json.load(f)
+
         if not full_mode and snapshot_data is not None:
             delta_keys = compute_changed_keys(english_data, snapshot_data)
             if not delta_keys:
@@ -368,18 +374,26 @@ async def translate_locale(
                 print(f"[{target_locale}] No changes detected, skipping. ({len(completed)}/{total})")
                 return True
 
-            # Load existing translation if it exists
-            locale_path = messages_dir / f"{target_locale}.json"
-            if locale_path.exists():
-                with open(locale_path) as f:
-                    existing_data = json.load(f)
-
+            if existing_data is not None:
                 # Extract only changed keys from English
                 subset = extract_subset(english_data, delta_keys)
                 json_to_translate = json.dumps(subset, ensure_ascii=False, indent=2)
                 print(f"[{target_locale}] Delta mode: {len(delta_keys)} changed keys (of {count_keys(english_data)} total)")
             else:
                 print(f"[{target_locale}] No existing translation, doing full translation")
+        elif not full_mode and existing_data is not None:
+            # No snapshot but existing locale file — compute missing keys
+            en_flat = flatten_keys(english_data)
+            existing_flat = flatten_keys(existing_data)
+            missing_keys = set(en_flat.keys()) - set(existing_flat.keys())
+            if not missing_keys:
+                completed.append(target_locale)
+                print(f"[{target_locale}] All {len(en_flat)} keys present, skipping. ({len(completed)}/{total})")
+                return True
+            delta_keys = missing_keys
+            subset = extract_subset(english_data, delta_keys)
+            json_to_translate = json.dumps(subset, ensure_ascii=False, indent=2)
+            print(f"[{target_locale}] Missing keys mode: {len(delta_keys)} missing keys (of {count_keys(english_data)} total)")
 
         # --- Cache lookup ---
         cached_translations: dict[str, str] = {}  # dot_key -> translated string
@@ -560,7 +574,7 @@ async def async_main(args):
             snapshot_data = json.load(f)
         print(f"Loaded snapshot for delta comparison ({count_keys(snapshot_data)} keys)")
     elif not args.full:
-        print("No snapshot found — will do full translation (use --full to force)")
+        print("No snapshot found — will use missing-keys mode (use --full to force full retranslation)")
 
     # Initialize Vertex AI client
     client = genai.Client(
@@ -577,7 +591,12 @@ async def async_main(args):
     print(f"Using model: {MODEL}")
     print(f"Project: {PROJECT}, Location: {LOCATION}")
     print(f"Locales: {', '.join(locales)} ({len(locales)} total)")
-    print(f"Mode: {'full' if args.full or snapshot_data is None else 'incremental (delta)'}")
+    if args.full:
+        print("Mode: full (forced)")
+    elif snapshot_data is not None:
+        print("Mode: incremental (delta from snapshot)")
+    else:
+        print("Mode: incremental (missing keys — no snapshot)")
     print(f"Review: {'skip' if args.skip_review else 'enabled'}")
     print(f"Cache: {'disabled' if args.no_cache else 'enabled'} (bucket: {args.cache_bucket})")
     if args.dry_run:
@@ -598,7 +617,7 @@ async def async_main(args):
             messages_dir=args.messages_dir,
             glossary=glossary,
             skip_review=args.skip_review,
-            full_mode=args.full or snapshot_data is None,
+            full_mode=args.full,
             snapshot_data=snapshot_data,
             completed=completed,
             total=total,
@@ -614,8 +633,10 @@ async def async_main(args):
     succeeded = sum(1 for r in results if r is True)
     failed = sum(1 for r in results if r is not True)
 
-    # Only save snapshot if all translations succeeded
-    if failed == 0:
+    # Only save snapshot if all translations succeeded and we actually translated
+    if args.dry_run:
+        print(f"\nSnapshot NOT saved (dry run)")
+    elif failed == 0:
         with open(snapshot_path, "w", encoding="utf-8") as f:
             json.dump(english_data, f, ensure_ascii=False, indent=2)
             f.write("\n")

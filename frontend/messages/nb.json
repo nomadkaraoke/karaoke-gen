@@ -293,7 +293,9 @@
       "earnFreeCredit": "Tjen 1 gratis kreditt",
       "showTestJobs": "Vis testjobber",
       "signOut": "Logg ut",
-      "login": "Logg inn"
+      "login": "Logg inn",
+      "discountActive": "rabatt aktiv",
+      "discountActiveHint": "Klikk for å vise rabattbanner"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Lys",
     "flyerThemeDark": "Mørk",
     "flyerGenerate": "Generer flyer",
-    "flyerGenerating": "Genererer..."
+    "flyerGenerating": "Genererer...",
+    "appliedAtCheckout": "Legges til automatisk i kassen",
+    "expires": "Utløper {date}",
+    "referredBy": "Vervet av {name}",
+    "usingCode": "Kode: {code}"
   }
 }

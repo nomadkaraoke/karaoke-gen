@@ -293,7 +293,9 @@
       "earnFreeCredit": "Tjen 1 gratis credit",
       "showTestJobs": "Vis testjob",
       "signOut": "Log ud",
-      "login": "Log ind"
+      "login": "Log ind",
+      "discountActive": "rabat aktiv",
+      "discountActiveHint": "Klik for at vise rabatbanneret"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Lyst",
     "flyerThemeDark": "Mørkt",
     "flyerGenerate": "Generer flyer",
-    "flyerGenerating": "Genererer..."
+    "flyerGenerating": "Genererer...",
+    "appliedAtCheckout": "Anvendes automatisk ved kassen",
+    "expires": "Udløber {date}",
+    "referredBy": "Henvist af {name}",
+    "usingCode": "Kode: {code}"
   }
 }

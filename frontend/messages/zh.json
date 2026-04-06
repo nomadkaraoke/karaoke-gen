@@ -293,7 +293,9 @@
       "earnFreeCredit": "赚取 1 个免费积分",
       "showTestJobs": "显示测试任务",
       "signOut": "登出",
-      "login": "登录"
+      "login": "登录",
+      "discountActive": "折扣已生效",
+      "discountActiveHint": "点击显示折扣横幅"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "浅色",
     "flyerThemeDark": "深色",
     "flyerGenerate": "生成传单",
-    "flyerGenerating": "生成中..."
+    "flyerGenerating": "生成中...",
+    "appliedAtCheckout": "结账时自动应用",
+    "expires": "有效期至 {date}",
+    "referredBy": "由 {name} 推荐",
+    "usingCode": "优惠码：{code}"
   }
 }

@@ -40,11 +40,11 @@ class GenerateFlyerRequest(BaseModel):
 
 
 @router.get("/r/{code}", response_model=ReferralInterstitialResponse)
-async def get_referral_interstitial(code: str):
+async def get_referral_interstitial(code: str, no_track: bool = False):
     """
     Public endpoint: get interstitial data for a referral link.
 
-    Increments click count. Returns valid=False if code not found.
+    Increments click count unless no_track=true. Returns valid=False if code not found.
     """
     service = get_referral_service()
     link = service.get_link_by_code(code)
@@ -52,11 +52,12 @@ async def get_referral_interstitial(code: str):
     if not link:
         return ReferralInterstitialResponse(valid=False)
 
-    # Track the click
-    try:
-        service.increment_clicks(code)
-    except Exception:
-        logger.warning("Failed to increment clicks for code %s", code, exc_info=True)
+    # Track the click (skip when fetching for display purposes)
+    if not no_track:
+        try:
+            service.increment_clicks(code)
+        except Exception:
+            logger.warning("Failed to increment clicks for code %s", code, exc_info=True)
 
     return ReferralInterstitialResponse(
         valid=True,

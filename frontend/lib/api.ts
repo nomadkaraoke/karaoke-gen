@@ -3548,8 +3548,9 @@ export { ApiError };
 // Referral API
 // ============================================================================
 
-export async function getReferralInterstitial(code: string): Promise<ReferralInterstitial> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/r/${encodeURIComponent(code)}`);
+export async function getReferralInterstitial(code: string, noTrack = false): Promise<ReferralInterstitial> {
+  const url = `${API_BASE_URL}/api/referrals/r/${encodeURIComponent(code)}${noTrack ? '?no_track=true' : ''}`;
+  const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch referral info');
   return response.json();
 }

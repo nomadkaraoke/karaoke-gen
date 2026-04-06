@@ -293,7 +293,9 @@
       "earnFreeCredit": "Dapatkan 1 Kredit Gratis",
       "showTestJobs": "Tampilkan Proyek Uji",
       "signOut": "Keluar",
-      "login": "Masuk"
+      "login": "Masuk",
+      "discountActive": "diskon aktif",
+      "discountActiveHint": "Klik untuk menampilkan banner diskon"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Terang",
     "flyerThemeDark": "Gelap",
     "flyerGenerate": "Buat Flyer",
-    "flyerGenerating": "Membuat..."
+    "flyerGenerating": "Membuat...",
+    "appliedAtCheckout": "Diterapkan otomatis saat checkout",
+    "expires": "Kedaluwarsa {date}",
+    "referredBy": "Referensi dari {name}",
+    "usingCode": "Kode: {code}"
   }
 }

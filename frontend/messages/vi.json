@@ -293,7 +293,9 @@
       "earnFreeCredit": "Kiếm 1 credit miễn phí",
       "showTestJobs": "Hiển thị công việc thử nghiệm",
       "signOut": "Đăng xuất",
-      "login": "Đăng nhập"
+      "login": "Đăng nhập",
+      "discountActive": "đang áp dụng giảm giá",
+      "discountActiveHint": "Nhấp để hiển thị banner giảm giá"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Sáng",
     "flyerThemeDark": "Tối",
     "flyerGenerate": "Tạo tờ rơi",
-    "flyerGenerating": "Đang tạo..."
+    "flyerGenerating": "Đang tạo...",
+    "appliedAtCheckout": "Tự động áp dụng khi thanh toán",
+    "expires": "Hết hạn {date}",
+    "referredBy": "Được giới thiệu bởi {name}",
+    "usingCode": "Mã: {code}"
   }
 }

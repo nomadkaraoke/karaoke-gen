@@ -130,6 +130,23 @@ class TestGetInterstitial:
         data = response.json()
         assert data["valid"] is True
 
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_no_track_skips_click_increment(self, mock_get_service, client):
+        """no_track=true should return data without incrementing clicks."""
+        mock_service = Mock()
+        link = _make_referral_link()
+        mock_service.get_link_by_code.return_value = link
+        mock_get_service.return_value = mock_service
+
+        response = client.get("/api/referrals/r/abc12345?no_track=true")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["valid"] is True
+        assert data["referral_code"] == "abc12345"
+        assert data["referrer_display_name"] == "Test Referrer"
+        mock_service.increment_clicks.assert_not_called()
+
 
 # ============================================================================
 # GET /api/referrals/me - Dashboard

@@ -293,7 +293,9 @@
       "earnFreeCredit": "Szerezz 1 ingyenes kreditet",
       "showTestJobs": "Teszt projektek mutatása",
       "signOut": "Kijelentkezés",
-      "login": "Bejelentkezés"
+      "login": "Bejelentkezés",
+      "discountActive": "kedvezmény aktív",
+      "discountActiveHint": "Kattints a kedvezmény bannerének megjelenítéséhez"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Világos",
     "flyerThemeDark": "Sötét",
     "flyerGenerate": "Szórólap generálása",
-    "flyerGenerating": "Generálás..."
+    "flyerGenerating": "Generálás...",
+    "appliedAtCheckout": "Automatikusan érvényesítve a fizetésnél",
+    "expires": "Lejár: {date}",
+    "referredBy": "Ajánlotta: {name}",
+    "usingCode": "Kód: {code}"
   }
 }

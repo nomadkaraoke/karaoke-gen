@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { CreditCard, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { api, CreditPackage } from '@/lib/api'
+import { api, CreditPackage, getReferralInterstitial } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useTranslations } from 'next-intl'
 
@@ -28,6 +28,7 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
   const [loading, setLoading] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [error, setError] = useState('')
+  const [referrerName, setReferrerName] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -45,7 +46,14 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
         setError(err instanceof Error ? err.message : 'Failed to load packages')
       })
       .finally(() => setLoading(false))
-  }, [open])
+
+    // Fetch referrer details if user has an active referral discount
+    if (user?.referred_by_code) {
+      getReferralInterstitial(user.referred_by_code, true)
+        .then((info) => setReferrerName(info.referrer_display_name))
+        .catch(() => {}) // Silently fail — referrer name is non-critical
+    }
+  }, [open, user?.referred_by_code])
 
   const handleCheckout = async () => {
     if (!selectedPackage || !user?.email) return
@@ -79,9 +87,19 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
               <p className="text-green-600 dark:text-green-400 text-sm font-medium">
                 {tRef('discountBadge', { percent: user.referral_discount_percent })}
               </p>
+              {referrerName && (
+                <p className="text-green-600/80 dark:text-green-400/80 text-xs mt-1">
+                  {tRef('referredBy', { name: referrerName })}
+                </p>
+              )}
+              {user.referred_by_code && (
+                <p className="text-green-600/60 dark:text-green-400/60 text-xs mt-0.5">
+                  {tRef('usingCode', { code: user.referred_by_code })}
+                </p>
+              )}
               {user.referral_discount_expires_at && (
                 <p className="text-green-600/70 dark:text-green-400/70 text-xs mt-1">
-                  Applied automatically at checkout · Expires {new Date(user.referral_discount_expires_at).toLocaleDateString()}
+                  {tRef('appliedAtCheckout')} · {tRef('expires', { date: new Date(user.referral_discount_expires_at).toLocaleDateString() })}
                 </p>
               )}
             </div>

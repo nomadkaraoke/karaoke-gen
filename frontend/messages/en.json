@@ -293,6 +293,7 @@
       "earnFreeCredit": "Earn 1 Free Credit",
       "showTestJobs": "Show Test Jobs",
       "discountActive": "discount active",
+      "discountActiveHint": "Click to show discount banner",
       "signOut": "Sign Out",
       "login": "Login"
     }
@@ -1274,6 +1275,10 @@
     "interstitialDiscount": "Enjoy {percent}% off all credit purchases for {days} days",
     "interstitialCta": "Get Started",
     "discountBadge": "{percent}% referral discount",
+    "referredBy": "Referred by {name}",
+    "usingCode": "Code: {code}",
+    "appliedAtCheckout": "Applied automatically at checkout",
+    "expires": "Expires {date}",
     "discountActive": "Referral discount active — {percent}% off for {days} more days",
     "cancel": "Cancel",
     "editProfile": "Edit display name & message",

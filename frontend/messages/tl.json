@@ -293,7 +293,9 @@
       "earnFreeCredit": "Kumita ng 1 Libreng Credit",
       "showTestJobs": "Ipakita ang mga Test Job",
       "signOut": "Mag-sign Out",
-      "login": "Mag-login"
+      "login": "Mag-login",
+      "discountActive": "aktibo ang discount",
+      "discountActiveHint": "I-click para ipakita ang discount banner"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Light",
     "flyerThemeDark": "Dark",
     "flyerGenerate": "Gumawa ng Flyer",
-    "flyerGenerating": "Ginagawa..."
+    "flyerGenerating": "Ginagawa...",
+    "appliedAtCheckout": "Awtomatikong ia-apply sa checkout",
+    "expires": "Mag-e-expire sa {date}",
+    "referredBy": "Ni-refer ni {name}",
+    "usingCode": "Code: {code}"
   }
 }

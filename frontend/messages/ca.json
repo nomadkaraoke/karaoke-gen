@@ -293,7 +293,9 @@
       "earnFreeCredit": "Guanya 1 crèdit gratuït",
       "showTestJobs": "Mostra els treballs de prova",
       "signOut": "Tanca sessió",
-      "login": "Inicia sessió"
+      "login": "Inicia sessió",
+      "discountActive": "descompte actiu",
+      "discountActiveHint": "Fes clic per mostrar el bàner de descompte"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Clar",
     "flyerThemeDark": "Fosc",
     "flyerGenerate": "Genera el fullet",
-    "flyerGenerating": "Generant..."
+    "flyerGenerating": "Generant...",
+    "appliedAtCheckout": "S'aplica automàticament en finalitzar la compra",
+    "expires": "Caduca el {date}",
+    "referredBy": "Recomanat per {name}",
+    "usingCode": "Codi: {code}"
   }
 }

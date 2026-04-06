@@ -293,7 +293,9 @@
       "earnFreeCredit": "Κέρδισε 1 Δωρεάν Μονάδα",
       "showTestJobs": "Εμφάνιση Δοκιμαστικών Εργασιών",
       "signOut": "Αποσύνδεση",
-      "login": "Σύνδεση"
+      "login": "Σύνδεση",
+      "discountActive": "ενεργή έκπτωση",
+      "discountActiveHint": "Κάνε κλικ για εμφάνιση του banner έκπτωσης"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Φωτεινό",
     "flyerThemeDark": "Σκοτεινό",
     "flyerGenerate": "Δημιουργία Φυλλαδίου",
-    "flyerGenerating": "Δημιουργία..."
+    "flyerGenerating": "Δημιουργία...",
+    "appliedAtCheckout": "Εφαρμόζεται αυτόματα κατά την ολοκλήρωση της αγοράς",
+    "expires": "Λήγει στις {date}",
+    "referredBy": "Σύσταση από {name}",
+    "usingCode": "Κωδικός: {code}"
   }
 }

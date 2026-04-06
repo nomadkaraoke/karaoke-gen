@@ -293,7 +293,9 @@
       "earnFreeCredit": "Tjäna 1 gratis kredit",
       "showTestJobs": "Visa testjobb",
       "signOut": "Logga ut",
-      "login": "Logga in"
+      "login": "Logga in",
+      "discountActive": "rabatt aktiv",
+      "discountActiveHint": "Klicka för att visa rabattbannern"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Ljust",
     "flyerThemeDark": "Mörkt",
     "flyerGenerate": "Generera flyer",
-    "flyerGenerating": "Genererar..."
+    "flyerGenerating": "Genererar...",
+    "appliedAtCheckout": "Tillämpas automatiskt i kassan",
+    "expires": "Går ut {date}",
+    "referredBy": "Tipsad av {name}",
+    "usingCode": "Kod: {code}"
   }
 }

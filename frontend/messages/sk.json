@@ -293,7 +293,9 @@
       "earnFreeCredit": "Získaj 1 kredit zadarmo",
       "showTestJobs": "Zobraziť testovacie úlohy",
       "signOut": "Odhlásiť sa",
-      "login": "Prihlásiť sa"
+      "login": "Prihlásiť sa",
+      "discountActive": "zľava aktívna",
+      "discountActiveHint": "Kliknutím zobrazíš zľavový banner"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Svetlá",
     "flyerThemeDark": "Tmavá",
     "flyerGenerate": "Vygenerovať leták",
-    "flyerGenerating": "Generuje sa..."
+    "flyerGenerating": "Generuje sa...",
+    "appliedAtCheckout": "Automaticky uplatnené pri platbe",
+    "expires": "Platnosť do {date}",
+    "referredBy": "Odporučil/a {name}",
+    "usingCode": "Kód: {code}"
   }
 }

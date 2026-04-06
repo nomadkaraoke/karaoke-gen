@@ -293,7 +293,9 @@
       "earnFreeCredit": "הרווח קרדיט 1 חינם",
       "showTestJobs": "הצג עבודות בדיקה",
       "signOut": "התנתק",
-      "login": "התחבר"
+      "login": "התחבר",
+      "discountActive": "הנחה פעילה",
+      "discountActiveHint": "לחצו להצגת באנר ההנחה"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "בהיר",
     "flyerThemeDark": "כהה",
     "flyerGenerate": "צור פלייר",
-    "flyerGenerating": "יוצר..."
+    "flyerGenerating": "יוצר...",
+    "appliedAtCheckout": "מופעל אוטומטית בקופה",
+    "expires": "בתוקף עד {date}",
+    "referredBy": "הפניה מאת {name}",
+    "usingCode": "קוד: {code}"
   }
 }

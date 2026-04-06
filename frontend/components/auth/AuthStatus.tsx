@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag } from "lucide-react"
 import NextLink from "next/link"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,7 @@ interface AuthStatusProps {
 export function AuthStatus({ onAuthChange }: AuthStatusProps) {
   const t = useTranslations('auth.status')
   const tHeader = useTranslations('header')
+  const router = useRouter()
   const { user, logout } = useAuth()
   const { showTestData, setShowTestData } = useAdminSettings()
   const [showAuthDialog, setShowAuthDialog] = useState(false)
@@ -106,8 +108,12 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
           </DropdownMenuItem>
           {user.has_active_referral_discount && user.referral_discount_percent && (
             <DropdownMenuItem
-              className="text-green-500 focus:text-green-400 focus:bg-secondary cursor-default"
-              disabled
+              className="text-green-500 focus:text-green-400 focus:bg-secondary cursor-pointer"
+              onClick={() => {
+                localStorage.removeItem("nomad-discount-banner-dismissed")
+                router.push("/app")
+              }}
+              title={t('discountActiveHint')}
             >
               <Tag className="w-4 h-4 mr-2" />
               <span>{user.referral_discount_percent}% {t('discountActive')}</span>

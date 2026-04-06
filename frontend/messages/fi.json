@@ -293,7 +293,9 @@
       "earnFreeCredit": "Ansaitse 1 ilmainen krediitti",
       "showTestJobs": "Näytä testityöt",
       "signOut": "Kirjaudu ulos",
-      "login": "Kirjaudu"
+      "login": "Kirjaudu",
+      "discountActive": "alennus aktiivinen",
+      "discountActiveHint": "Klikkaa näyttääksesi alennusbannerin"
     }
   },
   "payment": {
@@ -1302,6 +1304,10 @@
     "flyerThemeLight": "Vaalea",
     "flyerThemeDark": "Tumma",
     "flyerGenerate": "Luo mainoslehtinen",
-    "flyerGenerating": "Luodaan..."
+    "flyerGenerating": "Luodaan...",
+    "appliedAtCheckout": "Lisätään automaattisesti kassalla",
+    "expires": "Vanhenee {date}",
+    "referredBy": "Suosittelija: {name}",
+    "usingCode": "Koodi: {code}"
   }
 }
