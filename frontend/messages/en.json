@@ -1278,6 +1278,11 @@
     "qrStyleClassy": "Classy",
     "qrStyleClassyRounded": "Classy Rounded",
     "qrStyleExtraRounded": "Extra Rounded",
-    "qrStyleDot": "Dot"
+    "qrStyleDot": "Dot",
+    "flyerTheme": "Flyer Theme",
+    "flyerThemeLight": "Light",
+    "flyerThemeDark": "Dark",
+    "flyerGenerate": "Generate Flyer",
+    "flyerGenerating": "Generating..."
   }
 }

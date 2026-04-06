@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { QrCode, Download, Mic, Music } from 'lucide-react';
+import { generateFlyer } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -117,6 +118,8 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
   const [prefs, setPrefs] = useState<QRStylePrefs>(DEFAULT_PREFS);
   const [loaded, setLoaded] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [flyerTheme, setFlyerTheme] = useState<'light' | 'dark'>('light');
+  const [flyerLoading, setFlyerLoading] = useState(false);
 
   // Load prefs from localStorage on open
   useEffect(() => {
@@ -198,6 +201,39 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
       debounceRef.current = setTimeout(() => savePrefs(next), 300);
       return next;
     });
+  };
+
+  const handleGenerateFlyer = async () => {
+    setFlyerLoading(true);
+    try {
+      let qrDataUrl: string;
+      if (qrRef.current) {
+        const blob = await qrRef.current.getRawData('svg');
+        if (blob) {
+          qrDataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          throw new Error('Failed to generate QR code image');
+        }
+      } else {
+        throw new Error('QR code not initialized');
+      }
+
+      const pdfBlob = await generateFlyer(flyerTheme, qrDataUrl);
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nomad-karaoke-referral-flyer.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to generate flyer:', err);
+    } finally {
+      setFlyerLoading(false);
+    }
   };
 
   const handleDownload = async (extension: 'png' | 'svg') => {
@@ -355,21 +391,50 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
         </div>
 
         <DialogFooter>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => handleDownload('png')}
-              className="flex-1 sm:flex-none px-4 py-2 bg-primary text-primary-foreground rounded text-sm flex items-center justify-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              {t('qrDownloadPng')}
-            </button>
-            <button
-              onClick={() => handleDownload('svg')}
-              className="flex-1 sm:flex-none px-4 py-2 rounded text-sm border border-border text-foreground flex items-center justify-center gap-2 hover:bg-secondary"
-            >
-              <Download className="w-4 h-4" />
-              {t('qrDownloadSvg')}
-            </button>
+          <div className="w-full space-y-3">
+            {/* Flyer generation */}
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
+              <span className="text-sm font-medium text-foreground">{t('flyerTheme')}</span>
+              <div className="flex gap-1.5">
+                {(['light', 'dark'] as const).map(theme => (
+                  <button
+                    key={theme}
+                    onClick={() => setFlyerTheme(theme)}
+                    className={`px-2 py-1 text-xs rounded border transition-colors ${
+                      flyerTheme === theme
+                        ? 'border-primary bg-primary/10 text-primary font-medium'
+                        : 'border-border text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    {t(theme === 'light' ? 'flyerThemeLight' : 'flyerThemeDark')}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleGenerateFlyer}
+                disabled={flyerLoading}
+                className="ml-auto px-4 py-2 bg-primary text-primary-foreground rounded text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                {flyerLoading ? t('flyerGenerating') : t('flyerGenerate')}
+              </button>
+            </div>
+            {/* QR download buttons */}
+            <div className="flex gap-2 sm:justify-end">
+              <button
+                onClick={() => handleDownload('png')}
+                className="flex-1 sm:flex-none px-4 py-2 bg-primary text-primary-foreground rounded text-sm flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                {t('qrDownloadPng')}
+              </button>
+              <button
+                onClick={() => handleDownload('svg')}
+                className="flex-1 sm:flex-none px-4 py-2 rounded text-sm border border-border text-foreground flex items-center justify-center gap-2 hover:bg-secondary"
+              >
+                <Download className="w-4 h-4" />
+                {t('qrDownloadSvg')}
+              </button>
+            </div>
           </div>
         </DialogFooter>
       </DialogContent>
