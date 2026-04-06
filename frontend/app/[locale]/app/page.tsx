@@ -221,8 +221,8 @@ function AppPageContent() {
           className="min-h-[40px] px-2 sm:px-3"
           style={{ color: 'var(--text-muted)' }}
         >
-          <RefreshCw className={`w-4 h-4 sm:me-2 ${isLoadingJobs ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">{t('refresh')}</span>
+          <RefreshCw className={`w-4 h-4 me-1.5 ${isLoadingJobs ? 'animate-spin' : ''}`} />
+          <span className="text-sm">{t('refresh')}</span>
         </Button>
         {isAdmin && (
           <TooltipProvider>
@@ -256,7 +256,7 @@ function AppPageContent() {
         onClose={() => setShowFeedbackDialog(false)}
       />
 
-      <main className="px-4 pt-24 pb-8 space-y-6">
+      <main className="px-4 pt-28 sm:pt-24 pb-8 space-y-6">
         {/* Push notification prompt - shows once when appropriate */}
         <PushNotificationPrompt />
 

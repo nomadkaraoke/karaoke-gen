@@ -40,7 +40,7 @@ const LOCALE_INFO: { code: string; native: string; english: string; flag: string
   { code: 'ca', native: 'Catal\u00e0', english: 'Catalan', flag: '\u{1F3F4}' },
 ];
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ showLabel }: { showLabel?: boolean } = {}) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -87,7 +87,7 @@ export default function LanguageSwitcher() {
         className="inline-flex items-center gap-1.5 bg-transparent border border-border/50 rounded-md px-2 py-1 text-sm cursor-pointer text-muted-foreground hover:text-foreground hover:border-border transition-colors"
       >
         <span className="text-base leading-none">{current.flag}</span>
-        <span className="hidden sm:inline">{current.native}</span>
+        <span className={showLabel ? '' : 'hidden sm:inline'}>{current.native}</span>
       </button>
 
       {open && (
