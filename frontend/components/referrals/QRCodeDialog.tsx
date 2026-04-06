@@ -149,7 +149,7 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
       cornersDotOptions: { type: p.cornerDotStyle, color: p.fgColor },
       backgroundOptions: { color: p.bgColor },
       image,
-      imageOptions: image ? { hideBackgroundDots: true, imageSize: 0.2, margin: 4 } : undefined,
+      imageOptions: { hideBackgroundDots: true, imageSize: 0.2, margin: 4 },
     };
   }, [referralUrl]);
 
