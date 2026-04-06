@@ -417,19 +417,21 @@ export default function ReferralDashboard() {
 
             {/* Management buttons */}
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleManagePayouts}
-                disabled={dashboardLinkLoading}
-                className="px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 hover:bg-white/5 transition-colors disabled:opacity-50"
-                style={{ borderColor: 'var(--card-border)', color: 'var(--text)' }}
-              >
-                {dashboardLinkLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ExternalLink className="w-3.5 h-3.5" />
-                )}
-                {t('managePayouts')}
-              </button>
+              {connectAccount?.details_submitted && (
+                <button
+                  onClick={handleManagePayouts}
+                  disabled={dashboardLinkLoading}
+                  className="px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 hover:bg-white/5 transition-colors disabled:opacity-50"
+                  style={{ borderColor: 'var(--card-border)', color: 'var(--text)' }}
+                >
+                  {dashboardLinkLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  )}
+                  {t('managePayouts')}
+                </button>
+              )}
               <button
                 onClick={handleUpdateAccount}
                 disabled={connectLoading}
