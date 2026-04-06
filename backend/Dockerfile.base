@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     xz-utils \
+    chromium \
     && rm -rf /var/lib/apt/lists/*
 
 # Install comprehensive font support for international lyrics and symbols
