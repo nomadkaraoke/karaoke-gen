@@ -135,4 +135,12 @@ describe('QRCodeDialog', () => {
       });
     });
   });
+
+  it('renders flyer generation controls', () => {
+    renderDialog();
+    expect(screen.getByText('Generate Flyer')).toBeInTheDocument();
+    expect(screen.getByText('Light')).toBeInTheDocument();
+    expect(screen.getByText('Dark')).toBeInTheDocument();
+    expect(screen.getByText('Flyer Theme')).toBeInTheDocument();
+  });
 });
