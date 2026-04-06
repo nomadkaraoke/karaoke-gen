@@ -28,15 +28,20 @@ class FlyerService:
     """Generates personalized referral flyer PDFs."""
 
     def __init__(self):
-        self._chromium_path = self._find_chromium()
+        self._chromium_path: str | None = None
 
-    def _find_chromium(self) -> str:
+    def _get_chromium(self) -> str:
+        """Lazily find Chromium binary. Only needed when generating PDFs."""
+        if self._chromium_path:
+            return self._chromium_path
         for path in CHROMIUM_PATHS:
             if os.path.exists(path):
+                self._chromium_path = path
                 return path
         for name in ["chromium", "chromium-browser", "google-chrome"]:
             found = shutil.which(name)
             if found:
+                self._chromium_path = found
                 return found
         raise FlyerError("Chromium not found. Install chromium to generate flyer PDFs.")
 
@@ -90,7 +95,7 @@ class FlyerService:
 
         try:
             cmd = [
-                self._chromium_path,
+                self._get_chromium(),
                 "--headless",
                 f"--print-to-pdf={tmp_pdf_path}",
                 "--no-margins",

@@ -62,16 +62,11 @@ class TestFlyerService:
     @patch("backend.services.flyer_service.subprocess.run")
     def test_generate_pdf_calls_chromium_with_correct_flags(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0)
+        self.service._chromium_path = "/usr/bin/chromium"
 
-        with patch("backend.services.flyer_service.tempfile.NamedTemporaryFile") as mock_tmp:
-            mock_tmp_instance = MagicMock()
-            mock_tmp_instance.__enter__ = MagicMock(return_value=mock_tmp_instance)
-            mock_tmp_instance.__exit__ = MagicMock(return_value=False)
-            mock_tmp_instance.name = "/tmp/test.html"
-            mock_tmp.return_value = mock_tmp_instance
-
-            with patch("builtins.open", MagicMock()):
-                with patch("os.path.exists", return_value=True):
+        with patch.object(self.service, "_render_template", return_value="<html>test</html>"):
+            with patch("os.path.exists", return_value=True):
+                with patch("builtins.open", MagicMock(return_value=MagicMock(read=MagicMock(return_value=b"%PDF")))):
                     with patch("os.unlink"):
                         self.service.generate_pdf(
                             theme="light",
