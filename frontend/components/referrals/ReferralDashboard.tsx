@@ -98,12 +98,11 @@ export default function ReferralDashboard() {
           <button
             type="button"
             onClick={() => setQrOpen(true)}
-            className="px-3 py-2 rounded text-sm border"
+            className="px-3 py-2 rounded text-sm border flex items-center gap-1.5"
             style={{ borderColor: 'var(--card-border)', color: 'var(--text)' }}
-            title={t('qrCode')}
-            aria-label={t('qrCode')}
           >
             <QrCode className="w-4 h-4" />
+            {t('qrOrFlyer')}
           </button>
         </div>
 

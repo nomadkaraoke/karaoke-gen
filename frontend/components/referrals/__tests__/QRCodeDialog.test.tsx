@@ -71,9 +71,8 @@ describe('QRCodeDialog', () => {
     renderDialog();
     expect(screen.getByText('Center Logo')).toBeInTheDocument();
     expect(screen.getByText('None')).toBeInTheDocument();
-    expect(screen.getByText('Nomad Karaoke')).toBeInTheDocument();
-    expect(screen.getByText('Microphone')).toBeInTheDocument();
-    expect(screen.getByText('Music')).toBeInTheDocument();
+    expect(screen.getByText('NK Logo')).toBeInTheDocument();
+    expect(screen.getByText('Emoji')).toBeInTheDocument();
   });
 
   it('renders color picker inputs', () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { QrCode, Download, Mic, Music } from 'lucide-react';
+import { QrCode, Download } from 'lucide-react';
 import { generateFlyer } from '@/lib/api';
 import {
   Dialog,
@@ -17,7 +17,7 @@ const STORAGE_KEY = 'nk-qr-style-prefs';
 type DotStyle = 'square' | 'rounded' | 'dots' | 'classy' | 'classy-rounded' | 'extra-rounded';
 type CornerSquareStyle = 'square' | 'dot' | 'extra-rounded';
 type CornerDotStyle = 'square' | 'dot';
-type LogoOption = 'none' | 'nomad' | 'mic' | 'music';
+type LogoOption = 'none' | 'nomad' | 'emoji';
 
 interface QRStylePrefs {
   dotStyle: DotStyle;
@@ -26,6 +26,7 @@ interface QRStylePrefs {
   fgColor: string;
   bgColor: string;
   logo: LogoOption;
+  logoEmoji: string;
 }
 
 const DEFAULT_PREFS: QRStylePrefs = {
@@ -35,6 +36,7 @@ const DEFAULT_PREFS: QRStylePrefs = {
   fgColor: '#000000',
   bgColor: '#ffffff',
   logo: 'none',
+  logoEmoji: '🎤',
 };
 
 const DOT_STYLES: DotStyle[] = ['square', 'rounded', 'dots', 'classy', 'classy-rounded', 'extra-rounded'];
@@ -77,32 +79,17 @@ function savePrefs(prefs: QRStylePrefs) {
   } catch {}
 }
 
-function getLucideIconDataUrl(IconComponent: typeof Mic, color: string = '#000000'): string {
-  const svgNs = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(svgNs, 'svg');
-  svg.setAttribute('xmlns', svgNs);
-  svg.setAttribute('width', '48');
-  svg.setAttribute('height', '48');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', color);
-  svg.setAttribute('stroke-width', '2');
-  svg.setAttribute('stroke-linecap', 'round');
-  svg.setAttribute('stroke-linejoin', 'round');
-
-  const iconNode = (IconComponent as unknown as { iconNode: Array<[string, Record<string, string>]> }).iconNode;
-  if (iconNode) {
-    for (const [tag, attrs] of iconNode) {
-      const el = document.createElementNS(svgNs, tag);
-      for (const [key, val] of Object.entries(attrs)) {
-        el.setAttribute(key, val);
-      }
-      svg.appendChild(el);
-    }
-  }
-
-  const svgStr = new XMLSerializer().serializeToString(svg);
-  return `data:image/svg+xml;base64,${btoa(svgStr)}`;
+function emojiToDataUrl(emoji: string): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+  ctx.font = '52px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, 32, 36);
+  return canvas.toDataURL('image/png');
 }
 
 interface QRCodeDialogProps {
@@ -134,10 +121,8 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
     let image: string | undefined;
     if (p.logo === 'nomad') {
       image = '/nomad-karaoke-logo.svg';
-    } else if (p.logo === 'mic') {
-      image = getLucideIconDataUrl(Mic, p.fgColor);
-    } else if (p.logo === 'music') {
-      image = getLucideIconDataUrl(Music, p.fgColor);
+    } else if (p.logo === 'emoji' && p.logoEmoji) {
+      image = emojiToDataUrl(p.logoEmoji);
     }
 
     return {
@@ -149,7 +134,7 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
       cornersDotOptions: { type: p.cornerDotStyle, color: p.fgColor },
       backgroundOptions: { color: p.bgColor },
       image,
-      imageOptions: image ? { hideBackgroundDots: true, imageSize: 0.2, margin: 4 } : undefined,
+      imageOptions: { hideBackgroundDots: true, imageSize: 0.2, margin: 4 },
     };
   }, [referralUrl]);
 
@@ -375,13 +360,12 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
             {/* Center Logo */}
             <div>
               <label className="text-sm font-medium text-foreground">{t('qrLogo')}</label>
-              <div className="grid grid-cols-2 gap-1.5 mt-1">
-                {(['none', 'nomad', 'mic', 'music'] as LogoOption[]).map(option => {
+              <div className="flex gap-1.5 mt-1">
+                {(['none', 'nomad', 'emoji'] as LogoOption[]).map(option => {
                   const labelKeys: Record<LogoOption, string> = {
                     none: 'qrLogoNone',
                     nomad: 'qrLogoNomad',
-                    mic: 'qrLogoMic',
-                    music: 'qrLogoMusic',
+                    emoji: 'qrLogoEmoji',
                   };
                   return (
                     <button
@@ -397,6 +381,20 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
                     </button>
                   );
                 })}
+                {prefs.logo === 'emoji' && (
+                  <input
+                    type="text"
+                    value={prefs.logoEmoji}
+                    onChange={(e) => {
+                      // Take only the last entered character/emoji
+                      const val = e.target.value;
+                      const emoji = [...val].pop() || '';
+                      updatePref('logoEmoji', emoji);
+                    }}
+                    className="w-10 h-7 text-center text-base rounded border border-border"
+                    maxLength={4}
+                  />
+                )}
               </div>
             </div>
           </div>
