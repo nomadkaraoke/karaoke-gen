@@ -96,9 +96,13 @@ interface QRCodeDialogProps {
   referralUrl: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Override the flyer generator (e.g. admin endpoint). Receives theme + QR data URL, returns PDF blob. */
+  onGenerateFlyer?: (theme: 'light' | 'dark', qrDataUrl: string) => Promise<Blob>;
+  /** Override the download filename */
+  flyerFilename?: string;
 }
 
-export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCodeDialogProps) {
+export default function QRCodeDialog({ referralUrl, open, onOpenChange, onGenerateFlyer, flyerFilename }: QRCodeDialogProps) {
   const t = useTranslations('referrals');
   const containerRef = useRef<HTMLDivElement>(null);
   const qrRef = useRef<InstanceType<typeof import('qr-code-styling').default> | null>(null);
@@ -217,11 +221,12 @@ export default function QRCodeDialog({ referralUrl, open, onOpenChange }: QRCode
         throw new Error('QR code not initialized');
       }
 
-      const pdfBlob = await generateFlyer(flyerTheme, qrDataUrl);
+      const flyerFn = onGenerateFlyer || generateFlyer;
+      const pdfBlob = await flyerFn(flyerTheme, qrDataUrl);
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'nomad-karaoke-referral-flyer.pdf';
+      a.download = flyerFilename || 'nomad-karaoke-referral-flyer.pdf';
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

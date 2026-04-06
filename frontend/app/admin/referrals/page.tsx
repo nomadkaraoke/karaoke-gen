@@ -18,8 +18,11 @@ import {
 } from "@/components/ui/dialog"
 import {
   Share2, Link as LinkIcon, Users, MousePointerClick, DollarSign,
-  Plus, Copy, Check, RefreshCw, Loader2, ToggleLeft, ToggleRight, Pencil, FileText,
+  Plus, Copy, Check, RefreshCw, Loader2, ToggleLeft, ToggleRight, Pencil, QrCode,
 } from "lucide-react"
+import QRCodeDialog from "@/components/referrals/QRCodeDialog"
+import { NextIntlClientProvider } from "next-intl"
+import enMessages from "@/messages/en.json"
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
@@ -43,7 +46,7 @@ export default function ReferralsPage() {
   const [editLink, setEditLink] = useState<AdminReferralLink | null>(null)
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
-  const [flyerGenerating, setFlyerGenerating] = useState<string | null>(null)
+  const [qrDialogCode, setQrDialogCode] = useState<string | null>(null)
 
   // Edit form state
   const [editDisplayName, setEditDisplayName] = useState("")
@@ -104,42 +107,6 @@ export default function ReferralsPage() {
       console.error("Failed to toggle link:", err)
     } finally {
       setTogglingCode(null)
-    }
-  }
-
-  const handleGenerateFlyer = async (code: string, theme: 'light' | 'dark') => {
-    setFlyerGenerating(code)
-    try {
-      // Generate a standard black QR code for this referral link
-      const QRCodeStyling = (await import('qr-code-styling')).default
-      const qr = new QRCodeStyling({
-        width: 250, height: 250,
-        data: `https://nomadkaraoke.com/r/${code}`,
-        dotsOptions: { type: 'square', color: '#000000' },
-        cornersSquareOptions: { type: 'square', color: '#000000' },
-        cornersDotOptions: { type: 'square', color: '#000000' },
-        backgroundOptions: { color: '#ffffff' },
-      })
-      const blob = await qr.getRawData('svg')
-      if (!blob) throw new Error('Failed to generate QR')
-      const qrDataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string)
-        reader.onerror = () => reject(new Error('Failed to read QR'))
-        reader.readAsDataURL(blob)
-      })
-      const pdfBlob = await adminApi.generateFlyer(code, theme, qrDataUrl)
-      const url = URL.createObjectURL(pdfBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `nomad-karaoke-flyer-${code}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Failed to generate flyer:', err)
-      alert(`Failed to generate flyer: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    } finally {
-      setFlyerGenerating(null)
     }
   }
 
@@ -487,15 +454,10 @@ export default function ReferralsPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleGenerateFlyer(link.code, 'light')}
-                            disabled={flyerGenerating === link.code}
-                            title="Generate flyer (light)"
+                            onClick={() => setQrDialogCode(link.code)}
+                            title="QR Code / Flyer"
                           >
-                            {flyerGenerating === link.code ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <FileText className="h-4 w-4" />
-                            )}
+                            <QrCode className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -532,6 +494,19 @@ export default function ReferralsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* QR Code / Flyer Dialog */}
+      {qrDialogCode && (
+        <NextIntlClientProvider locale="en" messages={enMessages}>
+          <QRCodeDialog
+            referralUrl={`https://gen.nomadkaraoke.com/r/${qrDialogCode}`}
+            open={!!qrDialogCode}
+            onOpenChange={(open) => { if (!open) setQrDialogCode(null) }}
+            onGenerateFlyer={(theme, qrDataUrl) => adminApi.generateFlyer(qrDialogCode, theme, qrDataUrl)}
+            flyerFilename={`nomad-karaoke-flyer-${qrDialogCode}.pdf`}
+          />
+        </NextIntlClientProvider>
+      )}
 
       {/* Edit Link Dialog */}
       <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditLink(null) }}>
