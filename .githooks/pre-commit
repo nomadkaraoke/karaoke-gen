@@ -1,0 +1,37 @@
+#!/bin/bash
+# Auto-translate when English translation files change.
+# Uses GCS cache so this is near-instant for small changes.
+# Skip with: git commit --no-verify
+
+set -e
+
+STAGED_EN=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(messages|translations)/en\.json$' || true)
+
+if [ -z "$STAGED_EN" ]; then
+    exit 0
+fi
+
+echo "i18n: English translations changed — running translation pipeline..."
+
+for en_file in $STAGED_EN; do
+    dir=$(dirname "$en_file")
+
+    if [[ "$dir" == frontend/messages ]]; then
+        script="frontend/scripts/translate.py"
+    elif [[ "$dir" == backend/translations ]]; then
+        script="frontend/scripts/translate.py"
+    else
+        echo "  Warning: Unknown messages dir $dir, skipping"
+        continue
+    fi
+
+    echo "  Translating $dir..."
+    if python "$script" --messages-dir "$dir" --target all --skip-review 2>&1 | tail -5; then
+        git add "$dir"/*.json
+        echo "  Done: $dir"
+    else
+        echo "  Warning: Translation failed for $dir (GCP auth may be missing). CI will catch this."
+    fi
+done
+
+echo "i18n: Translation complete."
