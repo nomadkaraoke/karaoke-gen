@@ -12,7 +12,7 @@ export default function ReferralsPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
       <AppHeader />
-      <main className="container mx-auto max-w-4xl px-4 py-6">
+      <main className="container mx-auto max-w-4xl px-4 pt-20 pb-6">
         <Link
           href="/app"
           className="inline-flex items-center gap-1 text-sm mb-4 hover:underline"

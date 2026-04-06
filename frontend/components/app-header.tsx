@@ -1,9 +1,6 @@
 "use client"
 
-import { useRouter, Link } from "@/i18n/routing"
-import NextLink from "next/link"
-import { useAuth } from "@/lib/auth"
-import { Logo } from "./logo"
+import { Link } from "@/i18n/routing"
 import { Button } from "./ui/button"
 import {
   DropdownMenu,
@@ -13,146 +10,116 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { User, LogOut, Settings, Shield, Mail, Phone, HelpCircle, Eye } from "lucide-react"
+import { HelpCircle, Mail, Phone, Users, Moon, Sun } from "lucide-react"
 import LanguageSwitcher from "./LanguageSwitcher"
+import { AuthStatus } from "./auth"
+import { TenantLogo } from "./tenant-logo"
 import { useTranslations } from "next-intl"
+import { useTenant } from "@/lib/tenant"
+import { useTheme } from "@/lib/theme"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip"
+import { ReactNode, useState, useEffect } from "react"
 
-export function AppHeader() {
-  const t = useTranslations('header')
-  const { user, logout, isImpersonating, impersonatedUserEmail, endImpersonation } = useAuth()
-  const router = useRouter()
+/**
+ * Shared app header used across all /app/* pages.
+ * Matches the dashboard header style. Pass page-specific
+ * buttons via the `children` prop (rendered before the
+ * standard right-side controls).
+ */
+export function AppHeader({ children }: { children?: ReactNode }) {
+  const t = useTranslations('dashboard')
+  const tHeader = useTranslations('header')
+  const { branding, isDefaultTenant } = useTenant()
+  const { isDarkMode, toggleTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
-  const handleLogout = () => {
-    logout()
-    router.push("/")
-  }
-
-  const handleBackToAdmin = () => {
-    endImpersonation()
-    window.location.href = "/admin"
-  }
-
-  if (!user) return null
+  useEffect(() => { setMounted(true) }, [])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/app" className="h-10">
-          <Logo className="h-10" />
-        </Link>
-
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/app" className="text-sm font-medium hover:text-primary transition-colors">
-            {t('dashboard')}
+    <header className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-dark-700">
+      <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <Link href="/app">
+            {isDefaultTenant ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src="/nomad-karaoke-logo.svg" alt="Nomad Karaoke" className="h-8 sm:h-10 shrink-0" />
+            ) : (
+              <TenantLogo size="sm" />
+            )}
           </Link>
-          <Link href="/jobs" className="text-sm font-medium hover:text-primary transition-colors">
-            {t('myJobs')}
-          </Link>
-          {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
-            <NextLink href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
-              {t('admin')}
-            </NextLink>
-          )}
-        </nav>
-
-        <div className="flex items-center gap-4">
-          <LanguageSwitcher />
-
-          {isImpersonating && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackToAdmin}
-              className="h-8 gap-1.5 border-purple-500/40 text-purple-300 hover:text-white hover:bg-purple-800/40"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              {t('backToAdmin')}
-            </Button>
-          )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <HelpCircle className="w-3.5 h-3.5" />
-                <span>{t('needHelp')}</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel className="text-sm">
-                {t('helpPrompt')}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <a href="mailto:andrew@nomadkaraoke.com">
-                  <Mail className="w-4 h-4 mr-2" />
-                  andrew@nomadkaraoke.com
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href="tel:+18036363267">
-                  <Phone className="w-4 h-4 mr-2" />
-                  +1 (803) 636-3267
-                </a>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-sm font-medium text-primary">{t('credits', { count: user.credits })}</span>
+          <div className="min-w-0">
+            <Link href="/app" className="text-base sm:text-xl font-bold truncate block" style={{ color: 'var(--text)' }}>
+              {isDefaultTenant ? t('title') : branding.site_title}
+            </Link>
           </div>
-
+        </div>
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {children}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <User className="w-5 h-5" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-[40px] px-2 sm:px-3"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                <HelpCircle className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">{t('account')}</p>
-                  <p className="text-xs text-muted-foreground">{user.role === "admin" ? t('adminRole') : t('userRole')}</p>
-                </div>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="text-sm font-normal">
+                {tHeader('helpPrompt')}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="sm:hidden">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                  <span>{t('credits', { count: user.credits })}</span>
-                </div>
-              </DropdownMenuItem>
-              {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
-                <DropdownMenuItem asChild>
-                  <NextLink href="/admin">
-                    <Shield className="w-4 h-4 mr-2" />
-                    {t('adminDashboard')}
-                  </NextLink>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem>
-                <Settings className="w-4 h-4 mr-2" />
-                {t('settings')}
-              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a href="mailto:andrew@nomadkaraoke.com">
-                  <Mail className="w-4 h-4 mr-2" />
+                  <Mail className="w-4 h-4 me-2" />
                   andrew@nomadkaraoke.com
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a href="tel:+18036363267">
-                  <Phone className="w-4 h-4 mr-2" />
+                  <Phone className="w-4 h-4 me-2" />
                   +1 (803) 636-3267
                 </a>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                <LogOut className="w-4 h-4 mr-2" />
-                {t('logout')}
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Link href="/app/referrals" className="flex items-center gap-1.5 text-sm hover:underline min-h-[40px] px-2 sm:px-3" style={{ color: 'var(--text-muted)' }}>
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">{t('referrals')}</span>
+          </Link>
+          <LanguageSwitcher />
+          <AuthStatus />
+          {mounted && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleTheme}
+                    className="min-h-[40px] px-2 sm:px-3"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {isDarkMode ? (
+                      <Sun className="w-4 h-4" />
+                    ) : (
+                      <Moon className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{isDarkMode ? t('switchToLightMode') : t('switchToDarkMode')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
     </header>

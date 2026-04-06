@@ -16,21 +16,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Moon, Sun, Search, Gift, X, Shield, ShieldOff, HelpCircle, Mail, Phone, Users } from "lucide-react"
+import { Music2, RefreshCw, Loader2, Search, Gift, X, Shield, ShieldOff } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { sortJobsByDate } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
 import { TenantJobFlow } from "@/components/job/TenantJobFlow"
-import { TenantLogo } from "@/components/tenant-logo"
-import { AuthStatus } from "@/components/auth"
 import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
 import { PushNotificationPrompt } from "@/components/push-notification-prompt"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
-import LanguageSwitcher from "@/components/LanguageSwitcher"
-import { useTheme } from "@/lib/theme"
+import { AppHeader } from "@/components/app-header"
 import { useTenant } from "@/lib/tenant"
 import {
   Tooltip,
@@ -49,7 +46,6 @@ import {
 
 function AppPageContent() {
   const t = useTranslations('dashboard')
-  const tHeader = useTranslations('header')
   const router = useRouter()
   const searchParams = useSearchParams()
   const [allJobs, setAllJobs] = useState<Job[]>([])
@@ -59,9 +55,8 @@ function AppPageContent() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isVerifyingToken, setIsVerifyingToken] = useState(false)
   const adminTokenHandled = useRef(false) // Track if admin_token was already processed
-  const { isDarkMode, toggleTheme, mounted } = useTheme()
   const { user, fetchUser, verifyMagicLink } = useAuth()
-  const { isDefault: isDefaultTenant, branding } = useTenant()
+  const { isDefault: isDefaultTenant } = useTenant()
   const { showTestData } = useAdminSettings()
   const [jobLimit, setJobLimit] = useState<number>(() => {
     if (typeof window === "undefined") return 10
@@ -213,119 +208,43 @@ function AppPageContent() {
       <AutoProcessor jobs={allJobs} onJobsChanged={loadJobs} />
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-dark-700">
-        <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            {isDefaultTenant ? (
-              <img src="/nomad-karaoke-logo.svg" alt="Nomad Karaoke" className="h-8 sm:h-10 shrink-0" />
-            ) : (
-              <TenantLogo size="sm" />
-            )}
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-xl font-bold truncate" style={{ color: 'var(--text)' }}>
-                {isDefaultTenant ? t('title') : branding.site_title}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={loadJobs}
-              disabled={isLoadingJobs || !isAuthenticated}
-              className="min-h-[40px] px-2 sm:px-3"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <RefreshCw className={`w-4 h-4 sm:me-2 ${isLoadingJobs ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{t('refresh')}</span>
-            </Button>
-            {isAdmin && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const next = !showAdminControls
-                        setShowAdminControls(next)
-                        localStorage.setItem("nomad-karaoke-admin-controls", String(next))
-                      }}
-                      className={`min-h-[40px] px-2 sm:px-3 ${showAdminControls ? 'text-amber-400' : ''}`}
-                      style={showAdminControls ? undefined : { color: 'var(--text-muted)' }}
-                    >
-                      {showAdminControls ? <Shield className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>{showAdminControls ? t('hideAdminControls') : t('showAdminControls')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+      <AppHeader>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={loadJobs}
+          disabled={isLoadingJobs || !isAuthenticated}
+          className="min-h-[40px] px-2 sm:px-3"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <RefreshCw className={`w-4 h-4 sm:me-2 ${isLoadingJobs ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">{t('refresh')}</span>
+        </Button>
+        {isAdmin && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="min-h-[40px] px-2 sm:px-3"
-                  style={{ color: 'var(--text-muted)' }}
+                  onClick={() => {
+                    const next = !showAdminControls
+                    setShowAdminControls(next)
+                    localStorage.setItem("nomad-karaoke-admin-controls", String(next))
+                  }}
+                  className={`min-h-[40px] px-2 sm:px-3 ${showAdminControls ? 'text-amber-400' : ''}`}
+                  style={showAdminControls ? undefined : { color: 'var(--text-muted)' }}
                 >
-                  <HelpCircle className="w-4 h-4" />
+                  {showAdminControls ? <Shield className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel className="text-sm font-normal">
-                  {tHeader('helpPrompt')}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <a href="mailto:andrew@nomadkaraoke.com">
-                    <Mail className="w-4 h-4 me-2" />
-                    andrew@nomadkaraoke.com
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="tel:+18036363267">
-                    <Phone className="w-4 h-4 me-2" />
-                    +1 (803) 636-3267
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Link href="/app/referrals" className="flex items-center gap-1.5 text-sm hover:underline min-h-[40px] px-2 sm:px-3" style={{ color: 'var(--text-muted)' }}>
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('referrals')}</span>
-            </Link>
-            <LanguageSwitcher />
-            <AuthStatus />
-            {mounted && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={toggleTheme}
-                      className="min-h-[40px] px-2 sm:px-3"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      {isDarkMode ? (
-                        <Sun className="w-4 h-4" />
-                      ) : (
-                        <Moon className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>{isDarkMode ? t('switchToLightMode') : t('switchToDarkMode')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-        </div>
-      </header>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{showAdminControls ? t('hideAdminControls') : t('showAdminControls')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </AppHeader>
 
       {/* Feedback dialog */}
       <FeedbackDialog
