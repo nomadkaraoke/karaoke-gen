@@ -242,7 +242,11 @@ class ReferralService:
         if not expires_at:
             return False
         if isinstance(expires_at, datetime):
-            return expires_at > datetime.utcnow()
+            now = datetime.utcnow()
+            # Firestore returns timezone-aware datetimes; ensure comparison is compatible
+            if expires_at.tzinfo is not None:
+                now = now.replace(tzinfo=expires_at.tzinfo)
+            return expires_at > now
         return False
 
     def get_discount_for_checkout(self, user_email: str) -> Optional[dict]:
