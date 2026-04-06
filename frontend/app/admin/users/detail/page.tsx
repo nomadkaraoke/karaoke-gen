@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import NextLink from "next/link"
 import { adminApi, AdminUserDetail, UserPaymentHistory } from "@/lib/api"
 import type { ReferralLink } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -790,7 +791,7 @@ export default function AdminUserDetailPage() {
               )}
               {referralLinks.length > 0 && !referralLinksLoading && referralLinks.every((l) => l.code !== discountCode) && !discountCode && (
                 <p className="text-xs text-muted-foreground">
-                  Create codes in <a href="/admin/referrals" className="underline">Referral Management</a> first.
+                  Create codes in <NextLink href="/admin/referrals" className="underline">Referral Management</NextLink> first.
                 </p>
               )}
             </div>
