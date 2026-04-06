@@ -13,8 +13,8 @@ interface BuyCreditsDialogProps {
   onClose: () => void
 }
 
-const formatPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`
-const formatPriceFull = (cents: number) => `$${(cents / 100).toFixed(2)}`
+const formatPrice = (cents: number) =>
+  cents % 100 === 0 ? `$${(cents / 100).toFixed(0)}` : `$${(cents / 100).toFixed(2)}`
 const pricePerVideo = (cents: number, credits: number) =>
   `$${(cents / 100 / credits).toFixed(2)}`
 
@@ -32,6 +32,7 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
   useEffect(() => {
     if (!open) return
     setError('')
+    setCheckoutLoading(false)
     setLoading(true)
     api.getCreditPackages()
       .then((pkgs) => {

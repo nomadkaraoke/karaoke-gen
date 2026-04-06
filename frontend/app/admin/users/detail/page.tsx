@@ -37,12 +37,18 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   ArrowLeft,
   RefreshCw,
@@ -57,7 +63,10 @@ import {
   DollarSign,
   LogIn,
   Tag,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
 import { IpInfo } from "@/components/admin/ip-info"
@@ -87,6 +96,7 @@ export default function AdminUserDetailPage() {
   // Discount dialog
   const [discountDialogOpen, setDiscountDialogOpen] = useState(false)
   const [discountCode, setDiscountCode] = useState("")
+  const [codePopoverOpen, setCodePopoverOpen] = useState(false)
   const [discountDays, setDiscountDays] = useState("365")
   const [applyingDiscount, setApplyingDiscount] = useState(false)
   const [referralLinks, setReferralLinks] = useState<ReferralLink[]>([])
@@ -370,7 +380,10 @@ export default function AdminUserDetailPage() {
         </Button>
         <Button
           variant="outline"
-          onClick={() => setDiscountDialogOpen(true)}
+          onClick={() => {
+            setDiscountDialogOpen(true)
+            if (referralLinks.length === 0) loadReferralLinks()
+          }}
           disabled={actionLoading}
           title="Apply a referral discount to this user"
         >
@@ -752,10 +765,7 @@ export default function AdminUserDetailPage() {
       </Dialog>
 
       {/* Apply Discount Dialog */}
-      <Dialog open={discountDialogOpen} onOpenChange={(open) => {
-        setDiscountDialogOpen(open)
-        if (open && referralLinks.length === 0) loadReferralLinks()
-      }}>
+      <Dialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Apply Discount</DialogTitle>
@@ -771,23 +781,51 @@ export default function AdminUserDetailPage() {
                   <Loader2 className="w-4 h-4 animate-spin" /> Loading codes…
                 </div>
               ) : (
-                <Select value={discountCode} onValueChange={(code) => {
-                  setDiscountCode(code)
-                  const link = referralLinks.find((l) => l.code === code)
-                  if (link) setDiscountDays(String(link.discount_duration_days))
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a referral code…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {referralLinks.map((link) => (
-                      <SelectItem key={link.code} value={link.code}>
-                        {link.code} — {link.discount_percent}% off
-                        {link.display_name ? ` (${link.display_name})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={codePopoverOpen} onOpenChange={setCodePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={codePopoverOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {discountCode
+                        ? (() => {
+                            const sel = referralLinks.find((l) => l.code === discountCode)
+                            return sel
+                              ? `${sel.code} — ${sel.discount_percent}% off${sel.display_name ? ` (${sel.display_name})` : ""}`
+                              : discountCode
+                          })()
+                        : "Search referral codes…"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Type to filter…" />
+                      <CommandList>
+                        <CommandEmpty>No codes found.</CommandEmpty>
+                        <CommandGroup>
+                          {referralLinks.map((link) => (
+                            <CommandItem
+                              key={link.code}
+                              value={`${link.code} ${link.display_name || ""}`}
+                              onSelect={() => {
+                                setDiscountCode(link.code)
+                                setDiscountDays(String(link.discount_duration_days))
+                                setCodePopoverOpen(false)
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", discountCode === link.code ? "opacity-100" : "opacity-0")} />
+                              {link.code} — {link.discount_percent}% off
+                              {link.display_name ? ` (${link.display_name})` : ""}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               )}
               {referralLinks.length > 0 && !referralLinksLoading && referralLinks.every((l) => l.code !== discountCode) && !discountCode && (
                 <p className="text-xs text-muted-foreground">
