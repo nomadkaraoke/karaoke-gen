@@ -2573,6 +2573,19 @@ export const adminApi = {
     });
     return handleResponse(response);
   },
+
+  async generateFlyer(code: string, theme: 'light' | 'dark', qrDataUrl: string): Promise<Blob> {
+    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/links/${encodeURIComponent(code)}/flyer`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme, qr_data_url: qrDataUrl }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to generate flyer' }));
+      throw new Error(error.detail || 'Failed to generate flyer');
+    }
+    return response.blob();
+  },
 };
 
 export interface EditReviewSummary {
