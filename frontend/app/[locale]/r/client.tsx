@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { getReferralInterstitial } from '@/lib/api';
 import { setReferralCode } from '@/lib/referral';
 import { useAuth } from '@/lib/auth';
-import { getAccessToken } from '@/lib/api';
+import { getAccessToken, clearAccessToken, API_BASE_URL } from '@/lib/api';
 import type { ReferralInterstitial } from '@/lib/types';
 import { Gift, ArrowRight, Mail, CheckCircle, Loader2 } from 'lucide-react';
 
@@ -34,9 +34,23 @@ export function ReferralInterstitialClient() {
     // Store referral code immediately
     setReferralCode(code);
 
-    // Check if already logged in
-    if (getAccessToken()) {
-      setIsLoggedIn(true);
+    // Validate token with backend (don't trust localStorage alone — token may be stale)
+    const token = getAccessToken();
+    if (token) {
+      fetch(`${API_BASE_URL}/api/users/me`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+        .then((res) => {
+          if (res.ok) {
+            setIsLoggedIn(true);
+          } else {
+            // Stale token — clear it so the user can re-authenticate
+            clearAccessToken();
+          }
+        })
+        .catch(() => {
+          // Network error — don't assume logged in
+        });
     }
 
     getReferralInterstitial(code)
