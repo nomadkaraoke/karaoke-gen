@@ -18,15 +18,10 @@ jest.mock('qr-code-styling', () => {
   }));
 });
 
-// Mock html2canvas
-jest.mock('html2canvas', () => {
-  return jest.fn().mockResolvedValue({
-    toDataURL: jest.fn().mockReturnValue('data:image/png;base64,fake'),
-    toBlob: jest.fn((cb: (b: Blob) => void) => cb(new Blob(['png']))),
-    width: 1632,
-    height: 2112,
-  });
-});
+// Mock html-to-image
+jest.mock('html-to-image', () => ({
+  toPng: jest.fn().mockResolvedValue('data:image/png;base64,fake'),
+}));
 
 // Mock jsPDF
 jest.mock('jspdf', () => {

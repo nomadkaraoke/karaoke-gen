@@ -95,7 +95,9 @@ export default function FlyerPreview({
     desc: config.steps[i]?.desc ?? def.desc,
   }));
 
-  const gradientStr = `linear-gradient(135deg, ${config.headlineGradient.join(', ')})`;
+  // Unique ID per render for SVG gradient defs (avoids clashes if multiple previews)
+  const gradientId = 'flyer-grad-headline';
+  const gradientCodeId = 'flyer-grad-code';
 
   return (
     <div ref={containerRef} className="relative overflow-hidden">
@@ -127,20 +129,28 @@ export default function FlyerPreview({
           )}
         </div>
 
-        {/* Headline */}
+        {/* Headline — uses inline SVG for gradient text (background-clip:text breaks in image export) */}
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", textAlign: 'center', lineHeight: 0.92, marginBottom: 6 }}>
-          <div
-            style={{
-              fontSize: 96,
-              letterSpacing: 3,
-              background: gradientStr,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            {headlineMain}
-          </div>
+          <svg width="100%" height="96" style={{ overflow: 'visible' }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+                {config.headlineGradient.map((c, i) => (
+                  <stop key={i} offset={`${(i / (config.headlineGradient.length - 1)) * 100}%`} stopColor={c} />
+                ))}
+              </linearGradient>
+            </defs>
+            <text
+              x="50%"
+              y="80"
+              textAnchor="middle"
+              fill={`url(#${gradientId})`}
+              fontFamily="'Bebas Neue', sans-serif"
+              fontSize="96"
+              letterSpacing="3"
+            >
+              {headlineMain}
+            </text>
+          </svg>
           <div style={{ fontSize: 62, letterSpacing: 2, color: config.headlineSubColor }}>
             {headlineSub}
           </div>
@@ -238,20 +248,25 @@ export default function FlyerPreview({
             <div style={{ fontSize: 16, fontWeight: 600, color: config.subtextColor, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>
               {ctaLabel}
             </div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, letterSpacing: 2, color: config.textColor, lineHeight: 1, whiteSpace: 'nowrap' }}>
-              NOMADKARAOKE.COM/R/
-              <span
-                style={{
-                  background: `linear-gradient(135deg, ${config.headlineGradient.join(', ')}, #ffdf6b)`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  letterSpacing: 4,
-                }}
+            <svg width="100%" height="42" style={{ overflow: 'visible' }}>
+              <defs>
+                <linearGradient id={gradientCodeId} x1="0%" y1="0%" x2="100%" y2="100%">
+                  {[...config.headlineGradient, '#ffdf6b'].map((c, i, arr) => (
+                    <stop key={i} offset={`${(i / (arr.length - 1)) * 100}%`} stopColor={c} />
+                  ))}
+                </linearGradient>
+              </defs>
+              <text
+                x="0"
+                y="34"
+                fontFamily="'Bebas Neue', sans-serif"
+                fontSize="38"
+                letterSpacing="2"
               >
-                {referralCode.toUpperCase()}
-              </span>
-            </div>
+                <tspan fill={config.textColor}>NOMADKARAOKE.COM/R/</tspan>
+                <tspan fill={`url(#${gradientCodeId})`} letterSpacing="4">{referralCode.toUpperCase()}</tspan>
+              </text>
+            </svg>
             <div style={{ fontSize: 15, color: config.subtextColor, marginTop: 8, fontWeight: 500 }}>
               {ctaNote}
             </div>

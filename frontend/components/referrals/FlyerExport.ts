@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 // US Letter in mm
@@ -17,14 +17,7 @@ export async function exportFlyerPdf(
 ): Promise<void> {
   const { perPage, marginMm, filename } = options;
 
-  const canvas = await html2canvas(flyerElement, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: null,
-  });
-
-  const imgData = canvas.toDataURL('image/png');
+  const imgData = await toPng(flyerElement, { pixelRatio: 2 });
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
 
   const margin = marginMm;
@@ -106,24 +99,10 @@ export async function exportFlyerPng(
   flyerElement: HTMLElement,
   filename: string,
 ): Promise<void> {
-  const canvas = await html2canvas(flyerElement, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: null,
-  });
+  const imgData = await toPng(flyerElement, { pixelRatio: 2 });
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b: Blob | null) => {
-      if (b) resolve(b);
-      else reject(new Error('Failed to export flyer as PNG'));
-    }, 'image/png');
-  });
-
-  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
+  a.href = imgData;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
 }

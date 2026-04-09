@@ -1,20 +1,14 @@
 import { exportFlyerPdf, exportFlyerHtml, exportFlyerPng } from '../FlyerExport';
 
-// Mock html2canvas — factory must be self-contained (jest hoists it)
-jest.mock('html2canvas', () => {
-  return jest.fn().mockResolvedValue({
-    toDataURL: jest.fn().mockReturnValue('data:image/png;base64,fakepng'),
-    toBlob: jest.fn((cb: (blob: Blob) => void) => cb(new Blob(['png'], { type: 'image/png' }))),
-    width: 1632,
-    height: 2112,
-  });
-});
+// Mock html-to-image
+jest.mock('html-to-image', () => ({
+  toPng: jest.fn().mockResolvedValue('data:image/png;base64,fakepng'),
+}));
 
 // Mock jsPDF
 const mockAddImage = jest.fn();
 const mockSave = jest.fn();
 jest.mock('jspdf', () => {
-  // Must use require-style access for outer variables with jest.mock hoisting
   return function JsPDFMock() {
     return {
       addImage: (...args: unknown[]) => mockAddImage(...args),
@@ -63,11 +57,7 @@ describe('FlyerExport', () => {
   });
 
   describe('exportFlyerPng', () => {
-    it('calls html2canvas and triggers download', async () => {
-      const mockUrl = 'blob:test-png';
-      global.URL.createObjectURL = jest.fn().mockReturnValue(mockUrl);
-      global.URL.revokeObjectURL = jest.fn();
-
+    it('calls toPng and triggers download', async () => {
       const mockClick = jest.fn();
       const origCreateElement = document.createElement.bind(document);
       jest.spyOn(document, 'createElement').mockImplementation((tag: string) => {
@@ -80,8 +70,8 @@ describe('FlyerExport', () => {
 
       await exportFlyerPng(mockElement, 'test.png');
 
-      const html2canvas = require('html2canvas');
-      expect(html2canvas).toHaveBeenCalledWith(mockElement, expect.objectContaining({ scale: 2 }));
+      const { toPng } = require('html-to-image');
+      expect(toPng).toHaveBeenCalledWith(mockElement, { pixelRatio: 2 });
       expect(mockClick).toHaveBeenCalled();
 
       jest.restoreAllMocks();
