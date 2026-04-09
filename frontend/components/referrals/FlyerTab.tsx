@@ -42,6 +42,11 @@ export default function FlyerTab({ referralCode, discountPercent, qrPrefs, onSwi
   }, []);
 
   const loadPreset = useCallback((presetConfig: FlyerConfig) => {
+    // Cancel any pending debounce to avoid overwriting the preset
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     setConfig(presetConfig);
     saveFlyerConfig(presetConfig);
   }, []);
@@ -161,7 +166,7 @@ export default function FlyerTab({ referralCode, discountPercent, qrPrefs, onSwi
       <div className="flex gap-2 pt-2 border-t border-border sm:justify-end">
         <button
           onClick={() => handleExport('pdf')}
-          disabled={!!exporting}
+          disabled={!!exporting || !qrDataUrl}
           className="flex-1 sm:flex-none px-4 py-2 bg-primary text-primary-foreground rounded text-sm flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
@@ -169,7 +174,7 @@ export default function FlyerTab({ referralCode, discountPercent, qrPrefs, onSwi
         </button>
         <button
           onClick={() => handleExport('html')}
-          disabled={!!exporting}
+          disabled={!!exporting || !qrDataUrl}
           className="flex-1 sm:flex-none px-4 py-2 rounded text-sm border border-border text-foreground flex items-center justify-center gap-2 hover:bg-secondary disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
@@ -177,7 +182,7 @@ export default function FlyerTab({ referralCode, discountPercent, qrPrefs, onSwi
         </button>
         <button
           onClick={() => handleExport('png')}
-          disabled={!!exporting}
+          disabled={!!exporting || !qrDataUrl}
           className="flex-1 sm:flex-none px-4 py-2 rounded text-sm border border-border text-foreground flex items-center justify-center gap-2 hover:bg-secondary disabled:opacity-50"
         >
           <Download className="w-4 h-4" />

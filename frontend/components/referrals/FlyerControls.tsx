@@ -56,10 +56,23 @@ const STEP_PLACEHOLDERS = [
   { title: 'Download or publish to YouTube', desc: 'Get your finished karaoke video...' },
 ];
 
+function detectActivePreset(config: FlyerConfig): string {
+  const all = [...BUILT_IN_PRESETS, ...loadCustomPresets()];
+  for (const preset of all) {
+    if (preset.config.bgColor === config.bgColor
+      && preset.config.textColor === config.textColor
+      && preset.config.accentColor === config.accentColor
+      && JSON.stringify(preset.config.headlineGradient) === JSON.stringify(config.headlineGradient)) {
+      return preset.name;
+    }
+  }
+  return 'Custom';
+}
+
 export default function FlyerControls({ config, onChange, onLoadPreset }: FlyerControlsProps) {
   const t = useTranslations('referrals');
   const [customPresets, setCustomPresets] = useState<NamedPreset[]>(loadCustomPresets);
-  const [activePreset, setActivePreset] = useState<string>('Light');
+  const [activePreset, setActivePreset] = useState<string>(() => detectActivePreset(config));
   const [saveName, setSaveName] = useState('');
   const [showSave, setShowSave] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

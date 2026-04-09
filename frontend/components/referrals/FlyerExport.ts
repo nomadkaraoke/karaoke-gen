@@ -113,8 +113,11 @@ export async function exportFlyerPng(
     backgroundColor: null,
   });
 
-  const blob = await new Promise<Blob>((resolve) => {
-    canvas.toBlob((b: Blob | null) => resolve(b!), 'image/png');
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b: Blob | null) => {
+      if (b) resolve(b);
+      else reject(new Error('Failed to export flyer as PNG'));
+    }, 'image/png');
   });
 
   const url = URL.createObjectURL(blob);

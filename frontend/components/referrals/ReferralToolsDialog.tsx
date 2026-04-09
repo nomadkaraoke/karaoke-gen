@@ -38,8 +38,10 @@ export default function ReferralToolsDialog({
   const [activeTab, setActiveTab] = useState('qr');
   const [qrPrefs, setQrPrefs] = useState<QRStylePrefs>(DEFAULT_QR_PREFS);
 
-  // Extract referral code from URL if not provided
-  const referralCode = referralCodeProp || referralUrl.split('/r/').pop() || 'CODE';
+  // Extract referral code from URL if not provided, stripping query/hash/path
+  const referralCode = referralCodeProp
+    || referralUrl.split('/r/').pop()?.split(/[?#/]/)[0]
+    || 'CODE';
 
   // Load QR prefs on open
   useEffect(() => {

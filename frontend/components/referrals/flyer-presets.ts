@@ -98,7 +98,10 @@ export const BUILT_IN_PRESETS: NamedPreset[] = [
   { name: 'Dark', config: DARK_PRESET },
 ];
 
+const isBrowser = typeof window !== 'undefined';
+
 export function loadFlyerConfig(): FlyerConfig {
+  if (!isBrowser) return { ...DEFAULT_FLYER_CONFIG };
   try {
     const saved = localStorage.getItem(FLYER_CONFIG_KEY);
     if (saved) {
@@ -109,12 +112,14 @@ export function loadFlyerConfig(): FlyerConfig {
 }
 
 export function saveFlyerConfig(config: FlyerConfig): void {
+  if (!isBrowser) return;
   try {
     localStorage.setItem(FLYER_CONFIG_KEY, JSON.stringify(config));
   } catch {}
 }
 
 export function loadCustomPresets(): NamedPreset[] {
+  if (!isBrowser) return [];
   try {
     const saved = localStorage.getItem(CUSTOM_PRESETS_KEY);
     if (saved) {
@@ -125,6 +130,7 @@ export function loadCustomPresets(): NamedPreset[] {
 }
 
 export function saveCustomPreset(name: string, config: FlyerConfig): void {
+  if (!isBrowser) return;
   const presets = loadCustomPresets();
   const idx = presets.findIndex(p => p.name === name);
   if (idx >= 0) {
@@ -138,6 +144,7 @@ export function saveCustomPreset(name: string, config: FlyerConfig): void {
 }
 
 export function deleteCustomPreset(name: string): void {
+  if (!isBrowser) return;
   const presets = loadCustomPresets().filter(p => p.name !== name);
   try {
     localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
