@@ -90,7 +90,7 @@ export default function FlyerTab({ referralCode, discountPercent, qrPrefs, onSwi
         reader.onloadend = () => {
           if (!cancelled) setQrDataUrl(reader.result as string);
         };
-        reader.readAsDataURL(blob);
+        reader.readAsDataURL(blob as Blob);
       }
     };
     renderQr();
