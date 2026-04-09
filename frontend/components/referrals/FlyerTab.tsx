@@ -140,7 +140,7 @@ export default function FlyerTab({ referralCode, discountPercent, qrPrefs, onSwi
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-6">
         {/* Left: Flyer Preview */}
-        <div className="flex-shrink-0 relative w-[280px]">
+        <div className="flex-shrink-0 relative w-[240px]">
           <FlyerPreview
             config={config}
             referralCode={referralCode}
