@@ -16,7 +16,7 @@ import {
   QrCode, Sparkles, ExternalLink, CheckCircle, AlertCircle,
   Loader2, Banknote, Settings,
 } from 'lucide-react';
-import QRCodeDialog from './QRCodeDialog';
+import ReferralToolsDialog from './ReferralToolsDialog';
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -513,10 +513,12 @@ export default function ReferralDashboard() {
         </div>
       )}
 
-      <QRCodeDialog
+      <ReferralToolsDialog
         referralUrl={`https://nomadkaraoke.com/r/${data.link.code}`}
         open={qrOpen}
         onOpenChange={setQrOpen}
+        referralCode={data.link.code}
+        discountPercent={data.link.discount_percent}
       />
     </div>
   );

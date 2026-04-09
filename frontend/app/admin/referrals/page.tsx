@@ -20,7 +20,7 @@ import {
   Share2, Link as LinkIcon, Users, MousePointerClick, DollarSign,
   Plus, Copy, Check, RefreshCw, Loader2, ToggleLeft, ToggleRight, Pencil, QrCode,
 } from "lucide-react"
-import QRCodeDialog from "@/components/referrals/QRCodeDialog"
+import ReferralToolsDialog from "@/components/referrals/ReferralToolsDialog"
 import { NextIntlClientProvider } from "next-intl"
 import enMessages from "@/messages/en.json"
 
@@ -498,12 +498,12 @@ export default function ReferralsPage() {
       {/* QR Code / Flyer Dialog */}
       {qrDialogCode && (
         <NextIntlClientProvider locale="en" messages={enMessages}>
-          <QRCodeDialog
+          <ReferralToolsDialog
             referralUrl={`https://nomadkaraoke.com/r/${qrDialogCode}`}
             open={!!qrDialogCode}
             onOpenChange={(open) => { if (!open) setQrDialogCode(null) }}
-            onGenerateFlyer={(theme, qrDataUrl) => adminApi.generateFlyer(qrDialogCode, theme, qrDataUrl)}
-            flyerFilename={`nomad-karaoke-flyer-${qrDialogCode}.pdf`}
+            flyerFilename={`nomad-karaoke-flyer-${qrDialogCode}`}
+            referralCode={qrDialogCode}
           />
         </NextIntlClientProvider>
       )}
