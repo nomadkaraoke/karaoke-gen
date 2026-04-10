@@ -10702,4 +10702,4 @@ local-whisper = ["whisper-timestamped"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "fd26762a0d3f754ddc150bb24dc6d1ee1a15cb8154584950b213029751315ed2"
+content-hash = "6ed6be0dbeef6f31529246a14d2ad4286edc5ab2fe455433a886429a78f8054b"
