@@ -6,6 +6,7 @@ Handles:
 - Processing webhook events
 - Managing customer records
 """
+import json
 import logging
 import os
 from typing import Optional, Dict, Any, Tuple
@@ -290,7 +291,10 @@ class StripeService:
             event = stripe.Webhook.construct_event(
                 payload, signature, self.webhook_secret
             )
-            return True, event, "Webhook verified"
+            # Convert Stripe Event object to plain dict — Stripe SDK v14+
+            # returns StripeObject instances that don't support .get()
+            event_dict = json.loads(str(event))
+            return True, event_dict, "Webhook verified"
         except stripe.error.SignatureVerificationError as e:
             logger.error(f"Invalid webhook signature: {e}")
             return False, None, "Invalid signature"

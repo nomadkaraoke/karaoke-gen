@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Tuple
 
+from google.api_core import exceptions as google_exceptions
 from google.cloud import firestore
 from google.cloud.firestore_v1 import FieldFilter
 from google.cloud.firestore_v1 import Increment
@@ -999,7 +1000,7 @@ class UserService:
                         'amount': amount,
                         'processed_at': datetime.utcnow()
                     })
-                except Exception:
+                except google_exceptions.AlreadyExists:
                     # Document already exists - this session was already processed
                     logger.info(f"Stripe session {stripe_session_id} already processed (idempotent skip)")
                     return False, 0, "Session already processed"
