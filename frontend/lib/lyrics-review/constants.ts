@@ -30,7 +30,7 @@ export const HIGHLIGHT_CLASSES = {
   uncorrectedGap: 'bg-orange-500/25',
   highlighted: 'bg-amber-400/40',
   playing: 'text-blue-500',
-  userEdited: 'bg-violet-500/25',
+  userEdited: 'bg-lime-400/40',
 } as const
 
 // CSS keyframes for flash animation (use with Tailwind animate utilities)
