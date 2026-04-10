@@ -337,6 +337,7 @@ export interface WordProps {
   isUncorrectedGap?: boolean
   isCurrentlyPlaying?: boolean
   isActiveGap?: boolean
+  isUserEdited?: boolean
   padding?: string
   onClick?: () => void
   id?: string
@@ -381,6 +382,7 @@ export interface TranscriptionViewProps {
   onShowCorrectionDetail?: (wordId: string) => void
   advancedMode?: boolean
   onAdvancedModeToggle?: (enabled: boolean) => void
+  editedWordIds?: Set<string>
 }
 
 export interface ReferenceViewProps extends BaseViewProps {

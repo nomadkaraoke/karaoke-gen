@@ -14,6 +14,7 @@ export const WordComponent = React.memo(function Word({
   isUncorrectedGap,
   isCurrentlyPlaying,
   isActiveGap,
+  isUserEdited,
   padding = 'px-[3px] py-[1px]',
   onClick,
   id,
@@ -24,15 +25,18 @@ export const WordComponent = React.memo(function Word({
   }
 
   // Determine background color class
+  // User-edited takes priority over gap states (but not currently-playing or anchor)
   const bgColorClass = isCurrentlyPlaying
     ? 'bg-blue-500 text-white'
     : isAnchor
       ? HIGHLIGHT_CLASSES.anchor
-      : isCorrectedGap
-        ? HIGHLIGHT_CLASSES.corrected
-        : isUncorrectedGap
-          ? HIGHLIGHT_CLASSES.uncorrectedGap
-          : ''
+      : isUserEdited
+        ? HIGHLIGHT_CLASSES.userEdited
+        : isCorrectedGap
+          ? HIGHLIGHT_CLASSES.corrected
+          : isUncorrectedGap
+            ? HIGHLIGHT_CLASSES.uncorrectedGap
+            : ''
 
   const wordElement = (
     <span

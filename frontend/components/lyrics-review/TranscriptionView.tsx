@@ -33,6 +33,7 @@ export default function TranscriptionView({
   activeGapWordIds,
   advancedMode = false,
   onAdvancedModeToggle,
+  editedWordIds,
 }: TranscriptionViewProps) {
   const t = useTranslations('lyricsReview.transcription')
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
@@ -201,6 +202,7 @@ export default function TranscriptionView({
                       onEditCorrection={onEditCorrection}
                       onAcceptCorrection={onAcceptCorrection}
                       onShowCorrectionDetail={onShowCorrectionDetail}
+                      editedWordIds={editedWordIds}
                     />
                   </div>
                 </div>

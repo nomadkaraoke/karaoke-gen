@@ -207,6 +207,33 @@ export default function LyricsAnalyzer({
     [history, historyIndex]
   )
 
+  // Compute which word IDs have been edited by the user (compared to initial state)
+  const editedWordIds = useMemo(() => {
+    const initial = history[0]
+    if (!initial || data === initial) return new Set<string>()
+    // Build map of word ID → text from initial state
+    const initialWordText = new Map<string, string>()
+    for (const segment of initial.corrected_segments) {
+      for (const word of segment.words) {
+        initialWordText.set(word.id, word.text)
+      }
+    }
+    const edited = new Set<string>()
+    for (const segment of data.corrected_segments) {
+      for (const word of segment.words) {
+        const originalText = initialWordText.get(word.id)
+        if (originalText === undefined) {
+          // Word was added by the user
+          edited.add(word.id)
+        } else if (originalText !== word.text) {
+          // Word text was changed
+          edited.add(word.id)
+        }
+      }
+    }
+    return edited
+  }, [data, history])
+
   // Reset history when initial data changes
   useEffect(() => {
     setHistory([initialData])
@@ -1254,6 +1281,7 @@ export default function LyricsAnalyzer({
           activeGapWordIds={activeGapWordIds}
           advancedMode={advancedMode}
           onAdvancedModeToggle={handleAdvancedModeToggle}
+          editedWordIds={editedWordIds}
         />
         <ReferenceView
           referenceSources={data.reference_lyrics}

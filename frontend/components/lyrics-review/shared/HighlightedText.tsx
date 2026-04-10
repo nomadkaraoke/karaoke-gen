@@ -49,6 +49,8 @@ export interface HighlightedTextProps {
   onEditCorrection?: (wordId: string) => void
   onAcceptCorrection?: (wordId: string) => void
   onShowCorrectionDetail?: (wordId: string) => void
+  // User-edited word tracking
+  editedWordIds?: Set<string>
 }
 
 export function HighlightedText({
@@ -76,6 +78,7 @@ export function HighlightedText({
   onEditCorrection,
   onAcceptCorrection,
   onShowCorrectionDetail,
+  editedWordIds,
 }: HighlightedTextProps) {
   const { handleWordClick } = useWordClick({
     mode,
@@ -242,6 +245,7 @@ export function HighlightedText({
               isUncorrectedGap={wordPos.type === 'gap' && !wordPos.isCorrected}
               isCurrentlyPlaying={shouldHighlightWord(wordPos)}
               isActiveGap={activeGapWordIds?.has(wordPos.word.id)}
+              isUserEdited={editedWordIds?.has(wordPos.word.id)}
               id={`word-${wordPos.word.id}`}
               onClick={() =>
                 handleWordClick(
@@ -348,6 +352,7 @@ export function HighlightedText({
                       wordPos || { word: word.text, id: word.id }
                     )}
                     isActiveGap={activeGapWordIds?.has(word.id)}
+                    isUserEdited={editedWordIds?.has(word.id)}
                     id={`word-${word.id}`}
                     onClick={() => handleWordClick(word.text, word.id, anchor, sequence)}
                     correction={correctionInfo}
