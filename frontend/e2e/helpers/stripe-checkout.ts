@@ -58,11 +58,13 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
   await page.screenshot({ path: 'test-results/stripe-checkout-loaded.png' });
   console.log('  Stripe Checkout loaded');
 
-  // Step 2: Select "Card" payment method (it's a radio button)
+  // Step 2: Select "Card" payment method
+  // Stripe uses an accordion-style UI. The radio input is covered by a button
+  // element, so we must click the button (not the radio) to avoid interception.
   console.log('  Selecting Card payment method...');
-  const cardRadio = page.getByRole('radio', { name: 'Card' });
-  await cardRadio.waitFor({ state: 'visible', timeout: 10_000 });
-  await cardRadio.click();
+  const cardButton = page.locator('[data-testid="card-accordion-item-button"], button[aria-label="Pay with card"]').first();
+  await cardButton.waitFor({ state: 'visible', timeout: 10_000 });
+  await cardButton.click();
   console.log('  Card payment method selected');
 
   // Wait for card input fields to appear after selecting Card
