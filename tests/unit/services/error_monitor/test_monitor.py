@@ -527,3 +527,428 @@ class TestRunMonitorCycleOneNewError:
 
         monitor.firestore_adapter.upsert_pattern.assert_not_called()
         monitor.discord.send_message.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Tests: _run_daily_digest (P0)
+# ---------------------------------------------------------------------------
+
+
+class TestRunDailyDigest:
+    """_run_daily_digest should fetch active patterns and send a digest to Discord."""
+
+    @pytest.fixture
+    def monitor(self):
+        ErrorMonitor = _import_error_monitor_class()
+        m = ErrorMonitor.__new__(ErrorMonitor)
+        m.logging_client = MagicMock()
+        m.firestore_adapter = MagicMock()
+        m.discord = MagicMock()
+        m.discord.messages_sent = 0
+        m.logger = MagicMock()
+        return m
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    def test_digest_sends_message_with_chart_emoji(self, mock_llm, monitor):
+        """_run_daily_digest should send a message containing the 📊 emoji."""
+        monitor.firestore_adapter.get_active_patterns.return_value = [
+            {"service": "karaoke-backend", "total_count": 10, "status": "new"},
+            {"service": "video-worker", "total_count": 5, "status": "acknowledged"},
+        ]
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_daily_digest()
+
+        assert monitor.discord.send_message.call_count == 1
+        sent_content = monitor.discord.send_message.call_args[0][0]
+        assert "📊" in sent_content
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    def test_digest_includes_per_service_counts(self, mock_llm, monitor):
+        """_run_daily_digest should aggregate counts per service."""
+        monitor.firestore_adapter.get_active_patterns.return_value = [
+            {"service": "svc-alpha", "total_count": 7, "status": "new"},
+            {"service": "svc-alpha", "total_count": 3, "status": "acknowledged"},
+            {"service": "svc-beta", "total_count": 2, "status": "new"},
+        ]
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_daily_digest()
+
+        sent_content = monitor.discord.send_message.call_args[0][0]
+        # Both services should be mentioned in the digest
+        assert "svc-alpha" in sent_content
+        assert "svc-beta" in sent_content
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    def test_digest_with_no_active_patterns(self, mock_llm, monitor):
+        """_run_daily_digest should still send a digest even when there are no patterns."""
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_daily_digest()
+
+        assert monitor.discord.send_message.call_count == 1
+        sent_content = monitor.discord.send_message.call_args[0][0]
+        assert "📊" in sent_content
+
+
+# ---------------------------------------------------------------------------
+# Tests: PatternData construction (P0)
+# ---------------------------------------------------------------------------
+
+
+class TestPatternDataConstruction:
+    """upsert_pattern should be called with a PatternData object with correct field types."""
+
+    def _make_log_entry(self, message="RuntimeError: disk full", service="karaoke-backend"):
+        entry = MagicMock()
+        entry.payload = message
+        entry.resource = MagicMock()
+        entry.resource.type = "cloud_run_revision"
+        entry.resource.labels = {"service_name": service}
+        entry.labels = {}
+        return entry
+
+    @patch("backend.services.error_monitor.monitor.should_ignore", return_value=None)
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_pattern_data_fields_have_correct_types(self, mock_digest, mock_llm, mock_ignore):
+        """upsert_pattern receives a PatternData with correctly typed fields."""
+        from backend.services.error_monitor.firestore_adapter import PatternData, UpsertResult
+
+        monitor = _make_monitor_with_mocks()
+        log_entry = self._make_log_entry()
+        monitor.logging_client.list_entries.return_value = iter([log_entry])
+        monitor.firestore_adapter.upsert_pattern.return_value = UpsertResult(
+            pattern_id="xyz789", is_new=True
+        )
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_monitor_cycle()
+
+        assert monitor.firestore_adapter.upsert_pattern.call_count >= 1
+        call_arg = monitor.firestore_adapter.upsert_pattern.call_args[0][0]
+        assert isinstance(call_arg, PatternData)
+
+        # pattern_id should be a non-empty hex string
+        assert isinstance(call_arg.pattern_id, str)
+        assert len(call_arg.pattern_id) > 0
+        # All characters should be valid hex (the hash function produces hex)
+        assert all(c in "0123456789abcdef" for c in call_arg.pattern_id)
+
+        # service must match the log entry's service label
+        assert call_arg.service == "karaoke-backend"
+
+        # resource_type maps to canonical string
+        assert isinstance(call_arg.resource_type, str)
+        assert len(call_arg.resource_type) > 0
+
+        # normalized_message and sample_message must be non-empty strings
+        assert isinstance(call_arg.normalized_message, str)
+        assert len(call_arg.normalized_message) > 0
+        assert isinstance(call_arg.sample_message, str)
+        assert len(call_arg.sample_message) > 0
+
+        # count is a positive int
+        assert isinstance(call_arg.count, int)
+        assert call_arg.count >= 1
+
+        # timestamp is a datetime
+        assert isinstance(call_arg.timestamp, datetime)
+
+
+# ---------------------------------------------------------------------------
+# Tests: Discord alert argument verification (P0)
+# ---------------------------------------------------------------------------
+
+
+class TestDiscordAlertContent:
+    """The Discord alert message should contain the service name and normalized message."""
+
+    def _make_log_entry(self, message, service):
+        entry = MagicMock()
+        entry.payload = message
+        entry.resource = MagicMock()
+        entry.resource.type = "cloud_run_revision"
+        entry.resource.labels = {"service_name": service}
+        entry.labels = {}
+        return entry
+
+    @patch("backend.services.error_monitor.monitor.should_ignore", return_value=None)
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_new_pattern_alert_contains_service_name(self, mock_digest, mock_llm, mock_ignore):
+        """The alert message sent to Discord should contain the originating service name."""
+        from backend.services.error_monitor.firestore_adapter import UpsertResult
+
+        service_name = "my-special-service"
+        monitor = _make_monitor_with_mocks()
+        log_entry = self._make_log_entry("RuntimeError: boom", service=service_name)
+        monitor.logging_client.list_entries.return_value = iter([log_entry])
+        monitor.firestore_adapter.upsert_pattern.return_value = UpsertResult(
+            pattern_id="aabbcc", is_new=True
+        )
+        monitor.firestore_adapter.get_pattern.return_value = {"first_seen": "2026-01-01T00:00:00Z"}
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_monitor_cycle()
+
+        assert monitor.discord.send_message.call_count >= 1
+        sent_content = monitor.discord.send_message.call_args[0][0]
+        assert service_name in sent_content
+
+    @patch("backend.services.error_monitor.monitor.should_ignore", return_value=None)
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_new_pattern_alert_contains_normalized_message(
+        self, mock_digest, mock_llm, mock_ignore
+    ):
+        """The alert message should contain a recognizable part of the normalized error."""
+        from backend.services.error_monitor.firestore_adapter import UpsertResult
+
+        monitor = _make_monitor_with_mocks()
+        # Use a distinctive error phrase that should survive normalization
+        log_entry = self._make_log_entry(
+            "ConnectionError: database connection refused", service="karaoke-backend"
+        )
+        monitor.logging_client.list_entries.return_value = iter([log_entry])
+        monitor.firestore_adapter.upsert_pattern.return_value = UpsertResult(
+            pattern_id="def456", is_new=True
+        )
+        monitor.firestore_adapter.get_pattern.return_value = {"first_seen": "2026-01-01T00:00:00Z"}
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_monitor_cycle()
+
+        assert monitor.discord.send_message.call_count >= 1
+        sent_content = monitor.discord.send_message.call_args[0][0]
+        # The normalized message should contain at least "connection" or "refused"
+        assert "connection" in sent_content.lower() or "refused" in sent_content.lower()
+
+
+# ---------------------------------------------------------------------------
+# Tests: analyze_patterns input format (P0)
+# ---------------------------------------------------------------------------
+
+
+class TestAnalyzePatternsInputFormat:
+    """When LLM is enabled, analyze_patterns is called with correctly shaped dicts."""
+
+    def _make_log_entry(self, message, service):
+        entry = MagicMock()
+        entry.payload = message
+        entry.resource = MagicMock()
+        entry.resource.type = "cloud_run_revision"
+        entry.resource.labels = {"service_name": service}
+        entry.labels = {}
+        return entry
+
+    @patch("backend.services.error_monitor.monitor.analyze_patterns")
+    @patch("backend.services.error_monitor.monitor.find_duplicate_patterns")
+    @patch("backend.services.error_monitor.monitor.should_ignore", return_value=None)
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=True)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_analyze_patterns_receives_correct_keys(
+        self, mock_digest, mock_llm, mock_ignore, mock_find_dups, mock_analyze
+    ):
+        """analyze_patterns should receive a list of dicts with service, normalized_message, count."""
+        from backend.services.error_monitor.firestore_adapter import UpsertResult
+
+        mock_analyze.return_value = MagicMock(incidents=[])
+        mock_find_dups.return_value = []
+
+        monitor = _make_monitor_with_mocks()
+
+        # Create 2 distinct log entries so LLM dedup + analysis paths are triggered
+        entry1 = self._make_log_entry("RuntimeError: disk full", service="svc-one")
+        entry2 = self._make_log_entry("ValueError: invalid input", service="svc-two")
+        monitor.logging_client.list_entries.side_effect = [
+            iter([entry1, entry2]),
+            iter([]),
+            iter([]),
+            iter([]),
+        ]
+
+        call_count = [0]
+
+        def upsert_side_effect(data):
+            call_count[0] += 1
+            return UpsertResult(pattern_id=data.pattern_id, is_new=True)
+
+        monitor.firestore_adapter.upsert_pattern.side_effect = upsert_side_effect
+        monitor.firestore_adapter.get_pattern.return_value = {"first_seen": "2026-01-01T00:00:00Z"}
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_monitor_cycle()
+
+        # analyze_patterns should have been called once both new patterns exist
+        assert mock_analyze.call_count >= 1
+        call_args = mock_analyze.call_args[0][0]
+        assert isinstance(call_args, list)
+        assert len(call_args) >= 1
+
+        for item in call_args:
+            assert "service" in item, f"Missing 'service' key in {item}"
+            assert "normalized_message" in item, f"Missing 'normalized_message' key in {item}"
+            assert "count" in item, f"Missing 'count' key in {item}"
+            assert isinstance(item["service"], str)
+            assert isinstance(item["normalized_message"], str)
+            assert isinstance(item["count"], int)
+
+
+# ---------------------------------------------------------------------------
+# Tests: Spike detection flow (P1)
+# ---------------------------------------------------------------------------
+
+
+class TestSpikeDetectionFlow:
+    """_run_monitor_cycle should send a spike alert when counts exceed the threshold."""
+
+    def _make_log_entry(self, message="RuntimeError: timeout", service="karaoke-backend"):
+        entry = MagicMock()
+        entry.payload = message
+        entry.resource = MagicMock()
+        entry.resource.type = "cloud_run_revision"
+        entry.resource.labels = {"service_name": service}
+        entry.labels = {}
+        return entry
+
+    @patch("backend.services.error_monitor.monitor.should_ignore", return_value=None)
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_spike_alert_sent_when_count_exceeds_threshold(
+        self, mock_digest, mock_llm, mock_ignore
+    ):
+        """A spike alert (⚠️) is sent when current count is >5x rolling average and >= min."""
+        from backend.services.error_monitor.firestore_adapter import UpsertResult
+
+        monitor = _make_monitor_with_mocks()
+
+        # Send 10 identical entries to make count = 10 (> SPIKE_MIN_COUNT=5)
+        entries = [self._make_log_entry() for _ in range(10)]
+        monitor.logging_client.list_entries.return_value = iter(entries)
+
+        # Upsert returns is_new=False (existing pattern) so spike check runs
+        monitor.firestore_adapter.upsert_pattern.return_value = UpsertResult(
+            pattern_id="spike-pattern-1", is_new=False
+        )
+
+        # get_pattern returns a pattern with rolling_counts that average to 1
+        # avg=1.0, 5x=5.0, current_count=10 → spike detected
+        monitor.firestore_adapter.get_pattern.return_value = {
+            "pattern_id": "spike-pattern-1",
+            "rolling_counts": [{"count": 1}, {"count": 1}, {"count": 1}, {"count": 1}],
+        }
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_monitor_cycle()
+
+        # At least one Discord message should have been sent
+        assert monitor.discord.send_message.call_count >= 1
+
+        # At least one of the messages should be a spike alert (⚠️)
+        all_calls = monitor.discord.send_message.call_args_list
+        spike_messages = [c for c in all_calls if "⚠️" in c[0][0]]
+        assert len(spike_messages) >= 1, (
+            "Expected at least one spike alert (⚠️) but none found. "
+            f"Messages sent: {[c[0][0][:80] for c in all_calls]}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: Auto-resolve alert (P1)
+# ---------------------------------------------------------------------------
+
+
+class TestAutoResolveAlert:
+    """_check_auto_resolve should resolve eligible patterns and send a ✅ alert."""
+
+    @pytest.fixture
+    def monitor(self):
+        ErrorMonitor = _import_error_monitor_class()
+        m = ErrorMonitor.__new__(ErrorMonitor)
+        m.logging_client = MagicMock()
+        m.firestore_adapter = MagicMock()
+        m.discord = MagicMock()
+        m.discord.messages_sent = 0
+        m.logger = MagicMock()
+        return m
+
+    def test_auto_resolve_calls_resolve_and_sends_alert(self, monitor):
+        """When a pattern qualifies for auto-resolve, the pattern is resolved and ✅ is sent."""
+        pattern = {
+            "pattern_id": "resolve-me-123",
+            "service": "karaoke-backend",
+            "normalized_message": "Connection refused",
+            "status": "new",
+        }
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = [pattern]
+        monitor.firestore_adapter.check_auto_resolve.return_value = 25.5  # hours silent
+        monitor.discord.send_message.return_value = True
+
+        monitor._check_auto_resolve()
+
+        # auto_resolve_pattern must have been called with the correct pattern_id
+        monitor.firestore_adapter.auto_resolve_pattern.assert_called_once_with(
+            "resolve-me-123", 25.5
+        )
+
+        # A Discord message must have been sent
+        assert monitor.discord.send_message.call_count == 1
+        sent_content = monitor.discord.send_message.call_args[0][0]
+        assert "✅" in sent_content
+
+    def test_auto_resolve_no_alert_when_no_patterns_qualify(self, monitor):
+        """When no patterns qualify for auto-resolve, no Discord alert is sent."""
+        pattern = {
+            "pattern_id": "still-active",
+            "service": "svc-x",
+            "normalized_message": "Disk full",
+            "status": "acknowledged",
+        }
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = [pattern]
+        # check_auto_resolve returns None → pattern does not qualify yet
+        monitor.firestore_adapter.check_auto_resolve.return_value = None
+
+        monitor._check_auto_resolve()
+
+        monitor.firestore_adapter.auto_resolve_pattern.assert_not_called()
+        monitor.discord.send_message.assert_not_called()
+
+    def test_auto_resolve_via_monitor_cycle(self, monitor):
+        """_run_monitor_cycle with no errors should still trigger the auto-resolve check."""
+        with patch(
+            "backend.services.error_monitor.monitor.get_llm_enabled", return_value=False
+        ), patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False):
+            monitor.logging_client.list_entries.return_value = iter([])
+
+            pattern = {
+                "pattern_id": "cycle-resolve",
+                "service": "bg-worker",
+                "normalized_message": "queue timeout",
+                "status": "new",
+            }
+            monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = [pattern]
+            monitor.firestore_adapter.check_auto_resolve.return_value = 12.0
+            monitor.firestore_adapter.get_active_patterns.return_value = []
+            monitor.discord.send_message.return_value = True
+
+            monitor._run_monitor_cycle()
+
+            monitor.firestore_adapter.auto_resolve_pattern.assert_called_once()
+            sent_content = monitor.discord.send_message.call_args[0][0]
+            assert "✅" in sent_content
