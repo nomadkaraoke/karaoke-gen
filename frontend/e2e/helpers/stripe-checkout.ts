@@ -59,25 +59,13 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
   await page.screenshot({ path: 'test-results/stripe-checkout-loaded.png' });
   console.log('  Stripe Checkout loaded');
 
-  // Step 2: Select "Card" payment method if not already selected
-  // Stripe uses an accordion — Card may already be expanded (default).
-  // Check if card fields are visible; if not, click to expand Card.
-  console.log('  Checking Card payment method...');
+  // Step 2: Select "Card" payment method
+  // Stripe uses an accordion with radio buttons overlaid by buttons.
+  // Use force:true to bypass the overlay interception.
+  console.log('  Selecting Card payment method...');
   const cardRadio = page.getByRole('radio', { name: 'Card' });
-  const isCardChecked = await cardRadio.isChecked().catch(() => false);
-  if (isCardChecked) {
-    console.log('  Card already selected (default)');
-  } else {
-    // Click the accordion button to expand Card section
-    const cardAccordion = page.locator('button[aria-label="Pay with card"]').first();
-    if (await cardAccordion.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await cardAccordion.click();
-    } else {
-      // Try clicking the radio label area
-      await page.getByText('Card', { exact: true }).first().click();
-    }
-    console.log('  Card payment method selected');
-  }
+  await cardRadio.check({ force: true, timeout: 10_000 });
+  console.log('  Card payment method selected');
 
   // Wait for card input fields to appear after selecting Card
   // Stripe renders card fields inside iframes after the radio is clicked
