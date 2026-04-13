@@ -107,12 +107,18 @@ test.describe('Real Credit Purchase Flow', () => {
       // ===== STEP 3: Open Buy Credits and verify discount =====
       console.log('\n=== STEP 3: Open Buy Credits dialog ===');
 
-      // The credits count in the header ("N credits available") is clickable
-      // and opens the BuyCreditsDialog directly. It's a span inside the user
-      // dropdown trigger with its own onClick handler.
-      const creditsLink = page.getByText(/\d+\s+credits?\s+available/i).first();
-      await expect(creditsLink).toBeVisible({ timeout: TIMEOUTS.action });
-      await creditsLink.click();
+      // "Buy More Credits" is inside the user dropdown menu.
+      // First open the dropdown by clicking the user avatar/name area,
+      // then click the "Buy More Credits" menu item.
+      const userMenuTrigger = page.getByText(/credits?\s+available/i).first();
+      await expect(userMenuTrigger).toBeVisible({ timeout: TIMEOUTS.action });
+      // Click the parent button (dropdown trigger) not the span
+      await userMenuTrigger.locator('..').click();
+
+      // Wait for dropdown menu and click "Buy More Credits"
+      const buyMenuItem = page.getByRole('menuitem', { name: /buy more credits/i });
+      await expect(buyMenuItem).toBeVisible({ timeout: 5000 });
+      await buyMenuItem.click();
 
       // Wait for BuyCreditsDialog
       const creditsDialog = page.getByRole('dialog');
