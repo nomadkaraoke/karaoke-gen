@@ -101,32 +101,71 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
     }
   }
 
-  // Stripe Checkout shows payment method options (Card, Cash App, Klarna, etc.)
-  // as radio buttons. Click "Card" to reveal the card input fields.
-  // Try multiple selector strategies since Stripe's DOM changes frequently.
-  const cardSelectors = [
-    'text="Card"',                                    // Exact text match
-    '[data-testid*="CARD" i]',                       // data-testid containing CARD
-    '#payment-method-card',                           // ID-based
-    'div[role="radio"]:has-text("Card")',             // Radio role with Card text
-    'label:has-text("Card")',                         // Label containing Card
-  ];
+  // Diagnostic: dump the Stripe Checkout page structure to find correct selectors
+  console.log('  Diagnosing Stripe Checkout page structure...');
+  const diagInfo = await page.evaluate(() => {
+    const info: string[] = [];
+    // List all iframes
+    const iframes = document.querySelectorAll('iframe');
+    info.push(`Iframes (${iframes.length}):`);
+    iframes.forEach((f, i) => {
+      info.push(`  [${i}] title="${f.title}" name="${f.name}" src="${f.src?.substring(0, 100)}"`);
+    });
+    // List all visible inputs
+    const inputs = document.querySelectorAll('input:not([type="hidden"])');
+    info.push(`Inputs (${inputs.length}):`);
+    inputs.forEach((inp, i) => {
+      const el = inp as HTMLInputElement;
+      info.push(`  [${i}] id="${el.id}" name="${el.name}" type="${el.type}" placeholder="${el.placeholder}" autocomplete="${el.autocomplete}"`);
+    });
+    // List all buttons/clickable elements with text
+    const buttons = document.querySelectorAll('button, [role="button"], [role="radio"], [role="tab"]');
+    info.push(`Buttons/Radio/Tabs (${buttons.length}):`);
+    buttons.forEach((btn, i) => {
+      info.push(`  [${i}] tag=${btn.tagName} role="${btn.getAttribute('role')}" text="${btn.textContent?.trim().substring(0, 60)}"`);
+    });
+    return info.join('\n');
+  });
+  console.log(diagInfo);
+
+  // Try to click "Card" payment method — use the diagnostic output to find the right element
+  // Stripe Checkout uses various structures. Try clicking elements containing "Card" text.
+  const allClickable = page.locator('button, [role="button"], [role="radio"], [role="tab"], [role="option"], label, div[class*="PaymentMethod"]');
+  const clickableCount = await allClickable.count();
   let cardClicked = false;
-  for (const sel of cardSelectors) {
-    const el = page.locator(sel).first();
-    if (await el.isVisible({ timeout: 1500 }).catch(() => false)) {
-      await el.click();
-      console.log(`  Selected "Card" payment method (selector: ${sel})`);
+  for (let i = 0; i < clickableCount && !cardClicked; i++) {
+    const text = await allClickable.nth(i).textContent().catch(() => '');
+    if (text && /^\s*Card\s*$/i.test(text.replace(/visa|mastercard|amex|discover/gi, '').trim())) {
+      await allClickable.nth(i).click();
+      console.log(`  Clicked Card element at index ${i}`);
       cardClicked = true;
-      break;
     }
   }
   if (!cardClicked) {
-    console.log('  WARNING: Could not find Card payment method selector — card fields may already be visible');
+    // Try clicking by exact text "Card" anywhere on the page
+    const cardText = page.getByText('Card', { exact: true }).first();
+    if (await cardText.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await cardText.click();
+      console.log('  Clicked Card by exact text match');
+      cardClicked = true;
+    }
   }
-  // Wait for card fields to render after selection
-  await page.waitForTimeout(2000);
+  if (!cardClicked) {
+    console.log('  WARNING: Could not click Card payment method — trying to proceed anyway');
+  }
+
+  // Wait for card fields to render
+  await page.waitForTimeout(3000);
   await page.screenshot({ path: 'test-results/stripe-card-selected.png' });
+
+  // Re-diagnose after clicking Card to see what appeared
+  console.log('  Post-card-click diagnosis...');
+  const postDiag = await page.evaluate(() => {
+    const iframes = document.querySelectorAll('iframe');
+    const inputs = document.querySelectorAll('input:not([type="hidden"])');
+    return `Iframes: ${iframes.length}, Inputs: ${inputs.length}`;
+  });
+  console.log(`  ${postDiag}`);
 
   // Fill card number — Stripe may use direct inputs or iframe-embedded inputs
   console.log('  Filling card number...');
