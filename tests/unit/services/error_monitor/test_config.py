@@ -141,23 +141,20 @@ class TestDefaultValues:
         assert isinstance(config.MIN_PATTERNS_FOR_ANALYSIS, int)
         assert config.MIN_PATTERNS_FOR_ANALYSIS >= 1
 
-    def test_auto_resolve_min_hours_exists(self):
+    def test_auto_resolve_min_hours(self):
         from backend.services.error_monitor import config
 
-        assert hasattr(config, "AUTO_RESOLVE_MIN_HOURS")
-        assert config.AUTO_RESOLVE_MIN_HOURS > 0
+        assert config.AUTO_RESOLVE_MIN_HOURS == 6
 
-    def test_auto_resolve_max_hours_exists(self):
+    def test_auto_resolve_max_hours(self):
         from backend.services.error_monitor import config
 
-        assert hasattr(config, "AUTO_RESOLVE_MAX_HOURS")
-        assert config.AUTO_RESOLVE_MAX_HOURS > config.AUTO_RESOLVE_MIN_HOURS
+        assert config.AUTO_RESOLVE_MAX_HOURS == 168  # 1 week
 
-    def test_auto_resolve_fallback_hours_exists(self):
+    def test_auto_resolve_fallback_hours(self):
         from backend.services.error_monitor import config
 
-        assert hasattr(config, "AUTO_RESOLVE_FALLBACK_HOURS")
-        assert config.AUTO_RESOLVE_FALLBACK_HOURS > 0
+        assert config.AUTO_RESOLVE_FALLBACK_HOURS == 48
 
     def test_service_dependency_map_is_string(self):
         from backend.services.error_monitor import config

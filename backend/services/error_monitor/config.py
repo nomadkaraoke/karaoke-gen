@@ -120,13 +120,13 @@ SPIKE_MIN_COUNT: int = 5
 AUTO_RESOLVE_MULTIPLIER: int = 8
 
 #: Minimum hours before a pattern can be auto-resolved.
-AUTO_RESOLVE_MIN_HOURS: int = 1
+AUTO_RESOLVE_MIN_HOURS: int = 6
 
 #: Maximum hours before a pattern is force-resolved even if still active.
-AUTO_RESOLVE_MAX_HOURS: int = 24
+AUTO_RESOLVE_MAX_HOURS: int = 168  # 1 week
 
 #: Fallback resolve window (hours) if baseline data is unavailable.
-AUTO_RESOLVE_FALLBACK_HOURS: int = 4
+AUTO_RESOLVE_FALLBACK_HOURS: int = 48
 
 # ---------------------------------------------------------------------------
 # Discord settings
