@@ -107,17 +107,18 @@ test.describe('Real Credit Purchase Flow', () => {
       // ===== STEP 3: Open Buy Credits and verify discount =====
       console.log('\n=== STEP 3: Open Buy Credits dialog ===');
 
-      // "Buy More Credits" is inside the user dropdown menu.
-      // First open the dropdown by clicking the user avatar/name area,
+      // "Buy More Credits" is inside the user dropdown menu in the header.
+      // Open the dropdown by clicking the button containing "credits available",
       // then click the "Buy More Credits" menu item.
-      const userMenuTrigger = page.getByText(/credits?\s+available/i).first();
-      await expect(userMenuTrigger).toBeVisible({ timeout: TIMEOUTS.action });
-      // Click the parent button (dropdown trigger) not the span
-      await userMenuTrigger.locator('..').click();
+      const userDropdownButton = page.locator('button').filter({ hasText: /credits?\s+available/i }).first();
+      await expect(userDropdownButton).toBeVisible({ timeout: TIMEOUTS.action });
+      await userDropdownButton.click();
+      console.log('  Opened user dropdown');
 
       // Wait for dropdown menu and click "Buy More Credits"
       const buyMenuItem = page.getByRole('menuitem', { name: /buy more credits/i });
       await expect(buyMenuItem).toBeVisible({ timeout: 5000 });
+      console.log('  Found Buy More Credits menu item');
       await buyMenuItem.click();
 
       // Wait for BuyCreditsDialog
