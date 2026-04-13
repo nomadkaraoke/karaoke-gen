@@ -575,9 +575,18 @@ class ErrorMonitor:
             try:
                 active = self.firestore_adapter.get_active_patterns()
                 if len(active) >= 2:
-                    # Split into two halves for self-dedup within existing patterns
                     mid = len(active) // 2
-                    find_duplicate_patterns(active[:mid], active[mid:])
+                    duplicates = find_duplicate_patterns(active[:mid], active[mid:])
+                    for dup in duplicates:
+                        for idx in dup.duplicate_indices:
+                            target_half = active[mid:]
+                            source_half = active[:mid]
+                            if idx < len(target_half) and dup.canonical_index < len(source_half):
+                                self.firestore_adapter.merge_pattern(
+                                    target_half[idx]["pattern_id"],
+                                    source_half[dup.canonical_index]["pattern_id"],
+                                    dup.reason,
+                                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Digest dedup sweep failed (non-fatal): %s", exc)
 

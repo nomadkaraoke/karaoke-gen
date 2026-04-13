@@ -38,14 +38,22 @@ def resolve_error_pattern(
     Returns:
         True if the pattern was resolved, False otherwise.
     """
-    db = firestore.Client(project=project)
-    collection = db.collection("error_patterns")
+    try:
+        db = firestore.Client(project=project)
+        collection = db.collection("error_patterns")
+    except Exception as exc:
+        print(f"Error: Could not connect to Firestore (project={project}): {exc}", file=sys.stderr)
+        return False
 
     # Stream all docs and find those whose ID starts with the prefix
     matches = []
-    for doc in collection.stream():
-        if doc.id.startswith(pattern_prefix):
-            matches.append(doc)
+    try:
+        for doc in collection.stream():
+            if doc.id.startswith(pattern_prefix):
+                matches.append(doc)
+    except Exception as exc:
+        print(f"Error: Could not query error_patterns: {exc}", file=sys.stderr)
+        return False
 
     if len(matches) == 0:
         print(f"Error: No pattern found with ID prefix '{pattern_prefix}'", file=sys.stderr)
@@ -84,7 +92,11 @@ def resolve_error_pattern(
         "fixed_by": fixed_by,
     }
 
-    doc.reference.update(update_payload)
+    try:
+        doc.reference.update(update_payload)
+    except Exception as exc:
+        print(f"Error: Could not update pattern {doc.id}: {exc}", file=sys.stderr)
+        return False
 
     # Confirmation output
     service = data.get("service", "")

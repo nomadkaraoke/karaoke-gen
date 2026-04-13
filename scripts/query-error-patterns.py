@@ -134,9 +134,9 @@ def _print_table(patterns: list[dict[str, Any]]) -> None:
     for p in patterns:
         status = str(p.get("status", ""))[:col_status]
         service = str(p.get("service", ""))[:col_service]
-        count = p.get("occurrence_count", p.get("count", 0))
+        count = p.get("total_count", p.get("occurrence_count", p.get("count", 0)))
         last_seen = _fmt_last_seen(p.get("last_seen"))
-        message = str(p.get("error_message", p.get("message", "")))[:col_message]
+        message = str(p.get("normalized_message", p.get("error_message", p.get("message", ""))))[:col_message]
 
         print(
             f"{status:<{col_status}} "
