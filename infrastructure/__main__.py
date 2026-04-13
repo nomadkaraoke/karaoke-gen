@@ -42,6 +42,7 @@ from modules import divebar_mirror, kn_data_sync, divebar_lookup, backup
 from modules import audio_separator_service
 from modules import gpu_artifact_registry
 from modules import encoding_worker_manager
+from modules import error_monitor as error_monitor_module
 from modules.iam import backend_sa, github_actions_sa, claude_automation_sa, claude_readonly_sa, worker_sas
 from compute import encoding_worker_vm, github_runners, divebar_sync_vm
 
@@ -180,6 +181,14 @@ video_encoding_job = cloud_run.create_video_encoding_job(bucket, backend_service
 lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
 audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
 audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account, vpc_connector)
+
+# ==================== Error Monitor ====================
+
+# Cloud Run Job + Cloud Scheduler for automated error detection and digest reports
+error_monitor_resources = error_monitor_module.create_error_monitor(
+    backend_image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+    backend_sa_email=backend_service_account.email,
+)
 
 # ==================== Monitoring ====================
 
@@ -668,3 +677,9 @@ pulumi.export("backup_function_url", backup_resources["function"].url)
 pulumi.export("backup_staging_bucket", backup_resources["staging_bucket"].name)
 pulumi.export("backup_scheduler_name", backup_resources["scheduler"].name)
 pulumi.export("backup_service_account", backup_resources["service_account"].email)
+
+# Error Monitor
+pulumi.export("error_monitor_job_name", error_monitor_resources["job"].name)
+pulumi.export("error_monitor_scheduler_sa", error_monitor_resources["scheduler_sa"].email)
+pulumi.export("error_monitor_scheduler_name", error_monitor_resources["monitor_scheduler"].name)
+pulumi.export("error_monitor_digest_scheduler_name", error_monitor_resources["digest_scheduler"].name)

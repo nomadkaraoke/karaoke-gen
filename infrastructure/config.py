@@ -133,3 +133,15 @@ class EncodingWorkerConfig:
     FUNCTION_NAME = "encoding-worker-idle-shutdown"
     FUNCTION_MEMORY = "256M"
     FUNCTION_TIMEOUT = 120  # 2 minutes
+
+
+class ErrorMonitorConfig:
+    """Configuration for the error monitor Cloud Run Job."""
+    JOB_NAME = "nomad-error-monitor"
+    MEMORY = "512Mi"
+    CPU = "1"
+    TIMEOUT = "300s"
+    MAX_RETRIES = 0
+    MONITOR_SCHEDULE = "*/15 * * * *"  # Every 15 minutes UTC
+    DIGEST_SCHEDULE = "0 8 * * *"  # 08:00 UTC daily
+    SCHEDULER_SA_NAME = "error-monitor-scheduler"

@@ -120,6 +120,14 @@ def grant_backend_permissions(
         member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
+    # Cloud Logging Viewer - error monitor reads Cloud Logging for error detection
+    bindings["logging_viewer"] = gcp.projects.IAMMember(
+        "karaoke-backend-logging-viewer",
+        project=PROJECT_ID,
+        role="roles/logging.viewer",
+        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     return bindings
 
 
