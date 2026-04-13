@@ -36,6 +36,21 @@
     Uses immutable deployment pattern - see infrastructure/encoding-worker/README.md.
 ```
 
+### Error Monitor
+
+```text
+Cloud Logging (all services) ──→ Error Monitor (Cloud Run Job, */15 min)
+                                    │
+                                    ├─ Normalize & deduplicate
+                                    ├─ LLM incident grouping (Gemini Flash)
+                                    ├─ Discord alerts (new patterns, spikes, daily digest)
+                                    ├─ Firestore: error_patterns, error_incidents
+                                    └─ Auto-resolve silent patterns
+
+Entry point: python -m backend.services.error_monitor.monitor
+Design spec: docs/archive/2026-04-12-error-monitor-design.md
+```
+
 ## Processing Pipeline
 
 ```text

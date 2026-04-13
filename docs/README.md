@@ -38,6 +38,7 @@
 | **Review reminder & auto-expiry** | Working (24h reminder, 48h cancel + refund) |
 | **i18n / Multilingual (frontend)** | Working (next-intl, en/es/de, 1062 strings, [locale] routing) |
 | **Referral system** | Working (referral links with configurable discounts, 20% cash kickback via Stripe Connect, auto-payout at $20) |
+| **Error monitor** | New (Cloud Run Job every 15 min — log collection, normalization, LLM dedup/grouping, Discord alerts, auto-resolution, daily digest) |
 
 ## Known Issues
 
