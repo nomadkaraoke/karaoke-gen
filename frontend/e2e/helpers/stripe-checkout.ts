@@ -47,25 +47,37 @@ function getCardDetailsFromEnv(): CardDetails {
 export async function completeStripeCheckout(page: Page): Promise<void> {
   const card = getCardDetailsFromEnv();
 
-  // Step 1: Wait for Stripe Checkout page to load
+  // Step 1: Wait for Stripe Checkout page to fully load
   console.log('  Waiting for Stripe Checkout page...');
   await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
-  // Wait for the payment method heading to appear (indicates page is interactive)
-  await page.getByRole('heading', { name: /payment method/i }).waitFor({
+  // Wait for the page to be fully interactive — look for the "Pay" button
+  // which is one of the last elements to render
+  await page.getByRole('button', { name: /^Pay$/i }).waitFor({
     state: 'visible',
     timeout: 30_000,
   });
   await page.screenshot({ path: 'test-results/stripe-checkout-loaded.png' });
   console.log('  Stripe Checkout loaded');
 
-  // Step 2: Select "Card" payment method
-  // Stripe uses an accordion-style UI. The radio input is covered by a button
-  // element, so we must click the button (not the radio) to avoid interception.
-  console.log('  Selecting Card payment method...');
-  const cardButton = page.locator('[data-testid="card-accordion-item-button"], button[aria-label="Pay with card"]').first();
-  await cardButton.waitFor({ state: 'visible', timeout: 10_000 });
-  await cardButton.click();
-  console.log('  Card payment method selected');
+  // Step 2: Select "Card" payment method if not already selected
+  // Stripe uses an accordion — Card may already be expanded (default).
+  // Check if card fields are visible; if not, click to expand Card.
+  console.log('  Checking Card payment method...');
+  const cardRadio = page.getByRole('radio', { name: 'Card' });
+  const isCardChecked = await cardRadio.isChecked().catch(() => false);
+  if (isCardChecked) {
+    console.log('  Card already selected (default)');
+  } else {
+    // Click the accordion button to expand Card section
+    const cardAccordion = page.locator('button[aria-label="Pay with card"]').first();
+    if (await cardAccordion.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await cardAccordion.click();
+    } else {
+      // Try clicking the radio label area
+      await page.getByText('Card', { exact: true }).first().click();
+    }
+    console.log('  Card payment method selected');
+  }
 
   // Wait for card input fields to appear after selecting Card
   // Stripe renders card fields inside iframes after the radio is clicked
