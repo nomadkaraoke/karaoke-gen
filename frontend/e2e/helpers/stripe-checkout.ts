@@ -101,41 +101,81 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
     }
   }
 
-  // Stripe Checkout may show payment method tabs (Card, Cash App, Klarna, etc.)
-  // Click "Card" to reveal the card input fields
-  const cardTab = page.locator('[data-testid="card-tab"], button:has-text("Card"), label:has-text("Card")').first();
-  if (await cardTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await cardTab.click();
-    console.log('  Selected "Card" payment method');
-    await page.waitForTimeout(1000); // Wait for card fields to appear
+  // Stripe Checkout shows payment method options (Card, Cash App, Klarna, etc.)
+  // as radio buttons. Click "Card" to reveal the card input fields.
+  // Try multiple selector strategies since Stripe's DOM changes frequently.
+  const cardSelectors = [
+    'text="Card"',                                    // Exact text match
+    '[data-testid*="CARD" i]',                       // data-testid containing CARD
+    '#payment-method-card',                           // ID-based
+    'div[role="radio"]:has-text("Card")',             // Radio role with Card text
+    'label:has-text("Card")',                         // Label containing Card
+  ];
+  let cardClicked = false;
+  for (const sel of cardSelectors) {
+    const el = page.locator(sel).first();
+    if (await el.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await el.click();
+      console.log(`  Selected "Card" payment method (selector: ${sel})`);
+      cardClicked = true;
+      break;
+    }
   }
+  if (!cardClicked) {
+    console.log('  WARNING: Could not find Card payment method selector — card fields may already be visible');
+  }
+  // Wait for card fields to render after selection
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: 'test-results/stripe-card-selected.png' });
 
-  // Fill card number
+  // Fill card number — Stripe may use direct inputs or iframe-embedded inputs
   console.log('  Filling card number...');
-  await fillStripeField(
-    page,
-    'iframe[title*="card number" i], iframe[name*="cardNumber" i]',
-    'input[name="cardnumber"], input[name="number"], input[autocomplete="cc-number"]',
-    card.number,
-  );
+  // First check if Stripe uses a single unified card input (newer Checkout versions)
+  const cardNumberInput = page.locator('#cardNumber, [data-elements-stable-field-name="cardNumber"], input[name="cardNumber"]').first();
+  if (await cardNumberInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+    console.log('  Found direct card number input');
+    await cardNumberInput.click();
+    await cardNumberInput.type(card.number, { delay: 50 });
+  } else {
+    // Fall back to iframe-based card input
+    console.log('  Trying iframe-based card input...');
+    await fillStripeField(
+      page,
+      'iframe[title*="card number" i], iframe[name*="cardNumber" i], iframe[title*="Secure card" i]',
+      'input[name="cardnumber"], input[name="number"], input[autocomplete="cc-number"]',
+      card.number,
+    );
+  }
 
   // Fill expiry
   console.log('  Filling card expiry...');
-  await fillStripeField(
-    page,
-    'iframe[title*="expir" i], iframe[name*="cardExpiry" i]',
-    'input[name="exp-date"], input[name="expiry"], input[autocomplete="cc-exp"]',
-    card.expiry,
-  );
+  const expiryInput = page.locator('#cardExpiry, [data-elements-stable-field-name="cardExpiry"], input[name="cardExpiry"]').first();
+  if (await expiryInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await expiryInput.click();
+    await expiryInput.type(card.expiry, { delay: 50 });
+  } else {
+    await fillStripeField(
+      page,
+      'iframe[title*="expir" i], iframe[name*="cardExpiry" i], iframe[title*="Secure card" i]',
+      'input[name="exp-date"], input[name="expiry"], input[autocomplete="cc-exp"]',
+      card.expiry,
+    );
+  }
 
   // Fill CVC
   console.log('  Filling CVC...');
-  await fillStripeField(
-    page,
-    'iframe[title*="cvc" i], iframe[title*="security" i], iframe[name*="cardCvc" i]',
-    'input[name="cvc"], input[autocomplete="cc-csc"]',
-    card.cvc,
-  );
+  const cvcInput = page.locator('#cardCvc, [data-elements-stable-field-name="cardCvc"], input[name="cardCvc"]').first();
+  if (await cvcInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await cvcInput.click();
+    await cvcInput.type(card.cvc, { delay: 50 });
+  } else {
+    await fillStripeField(
+      page,
+      'iframe[title*="cvc" i], iframe[title*="security" i], iframe[name*="cardCvc" i]',
+      'input[name="cvc"], input[autocomplete="cc-csc"]',
+      card.cvc,
+    );
+  }
 
   // Fill cardholder name if field exists and name is provided
   if (card.name) {
