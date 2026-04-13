@@ -149,9 +149,8 @@ test.describe('Real Credit Purchase Flow', () => {
         console.log(`    Button ${i}: "${txt?.replace(/\s+/g, ' ').trim().substring(0, 80)}"`);
       }
 
-      // Select the 1-credit package — it's the first in the 2-column grid,
-      // and its text starts with "1" followed by "credit" (singular)
-      const oneCredit = creditsDialog.locator('button').filter({ hasText: /^1\s/m }).first();
+      // Select the 1-credit package — first button in the 2-column grid
+      const oneCredit = packageButtons.first();
       await oneCredit.click();
       await page.screenshot({ path: 'test-results/05-package-selected.png' });
       console.log('  Selected 1-credit package');
