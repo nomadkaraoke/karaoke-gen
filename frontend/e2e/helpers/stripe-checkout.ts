@@ -95,6 +95,22 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
     }
   }
 
+  // Step 6b: Fill ZIP code (required for US cards)
+  const zipInput = page.locator('#billingPostalCode, input[name="billingPostalCode"], input[placeholder="ZIP"]');
+  if (await zipInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+    console.log('  Filling ZIP code...');
+    await zipInput.fill(process.env.E2E_STRIPE_ZIP || '10001');
+  }
+
+  // Step 6c: Uncheck "Save my information" to avoid phone number requirement
+  const saveCheckbox = page.getByRole('checkbox', { name: /save my information/i });
+  if (await saveCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await saveCheckbox.isChecked()) {
+      console.log('  Unchecking "Save my information"...');
+      await saveCheckbox.uncheck({ force: true });
+    }
+  }
+
   await page.screenshot({ path: 'test-results/stripe-checkout-filled.png' });
   console.log('  Card details filled');
 
