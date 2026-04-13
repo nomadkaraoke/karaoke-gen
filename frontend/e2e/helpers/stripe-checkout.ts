@@ -93,13 +93,21 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
   // Fill email if Stripe asks for it (sometimes pre-filled from session)
   const emailInput = page.locator('#email');
   if (await emailInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-    // Email should be pre-filled from checkout session, but clear and re-enter if empty
     const currentEmail = await emailInput.inputValue();
     if (!currentEmail) {
       console.log('  Stripe email field is empty — cannot fill without knowing email');
     } else {
       console.log(`  Stripe email pre-filled: ${currentEmail}`);
     }
+  }
+
+  // Stripe Checkout may show payment method tabs (Card, Cash App, Klarna, etc.)
+  // Click "Card" to reveal the card input fields
+  const cardTab = page.locator('[data-testid="card-tab"], button:has-text("Card"), label:has-text("Card")').first();
+  if (await cardTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await cardTab.click();
+    console.log('  Selected "Card" payment method');
+    await page.waitForTimeout(1000); // Wait for card fields to appear
   }
 
   // Fill card number

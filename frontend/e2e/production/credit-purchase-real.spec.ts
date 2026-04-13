@@ -139,9 +139,19 @@ test.describe('Real Credit Purchase Flow', () => {
       // ===== STEP 4: Select 1-credit package =====
       console.log('\n=== STEP 4: Select 1-credit package ===');
 
-      // Click the 1-credit package button
-      // Packages are buttons within the dialog showing credit counts
-      const oneCredit = creditsDialog.getByRole('button').filter({ hasText: /\b1\b/ }).filter({ hasText: /credit/i }).first();
+      // The packages grid has buttons with large credit-count numbers.
+      // Find all package buttons and log them for debugging.
+      const packageButtons = creditsDialog.locator('button').filter({ hasText: /credit/i });
+      const btnCount = await packageButtons.count();
+      console.log(`  Found ${btnCount} package buttons`);
+      for (let i = 0; i < Math.min(btnCount, 4); i++) {
+        const txt = await packageButtons.nth(i).textContent();
+        console.log(`    Button ${i}: "${txt?.replace(/\s+/g, ' ').trim().substring(0, 80)}"`);
+      }
+
+      // Select the 1-credit package — it's the first in the 2-column grid,
+      // and its text starts with "1" followed by "credit" (singular)
+      const oneCredit = creditsDialog.locator('button').filter({ hasText: /^1\s/m }).first();
       await oneCredit.click();
       await page.screenshot({ path: 'test-results/05-package-selected.png' });
       console.log('  Selected 1-credit package');
