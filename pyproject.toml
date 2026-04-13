@@ -94,6 +94,7 @@ google-cloud-secret-manager = "2.26.0"
 google-cloud-monitoring = "2.29.1"  # Cloud Monitoring for YouTube API quota metrics
 google-cloud-tasks = "2.21.0"  # Cloud Tasks for worker coordination (Phase 1 scalability)
 google-cloud-run = "0.15.0"  # Cloud Run Jobs for long-running video encoding (Phase 2 scalability)
+google-cloud-logging = ">=3.9.0"  # Cloud Logging for error monitoring
 python-dotenv = ">=1.0.0"
 pydub = ">=0.25.1"
 # Payment and email services
