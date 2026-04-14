@@ -71,7 +71,7 @@ describe('FlyerExport', () => {
       await exportFlyerPng(mockElement, 'test.png');
 
       const { toPng } = require('html-to-image');
-      expect(toPng).toHaveBeenCalledWith(mockElement, { pixelRatio: 2 });
+      expect(toPng).toHaveBeenCalledWith(mockElement, { pixelRatio: 2, width: 816, height: 1056 });
       expect(mockClick).toHaveBeenCalled();
 
       jest.restoreAllMocks();
