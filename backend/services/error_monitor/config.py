@@ -31,6 +31,14 @@ MONITORED_CLOUD_RUN_SERVICES: list[str] = [
     "karaoke-backend",
     "karaoke-decide",
     "audio-separator",
+    # Gen2 Cloud Functions appear as Cloud Run services in logs
+    "gdrive-validator",
+    "github-runner-manager",
+    "backup-to-aws",
+    "divebar-mirror",
+    "kn-data-sync",
+    "divebar-lookup",
+    "encoding-worker-idle-shutdown",
 ]
 
 MONITORED_CLOUD_RUN_JOBS: list[str] = [
@@ -40,15 +48,9 @@ MONITORED_CLOUD_RUN_JOBS: list[str] = [
     "audio-download-job",
 ]
 
-MONITORED_CLOUD_FUNCTIONS: list[str] = [
-    "gdrive-validator",
-    "runner_manager",
-    "backup_to_aws",
-    "divebar_mirror",
-    "kn_data_sync",
-    "divebar_lookup",
-    "encoding_worker_idle",
-]
+# Gen2 Cloud Functions log as cloud_run_revision, not cloud_function.
+# Their names are in MONITORED_CLOUD_RUN_SERVICES above.
+MONITORED_CLOUD_FUNCTIONS: list[str] = []
 
 MONITORED_GCE_INSTANCES: list[str] = [
     "encoding-worker-a",
