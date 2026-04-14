@@ -310,7 +310,7 @@ class ErrorMonitorDiscord:
         try:
             response = requests.post(
                 self.webhook_url,
-                json={"content": content},
+                json={"content": content, "flags": 4},  # SUPPRESS_EMBEDS
                 timeout=30,
             )
             response.raise_for_status()
