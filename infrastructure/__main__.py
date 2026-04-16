@@ -566,6 +566,8 @@ pulumi.export("firestore_index_gen_users_active_credits", db_resources["firestor
 pulumi.export("firestore_index_gen_users_active_email", db_resources["firestore_index_gen_users_active_email"].name)
 pulumi.export("firestore_field_logs_ttl", db_resources["firestore_field_logs_ttl"].name)
 pulumi.export("firestore_index_logs_worker_timestamp", db_resources["firestore_index_logs_worker_timestamp"].name)
+pulumi.export("firestore_index_gen_users_signup_ip", db_resources["firestore_index_gen_users_signup_ip"].name)
+pulumi.export("firestore_index_gen_users_device_fingerprint", db_resources["firestore_index_gen_users_device_fingerprint"].name)
 
 # Service accounts
 pulumi.export("service_account_email", backend_service_account.email)

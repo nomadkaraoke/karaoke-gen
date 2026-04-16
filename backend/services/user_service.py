@@ -532,6 +532,7 @@ class UserService:
                 self.db.collection(USERS_COLLECTION)
                 .where(filter=FieldFilter("signup_ip", "==", ip_address))
                 .where(filter=FieldFilter("created_at", ">=", cutoff))
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
             )
 
             count = 0
@@ -563,6 +564,7 @@ class UserService:
                 self.db.collection(USERS_COLLECTION)
                 .where(filter=FieldFilter("device_fingerprint", "==", device_fingerprint))
                 .where(filter=FieldFilter("created_at", ">=", cutoff))
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
             )
 
             count = 0

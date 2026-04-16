@@ -131,7 +131,7 @@ class EncodingWorkerConfig:
     IDLE_CHECK_SCHEDULE = "*/5 * * * *"  # Every 5 minutes
     IDLE_TIMEOUT_MINUTES = 15
     FUNCTION_NAME = "encoding-worker-idle-shutdown"
-    FUNCTION_MEMORY = "256M"
+    FUNCTION_MEMORY = "512M"  # Increased from 256M — OOM with gRPC/Firestore/Compute client libs
     FUNCTION_TIMEOUT = 120  # 2 minutes
 
 

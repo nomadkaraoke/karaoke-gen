@@ -279,7 +279,7 @@ class TestIPRateLimiting:
 
         # Simulate 2 matching users
         mock_docs = [MagicMock(), MagicMock()]
-        mock_db.collection.return_value.where.return_value.where.return_value.stream.return_value = mock_docs
+        mock_db.collection.return_value.where.return_value.where.return_value.order_by.return_value.stream.return_value = mock_docs
 
         from backend.services.user_service import UserService
         service = UserService()
@@ -297,7 +297,7 @@ class TestIPRateLimiting:
 
         # 2 signups = rate limited
         mock_docs = [MagicMock(), MagicMock()]
-        mock_db.collection.return_value.where.return_value.where.return_value.stream.return_value = mock_docs
+        mock_db.collection.return_value.where.return_value.where.return_value.order_by.return_value.stream.return_value = mock_docs
 
         from backend.services.user_service import UserService
         service = UserService()
@@ -312,7 +312,7 @@ class TestIPRateLimiting:
         mock_fs.Client.return_value = mock_db
 
         mock_docs = [MagicMock()]
-        mock_db.collection.return_value.where.return_value.where.return_value.stream.return_value = mock_docs
+        mock_db.collection.return_value.where.return_value.where.return_value.order_by.return_value.stream.return_value = mock_docs
 
         from backend.services.user_service import UserService
         service = UserService()
@@ -348,7 +348,7 @@ class TestFingerprintRateLimiting:
         mock_fs.Client.return_value = mock_db
 
         mock_docs = [MagicMock(), MagicMock(), MagicMock()]
-        mock_db.collection.return_value.where.return_value.where.return_value.stream.return_value = mock_docs
+        mock_db.collection.return_value.where.return_value.where.return_value.order_by.return_value.stream.return_value = mock_docs
 
         from backend.services.user_service import UserService
         service = UserService()
@@ -377,7 +377,7 @@ class TestFingerprintRateLimiting:
                 return iter([])  # IP query: 0 results
             return iter([MagicMock(), MagicMock()])  # Fingerprint query: 2 results
 
-        mock_db.collection.return_value.where.return_value.where.return_value.stream = stream_side_effect
+        mock_db.collection.return_value.where.return_value.where.return_value.order_by.return_value.stream = stream_side_effect
 
         from backend.services.user_service import UserService
         service = UserService()
@@ -396,7 +396,7 @@ class TestFingerprintRateLimiting:
         mock_fs.Client.return_value = mock_db
 
         # IP query returns 0
-        mock_db.collection.return_value.where.return_value.where.return_value.stream.return_value = []
+        mock_db.collection.return_value.where.return_value.where.return_value.order_by.return_value.stream.return_value = []
 
         from backend.services.user_service import UserService
         service = UserService()
