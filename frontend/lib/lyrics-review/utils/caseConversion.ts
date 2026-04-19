@@ -36,14 +36,18 @@ export function applyCaseToSegments(
   const perLine = caseType === 'sentence'
   return segments.map((segment) => {
     const transform = (s: string) => convertCase(s, caseType)
+    // For sentence case, find the first word containing a cased letter — so a
+    // leading punctuation-only token doesn't steal the capitalization.
+    const firstCasedIndex = perLine
+      ? segment.words.findIndex((w) => /[A-Za-z]/.test(w.text))
+      : -1
     const newWords = segment.words.map((word, index) => ({
       ...word,
-      text:
-        perLine && index === 0
+      text: perLine
+        ? index === firstCasedIndex
           ? convertCase(word.text, 'sentence')
-          : perLine
-            ? word.text.toLowerCase()
-            : transform(word.text),
+          : word.text.toLowerCase()
+        : transform(word.text),
     }))
     return {
       ...segment,

@@ -133,4 +133,24 @@ describe('applyCaseToSegments', () => {
     applyCaseToSegments(segments, 'upper')
     expect(segments).toEqual(original)
   })
+
+  it('sentence-cases the first cased word even when a punctuation-only token precedes it', () => {
+    const punctSegments: LyricsSegment[] = [
+      {
+        id: 'seg-p',
+        text: '"hello there"',
+        start_time: 0,
+        end_time: 2,
+        words: [
+          { id: 'p1', text: '"', start_time: 0, end_time: 0.1, confidence: 1 },
+          { id: 'p2', text: 'hello', start_time: 0.1, end_time: 1, confidence: 1 },
+          { id: 'p3', text: 'there"', start_time: 1, end_time: 2, confidence: 1 },
+        ],
+      },
+    ]
+    const result = applyCaseToSegments(punctSegments, 'sentence')
+    expect(result[0].words[0].text).toBe('"')
+    expect(result[0].words[1].text).toBe('Hello')
+    expect(result[0].words[2].text).toBe('there"')
+  })
 })
