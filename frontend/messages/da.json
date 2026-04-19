@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Anbefales til tilpassede sangtekster",
         "replaceAllTitle": "Erstat alle sangtekster",
         "replaceAllDesc": "Indsæt helt nye sangtekster fra udklipsholderen og synkroniser timingen manuelt for alle ord fra bunden.",
-        "replaceAllWarning": "Alle eksisterende timingdata vil gå tabt"
+        "replaceAllWarning": "Alle eksisterende timingdata vil gå tabt",
+        "changeCaseDesc": "Konverter hele teksten til STORE BOGSTAVER, små bogstaver, Stort Begyndelsesbogstav eller Sætningsstil. Timingen bevares fuldt ud.",
+        "changeCaseRecommended": "Anbefales for stilmæssig konsistens",
+        "changeCaseTitle": "Skift store/små bogstaver"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Indsæt dine nye sangtekster nedenfor:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Gen-synkroniser eksisterende sangtekster",
         "noLyricsToSync": "Ingen sangtekster at synkronisere",
         "goBackAndPaste": "Gå tilbage og indsæt nye sangtekster, eller luk denne modal.",
-        "backToSelection": "Tilbage til valg"
+        "backToSelection": "Tilbage til valg",
+        "caseLower": "små bogstaver",
+        "caseLowerDesc": "alle bogstaver er små",
+        "caseSentence": "Sætningsstil",
+        "caseSentenceDesc": "Første ord i hver linje med stort",
+        "caseTitle": "Stort Begyndelsesbogstav",
+        "caseTitleDesc": "Alle Ord Med Stort",
+        "caseUpper": "STORE BOGSTAVER",
+        "caseUpperDesc": "ALLE BOGSTAVER MED STORT",
+        "changeCase": "Skift store/små bogstaver",
+        "changeCaseApply": "Anvend {case}",
+        "changeCaseNote": "Ordtimingen bevares fuldt ud — kun store/små bogstaver ændres.",
+        "changeCasePreview": "Forhåndsvisning",
+        "changeCasePrompt": "Vælg en stil for store/små bogstaver, der skal anvendes på hele teksten:"
       },
       "reviewChanges": {
         "previewWithVocals": "Forhåndsvisningsvideo (med vokal)",

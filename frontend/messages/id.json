@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Direkomendasikan untuk lirik kustom",
         "replaceAllTitle": "Ganti Semua Lirik",
         "replaceAllDesc": "Tempel lirik yang benar-benar baru dari clipboard dan sinkronkan waktu secara manual untuk semua kata dari awal.",
-        "replaceAllWarning": "Semua data waktu yang ada akan hilang"
+        "replaceAllWarning": "Semua data waktu yang ada akan hilang",
+        "changeCaseDesc": "Ubah semua lirik menjadi HURUF BESAR, huruf kecil, Huruf Kapital Setiap Kata, atau Huruf kapital awal kalimat. Timing lirik dipertahankan sepenuhnya.",
+        "changeCaseRecommended": "Direkomendasikan untuk konsistensi gaya",
+        "changeCaseTitle": "Ubah Kapitalisasi"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Tempel lirik baru Anda di bawah ini:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Sinkronkan Ulang Lirik yang Ada",
         "noLyricsToSync": "Tidak ada lirik untuk disinkronkan",
         "goBackAndPaste": "Kembali dan tempel lirik baru, atau tutup modal ini.",
-        "backToSelection": "Kembali ke Pilihan"
+        "backToSelection": "Kembali ke Pilihan",
+        "caseLower": "huruf kecil",
+        "caseLowerDesc": "semua huruf kecil",
+        "caseSentence": "Huruf kapital awal kalimat",
+        "caseSentenceDesc": "Kata pertama pada setiap baris menggunakan huruf kapital",
+        "caseTitle": "Huruf Kapital Setiap Kata",
+        "caseTitleDesc": "Setiap Kata Diawali Huruf Kapital",
+        "caseUpper": "HURUF BESAR",
+        "caseUpperDesc": "SEMUA HURUF BESAR",
+        "changeCase": "Ubah Kapitalisasi",
+        "changeCaseApply": "Terapkan {case}",
+        "changeCaseNote": "Timing kata dipertahankan sepenuhnya — hanya kapitalisasi huruf yang berubah.",
+        "changeCasePreview": "Pratinjau",
+        "changeCasePrompt": "Pilih gaya kapitalisasi untuk diterapkan ke semua lirik:"
       },
       "reviewChanges": {
         "previewWithVocals": "Pratinjau Video (Dengan Vokal)",

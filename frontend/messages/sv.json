@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Rekommenderas för anpassad text",
         "replaceAllTitle": "Ersätt all text",
         "replaceAllDesc": "Klistra in helt ny text från urklipp och synkronisera tajmingen manuellt för alla ord från början.",
-        "replaceAllWarning": "All befintlig tajmingdata kommer att gå förlorad"
+        "replaceAllWarning": "All befintlig tajmingdata kommer att gå förlorad",
+        "changeCaseDesc": "Konvertera all sångtext till VERSALER, gemener, Versal på varje ord eller Inledande versal. Tidsynkningen bevaras helt.",
+        "changeCaseRecommended": "Rekommenderas för enhetlig stil",
+        "changeCaseTitle": "Ändra skiftläge"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Klistra in din nya text nedan:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Synkronisera om befintlig text",
         "noLyricsToSync": "Ingen text att synkronisera",
         "goBackAndPaste": "Gå tillbaka och klistra in ny text, eller stäng denna modal.",
-        "backToSelection": "Tillbaka till val"
+        "backToSelection": "Tillbaka till val",
+        "caseLower": "gemener",
+        "caseLowerDesc": "endast små bokstäver",
+        "caseSentence": "Inledande versal",
+        "caseSentenceDesc": "Första ordet på varje rad får stor bokstav",
+        "caseTitle": "Versal på varje ord",
+        "caseTitleDesc": "Varje Ord Får Stor Bokstav",
+        "caseUpper": "VERSALER",
+        "caseUpperDesc": "ENDAST STORA BOKSTÄVER",
+        "changeCase": "Ändra skiftläge",
+        "changeCaseApply": "Tillämpa {case}",
+        "changeCaseNote": "Ordens tidsynkning bevaras helt — endast skiftläget ändras.",
+        "changeCasePreview": "Förhandsgranska",
+        "changeCasePrompt": "Välj ett skiftläge att tillämpa på all sångtext:"
       },
       "reviewChanges": {
         "previewWithVocals": "Förhandsgranska video (med sång)",

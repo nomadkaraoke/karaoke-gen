@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Ajánlott egyedi dalszövegekhez",
         "replaceAllTitle": "Összes dalszöveg cseréje",
         "replaceAllDesc": "Illessz be teljesen új dalszöveget a vágólapról, és szinkronizáld manuálisan az összes szó időzítését a nulláról.",
-        "replaceAllWarning": "Minden meglévő időzítési adat elvész"
+        "replaceAllWarning": "Minden meglévő időzítési adat elvész",
+        "changeCaseDesc": "Alakítsd át az összes dalszöveget NAGYBETŰSRE, kisbetűsre, Cím szerinti nagybetűsre vagy Mondatkezdő nagybetűsre. Az időzítés teljesen megmarad.",
+        "changeCaseRecommended": "Az egységes stílus érdekében ajánlott",
+        "changeCaseTitle": "Kis- és nagybetűk módosítása"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Illeszd be az új dalszöveget alább:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Meglévő dalszöveg újraszinkronizálása",
         "noLyricsToSync": "Nincs szinkronizálandó dalszöveg",
         "goBackAndPaste": "Menj vissza és illessz be új dalszöveget, vagy zárd be ezt a modálist.",
-        "backToSelection": "Vissza a kiválasztáshoz"
+        "backToSelection": "Vissza a kiválasztáshoz",
+        "caseLower": "kisbetűs",
+        "caseLowerDesc": "minden betű kisbetű",
+        "caseSentence": "Mondatkezdő nagybetűs",
+        "caseSentenceDesc": "Minden sor első szava nagybetűs",
+        "caseTitle": "Cím szerinti nagybetűs",
+        "caseTitleDesc": "Minden Szó Nagybetűvel Kezdődik",
+        "caseUpper": "NAGYBETŰS",
+        "caseUpperDesc": "MINDEN BETŰ NAGYBETŰ",
+        "changeCase": "Kis- és nagybetűk módosítása",
+        "changeCaseApply": "{case} alkalmazása",
+        "changeCaseNote": "A szavak időzítése teljesen megmarad — csak a kis- és nagybetűk változnak.",
+        "changeCasePreview": "Előnézet",
+        "changeCasePrompt": "Válassz egy betűstílust, amit az összes dalszövegre alkalmazni szeretnél:"
       },
       "reviewChanges": {
         "previewWithVocals": "Előnézeti videó (Énekkel)",

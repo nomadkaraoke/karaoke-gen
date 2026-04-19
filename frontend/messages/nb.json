@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Anbefales for egendefinert tekst",
         "replaceAllTitle": "Erstatt all tekst",
         "replaceAllDesc": "Lim inn helt ny tekst fra utklippstavlen og synkroniser timingen manuelt for alle ord fra bunnen av.",
-        "replaceAllWarning": "Alle eksisterende timingdata vil gå tapt"
+        "replaceAllWarning": "Alle eksisterende timingdata vil gå tapt",
+        "changeCaseDesc": "Konverter all tekst til STORE BOKSTAVER, små bokstaver, Store Forbokstaver eller Setningsstil. Synkroniseringen bevares fullstendig.",
+        "changeCaseRecommended": "Anbefales for en konsekvent stil",
+        "changeCaseTitle": "Endre store/små bokstaver"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Lim inn din nye tekst nedenfor:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Synkroniser eksisterende tekst på nytt",
         "noLyricsToSync": "Ingen tekst å synkronisere",
         "goBackAndPaste": "Gå tilbake og lim inn ny tekst, eller lukk denne modulen.",
-        "backToSelection": "Tilbake til valg"
+        "backToSelection": "Tilbake til valg",
+        "caseLower": "små bokstaver",
+        "caseLowerDesc": "alle bokstaver er små",
+        "caseSentence": "Setningsstil",
+        "caseSentenceDesc": "Første ord i hver linje har stor forbokstav",
+        "caseTitle": "Store Forbokstaver",
+        "caseTitleDesc": "Hvert Ord Har Stor Forbokstav",
+        "caseUpper": "STORE BOKSTAVER",
+        "caseUpperDesc": "ALLE BOKSTAVER ER STORE",
+        "changeCase": "Endre store/små bokstaver",
+        "changeCaseApply": "Bruk {case}",
+        "changeCaseNote": "Synkroniseringen av ordene bevares fullstendig — kun store/små bokstaver endres.",
+        "changeCasePreview": "Forhåndsvisning",
+        "changeCasePrompt": "Velg en stil for store/små bokstaver som skal brukes på all tekst:"
       },
       "reviewChanges": {
         "previewWithVocals": "Forhåndsvis video (med vokal)",

@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "कस्टम लिरिक्स के लिए सुझाया गया",
         "replaceAllTitle": "सभी लिरिक्स बदलो",
         "replaceAllDesc": "क्लिपबोर्ड से पूरी तरह से नए लिरिक्स पेस्ट करो और स्क्रैच से सभी शब्दों के लिए मैन्युअल रूप से टाइमिंग सिंक करो।",
-        "replaceAllWarning": "सभी मौजूदा टाइमिंग डेटा खो जाएगा"
+        "replaceAllWarning": "सभी मौजूदा टाइमिंग डेटा खो जाएगा",
+        "changeCaseDesc": "सभी लिरिक्स को UPPERCASE, lowercase, Title Case, या Sentence case में बदलो। टाइमिंग पूरी तरह से बरकरार रहती है।",
+        "changeCaseRecommended": "स्टाइल की एकरूपता के लिए अनुशंसित",
+        "changeCaseTitle": "केस बदलो"
       },
       "replaceAllLyrics": {
         "pastePrompt": "अपने नए लिरिक्स नीचे पेस्ट करो:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "मौजूदा लिरिक्स को फिर से सिंक करो",
         "noLyricsToSync": "सिंक करने के लिए कोई लिरिक्स नहीं",
         "goBackAndPaste": "वापस जाओ और नए लिरिक्स पेस्ट करो, या इस मोडल को बंद करो।",
-        "backToSelection": "सिलेक्शन पर वापस जाओ"
+        "backToSelection": "सिलेक्शन पर वापस जाओ",
+        "caseLower": "lowercase",
+        "caseLowerDesc": "सभी अक्षर छोटे",
+        "caseSentence": "Sentence case",
+        "caseSentenceDesc": "हर लाइन का पहला शब्द बड़ा",
+        "caseTitle": "Title Case",
+        "caseTitleDesc": "हर शब्द का पहला अक्षर बड़ा",
+        "caseUpper": "UPPERCASE",
+        "caseUpperDesc": "सभी अक्षर बड़े",
+        "changeCase": "केस बदलो",
+        "changeCaseApply": "{case} लागू करो",
+        "changeCaseNote": "शब्दों की टाइमिंग पूरी तरह बरकरार रहती है — सिर्फ अक्षरों का केस बदलता है।",
+        "changeCasePreview": "प्रीव्यू",
+        "changeCasePrompt": "सभी लिरिक्स पर लागू करने के लिए एक केस स्टाइल चुनो:"
       },
       "reviewChanges": {
         "previewWithVocals": "प्रीव्यू वीडियो (वोकल्स के साथ)",

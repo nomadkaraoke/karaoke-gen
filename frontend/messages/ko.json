@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "맞춤 가사에 권장됨",
         "replaceAllTitle": "모든 가사 교체",
         "replaceAllDesc": "클립보드에서 완전히 새로운 가사를 붙여넣고 처음부터 모든 단어의 타이밍을 수동으로 맞춥니다.",
-        "replaceAllWarning": "모든 기존 타이밍 데이터가 손실됩니다"
+        "replaceAllWarning": "모든 기존 타이밍 데이터가 손실됩니다",
+        "changeCaseDesc": "모든 가사를 대문자, 소문자, 단어 첫 글자 대문자 또는 문장 첫 글자 대문자로 변환합니다. 타이밍은 완벽하게 유지됩니다.",
+        "changeCaseRecommended": "스타일 일관성을 위해 권장합니다",
+        "changeCaseTitle": "대소문자 변경"
       },
       "replaceAllLyrics": {
         "pastePrompt": "아래에 새 가사를 붙여넣으세요:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "기존 가사 재싱크",
         "noLyricsToSync": "싱크를 맞출 가사가 없습니다",
         "goBackAndPaste": "뒤로 돌아가서 새 가사를 붙여넣거나 이 모달을 닫으세요.",
-        "backToSelection": "선택으로 돌아가기"
+        "backToSelection": "선택으로 돌아가기",
+        "caseLower": "소문자",
+        "caseLowerDesc": "모든 글자를 소문자로",
+        "caseSentence": "문장 첫 글자 대문자",
+        "caseSentenceDesc": "각 줄의 첫 단어만 대문자로",
+        "caseTitle": "단어 첫 글자 대문자",
+        "caseTitleDesc": "모든 단어의 첫 글자를 대문자로",
+        "caseUpper": "대문자",
+        "caseUpperDesc": "모든 글자를 대문자로",
+        "changeCase": "대소문자 변경",
+        "changeCaseApply": "{case} 적용",
+        "changeCaseNote": "단어 타이밍은 완벽하게 유지되며 대소문자만 변경됩니다.",
+        "changeCasePreview": "미리보기",
+        "changeCasePrompt": "모든 가사에 적용할 대소문자 스타일을 선택하세요:"
       },
       "reviewChanges": {
         "previewWithVocals": "비디오 미리보기 (보컬 포함)",

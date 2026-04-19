@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "推荐用于自定义歌词",
         "replaceAllTitle": "替换所有歌词",
         "replaceAllDesc": "从剪贴板粘贴全新的歌词，并从头开始手动同步所有单词的时间。",
-        "replaceAllWarning": "所有现有的时间同步数据都将丢失"
+        "replaceAllWarning": "所有现有的时间同步数据都将丢失",
+        "changeCaseDesc": "将所有歌词转换为大写、小写、首字母大写或句首大写。时间轴将完全保留。",
+        "changeCaseRecommended": "推荐用于保持样式一致",
+        "changeCaseTitle": "更改大小写"
       },
       "replaceAllLyrics": {
         "pastePrompt": "在下方粘贴您的新歌词：",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "重新同步现有歌词",
         "noLyricsToSync": "没有要同步的歌词",
         "goBackAndPaste": "返回并粘贴新歌词，或关闭此模态框。",
-        "backToSelection": "返回选择"
+        "backToSelection": "返回选择",
+        "caseLower": "小写",
+        "caseLowerDesc": "所有字母小写",
+        "caseSentence": "句首大写",
+        "caseSentenceDesc": "每行第一个单词大写",
+        "caseTitle": "首字母大写",
+        "caseTitleDesc": "每个单词首字母大写",
+        "caseUpper": "大写",
+        "caseUpperDesc": "所有字母大写",
+        "changeCase": "更改大小写",
+        "changeCaseApply": "应用{case}",
+        "changeCaseNote": "单词时间轴将完全保留 — 仅更改字母大小写。",
+        "changeCasePreview": "预览",
+        "changeCasePrompt": "选择要应用于所有歌词的大小写样式："
       },
       "reviewChanges": {
         "previewWithVocals": "预览视频（带人声）",

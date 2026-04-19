@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Empfohlen für eigenen Text",
         "replaceAllTitle": "Gesamten Text ersetzen",
         "replaceAllDesc": "Füge komplett neuen Text aus der Zwischenablage ein und synchronisiere das Timing für alle Wörter manuell von Grund auf neu.",
-        "replaceAllWarning": "Alle bestehenden Timing-Daten gehen verloren"
+        "replaceAllWarning": "Alle bestehenden Timing-Daten gehen verloren",
+        "changeCaseDesc": "Konvertiere den gesamten Text in GROSSBUCHSTABEN, Kleinbuchstaben, Wortanfang groß oder Satzanfang groß. Das Timing bleibt vollständig erhalten.",
+        "changeCaseRecommended": "Empfohlen für einen einheitlichen Stil",
+        "changeCaseTitle": "Groß-/Kleinschreibung ändern"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Füge deinen neuen Text unten ein:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Bestehenden Text neu synchronisieren",
         "noLyricsToSync": "Kein Text zum Synchronisieren",
         "goBackAndPaste": "Gehe zurück und füge neuen Text ein, oder schließe dieses Modal.",
-        "backToSelection": "Zurück zur Auswahl"
+        "backToSelection": "Zurück zur Auswahl",
+        "caseLower": "Kleinbuchstaben",
+        "caseLowerDesc": "alle Buchstaben klein",
+        "caseSentence": "Satzanfang groß",
+        "caseSentenceDesc": "Erstes Wort jeder Zeile großgeschrieben",
+        "caseTitle": "Wortanfang groß",
+        "caseTitleDesc": "Jedes Wort großgeschrieben",
+        "caseUpper": "GROSSBUCHSTABEN",
+        "caseUpperDesc": "ALLE BUCHSTABEN GROSSGESCHRIEBEN",
+        "changeCase": "Groß-/Kleinschreibung ändern",
+        "changeCaseApply": "{case} anwenden",
+        "changeCaseNote": "Das Wort-Timing bleibt vollständig erhalten — nur die Groß-/Kleinschreibung ändert sich.",
+        "changeCasePreview": "Vorschau",
+        "changeCasePrompt": "Wähle einen Stil für die Groß-/Kleinschreibung, der auf den gesamten Text angewendet werden soll:"
       },
       "reviewChanges": {
         "previewWithVocals": "Vorschau-Video (Mit Gesang)",

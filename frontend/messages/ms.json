@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Disyorkan untuk lirik tersuai",
         "replaceAllTitle": "Ganti Semua Lirik",
         "replaceAllDesc": "Tampal lirik baharu sepenuhnya dari papan keratan dan segerakkan pemasaan secara manual untuk semua perkataan dari awal.",
-        "replaceAllWarning": "Semua data pemasaan sedia ada akan hilang"
+        "replaceAllWarning": "Semua data pemasaan sedia ada akan hilang",
+        "changeCaseDesc": "Tukar semua lirik kepada HURUF BESAR, huruf kecil, Kes Tajuk, atau Kes ayat. Pemasaan dikekalkan sepenuhnya.",
+        "changeCaseRecommended": "Disyorkan untuk konsistensi gaya",
+        "changeCaseTitle": "Tukar Kes Huruf"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Tampal lirik baharu anda di bawah:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Segerakkan Semula Lirik Sedia Ada",
         "noLyricsToSync": "Tiada lirik untuk disegerakkan",
         "goBackAndPaste": "Kembali dan tampal lirik baharu, atau tutup modal ini.",
-        "backToSelection": "Kembali ke Pilihan"
+        "backToSelection": "Kembali ke Pilihan",
+        "caseLower": "huruf kecil",
+        "caseLowerDesc": "semua huruf kecil",
+        "caseSentence": "Kes ayat",
+        "caseSentenceDesc": "Perkataan pertama setiap baris berhuruf besar",
+        "caseTitle": "Kes Tajuk",
+        "caseTitleDesc": "Setiap Perkataan Berhuruf Besar",
+        "caseUpper": "HURUF BESAR",
+        "caseUpperDesc": "SEMUA HURUF BESAR",
+        "changeCase": "Tukar Kes Huruf",
+        "changeCaseApply": "Gunakan {case}",
+        "changeCaseNote": "Pemasaan perkataan dikekalkan sepenuhnya — hanya kes huruf yang berubah.",
+        "changeCasePreview": "Pratonton",
+        "changeCasePrompt": "Pilih gaya kes huruf untuk digunakan pada semua lirik:"
       },
       "reviewChanges": {
         "previewWithVocals": "Video Pratonton (Dengan Vokal)",

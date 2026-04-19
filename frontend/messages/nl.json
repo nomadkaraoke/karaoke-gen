@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Aanbevolen voor aangepaste songteksten",
         "replaceAllTitle": "Vervang alle songteksten",
         "replaceAllDesc": "Plak compleet nieuwe songteksten van het klembord en synchroniseer de timing voor alle woorden handmatig vanaf nul.",
-        "replaceAllWarning": "Alle bestaande timinggegevens gaan verloren"
+        "replaceAllWarning": "Alle bestaande timinggegevens gaan verloren",
+        "changeCaseDesc": "Zet alle songteksten om naar HOOFDLETTERS, kleine letters, Beginhoofdletters of een Hoofdletter per zin. De timing blijft volledig behouden.",
+        "changeCaseRecommended": "Aanbevolen voor stijlconsistentie",
+        "changeCaseTitle": "Hoofdlettergebruik wijzigen"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Plak je nieuwe songteksten hieronder:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Bestaande songteksten opnieuw synchroniseren",
         "noLyricsToSync": "Geen songteksten om te synchroniseren",
         "goBackAndPaste": "Ga terug en plak nieuwe songteksten, of sluit deze modal.",
-        "backToSelection": "Terug naar selectie"
+        "backToSelection": "Terug naar selectie",
+        "caseLower": "kleine letters",
+        "caseLowerDesc": "alle letters klein",
+        "caseSentence": "Hoofdletter per zin",
+        "caseSentenceDesc": "Eerste woord van elke regel met een hoofdletter",
+        "caseTitle": "Beginhoofdletters",
+        "caseTitleDesc": "Elk Woord Met Een Hoofdletter",
+        "caseUpper": "HOOFDLETTERS",
+        "caseUpperDesc": "ALLE LETTERS ALS HOOFDLETTER",
+        "changeCase": "Hoofdlettergebruik wijzigen",
+        "changeCaseApply": "{case} toepassen",
+        "changeCaseNote": "De timing van de woorden blijft volledig behouden — alleen het hoofdlettergebruik verandert.",
+        "changeCasePreview": "Voorbeeld",
+        "changeCasePrompt": "Kies een stijl voor het hoofdlettergebruik om toe te passen op alle songteksten:"
       },
       "reviewChanges": {
         "previewWithVocals": "Voorbeeldvideo (met zang)",

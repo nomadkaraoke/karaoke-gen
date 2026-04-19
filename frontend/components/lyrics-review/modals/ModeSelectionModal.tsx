@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, ClipboardPaste, TextCursorInput, X } from 'lucide-react'
+import { RefreshCw, ClipboardPaste, TextCursorInput, CaseSensitive, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ModeSelectionModalProps {
@@ -12,6 +12,7 @@ interface ModeSelectionModalProps {
   onSelectReplace: () => void
   onSelectResync: () => void
   onSelectReplaceSegments: () => void
+  onSelectChangeCase: () => void
   hasExistingLyrics: boolean
 }
 
@@ -21,6 +22,7 @@ export default function ModeSelectionModal({
   onSelectReplace,
   onSelectResync,
   onSelectReplaceSegments,
+  onSelectChangeCase,
   hasExistingLyrics,
 }: ModeSelectionModalProps) {
   const t = useTranslations('lyricsReview.modals.modeSelection')
@@ -79,6 +81,28 @@ export default function ModeSelectionModal({
                       {t('replaceSegmentDesc')}
                     </p>
                     <p className="text-xs text-green-500 mt-2">{t('replaceSegmentRecommended')}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Change Case option - only show if there are existing lyrics */}
+            {hasExistingLyrics && (
+              <div
+                className={cn(
+                  'p-4 border rounded-lg cursor-pointer',
+                  'hover:bg-muted/30 hover:border-muted-foreground transition-colors'
+                )}
+                onClick={onSelectChangeCase}
+              >
+                <div className="flex items-start gap-3">
+                  <CaseSensitive className="h-10 w-10 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold">{t('changeCaseTitle')}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t('changeCaseDesc')}
+                    </p>
+                    <p className="text-xs text-green-500 mt-2">{t('changeCaseRecommended')}</p>
                   </div>
                 </div>
               </div>

@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Preporučeno za prilagođeni tekst",
         "replaceAllTitle": "Zamijeni sav tekst",
         "replaceAllDesc": "Zalijepi potpuno novi tekst iz međuspremnika i ručno sinkroniziraj tempiranje za sve riječi ispočetka.",
-        "replaceAllWarning": "Svi postojeći podaci o tempiranju bit će izgubljeni"
+        "replaceAllWarning": "Svi postojeći podaci o tempiranju bit će izgubljeni",
+        "changeCaseDesc": "Pretvori cijeli tekst u VELIKA SLOVA, mala slova, Velika Početna Slova ili Rečenični format. Tajming je u potpunosti sačuvan.",
+        "changeCaseRecommended": "Preporučuje se za dosljednost stila",
+        "changeCaseTitle": "Promijeni veličinu slova"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Zalijepi svoj novi tekst u nastavku:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Ponovno sinkroniziraj postojeći tekst",
         "noLyricsToSync": "Nema teksta za sinkronizaciju",
         "goBackAndPaste": "Vrati se i zalijepi novi tekst ili zatvori ovaj modal.",
-        "backToSelection": "Natrag na odabir"
+        "backToSelection": "Natrag na odabir",
+        "caseLower": "mala slova",
+        "caseLowerDesc": "sva slova mala",
+        "caseSentence": "Rečenični format",
+        "caseSentenceDesc": "Prva riječ svakog retka velikim slovom",
+        "caseTitle": "Velika Početna Slova",
+        "caseTitleDesc": "Svaka Riječ Velikim Slovom",
+        "caseUpper": "VELIKA SLOVA",
+        "caseUpperDesc": "SVA SLOVA VELIKA",
+        "changeCase": "Promijeni veličinu slova",
+        "changeCaseApply": "Primijeni {case}",
+        "changeCaseNote": "Tajming riječi je u potpunosti sačuvan — mijenja se samo veličina slova.",
+        "changeCasePreview": "Pregled",
+        "changeCasePrompt": "Odaberi stil veličine slova za primjenu na cijeli tekst:"
       },
       "reviewChanges": {
         "previewWithVocals": "Pregledni video (s vokalima)",

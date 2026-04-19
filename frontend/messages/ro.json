@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Recomandat pentru versuri personalizate",
         "replaceAllTitle": "Înlocuiește toate versurile",
         "replaceAllDesc": "Lipește versuri complet noi din clipboard și sincronizează manual temporizarea pentru toate cuvintele de la zero.",
-        "replaceAllWarning": "Toate datele de sincronizare existente vor fi pierdute"
+        "replaceAllWarning": "Toate datele de sincronizare existente vor fi pierdute",
+        "changeCaseDesc": "Convertește toate versurile în MAJUSCULE, minuscule, Format titlu sau Format propoziție. Sincronizarea este păstrată integral.",
+        "changeCaseRecommended": "Recomandat pentru consecvența stilului",
+        "changeCaseTitle": "Schimbă formatul literelor"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Lipește noile tale versuri mai jos:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Resincronizează versurile existente",
         "noLyricsToSync": "Nu există versuri de sincronizat",
         "goBackAndPaste": "Întoarce-te și lipește versuri noi, sau închide acest modal.",
-        "backToSelection": "Înapoi la selecție"
+        "backToSelection": "Înapoi la selecție",
+        "caseLower": "minuscule",
+        "caseLowerDesc": "toate literele mici",
+        "caseSentence": "Format propoziție",
+        "caseSentenceDesc": "Primul cuvânt din fiecare rând cu majusculă",
+        "caseTitle": "Format titlu",
+        "caseTitleDesc": "Fiecare cuvânt cu majusculă",
+        "caseUpper": "MAJUSCULE",
+        "caseUpperDesc": "TOATE LITERELE MAJUSCULE",
+        "changeCase": "Schimbă formatul literelor",
+        "changeCaseApply": "Aplică {case}",
+        "changeCaseNote": "Sincronizarea cuvintelor este păstrată integral — se schimbă doar formatul literelor.",
+        "changeCasePreview": "Previzualizare",
+        "changeCasePrompt": "Alege un format pentru a-l aplica tuturor versurilor:"
       },
       "reviewChanges": {
         "previewWithVocals": "Previzualizare video (Cu voce)",

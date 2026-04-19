@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Consigliato per testi personalizzati",
         "replaceAllTitle": "Sostituisci tutto il testo",
         "replaceAllDesc": "Incolla un testo completamente nuovo dagli appunti e sincronizza manualmente il tempismo per tutte le parole da zero.",
-        "replaceAllWarning": "Tutti i dati di tempismo esistenti andranno persi"
+        "replaceAllWarning": "Tutti i dati di tempismo esistenti andranno persi",
+        "changeCaseDesc": "Converti tutto il testo in MAIUSCOLO, minuscolo, Iniziali Maiuscole o Maiuscolo a inizio frase. La sincronizzazione rimane inalterata.",
+        "changeCaseRecommended": "Consigliato per la coerenza dello stile",
+        "changeCaseTitle": "Cambia maiuscole/minuscole"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Incolla il tuo nuovo testo qui sotto:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Risincronizza il testo esistente",
         "noLyricsToSync": "Nessun testo da sincronizzare",
         "goBackAndPaste": "Torna indietro e incolla un nuovo testo, oppure chiudi questo modale.",
-        "backToSelection": "Torna alla selezione"
+        "backToSelection": "Torna alla selezione",
+        "caseLower": "minuscolo",
+        "caseLowerDesc": "tutte le lettere minuscole",
+        "caseSentence": "Maiuscolo a inizio frase",
+        "caseSentenceDesc": "Prima parola di ogni riga in maiuscolo",
+        "caseTitle": "Iniziali Maiuscole",
+        "caseTitleDesc": "Ogni Parola In Maiuscolo",
+        "caseUpper": "MAIUSCOLO",
+        "caseUpperDesc": "TUTTE LE LETTERE IN MAIUSCOLO",
+        "changeCase": "Cambia maiuscole/minuscole",
+        "changeCaseApply": "Applica {case}",
+        "changeCaseNote": "La sincronizzazione delle parole rimane inalterata — cambiano solo le maiuscole/minuscole.",
+        "changeCasePreview": "Anteprima",
+        "changeCasePrompt": "Scegli uno stile di maiuscole/minuscole da applicare a tutto il testo:"
       },
       "reviewChanges": {
         "previewWithVocals": "Anteprima video (Con voce)",

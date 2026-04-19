@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Recomanat per a lletres personalitzades",
         "replaceAllTitle": "Reemplaça totes les lletres",
         "replaceAllDesc": "Enganxa lletres completament noves des del porta-retalls i sincronitza manualment el temps de totes les paraules des de zero.",
-        "replaceAllWarning": "Es perdran totes les dades de temps existents"
+        "replaceAllWarning": "Es perdran totes les dades de temps existents",
+        "changeCaseDesc": "Converteix tota la lletra a MAJÚSCULES, minúscules, Tipus títol o Tipus oració. La sincronització es conserva completament.",
+        "changeCaseRecommended": "Recomanat per a la coherència d'estil",
+        "changeCaseTitle": "Canvia majúscules/minúscules"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Enganxa les teves noves lletres a continuació:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Ressincronitza les lletres existents",
         "noLyricsToSync": "No hi ha lletres per sincronitzar",
         "goBackAndPaste": "Torna enrere i enganxa noves lletres, o tanca aquest modal.",
-        "backToSelection": "Torna a la selecció"
+        "backToSelection": "Torna a la selecció",
+        "caseLower": "minúscules",
+        "caseLowerDesc": "totes les lletres en minúscula",
+        "caseSentence": "Tipus oració",
+        "caseSentenceDesc": "La primera paraula de cada línia en majúscula",
+        "caseTitle": "Tipus títol",
+        "caseTitleDesc": "Cada Paraula En Majúscula",
+        "caseUpper": "MAJÚSCULES",
+        "caseUpperDesc": "TOTES LES LLETRES EN MAJÚSCULA",
+        "changeCase": "Canvia majúscules/minúscules",
+        "changeCaseApply": "Aplica {case}",
+        "changeCaseNote": "La sincronització de les paraules es conserva completament — només canvien les majúscules i minúscules.",
+        "changeCasePreview": "Previsualització",
+        "changeCasePrompt": "Tria un estil de majúscules/minúscules per aplicar a tota la lletra:"
       },
       "reviewChanges": {
         "previewWithVocals": "Previsualitza el vídeo (Amb veus)",

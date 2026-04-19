@@ -1142,15 +1142,20 @@ export default function LyricsAnalyzer({
   }, [])
 
   const handleSaveReplaceAllLyrics = useCallback(
-    (newSegments: LyricsSegment[]) => {
-      addEditEntry(editLog, 'replace_all_lyrics', {
-        details: {
+    (
+      newSegments: LyricsSegment[],
+      meta?: { operation: 'replace_all_lyrics' | 'change_case'; details?: Record<string, unknown> }
+    ) => {
+      const operation = meta?.operation ?? 'replace_all_lyrics'
+      const details =
+        meta?.details ?? {
           segments_before: data.corrected_segments.length,
           segments_after: newSegments.length,
-        },
-      })
+        }
+      addEditEntry(editLog, operation, { details })
       const newData = { ...data, corrected_segments: newSegments }
-      updateDataWithHistory(newData, 'replace all lyrics')
+      const historyLabel = operation === 'change_case' ? 'change case' : 'replace all lyrics'
+      updateDataWithHistory(newData, historyLabel)
       setIsReplaceAllLyricsModalOpen(false)
     },
     [data, updateDataWithHistory, editLog]

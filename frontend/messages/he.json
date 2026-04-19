@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "מומלץ למילים מותאמות אישית",
         "replaceAllTitle": "החלף את כל המילים",
         "replaceAllDesc": "הדבק מילים חדשות לחלוטין מהלוח וסנכרן ידנית תזמון לכל המילים מאפס.",
-        "replaceAllWarning": "כל נתוני התזמון הקיימים יאבדו"
+        "replaceAllWarning": "כל נתוני התזמון הקיימים יאבדו",
+        "changeCaseDesc": "המרת כל המילים לאותיות גדולות, אותיות קטנות, אות גדולה בכל מילה, או אות גדולה בתחילת שורה. התזמון נשמר במלואו.",
+        "changeCaseRecommended": "מומלץ לשמירה על אחידות הסגנון",
+        "changeCaseTitle": "שינוי גודל אותיות"
       },
       "replaceAllLyrics": {
         "pastePrompt": "הדבק את המילים החדשות שלך למטה:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "סנכרן מחדש מילים קיימות",
         "noLyricsToSync": "אין מילים לסנכרן",
         "goBackAndPaste": "חזור והדבק מילים חדשות, או סגור חלון זה.",
-        "backToSelection": "חזרה לבחירה"
+        "backToSelection": "חזרה לבחירה",
+        "caseLower": "אותיות קטנות",
+        "caseLowerDesc": "כל האותיות קטנות",
+        "caseSentence": "אות גדולה בתחילת שורה",
+        "caseSentenceDesc": "המילה הראשונה בכל שורה מתחילה באות גדולה",
+        "caseTitle": "אות גדולה בכל מילה",
+        "caseTitleDesc": "כל מילה מתחילה באות גדולה",
+        "caseUpper": "אותיות גדולות",
+        "caseUpperDesc": "כל האותיות גדולות",
+        "changeCase": "שינוי גודל אותיות",
+        "changeCaseApply": "החל {case}",
+        "changeCaseNote": "תזמון המילים נשמר במלואו — רק גודל האותיות משתנה.",
+        "changeCasePreview": "תצוגה מקדימה",
+        "changeCasePrompt": "בחירת סגנון אותיות להחלה על כל המילים:"
       },
       "reviewChanges": {
         "previewWithVocals": "וידאו תצוגה מקדימה (עם קולות)",

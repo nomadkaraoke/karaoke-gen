@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Inirerekomenda para sa custom lyrics",
         "replaceAllTitle": "Palitan ang Lahat ng Lyrics",
         "replaceAllDesc": "I-paste ang ganap na bagong lyrics mula sa clipboard at manual na i-sync ang timing para sa lahat ng salita mula sa simula.",
-        "replaceAllWarning": "Mawawala ang lahat ng umiiral na timing data"
+        "replaceAllWarning": "Mawawala ang lahat ng umiiral na timing data",
+        "changeCaseDesc": "I-convert ang lahat ng lyrics sa UPPERCASE, lowercase, Title Case, o Sentence case. Mananatili ang eksaktong timing.",
+        "changeCaseRecommended": "Inirerekomenda para sa pagkakapare-pareho ng istilo",
+        "changeCaseTitle": "Baguhin ang Case"
       },
       "replaceAllLyrics": {
         "pastePrompt": "I-paste ang iyong bagong lyrics sa ibaba:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "I-sync Muli ang Umiiral na Lyrics",
         "noLyricsToSync": "Walang lyrics na isi-sync",
         "goBackAndPaste": "Bumalik at i-paste ang bagong lyrics, o isara ang modal na ito.",
-        "backToSelection": "Bumalik sa Pagpili"
+        "backToSelection": "Bumalik sa Pagpili",
+        "caseLower": "lowercase",
+        "caseLowerDesc": "lahat ng titik ay maliit",
+        "caseSentence": "Sentence case",
+        "caseSentenceDesc": "Naka-capitalize ang unang salita ng bawat linya",
+        "caseTitle": "Title Case",
+        "caseTitleDesc": "Naka-capitalize ang Bawat Salita",
+        "caseUpper": "UPPERCASE",
+        "caseUpperDesc": "NAKA-CAPITALIZE ANG LAHAT NG TITIK",
+        "changeCase": "Baguhin ang Case",
+        "changeCaseApply": "I-apply ang {case}",
+        "changeCaseNote": "Mananatili ang eksaktong timing ng mga salita — tanging ang case ng titik ang magbabago.",
+        "changeCasePreview": "Preview",
+        "changeCasePrompt": "Pumili ng istilo ng case na ia-apply sa lahat ng lyrics:"
       },
       "reviewChanges": {
         "previewWithVocals": "I-preview ang Video (With Vocals)",

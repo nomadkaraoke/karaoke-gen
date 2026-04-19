@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Doporučeno pro vlastní texty",
         "replaceAllTitle": "Nahradit veškerý text",
         "replaceAllDesc": "Vlož úplně nový text ze schránky a manuálně synchronizuj časování pro všechna slova od začátku.",
-        "replaceAllWarning": "Všechna existující data časování budou ztracena"
+        "replaceAllWarning": "Všechna existující data časování budou ztracena",
+        "changeCaseDesc": "Převeď celý text na VELKÁ PÍSMENA, malá písmena, Velká první písmena nebo Velké počáteční písmeno. Časování zůstane plně zachováno.",
+        "changeCaseRecommended": "Doporučeno pro sjednocení stylu",
+        "changeCaseTitle": "Změnit velikost písmen"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Vlož svůj nový text níže:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Znovu synchronizovat existující text",
         "noLyricsToSync": "Žádný text k synchronizaci",
         "goBackAndPaste": "Vrať se zpět a vlož nový text, nebo zavři toto okno.",
-        "backToSelection": "Zpět na výběr"
+        "backToSelection": "Zpět na výběr",
+        "caseLower": "malá písmena",
+        "caseLowerDesc": "všechna písmena malá",
+        "caseSentence": "Velké počáteční písmeno",
+        "caseSentenceDesc": "První slovo každého řádku začíná velkým písmenem",
+        "caseTitle": "Velká první písmena",
+        "caseTitleDesc": "Každé Slovo Začíná Velkým Písmenem",
+        "caseUpper": "VELKÁ PÍSMENA",
+        "caseUpperDesc": "VŠECHNA PÍSMENA VELKÁ",
+        "changeCase": "Změnit velikost písmen",
+        "changeCaseApply": "Použít {case}",
+        "changeCaseNote": "Časování slov zůstává plně zachováno — mění se pouze velikost písmen.",
+        "changeCasePreview": "Náhled",
+        "changeCasePrompt": "Vyber styl velikosti písmen, který se použije na celý text:"
       },
       "reviewChanges": {
         "previewWithVocals": "Náhled videa (S vokály)",

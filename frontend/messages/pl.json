@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Zalecane dla niestandardowych tekstów",
         "replaceAllTitle": "Zastąp cały tekst",
         "replaceAllDesc": "Wklej całkowicie nowy tekst ze schowka i ręcznie zsynchronizuj czas dla wszystkich słów od zera.",
-        "replaceAllWarning": "Wszystkie istniejące dane synchronizacji zostaną utracone"
+        "replaceAllWarning": "Wszystkie istniejące dane synchronizacji zostaną utracone",
+        "changeCaseDesc": "Zmień wielkość liter w całym tekście na WIELKIE LITERY, małe litery, Każde Słowo Wielką Literą lub Jak w zdaniu. Synchronizacja jest w pełni zachowana.",
+        "changeCaseRecommended": "Zalecane dla spójności stylu",
+        "changeCaseTitle": "Zmień wielkość liter"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Wklej swój nowy tekst poniżej:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Ponownie zsynchronizuj istniejący tekst",
         "noLyricsToSync": "Brak tekstu do synchronizacji",
         "goBackAndPaste": "Wróć i wklej nowy tekst, lub zamknij to okno.",
-        "backToSelection": "Wróć do wyboru"
+        "backToSelection": "Wróć do wyboru",
+        "caseLower": "małe litery",
+        "caseLowerDesc": "wszystkie litery małe",
+        "caseSentence": "Jak w zdaniu",
+        "caseSentenceDesc": "Pierwsze słowo w każdej linijce wielką literą",
+        "caseTitle": "Każde Słowo Wielką Literą",
+        "caseTitleDesc": "Każde słowo zaczyna się wielką literą",
+        "caseUpper": "WIELKIE LITERY",
+        "caseUpperDesc": "WSZYSTKIE LITERY WIELKIE",
+        "changeCase": "Zmień wielkość liter",
+        "changeCaseApply": "Zastosuj {case}",
+        "changeCaseNote": "Synchronizacja słów jest w pełni zachowana — zmienia się tylko wielkość liter.",
+        "changeCasePreview": "Podgląd",
+        "changeCasePrompt": "Wybierz styl wielkości liter, który chcesz zastosować do całego tekstu:"
       },
       "reviewChanges": {
         "previewWithVocals": "Podgląd wideo (Z wokalem)",

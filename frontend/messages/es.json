@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Recomendado para letras personalizadas",
         "replaceAllTitle": "Reemplazar todas las letras",
         "replaceAllDesc": "Pega letras completamente nuevas desde el portapapeles y sincroniza manualmente el tiempo de todas las palabras desde cero.",
-        "replaceAllWarning": "Todos los datos de tiempo existentes se perderán"
+        "replaceAllWarning": "Todos los datos de tiempo existentes se perderán",
+        "changeCaseDesc": "Convierte todas las letras a MAYÚSCULAS, minúsculas, Tipo Título o Tipo oración. La sincronización se conserva por completo.",
+        "changeCaseRecommended": "Recomendado para mantener un estilo consistente",
+        "changeCaseTitle": "Cambiar mayúsculas y minúsculas"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Pega tus nuevas letras a continuación:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Re-sincronizar letras existentes",
         "noLyricsToSync": "No hay letras para sincronizar",
         "goBackAndPaste": "Vuelve atrás y pega nuevas letras, o cierra este modal.",
-        "backToSelection": "Volver a la selección"
+        "backToSelection": "Volver a la selección",
+        "caseLower": "minúsculas",
+        "caseLowerDesc": "todas las letras en minúsculas",
+        "caseSentence": "Tipo oración",
+        "caseSentenceDesc": "Primera palabra de cada línea en mayúscula",
+        "caseTitle": "Tipo Título",
+        "caseTitleDesc": "Cada Palabra En Mayúscula",
+        "caseUpper": "MAYÚSCULAS",
+        "caseUpperDesc": "TODAS LAS LETRAS EN MAYÚSCULAS",
+        "changeCase": "Cambiar mayúsculas y minúsculas",
+        "changeCaseApply": "Aplicar {case}",
+        "changeCaseNote": "La sincronización de las palabras se conserva por completo — solo cambian las mayúsculas y minúsculas.",
+        "changeCasePreview": "Vista previa",
+        "changeCasePrompt": "Elige un estilo de mayúsculas y minúsculas para aplicar a todas las letras:"
       },
       "reviewChanges": {
         "previewWithVocals": "Video de vista previa (Con voces)",

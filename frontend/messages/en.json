@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Recommended for custom lyrics",
         "replaceAllTitle": "Replace All Lyrics",
         "replaceAllDesc": "Paste completely new lyrics from clipboard and manually sync timing for all words from scratch.",
-        "replaceAllWarning": "All existing timing data will be lost"
+        "replaceAllWarning": "All existing timing data will be lost",
+        "changeCaseTitle": "Change Case",
+        "changeCaseDesc": "Convert all lyrics to UPPERCASE, lowercase, Title Case, or Sentence case. Timing is fully preserved.",
+        "changeCaseRecommended": "Recommended for style consistency"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Paste your new lyrics below:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Re-sync Existing Lyrics",
         "noLyricsToSync": "No lyrics to sync",
         "goBackAndPaste": "Go back and paste new lyrics, or close this modal.",
-        "backToSelection": "Back to Selection"
+        "backToSelection": "Back to Selection",
+        "changeCase": "Change Case",
+        "changeCasePrompt": "Choose a case style to apply to all lyrics:",
+        "changeCaseNote": "Word timing is fully preserved — only letter case changes.",
+        "caseUpper": "UPPERCASE",
+        "caseLower": "lowercase",
+        "caseTitle": "Title Case",
+        "caseSentence": "Sentence case",
+        "caseUpperDesc": "ALL LETTERS CAPITALIZED",
+        "caseLowerDesc": "all letters lowercase",
+        "caseTitleDesc": "Every Word Capitalized",
+        "caseSentenceDesc": "First word of each line capitalized",
+        "changeCasePreview": "Preview",
+        "changeCaseApply": "Apply {case}"
       },
       "reviewChanges": {
         "previewWithVocals": "Preview Video (With Vocals)",

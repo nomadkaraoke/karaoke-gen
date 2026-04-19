@@ -9,6 +9,7 @@ import { X, ArrowLeft, ClipboardPaste, Sparkles, Info, Check, AlertTriangle } fr
 import { nanoid } from 'nanoid'
 import { LyricsSegment, Word } from '@/lib/lyrics-review/types'
 import { createWordsWithDistributedTiming } from '@/lib/lyrics-review/utils/wordUtils'
+import { applyCaseToSegments, convertCase, type CaseType } from '@/lib/lyrics-review/utils/caseConversion'
 import ModeSelectionModal from './ModeSelectionModal'
 import LyricsSynchronizer from '../synchronizer/LyricsSynchronizer'
 
@@ -20,12 +21,19 @@ declare global {
   }
 }
 
-type ModalMode = 'selection' | 'replace' | 'resync' | 'replaceSegments'
+type ModalMode = 'selection' | 'replace' | 'resync' | 'replaceSegments' | 'changeCase'
+
+export type ReplaceAllOperation = 'replace_all_lyrics' | 'change_case'
+
+export interface ReplaceAllSaveMeta {
+  operation: ReplaceAllOperation
+  details?: Record<string, unknown>
+}
 
 interface ReplaceAllLyricsModalProps {
   open: boolean
   onClose: () => void
-  onSave: (newSegments: LyricsSegment[]) => void
+  onSave: (newSegments: LyricsSegment[], meta?: ReplaceAllSaveMeta) => void
   onPlaySegment?: (startTime: number) => void
   currentTime?: number
   setModalSpacebarHandler: (handler: ((e: KeyboardEvent) => void) | undefined) => void
@@ -45,6 +53,7 @@ export default function ReplaceAllLyricsModal({
   const [mode, setMode] = useState<ModalMode>('selection')
   const [inputText, setInputText] = useState('')
   const [newSegments, setNewSegments] = useState<LyricsSegment[]>([])
+  const [selectedCase, setSelectedCase] = useState<CaseType>('upper')
 
   // Reset state when modal opens
   useEffect(() => {
@@ -52,6 +61,7 @@ export default function ReplaceAllLyricsModal({
       setMode('selection')
       setInputText('')
       setNewSegments([])
+      setSelectedCase('upper')
     }
   }, [open])
 
@@ -188,6 +198,33 @@ export default function ReplaceAllLyricsModal({
     setMode('replaceSegments')
   }, [existingSegments])
 
+  const handleSelectChangeCase = useCallback(() => {
+    setSelectedCase('upper')
+    setMode('changeCase')
+  }, [])
+
+  // Apply case change: transform every segment/word text, keep all timing
+  const handleApplyChangeCase = useCallback(() => {
+    const updated = applyCaseToSegments(existingSegments, selectedCase)
+    onSave(updated, { operation: 'change_case', details: { case_type: selectedCase } })
+    handleClose()
+  }, [existingSegments, selectedCase, onSave, handleClose])
+
+  const casePreview = useMemo(() => {
+    if (existingSegments.length === 0) return ''
+    return existingSegments
+      .slice(0, 4)
+      .map((s) => convertCase(s.text, selectedCase))
+      .join('\n')
+  }, [existingSegments, selectedCase])
+
+  const caseOptions: Array<{ type: CaseType; label: string; desc: string }> = [
+    { type: 'upper', label: t('caseUpper'), desc: t('caseUpperDesc') },
+    { type: 'lower', label: t('caseLower'), desc: t('caseLowerDesc') },
+    { type: 'title', label: t('caseTitle'), desc: t('caseTitleDesc') },
+    { type: 'sentence', label: t('caseSentence'), desc: t('caseSentenceDesc') },
+  ]
+
   // Handle back to selection
   const handleBackToSelection = useCallback(() => {
     setMode('selection')
@@ -211,6 +248,7 @@ export default function ReplaceAllLyricsModal({
         onSelectReplace={handleSelectReplace}
         onSelectResync={handleSelectResync}
         onSelectReplaceSegments={handleSelectReplaceSegments}
+        onSelectChangeCase={handleSelectChangeCase}
         hasExistingLyrics={hasExistingLyrics}
       />
 
@@ -338,6 +376,68 @@ export default function ReplaceAllLyricsModal({
               disabled={replaceSegmentsInfo.lineDiff !== 0}
             >
               Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Case Modal */}
+      <Dialog open={open && mode === 'changeCase'} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+        <DialogContent className="max-w-2xl flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleBackToSelection} className="h-8 w-8">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="flex-1">{t('changeCase')}</span>
+              <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">{t('changeCasePrompt')}</h3>
+              <div className="flex items-start gap-2 p-3 mt-2 rounded-md bg-muted/50 text-sm text-muted-foreground">
+                <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                <p>{t('changeCaseNote')}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {caseOptions.map((opt) => (
+                <button
+                  key={opt.type}
+                  type="button"
+                  onClick={() => setSelectedCase(opt.type)}
+                  className={`p-3 border-2 rounded-lg text-left transition-colors ${
+                    selectedCase === opt.type
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-muted-foreground hover:bg-muted/30'
+                  }`}
+                >
+                  <div className="text-base font-semibold">{opt.label}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">{t('changeCasePreview')}</p>
+              <div className="p-3 rounded-md bg-muted/30 border font-mono text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                {casePreview || '—'}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleApplyChangeCase} disabled={existingSegments.length === 0}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              {t('changeCaseApply', { case: caseOptions.find((o) => o.type === selectedCase)?.label ?? '' })}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "موصى به للكلمات المخصصة",
         "replaceAllTitle": "استبدال جميع الكلمات",
         "replaceAllDesc": "الصق كلمات جديدة تماماً من الحافظة وقم بمزامنة التوقيت يدوياً لجميع الكلمات من الصفر.",
-        "replaceAllWarning": "سيتم فقدان جميع بيانات التوقيت الحالية"
+        "replaceAllWarning": "سيتم فقدان جميع بيانات التوقيت الحالية",
+        "changeCaseDesc": "حوّل جميع الكلمات إلى أحرف كبيرة، أو أحرف صغيرة، أو حالة العنوان، أو حالة الجملة. يتم الحفاظ على التوقيت بالكامل.",
+        "changeCaseRecommended": "موصى به لتناسق الأسلوب",
+        "changeCaseTitle": "تغيير حالة الأحرف"
       },
       "replaceAllLyrics": {
         "pastePrompt": "الصق كلماتك الجديدة أدناه:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "إعادة مزامنة الكلمات الحالية",
         "noLyricsToSync": "لا توجد كلمات لمزامنتها",
         "goBackAndPaste": "ارجع والصق كلمات جديدة، أو أغلق هذه النافذة.",
-        "backToSelection": "العودة إلى التحديد"
+        "backToSelection": "العودة إلى التحديد",
+        "caseLower": "أحرف صغيرة",
+        "caseLowerDesc": "جميع الأحرف صغيرة",
+        "caseSentence": "حالة الجملة",
+        "caseSentenceDesc": "تكبير الحرف الأول من كل سطر",
+        "caseTitle": "حالة العنوان",
+        "caseTitleDesc": "تكبير الحرف الأول من كل كلمة",
+        "caseUpper": "أحرف كبيرة",
+        "caseUpperDesc": "جميع الأحرف كبيرة",
+        "changeCase": "تغيير حالة الأحرف",
+        "changeCaseApply": "تطبيق {case}",
+        "changeCaseNote": "يتم الحفاظ على توقيت الكلمات بالكامل — تتغير حالة الأحرف فقط.",
+        "changeCasePreview": "معاينة",
+        "changeCasePrompt": "اختر نمط حالة الأحرف لتطبيقه على جميع الكلمات:"
       },
       "reviewChanges": {
         "previewWithVocals": "معاينة الفيديو (مع الغناء)",

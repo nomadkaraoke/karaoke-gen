@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Recommandé pour des paroles personnalisées",
         "replaceAllTitle": "Remplacer toutes les paroles",
         "replaceAllDesc": "Colle des paroles complètement nouvelles depuis le presse-papiers et synchronise manuellement le timing pour tous les mots depuis le début.",
-        "replaceAllWarning": "Toutes les données de timing existantes seront perdues"
+        "replaceAllWarning": "Toutes les données de timing existantes seront perdues",
+        "changeCaseDesc": "Convertis toutes les paroles en MAJUSCULES, minuscules, Majuscule à chaque mot ou Majuscule en début de phrase. La synchronisation est entièrement conservée.",
+        "changeCaseRecommended": "Recommandé pour la cohérence du style",
+        "changeCaseTitle": "Modifier la casse"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Colle tes nouvelles paroles ci-dessous :",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Re-synchroniser les paroles existantes",
         "noLyricsToSync": "Aucune parole à synchroniser",
         "goBackAndPaste": "Reviens en arrière et colle de nouvelles paroles, ou ferme cette modale.",
-        "backToSelection": "Retour à la sélection"
+        "backToSelection": "Retour à la sélection",
+        "caseLower": "minuscules",
+        "caseLowerDesc": "toutes les lettres en minuscules",
+        "caseSentence": "Majuscule en début de phrase",
+        "caseSentenceDesc": "Premier mot de chaque ligne en majuscule",
+        "caseTitle": "Majuscule à chaque mot",
+        "caseTitleDesc": "Chaque mot commence par une majuscule",
+        "caseUpper": "MAJUSCULES",
+        "caseUpperDesc": "TOUTES LES LETTRES EN MAJUSCULES",
+        "changeCase": "Modifier la casse",
+        "changeCaseApply": "Appliquer {case}",
+        "changeCaseNote": "La synchronisation des mots est entièrement conservée — seule la casse des lettres change.",
+        "changeCasePreview": "Aperçu",
+        "changeCasePrompt": "Choisis un style de casse à appliquer à toutes les paroles :"
       },
       "reviewChanges": {
         "previewWithVocals": "Aperçu vidéo (Avec voix)",

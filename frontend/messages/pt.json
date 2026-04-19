@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Recomendado para letras personalizadas",
         "replaceAllTitle": "Substituir Todas as Letras",
         "replaceAllDesc": "Cole letras completamente novas da área de transferência e sincronize manualmente o tempo de todas as palavras do zero.",
-        "replaceAllWarning": "Todos os dados de tempo existentes serão perdidos"
+        "replaceAllWarning": "Todos os dados de tempo existentes serão perdidos",
+        "changeCaseDesc": "Converta todas as letras para MAIÚSCULAS, minúsculas, Iniciais maiúsculas ou Formato de frase. A sincronização é totalmente preservada.",
+        "changeCaseRecommended": "Recomendado para consistência de estilo",
+        "changeCaseTitle": "Alterar Maiúsculas/Minúsculas"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Cole suas novas letras abaixo:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Ressincronizar Letras Existentes",
         "noLyricsToSync": "Nenhuma letra para sincronizar",
         "goBackAndPaste": "Volte e cole novas letras, ou feche este modal.",
-        "backToSelection": "Voltar para a Seleção"
+        "backToSelection": "Voltar para a Seleção",
+        "caseLower": "minúsculas",
+        "caseLowerDesc": "todas as letras minúsculas",
+        "caseSentence": "Formato de frase",
+        "caseSentenceDesc": "Primeira palavra de cada linha em maiúscula",
+        "caseTitle": "Iniciais maiúsculas",
+        "caseTitleDesc": "Todas as palavras com inicial maiúscula",
+        "caseUpper": "MAIÚSCULAS",
+        "caseUpperDesc": "TODAS AS LETRAS MAIÚSCULAS",
+        "changeCase": "Alterar Maiúsculas/Minúsculas",
+        "changeCaseApply": "Aplicar {case}",
+        "changeCaseNote": "A sincronização das palavras é totalmente preservada — apenas o formato das letras muda.",
+        "changeCasePreview": "Pré-visualização",
+        "changeCasePrompt": "Escolha um estilo de maiúsculas/minúsculas para aplicar a todas as letras:"
       },
       "reviewChanges": {
         "previewWithVocals": "Visualizar Vídeo (Com Vocais)",

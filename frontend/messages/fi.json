@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Suositellaan mukautetuille sanoituksille",
         "replaceAllTitle": "Korvaa kaikki sanoitukset",
         "replaceAllDesc": "Liitä täysin uudet sanoitukset leikepöydältä ja synkronoi ajoitus manuaalisesti kaikille sanoille alusta alkaen.",
-        "replaceAllWarning": "Kaikki olemassa olevat ajoitustiedot menetetään"
+        "replaceAllWarning": "Kaikki olemassa olevat ajoitustiedot menetetään",
+        "changeCaseDesc": "Muunna kaikki sanoitukset muotoon ISOT KIRJAIMET, pienet kirjaimet, Otsikkotyyli tai Virkkeen alkukirjain. Ajoitus säilyy täysin.",
+        "changeCaseRecommended": "Suositellaan tyylin yhtenäisyyden vuoksi",
+        "changeCaseTitle": "Vaihda kirjainkokoa"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Liitä uudet sanoituksesi alle:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Synkronoi olemassa olevat sanoitukset uudelleen",
         "noLyricsToSync": "Ei synkronoitavia sanoituksia",
         "goBackAndPaste": "Mene takaisin ja liitä uudet sanoitukset, tai sulje tämä modaali.",
-        "backToSelection": "Takaisin valintaan"
+        "backToSelection": "Takaisin valintaan",
+        "caseLower": "pienet kirjaimet",
+        "caseLowerDesc": "kaikki kirjaimet pieniä",
+        "caseSentence": "Virkkeen alkukirjain",
+        "caseSentenceDesc": "Jokaisen rivin ensimmäinen sana isolla",
+        "caseTitle": "Otsikkotyyli",
+        "caseTitleDesc": "Jokainen Sana Isolla",
+        "caseUpper": "ISOT KIRJAIMET",
+        "caseUpperDesc": "KAIKKI KIRJAIMET ISOLLA",
+        "changeCase": "Vaihda kirjainkokoa",
+        "changeCaseApply": "Ota käyttöön {case}",
+        "changeCaseNote": "Sanojen ajoitus säilyy täysin — vain kirjainkoko muuttuu.",
+        "changeCasePreview": "Esikatselu",
+        "changeCasePrompt": "Valitse kirjainkoko, jota käytetään kaikkiin sanoituksiin:"
       },
       "reviewChanges": {
         "previewWithVocals": "Esikatseluvideo (laulun kanssa)",

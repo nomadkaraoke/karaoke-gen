@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "カスタム歌詞に推奨",
         "replaceAllTitle": "すべての歌詞を置換",
         "replaceAllDesc": "クリップボードから完全に新しい歌詞を貼り付け、すべての単語のタイミングを手動で最初から同期します。",
-        "replaceAllWarning": "既存のすべてのタイミングデータが失われます"
+        "replaceAllWarning": "既存のすべてのタイミングデータが失われます",
+        "changeCaseDesc": "すべての歌詞を大文字、小文字、タイトルケース、またはセンテンスケースに変換します。タイミングはそのまま維持されます。",
+        "changeCaseRecommended": "スタイルの統一におすすめ",
+        "changeCaseTitle": "大文字・小文字の変更"
       },
       "replaceAllLyrics": {
         "pastePrompt": "以下に新しい歌詞を貼り付けてください:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "既存の歌詞を再同期",
         "noLyricsToSync": "同期する歌詞がありません",
         "goBackAndPaste": "戻って新しい歌詞を貼り付けるか、このモーダルを閉じてください。",
-        "backToSelection": "選択に戻る"
+        "backToSelection": "選択に戻る",
+        "caseLower": "小文字",
+        "caseLowerDesc": "すべての文字を小文字にする",
+        "caseSentence": "センテンスケース",
+        "caseSentenceDesc": "各行の最初の単語を大文字にする",
+        "caseTitle": "タイトルケース",
+        "caseTitleDesc": "すべての単語の先頭を大文字にする",
+        "caseUpper": "大文字",
+        "caseUpperDesc": "すべての文字を大文字にする",
+        "changeCase": "大文字・小文字の変更",
+        "changeCaseApply": "{case}を適用",
+        "changeCaseNote": "単語のタイミングはそのまま維持され、大文字・小文字のみが変更されます。",
+        "changeCasePreview": "プレビュー",
+        "changeCasePrompt": "すべての歌詞に適用する文字スタイルを選択してください："
       },
       "reviewChanges": {
         "previewWithVocals": "プレビュー動画（ボーカル入り）",

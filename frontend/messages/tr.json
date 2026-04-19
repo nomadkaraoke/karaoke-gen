@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Özel sözler için önerilir",
         "replaceAllTitle": "Tüm Sözleri Değiştir",
         "replaceAllDesc": "Panodan tamamen yeni sözler yapıştır ve tüm kelimeler için zamanlamayı sıfırdan manuel olarak senkronize et.",
-        "replaceAllWarning": "Tüm mevcut zamanlama verileri kaybolacak"
+        "replaceAllWarning": "Tüm mevcut zamanlama verileri kaybolacak",
+        "changeCaseDesc": "Tüm şarkı sözlerini BÜYÜK HARF, küçük harf, Başlık Düzeni veya Cümle düzenine dönüştür. Zamanlama tamamen korunur.",
+        "changeCaseRecommended": "Stil tutarlılığı için önerilir",
+        "changeCaseTitle": "Büyük/Küçük Harf Değiştir"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Yeni sözlerini aşağıya yapıştır:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Mevcut Sözleri Yeniden Senkronize Et",
         "noLyricsToSync": "Senkronize edilecek söz yok",
         "goBackAndPaste": "Geri dön ve yeni sözler yapıştır veya bu pencereyi kapat.",
-        "backToSelection": "Seçime Dön"
+        "backToSelection": "Seçime Dön",
+        "caseLower": "küçük harf",
+        "caseLowerDesc": "tüm harfler küçük",
+        "caseSentence": "Cümle düzeni",
+        "caseSentenceDesc": "Her satırın ilk kelimesi büyük harfle başlar",
+        "caseTitle": "Başlık Düzeni",
+        "caseTitleDesc": "Her Kelime Büyük Harfle Başlar",
+        "caseUpper": "BÜYÜK HARF",
+        "caseUpperDesc": "TÜM HARFLER BÜYÜK",
+        "changeCase": "Büyük/Küçük Harf Değiştir",
+        "changeCaseApply": "{case} Uygula",
+        "changeCaseNote": "Kelime zamanlaması tamamen korunur — sadece büyük/küçük harf durumu değişir.",
+        "changeCasePreview": "Önizleme",
+        "changeCasePrompt": "Tüm şarkı sözlerine uygulamak için bir harf stili seç:"
       },
       "reviewChanges": {
         "previewWithVocals": "Videoyu Önizle (Vokalli)",

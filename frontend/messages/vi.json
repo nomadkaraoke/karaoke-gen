@@ -991,7 +991,10 @@
         "replaceSegmentRecommended": "Được đề xuất cho lời bài hát tùy chỉnh",
         "replaceAllTitle": "Thay thế tất cả lời bài hát",
         "replaceAllDesc": "Dán lời bài hát hoàn toàn mới từ khay nhớ tạm và đồng bộ thời gian thủ công cho tất cả các từ từ đầu.",
-        "replaceAllWarning": "Tất cả dữ liệu thời gian hiện có sẽ bị mất"
+        "replaceAllWarning": "Tất cả dữ liệu thời gian hiện có sẽ bị mất",
+        "changeCaseDesc": "Chuyển đổi tất cả lời bài hát thành CHỮ IN HOA, chữ thường, Viết Hoa Chữ Cái Đầu, hoặc Viết hoa chữ cái đầu câu. Thời gian hiển thị được giữ nguyên hoàn toàn.",
+        "changeCaseRecommended": "Khuyên dùng để đồng nhất phong cách",
+        "changeCaseTitle": "Đổi kiểu viết hoa"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Dán lời bài hát mới của bạn vào bên dưới:",
@@ -1009,7 +1012,20 @@
         "resyncExisting": "Đồng bộ lại lời bài hát hiện có",
         "noLyricsToSync": "Không có lời bài hát để đồng bộ",
         "goBackAndPaste": "Quay lại và dán lời bài hát mới, hoặc đóng phương thức này.",
-        "backToSelection": "Quay lại lựa chọn"
+        "backToSelection": "Quay lại lựa chọn",
+        "caseLower": "chữ thường",
+        "caseLowerDesc": "tất cả các chữ cái đều viết thường",
+        "caseSentence": "Viết hoa chữ cái đầu câu",
+        "caseSentenceDesc": "Từ đầu tiên của mỗi dòng được viết hoa",
+        "caseTitle": "Viết Hoa Chữ Cái Đầu",
+        "caseTitleDesc": "Mỗi Từ Đều Được Viết Hoa",
+        "caseUpper": "CHỮ IN HOA",
+        "caseUpperDesc": "TẤT CẢ CÁC CHỮ CÁI ĐỀU VIẾT HOA",
+        "changeCase": "Đổi kiểu viết hoa",
+        "changeCaseApply": "Áp dụng {case}",
+        "changeCaseNote": "Thời gian hiển thị của từ được giữ nguyên hoàn toàn — chỉ thay đổi kiểu viết hoa/thường.",
+        "changeCasePreview": "Xem trước",
+        "changeCasePrompt": "Chọn một kiểu viết hoa để áp dụng cho toàn bộ lời bài hát:"
       },
       "reviewChanges": {
         "previewWithVocals": "Xem trước video (Có giọng hát)",
