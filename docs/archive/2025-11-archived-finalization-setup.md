@@ -108,7 +108,7 @@ curl -X POST "https://nomadkaraoke--karaoke-generator-webapp-api-endpoint.modal.
     "organised_dir_rclone_root": "andrewdropboxfull:Tracks-Organized",
     "public_share_dir": "/output/public-share",
     "rclone_destination": "googledrive:Nomad Karaoke",
-    "discord_webhook_url": "https://discord.com/api/webhooks/1313902611421724734/QcQXuvFpa5E3-PA8QXkeG-3mGJVHXXfbbVYWSmT9a7DoSnE-oOXeSWQpMntmIaw9yqPG"
+    "discord_webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
   }'
 ```
 
