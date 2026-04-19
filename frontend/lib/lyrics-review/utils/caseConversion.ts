@@ -15,18 +15,22 @@ export function convertCase(text: string, caseType: CaseType): string {
   }
 }
 
+function capitalizeFirstLetter(text: string): string {
+  const firstLetter = text.search(/\p{L}/u)
+  if (firstLetter === -1) return text
+  return (
+    text.slice(0, firstLetter) +
+    text.charAt(firstLetter).toUpperCase() +
+    text.slice(firstLetter + 1)
+  )
+}
+
 function toTitleCase(text: string): string {
-  return text.replace(/\S+/g, (word) => {
-    const lower = word.toLowerCase()
-    return lower.charAt(0).toUpperCase() + lower.slice(1)
-  })
+  return text.replace(/\S+/gu, (word) => capitalizeFirstLetter(word.toLowerCase()))
 }
 
 function toSentenceCase(text: string): string {
-  const lower = text.toLowerCase()
-  const firstLetter = lower.search(/[a-z]/i)
-  if (firstLetter === -1) return lower
-  return lower.slice(0, firstLetter) + lower.charAt(firstLetter).toUpperCase() + lower.slice(firstLetter + 1)
+  return capitalizeFirstLetter(text.toLowerCase())
 }
 
 export function applyCaseToSegments(
@@ -36,10 +40,10 @@ export function applyCaseToSegments(
   const perLine = caseType === 'sentence'
   return segments.map((segment) => {
     const transform = (s: string) => convertCase(s, caseType)
-    // For sentence case, find the first word containing a cased letter — so a
+    // For sentence case, find the first word containing a Unicode letter — so a
     // leading punctuation-only token doesn't steal the capitalization.
     const firstCasedIndex = perLine
-      ? segment.words.findIndex((w) => /[A-Za-z]/.test(w.text))
+      ? segment.words.findIndex((w) => /\p{L}/u.test(w.text))
       : -1
     const newWords = segment.words.map((word, index) => ({
       ...word,

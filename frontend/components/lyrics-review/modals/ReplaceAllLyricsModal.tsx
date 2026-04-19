@@ -145,7 +145,9 @@ export default function ReplaceAllLyricsModal({
     onClose()
   }, [onClose])
 
-  // Apply replace segments: build updated segments with new words for changed lines
+  // Apply replace segments: build updated segments with new words for changed lines.
+  // When a line changed but the word count is the same, preserve per-word timing/IDs
+  // and only update the word text — so case-only or single-word edits don't drop timing.
   const handleApplyReplaceSegments = useCallback(() => {
     const newLines = inputText.split('\n')
     const updatedSegments: LyricsSegment[] = existingSegments.map((segment, i) => {
@@ -157,7 +159,22 @@ export default function ReplaceAllLyricsModal({
         return JSON.parse(JSON.stringify(segment))
       }
 
-      // Changed — create new words with distributed timing
+      const newWordTexts = newLineText.split(/\s+/).filter((w) => w.length > 0)
+
+      // Same word count — preserve timing, only swap text per word
+      if (newWordTexts.length === segment.words.length && newWordTexts.length > 0) {
+        const updatedWords = segment.words.map((word, idx) => ({
+          ...word,
+          text: newWordTexts[idx],
+        }))
+        return {
+          ...segment,
+          text: newLineText,
+          words: updatedWords,
+        }
+      }
+
+      // Word count changed — distribute timing across new words
       const newWords = createWordsWithDistributedTiming(
         newLineText,
         segment.start_time,

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, ClipboardPaste, TextCursorInput, CaseSensitive, X } from 'lucide-react'
+import { RefreshCw, ClipboardPaste, TextCursorInput, CaseSensitive, X, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ModeSelectionModalProps {
@@ -16,6 +16,17 @@ interface ModeSelectionModalProps {
   hasExistingLyrics: boolean
 }
 
+type ModeOption = {
+  key: string
+  icon: LucideIcon
+  title: string
+  desc: string
+  tag?: string
+  tagTone?: 'positive' | 'caution'
+  primary?: boolean
+  onSelect: () => void
+}
+
 export default function ModeSelectionModal({
   open,
   onClose,
@@ -26,9 +37,51 @@ export default function ModeSelectionModal({
   hasExistingLyrics,
 }: ModeSelectionModalProps) {
   const t = useTranslations('lyricsReview.modals.modeSelection')
+  const tCommon = useTranslations('common')
+
+  const options: ModeOption[] = [
+    hasExistingLyrics && {
+      key: 'resync',
+      icon: RefreshCw,
+      title: t('resyncTitle'),
+      desc: t('resyncDesc'),
+      tag: t('resyncRecommended'),
+      tagTone: 'positive' as const,
+      primary: true,
+      onSelect: onSelectResync,
+    },
+    hasExistingLyrics && {
+      key: 'replaceSegments',
+      icon: TextCursorInput,
+      title: t('replaceSegmentTitle'),
+      desc: t('replaceSegmentDesc'),
+      tag: t('replaceSegmentRecommended'),
+      tagTone: 'positive' as const,
+      onSelect: onSelectReplaceSegments,
+    },
+    hasExistingLyrics && {
+      key: 'changeCase',
+      icon: CaseSensitive,
+      title: t('changeCaseTitle'),
+      desc: t('changeCaseDesc'),
+      tag: t('changeCaseRecommended'),
+      tagTone: 'positive' as const,
+      onSelect: onSelectChangeCase,
+    },
+    {
+      key: 'replaceAll',
+      icon: ClipboardPaste,
+      title: t('replaceAllTitle'),
+      desc: t('replaceAllDesc'),
+      tag: t('replaceAllWarning'),
+      tagTone: 'caution' as const,
+      onSelect: onSelectReplace,
+    },
+  ].filter((opt): opt is ModeOption => Boolean(opt))
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>{t('title')}</span>
@@ -38,103 +91,61 @@ export default function ModeSelectionModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <p className="text-sm text-muted-foreground">{t('chooseMethod')}</p>
 
-          <div className="flex flex-col gap-3">
-            {/* Re-sync Existing option - only show if there are existing lyrics */}
-            {hasExistingLyrics && (
-              <div
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {options.map(({ key, icon: Icon, title, desc, tag, tagTone, primary, onSelect }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={onSelect}
                 className={cn(
-                  'p-4 border-2 border-primary rounded-lg cursor-pointer',
-                  'hover:bg-primary/10 transition-colors'
+                  'p-3 rounded-lg border text-left transition-colors',
+                  'flex gap-3 items-start',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  primary
+                    ? 'border-2 border-primary hover:bg-primary/10'
+                    : 'hover:bg-muted/30 hover:border-muted-foreground'
                 )}
-                onClick={onSelectResync}
               >
-                <div className="flex items-start gap-3">
-                  <RefreshCw className="h-10 w-10 text-primary mt-0.5" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-primary">{t('resyncTitle')}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t('resyncDesc')}
-                    </p>
-                    <p className="text-xs text-green-500 mt-2">{t('resyncRecommended')}</p>
+                <Icon
+                  className={cn(
+                    'h-7 w-7 shrink-0 mt-0.5',
+                    primary ? 'text-primary' : 'text-muted-foreground'
+                  )}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <h3
+                      className={cn(
+                        'text-sm font-semibold leading-tight',
+                        primary && 'text-primary'
+                      )}
+                    >
+                      {title}
+                    </h3>
+                    {tag && (
+                      <span
+                        className={cn(
+                          'text-[11px] font-medium leading-tight',
+                          tagTone === 'caution' ? 'text-yellow-500' : 'text-green-500'
+                        )}
+                      >
+                        {tag}
+                      </span>
+                    )}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{desc}</p>
                 </div>
-              </div>
-            )}
-
-            {/* Replace Segment Lyrics option - only show if there are existing lyrics */}
-            {hasExistingLyrics && (
-              <div
-                className={cn(
-                  'p-4 border rounded-lg cursor-pointer',
-                  'hover:bg-muted/30 hover:border-muted-foreground transition-colors'
-                )}
-                onClick={onSelectReplaceSegments}
-              >
-                <div className="flex items-start gap-3">
-                  <TextCursorInput className="h-10 w-10 text-muted-foreground mt-0.5" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold">{t('replaceSegmentTitle')}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t('replaceSegmentDesc')}
-                    </p>
-                    <p className="text-xs text-green-500 mt-2">{t('replaceSegmentRecommended')}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Change Case option - only show if there are existing lyrics */}
-            {hasExistingLyrics && (
-              <div
-                className={cn(
-                  'p-4 border rounded-lg cursor-pointer',
-                  'hover:bg-muted/30 hover:border-muted-foreground transition-colors'
-                )}
-                onClick={onSelectChangeCase}
-              >
-                <div className="flex items-start gap-3">
-                  <CaseSensitive className="h-10 w-10 text-muted-foreground mt-0.5" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold">{t('changeCaseTitle')}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t('changeCaseDesc')}
-                    </p>
-                    <p className="text-xs text-green-500 mt-2">{t('changeCaseRecommended')}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Replace All option */}
-            <div
-              className={cn(
-                'p-4 border rounded-lg cursor-pointer',
-                'hover:bg-muted/30 hover:border-muted-foreground transition-colors'
-              )}
-              onClick={onSelectReplace}
-            >
-              <div className="flex items-start gap-3">
-                <ClipboardPaste className="h-10 w-10 text-muted-foreground mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold">{t('replaceAllTitle')}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('replaceAllDesc')}
-                  </p>
-                  <p className="text-xs text-yellow-500 mt-2">
-                    {t('replaceAllWarning')}
-                  </p>
-                </div>
-              </div>
-            </div>
+              </button>
+            ))}
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {tCommon('cancel')}
           </Button>
         </DialogFooter>
       </DialogContent>

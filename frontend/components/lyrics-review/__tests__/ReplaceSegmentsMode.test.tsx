@@ -187,6 +187,51 @@ describe('Replace Segments Mode', () => {
     expect(savedSegments[2].words[0].text).toBe('Third')
   })
 
+  it('preserves per-word timing when word count is unchanged (e.g. case-only edit)', async () => {
+    const user = userEvent.setup()
+    await openReplaceSegmentsMode()
+
+    // Lowercase the second segment only — same word count (2 words)
+    const textarea = screen.getByRole('textbox')
+    await user.clear(textarea)
+    await user.type(textarea, 'Hello world\ngoodbye moon\nThird line here')
+
+    const applyButton = screen.getByRole('button', { name: 'Apply' })
+    await user.click(applyButton)
+
+    const savedSegments = defaultProps.onSave.mock.calls[0][0]
+
+    // Changed segment — text updated, but original word-level timing + IDs preserved
+    expect(savedSegments[1].text).toBe('goodbye moon')
+    expect(savedSegments[1].words).toHaveLength(2)
+    expect(savedSegments[1].words[0].text).toBe('goodbye')
+    expect(savedSegments[1].words[0].id).toBe('w3')
+    expect(savedSegments[1].words[0].start_time).toBe(3)
+    expect(savedSegments[1].words[0].end_time).toBe(4)
+    expect(savedSegments[1].words[1].text).toBe('moon')
+    expect(savedSegments[1].words[1].id).toBe('w4')
+    expect(savedSegments[1].words[1].start_time).toBe(4)
+    expect(savedSegments[1].words[1].end_time).toBe(5)
+  })
+
+  it('preserves word confidence when word count is unchanged', async () => {
+    const user = userEvent.setup()
+    await openReplaceSegmentsMode()
+
+    const textarea = screen.getByRole('textbox')
+    await user.clear(textarea)
+    // Change one word in third segment, same count (3 words)
+    await user.type(textarea, 'Hello world\nGoodbye moon\nThird lane here')
+
+    const applyButton = screen.getByRole('button', { name: 'Apply' })
+    await user.click(applyButton)
+
+    const savedSegments = defaultProps.onSave.mock.calls[0][0]
+    expect(savedSegments[2].words[1].text).toBe('lane')
+    expect(savedSegments[2].words[1].confidence).toBe(0.9)
+    expect(savedSegments[2].words[1].id).toBe('w6')
+  })
+
   it('preserves segment id and timing for changed lines', async () => {
     const user = userEvent.setup()
     await openReplaceSegmentsMode()

@@ -64,6 +64,24 @@ describe('convertCase', () => {
     it('handles string with no letters', () => {
       expect(convertCase('123 !@#', 'sentence')).toBe('123 !@#')
     })
+
+    it('capitalizes the first accented letter correctly', () => {
+      expect(convertCase('über alles', 'sentence')).toBe('Über alles')
+    })
+  })
+
+  describe('unicode handling', () => {
+    it('title-cases accented Latin characters', () => {
+      expect(convertCase('über alles éclair', 'title')).toBe('Über Alles Éclair')
+    })
+
+    it('lowercases Cyrillic correctly', () => {
+      expect(convertCase('ПРИВЕТ мир', 'lower')).toBe('привет мир')
+    })
+
+    it('title-cases Cyrillic correctly', () => {
+      expect(convertCase('привет мир', 'title')).toBe('Привет Мир')
+    })
   })
 })
 
