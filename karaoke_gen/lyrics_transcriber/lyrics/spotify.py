@@ -126,7 +126,7 @@ class SpotifyProvider(BaseLyricsProvider):
             return rapidapi_response
             
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"RapidAPI request failed: {str(e)}")
+            self._log_request_exception(e, "Spotify RapidAPI")
             return None
         except Exception as e:
             self.logger.error(f"Error fetching from RapidAPI: {str(e)}")

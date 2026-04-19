@@ -2,6 +2,9 @@
 
 import logging
 from typing import Optional, Dict, Any
+from unittest.mock import MagicMock
+
+import requests
 
 from karaoke_gen.lyrics_transcriber.lyrics.base_lyrics_provider import BaseLyricsProvider, LyricsProviderConfig
 from karaoke_gen.lyrics_transcriber.types import LyricsData
@@ -67,3 +70,67 @@ class TestCreateSegmentsWithWords:
         with caplog.at_level(logging.WARNING):
             provider._create_segments_with_words(text)
         assert "truncating" in caplog.text.lower()
+
+
+class TestLogRequestException:
+    """_log_request_exception must downgrade upstream-transient failures to WARNING.
+
+    5xx / ConnectionError / Timeout aren't actionable bugs in our code — they're
+    upstream availability. Logging them as ERROR creates alert noise in the
+    production error monitor since the orchestrator already falls back to other
+    providers.
+    """
+
+    def _make_provider(self) -> "StubProvider":
+        return StubProvider(LyricsProviderConfig(), logger=logging.getLogger("test_log_request"))
+
+    def _http_error(self, status_code: int) -> requests.exceptions.HTTPError:
+        response = MagicMock()
+        response.status_code = status_code
+        return requests.exceptions.HTTPError(f"{status_code} error", response=response)
+
+    def test_502_logs_warning(self, caplog):
+        provider = self._make_provider()
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(self._http_error(502), "Musixmatch API")
+        records = [r for r in caplog.records if "Musixmatch API" in r.message]
+        assert len(records) == 1
+        assert records[0].levelno == logging.WARNING
+
+    def test_503_logs_warning(self, caplog):
+        provider = self._make_provider()
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(self._http_error(503), "LRCLIB")
+        records = [r for r in caplog.records if "LRCLIB" in r.message]
+        assert records[0].levelno == logging.WARNING
+
+    def test_404_logs_error(self, caplog):
+        provider = self._make_provider()
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(self._http_error(404), "Genius RapidAPI")
+        records = [r for r in caplog.records if "Genius RapidAPI" in r.message]
+        assert records[0].levelno == logging.ERROR
+
+    def test_timeout_logs_warning(self, caplog):
+        provider = self._make_provider()
+        exc = requests.exceptions.Timeout("read timeout")
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(exc, "Spotify RapidAPI")
+        records = [r for r in caplog.records if "Spotify RapidAPI" in r.message]
+        assert records[0].levelno == logging.WARNING
+
+    def test_connection_error_logs_warning(self, caplog):
+        provider = self._make_provider()
+        exc = requests.exceptions.ConnectionError("DNS failure")
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(exc, "Musixmatch API")
+        records = [r for r in caplog.records if "Musixmatch API" in r.message]
+        assert records[0].levelno == logging.WARNING
+
+    def test_generic_request_exception_logs_error(self, caplog):
+        provider = self._make_provider()
+        exc = requests.exceptions.RequestException("unknown")
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(exc, "Generic")
+        records = [r for r in caplog.records if "Generic" in r.message]
+        assert records[0].levelno == logging.ERROR

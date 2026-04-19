@@ -50,7 +50,7 @@ class MusixmatchProvider(BaseLyricsProvider):
             return data
             
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"Musixmatch API request failed: {str(e)}")
+            self._log_request_exception(e, "Musixmatch API")
             return None
         except Exception as e:
             self.logger.error(f"Error fetching from Musixmatch: {str(e)}")

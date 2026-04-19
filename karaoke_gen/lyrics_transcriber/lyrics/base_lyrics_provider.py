@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 import os
 from abc import ABC, abstractmethod
+import requests
 from karaoke_gen.lyrics_transcriber.types import LyricsData, LyricsSegment, Word
 from karaoke_lyrics_processor import KaraokeLyricsProcessor
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
@@ -228,3 +229,17 @@ class BaseLyricsProvider(ABC):
     def get_name(self) -> str:
         """Return the name of this lyrics provider."""
         return self.__class__.__name__.replace("Provider", "")
+
+    def _log_request_exception(self, exc: requests.exceptions.RequestException, label: str) -> None:
+        # 5xx / connection / timeout are upstream transient — not actionable for us.
+        response = getattr(exc, "response", None)
+        status = getattr(response, "status_code", None)
+        transient = (
+            isinstance(exc, (requests.exceptions.ConnectionError, requests.exceptions.Timeout))
+            or (isinstance(exc, requests.exceptions.HTTPError) and status is not None and status >= 500)
+        )
+        msg = f"{label} request failed: {exc}"
+        if transient:
+            self.logger.warning(msg)
+        else:
+            self.logger.error(msg)

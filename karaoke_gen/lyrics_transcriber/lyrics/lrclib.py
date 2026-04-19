@@ -84,7 +84,7 @@ class LRCLIBProvider(BaseLyricsProvider):
             return data
             
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"LRCLIB request failed: {str(e)}")
+            self._log_request_exception(e, "LRCLIB")
             return None
         except Exception as e:
             self.logger.error(f"Error fetching from LRCLIB: {str(e)}")
@@ -119,7 +119,7 @@ class LRCLIBProvider(BaseLyricsProvider):
             return best_match
             
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"LRCLIB search request failed: {str(e)}")
+            self._log_request_exception(e, "LRCLIB search")
             return None
         except Exception as e:
             self.logger.error(f"Error searching LRCLIB: {str(e)}")
