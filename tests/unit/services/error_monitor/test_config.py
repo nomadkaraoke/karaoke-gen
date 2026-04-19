@@ -12,7 +12,9 @@ class TestMonitoredServiceLists:
     def test_cloud_run_services_count(self):
         from backend.services.error_monitor import config
 
-        assert len(config.MONITORED_CLOUD_RUN_SERVICES) == 3
+        # Gen2 Cloud Functions log as cloud_run_revision, so they live in
+        # MONITORED_CLOUD_RUN_SERVICES alongside real Cloud Run services.
+        assert len(config.MONITORED_CLOUD_RUN_SERVICES) >= 3
 
     def test_cloud_run_services_contains_expected(self):
         from backend.services.error_monitor import config
@@ -34,25 +36,33 @@ class TestMonitoredServiceLists:
         assert "audio-separation-job" in config.MONITORED_CLOUD_RUN_JOBS
         assert "audio-download-job" in config.MONITORED_CLOUD_RUN_JOBS
 
-    def test_cloud_functions_count_at_least_7(self):
-        from backend.services.error_monitor import config
-
-        assert len(config.MONITORED_CLOUD_FUNCTIONS) >= 7
-
-    def test_cloud_functions_contains_expected(self):
+    def test_gen2_cloud_functions_monitored_as_cloud_run_services(self):
+        # Gen2 Cloud Functions log under resource.type=cloud_run_revision,
+        # so they must appear in MONITORED_CLOUD_RUN_SERVICES, not
+        # MONITORED_CLOUD_FUNCTIONS. See config.py comment.
         from backend.services.error_monitor import config
 
         expected = [
             "gdrive-validator",
-            "runner_manager",
-            "backup_to_aws",
-            "divebar_mirror",
-            "kn_data_sync",
-            "divebar_lookup",
-            "encoding_worker_idle",
+            "github-runner-manager",
+            "backup-to-aws",
+            "divebar-mirror",
+            "kn-data-sync",
+            "divebar-lookup",
+            "encoding-worker-idle-shutdown",
         ]
         for fn in expected:
-            assert fn in config.MONITORED_CLOUD_FUNCTIONS, f"Expected '{fn}' in MONITORED_CLOUD_FUNCTIONS"
+            assert (
+                fn in config.MONITORED_CLOUD_RUN_SERVICES
+            ), f"Expected Gen2 function '{fn}' in MONITORED_CLOUD_RUN_SERVICES"
+
+    def test_cloud_functions_list_empty_for_gen1_only(self):
+        # MONITORED_CLOUD_FUNCTIONS is reserved for Gen1 Cloud Functions
+        # (which log as resource.type=cloud_function). All current functions
+        # are Gen2 and are handled via MONITORED_CLOUD_RUN_SERVICES.
+        from backend.services.error_monitor import config
+
+        assert config.MONITORED_CLOUD_FUNCTIONS == []
 
     def test_gce_instances_count_at_least_4(self):
         from backend.services.error_monitor import config

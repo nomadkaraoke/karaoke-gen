@@ -341,7 +341,10 @@ class TestUpsertPatternExisting:
             count=5,
             timestamp=now,
         )
-        adapter.upsert_pattern(data)
+        # Freeze _utcnow so prune_rolling_counts keeps the existing entry
+        # (2h-old relative to fixture now, not relative to real clock time).
+        with patch("backend.services.error_monitor.firestore_adapter._utcnow", return_value=now):
+            adapter.upsert_pattern(data)
 
         updated = doc_ref.update.call_args[0][0]
         assert "rolling_counts" in updated
@@ -1048,7 +1051,8 @@ class TestPruneRollingCounts:
             {"ts": now.isoformat(), "count": 2},                          # recent
         ]
 
-        result = adapter._prune_rolling_counts(rolling)
+        with patch("backend.services.error_monitor.firestore_adapter._utcnow", return_value=now):
+            result = adapter._prune_rolling_counts(rolling)
 
         assert len(result) == 2
         assert result[0]["count"] == 7
@@ -1065,7 +1069,8 @@ class TestPruneRollingCounts:
             {"ts": now.isoformat(), "count": 3},
         ]
 
-        result = adapter._prune_rolling_counts(rolling)
+        with patch("backend.services.error_monitor.firestore_adapter._utcnow", return_value=now):
+            result = adapter._prune_rolling_counts(rolling)
         assert len(result) == 3
 
     def test_empty_list_returns_empty(self):
