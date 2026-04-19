@@ -160,8 +160,17 @@ export async function createEmailHelper(): Promise<EmailHelper> {
         url.searchParams.set('livequery', 'true');
         url.searchParams.set('wait', waitSeconds.toString());
 
+        // Node fetch has no default timeout — if testmail.app hangs (e.g. during a
+        // quota-exceeded redirect loop) the call would block until Playwright's
+        // per-test timeout (10+ min) instead of the intended waitForEmail timeout.
+        const controller = new AbortController();
+        const abortTimer = setTimeout(() => controller.abort(), (waitSeconds + 5) * 1000);
+
         try {
-          const response = await fetch(url.toString());
+          const response = await fetch(url.toString(), {
+            signal: controller.signal,
+            redirect: 'error',
+          });
 
           if (!response.ok) {
             throw new Error(`testmail.app API error: ${response.status} ${response.statusText}`);
@@ -189,10 +198,12 @@ export async function createEmailHelper(): Promise<EmailHelper> {
         } catch (error) {
           // If it's a timeout or network error, continue polling
           if (Date.now() - startTime < timeout) {
-            console.log(`Polling for email... (${Math.round((Date.now() - startTime) / 1000)}s elapsed)`);
+            console.log(`Polling for email... (${Math.round((Date.now() - startTime) / 1000)}s elapsed): ${error instanceof Error ? error.message : String(error)}`);
             continue;
           }
           throw error;
+        } finally {
+          clearTimeout(abortTimer);
         }
       }
 
@@ -307,8 +318,14 @@ export async function createEmailHelper(): Promise<EmailHelper> {
         url.searchParams.set('livequery', 'true');
         url.searchParams.set('wait', waitSeconds.toString());
 
+        const controller = new AbortController();
+        const abortTimer = setTimeout(() => controller.abort(), (waitSeconds + 5) * 1000);
+
         try {
-          const response = await fetch(url.toString());
+          const response = await fetch(url.toString(), {
+            signal: controller.signal,
+            redirect: 'error',
+          });
 
           if (!response.ok) {
             throw new Error(`testmail.app API error: ${response.status} ${response.statusText}`);
@@ -361,10 +378,12 @@ export async function createEmailHelper(): Promise<EmailHelper> {
           }
         } catch (error) {
           if (Date.now() - startTime < timeout) {
-            console.log(`Polling for completion email... (${Math.round((Date.now() - startTime) / 1000)}s elapsed)`);
+            console.log(`Polling for completion email... (${Math.round((Date.now() - startTime) / 1000)}s elapsed): ${error instanceof Error ? error.message : String(error)}`);
             continue;
           }
           throw error;
+        } finally {
+          clearTimeout(abortTimer);
         }
       }
 
