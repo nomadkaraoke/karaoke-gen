@@ -1365,5 +1365,19 @@
     "flyerDownloadHtml": "Download HTML",
     "flyerDownloadPng": "Download PNG",
     "flyerExporting": "Exporting..."
+  },
+  "crashReport": {
+    "title": "Something went wrong",
+    "subtitle": "The app hit an unexpected error. You can copy the details or go back to the dashboard.",
+    "reportSent": "Crash report sent — we've been alerted.",
+    "reportSending": "Sending crash report…",
+    "reportFailed": "We couldn't send the crash report automatically. Please copy the details and message support.",
+    "copyDebug": "Copy debug info",
+    "copied": "Copied!",
+    "sendReport": "Send crash report again",
+    "retry": "Try again",
+    "backToDashboard": "Back to dashboard",
+    "toggleStack": "Show technical details",
+    "hideStack": "Hide technical details"
   }
 }
