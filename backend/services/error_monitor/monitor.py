@@ -356,11 +356,6 @@ class ErrorMonitor:
         groups = _group_by_pattern(raw_entries)
         logger.info("Grouped into %d distinct patterns", len(groups))
 
-        if not groups:
-            logger.info("No new error entries found this cycle; checking auto-resolve.")
-            self._check_auto_resolve()
-            return
-
         # ── Step 3: Upsert to Firestore ────────────────────────────────────
         new_pattern_ids: list[str] = []
         spike_patterns: list[dict] = []
@@ -394,6 +389,43 @@ class ErrorMonitor:
                         }
                     )
                     logger.info("Spike detected for pattern %s", pattern_id)
+
+        # ── Step 3b: Pick up out-of-band patterns (e.g. frontend crashes) ──
+        # Patterns written via POST /api/client-errors land directly in
+        # Firestore without going through the log-scraping pipeline, so they
+        # won't be in new_pattern_ids / groups from Steps 1-3. Ensure any
+        # pattern with status="new" and alerted_at=None still gets a Discord
+        # alert on this cycle.
+        try:
+            unalerted = self.firestore_adapter.get_unalerted_new_patterns()
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to query unalerted patterns: %s", exc)
+            unalerted = []
+
+        for pattern in unalerted:
+            pid = pattern.get("pattern_id")
+            if not pid or pid in groups:
+                continue
+            groups[pid] = {
+                "service": pattern.get("service", "unknown"),
+                "resource_type": pattern.get("resource_type", "unknown"),
+                "normalized": pattern.get("normalized_message", ""),
+                "sample_message": pattern.get("sample_message", ""),
+                "count": pattern.get("total_count", 1),
+            }
+            if pid not in new_pattern_ids:
+                new_pattern_ids.append(pid)
+                logger.info(
+                    "Picked up out-of-band pattern %s (%s)",
+                    pid,
+                    pattern.get("service", "unknown"),
+                )
+
+        # If nothing to alert on this cycle, go straight to auto-resolve.
+        if not new_pattern_ids and not spike_patterns:
+            logger.info("No new or unalerted patterns this cycle; checking auto-resolve.")
+            self._check_auto_resolve()
+            return
 
         # ── Step 4: LLM dedup ─────────────────────────────────────────────
         if new_pattern_ids and get_llm_enabled():

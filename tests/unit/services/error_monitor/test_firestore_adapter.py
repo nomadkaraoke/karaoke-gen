@@ -1115,3 +1115,73 @@ class TestGetPatternsForAutoResolve:
 
         assert isinstance(results, list)
         assert results[0]["pattern_id"] == "p1"
+
+
+# ---------------------------------------------------------------------------
+# Tests: get_unalerted_new_patterns
+# ---------------------------------------------------------------------------
+
+
+class TestGetUnalertedNewPatterns:
+    """get_unalerted_new_patterns should filter for status=new AND alerted_at=None."""
+
+    def test_queries_correct_collection_and_filters(self):
+        db = _make_db()
+        # Two chained .where() calls, final stream() returns []
+        second_where = MagicMock()
+        second_where.stream.return_value = []
+        first_where = MagicMock()
+        first_where.where.return_value = second_where
+        db.collection.return_value.where.return_value = first_where
+
+        Adapter = _import_adapter()
+        adapter = Adapter(db=db)
+        adapter.get_unalerted_new_patterns()
+
+        db.collection.assert_called_with("error_patterns")
+        # first .where should filter status=="new"
+        first_where_call = db.collection.return_value.where.call_args
+        assert first_where_call is not None
+        # second .where should filter alerted_at==None
+        second_where_call = first_where.where.call_args
+        assert second_where_call is not None
+
+    def test_returns_list_of_dicts(self):
+        db = _make_db()
+        snap = _make_doc_snapshot(
+            exists=True,
+            data={
+                "pattern_id": "fe_p1",
+                "service": "frontend",
+                "status": "new",
+                "alerted_at": None,
+            },
+        )
+        second_where = MagicMock()
+        second_where.stream.return_value = [snap]
+        first_where = MagicMock()
+        first_where.where.return_value = second_where
+        db.collection.return_value.where.return_value = first_where
+
+        Adapter = _import_adapter()
+        adapter = Adapter(db=db)
+        results = adapter.get_unalerted_new_patterns()
+
+        assert isinstance(results, list)
+        assert len(results) == 1
+        assert results[0]["pattern_id"] == "fe_p1"
+        assert results[0]["service"] == "frontend"
+
+    def test_returns_empty_when_no_matches(self):
+        db = _make_db()
+        second_where = MagicMock()
+        second_where.stream.return_value = []
+        first_where = MagicMock()
+        first_where.where.return_value = second_where
+        db.collection.return_value.where.return_value = first_where
+
+        Adapter = _import_adapter()
+        adapter = Adapter(db=db)
+        results = adapter.get_unalerted_new_patterns()
+
+        assert results == []

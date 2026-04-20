@@ -137,6 +137,19 @@ class ErrorPatternsAdapter:
         )
         return [snap.to_dict() for snap in query.stream()]
 
+    def get_unalerted_new_patterns(self) -> list[dict]:
+        """Return patterns with status="new" and alerted_at=None.
+
+        These are typically patterns written by a path other than the current
+        monitor cycle — most notably frontend crashes ingested via
+        ``POST /api/client-errors``. The monitor uses this to ensure out-of-band
+        patterns still get a Discord alert on the next scheduled run.
+        """
+        query = self._db.collection(_COL_PATTERNS).where(
+            "status", "==", "new"
+        ).where("alerted_at", "==", None)
+        return [snap.to_dict() for snap in query.stream()]
+
     # ------------------------------------------------------------------
     # Patterns — upsert
     # ------------------------------------------------------------------
