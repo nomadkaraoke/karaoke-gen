@@ -11,6 +11,7 @@ import { LyricsAnalyzer } from "@/components/lyrics-review"
 import { InstrumentalSelector } from "@/components/instrumental-review"
 import { AudioEditor } from "@/components/audio-editor/AudioEditor"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import CrashReportBoundary from "@/components/CrashReportBoundary"
 import type { CorrectionData } from "@/lib/lyrics-review/types"
 import { isLocalMode, createLocalModeJob } from "@/lib/local-mode"
 
@@ -313,10 +314,18 @@ export function JobRouterClient() {
   }
 
   if (currentRouteType === "instrumental") {
-    return <InstrumentalReviewWrapper job={job} isLocalMode={inLocalMode} />
+    return (
+      <CrashReportBoundary source="instrumental-review" backHref="/app">
+        <InstrumentalReviewWrapper job={job} isLocalMode={inLocalMode} />
+      </CrashReportBoundary>
+    )
   }
 
-  return <LyricsReviewWrapper job={job} isLocalMode={inLocalMode} />
+  return (
+    <CrashReportBoundary source="lyrics-review" backHref="/app">
+      <LyricsReviewWrapper job={job} isLocalMode={inLocalMode} />
+    </CrashReportBoundary>
+  )
 }
 
 // Lyrics Review Component Wrapper
