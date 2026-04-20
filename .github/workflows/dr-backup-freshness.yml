@@ -29,8 +29,6 @@ jobs:
       AWS_DEFAULT_REGION: us-east-1
       BUCKET: nomadkaraoke-backup
       DISCORD_WEBHOOK: ${{ secrets.DR_MONITOR_DISCORD_WEBHOOK }}
-      # Alert if the most recent backup of any tracked dataset is older than this.
-      MAX_AGE_HOURS: "36"
 
     steps:
       - name: Verify required secrets are set
@@ -44,77 +42,73 @@ jobs:
           done
           [ "$missing" = "0" ] || exit 1
 
+      - name: Install boto3
+        run: pip install --quiet boto3
+
       - name: Check freshness of each tracked prefix
         id: check
         shell: bash
         run: |
-          set -euo pipefail
-          now_epoch=$(date -u +%s)
-          max_age_seconds=$(( MAX_AGE_HOURS * 3600 ))
-          stale=()
-          ok=()
+          python3 - <<'PY'
+          import os, sys, datetime, boto3
 
-          # Each entry: "label|prefix|max_age_hours_override(optional)"
-          targets=(
-            "Firestore|firestore/|36"
-            "GCS job files|gcs/job-files/|36"
-            "Encrypted secrets|secrets/|36"
-            "BigQuery weekly|bigquery/daily-refresh/|192"
-          )
+          BUCKET = os.environ["BUCKET"]
+          # (label, prefix, max_age_hours)
+          TARGETS = [
+              ("Firestore",         "firestore/",              36),
+              ("GCS job files",     "gcs/job-files/",          36),
+              ("Encrypted secrets", "secrets/",                36),
+              ("BigQuery weekly",   "bigquery/daily-refresh/", 192),
+          ]
 
-          for target in "${targets[@]}"; do
-            IFS='|' read -r label prefix max_hours <<< "$target"
-            max_age=$(( max_hours * 3600 ))
+          s3 = boto3.client("s3")
+          now = datetime.datetime.now(datetime.timezone.utc)
+          stale, ok = [], []
 
-            # LastModified of the most recent object under the prefix.
-            latest=$(
-              aws s3api list-objects-v2 \
-                --bucket "$BUCKET" \
-                --prefix "$prefix" \
-                --query 'reverse(sort_by(Contents,&LastModified))[0].LastModified' \
-                --output text 2>/dev/null || echo "None"
-            )
+          # Paginated scan — JMESPath --query on `aws s3api list-objects-v2`
+          # operates per-page, which silently breaks "newest across all pages"
+          # queries on prefixes with >1000 objects (e.g. firestore/ has ~22k).
+          paginator = s3.get_paginator("list_objects_v2")
+          for label, prefix, max_hours in TARGETS:
+              latest = None
+              for page in paginator.paginate(Bucket=BUCKET, Prefix=prefix):
+                  for obj in page.get("Contents", []):
+                      if latest is None or obj["LastModified"] > latest:
+                          latest = obj["LastModified"]
 
-            if [ "$latest" = "None" ] || [ -z "$latest" ]; then
-              stale+=("$label: NO OBJECTS in s3://$BUCKET/$prefix")
-              continue
-            fi
+              if latest is None:
+                  stale.append(f"{label}: NO OBJECTS in s3://{BUCKET}/{prefix}")
+                  continue
+              age = (now - latest).total_seconds()
+              age_h = int(age // 3600)
+              line = f"{label}: {age_h}h old (limit {max_hours}h) — last {latest.isoformat()}"
+              (stale if age > max_hours * 3600 else ok).append(line)
 
-            latest_epoch=$(date -u -d "$latest" +%s 2>/dev/null || python3 -c "
-            import sys, datetime
-            print(int(datetime.datetime.fromisoformat(sys.argv[1].replace('Z','+00:00')).timestamp()))
-            " "$latest")
-            age_seconds=$(( now_epoch - latest_epoch ))
-            age_hours=$(( age_seconds / 3600 ))
+          summary = ["## DR backup freshness", ""]
+          if stale:
+              summary.append("### Stale")
+              summary.extend(f"- {s}" for s in stale)
+              summary.append("")
+          summary.append("### Fresh")
+          summary.extend(f"- {o}" for o in ok)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("\n".join(summary) + "\n")
 
-            if [ "$age_seconds" -gt "$max_age" ]; then
-              stale+=("$label: ${age_hours}h old (limit ${max_hours}h) — last $latest")
-            else
-              ok+=("$label: ${age_hours}h old — last $latest")
-            fi
-          done
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"ok_count={len(ok)}\n")
+              f.write(f"stale_count={len(stale)}\n")
+              if stale:
+                  f.write("STALE_LIST<<EOF\n")
+                  f.write("\n".join(stale) + "\n")
+                  f.write("EOF\n")
 
-          {
-            echo "ok_count=${#ok[@]}"
-            echo "stale_count=${#stale[@]}"
-          } >> "$GITHUB_OUTPUT"
-
-          {
-            echo "## DR backup freshness"
-            echo
-            if [ "${#stale[@]}" -gt 0 ]; then
-              echo "### Stale"
-              for s in "${stale[@]}"; do echo "- $s"; done
-              echo
-            fi
-            echo "### Fresh"
-            for o in "${ok[@]}"; do echo "- $o"; done
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          if [ "${#stale[@]}" -gt 0 ]; then
-            printf 'STALE_LIST<<EOF\n%s\nEOF\n' "$(printf '%s\n' "${stale[@]}")" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
+          for o in ok:
+              print("OK:", o)
+          if stale:
+              for s in stale:
+                  print("STALE:", s, file=sys.stderr)
+              sys.exit(1)
+          PY
 
       - name: Alert Discord on stale backup
         if: failure() && steps.check.outputs.stale_count != ''
