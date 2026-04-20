@@ -6,7 +6,7 @@ from google.cloud import storage
 
 logger = logging.getLogger(__name__)
 
-SYNC_PREFIXES = ["jobs/", "tenants/", "themes/"]
+DEFAULT_SYNC_PREFIXES = ["jobs/", "tenants/", "themes/"]
 
 
 def sync_gcs_to_staging(
@@ -14,6 +14,7 @@ def sync_gcs_to_staging(
     staging_bucket: str,
     staging_prefix: str,
     max_objects: int = 5000,
+    sync_prefixes: list[str] | None = None,
 ) -> str:
     """Copy new/changed objects from source to staging bucket.
 
@@ -42,8 +43,9 @@ def sync_gcs_to_staging(
 
     copied = 0
     latest_updated_dt = last_sync_dt
+    prefixes = sync_prefixes if sync_prefixes is not None else DEFAULT_SYNC_PREFIXES
 
-    for prefix in SYNC_PREFIXES:
+    for prefix in prefixes:
         blobs = src.list_blobs(prefix=prefix)
         for blob in blobs:
             if not blob.updated:

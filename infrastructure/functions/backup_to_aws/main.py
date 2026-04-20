@@ -5,8 +5,9 @@ Nightly backup pipeline:
 1. Firestore export to GCS staging
 2. BigQuery export to GCS staging (weekly/monthly schedule)
 3. GCS job files delta sync to staging
-4. Upload staging files to S3
-5. Discord alert
+4. Secret Manager export (encrypted with sealed-box public key) to staging
+5. Upload staging files to S3
+6. Discord alert
 
 Triggered by Cloud Scheduler at 1:00 AM ET daily.
 """
@@ -22,6 +23,7 @@ from discord_alert import send_alert
 from firestore_export import export_firestore
 from bigquery_export import export_bigquery_tables
 from gcs_sync import sync_gcs_to_staging
+from secrets_export import export_secrets
 from s3_upload import upload_staging_to_s3
 
 logging.basicConfig(level=logging.INFO)
@@ -31,11 +33,27 @@ STAGING_BUCKET = os.environ.get("STAGING_BUCKET", "nomadkaraoke-backup-staging")
 S3_BUCKET = os.environ.get("S3_BUCKET", "nomadkaraoke-backup")
 GCP_PROJECT = os.environ.get("GCP_PROJECT", "nomadkaraoke")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+BACKUP_ENCRYPTION_PUBKEY = os.environ.get("BACKUP_ENCRYPTION_PUBKEY", "")
 
 
 @functions_framework.http
 def backup_to_aws(request):
     """Main entry point for the backup Cloud Function."""
+    # Quarterly drill reminder — Cloud Scheduler hits this with ?mode=drill_reminder.
+    # We just post Discord and exit without touching the backup pipeline.
+    if request.args.get("mode") == "drill_reminder":
+        if DISCORD_WEBHOOK_URL:
+            send_alert(
+                webhook_url=DISCORD_WEBHOOK_URL,
+                title="📋 Quarterly DR restore drill due",
+                fields=[
+                    {"name": "What", "value": "Decrypt yesterday's secrets backup + restore one Firestore collection + one BigQuery table to a side database, confirm the chain works.", "inline": False},
+                    {"name": "Runbook", "value": "https://github.com/nomadkaraoke/karaoke-gen/blob/main/docs/DISASTER-RECOVERY.md#quarterly-restore-drill", "inline": False},
+                ],
+                success=True,
+            )
+        return json.dumps({"status": "drill_reminder_sent"}), 200
+
     today = datetime.date.today()
     date_str = today.isoformat()
     results = {}
@@ -68,7 +86,7 @@ def backup_to_aws(request):
         logger.error(f"BigQuery export failed: {e}")
         errors.append(f"BigQuery: {e}")
 
-    # Step 3: GCS delta sync (nightly)
+    # Step 3: GCS delta sync (nightly) — primary job-files bucket
     try:
         results["gcs_sync"] = sync_gcs_to_staging(
             source_bucket="karaoke-gen-storage-nomadkaraoke",
@@ -79,7 +97,33 @@ def backup_to_aws(request):
         logger.error(f"GCS sync failed: {e}")
         errors.append(f"GCS sync: {e}")
 
-    # Step 4: Upload to S3
+    # Step 3b: GCS delta sync — nomadkaraoke-kn-data (small, irreplaceable
+    # internal sync data from KaraokeNerds API; not publicly regenerable).
+    # Uses [""] to walk the whole bucket since it has no top-level prefix structure.
+    try:
+        results["gcs_sync_kn"] = sync_gcs_to_staging(
+            source_bucket="nomadkaraoke-kn-data",
+            staging_bucket=STAGING_BUCKET,
+            staging_prefix="gcs/kn-data/",
+            sync_prefixes=[""],
+        )
+    except Exception as e:
+        logger.error(f"GCS kn-data sync failed: {e}")
+        errors.append(f"GCS kn-data sync: {e}")
+
+    # Step 4: Secrets export (nightly, encrypted with sealed-box public key)
+    try:
+        results["secrets"] = export_secrets(
+            project=GCP_PROJECT,
+            staging_bucket=STAGING_BUCKET,
+            date_str=date_str,
+            public_key_hex=BACKUP_ENCRYPTION_PUBKEY,
+        )
+    except Exception as e:
+        logger.error(f"Secrets export failed: {e}")
+        errors.append(f"Secrets: {e}")
+
+    # Step 5: Upload to S3
     try:
         results["s3_upload"] = upload_staging_to_s3(
             staging_bucket=STAGING_BUCKET,
@@ -89,7 +133,7 @@ def backup_to_aws(request):
         logger.error(f"S3 upload failed: {e}")
         errors.append(f"S3 upload: {e}")
 
-    # Step 5: Discord alert
+    # Step 6: Discord alert
     success = len(errors) == 0
     fields = [
         {"name": "Date", "value": date_str, "inline": True},

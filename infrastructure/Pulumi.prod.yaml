@@ -1,3 +1,4 @@
 config:
   gcp:project: nomadkaraoke
   gcp:region: us-central1
+  karaoke-gen-infrastructure:backupEncryptionPubkey: 1e966a0693d4ab12f5ef570dd60b35137ec12c42cc12424e13e8c1e8e2dbc914

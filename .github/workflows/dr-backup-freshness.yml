@@ -1,0 +1,155 @@
+name: DR backup freshness monitor
+
+# Off-platform monitor: runs in GitHub (not GCP) so it survives a full GCP
+# compromise. If the nightly backup pipeline dies silently, this catches it.
+#
+# Required secrets:
+#   AWS_BACKUP_READONLY_ACCESS_KEY_ID
+#   AWS_BACKUP_READONLY_SECRET_ACCESS_KEY
+#   DR_MONITOR_DISCORD_WEBHOOK
+#
+# Setup: see docs/DISASTER-RECOVERY.md § "Backup freshness monitor".
+
+on:
+  schedule:
+    # Daily at 14:00 UTC (~9h after the 1am ET backup window).
+    - cron: "0 14 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_BACKUP_READONLY_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_BACKUP_READONLY_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      BUCKET: nomadkaraoke-backup
+      DISCORD_WEBHOOK: ${{ secrets.DR_MONITOR_DISCORD_WEBHOOK }}
+      # Alert if the most recent backup of any tracked dataset is older than this.
+      MAX_AGE_HOURS: "36"
+
+    steps:
+      - name: Verify required secrets are set
+        run: |
+          missing=0
+          for var in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY DISCORD_WEBHOOK; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Required secret $var is empty"
+              missing=1
+            fi
+          done
+          [ "$missing" = "0" ] || exit 1
+
+      - name: Check freshness of each tracked prefix
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          now_epoch=$(date -u +%s)
+          max_age_seconds=$(( MAX_AGE_HOURS * 3600 ))
+          stale=()
+          ok=()
+
+          # Each entry: "label|prefix|max_age_hours_override(optional)"
+          targets=(
+            "Firestore|firestore/|36"
+            "GCS job files|gcs/job-files/|36"
+            "Encrypted secrets|secrets/|36"
+            "BigQuery weekly|bigquery/daily-refresh/|192"
+          )
+
+          for target in "${targets[@]}"; do
+            IFS='|' read -r label prefix max_hours <<< "$target"
+            max_age=$(( max_hours * 3600 ))
+
+            # LastModified of the most recent object under the prefix.
+            latest=$(
+              aws s3api list-objects-v2 \
+                --bucket "$BUCKET" \
+                --prefix "$prefix" \
+                --query 'reverse(sort_by(Contents,&LastModified))[0].LastModified' \
+                --output text 2>/dev/null || echo "None"
+            )
+
+            if [ "$latest" = "None" ] || [ -z "$latest" ]; then
+              stale+=("$label: NO OBJECTS in s3://$BUCKET/$prefix")
+              continue
+            fi
+
+            latest_epoch=$(date -u -d "$latest" +%s 2>/dev/null || python3 -c "
+            import sys, datetime
+            print(int(datetime.datetime.fromisoformat(sys.argv[1].replace('Z','+00:00')).timestamp()))
+            " "$latest")
+            age_seconds=$(( now_epoch - latest_epoch ))
+            age_hours=$(( age_seconds / 3600 ))
+
+            if [ "$age_seconds" -gt "$max_age" ]; then
+              stale+=("$label: ${age_hours}h old (limit ${max_hours}h) — last $latest")
+            else
+              ok+=("$label: ${age_hours}h old — last $latest")
+            fi
+          done
+
+          {
+            echo "ok_count=${#ok[@]}"
+            echo "stale_count=${#stale[@]}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## DR backup freshness"
+            echo
+            if [ "${#stale[@]}" -gt 0 ]; then
+              echo "### Stale"
+              for s in "${stale[@]}"; do echo "- $s"; done
+              echo
+            fi
+            echo "### Fresh"
+            for o in "${ok[@]}"; do echo "- $o"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${#stale[@]}" -gt 0 ]; then
+            printf 'STALE_LIST<<EOF\n%s\nEOF\n' "$(printf '%s\n' "${stale[@]}")" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Alert Discord on stale backup
+        if: failure() && steps.check.outputs.stale_count != ''
+        env:
+          STALE: ${{ steps.check.outputs.STALE_LIST }}
+        run: |
+          payload=$(jq -n \
+            --arg title "🚨 DR backup is stale" \
+            --arg desc "$STALE" \
+            --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{
+               embeds: [{
+                 title: $title,
+                 description: $desc,
+                 color: 15158332,
+                 fields: [{name: "Workflow run", value: $url}]
+               }]
+             }')
+          curl -fsS -X POST -H "Content-Type: application/json" \
+            -d "$payload" "$DISCORD_WEBHOOK"
+
+      - name: Alert Discord on workflow failure (catch-all)
+        if: failure() && steps.check.outputs.stale_count == ''
+        run: |
+          payload=$(jq -n \
+            --arg title "⚠️ DR freshness monitor failed to run" \
+            --arg desc "Could not list S3 backup bucket — credentials, network, or bucket policy may be broken." \
+            --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{
+               embeds: [{
+                 title: $title,
+                 description: $desc,
+                 color: 15844367,
+                 fields: [{name: "Workflow run", value: $url}]
+               }]
+             }')
+          curl -fsS -X POST -H "Content-Type: application/json" \
+            -d "$payload" "$DISCORD_WEBHOOK"

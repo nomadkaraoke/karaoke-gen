@@ -57,11 +57,20 @@ def create_backup_resources(all_secrets: dict) -> dict:
         member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
-    # Secret Manager access (for AWS credentials)
+    # Secret Manager access (for AWS credentials + nightly secrets backup)
     resources["secret_accessor"] = gcp.projects.IAMMember(
         "backup-secret-accessor",
         project=PROJECT_ID,
         role="roles/secretmanager.secretAccessor",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
+    # secretmanager.viewer is required to LIST secrets — accessor only allows reading
+    # a known name. Backup needs to enumerate every secret in the project.
+    resources["secret_viewer"] = gcp.projects.IAMMember(
+        "backup-secret-viewer",
+        project=PROJECT_ID,
+        role="roles/secretmanager.viewer",
         member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
@@ -158,6 +167,10 @@ def create_backup_resources(all_secrets: dict) -> dict:
                 "GCP_PROJECT": PROJECT_ID,
                 "STAGING_BUCKET": "nomadkaraoke-backup-staging",
                 "S3_BUCKET": "nomadkaraoke-backup",
+                # Curve25519 public key (hex) for sealed-box encryption of secrets backup.
+                # The matching private key lives only in 1Password — function cannot decrypt.
+                # Set via: pulumi config set backupEncryptionPubkey <64-char-hex>
+                "BACKUP_ENCRYPTION_PUBKEY": pulumi.Config().require("backupEncryptionPubkey"),
             },
             secret_environment_variables=[
                 cloudfunctionsv2.FunctionServiceConfigSecretEnvironmentVariableArgs(
@@ -214,5 +227,34 @@ def create_backup_resources(all_secrets: dict) -> dict:
         ),
     )
     resources["scheduler"] = scheduler
+
+    # Quarterly DR restore drill reminder — posts a Discord nudge so the human
+    # remembers to run the drill in docs/DISASTER-RECOVERY.md § "Quarterly restore drill".
+    # Hits the same backup function with ?mode=drill_reminder, which short-circuits
+    # the pipeline and only posts to Discord.
+    drill_scheduler = cloudscheduler.Job(
+        "dr-drill-scheduler",
+        name="dr-restore-drill-reminder",
+        description="Quarterly nudge to run the DR restore drill",
+        region=REGION,
+        # 15:00 UTC on the 1st of Jan/Apr/Jul/Oct
+        schedule="0 15 1 1,4,7,10 *",
+        time_zone="UTC",
+        http_target=cloudscheduler.JobHttpTargetArgs(
+            uri=function.url.apply(lambda u: f"{u}?mode=drill_reminder"),
+            http_method="POST",
+            oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+                service_account_email=sa.email,
+                # OIDC audience must match the function URL without the query string
+                audience=function.url,
+            ),
+        ),
+        retry_config=cloudscheduler.JobRetryConfigArgs(
+            retry_count=1,
+            min_backoff_duration="60s",
+            max_backoff_duration="300s",
+        ),
+    )
+    resources["drill_scheduler"] = drill_scheduler
 
     return resources
