@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from backend.services.error_monitor.firestore_adapter import PatternData

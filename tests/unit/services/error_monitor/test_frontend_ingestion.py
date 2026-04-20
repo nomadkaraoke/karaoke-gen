@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
-
-import pytest
 
 from backend.services.error_monitor.frontend_ingestion import (
     FrontendErrorReport,
+    RateLimiter,
     build_pattern_data,
     sanitize_url,
 )
@@ -81,3 +79,34 @@ def test_different_errors_produce_different_pattern_ids():
         viewport=None, locale="en", extra=None,
     )
     assert build_pattern_data(a, now=datetime.now(tz=timezone.utc)).pattern_id != build_pattern_data(b, now=datetime.now(tz=timezone.utc)).pattern_id
+
+
+def test_rate_limiter_allows_up_to_max():
+    rl = RateLimiter(max_per_minute=3)
+    for i in range(3):
+        assert rl.allow("1.2.3.4", 1000.0 + i) is True
+
+
+def test_rate_limiter_blocks_when_over_limit():
+    rl = RateLimiter(max_per_minute=3)
+    for _ in range(3):
+        assert rl.allow("1.2.3.4", 1000.0) is True
+    assert rl.allow("1.2.3.4", 1000.5) is False
+
+
+def test_rate_limiter_allows_again_after_window_expires():
+    rl = RateLimiter(max_per_minute=2)
+    assert rl.allow("1.2.3.4", 1000.0) is True
+    assert rl.allow("1.2.3.4", 1000.1) is True
+    assert rl.allow("1.2.3.4", 1000.2) is False
+    # 61 seconds later — both earlier hits have expired from the 60s window
+    assert rl.allow("1.2.3.4", 1061.0) is True
+
+
+def test_rate_limiter_tracks_ips_independently():
+    rl = RateLimiter(max_per_minute=2)
+    assert rl.allow("1.1.1.1", 1000.0) is True
+    assert rl.allow("1.1.1.1", 1000.0) is True
+    assert rl.allow("1.1.1.1", 1000.0) is False
+    # Different IP should not be affected
+    assert rl.allow("2.2.2.2", 1000.0) is True
