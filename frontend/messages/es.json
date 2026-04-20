@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Actualizar cuenta bancaria",
     "connectFailed": "Algo salió mal. Por favor, inténtalo de nuevo.",
     "flyerRemoveLogo": "Quitar"
+  },
+  "crashReport": {
+    "backToDashboard": "Volver al panel",
+    "copied": "¡Copiado!",
+    "copyDebug": "Copiar información de depuración",
+    "hideStack": "Ocultar detalles técnicos",
+    "reportFailed": "No pudimos enviar el informe de error automáticamente. Por favor, copia los detalles y envía un mensaje a soporte.",
+    "reportSending": "Enviando informe de error…",
+    "reportSent": "Informe de error enviado — hemos recibido la alerta.",
+    "sendReport": "Enviar informe de error de nuevo",
+    "subtitle": "La aplicación encontró un error inesperado. Puedes copiar los detalles o volver al panel.",
+    "title": "Algo salió mal",
+    "toggleStack": "Mostrar detalles técnicos",
+    "updateAvailable": "Hay una nueva versión disponible — podría solucionar este problema.",
+    "updateAvailableSubtitle": "Actualizaremos la página y cargaremos el código más reciente.",
+    "updateNow": "Actualizar ahora",
+    "retry": "Intentar de nuevo"
   }
 }

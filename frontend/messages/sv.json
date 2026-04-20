@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Uppdatera bankkonto",
     "connectFailed": "Något gick fel. Försök igen.",
     "flyerRemoveLogo": "Ta bort"
+  },
+  "crashReport": {
+    "backToDashboard": "Tillbaka till kontrollpanelen",
+    "copied": "Kopierat!",
+    "copyDebug": "Kopiera felsökningsinformation",
+    "hideStack": "Dölj tekniska detaljer",
+    "reportFailed": "Vi kunde inte skicka kraschrapporten automatiskt. Kopiera detaljerna och kontakta supporten.",
+    "reportSending": "Skickar kraschrapport…",
+    "reportSent": "Kraschrapport skickad — vi har blivit informerade.",
+    "sendReport": "Skicka kraschrapport igen",
+    "subtitle": "Appen stötte på ett oväntat fel. Du kan kopiera detaljerna eller gå tillbaka till kontrollpanelen.",
+    "title": "Något gick fel",
+    "toggleStack": "Visa tekniska detaljer",
+    "updateAvailable": "En nyare version finns tillgänglig — den kanske löser problemet.",
+    "updateAvailableSubtitle": "Vi uppdaterar sidan och laddar in den senaste koden.",
+    "updateNow": "Uppdatera nu",
+    "retry": "Försök igen"
   }
 }

@@ -1365,5 +1365,22 @@
     "updateBankAccount": "I-update ang Bank Account",
     "connectFailed": "May nangyaring mali. Pakisubukan muli.",
     "flyerRemoveLogo": "Alisin"
+  },
+  "crashReport": {
+    "backToDashboard": "Bumalik sa dashboard",
+    "copied": "Nakopya na!",
+    "copyDebug": "Kopyahin ang debug info",
+    "hideStack": "Itago ang mga teknikal na detalye",
+    "reportFailed": "Hindi namin maipadala ang crash report nang awtomatiko. Paki-kopya ang mga detalye at mag-message sa support.",
+    "reportSending": "Ipinapadala ang crash report…",
+    "reportSent": "Naipadala na ang crash report — naabisuhan na kami.",
+    "sendReport": "Ipadala muli ang crash report",
+    "subtitle": "Nakaranas ng hindi inaasahang error ang app. Maaari mong kopyahin ang mga detalye o bumalik sa dashboard.",
+    "title": "May nangyaring mali",
+    "toggleStack": "Ipakita ang mga teknikal na detalye",
+    "updateAvailable": "May available na mas bagong bersyon — maaaring maayos nito ang isyung ito.",
+    "updateAvailableSubtitle": "Ire-refresh namin ang page at ilo-load ang pinakabagong code.",
+    "updateNow": "I-update ngayon",
+    "retry": "Subukan muli"
   }
 }

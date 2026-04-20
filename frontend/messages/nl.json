@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Bankrekening bijwerken",
     "connectFailed": "Er is iets misgegaan. Probeer het opnieuw.",
     "flyerRemoveLogo": "Verwijderen"
+  },
+  "crashReport": {
+    "backToDashboard": "Terug naar dashboard",
+    "copied": "Gekopieerd!",
+    "copyDebug": "Kopieer debug-info",
+    "hideStack": "Verberg technische details",
+    "reportFailed": "We konden het crashrapport niet automatisch verzenden. Kopieer de details en stuur een bericht naar support.",
+    "reportSending": "Crashrapport verzenden…",
+    "reportSent": "Crashrapport verzonden — we hebben een melding gekregen.",
+    "sendReport": "Crashrapport opnieuw verzenden",
+    "subtitle": "Er is een onverwachte fout opgetreden in de app. Je kunt de details kopiëren of teruggaan naar het dashboard.",
+    "title": "Er is iets misgegaan",
+    "toggleStack": "Toon technische details",
+    "updateAvailable": "Er is een nieuwere versie beschikbaar — deze lost dit probleem mogelijk op.",
+    "updateAvailableSubtitle": "We vernieuwen de pagina en laden de nieuwste code.",
+    "updateNow": "Nu updaten",
+    "retry": "Probeer opnieuw"
   }
 }

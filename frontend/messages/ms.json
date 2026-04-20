@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Kemas Kini Akaun Bank",
     "connectFailed": "Sesuatu yang tidak kena berlaku. Sila cuba lagi.",
     "flyerRemoveLogo": "Alih keluar"
+  },
+  "crashReport": {
+    "backToDashboard": "Kembali ke papan pemuka",
+    "copied": "Disalin!",
+    "copyDebug": "Salin maklumat nyahpepijat",
+    "hideStack": "Sembunyikan butiran teknikal",
+    "reportFailed": "Kami tidak dapat menghantar laporan kerosakan secara automatik. Sila salin butiran dan hubungi sokongan.",
+    "reportSending": "Menghantar laporan kerosakan…",
+    "reportSent": "Laporan kerosakan dihantar — kami telah dimaklumkan.",
+    "sendReport": "Hantar laporan kerosakan sekali lagi",
+    "subtitle": "Aplikasi mengalami ralat yang tidak dijangka. Anda boleh menyalin butiran atau kembali ke papan pemuka.",
+    "title": "Terdapat masalah",
+    "toggleStack": "Tunjukkan butiran teknikal",
+    "updateAvailable": "Versi yang lebih baharu tersedia — ia mungkin menyelesaikan isu ini.",
+    "updateAvailableSubtitle": "Kami akan memuat semula halaman dan memuatkan kod terkini.",
+    "updateNow": "Kemas kini sekarang",
+    "retry": "Cuba lagi"
   }
 }

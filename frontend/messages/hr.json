@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Ažuriraj bankovni račun",
     "connectFailed": "Nešto je pošlo po zlu. Pokušaj ponovno.",
     "flyerRemoveLogo": "Ukloni"
+  },
+  "crashReport": {
+    "backToDashboard": "Natrag na nadzornu ploču",
+    "copied": "Kopirano!",
+    "copyDebug": "Kopiraj informacije o pogrešci",
+    "hideStack": "Sakrij tehničke detalje",
+    "reportFailed": "Nismo mogli automatski poslati izvješće o rušenju. Molimo te da kopiraš detalje i pošalješ poruku podršci.",
+    "reportSending": "Slanje izvješća o rušenju…",
+    "reportSent": "Izvješće o rušenju je poslano — obaviješteni smo.",
+    "sendReport": "Ponovno pošalji izvješće o rušenju",
+    "subtitle": "Aplikacija je naišla na neočekivanu pogrešku. Možeš kopirati detalje ili se vratiti na nadzornu ploču.",
+    "title": "Nešto je pošlo po zlu",
+    "toggleStack": "Prikaži tehničke detalje",
+    "updateAvailable": "Dostupna je novija verzija — možda će riješiti ovaj problem.",
+    "updateAvailableSubtitle": "Osvježit ćemo stranicu i učitati najnoviji kod.",
+    "updateNow": "Ažuriraj sada",
+    "retry": "Pokušaj ponovno"
   }
 }

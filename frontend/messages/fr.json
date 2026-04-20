@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Mettre à jour le compte bancaire",
     "connectFailed": "Quelque chose s'est mal passé. Réessaie.",
     "flyerRemoveLogo": "Retirer"
+  },
+  "crashReport": {
+    "backToDashboard": "Retour au tableau de bord",
+    "copied": "Copié !",
+    "copyDebug": "Copier les infos de débogage",
+    "hideStack": "Masquer les détails techniques",
+    "reportFailed": "Nous n'avons pas pu envoyer le rapport de plantage automatiquement. Copie les détails et contacte le support.",
+    "reportSending": "Envoi du rapport de plantage…",
+    "reportSent": "Rapport de plantage envoyé — nous avons été alertés.",
+    "sendReport": "Renvoyer le rapport de plantage",
+    "subtitle": "L'application a rencontré une erreur inattendue. Tu peux copier les détails ou retourner au tableau de bord.",
+    "title": "Une erreur est survenue",
+    "toggleStack": "Afficher les détails techniques",
+    "updateAvailable": "Une nouvelle version est disponible — elle pourrait résoudre ce problème.",
+    "updateAvailableSubtitle": "Nous allons rafraîchir la page et charger la dernière version.",
+    "updateNow": "Mettre à jour maintenant",
+    "retry": "Réessayer"
   }
 }

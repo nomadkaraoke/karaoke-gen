@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Actualitza el compte bancari",
     "connectFailed": "Alguna cosa ha anat malament. Torna-ho a provar.",
     "flyerRemoveLogo": "Elimina"
+  },
+  "crashReport": {
+    "backToDashboard": "Torna al tauler",
+    "copied": "Copiat!",
+    "copyDebug": "Copia la informació de depuració",
+    "hideStack": "Amaga els detalls tècnics",
+    "reportFailed": "No hem pogut enviar l'informe d'error automàticament. Si us plau, copia els detalls i envia un missatge a suport.",
+    "reportSending": "S'està enviant l'informe d'error…",
+    "reportSent": "Informe d'error enviat — hem rebut l'avís.",
+    "sendReport": "Torna a enviar l'informe d'error",
+    "subtitle": "L'aplicació ha trobat un error inesperat. Pots copiar els detalls o tornar al tauler.",
+    "title": "Hi ha hagut un problema",
+    "toggleStack": "Mostra els detalls tècnics",
+    "updateAvailable": "Hi ha una versió més nova disponible — podria solucionar aquest problema.",
+    "updateAvailableSubtitle": "Actualitzarem la pàgina i carregarem el codi més recent.",
+    "updateNow": "Actualitza ara",
+    "retry": "Torna-ho a provar"
   }
 }

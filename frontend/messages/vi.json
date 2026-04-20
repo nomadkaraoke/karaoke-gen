@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Cập nhật tài khoản ngân hàng",
     "connectFailed": "Đã xảy ra lỗi. Vui lòng thử lại.",
     "flyerRemoveLogo": "Xóa"
+  },
+  "crashReport": {
+    "backToDashboard": "Quay lại bảng điều khiển",
+    "copied": "Đã sao chép!",
+    "copyDebug": "Sao chép thông tin gỡ lỗi",
+    "hideStack": "Ẩn chi tiết kỹ thuật",
+    "reportFailed": "Chúng tôi không thể tự động gửi báo cáo sự cố. Vui lòng sao chép chi tiết và nhắn tin cho bộ phận hỗ trợ.",
+    "reportSending": "Đang gửi báo cáo sự cố…",
+    "reportSent": "Đã gửi báo cáo sự cố — chúng tôi đã nhận được thông báo.",
+    "sendReport": "Gửi lại báo cáo sự cố",
+    "subtitle": "Ứng dụng gặp lỗi không mong muốn. Bạn có thể sao chép chi tiết hoặc quay lại bảng điều khiển.",
+    "title": "Đã xảy ra lỗi",
+    "toggleStack": "Hiển thị chi tiết kỹ thuật",
+    "updateAvailable": "Đã có phiên bản mới hơn — có thể khắc phục được sự cố này.",
+    "updateAvailableSubtitle": "Chúng tôi sẽ làm mới trang và tải mã mới nhất.",
+    "updateNow": "Cập nhật ngay",
+    "retry": "Thử lại"
   }
 }

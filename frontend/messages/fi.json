@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Päivitä pankkitili",
     "connectFailed": "Jotain meni pieleen. Yritä uudelleen.",
     "flyerRemoveLogo": "Poista"
+  },
+  "crashReport": {
+    "backToDashboard": "Takaisin hallintapaneeliin",
+    "copied": "Kopioitu!",
+    "copyDebug": "Kopioi vianmääritystiedot",
+    "hideStack": "Piilota tekniset tiedot",
+    "reportFailed": "Emme voineet lähettää virheraporttia automaattisesti. Kopioi tiedot ja laita viestiä tukeen.",
+    "reportSending": "Lähetetään virheraporttia…",
+    "reportSent": "Virheraportti lähetetty — olemme saaneet ilmoituksen.",
+    "sendReport": "Lähetä virheraportti uudelleen",
+    "subtitle": "Sovelluksessa tapahtui odottamaton virhe. Voit kopioida tiedot tai palata hallintapaneeliin.",
+    "title": "Jotain meni pieleen",
+    "toggleStack": "Näytä tekniset tiedot",
+    "updateAvailable": "Uudempi versio on saatavilla — se saattaa korjata tämän ongelman.",
+    "updateAvailableSubtitle": "Päivitämme sivun ja lataamme uusimman koodin.",
+    "updateNow": "Päivitä nyt",
+    "retry": "Yritä uudelleen"
   }
 }

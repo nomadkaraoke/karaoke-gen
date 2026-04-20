@@ -1365,5 +1365,22 @@
     "updateBankAccount": "銀行口座を更新",
     "connectFailed": "問題が発生しました。もう一度お試しください。",
     "flyerRemoveLogo": "削除"
+  },
+  "crashReport": {
+    "backToDashboard": "ダッシュボードに戻る",
+    "copied": "コピーしました！",
+    "copyDebug": "デバッグ情報をコピー",
+    "hideStack": "技術的な詳細を非表示",
+    "reportFailed": "クラッシュレポートを自動的に送信できませんでした。詳細をコピーしてサポートにご連絡ください。",
+    "reportSending": "クラッシュレポートを送信中…",
+    "reportSent": "クラッシュレポートを送信しました — 担当チームに通知されました。",
+    "sendReport": "クラッシュレポートを再送信する",
+    "subtitle": "アプリで予期せぬエラーが発生しました。詳細をコピーするか、ダッシュボードにお戻りください。",
+    "title": "問題が発生しました",
+    "toggleStack": "技術的な詳細を表示",
+    "updateAvailable": "新しいバージョンが利用可能です — 更新により問題が解決する場合があります。",
+    "updateAvailableSubtitle": "ページを更新して最新のコードを読み込みます。",
+    "updateNow": "今すぐ更新",
+    "retry": "もう一度試す"
   }
 }

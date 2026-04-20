@@ -1365,5 +1365,22 @@
     "updateBankAccount": "更新银行账户",
     "connectFailed": "出了点问题，请重试。",
     "flyerRemoveLogo": "移除"
+  },
+  "crashReport": {
+    "backToDashboard": "返回控制台",
+    "copied": "已复制！",
+    "copyDebug": "复制调试信息",
+    "hideStack": "隐藏技术细节",
+    "reportFailed": "我们无法自动发送崩溃报告。请复制详细信息并联系客服。",
+    "reportSending": "正在发送崩溃报告…",
+    "reportSent": "崩溃报告已发送 — 我们已收到通知。",
+    "sendReport": "再次发送崩溃报告",
+    "subtitle": "应用遇到意外错误。您可以复制详细信息或返回控制台。",
+    "title": "出错了",
+    "toggleStack": "显示技术细节",
+    "updateAvailable": "有新版本可用 — 可能会修复此问题。",
+    "updateAvailableSubtitle": "我们将刷新页面并加载最新代码。",
+    "updateNow": "立即更新",
+    "retry": "重试"
   }
 }

@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Aktualizovat bankovní účet",
     "connectFailed": "Něco se pokazilo. Zkus to prosím znovu.",
     "flyerRemoveLogo": "Odstranit"
+  },
+  "crashReport": {
+    "backToDashboard": "Zpět na přehled",
+    "copied": "Zkopírováno!",
+    "copyDebug": "Zkopírovat ladicí informace",
+    "hideStack": "Skrýt technické detaily",
+    "reportFailed": "Nepodařilo se nám automaticky odeslat zprávu o chybě. Zkopíruj prosím detaily a napiš na podporu.",
+    "reportSending": "Odesílání zprávy o chybě…",
+    "reportSent": "Zpráva o chybě byla odeslána — už o tom víme.",
+    "sendReport": "Odeslat zprávu o chybě znovu",
+    "subtitle": "Aplikace narazila na neočekávanou chybu. Můžeš zkopírovat detaily nebo se vrátit na přehled.",
+    "title": "Něco se pokazilo",
+    "toggleStack": "Zobrazit technické detaily",
+    "updateAvailable": "Je k dispozici novější verze — možná tento problém vyřeší.",
+    "updateAvailableSubtitle": "Obnovíme stránku a načteme nejnovější kód.",
+    "updateNow": "Aktualizovat nyní",
+    "retry": "Zkusit znovu"
   }
 }

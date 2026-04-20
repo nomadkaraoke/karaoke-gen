@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Bankkonto aktualisieren",
     "connectFailed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "flyerRemoveLogo": "Entfernen"
+  },
+  "crashReport": {
+    "backToDashboard": "Zurück zum Dashboard",
+    "copied": "Kopiert!",
+    "copyDebug": "Debug-Info kopieren",
+    "hideStack": "Technische Details ausblenden",
+    "reportFailed": "Wir konnten den Absturzbericht nicht automatisch senden. Bitte kopiere die Details und kontaktiere den Support.",
+    "reportSending": "Absturzbericht wird gesendet…",
+    "reportSent": "Absturzbericht gesendet — wir wurden benachrichtigt.",
+    "sendReport": "Absturzbericht erneut senden",
+    "subtitle": "Die App ist auf einen unerwarteten Fehler gestoßen. Du kannst die Details kopieren oder zum Dashboard zurückkehren.",
+    "title": "Etwas ist schiefgelaufen",
+    "toggleStack": "Technische Details anzeigen",
+    "updateAvailable": "Eine neuere Version ist verfügbar — sie könnte dieses Problem beheben.",
+    "updateAvailableSubtitle": "Wir aktualisieren die Seite und laden den neuesten Code.",
+    "updateNow": "Jetzt aktualisieren",
+    "retry": "Erneut versuchen"
   }
 }

@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Aggiorna conto bancario",
     "connectFailed": "Qualcosa è andato storto. Riprova.",
     "flyerRemoveLogo": "Rimuovi"
+  },
+  "crashReport": {
+    "backToDashboard": "Torna alla dashboard",
+    "copied": "Copiato!",
+    "copyDebug": "Copia le informazioni di debug",
+    "hideStack": "Nascondi i dettagli tecnici",
+    "reportFailed": "Non siamo riusciti a inviare automaticamente il rapporto di errore. Copia i dettagli e contatta l'assistenza.",
+    "reportSending": "Invio del rapporto di errore…",
+    "reportSent": "Rapporto di errore inviato — siamo stati avvisati.",
+    "sendReport": "Invia di nuovo il rapporto di errore",
+    "subtitle": "L'app ha riscontrato un errore imprevisto. Puoi copiare i dettagli o tornare alla dashboard.",
+    "title": "Qualcosa è andato storto",
+    "toggleStack": "Mostra i dettagli tecnici",
+    "updateAvailable": "È disponibile una versione più recente — potrebbe risolvere questo problema.",
+    "updateAvailableSubtitle": "Aggiorneremo la pagina e caricheremo il codice più recente.",
+    "updateNow": "Aggiorna ora",
+    "retry": "Riprova"
   }
 }

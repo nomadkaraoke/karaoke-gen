@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Perbarui Rekening Bank",
     "connectFailed": "Terjadi kesalahan. Silakan coba lagi.",
     "flyerRemoveLogo": "Hapus"
+  },
+  "crashReport": {
+    "backToDashboard": "Kembali ke dasbor",
+    "copied": "Disalin!",
+    "copyDebug": "Salin info debug",
+    "hideStack": "Sembunyikan detail teknis",
+    "reportFailed": "Kami tidak dapat mengirim laporan kerusakan secara otomatis. Silakan salin detailnya dan hubungi tim dukungan.",
+    "reportSending": "Mengirim laporan kerusakan…",
+    "reportSent": "Laporan kerusakan terkirim — tim kami sudah diberitahu.",
+    "sendReport": "Kirim laporan kerusakan lagi",
+    "subtitle": "Aplikasi mengalami kesalahan tak terduga. Anda dapat menyalin detailnya atau kembali ke dasbor.",
+    "title": "Terjadi kesalahan",
+    "toggleStack": "Tampilkan detail teknis",
+    "updateAvailable": "Versi yang lebih baru telah tersedia — mungkin dapat memperbaiki masalah ini.",
+    "updateAvailableSubtitle": "Kami akan memuat ulang halaman dan memuat kode terbaru.",
+    "updateNow": "Perbarui sekarang",
+    "retry": "Coba lagi"
   }
 }

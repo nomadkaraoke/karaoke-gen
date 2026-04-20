@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Actualizează contul bancar",
     "connectFailed": "Ceva nu a mers bine. Te rog să încerci din nou.",
     "flyerRemoveLogo": "Elimină"
+  },
+  "crashReport": {
+    "backToDashboard": "Înapoi la panoul de control",
+    "copied": "Copiat!",
+    "copyDebug": "Copiază informațiile de depanare",
+    "hideStack": "Ascunde detaliile tehnice",
+    "reportFailed": "Nu am putut trimite raportul de eroare automat. Te rugăm să copiezi detaliile și să contactezi suportul.",
+    "reportSending": "Se trimite raportul de eroare…",
+    "reportSent": "Raportul de eroare a fost trimis — am fost notificați.",
+    "sendReport": "Trimite raportul de eroare din nou",
+    "subtitle": "Aplicația a întâmpinat o eroare neașteptată. Poți copia detaliile sau te poți întoarce la panoul de control.",
+    "title": "Ceva nu a mers bine",
+    "toggleStack": "Afișează detaliile tehnice",
+    "updateAvailable": "Este disponibilă o versiune mai nouă — s-ar putea să rezolve această problemă.",
+    "updateAvailableSubtitle": "Vom reîncărca pagina și vom folosi cel mai recent cod.",
+    "updateNow": "Actualizează acum",
+    "retry": "Încearcă din nou"
   }
 }

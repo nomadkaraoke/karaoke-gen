@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Banka Hesabını Güncelle",
     "connectFailed": "Bir şeyler ters gitti. Lütfen tekrar dene.",
     "flyerRemoveLogo": "Kaldır"
+  },
+  "crashReport": {
+    "backToDashboard": "Kontrol paneline dön",
+    "copied": "Kopyalandı!",
+    "copyDebug": "Hata ayıklama bilgisini kopyala",
+    "hideStack": "Teknik detayları gizle",
+    "reportFailed": "Çökme raporunu otomatik olarak gönderemedik. Lütfen detayları kopyala ve desteğe mesaj at.",
+    "reportSending": "Çökme raporu gönderiliyor…",
+    "reportSent": "Çökme raporu gönderildi — bilgilendirildik.",
+    "sendReport": "Çökme raporunu tekrar gönder",
+    "subtitle": "Uygulama beklenmedik bir hatayla karşılaştı. Detayları kopyalayabilir veya kontrol paneline dönebilirsin.",
+    "title": "Bir şeyler ters gitti",
+    "toggleStack": "Teknik detayları göster",
+    "updateAvailable": "Daha yeni bir sürüm mevcut — bu sorunu çözebilir.",
+    "updateAvailableSubtitle": "Sayfayı yenileyeceğiz ve en son kodu yükleyeceğiz.",
+    "updateNow": "Şimdi güncelle",
+    "retry": "Tekrar dene"
   }
 }

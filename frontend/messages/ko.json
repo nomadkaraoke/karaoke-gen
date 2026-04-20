@@ -1365,5 +1365,22 @@
     "updateBankAccount": "은행 계좌 업데이트",
     "connectFailed": "문제가 발생했습니다. 다시 시도해 주세요.",
     "flyerRemoveLogo": "제거"
+  },
+  "crashReport": {
+    "backToDashboard": "대시보드로 돌아가기",
+    "copied": "복사되었습니다!",
+    "copyDebug": "디버그 정보 복사",
+    "hideStack": "기술적 세부 정보 숨기기",
+    "reportFailed": "오류 보고서를 자동으로 전송하지 못했습니다. 세부 정보를 복사하여 고객 지원팀에 문의해 주세요.",
+    "reportSending": "오류 보고서 전송 중…",
+    "reportSent": "오류 보고서가 전송되었습니다 — 문제 상황이 접수되었습니다.",
+    "sendReport": "오류 보고서 다시 보내기",
+    "subtitle": "앱에 예기치 않은 오류가 발생했습니다. 세부 정보를 복사하거나 대시보드로 돌아갈 수 있습니다.",
+    "title": "문제가 발생했습니다",
+    "toggleStack": "기술적 세부 정보 보기",
+    "updateAvailable": "새로운 버전이 있습니다 — 업데이트 시 문제가 해결될 수 있습니다.",
+    "updateAvailableSubtitle": "페이지를 새로고침하여 최신 코드를 불러옵니다.",
+    "updateNow": "지금 업데이트하기",
+    "retry": "다시 시도"
   }
 }

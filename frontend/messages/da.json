@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Opdater bankkonto",
     "connectFailed": "Noget gik galt. Prøv venligst igen.",
     "flyerRemoveLogo": "Fjern"
+  },
+  "crashReport": {
+    "backToDashboard": "Tilbage til dashboard",
+    "copied": "Kopieret!",
+    "copyDebug": "Kopiér debug-info",
+    "hideStack": "Skjul tekniske detaljer",
+    "reportFailed": "Vi kunne ikke sende fejlrapporten automatisk. Kopiér detaljerne og send en besked til support.",
+    "reportSending": "Sender fejlrapport…",
+    "reportSent": "Fejlrapport sendt — vi har fået besked.",
+    "sendReport": "Send fejlrapport igen",
+    "subtitle": "Appen stødte på en uventet fejl. Du kan kopiere detaljerne eller gå tilbage til dashboardet.",
+    "title": "Noget gik galt",
+    "toggleStack": "Vis tekniske detaljer",
+    "updateAvailable": "En nyere version er tilgængelig — den løser muligvis dette problem.",
+    "updateAvailableSubtitle": "Vi genindlæser siden og henter den nyeste kode.",
+    "updateNow": "Opdatér nu",
+    "retry": "Prøv igen"
   }
 }

@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Bankszámla frissítése",
     "connectFailed": "Valami hiba történt. Kérlek, próbáld újra.",
     "flyerRemoveLogo": "Eltávolítás"
+  },
+  "crashReport": {
+    "backToDashboard": "Vissza a vezérlőpultra",
+    "copied": "Másolva!",
+    "copyDebug": "Hibakeresési infók másolása",
+    "hideStack": "Technikai részletek elrejtése",
+    "reportFailed": "Nem tudtuk automatikusan elküldeni a hibajelentést. Kérlek, másold ki a részleteket, és írj az ügyfélszolgálatnak.",
+    "reportSending": "Hibajelentés küldése…",
+    "reportSent": "Hibajelentés elküldve — értesítést kaptunk róla.",
+    "sendReport": "Hibajelentés újraküldése",
+    "subtitle": "Az alkalmazás váratlan hibába ütközött. Kimásolhatod a részleteket, vagy visszatérhetsz a vezérlőpultra.",
+    "title": "Valami hiba történt",
+    "toggleStack": "Technikai részletek megjelenítése",
+    "updateAvailable": "Újabb verzió érhető el — ez megoldhatja a problémát.",
+    "updateAvailableSubtitle": "Frissítjük az oldalt, és betöltjük a legújabb kódot.",
+    "updateNow": "Frissítés most",
+    "retry": "Próbáld újra"
   }
 }

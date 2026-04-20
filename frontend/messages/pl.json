@@ -1365,5 +1365,22 @@
     "updateBankAccount": "Zaktualizuj konto bankowe",
     "connectFailed": "Coś poszło nie tak. Spróbuj ponownie.",
     "flyerRemoveLogo": "Usuń"
+  },
+  "crashReport": {
+    "backToDashboard": "Wróć do panelu",
+    "copied": "Skopiowano!",
+    "copyDebug": "Skopiuj dane debugowania",
+    "hideStack": "Ukryj szczegóły techniczne",
+    "reportFailed": "Nie udało nam się automatycznie wysłać raportu o błędzie. Skopiuj szczegóły i napisz do wsparcia.",
+    "reportSending": "Wysyłanie raportu o błędzie…",
+    "reportSent": "Raport o błędzie wysłany — zostaliśmy powiadomieni.",
+    "sendReport": "Wyślij raport o błędzie ponownie",
+    "subtitle": "Aplikacja napotkała nieoczekiwany błąd. Możesz skopiować szczegóły lub wrócić do panelu.",
+    "title": "Coś poszło nie tak",
+    "toggleStack": "Pokaż szczegóły techniczne",
+    "updateAvailable": "Dostępna jest nowsza wersja — może ona rozwiązać ten problem.",
+    "updateAvailableSubtitle": "Odświeżymy stronę i załadujemy najnowszy kod.",
+    "updateNow": "Zaktualizuj teraz",
+    "retry": "Spróbuj ponownie"
   }
 }
