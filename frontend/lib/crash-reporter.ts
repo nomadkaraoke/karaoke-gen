@@ -63,7 +63,7 @@ export function collectContext(ctx: ClientErrorContext): CollectedContext {
     url: sanitizeUrl(ctx.href),
     userAgent: ctx.userAgent || '',
     locale: ctx.locale || 'en',
-    release: ctx.release || (process.env.NEXT_PUBLIC_BUILD_SHA as string) || '',
+    release: ctx.release || process.env.NEXT_PUBLIC_BUILD_SHA || '',
     viewport,
     userEmail: ctx.userEmail ?? null,
   }
