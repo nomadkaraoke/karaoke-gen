@@ -7,6 +7,7 @@ import { DefaultIntlProvider } from "@/components/default-intl-provider"
 import { ImpersonationBannerWrapper } from "@/components/impersonation-banner-wrapper"
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
 import { GoogleAnalytics } from "@/components/google-analytics"
+import ClientErrorInit from "@/components/ClientErrorInit"
 import "./globals.css"
 
 // AvenirNext Bold - matches the font used in actual Nomad theme title card generation
@@ -49,6 +50,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <TenantProvider>
+              <ClientErrorInit />
               <ImpersonationBannerWrapper />
               {children}
             </TenantProvider>

@@ -5,7 +5,6 @@ import { hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { ReferralCapture } from '@/components/ReferralCapture';
-import ClientErrorInit from '@/components/ClientErrorInit';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -35,7 +34,6 @@ export default async function LocaleLayout({
           __html: `document.documentElement.lang="${locale}";document.documentElement.dir="${['ar', 'he'].includes(locale) ? 'rtl' : 'ltr'}";`,
         }}
       />
-      <ClientErrorInit locale={locale} />
       <Suspense fallback={null}>
         <ReferralCapture />
       </Suspense>

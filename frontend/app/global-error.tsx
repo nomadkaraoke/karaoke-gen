@@ -12,7 +12,7 @@ export default function GlobalError({ error, reset }: Props) {
   useEffect(() => {
     void reportClientError({
       error,
-      source: 'global-error.tsx',
+      source: 'global-error.tsx:root',
       context: {
         href: typeof window !== 'undefined' ? window.location.href : '',
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',

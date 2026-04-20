@@ -5,18 +5,33 @@ import { hardReload, isChunkLoadError, isStale, startAmbientVersionPoll } from '
 
 let installed = false
 
-function buildContext(userEmail: string | null, locale: string) {
+// Known locale prefixes — matches next-intl routing config. Any route whose
+// first segment isn't in this set (e.g. /admin, /app) falls through to 'en'.
+const KNOWN_LOCALES = new Set([
+  'ar', 'ca', 'cs', 'da', 'de', 'el', 'en', 'es', 'fi', 'fr', 'he', 'hi', 'hr',
+  'hu', 'id', 'it', 'ja', 'ko', 'nb', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sv',
+  'th', 'tl', 'tr', 'uk', 'vi', 'zh',
+])
+
+function detectLocale(): string {
+  if (typeof window === 'undefined') return 'en'
+  const first = window.location.pathname.split('/').filter(Boolean)[0]
+  if (first && KNOWN_LOCALES.has(first)) return first
+  return 'en'
+}
+
+function buildContext(userEmail: string | null) {
   return {
     href: typeof window !== 'undefined' ? window.location.href : '',
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
     innerWidth: typeof window !== 'undefined' ? window.innerWidth : undefined,
     innerHeight: typeof window !== 'undefined' ? window.innerHeight : undefined,
-    locale,
+    locale: detectLocale(),
     userEmail,
   }
 }
 
-export function installGlobalErrorHandlers(getUserEmail: () => string | null, locale: string) {
+export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
   if (installed) return
   if (typeof window === 'undefined') return
   installed = true
@@ -38,7 +53,7 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null, lo
       void reportClientError({
         error: err,
         source: 'window.onerror',
-        context: buildContext(getUserEmail(), locale),
+        context: buildContext(getUserEmail()),
         extra: {
           filename: event.filename,
           lineno: event.lineno,
@@ -56,7 +71,7 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null, lo
       void reportClientError({
         error: err,
         source: 'unhandledrejection',
-        context: buildContext(getUserEmail(), locale),
+        context: buildContext(getUserEmail()),
       })
     })()
   })
