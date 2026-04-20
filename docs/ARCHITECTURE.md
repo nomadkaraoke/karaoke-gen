@@ -40,6 +40,7 @@
 
 ```text
 Cloud Logging (all services) ──→ Error Monitor (Cloud Run Job, */15 min)
+Frontend clients ───────────────→ POST /api/client-errors ──→ Firestore
                                     │
                                     ├─ Normalize & deduplicate
                                     ├─ LLM incident grouping (Gemini Flash)
@@ -49,7 +50,16 @@ Cloud Logging (all services) ──→ Error Monitor (Cloud Run Job, */15 min)
 
 Entry point: python -m backend.services.error_monitor.monitor
 Design spec: docs/archive/2026-04-12-error-monitor-design.md
+Frontend crash reporting: docs/archive/2026-04-19-frontend-crash-reporting-plan.md
 ```
+
+Frontend crashes are captured via `window.onerror`, `unhandledrejection`, Next.js
+`error.tsx`, and a `CrashReportBoundary` around the review UIs. They POST to
+`/api/client-errors`, which normalises and upserts into the same `error_patterns`
+collection with `service="frontend"` so they flow through the existing
+Discord-alerting pipeline. `ChunkLoadError` after deploy triggers an automatic
+hard reload; the `CrashReport` card also checks `/version.json` and shows an
+"Update now" CTA when the running bundle is stale.
 
 ## Processing Pipeline
 
