@@ -1378,6 +1378,9 @@
     "retry": "Try again",
     "backToDashboard": "Back to dashboard",
     "toggleStack": "Show technical details",
-    "hideStack": "Hide technical details"
+    "hideStack": "Hide technical details",
+    "updateAvailable": "A newer version is available — it may fix this issue.",
+    "updateAvailableSubtitle": "We'll refresh the page and load the latest code.",
+    "updateNow": "Update now"
   }
 }

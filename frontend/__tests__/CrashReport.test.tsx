@@ -12,6 +12,12 @@ jest.mock('@/lib/crash-reporter', () => ({
 }))
 import { reportClientError } from '@/lib/crash-reporter'
 
+jest.mock('@/lib/version-check', () => ({
+  isStale: jest.fn().mockResolvedValue({ stale: false, latestSha: 'aaa', currentSha: 'aaa' }),
+  hardReload: jest.fn(),
+}))
+import { isStale, hardReload } from '@/lib/version-check'
+
 function wrap(ui: React.ReactElement) {
   return (
     <NextIntlClientProvider locale="en" messages={messages as any}>
@@ -54,5 +60,27 @@ describe('CrashReport', () => {
     render(wrap(<CrashReport error={new Error('x')} source="test" onReset={reset} />))
     fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
     expect(reset).toHaveBeenCalled()
+  })
+})
+
+describe('CrashReport stale-version banner', () => {
+  beforeEach(() => {
+    ;(isStale as jest.Mock).mockReset()
+    ;(hardReload as jest.Mock).mockReset()
+  })
+
+  it('renders banner + Update now button when stale', async () => {
+    ;(isStale as jest.Mock).mockResolvedValue({ stale: true, latestSha: 'bbb', currentSha: 'aaa' })
+    render(wrap(<CrashReport error={new Error('x')} source="test" />))
+    expect(await screen.findByTestId('crash-report-stale-banner')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Update now/i }))
+    expect(hardReload).toHaveBeenCalledWith('bbb')
+  })
+
+  it('does not render banner when not stale', async () => {
+    ;(isStale as jest.Mock).mockResolvedValue({ stale: false, latestSha: 'aaa', currentSha: 'aaa' })
+    render(wrap(<CrashReport error={new Error('x')} source="test" />))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.queryByTestId('crash-report-stale-banner')).not.toBeInTheDocument()
   })
 })

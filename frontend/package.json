@@ -3,6 +3,7 @@
   "version": "0.85.9",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/write-version.mjs",
     "build": "next build && node scripts/spa-redirect-404.js",
     "dev": "next dev",
     "dev:with-lyrics": "concurrently -n karaoke,lyrics -c blue,green \"npm run dev\" \"npm run dev:lyrics\"",

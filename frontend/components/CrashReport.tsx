@@ -7,6 +7,7 @@ import { AlertCircle, Check, Clipboard, RefreshCw, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth'
 import { reportClientError } from '@/lib/crash-reporter'
+import { hardReload, isStale } from '@/lib/version-check'
 
 type SendState = 'sending' | 'sent' | 'failed' | 'idle'
 
@@ -39,6 +40,17 @@ export default function CrashReport({ error, source, digest, onReset, backHref }
   const [state, setState] = useState<SendState>('idle')
   const [copied, setCopied] = useState(false)
   const [showStack, setShowStack] = useState(false)
+  const [staleInfo, setStaleInfo] = useState<{ latestSha: string } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void isStale().then((r) => {
+      if (!cancelled && r.stale) setStaleInfo({ latestSha: r.latestSha })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const info = useMemo(() => errorText(error), [error])
 
@@ -49,7 +61,7 @@ export default function CrashReport({ error, source, digest, onReset, backHref }
       `Source: ${source}`,
       `URL: ${typeof window !== 'undefined' ? window.location.href : ''}`,
       `UA: ${typeof navigator !== 'undefined' ? navigator.userAgent : ''}`,
-      `Build: ${process.env.NEXT_PUBLIC_BUILD_SHA || '(dev)'}`,
+      `Build: ${process.env.NEXT_PUBLIC_COMMIT_SHA || '(dev)'}`,
       `When: ${new Date().toISOString()}`,
       '',
       info.stack || '(no stack)',
@@ -70,7 +82,7 @@ export default function CrashReport({ error, source, digest, onReset, backHref }
           innerHeight: typeof window !== 'undefined' ? window.innerHeight : undefined,
           userEmail: user?.email ?? null,
         },
-        extra: { digest, interactive: state === 'idle' ? 'auto' : 'manual' },
+        extra: { digest, interactive: state === 'idle' ? 'auto' : 'manual', latest_sha: staleInfo?.latestSha ?? null },
       })
       setState('sent')
     } catch {
@@ -104,6 +116,20 @@ export default function CrashReport({ error, source, digest, onReset, backHref }
             <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
           </div>
         </div>
+
+        {staleInfo && (
+          <div className="mt-4 rounded-md border border-amber-400/60 bg-amber-400/10 p-3 text-sm" data-testid="crash-report-stale-banner">
+            <strong className="font-medium">{t('updateAvailable')}</strong>
+            <p className="mt-1 text-xs text-muted-foreground">{t('updateAvailableSubtitle')}</p>
+            <Button
+              size="sm"
+              className="mt-2 min-h-[40px]"
+              onClick={() => hardReload(staleInfo.latestSha)}
+            >
+              {t('updateNow')}
+            </Button>
+          </div>
+        )}
 
         <div
           className="mt-4 rounded-md border bg-muted/40 p-3 text-xs font-mono break-words"
@@ -154,7 +180,12 @@ export default function CrashReport({ error, source, digest, onReset, backHref }
             {t('sendReport')}
           </Button>
           {onReset && (
-            <Button size="sm" onClick={onReset} className="min-h-[40px]">
+            <Button
+              size="sm"
+              variant={staleInfo ? 'outline' : 'default'}
+              onClick={onReset}
+              className="min-h-[40px]"
+            >
               <RefreshCw className="mr-1.5 h-4 w-4" />
               {t('retry')}
             </Button>

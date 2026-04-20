@@ -20,3 +20,6 @@ e2e/fixtures/data/search-results/*.json
 
 # Translation snapshot for incremental delta mode
 messages/.en-snapshot.json
+
+# Generated at build time by scripts/write-version.mjs
+public/version.json
