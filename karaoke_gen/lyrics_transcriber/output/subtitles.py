@@ -333,8 +333,10 @@ class SubtitlesGenerator:
         # Build styles (one for solo, N for duet).
         style_list = build_karaoke_styles(karaoke_styles, singers=singers_in_use, solo=solo)
 
-        # All styles share the same alignment
+        # All styles share the same alignment and fontsize (the fontsize param is authoritative —
+        # it can be overridden by preview_mode in the caller)
         for s in style_list:
+            s.Fontsize = fontsize
             s.Alignment = ALIGN_TOP_CENTER
             a.add_style(s)
 
@@ -345,7 +347,7 @@ class SubtitlesGenerator:
             styles_by_singer = {name_to_singer[s.Name]: s for s in style_list}
 
         a.events_format = ["Layer", "Style", "Start", "End", "MarginV", "Text"]
-        # Primary (fallback) style is the first one (singer 1 for duet, "Default" for solo)
+        # Primary (fallback) style is the first one (singer 1 for duet, ass_name for solo)
         primary_style = style_list[0]
         return a, primary_style, styles_by_singer
 

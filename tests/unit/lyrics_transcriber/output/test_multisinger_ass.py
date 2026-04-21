@@ -334,3 +334,19 @@ class TestSubtitlesGeneratorSingerDetection:
         ]
         singers = gen._detect_singers_in_use(segments, is_duet=True)
         assert 2 in singers
+
+    def test_fontsize_param_overrides_style_dict(self, karaoke_style_dict):
+        """Regression: the fontsize parameter to _create_styled_ass_instance must be
+        the source of truth for Style.Fontsize, not karaoke_style["font_size"]. This
+        preserves pre-T7 behavior and lets the caller scale font size for preview mode."""
+        from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
+        # Override dict has font_size=999 but param passes 42
+        d = dict(karaoke_style_dict)
+        d["font_size"] = 999
+        gen = SubtitlesGenerator(
+            output_dir="/tmp", video_resolution=(1920, 1080),
+            font_size=42, line_height=60, styles={"karaoke": d},
+            subtitle_offset_ms=0, logger=MagicMock(),
+        )
+        ass, primary, _ = gen._create_styled_ass_instance((1920, 1080), 42, segments=[])
+        assert primary.Fontsize == 42
