@@ -181,26 +181,39 @@ class LyricsLine:
         return [main_event]
 
     def create_ass_events(
-        self, 
-        state: LineState, 
-        style: Style, 
+        self,
+        state: LineState,
+        style: Style,
         config: ScreenConfig,
-        previous_end_time: Optional[float] = None
+        previous_end_time: Optional[float] = None,
+        styles_by_singer: Optional[dict] = None,
     ) -> List[Event]:
-        """Create ASS events for this line. Returns [main_event] or [lead_in_event, main_event]."""
+        """Create ASS events for this line.
+
+        If styles_by_singer is provided, the main event is tagged with the
+        style for self.segment.singer (falling back to singer 1 when
+        self.segment.singer is None). Otherwise the fallback `style` is used
+        (solo / backward-compat path).
+        """
         self.previous_end_time = previous_end_time
         events = []
-        
+
+        # Pick the style for this line
+        line_style = style
+        if styles_by_singer:
+            singer_key = self.segment.singer if self.segment.singer is not None else 1
+            line_style = styles_by_singer.get(singer_key, style)
+
         # Create lead-in event if needed
-        lead_in_event = self._create_lead_in_event(state, style, config.video_width, config)
+        lead_in_event = self._create_lead_in_event(state, line_style, config.video_width, config)
         if lead_in_event:
             events.extend(lead_in_event)
-        
+
         # Create main lyrics event
         main_event = Event()
         main_event.type = "Dialogue"
         main_event.Layer = 0
-        main_event.Style = style
+        main_event.Style = line_style
         main_event.Start = state.timing.fade_in_time
         main_event.End = state.timing.end_time
 

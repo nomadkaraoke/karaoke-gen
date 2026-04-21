@@ -2,6 +2,45 @@
 import pytest
 
 from karaoke_gen.lyrics_transcriber.output.ass.style import Style, build_karaoke_styles
+from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
+from karaoke_gen.lyrics_transcriber.output.ass.lyrics_line import LyricsLine
+from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig, LineTimingInfo, LineState
+
+
+def _screen_config():
+    return ScreenConfig(
+        line_height=60,
+        video_width=1920,
+        video_height=1080,
+    )
+
+
+def _line_state():
+    return LineState(
+        text="hello world",
+        timing=LineTimingInfo(
+            fade_in_time=0.0,
+            end_time=2.0,
+            fade_out_time=1.8,
+            clear_time=2.3,
+        ),
+        y_position=100,
+    )
+
+
+def _make_line(singer=None):
+    segment = LyricsSegment(
+        id="s1",
+        text="hello world",
+        words=[
+            Word(id="w1", text="hello", start_time=0.0, end_time=0.5),
+            Word(id="w2", text="world", start_time=0.6, end_time=1.0),
+        ],
+        start_time=0.0,
+        end_time=1.0,
+        singer=singer,
+    )
+    return LyricsLine(segment=segment, screen_config=_screen_config())
 
 
 @pytest.fixture
@@ -68,3 +107,50 @@ class TestBuildKaraokeStyles:
         fontnames = {s.Fontname for s in styles}
         assert len(font_sizes) == 1
         assert len(fontnames) == 1
+
+
+class TestLyricsLineStylePerSinger:
+    def test_line_uses_fallback_style_when_no_styles_map(self, karaoke_style_dict):
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1], solo=True)
+        line = _make_line(singer=None)
+        events = line.create_ass_events(
+            state=_line_state(), style=styles[0], config=line.screen_config
+        )
+        assert len(events) >= 1
+        assert events[-1].Style is styles[0]
+
+    def test_line_picks_singer2_style_when_segment_singer_is_2(self, karaoke_style_dict):
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1, 2, 0])
+        by_name = {s.Name: s for s in styles}
+        line = _make_line(singer=2)
+        events = line.create_ass_events(
+            state=_line_state(),
+            style=by_name["Karaoke.Singer1"],  # fallback
+            config=line.screen_config,
+            styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
+        )
+        assert events[-1].Style is by_name["Karaoke.Singer2"]
+
+    def test_line_picks_both_style_when_segment_singer_is_0(self, karaoke_style_dict):
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1, 2, 0])
+        by_name = {s.Name: s for s in styles}
+        line = _make_line(singer=0)
+        events = line.create_ass_events(
+            state=_line_state(),
+            style=by_name["Karaoke.Singer1"],
+            config=line.screen_config,
+            styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
+        )
+        assert events[-1].Style is by_name["Karaoke.Both"]
+
+    def test_line_defaults_to_singer1_style_when_segment_singer_none_with_map(self, karaoke_style_dict):
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1, 2, 0])
+        by_name = {s.Name: s for s in styles}
+        line = _make_line(singer=None)
+        events = line.create_ass_events(
+            state=_line_state(),
+            style=by_name["Karaoke.Singer1"],
+            config=line.screen_config,
+            styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
+        )
+        assert events[-1].Style is by_name["Karaoke.Singer1"]
