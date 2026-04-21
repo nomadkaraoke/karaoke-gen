@@ -612,6 +612,83 @@ class TestHelperFunctions:
             "end": {"existing_image": "/path/to/end.png"},
         }
         title_img, end_img = get_existing_images(style_params)
-        
+
         assert title_img == "/path/to/title.png"
         assert end_img == "/path/to/end.png"
+
+
+class TestKaraokeSingersBlock:
+    """Tests for the optional per-singer colors block under karaoke style."""
+
+    def test_default_karaoke_style_has_singers_block(self):
+        from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
+        assert "singers" in DEFAULT_KARAOKE_STYLE
+        # The nomad defaults ship with blue / pink / yellow presets
+        singers = DEFAULT_KARAOKE_STYLE["singers"]
+        assert set(singers.keys()) == {"1", "2", "both"}
+
+    def test_singer2_has_pink_primary(self):
+        from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
+        # Pink active for Singer 2
+        assert DEFAULT_KARAOKE_STYLE["singers"]["2"]["primary_color"] == "247, 112, 180, 255"
+
+    def test_both_has_yellow_primary(self):
+        from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
+        assert DEFAULT_KARAOKE_STYLE["singers"]["both"]["primary_color"] == "252, 211, 77, 255"
+
+
+class TestResolveSingerColors:
+    """Tests for resolve_singer_colors — per-singer color resolution."""
+
+    def test_resolve_singer1_uses_flat_colors_when_no_override(self):
+        from karaoke_gen.style_loader import resolve_singer_colors
+        karaoke = {
+            "primary_color": "1, 1, 1, 255",
+            "secondary_color": "2, 2, 2, 255",
+            "outline_color": "3, 3, 3, 255",
+            "back_color": "0, 0, 0, 0",
+            "singers": {},
+        }
+        colors = resolve_singer_colors(karaoke, 1)
+        assert colors["primary_color"] == "1, 1, 1, 255"
+        assert colors["outline_color"] == "3, 3, 3, 255"
+
+    def test_resolve_singer2_overrides_only_specified_fields(self):
+        from karaoke_gen.style_loader import resolve_singer_colors
+        karaoke = {
+            "primary_color": "1, 1, 1, 255",
+            "secondary_color": "2, 2, 2, 255",
+            "outline_color": "3, 3, 3, 255",
+            "back_color": "0, 0, 0, 0",
+            "singers": {"2": {"primary_color": "9, 9, 9, 255"}},
+        }
+        colors = resolve_singer_colors(karaoke, 2)
+        assert colors["primary_color"] == "9, 9, 9, 255"
+        # Fields not overridden fall back to flat colors
+        assert colors["secondary_color"] == "2, 2, 2, 255"
+        assert colors["outline_color"] == "3, 3, 3, 255"
+
+    def test_resolve_both_uses_both_key_not_numeric(self):
+        from karaoke_gen.style_loader import resolve_singer_colors
+        karaoke = {
+            "primary_color": "1, 1, 1, 255",
+            "secondary_color": "2, 2, 2, 255",
+            "outline_color": "3, 3, 3, 255",
+            "back_color": "0, 0, 0, 0",
+            "singers": {"both": {"primary_color": "7, 7, 7, 255"}},
+        }
+        colors = resolve_singer_colors(karaoke, 0)
+        assert colors["primary_color"] == "7, 7, 7, 255"
+
+    def test_resolve_handles_missing_singers_block(self):
+        from karaoke_gen.style_loader import resolve_singer_colors
+        karaoke = {
+            "primary_color": "1, 1, 1, 255",
+            "secondary_color": "2, 2, 2, 255",
+            "outline_color": "3, 3, 3, 255",
+            "back_color": "0, 0, 0, 0",
+            # no "singers" key
+        }
+        colors = resolve_singer_colors(karaoke, 2)
+        # Should fall back to flat for every field
+        assert colors["primary_color"] == "1, 1, 1, 255"

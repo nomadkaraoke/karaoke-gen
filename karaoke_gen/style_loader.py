@@ -101,6 +101,27 @@ DEFAULT_KARAOKE_STYLE = {
     "max_line_length": 40,
     "top_padding": 200,
     "font_size": 100,
+    # NEW: optional per-singer color overrides. Keys: "1" / "2" / "both".
+    # Missing singer or missing field falls back to the flat colors above.
+    # Key note: "both" corresponds to SingerId 0.
+    "singers": {
+        # Singer 1 inherits the flat colors above — explicit empty dict for clarity
+        "1": {},
+        # Singer 2: pink
+        "2": {
+            "primary_color":   "247, 112, 180, 255",
+            "secondary_color": "255, 255, 255, 255",
+            "outline_color":   "158, 26, 96, 255",
+            "back_color":      "0, 0, 0, 0",
+        },
+        # Both: yellow
+        "both": {
+            "primary_color":   "252, 211, 77, 255",
+            "secondary_color": "255, 255, 255, 255",
+            "outline_color":   "146, 108, 0, 255",
+            "back_color":      "0, 0, 0, 0",
+        },
+    },
 }
 
 DEFAULT_CDG_STYLE = {
@@ -117,6 +138,35 @@ DEFAULT_STYLE_PARAMS = {
     "karaoke": DEFAULT_KARAOKE_STYLE.copy(),
     "cdg": DEFAULT_CDG_STYLE.copy(),
 }
+
+
+# =============================================================================
+# SINGER COLOR RESOLUTION (for multi-singer / duet rendering)
+# =============================================================================
+
+# Map an internal SingerId (0, 1, 2) to the theme's singers-block key.
+_SINGER_KEY_MAP = {0: "both", 1: "1", 2: "2"}
+
+_SINGER_COLOR_FIELDS = ("primary_color", "secondary_color", "outline_color", "back_color")
+
+
+def resolve_singer_colors(karaoke_style: Dict[str, Any], singer_id: int) -> Dict[str, str]:
+    """Return the resolved color dict for a given SingerId.
+
+    Starts from the flat colors (primary_color, secondary_color, outline_color,
+    back_color) and overlays any fields specified under karaoke_style["singers"][key],
+    where key is "1", "2", or "both" depending on singer_id.
+
+    singer_id must be 0 ("both"), 1, or 2.
+    """
+    singers_block = karaoke_style.get("singers", {}) or {}
+    key = _SINGER_KEY_MAP[singer_id]
+    override = singers_block.get(key, {}) or {}
+
+    return {
+        field: override.get(field, karaoke_style.get(field))
+        for field in _SINGER_COLOR_FIELDS
+    }
 
 
 # =============================================================================
