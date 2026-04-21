@@ -11,8 +11,51 @@ import shutil
 
 from karaoke_gen.lyrics_transcriber.output.cdgmaker.cdg import CDG_VISIBLE_WIDTH
 from karaoke_gen.lyrics_transcriber.output.cdgmaker.composer import KaraokeComposer
+from karaoke_gen.lyrics_transcriber.output.cdgmaker.config import SettingsLyric
 from karaoke_gen.lyrics_transcriber.output.cdgmaker.render import get_wrapped_text
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment
+
+
+# Map our internal SingerId (0/1/2) to the CDG composer's 1-indexed singer field.
+# SingerId 0 ("Both") → CDG singer 3.
+_SINGER_ID_TO_CDG_INDEX = {0: 3, 1: 1, 2: 2}
+
+
+def build_cdg_lyrics(
+    segments,
+    is_duet: bool,
+    line_tile_height: int,
+    lines_per_page: int,
+) -> list:
+    """Build a list of SettingsLyric entries from our LyricsSegment list.
+
+    When is_duet is False, every SettingsLyric uses the CDG default singer=1
+    (regression guard — produces identical output to the previous path).
+
+    When is_duet is True, each SettingsLyric.singer is derived from the
+    segment-level singer only (0→3, 1→1, 2→2, None→1). Word-level overrides
+    are ignored — CDG's model is line-level singer and splitting lines at
+    word boundaries would produce visually distinct display lines.
+    """
+    out = []
+    for seg in segments:
+        # Build sync list (timings in centiseconds) — one entry per word start time
+        sync = [int(round(w.start_time * 100)) for w in seg.words]
+        text = seg.text
+
+        if is_duet and seg.singer is not None:
+            cdg_singer = _SINGER_ID_TO_CDG_INDEX.get(seg.singer, 1)
+        else:
+            cdg_singer = 1
+
+        out.append(SettingsLyric(
+            sync=sync,
+            text=text,
+            line_tile_height=line_tile_height,
+            lines_per_page=lines_per_page,
+            singer=cdg_singer,
+        ))
+    return out
 
 
 class CDGGenerator:
