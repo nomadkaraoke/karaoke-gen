@@ -692,3 +692,27 @@ class TestResolveSingerColors:
         colors = resolve_singer_colors(karaoke, 2)
         # Should fall back to flat for every field
         assert colors["primary_color"] == "1, 1, 1, 255"
+
+
+class TestCdgDuetSingers:
+    def test_cdg_duet_singers_has_three_entries(self):
+        from karaoke_gen.style_loader import CDG_DUET_SINGERS
+        assert len(CDG_DUET_SINGERS) == 3
+
+    def test_cdg_duet_singer_colors_are_rgb_tuples(self):
+        from karaoke_gen.style_loader import CDG_DUET_SINGERS
+        for s in CDG_DUET_SINGERS:
+            assert len(s.active_fill) == 3
+            assert all(isinstance(c, int) for c in s.active_fill)
+
+    def test_cdg_duet_singer_1_is_blue(self):
+        from karaoke_gen.style_loader import CDG_DUET_SINGERS
+        assert CDG_DUET_SINGERS[0].active_fill == (112, 112, 247)
+
+    def test_cdg_duet_singer_2_is_pink(self):
+        from karaoke_gen.style_loader import CDG_DUET_SINGERS
+        assert CDG_DUET_SINGERS[1].active_fill == (247, 112, 180)
+
+    def test_cdg_duet_singer_both_is_yellow(self):
+        from karaoke_gen.style_loader import CDG_DUET_SINGERS
+        assert CDG_DUET_SINGERS[2].active_fill == (252, 211, 77)

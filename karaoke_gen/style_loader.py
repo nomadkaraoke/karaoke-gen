@@ -681,10 +681,63 @@ def get_video_durations(style_params: Dict[str, Any]) -> Tuple[int, int]:
 def get_existing_images(style_params: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     """
     Get existing title and end images from style parameters.
-    
+
     Returns:
         Tuple of (existing_title_image, existing_end_image) paths or None.
     """
     existing_title_image = style_params.get("intro", {}).get("existing_image")
     existing_end_image = style_params.get("end", {}).get("existing_image")
     return existing_title_image, existing_end_image
+
+
+# =============================================================================
+# CDG DUET PALETTE (hardcoded — CDG has a 16-color palette budget)
+# =============================================================================
+
+# CDG singer colors (RGB tuples).
+# Ordering: [Singer 1, Singer 2, Both]. CDG composer is 1-indexed so this
+# list maps to SettingsLyric.singer = 1, 2, 3 respectively. Our internal
+# SingerId 0 (Both) maps to CDG singer 3.
+#
+# Imported lazily to avoid circular imports; see karaoke_gen/lyrics_transcriber/output/cdg.py
+# for usage.
+def _build_cdg_duet_singers():
+    # Imported here to avoid top-level import of the cdgmaker package
+    from karaoke_gen.lyrics_transcriber.output.cdgmaker.config import SettingsSinger
+    return [
+        # Singer 1: blue (#7070F7 active, #1A3AEB stroke)
+        SettingsSinger(
+            active_fill="#7070F7", active_stroke="#1A3AEB",
+            inactive_fill="#FFFFFF", inactive_stroke="#505050",
+        ),
+        # Singer 2: pink (#F770B4 active, #9E1A60 stroke)
+        SettingsSinger(
+            active_fill="#F770B4", active_stroke="#9E1A60",
+            inactive_fill="#FFFFFF", inactive_stroke="#505050",
+        ),
+        # Both: yellow (#FCD34D active, #926C00 stroke)
+        SettingsSinger(
+            active_fill="#FCD34D", active_stroke="#926C00",
+            inactive_fill="#FFFFFF", inactive_stroke="#505050",
+        ),
+    ]
+
+
+# Use a module-level lazy accessor so first access triggers the import
+class _CdgDuetSingersLazy:
+    _cache = None
+    def __iter__(self):
+        if self._cache is None:
+            self._cache = _build_cdg_duet_singers()
+        return iter(self._cache)
+    def __getitem__(self, idx):
+        if self._cache is None:
+            self._cache = _build_cdg_duet_singers()
+        return self._cache[idx]
+    def __len__(self):
+        if self._cache is None:
+            self._cache = _build_cdg_duet_singers()
+        return len(self._cache)
+
+
+CDG_DUET_SINGERS = _CdgDuetSingersLazy()
