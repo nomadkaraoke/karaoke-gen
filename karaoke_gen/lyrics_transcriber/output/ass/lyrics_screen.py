@@ -177,6 +177,7 @@ class LyricsScreen:
         style: Style,
         previous_active_lines: Optional[List[Tuple[float, int, str]]] = None,
         previous_instrumental_end: Optional[float] = None,
+        styles_by_singer: Optional[dict] = None,
     ) -> Tuple[List[Event], List[Tuple[float, int, str]]]:
         """Convert screen to ASS events. Returns (events, active_lines)."""
         events = []
@@ -220,10 +221,11 @@ class LyricsScreen:
             # Create ASS events with previous end time info
             # fmt: off
             line_events = line.create_ass_events(
-                state=line_state, 
-                style=style, 
+                state=line_state,
+                style=style,
                 config=self.config,
-                previous_end_time=previous_end_time
+                previous_end_time=previous_end_time,
+                styles_by_singer=styles_by_singer,
             )
             # fmt: on
             events.extend(line_events)

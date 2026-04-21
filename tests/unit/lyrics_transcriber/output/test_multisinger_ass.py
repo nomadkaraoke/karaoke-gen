@@ -5,6 +5,7 @@ from karaoke_gen.lyrics_transcriber.output.ass.style import Style, build_karaoke
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
 from karaoke_gen.lyrics_transcriber.output.ass.lyrics_line import LyricsLine
 from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig, LineTimingInfo, LineState
+from karaoke_gen.lyrics_transcriber.output.ass.lyrics_screen import LyricsScreen
 
 
 def _screen_config():
@@ -244,3 +245,22 @@ class TestLyricsLineWordOverride:
         assert r_idx > -1 and friend_idx > -1 and r_idx < friend_idx, (
             f"Expected {{\\r}} before 'friend' to reset the missing-singer override; got: {text}"
         )
+
+
+class TestLyricsScreenPassesStylesMap:
+    def test_screen_threads_styles_by_singer_to_lines(self, karaoke_style_dict):
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1, 2, 0])
+        by_name = {s.Name: s for s in styles}
+        styles_map = {1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]}
+
+        screen = LyricsScreen(
+            video_size=(1920, 1080),
+            line_height=60,
+            config=_screen_config(),
+        )
+        screen.lines.append(_make_line(singer=2))
+
+        events, _ = screen.as_ass_events(style=by_name["Karaoke.Singer1"], styles_by_singer=styles_map)
+        # The one line's event should use Singer2's style
+        dialogue_events = [e for e in events if getattr(e, "type", None) == "Dialogue"]
+        assert any(e.Style is by_name["Karaoke.Singer2"] for e in dialogue_events)
