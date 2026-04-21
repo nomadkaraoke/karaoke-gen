@@ -21,7 +21,7 @@ def _line_state():
         timing=LineTimingInfo(
             fade_in_time=0.0,
             end_time=2.0,
-            fade_out_time=1.8,
+            fade_out_time=2.3,
             clear_time=2.3,
         ),
         y_position=100,
