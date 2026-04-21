@@ -194,7 +194,7 @@ from karaoke_gen.style_loader import resolve_singer_colors  # noqa: E402
 _DUET_STYLE_NAME_SUFFIX = {0: "Both", 1: "Singer1", 2: "Singer2"}
 
 
-def build_karaoke_styles(karaoke_style: dict, singers, solo: bool = False):
+def build_karaoke_styles(karaoke_style: dict, singers, solo: bool = False) -> list[Style]:
     """Build one ASS Style per singer id.
 
     Args:
@@ -206,6 +206,11 @@ def build_karaoke_styles(karaoke_style: dict, singers, solo: bool = False):
 
     Returns:
         list[Style] — one Style per singer id.
+
+    Note:
+        The Alignment attribute on each returned Style is intentionally left
+        at the Style() default. Callers are responsible for setting it (e.g.
+        ALIGN_TOP_CENTER) before adding the styles to the ASS file.
     """
     def _parse_color(color_str):
         return tuple(int(x.strip()) for x in color_str.split(","))
