@@ -154,3 +154,53 @@ class TestLyricsLineStylePerSinger:
             styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
         )
         assert events[-1].Style is by_name["Karaoke.Singer1"]
+
+
+def _line_with_override():
+    segment = LyricsSegment(
+        id="s1",
+        text="hello world",
+        words=[
+            Word(id="w1", text="hello", start_time=0.0, end_time=0.5, singer=None),
+            Word(id="w2", text="world", start_time=0.6, end_time=1.0, singer=2),
+        ],
+        start_time=0.0,
+        end_time=1.0,
+        singer=1,
+    )
+    return LyricsLine(segment=segment, screen_config=_screen_config())
+
+
+class TestLyricsLineWordOverride:
+    def test_word_override_emits_color_tag(self, karaoke_style_dict):
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1, 2, 0])
+        by_name = {s.Name: s for s in styles}
+        line = _line_with_override()
+
+        events = line.create_ass_events(
+            state=_line_state(),
+            style=by_name["Karaoke.Singer1"],
+            config=line.screen_config,
+            styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
+        )
+        text = events[-1].Text
+        # Singer 2 primary = 247, 112, 180 → BGR hex: B4 70 F7 (padded)
+        # ASS color format: &HBBGGRR& i.e. B4 70 F7 → &HB470F7&
+        assert "\\c&HB470F7&" in text
+        # Reset tag after the overridden word
+        assert "{\\r}" in text
+
+    def test_no_override_when_word_singer_matches_segment(self, karaoke_style_dict):
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1, 2, 0])
+        by_name = {s.Name: s for s in styles}
+        # All words' singer None (inherit from segment.singer=1) — no overrides
+        line = _make_line(singer=1)
+        events = line.create_ass_events(
+            state=_line_state(),
+            style=by_name["Karaoke.Singer1"],
+            config=line.screen_config,
+            styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
+        )
+        text = events[-1].Text
+        assert "\\c&H" not in text
+        assert "{\\r}" not in text

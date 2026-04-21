@@ -227,7 +227,10 @@ class LyricsLine:
         )
 
         # Add the main lyrics text with karaoke timing
-        text += self._create_ass_text(timedelta(seconds=state.timing.fade_in_time))
+        text += self._create_ass_text(
+            timedelta(seconds=state.timing.fade_in_time),
+            styles_by_singer=styles_by_singer,
+        )
 
         main_event.Text = text
         events.append(main_event)
@@ -247,16 +250,22 @@ class LyricsLine:
         else:  # "none" or any other value
             return text
 
-    def _create_ass_text(self, start_ts: timedelta) -> str:
-        """Create the ASS text with karaoke timing tags."""
+    def _create_ass_text(
+        self,
+        start_ts: timedelta,
+        styles_by_singer: Optional[dict] = None,
+    ) -> str:
+        """Create the ASS text with karaoke timing tags and word-level singer overrides."""
         # Initial delay before first word
         first_word_time = self.segment.start_time
-        
+
         # Add initial delay for regular lines
         start_time = max(0, (first_word_time - start_ts.total_seconds()) * 100)
         text = r"{\k" + str(int(round(start_time))) + r"}"
 
         prev_end_time = first_word_time
+        segment_singer = self.segment.singer if self.segment.singer is not None else 1
+        current_inline_singer = None  # tracks whether we've emitted a color override
 
         for word in self.segment.words:
             # Add gap between words if needed
@@ -272,9 +281,32 @@ class LyricsLine:
             # loss so we guard against it at the output boundary too.
             clean_word_text = word.text.replace("\n", "").strip()
             transformed_text = self._apply_case_transform(clean_word_text)
+
+            # Determine whether this word has a singer override
+            word_singer = word.singer if word.singer is not None else segment_singer
+            needs_override = (
+                styles_by_singer is not None
+                and word_singer != segment_singer
+            )
+
+            if needs_override and current_inline_singer != word_singer:
+                override_style = styles_by_singer.get(word_singer)
+                if override_style is not None:
+                    # PrimaryColour tuple is (R, G, B, A). ASS inline format: &HBBGGRR&
+                    r, g, b, _a = override_style.PrimaryColour
+                    text += r"{\c&H" + f"{b:02X}{g:02X}{r:02X}" + r"&}"
+                    current_inline_singer = word_singer
+            elif not needs_override and current_inline_singer is not None:
+                text += r"{\r}"
+                current_inline_singer = None
+
             text += r"{\kf" + str(duration) + r"}" + transformed_text + " "
 
             prev_end_time = word.end_time  # Track the actual end time of the word
+
+        # Close any lingering override
+        if current_inline_singer is not None:
+            text += r"{\r}"
 
         return text.rstrip()
 
