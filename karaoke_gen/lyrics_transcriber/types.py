@@ -1,5 +1,8 @@
 from dataclasses import dataclass, asdict, field, fields
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple
+
+# Singer id. 1 = Singer 1, 2 = Singer 2, 0 = Both. None/absent = default (Singer 1).
+SingerId = Literal[0, 1, 2]
 from enum import Enum
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
 
@@ -15,6 +18,7 @@ class Word:
     confidence: Optional[float] = None
     # New: Track if this word was created during correction
     created_during_correction: bool = False
+    singer: Optional[SingerId] = None
 
     def __post_init__(self):
         """Strip whitespace/newlines from text.
@@ -32,6 +36,8 @@ class Word:
         # Remove confidence from output if it's None
         if d["confidence"] is None:
             del d["confidence"]
+        if d["singer"] is None:
+            del d["singer"]
         return d
 
     @classmethod
@@ -44,6 +50,7 @@ class Word:
             end_time=data["end_time"],
             confidence=data.get("confidence"),  # Use get() since confidence is optional
             created_during_correction=data.get("created_during_correction", False),
+            singer=data.get("singer"),
         )
 
 
@@ -56,16 +63,20 @@ class LyricsSegment:
     words: List[Word]
     start_time: float
     end_time: float
+    singer: Optional[SingerId] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert LyricsSegment to dictionary for JSON serialization."""
-        return {
+        d = {
             "id": self.id,
             "text": self.text,
             "words": [word.to_dict() for word in self.words],
             "start_time": self.start_time,
             "end_time": self.end_time,
         }
+        if self.singer is not None:
+            d["singer"] = self.singer
+        return d
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "LyricsSegment":
@@ -76,6 +87,7 @@ class LyricsSegment:
             words=[Word.from_dict(w) for w in data["words"]],
             start_time=data["start_time"],
             end_time=data["end_time"],
+            singer=data.get("singer"),
         )
 
 
