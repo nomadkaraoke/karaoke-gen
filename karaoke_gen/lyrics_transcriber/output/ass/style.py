@@ -185,3 +185,76 @@ Style.formatters = {
     "MarginV": (Formatters.str_to_integer, Formatters.integer_to_str),
     "Encoding": (Formatters.str_to_integer, Formatters.integer_to_str),
 }
+
+
+from karaoke_gen.style_loader import resolve_singer_colors  # noqa: E402
+
+
+# Singer id → suffix for the generated ASS style name.
+_DUET_STYLE_NAME_SUFFIX = {0: "Both", 1: "Singer1", 2: "Singer2"}
+
+
+def build_karaoke_styles(karaoke_style: dict, singers, solo: bool = False):
+    """Build one ASS Style per singer id.
+
+    Args:
+        karaoke_style: the theme's "karaoke" block (flat colors + optional "singers" block)
+        singers: iterable of SingerId (0/1/2) to build styles for
+        solo: if True, returns a single Style named per karaoke_style["ass_name"]
+              with the flat colors. Used when is_duet=False for byte-identical
+              regression with pre-change output.
+
+    Returns:
+        list[Style] — one Style per singer id.
+    """
+    def _parse_color(color_str):
+        return tuple(int(x.strip()) for x in color_str.split(","))
+
+    def _parse_bool(val):
+        return -1 if val else 0
+
+    def _make_style(name: str, colors: dict) -> Style:
+        s = Style()
+        s.type = "Style"
+        s.Name = name
+        s.Fontname = karaoke_style["font"]
+        s.Fontpath = karaoke_style.get("font_path", "")
+        s.Fontsize = karaoke_style["font_size"]
+        s.PrimaryColour = _parse_color(colors["primary_color"])
+        s.SecondaryColour = _parse_color(colors["secondary_color"])
+        s.OutlineColour = _parse_color(colors["outline_color"])
+        s.BackColour = _parse_color(colors["back_color"])
+        s.Bold = _parse_bool(karaoke_style["bold"])
+        s.Italic = _parse_bool(karaoke_style["italic"])
+        s.Underline = _parse_bool(karaoke_style["underline"])
+        s.StrikeOut = _parse_bool(karaoke_style["strike_out"])
+        s.ScaleX = int(karaoke_style["scale_x"])
+        s.ScaleY = int(karaoke_style["scale_y"])
+        s.Spacing = int(karaoke_style["spacing"])
+        s.Angle = float(karaoke_style["angle"])
+        s.BorderStyle = int(karaoke_style["border_style"])
+        s.Outline = int(karaoke_style["outline"])
+        s.Shadow = int(karaoke_style["shadow"])
+        s.MarginL = int(karaoke_style["margin_l"])
+        s.MarginR = int(karaoke_style["margin_r"])
+        s.MarginV = int(karaoke_style["margin_v"])
+        s.Encoding = int(karaoke_style["encoding"])
+        # Alignment is set later by the caller via ALIGN_TOP_CENTER; leave default
+        return s
+
+    if solo:
+        # Solo: one style, original ass_name, flat colors only.
+        colors = {
+            "primary_color":   karaoke_style["primary_color"],
+            "secondary_color": karaoke_style["secondary_color"],
+            "outline_color":   karaoke_style["outline_color"],
+            "back_color":      karaoke_style["back_color"],
+        }
+        return [_make_style(karaoke_style["ass_name"], colors)]
+
+    styles = []
+    for sid in singers:
+        colors = resolve_singer_colors(karaoke_style, sid)
+        name = f"Karaoke.{_DUET_STYLE_NAME_SUFFIX[sid]}"
+        styles.append(_make_style(name, colors))
+    return styles
