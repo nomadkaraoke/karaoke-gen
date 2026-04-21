@@ -264,3 +264,73 @@ class TestLyricsScreenPassesStylesMap:
         # The one line's event should use Singer2's style
         dialogue_events = [e for e in events if getattr(e, "type", None) == "Dialogue"]
         assert any(e.Style is by_name["Karaoke.Singer2"] for e in dialogue_events)
+
+
+from unittest.mock import MagicMock
+
+
+def _segment(seg_id, start, end, words, singer=None):
+    return LyricsSegment(
+        id=seg_id, text=" ".join(w.text for w in words),
+        words=words, start_time=start, end_time=end, singer=singer,
+    )
+
+
+class TestSubtitlesGeneratorSingerDetection:
+    def test_solo_default_returns_singer_1_only(self, karaoke_style_dict):
+        from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
+        gen = SubtitlesGenerator(
+            output_dir="/tmp", video_resolution=(1920, 1080),
+            font_size=100, line_height=60, styles={"karaoke": karaoke_style_dict},
+            subtitle_offset_ms=0, logger=MagicMock(),
+        )
+        segments = [
+            _segment("s1", 0.0, 1.0, [Word(id="w1", text="hi", start_time=0.0, end_time=1.0)], singer=None),
+        ]
+        assert gen._detect_singers_in_use(segments, is_duet=False) == [1]
+
+    def test_duet_on_but_all_singer_1_still_returns_just_1(self, karaoke_style_dict):
+        from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
+        gen = SubtitlesGenerator(
+            output_dir="/tmp", video_resolution=(1920, 1080),
+            font_size=100, line_height=60, styles={"karaoke": karaoke_style_dict},
+            subtitle_offset_ms=0, logger=MagicMock(),
+        )
+        segments = [
+            _segment("s1", 0.0, 1.0, [Word(id="w1", text="hi", start_time=0.0, end_time=1.0)], singer=1),
+        ]
+        assert gen._detect_singers_in_use(segments, is_duet=True) == [1]
+
+    def test_duet_with_mixed_singers(self, karaoke_style_dict):
+        from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
+        gen = SubtitlesGenerator(
+            output_dir="/tmp", video_resolution=(1920, 1080),
+            font_size=100, line_height=60, styles={"karaoke": karaoke_style_dict},
+            subtitle_offset_ms=0, logger=MagicMock(),
+        )
+        segments = [
+            _segment("s1", 0.0, 1.0, [Word(id="w1", text="hi", start_time=0.0, end_time=1.0)], singer=1),
+            _segment("s2", 1.0, 2.0, [Word(id="w2", text="bye", start_time=1.0, end_time=2.0)], singer=2),
+            _segment("s3", 2.0, 3.0, [Word(id="w3", text="hey", start_time=2.0, end_time=3.0)], singer=0),
+        ]
+        # Always sorted with 1 first
+        singers = gen._detect_singers_in_use(segments, is_duet=True)
+        assert 1 in singers and 2 in singers and 0 in singers
+
+    def test_duet_picks_up_word_level_override(self, karaoke_style_dict):
+        from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
+        gen = SubtitlesGenerator(
+            output_dir="/tmp", video_resolution=(1920, 1080),
+            font_size=100, line_height=60, styles={"karaoke": karaoke_style_dict},
+            subtitle_offset_ms=0, logger=MagicMock(),
+        )
+        segments = [
+            _segment(
+                "s1", 0.0, 1.0,
+                [Word(id="w1", text="hi", start_time=0.0, end_time=0.5, singer=2),
+                 Word(id="w2", text="bye", start_time=0.5, end_time=1.0)],
+                singer=1,
+            ),
+        ]
+        singers = gen._detect_singers_in_use(segments, is_duet=True)
+        assert 2 in singers

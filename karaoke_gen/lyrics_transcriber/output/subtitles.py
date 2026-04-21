@@ -27,6 +27,7 @@ class SubtitlesGenerator:
         styles: dict,
         subtitle_offset_ms: int = 0,
         logger: Optional[logging.Logger] = None,
+        is_duet: bool = False,
     ):
         """Initialize SubtitleGenerator.
 
@@ -43,6 +44,7 @@ class SubtitlesGenerator:
         self.video_resolution = video_resolution
         self.font_size = font_size
         self.styles = styles
+        self.is_duet = is_duet
         self.subtitle_offset_ms = subtitle_offset_ms
         
         # Create ScreenConfig with potential overrides from styles
@@ -104,6 +106,25 @@ class SubtitlesGenerator:
                 return duration
             return 0.0
 
+    def _detect_singers_in_use(self, segments: List[LyricsSegment], is_duet: bool) -> List[int]:
+        """Scan segments + words for singer ids. Returns a sorted list with 1 always first.
+
+        When is_duet is False, always returns [1] (solo path).
+        """
+        if not is_duet:
+            return [1]
+
+        found = {1}  # Singer 1 is always present as the default
+        for seg in segments:
+            if seg.singer is not None:
+                found.add(seg.singer)
+            for w in seg.words:
+                if w.singer is not None:
+                    found.add(w.singer)
+        # Sort with 1 first, then 2, then 0 (Both) for stable output
+        order = [1, 2, 0]
+        return [sid for sid in order if sid in found]
+
     def generate_ass(self, segments: List[LyricsSegment], output_prefix: str, audio_filepath: str) -> str:
         self.logger.info("Generating ASS format subtitles")
         output_path = self._get_output_path(f"{output_prefix} (Karaoke)", "ass")
@@ -115,7 +136,9 @@ class SubtitlesGenerator:
             screens = self._create_screens(segments, song_duration)
             self.logger.debug(f"Created {len(screens)} initial screens")
 
-            lyric_subtitles_ass = self._create_styled_subtitles(screens, self.video_resolution, self.font_size)
+            lyric_subtitles_ass = self._create_styled_subtitles(
+                screens, self.video_resolution, self.font_size, segments=segments
+            )
             self.logger.debug("Created styled subtitles")
 
             lyric_subtitles_ass.write(output_path)
@@ -270,104 +293,79 @@ class SubtitlesGenerator:
                 for j, line in enumerate(screen.lines):
                     self.logger.debug(f"    Line {j + 1} ({line.segment.start_time:.2f}s - {line.segment.end_time:.2f}s): {line}")
 
-    def _create_styled_ass_instance(self, resolution, fontsize):
+    def _create_styled_ass_instance(self, resolution, fontsize, segments=None):
+        from karaoke_gen.lyrics_transcriber.output.ass.style import build_karaoke_styles
+
         a = ASS()
         a.set_resolution(resolution)
 
         a.styles_format = [
-            "Name",  # The name of the Style. Case sensitive. Cannot include commas.
-            "Fontname",  # The fontname as used by Windows. Case-sensitive.
-            "Fontpath",  # The path to the font file.
-            "Fontsize",  # Font size
-            "PrimaryColour",  # This is the colour that a subtitle will normally appear in.
-            "SecondaryColour",  # This colour may be used instead of the Primary colour when a subtitle is automatically shifted to prevent an onscreen collsion, to distinguish the different subtitles.
-            "OutlineColour",  # This colour may be used instead of the Primary or Secondary colour when a subtitle is automatically shifted to prevent an onscreen collsion, to distinguish the different subtitles.
-            "BackColour",  # This is the colour of the subtitle outline or shadow, if these are used
-            "Bold",  # This defines whether text is bold (true) or not (false). -1 is True, 0 is False
-            "Italic",  # This defines whether text is italic (true) or not (false). -1 is True, 0 is False
-            "Underline",  # [-1 or 0]
-            "StrikeOut",  # [-1 or 0]
-            "ScaleX",  # Modifies the width of the font. [percent]
-            "ScaleY",  # Modifies the height of the font. [percent]
-            "Spacing",  # Extra space between characters. [pixels]
-            "Angle",  # The origin of the rotation is defined by the alignment. Can be a floating point number. [degrees]
-            "BorderStyle",  # 1=Outline + drop shadow, 3=Opaque box
-            "Outline",  # If BorderStyle is 1,  then this specifies the width of the outline around the text, in pixels. Values may be 0, 1, 2, 3 or 4.
-            "Shadow",  # If BorderStyle is 1,  then this specifies the depth of the drop shadow behind the text, in pixels. Values may be 0, 1, 2, 3 or 4. Drop shadow is always used in addition to an outline - SSA will force an outline of 1 pixel if no outline width is given.
-            "Alignment",  # This sets how text is "justified" within the Left/Right onscreen margins, and also the vertical placing. Values may be 1=Left, 2=Centered, 3=Right. Add 4 to the value for a "Toptitle". Add 8 to the value for a "Midtitle". eg. 5 = left-justified toptitle
-            "MarginL",  # This defines the Left Margin in pixels. It is the distance from the left-hand edge of the screen.The three onscreen margins (MarginL, MarginR, MarginV) define areas in which the subtitle text will be displayed.
-            "MarginR",  # This defines the Right Margin in pixels. It is the distance from the right-hand edge of the screen.
-            "MarginV",  # MarginV. This defines the vertical Left Margin in pixels. For a subtitle, it is the distance from the bottom of the screen. For a toptitle, it is the distance from the top of the screen. For a midtitle, the value is ignored - the text will be vertically centred
-            "Encoding",  #
+            "Name",
+            "Fontname",
+            "Fontpath",
+            "Fontsize",
+            "PrimaryColour",
+            "SecondaryColour",
+            "OutlineColour",
+            "BackColour",
+            "Bold",
+            "Italic",
+            "Underline",
+            "StrikeOut",
+            "ScaleX",
+            "ScaleY",
+            "Spacing",
+            "Angle",
+            "BorderStyle",
+            "Outline",
+            "Shadow",
+            "Alignment",
+            "MarginL",
+            "MarginR",
+            "MarginV",
+            "Encoding",
         ]
 
-        # Get font settings from styles
         karaoke_styles = self.styles.get("karaoke", {})
-        font_path = karaoke_styles.get("font_path")
+        singers_in_use = self._detect_singers_in_use(segments or [], self.is_duet)
+        solo = not self.is_duet or singers_in_use == [1]
 
-        style = Style()
+        # Build styles (one for solo, N for duet).
+        style_list = build_karaoke_styles(karaoke_styles, singers=singers_in_use, solo=solo)
 
-        style.type = "Style"
-        style.Name = self.styles["karaoke"]["ass_name"]
-        style.Fontname = self.styles["karaoke"]["font"]
-        style.Fontpath = font_path
-        style.Fontsize = fontsize
+        # All styles share the same alignment
+        for s in style_list:
+            s.Alignment = ALIGN_TOP_CENTER
+            a.add_style(s)
 
-        style.Alignment = ALIGN_TOP_CENTER
-
-        # Convert color strings to tuples of integers
-        def parse_color(color_str):
-            return tuple(int(x.strip()) for x in color_str.split(","))
-
-        style.PrimaryColour = parse_color(self.styles["karaoke"]["primary_color"])
-        style.SecondaryColour = parse_color(self.styles["karaoke"]["secondary_color"])
-        style.OutlineColour = parse_color(self.styles["karaoke"]["outline_color"])
-        style.BackColour = parse_color(self.styles["karaoke"]["back_color"])
-
-        # Convert boolean strings to integers (-1 for True, 0 for False)
-        def parse_bool(value):
-            return -1 if value else 0
-
-        style.Bold = parse_bool(self.styles["karaoke"]["bold"])
-        style.Italic = parse_bool(self.styles["karaoke"]["italic"])
-        style.Underline = parse_bool(self.styles["karaoke"]["underline"])
-        style.StrikeOut = parse_bool(self.styles["karaoke"]["strike_out"])
-
-        # Convert numeric strings to appropriate types
-        style.ScaleX = int(self.styles["karaoke"]["scale_x"])
-        style.ScaleY = int(self.styles["karaoke"]["scale_y"])
-        style.Spacing = int(self.styles["karaoke"]["spacing"])
-        style.Angle = float(self.styles["karaoke"]["angle"])
-        style.BorderStyle = int(self.styles["karaoke"]["border_style"])
-        style.Outline = int(self.styles["karaoke"]["outline"])
-        style.Shadow = int(self.styles["karaoke"]["shadow"])
-        style.MarginL = int(self.styles["karaoke"]["margin_l"])
-        style.MarginR = int(self.styles["karaoke"]["margin_r"])
-        style.MarginV = int(self.styles["karaoke"]["margin_v"])
-        style.Encoding = int(self.styles["karaoke"]["encoding"])
-
-        a.add_style(style)
+        # Build the singer→Style map (used for duet path; None for solo)
+        styles_by_singer = None
+        if not solo:
+            name_to_singer = {"Karaoke.Singer1": 1, "Karaoke.Singer2": 2, "Karaoke.Both": 0}
+            styles_by_singer = {name_to_singer[s.Name]: s for s in style_list}
 
         a.events_format = ["Layer", "Style", "Start", "End", "MarginV", "Text"]
-        return a, style
+        # Primary (fallback) style is the first one (singer 1 for duet, "Default" for solo)
+        primary_style = style_list[0]
+        return a, primary_style, styles_by_singer
 
     def _create_styled_subtitles(
         self,
         screens: List[Union[SectionScreen, LyricsScreen]],
         resolution: Tuple[int, int],
         fontsize: int,
+        segments: Optional[List[LyricsSegment]] = None,
     ) -> ASS:
         """Create styled ASS subtitles from all screens."""
-        ass_file, style = self._create_styled_ass_instance(resolution, fontsize)
+        ass_file, style, styles_by_singer = self._create_styled_ass_instance(resolution, fontsize, segments=segments)
 
         active_lines = []
         previous_instrumental_end = None
 
         for screen in screens:
             if isinstance(screen, SectionScreen):
-                # Create section marker events (returns tuple of ([event], []))
                 section_events, _ = screen.as_ass_events(style=style)
-                for event in section_events:  # Now we're iterating over the list of events
+                for event in section_events:
                     ass_file.add(event)
 
                 previous_instrumental_end = screen.end_time
@@ -375,22 +373,18 @@ class SubtitlesGenerator:
                 self.logger.debug(f"Found instrumental section ending at {screen.end_time:.2f}s")
                 continue
 
-            # Process screen and get its events
             self.logger.debug(f"Processing screen with instrumental_end={previous_instrumental_end}")
-            # fmt: off
             events, active_lines = screen.as_ass_events(
-                style=style, 
+                style=style,
                 previous_active_lines=active_lines,
-                previous_instrumental_end=previous_instrumental_end
+                previous_instrumental_end=previous_instrumental_end,
+                styles_by_singer=styles_by_singer,
             )
-            # fmt: on
 
-            # Only reset instrumental end after we've processed the first post-instrumental screen
             if previous_instrumental_end is not None:
                 self.logger.debug("Clearing instrumental end time after processing post-instrumental screen")
                 previous_instrumental_end = None
 
-            # Add all events to ASS file
             for event in events:
                 ass_file.add(event)
 
