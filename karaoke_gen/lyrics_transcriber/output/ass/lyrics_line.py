@@ -292,10 +292,15 @@ class LyricsLine:
             if needs_override and current_inline_singer != word_singer:
                 override_style = styles_by_singer.get(word_singer)
                 if override_style is not None:
-                    # PrimaryColour tuple is (R, G, B, A). ASS inline format: &HBBGGRR&
-                    r, g, b, _a = override_style.PrimaryColour
+                    # PrimaryColour tuple is (R, G, B[, A]). ASS inline format: &HBBGGRR&
+                    r, g, b = override_style.PrimaryColour[:3]
                     text += r"{\c&H" + f"{b:02X}{g:02X}{r:02X}" + r"&}"
                     current_inline_singer = word_singer
+                elif current_inline_singer is not None:
+                    # Missing singer in map — reset to line's base style so the
+                    # previous override color doesn't bleed onto this word.
+                    text += r"{\r}"
+                    current_inline_singer = None
             elif not needs_override and current_inline_singer is not None:
                 text += r"{\r}"
                 current_inline_singer = None

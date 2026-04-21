@@ -204,3 +204,43 @@ class TestLyricsLineWordOverride:
         text = events[-1].Text
         assert "\\c&H" not in text
         assert "{\\r}" not in text
+
+    def test_override_resets_when_word_singer_not_in_map(self, karaoke_style_dict):
+        """If a word's singer isn't present in styles_by_singer, emit {\\r} to fall back
+        to the line's base style rather than leaving a stale override color in effect."""
+        styles = build_karaoke_styles(karaoke_style_dict, singers=[1, 2, 0])
+        by_name = {s.Name: s for s in styles}
+
+        # Segment singer 1, word0 override singer 2 (in map), word1 singer 99 (NOT in map)
+        segment = LyricsSegment(
+            id="s1",
+            text="hi there friend",
+            words=[
+                Word(id="w0", text="hi",     start_time=0.0, end_time=0.3),
+                Word(id="w1", text="there",  start_time=0.4, end_time=0.7, singer=2),
+                Word(id="w2", text="friend", start_time=0.8, end_time=1.2, singer=99),
+            ],
+            start_time=0.0,
+            end_time=1.2,
+            singer=1,
+        )
+        line = LyricsLine(segment=segment, screen_config=_screen_config())
+
+        events = line.create_ass_events(
+            state=_line_state(),
+            style=by_name["Karaoke.Singer1"],
+            config=line.screen_config,
+            styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
+        )
+        text = events[-1].Text
+
+        # Singer 2 override was applied to "there"
+        assert "\\c&HB470F7&" in text
+        # Reset tag must appear before the third word (w2 fallback to segment singer 1)
+        # so the text between the two color-related markers shouldn't end with stale singer 2 color
+        # A simple structural check: the \r must precede "friend"
+        r_idx = text.find("{\\r}")
+        friend_idx = text.find("friend")
+        assert r_idx > -1 and friend_idx > -1 and r_idx < friend_idx, (
+            f"Expected {{\\r}} before 'friend' to reset the missing-singer override; got: {text}"
+        )
