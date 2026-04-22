@@ -393,7 +393,15 @@ class ReviewServer:
         self.app.add_api_route("/api/review/{job_id}/instrumental-analysis", self.get_instrumental_analysis, methods=["GET"])
         self.app.add_api_route("/api/review/{job_id}/waveform-data", self.get_waveform_data, methods=["GET"])
 
+        # The cloud backend exposes `/api/review/{job_id}/audio/{stem_or_hash}`
+        # as one endpoint that serves both the original audio (by hash) and
+        # the separated stems (by name). Mirror that here by dispatching on
+        # whether the segment matches a known stem name before falling back
+        # to audio-by-hash.
+        _stem_names = {"clean", "with_backing", "backing_vocals"}
         async def get_audio_with_job_id(job_id: str, audio_hash: str):
+            if audio_hash in _stem_names:
+                return await self.get_instrumental_audio(audio_hash)
             return await self.get_audio(audio_hash)
         self.app.add_api_route("/api/review/{job_id}/audio/{audio_hash}", get_audio_with_job_id, methods=["GET"])
 
