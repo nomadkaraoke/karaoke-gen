@@ -143,11 +143,13 @@ class CorrectionOperations:
                             end_time=w["end_time"],
                             confidence=w.get("confidence"),
                             created_during_correction=w.get("created_during_correction", False),
+                            singer=w.get("singer"),
                         )
                         for w in s["words"]
                     ],
                     start_time=s["start_time"],
                     end_time=s["end_time"],
+                    singer=s.get("singer"),
                 )
                 for s in updated_data["corrected_segments"]
             ],
@@ -538,6 +540,12 @@ class CorrectionOperations:
         preview_data = json.dumps(updated_data, sort_keys=True).encode("utf-8")
         preview_hash = hashlib.md5(preview_data).hexdigest()[:12]
         
+        # Propagate duet flag from the outer config OR the request body.
+        # Cloud callers pre-set output_config.is_duet; local CLI callers pass
+        # it inline in updated_data (since the local ReviewServer's single
+        # long-lived OutputConfig doesn't get mutated per-request).
+        is_duet = bool(updated_data.get("is_duet", getattr(output_config, "is_duet", False)))
+
         # Set up preview config
         preview_config = OutputConfig(
             output_dir=str(Path(output_config.output_dir) / "previews"),
@@ -551,6 +559,7 @@ class CorrectionOperations:
             fetch_lyrics=False,
             run_transcription=False,
             run_correction=False,
+            is_duet=is_duet,
         )
         
         # Create previews directory
