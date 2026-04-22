@@ -61,6 +61,8 @@ except Exception:
     NewFeedbackStore = None  # type: ignore
     CorrectionAnnotation = None  # type: ignore
 
+from karaoke_gen.lyrics_transcriber.review.session_store import LocalReviewSessionStore
+
 
 class ReviewServer:
     """Handles the review process through a web interface."""
@@ -126,6 +128,14 @@ class ReviewServer:
             self._annotation_store = NewFeedbackStore(storage_dir=self.output_config.cache_dir) if NewFeedbackStore else None
         except Exception:
             self._annotation_store = None
+
+        # Session-history store — JSON-on-disk persistence for the restore
+        # dialog and auto-save timer. Keyed by audio_hash so each song has
+        # its own history and restores survive karaoke-gen re-runs.
+        self._review_sessions = LocalReviewSessionStore(
+            cache_dir=self.output_config.cache_dir,
+            logger=self.logger,
+        )
         # Metrics aggregator
         self._metrics = MetricsAggregator() if MetricsAggregator else None
         # LangFuse (optional)
@@ -435,45 +445,26 @@ class ReviewServer:
             methods=["POST"],
         )
 
-        # Review sessions are a cloud-only feature (persistent snapshots of
-        # in-progress reviews keyed by user). In local CLI mode we don't need
-        # real persistence, but LyricsAnalyzer probes the list endpoint on
-        # mount and the auto-save timer hits the save endpoint every few
-        # seconds. Without these stubs each local review session produces a
-        # stream of 404s and a user-visible error on mount; the frontend
-        # tolerates empty/no-op responses and falls back to its localStorage
-        # path silently.
-        async def list_review_sessions_stub(job_id: str):
-            return {"sessions": []}
-
-        async def save_review_session_stub(
-            job_id: str, payload: Dict[str, Any] = Body(default_factory=dict)
-        ):
-            return {"status": "success", "session_id": None}
-
-        async def get_review_session_stub(job_id: str, session_id: str):
-            raise HTTPException(
-                status_code=404,
-                detail="Review sessions are not persisted in local CLI mode",
-            )
-
-        async def delete_review_session_stub(job_id: str, session_id: str):
-            return {"status": "deleted"}
-
+        # Review sessions — persistent snapshots for the LyricsAnalyzer's
+        # restore dialog and auto-save timer. Backed by JSON files under
+        # {cache_dir}/review_sessions/{audio_hash}/. Sessions are keyed by
+        # audio_hash (not job_id) so that restoring progress works across
+        # karaoke-gen re-runs for the same song and is isolated between
+        # songs sharing one cache_dir.
         self.app.add_api_route(
-            "/api/review/{job_id}/sessions", list_review_sessions_stub, methods=["GET"]
+            "/api/review/{job_id}/sessions", self._list_review_sessions, methods=["GET"]
         )
         self.app.add_api_route(
-            "/api/review/{job_id}/sessions", save_review_session_stub, methods=["POST"]
+            "/api/review/{job_id}/sessions", self._save_review_session, methods=["POST"]
         )
         self.app.add_api_route(
             "/api/review/{job_id}/sessions/{session_id}",
-            get_review_session_stub,
+            self._get_review_session,
             methods=["GET"],
         )
         self.app.add_api_route(
             "/api/review/{job_id}/sessions/{session_id}",
-            delete_review_session_stub,
+            self._delete_review_session,
             methods=["DELETE"],
         )
 
@@ -866,6 +857,86 @@ class ReviewServer:
         except Exception as e:
             self.logger.error(f"Failed to get annotation statistics: {e}")
             raise HTTPException(status_code=500, detail=str(e))
+
+    # ------------------------------
+    # Review session history
+    # ------------------------------
+
+    def _review_session_audio_hash(self) -> str:
+        """The audio_hash the session store partitions under."""
+        if self.correction_result and self.correction_result.metadata:
+            return self.correction_result.metadata.get("audio_hash") or "local"
+        return "local"
+
+    def _review_session_wire_meta(self, envelope: Dict[str, Any], job_id: str) -> Dict[str, Any]:
+        """Shape a stored envelope into the `ReviewSession` TS contract.
+
+        The frontend expects `job_id`/`user_email`/`audio_duration_seconds`
+        even though our on-disk model doesn't persist them (job_id is the
+        placeholder `local` and user_email is cloud-only). Fill them in
+        at the wire boundary rather than polluting the stored data.
+        """
+        return {
+            "session_id": envelope.get("session_id"),
+            "job_id": job_id,
+            "user_email": "",
+            "created_at": envelope.get("created_at"),
+            "updated_at": envelope.get("updated_at") or envelope.get("created_at"),
+            "edit_count": envelope.get("edit_count", 0),
+            "trigger": envelope.get("trigger", "auto"),
+            "audio_duration_seconds": envelope.get("audio_duration_seconds"),
+            "artist": envelope.get("artist"),
+            "title": envelope.get("title"),
+            "summary": envelope.get("summary") or {},
+        }
+
+    async def _list_review_sessions(self, job_id: str):
+        envelopes = self._review_sessions.list_sessions(
+            audio_hash=self._review_session_audio_hash()
+        )
+        return {
+            "sessions": [
+                self._review_session_wire_meta(env, job_id) for env in envelopes
+            ]
+        }
+
+    async def _save_review_session(
+        self, job_id: str, payload: Dict[str, Any] = Body(...)
+    ):
+        correction_data = payload.get("correction_data")
+        if not isinstance(correction_data, dict):
+            raise HTTPException(
+                status_code=400, detail="correction_data is required"
+            )
+        metadata = self.correction_result.metadata if self.correction_result else {}
+        result = self._review_sessions.save(
+            audio_hash=self._review_session_audio_hash(),
+            correction_data=correction_data,
+            edit_count=payload.get("edit_count", 0),
+            trigger=payload.get("trigger", "auto"),
+            summary=payload.get("summary") or {},
+            artist=(metadata or {}).get("artist"),
+            title=(metadata or {}).get("title"),
+        )
+        return result
+
+    async def _get_review_session(self, job_id: str, session_id: str):
+        envelope = self._review_sessions.get_session(
+            audio_hash=self._review_session_audio_hash(), session_id=session_id
+        )
+        if not envelope:
+            raise HTTPException(status_code=404, detail="Review session not found")
+        response = self._review_session_wire_meta(envelope, job_id)
+        response["correction_data"] = envelope.get("correction_data")
+        return response
+
+    async def _delete_review_session(self, job_id: str, session_id: str):
+        # Return 200 regardless of prior existence — the frontend treats delete
+        # as idempotent and a 404 here just pops a toast for the user.
+        self._review_sessions.delete_session(
+            audio_hash=self._review_session_audio_hash(), session_id=session_id
+        )
+        return {"status": "deleted"}
 
     def _update_correction_result(self, base_result: CorrectionResult, updated_data: Dict[str, Any]) -> CorrectionResult:
         """Update a CorrectionResult with new correction data."""

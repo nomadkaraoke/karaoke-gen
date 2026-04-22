@@ -153,39 +153,103 @@ class TestReviewAnnotationsAlias:
         assert r.status_code in (200, 201), r.text
 
 
-class TestReviewSessionsStubs:
-    """Review-session endpoints are cloud-only (persistent per-user snapshots).
+def _session_payload(marker: str = "v1", edits: int = 1) -> dict:
+    return {
+        "correction_data": {
+            "corrected_segments": [{"id": "s0", "text": f"line {marker}"}],
+            "metadata": {"marker": marker},
+        },
+        "edit_count": edits,
+        "trigger": "auto",
+        "summary": {
+            "total_segments": 1,
+            "total_words": 2,
+            "corrections_made": edits,
+            "changed_words": [],
+        },
+    }
 
-    In local CLI mode they don't need real persistence, but the review UI
-    auto-save fires on a timer and the LyricsAnalyzer hits the list endpoint
-    on mount. Without stubs these log a 404 every few seconds and a user-
-    visible error on mount; stubs return neutral empty responses so the UI
-    falls back to its localStorage path silently.
+
+class TestReviewSessionsPersistence:
+    """End-to-end persistence: save → list → get → delete via the HTTP API.
+
+    Guards the contract the unified Next.js frontend expects: response
+    shapes must line up with `ReviewSession` and `ReviewSessionWithData`
+    so the restore dialog populates correctly.
     """
 
-    def test_list_returns_empty_sessions(self, client):
+    def test_list_returns_empty_when_no_sessions_saved(self, client):
         r = client.get("/api/review/local/sessions")
         assert r.status_code == 200, r.text
-        body = r.json()
-        assert body == {"sessions": []}
+        assert r.json() == {"sessions": []}
 
-    def test_save_accepts_payload(self, client):
-        payload = {
-            "correction_data": {"foo": "bar"},
-            "edit_count": 3,
-            "trigger": "auto",
-            "summary": {"total_edits": 3},
-        }
-        r = client.post("/api/review/local/sessions", json=payload)
-        assert r.status_code in (200, 201), r.text
+    def test_save_then_list_returns_metadata_without_correction_data(self, client):
+        r = client.post("/api/review/local/sessions", json=_session_payload())
+        assert r.status_code == 200, r.text
         body = r.json()
-        # Frontend only needs a truthy status field; it tolerates anything else.
-        assert "status" in body
+        assert body["status"] == "success"
+        session_id = body["session_id"]
+        assert session_id
+
+        listed = client.get("/api/review/local/sessions").json()["sessions"]
+        assert len(listed) == 1
+        meta = listed[0]
+        assert meta["session_id"] == session_id
+        assert meta["edit_count"] == 1
+        assert meta["trigger"] == "auto"
+        # Wire contract: the fields the frontend TypeScript expects must exist
+        assert set(["created_at", "updated_at", "job_id", "user_email"]).issubset(
+            meta.keys()
+        )
+        # List responses must not carry the heavy correction_data payload
+        assert "correction_data" not in meta
+
+    def test_save_dedupes_identical_consecutive_saves(self, client):
+        # Auto-save timer spam: identical payloads must not create new sessions
+        first = client.post("/api/review/local/sessions", json=_session_payload())
+        second = client.post("/api/review/local/sessions", json=_session_payload())
+        assert first.json()["status"] == "success"
+        assert second.json()["status"] == "skipped"
+        listed = client.get("/api/review/local/sessions").json()["sessions"]
+        assert len(listed) == 1
+
+    def test_save_persists_distinct_payloads(self, client):
+        s1 = client.post("/api/review/local/sessions", json=_session_payload("v1", 1))
+        s2 = client.post("/api/review/local/sessions", json=_session_payload("v2", 2))
+        listed = client.get("/api/review/local/sessions").json()["sessions"]
+        # Most-recent-first ordering for the restore dialog
+        assert [s["session_id"] for s in listed] == [
+            s2.json()["session_id"],
+            s1.json()["session_id"],
+        ]
+
+    def test_get_returns_full_correction_data(self, client):
+        saved = client.post(
+            "/api/review/local/sessions", json=_session_payload("payload")
+        ).json()
+        r = client.get(f"/api/review/local/sessions/{saved['session_id']}")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["session_id"] == saved["session_id"]
+        assert body["correction_data"]["metadata"]["marker"] == "payload"
 
     def test_get_unknown_session_returns_404(self, client):
         r = client.get("/api/review/local/sessions/does-not-exist")
         assert r.status_code == 404
 
-    def test_delete_is_idempotent(self, client):
-        r = client.delete("/api/review/local/sessions/anything")
-        assert r.status_code in (200, 204), r.text
+    def test_delete_removes_session(self, client):
+        saved = client.post(
+            "/api/review/local/sessions", json=_session_payload()
+        ).json()
+        d = client.delete(f"/api/review/local/sessions/{saved['session_id']}")
+        assert d.status_code == 200, d.text
+        assert client.get("/api/review/local/sessions").json()["sessions"] == []
+        assert (
+            client.get(f"/api/review/local/sessions/{saved['session_id']}").status_code
+            == 404
+        )
+
+    def test_delete_unknown_still_returns_success(self, client):
+        # Frontend treats 200 as idempotent; mirror that even on miss.
+        r = client.delete("/api/review/local/sessions/never-existed")
+        assert r.status_code == 200, r.text
