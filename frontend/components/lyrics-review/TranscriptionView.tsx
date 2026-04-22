@@ -12,6 +12,10 @@ import { TranscriptionViewProps, TranscriptionWordPosition } from '@/lib/lyrics-
 import { deleteSegment } from '@/lib/lyrics-review/utils/segmentOperations'
 import SegmentDetailsModal from './modals/SegmentDetailsModal'
 import DurationTimelineView from './DurationTimelineView'
+import SingerChip from './SingerChip'
+import { resolveSegmentSinger, hasWordOverrides } from '@/lib/lyrics-review/duet'
+import type { SingerId } from '@/lib/lyrics-review/types'
+import { cn } from '@/lib/utils'
 
 export default function TranscriptionView({
   data,
@@ -34,6 +38,8 @@ export default function TranscriptionView({
   advancedMode = false,
   onAdvancedModeToggle,
   editedWordIds,
+  isDuet,
+  onSegmentSingerChange,
 }: TranscriptionViewProps) {
   const t = useTranslations('lyricsReview.transcription')
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
@@ -142,10 +148,17 @@ export default function TranscriptionView({
                 }
               })
 
+              const segmentSinger: SingerId = resolveSegmentSinger(segment)
+              const rowTintClass = isDuet
+                ? segmentSinger === 1 ? 'bg-gradient-to-r from-blue-500/10 to-transparent' :
+                  segmentSinger === 2 ? 'bg-gradient-to-r from-pink-500/10 to-transparent' :
+                  'bg-gradient-to-r from-yellow-500/10 to-transparent'
+                : ''
+
               return (
                 <div
                   key={segment.id}
-                  className="flex items-start w-full hover:bg-muted/50 transition-colors"
+                  className={cn('flex items-start w-full hover:bg-muted/50 transition-colors', rowTintClass)}
                 >
                   {/* Segment controls */}
                   <div className="flex items-center gap-0.5 pr-1" style={{ minWidth: advancedMode ? '2.5em' : undefined }}>
@@ -180,6 +193,16 @@ export default function TranscriptionView({
                       </Button>
                     )}
                   </div>
+
+                  {/* Singer chip (duet mode only) */}
+                  {isDuet && onSegmentSingerChange && (
+                    <SingerChip
+                      singer={segmentSinger}
+                      hasOverrides={hasWordOverrides(segment)}
+                      onChange={(next) => onSegmentSingerChange(segmentIndex, next)}
+                      className="mr-1 flex-shrink-0 self-center"
+                    />
+                  )}
 
                   {/* Text content */}
                   <div className="flex-1 min-w-0">
