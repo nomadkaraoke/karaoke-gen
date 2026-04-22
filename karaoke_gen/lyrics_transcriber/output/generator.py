@@ -126,6 +126,7 @@ class OutputGenerator:
                 styles=self.config.styles,
                 subtitle_offset_ms=self.config.subtitle_offset_ms,
                 logger=self.logger,
+                is_duet=self.config.is_duet,
             )
 
             self.video = VideoGenerator(

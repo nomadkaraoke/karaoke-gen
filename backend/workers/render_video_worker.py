@@ -144,6 +144,9 @@ async def process_render_video(job_id: str) -> bool:
                     updated_corrections_gcs = f"jobs/{job_id}/lyrics/corrections_updated.json"
                     has_updated = storage.file_exists(updated_corrections_gcs)
 
+                    # Read is_duet from state_data (set by review completion endpoint)
+                    is_duet = bool(job.state_data.get("is_duet", False))
+
                     render_config = {
                         "original_corrections_gcs_path": f"gs://{bucket_name}/jobs/{job_id}/lyrics/corrections.json",
                         "audio_gcs_path": f"gs://{bucket_name}/{job.input_media_gcs_path}",
@@ -152,6 +155,7 @@ async def process_render_video(job_id: str) -> bool:
                         "title": job.title,
                         "subtitle_offset_ms": getattr(job, 'subtitle_offset_ms', 0) or 0,
                         "video_resolution": "4k",
+                        "is_duet": is_duet,
                     }
 
                     if has_updated:
@@ -371,6 +375,11 @@ async def process_render_video(job_id: str) -> bool:
                             job_manager.update_state_data(job_id, 'lyrics_metadata', existing_lyrics_metadata)
                             job_log.info(f"Updated lyrics_metadata: has_countdown_padding=True, countdown_padding_seconds={padding_seconds}")
 
+                        # Read is_duet from state_data (set by review completion endpoint)
+                        is_duet = bool(job.state_data.get("is_duet", False))
+                        if is_duet:
+                            job_log.info("Duet mode enabled: using two-singer subtitle layout")
+
                         # 6. Get or create styles using the unified style loader
                         job_log.info("Loading style configuration...")
                         job_log.info(f"  job.style_params_gcs_path: {job.style_params_gcs_path}")
@@ -406,7 +415,8 @@ async def process_render_video(job_id: str) -> bool:
                             generate_plain_text=True,
                             generate_lrc=True,
                             video_resolution="4k",
-                            subtitle_offset_ms=subtitle_offset
+                            subtitle_offset_ms=subtitle_offset,
+                            is_duet=is_duet,
                         )
 
                         job_log.info(f"OutputConfig: output_styles_json={config.output_styles_json}, render_video={config.render_video}")

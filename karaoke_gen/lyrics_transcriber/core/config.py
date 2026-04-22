@@ -60,3 +60,6 @@ class OutputConfig:
     # Whether to allow preview video generation during review
     # Separate from render_video which controls final output
     allow_preview_video: bool = True
+
+    # Duet mode: render two-singer layout in subtitles
+    is_duet: bool = False
