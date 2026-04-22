@@ -384,6 +384,19 @@ class ReviewServer:
             return await self.get_preview_video(preview_hash)
         self.app.add_api_route("/api/review/{job_id}/preview-video/{preview_hash}", get_preview_video_with_job_id, methods=["GET"])
 
+        # More review-prefixed aliases that the unified Next.js frontend expects.
+        # These mirror the cloud backend's /api/review/{job_id}/... routes so the
+        # same frontend build works against the local CLI ReviewServer too.
+        self.app.add_api_route("/api/review/{job_id}/search-lyrics", self.search_lyrics, methods=["POST"])
+        self.app.add_api_route("/api/review/{job_id}/add-lyrics", self.add_lyrics, methods=["POST"])
+        self.app.add_api_route("/api/review/{job_id}/handlers", self.update_handlers_cloud, methods=["PATCH"])
+        self.app.add_api_route("/api/review/{job_id}/instrumental-analysis", self.get_instrumental_analysis, methods=["GET"])
+        self.app.add_api_route("/api/review/{job_id}/waveform-data", self.get_waveform_data, methods=["GET"])
+
+        async def get_audio_with_job_id(job_id: str, audio_hash: str):
+            return await self.get_audio(audio_hash)
+        self.app.add_api_route("/api/review/{job_id}/audio/{audio_hash}", get_audio_with_job_id, methods=["GET"])
+
         # Instrumental review data endpoints
         self.app.add_api_route("/api/jobs/{job_id}/instrumental-analysis", self.get_instrumental_analysis, methods=["GET"])
         self.app.add_api_route("/api/jobs/{job_id}/waveform-data", self.get_waveform_data, methods=["GET"])
@@ -1027,6 +1040,80 @@ class ReviewServer:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             self.logger.error(f"Failed to add lyrics: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def search_lyrics(self, data: Dict[str, Any] = Body(...)):
+        """Search all configured lyrics providers and re-run correction.
+
+        Mirrors the cloud `POST /api/review/{job_id}/search-lyrics` endpoint
+        but operates in-memory on `self.correction_result` instead of
+        reading/writing GCS. Used by the review UI's "Search All Providers"
+        button.
+        """
+        try:
+            artist = (data.get("artist") or "").strip()
+            title = (data.get("title") or "").strip()
+            force_sources = data.get("force_sources") or []
+
+            if not artist or not title:
+                raise HTTPException(status_code=400, detail="artist and title are required")
+
+            self.logger.info(
+                f"Local review: searching lyrics for '{artist}' - '{title}' (force={force_sources})"
+            )
+
+            search_result = CorrectionOperations.search_lyrics_sources(
+                correction_result=self.correction_result,
+                artist=artist,
+                title=title,
+                cache_dir=self.output_config.cache_dir,
+                force_sources=force_sources,
+                logger=self.logger,
+            )
+
+            sources_added = search_result["sources_added"]
+            sources_rejected = search_result["sources_rejected"]
+            sources_not_found = search_result["sources_not_found"]
+            updated_result = search_result["updated_result"]
+
+            if not sources_added or updated_result is None:
+                self.logger.info(
+                    f"Local review: no lyrics found via search "
+                    f"(rejected={list(sources_rejected.keys())}, not_found={sources_not_found})"
+                )
+                return {
+                    "status": "no_results",
+                    "message": "No new lyrics sources found",
+                    "sources_added": [],
+                    "sources_rejected": sources_rejected,
+                    "sources_not_found": sources_not_found,
+                }
+
+            # Preserve the audio_hash on the updated result so playback keeps working
+            if self.correction_result.metadata:
+                preserved_hash = self.correction_result.metadata.get("audio_hash")
+                if preserved_hash:
+                    if not updated_result.metadata:
+                        updated_result.metadata = {}
+                    updated_result.metadata["audio_hash"] = preserved_hash
+
+            self.correction_result = updated_result
+
+            return {
+                "status": "success",
+                "data": updated_result.to_dict(),
+                "sources_added": sources_added,
+                "sources_rejected": sources_rejected,
+                "sources_not_found": sources_not_found,
+            }
+
+        except HTTPException:
+            raise
+        except ValueError as e:
+            self.logger.warning(f"Invalid search_lyrics request: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            self.logger.error(f"Failed to search lyrics: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
 
     def start(self) -> CorrectionResult:
