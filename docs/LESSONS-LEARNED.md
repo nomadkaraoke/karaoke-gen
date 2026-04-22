@@ -1136,4 +1136,24 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
 
 **Fix:** (1) Add locale prefix to all hash-based links via `useLocale()`. (2) Make `fetchUser` check for `AbortError` before clearing auth — navigation-triggered aborts should not destroy the session.
 
+## Multi-Singer / Duet Support (Apr 2026)
+
+- The CDG composer (`cdgmaker/composer.py`) already supports up to 3
+  singers, but the path had never been exercised against real inputs
+  before this feature. Mitigation during rollout: manual validation
+  with real tracks before PR merge.
+- Word-level singer overrides render only in the MP4/ASS output. CDG
+  is a line-level format (`SettingsLyric.singer` is an int per line);
+  splitting lines at word boundaries would produce visually distinct
+  display lines on the CDG and make the output worse, not better.
+- Theme JSON gains an optional `singers` block under `karaoke` for
+  per-singer color overrides. Themes without it continue to work —
+  all singers render with the flat colors, which is a valid (if dull)
+  fallback.
+- Follow-up: `build_cdg_lyrics` helper exists but isn't yet wired
+  into `CDGGenerator`'s TOML-based flow — integration is deferred to
+  a follow-up task since the current CDG code constructs settings
+  dicts directly rather than via `SettingsLyric`. End-to-end duet
+  CDG output will need this before it can be tested with real inputs.
+
 **Key insight:** Module-level side effects that start async work (like `fetchUser()` on import) are dangerous when pages exist solely to redirect. The async work starts, the redirect fires, the fetch aborts, and error handlers run with destructive consequences. Either guard redirecting pages from triggering side effects, or make error handlers resilient to abort errors.
