@@ -170,11 +170,13 @@ class SubtitlesGenerator:
                             end_time=word.end_time + offset_seconds,
                             confidence=word.confidence,
                             created_during_correction=getattr(word, "created_during_correction", False),  # Preserve correction flag
+                            singer=word.singer,  # Preserve word-level singer override
                         )
                         for word in seg.words
                     ],
                     start_time=max(0, seg.start_time + offset_seconds),
                     end_time=seg.end_time + offset_seconds,
+                    singer=seg.singer,  # Preserve segment-level singer
                 )
                 for seg in segments
             ]

@@ -108,6 +108,7 @@ class SegmentResizer:
             words=segment.words,
             start_time=segment.start_time,
             end_time=segment.end_time,
+            singer=segment.singer,
         )
 
     def _create_cleaned_word(self, word: Word) -> Word:
@@ -119,6 +120,8 @@ class SegmentResizer:
             start_time=word.start_time,
             end_time=word.end_time,
             confidence=word.confidence if hasattr(word, "confidence") else None,
+            created_during_correction=getattr(word, "created_during_correction", False),
+            singer=word.singer,
         )
 
     def _split_oversized_segment(self, segment_idx: int, segment: LyricsSegment) -> List[LyricsSegment]:
@@ -137,9 +140,15 @@ class SegmentResizer:
         split_lines = self._process_segment_text(segment_text)
         self.logger.debug(f"Split into {len(split_lines)} lines: {split_lines}")
 
-        return self._create_segments_from_lines(segment_text, split_lines, segment.words)
+        return self._create_segments_from_lines(segment_text, split_lines, segment.words, singer=segment.singer)
 
-    def _create_segments_from_lines(self, segment_text: str, split_lines: List[str], words: List[Word]) -> List[LyricsSegment]:
+    def _create_segments_from_lines(
+        self,
+        segment_text: str,
+        split_lines: List[str],
+        words: List[Word],
+        singer: Optional[int] = None,
+    ) -> List[LyricsSegment]:
         """Create segments from split lines while preserving word timing.
 
         Matches words to their corresponding lines based on text position and
@@ -179,13 +188,13 @@ class SegmentResizer:
                 break
 
             if line_words:
-                segments.append(self._create_segment_from_words(line, line_words))
+                segments.append(self._create_segment_from_words(line, line_words, singer=singer))
                 current_pos += len(line) + 1  # +1 for the space between lines
 
         # If we have any remaining words, create a final segment with them
         if words_to_process:
             remaining_text = " ".join(self._clean_text(w.text) for w in words_to_process)
-            segments.append(self._create_segment_from_words(remaining_text, words_to_process))
+            segments.append(self._create_segment_from_words(remaining_text, words_to_process, singer=singer))
 
         return segments
 
@@ -231,7 +240,12 @@ class SegmentResizer:
 
         return line_words
 
-    def _create_segment_from_words(self, line: str, words: List[Word]) -> LyricsSegment:
+    def _create_segment_from_words(
+        self,
+        line: str,
+        words: List[Word],
+        singer: Optional[int] = None,
+    ) -> LyricsSegment:
         """Create a new segment from a list of words."""
         cleaned_text = self._clean_text(line)
         return LyricsSegment(
@@ -240,6 +254,7 @@ class SegmentResizer:
             words=words,
             start_time=words[0].start_time,
             end_time=words[-1].end_time,
+            singer=singer,
         )
 
     def _process_segment_text(self, text: str) -> List[str]:
