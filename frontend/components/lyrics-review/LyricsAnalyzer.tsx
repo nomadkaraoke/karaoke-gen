@@ -51,6 +51,7 @@ import {
 } from '@/lib/lyrics-review/utils/keyboardHandlers'
 import { createEditLog, addEditEntry, attachFeedback } from '@/lib/lyrics-review/utils/editLog'
 import { useReviewSessionAutoSave } from '@/hooks/use-review-session-autosave'
+import { hasMultipleSingers } from '@/lib/lyrics-review/duet'
 import SessionRestoreDialog from './SessionRestoreDialog'
 import Header from './Header'
 import GapNavigator from './GapNavigator'
@@ -246,14 +247,25 @@ export default function LyricsAnalyzer({
     setHistoryIndex(0)
   }, [initialData])
 
+  // Apply restored data: replace history AND turn the duet toggle on if the
+  // restored segments encode multi-singer assignments. We never turn duet
+  // OFF here — a user who toggled duet mid-edit and then restored an early
+  // solo snapshot probably still wants the toggle on for their next edit.
+  const applyRestoredData = useCallback((restored: CorrectionData) => {
+    setHistory([restored])
+    setHistoryIndex(0)
+    if (hasMultipleSingers(restored.corrected_segments || [])) {
+      setIsDuet(true)
+    }
+  }, [])
+
   // Load saved sessions on mount - check server first, fall back to localStorage
   useEffect(() => {
     if (isReadOnly || !apiClient?.listReviewSessions) {
       // Local mode or read-only: use localStorage fallback
       const savedData = loadSavedData(initialData)
       if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
-        setHistory([savedData])
-        setHistoryIndex(0)
+        applyRestoredData(savedData)
       }
       return
     }
@@ -271,8 +283,7 @@ export default function LyricsAnalyzer({
         // Fall back to localStorage if no server sessions
         const savedData = loadSavedData(initialData)
         if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
-          setHistory([savedData])
-          setHistoryIndex(0)
+          applyRestoredData(savedData)
         }
       }
     }).catch(() => {
@@ -281,8 +292,7 @@ export default function LyricsAnalyzer({
       // Fall back to localStorage on error
       const savedData = loadSavedData(initialData)
       if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
-        setHistory([savedData])
-        setHistoryIndex(0)
+        applyRestoredData(savedData)
       }
     })
 
@@ -291,9 +301,8 @@ export default function LyricsAnalyzer({
 
   // Handler for restoring a session from the dialog
   const handleSessionRestore = useCallback((correctionData: CorrectionData) => {
-    setHistory([correctionData])
-    setHistoryIndex(0)
-  }, [])
+    applyRestoredData(correctionData)
+  }, [applyRestoredData])
 
   // Handler to open session browser from toolbar
   const handleOpenSessionBrowser = useCallback(async () => {

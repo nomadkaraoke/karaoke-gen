@@ -3,6 +3,7 @@ import {
   resolveSegmentSinger,
   collectSingersInUse,
   hasWordOverrides,
+  hasMultipleSingers,
 } from '../duet'
 import type { LyricsSegment, Word, SingerId } from '../types'
 
@@ -65,5 +66,39 @@ describe('hasWordOverrides', () => {
   })
   it('true when any word singer differs from segment', () => {
     expect(hasWordOverrides(seg('s1', 1, [word('w1'), word('w2', 2)]))).toBe(true)
+  })
+})
+
+describe('hasMultipleSingers', () => {
+  it('false for empty segments', () => {
+    expect(hasMultipleSingers([])).toBe(false)
+  })
+
+  it('false when no singer fields are set (solo default)', () => {
+    expect(hasMultipleSingers([seg('s1'), seg('s2')])).toBe(false)
+  })
+
+  it('false when every segment is explicitly singer 1', () => {
+    expect(hasMultipleSingers([seg('s1', 1), seg('s2', 1)])).toBe(false)
+  })
+
+  it('true when any segment is singer 2', () => {
+    expect(hasMultipleSingers([seg('s1', 1), seg('s2', 2)])).toBe(true)
+  })
+
+  it('true when any segment is singer 0 (Both)', () => {
+    expect(hasMultipleSingers([seg('s1'), seg('s2', 0)])).toBe(true)
+  })
+
+  it('true when a word-level override introduces singer 2', () => {
+    const segments = [seg('s1', 1, [word('w1', 1), word('w2', 2)])]
+    expect(hasMultipleSingers(segments)).toBe(true)
+  })
+
+  it('false when undefined word singers coexist with explicit singer-1 segments', () => {
+    // A common shape on freshly-loaded data: segments default to singer 1,
+    // some words have undefined singer (means: inherit from segment).
+    const segments = [seg('s1', 1, [word('w1'), word('w2')])]
+    expect(hasMultipleSingers(segments)).toBe(false)
   })
 })

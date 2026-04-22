@@ -31,3 +31,14 @@ export function hasWordOverrides(segment: LyricsSegment): boolean {
   const segmentSinger = resolveSegmentSinger(segment)
   return segment.words.some(w => w.singer !== undefined && w.singer !== segmentSinger)
 }
+
+/**
+ * True when the segments contain evidence of more than one singer — either a
+ * segment or a word labelled with singer 2 or 0 (Both). Used to auto-enable
+ * duet mode after restoring a session whose data already encodes multi-singer
+ * assignments. An undefined singer is treated as singer 1 (the default), so
+ * solo data with no explicit labels never trips this.
+ */
+export function hasMultipleSingers(segments: LyricsSegment[]): boolean {
+  return collectSingersInUse(segments).length > 1
+}
