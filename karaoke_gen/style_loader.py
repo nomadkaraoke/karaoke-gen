@@ -100,7 +100,7 @@ DEFAULT_KARAOKE_STYLE = {
     # Layout settings
     "max_line_length": 40,
     "top_padding": 200,
-    "font_size": 100,
+    "font_size": 250,
     # NEW: optional per-singer color overrides. Keys: "1" / "2" / "both".
     # Missing singer or missing field falls back to the flat colors above.
     # Key note: "both" corresponds to SingerId 0.
@@ -114,10 +114,13 @@ DEFAULT_KARAOKE_STYLE = {
             "outline_color":   "158, 26, 96, 255",
             "back_color":      "0, 0, 0, 0",
         },
-        # Both: yellow
+        # Both: yellow (highlighted) with muted amber pre-highlight. Plain white
+        # (as Singer 1/2 use) reads too similar next to bright yellow because
+        # both are high-luminance on a dark background, so the karaoke sweep
+        # effect was nearly invisible. Muted amber gives a clear saturation pop.
         "both": {
             "primary_color":   "252, 211, 77, 255",
-            "secondary_color": "255, 255, 255, 255",
+            "secondary_color": "160, 140, 60, 255",
             "outline_color":   "146, 108, 0, 255",
             "back_color":      "0, 0, 0, 0",
         },
