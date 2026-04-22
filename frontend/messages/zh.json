@@ -1164,7 +1164,7 @@
       "duetOn": "对唱：开启",
       "keyboardHintSegment": "选中片段后，按 1 / 2 / B",
       "legendSinger": "歌手：",
-      "markAsDuet": "标记为对唱",
+      "markAsDuet": "对唱模式",
       "markAsDuetHint": "启用后可将片段标记为歌手 1、歌手 2 或合唱。颜色将显示在最终视频中。",
       "resetOverridesTooltip": "重置此片段中的词级覆盖设置",
       "singer1": "歌手 1",

@@ -259,49 +259,24 @@ class OutputGenerator:
         return resolution_dims, font_size, line_height
 
     def _get_default_styles(self) -> dict:
-        """Get default styles for video/CDG generation when no styles file is provided."""
+        """Get default styles for video/CDG generation when no styles file is provided.
+
+        Sources defaults from `karaoke_gen.style_loader` so this fallback path
+        stays in sync with the nomad theme. The `singers` block under `karaoke`
+        is what makes multi-singer rendering work when no explicit theme JSON
+        was supplied (e.g. the local karaoke-gen CLI flow).
+        """
+        import copy
+        from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE, DEFAULT_CDG_STYLE
+
+        karaoke = copy.deepcopy(DEFAULT_KARAOKE_STYLE)
+        # The style_loader default uses "Noto Sans" which requires system fonts
+        # that aren't always present locally; this generator fallback historically
+        # used "Arial" for broadest compatibility.
+        karaoke["font"] = "Arial"
         return {
-            "karaoke": {
-                # Video background
-                "background_color": "#000000",
-                "background_image": None,
-                # Font settings
-                "font": "Arial",
-                "font_path": "",  # Must be string, not None (for ASS generator)
-                "ass_name": "Default",
-                # Colors in "R, G, B, A" format (required by ASS)
-                "primary_color": "112, 112, 247, 255",
-                "secondary_color": "255, 255, 255, 255",
-                "outline_color": "26, 58, 235, 255",
-                "back_color": "0, 0, 0, 0",
-                # Boolean style options
-                "bold": False,
-                "italic": False,
-                "underline": False,
-                "strike_out": False,
-                # Numeric style options (all required for ASS)
-                "scale_x": 100,
-                "scale_y": 100,
-                "spacing": 0,
-                "angle": 0.0,
-                "border_style": 1,
-                "outline": 1,
-                "shadow": 0,
-                "margin_l": 0,
-                "margin_r": 0,
-                "margin_v": 0,
-                "encoding": 0,
-                # Layout settings
-                "max_line_length": 40,
-                "top_padding": 200,
-                "font_size": 100,
-            },
-            "cdg": {
-                "font_path": None,
-                "instrumental_background": None,
-                "title_screen_background": None,
-                "outro_background": None,
-            },
+            "karaoke": karaoke,
+            "cdg": copy.deepcopy(DEFAULT_CDG_STYLE),
         }
 
     def write_corrections_data(self, correction_result: CorrectionResult, output_prefix: str) -> str:

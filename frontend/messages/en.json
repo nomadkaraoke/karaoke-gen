@@ -1160,7 +1160,7 @@
       "upcomingMore": "+{count} more"
     },
     "duet": {
-      "markAsDuet": "Mark as duet",
+      "markAsDuet": "Duet Mode",
       "duetOn": "Duet: ON",
       "markAsDuetHint": "Enable to mark segments as Singer 1, Singer 2, or Both. Colors will appear in the final video.",
       "singer1": "Singer 1",

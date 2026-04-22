@@ -1164,7 +1164,7 @@
       "duetOn": "デュエット：オン",
       "keyboardHintSegment": "セグメントを選択した状態で、1 / 2 / B を押します",
       "legendSinger": "シンガー：",
-      "markAsDuet": "デュエットとしてマーク",
+      "markAsDuet": "デュエットモード",
       "markAsDuetHint": "有効にすると、セグメントをシンガー1、シンガー2、または両方にマークできます。最終的な動画には色が反映されます。",
       "resetOverridesTooltip": "このセグメントの単語ごとの上書きをリセット",
       "singer1": "シンガー1",
