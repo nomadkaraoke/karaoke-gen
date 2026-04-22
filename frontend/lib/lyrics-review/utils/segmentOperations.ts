@@ -15,6 +15,7 @@ export const addSegmentBefore = (data: CorrectionData, beforeIndex: number): Cor
     text: 'REPLACE',
     start_time: newStartTime,
     end_time: newEndTime,
+    ...(beforeSegment.singer !== undefined ? { singer: beforeSegment.singer } : {}),
     words: [
       {
         id: nanoid(),
@@ -64,6 +65,7 @@ export const splitSegment = (
     text: secondHalfWords.map((w) => w.text).join(' '),
     start_time: firstSecondWord.start_time ?? null,
     end_time: lastSecondWord.end_time ?? null,
+    ...(segment.singer !== undefined ? { singer: segment.singer } : {}),
   }
 
   // Replace the original segment with the two new segments
@@ -132,17 +134,31 @@ export function mergeSegment(
   const baseSegment = segments[segmentIndex]
   const targetSegment = segments[targetIndex]
 
+  // For merge, "first segment" is whichever comes first in the output.
+  // mergeWithNext: base is first, target is second.
+  // mergeWithPrev: target is first, base is second.
+  const firstSegment = mergeWithNext ? baseSegment : targetSegment
+  const secondSegment = mergeWithNext ? targetSegment : baseSegment
+
+  // Promote implicit word singers from the second segment into explicit overrides.
+  // Words in secondSegment that have no word-level singer inherit secondSegment.singer implicitly.
+  // After merge, the merged segment's singer = firstSegment.singer, so those words must get
+  // an explicit singer to avoid being silently reassigned.
+  const promoteSecondWords = secondSegment.words.map((word) => {
+    if (word.singer === undefined && secondSegment.singer !== undefined) {
+      return { ...word, singer: secondSegment.singer }
+    }
+    return word
+  })
+
   // Create merged segment
   const mergedSegment: LyricsSegment = {
     id: nanoid(),
-    words: mergeWithNext
-      ? [...baseSegment.words, ...targetSegment.words]
-      : [...targetSegment.words, ...baseSegment.words],
-    text: mergeWithNext
-      ? `${baseSegment.text} ${targetSegment.text}`
-      : `${targetSegment.text} ${baseSegment.text}`,
+    words: [...firstSegment.words, ...promoteSecondWords],
+    text: `${firstSegment.text} ${secondSegment.text}`,
     start_time: Math.min(baseSegment.start_time ?? Infinity, targetSegment.start_time ?? Infinity),
     end_time: Math.max(baseSegment.end_time ?? -Infinity, targetSegment.end_time ?? -Infinity),
+    ...(firstSegment.singer !== undefined ? { singer: firstSegment.singer } : {}),
   }
 
   // Replace the two segments with the merged one
