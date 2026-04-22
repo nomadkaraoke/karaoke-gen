@@ -71,7 +71,8 @@
     "annotationSaveError": "주석 저장 중 오류 발생: {error}",
     "waveformGenerationError": "파형 데이터 생성 중 오류 발생: {error}",
     "waveformNoAudio": "파형에 사용할 오디오가 없습니다",
-    "sessionSaveError": "수정 데이터가 필요합니다"
+    "sessionSaveError": "수정 데이터가 필요합니다",
+    "invalidIsDuetFlag": "is_duet은 불리언(true 또는 false)이어야 합니다."
   },
   "audioSearch": {
     "notEnabled": "이 테넌트에서는 오디오 검색이 활성화되어 있지 않습니다",

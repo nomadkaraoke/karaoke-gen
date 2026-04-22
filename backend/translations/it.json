@@ -71,7 +71,8 @@
     "annotationSaveError": "Errore durante il salvataggio delle annotazioni: {error}",
     "waveformGenerationError": "Errore durante la generazione dei dati della forma d'onda: {error}",
     "waveformNoAudio": "Nessun audio disponibile per la forma d'onda",
-    "sessionSaveError": "I dati di correzione sono richiesti"
+    "sessionSaveError": "I dati di correzione sono richiesti",
+    "invalidIsDuetFlag": "is_duet deve essere un booleano (true o false)"
   },
   "audioSearch": {
     "notEnabled": "La ricerca audio non è abilitata per questo tenant",

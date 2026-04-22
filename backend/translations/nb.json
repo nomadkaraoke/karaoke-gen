@@ -71,7 +71,8 @@
     "annotationSaveError": "Feil ved lagring av merknader: {error}",
     "waveformGenerationError": "Feil ved generering av bølgeformdata: {error}",
     "waveformNoAudio": "Ingen lyd tilgjengelig for bølgeform",
-    "sessionSaveError": "Korreksjonsdata er påkrevd"
+    "sessionSaveError": "Korreksjonsdata er påkrevd",
+    "invalidIsDuetFlag": "is_duet må være en boolean (true eller false)"
   },
   "audioSearch": {
     "notEnabled": "Lydsøk er ikke aktivert for denne kontoen",

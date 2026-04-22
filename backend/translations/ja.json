@@ -71,7 +71,8 @@
     "annotationSaveError": "アノテーションの保存中にエラーが発生しました: {error}",
     "waveformGenerationError": "波形データの生成中にエラーが発生しました: {error}",
     "waveformNoAudio": "波形用のオーディオがありません",
-    "sessionSaveError": "修正データが必要です"
+    "sessionSaveError": "修正データが必要です",
+    "invalidIsDuetFlag": "is_duet はブール値 (true または false) である必要があります"
   },
   "audioSearch": {
     "notEnabled": "このテナントではオーディオ検索が有効になっていません",

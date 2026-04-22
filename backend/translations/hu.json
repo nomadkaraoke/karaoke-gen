@@ -71,7 +71,8 @@
     "annotationSaveError": "Hiba a jegyzetek mentésekor: {error}",
     "waveformGenerationError": "Hiba a hullámforma adatok generálásakor: {error}",
     "waveformNoAudio": "Nincs elérhető hang a hullámformához",
-    "sessionSaveError": "Javítási adatok szükségesek"
+    "sessionSaveError": "Javítási adatok szükségesek",
+    "invalidIsDuetFlag": "Az is_duet értékének logikai (boolean) típusúnak kell lennie (true vagy false)"
   },
   "audioSearch": {
     "notEnabled": "A hangkeresés nincs engedélyezve ehhez a bérlőhöz",

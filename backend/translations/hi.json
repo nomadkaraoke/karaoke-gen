@@ -71,7 +71,8 @@
     "annotationSaveError": "एनोटेशन सेव करने में त्रुटि: {error}",
     "waveformGenerationError": "वेवफ़ॉर्म डेटा जनरेट करने में त्रुटि: {error}",
     "waveformNoAudio": "वेवफ़ॉर्म के लिए कोई ऑडियो उपलब्ध नहीं है",
-    "sessionSaveError": "करेक्शन डेटा आवश्यक है"
+    "sessionSaveError": "करेक्शन डेटा आवश्यक है",
+    "invalidIsDuetFlag": "is_duet एक boolean (true या false) होना चाहिए"
   },
   "audioSearch": {
     "notEnabled": "इस टेनेंट के लिए ऑडियो सर्च सक्षम नहीं है",

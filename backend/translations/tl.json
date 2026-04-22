@@ -71,7 +71,8 @@
     "annotationSaveError": "Error sa pag-save ng mga annotation: {error}",
     "waveformGenerationError": "Error sa paggawa ng waveform data: {error}",
     "waveformNoAudio": "Walang available na audio para sa waveform",
-    "sessionSaveError": "Kailangan ng correction data"
+    "sessionSaveError": "Kailangan ng correction data",
+    "invalidIsDuetFlag": "Ang is_duet ay dapat isang boolean (true o false)"
   },
   "audioSearch": {
     "notEnabled": "Hindi naka-enable ang audio search para sa tenant na ito",

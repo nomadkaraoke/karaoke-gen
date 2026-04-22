@@ -71,7 +71,8 @@
     "annotationSaveError": "שגיאה בשמירת ההערות: {error}",
     "waveformGenerationError": "שגיאה ביצירת נתוני גל הקול: {error}",
     "waveformNoAudio": "אין אודיו זמין עבור גל הקול",
-    "sessionSaveError": "נדרשים נתוני תיקון"
+    "sessionSaveError": "נדרשים נתוני תיקון",
+    "invalidIsDuetFlag": "is_duet חייב להיות ערך בוליאני (true או false)"
   },
   "audioSearch": {
     "notEnabled": "חיפוש אודיו אינו מופעל עבור חשבון זה",

@@ -71,7 +71,8 @@
     "annotationSaveError": "Ralat menyimpan anotasi: {error}",
     "waveformGenerationError": "Ralat menjana data bentuk gelombang: {error}",
     "waveformNoAudio": "Tiada audio tersedia untuk bentuk gelombang",
-    "sessionSaveError": "Data pembetulan diperlukan"
+    "sessionSaveError": "Data pembetulan diperlukan",
+    "invalidIsDuetFlag": "is_duet mestilah boolean (benar atau salah)"
   },
   "audioSearch": {
     "notEnabled": "Carian audio tidak didayakan untuk penyewa ini",

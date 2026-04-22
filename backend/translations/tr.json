@@ -71,7 +71,8 @@
     "annotationSaveError": "Açıklamaları kaydetme hatası: {error}",
     "waveformGenerationError": "Dalga formu verisi oluşturma hatası: {error}",
     "waveformNoAudio": "Dalga formu için ses mevcut değil",
-    "sessionSaveError": "Düzeltme verisi gereklidir"
+    "sessionSaveError": "Düzeltme verisi gereklidir",
+    "invalidIsDuetFlag": "is_duet bir boolean (true veya false) olmalı"
   },
   "audioSearch": {
     "notEnabled": "Bu kiracı için ses arama etkin değil",

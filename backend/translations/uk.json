@@ -71,7 +71,8 @@
     "annotationSaveError": "Помилка збереження анотацій: {error}",
     "waveformGenerationError": "Помилка генерації даних хвильової форми: {error}",
     "waveformNoAudio": "Немає аудіо для хвильової форми",
-    "sessionSaveError": "Потрібні дані виправлень"
+    "sessionSaveError": "Потрібні дані виправлень",
+    "invalidIsDuetFlag": "is_duet має бути булевим значенням (true або false)"
   },
   "audioSearch": {
     "notEnabled": "Пошук аудіо не ввімкнено для цього орендаря",

@@ -71,7 +71,8 @@
     "annotationSaveError": "Eroare la salvarea adnotărilor: {error}",
     "waveformGenerationError": "Eroare la generarea datelor formei de undă: {error}",
     "waveformNoAudio": "Niciun fișier audio disponibil pentru forma de undă",
-    "sessionSaveError": "Datele de corecție sunt obligatorii"
+    "sessionSaveError": "Datele de corecție sunt obligatorii",
+    "invalidIsDuetFlag": "is_duet trebuie să fie un boolean (true sau false)"
   },
   "audioSearch": {
     "notEnabled": "Căutarea audio nu este activată pentru acest tenant",

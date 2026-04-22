@@ -739,3 +739,139 @@ class TestInstrumentalSelectionValidation:
             valid_selections.append("custom")
 
         assert "custom" not in valid_selections
+
+
+class TestReviewCompleteDuetFlag:
+    """Tests for is_duet flag handling in complete_review endpoint.
+
+    The complete_review endpoint accepts an optional boolean is_duet field.
+    When present it must be a bool; it defaults to False when absent.
+    The flag is persisted via job_manager.update_state_data so the render
+    worker can later activate the multi-singer render path.
+    """
+
+    @pytest.fixture
+    def mock_job(self):
+        """Create a mock job in AWAITING_REVIEW state."""
+        from backend.models.job import Job, JobStatus
+        from datetime import datetime, UTC
+        job = MagicMock(spec=Job)
+        job.job_id = "job-duet-test"
+        job.status = JobStatus.AWAITING_REVIEW
+        job.file_urls = {"stems": {}}
+        job.state_data = {}
+        job.existing_instrumental_gcs_path = None
+        return job
+
+    def _call_complete_review(self, mock_job, payload, mock_job_manager, mock_storage):
+        """Call complete_review directly, bypassing HTTP layer."""
+        import asyncio
+        from backend.api.routes.review import complete_review
+
+        mock_job_manager.get_job.return_value = mock_job
+        mock_job_manager.update_state_data.return_value = None
+        mock_job_manager.transition_to_state.return_value = True
+        mock_job_manager.delete_state_data_keys.return_value = []
+        mock_storage.upload_json.return_value = None
+        mock_storage.update_file_url.return_value = None
+
+        async def _run():
+            return await complete_review(
+                job_id=mock_job.job_id,
+                updated_data=payload,
+                auth_info=("user@test.com", "job_owner"),
+            )
+
+        with patch("backend.api.routes.review.JobManager", return_value=mock_job_manager), \
+             patch("backend.api.routes.review.StorageService", return_value=mock_storage), \
+             patch("backend.api.routes.review.asyncio.create_task"), \
+             patch("backend.api.routes.review._background_tasks", set()), \
+             patch("backend.services.worker_service.get_worker_service") as mock_ws:
+            mock_ws.return_value.trigger_render_video_worker = AsyncMock(return_value=None)
+            result = asyncio.run(_run())
+        return result
+
+    def test_complete_saves_is_duet_true(self, mock_job):
+        """is_duet=True should be stored via update_state_data."""
+        mock_job_manager = MagicMock()
+        mock_storage = MagicMock()
+
+        payload = {
+            "corrections": {"corrected_segments": []},
+            "instrumental_selection": "with_backing",
+            "is_duet": True,
+        }
+        result = self._call_complete_review(mock_job, payload, mock_job_manager, mock_storage)
+
+        assert result["status"] == "success"
+        calls = [c for c in mock_job_manager.update_state_data.call_args_list
+                 if c.args[1] == "is_duet"]
+        assert len(calls) == 1
+        assert calls[0].args[2] is True
+
+    def test_complete_defaults_is_duet_false_when_absent(self, mock_job):
+        """When is_duet is absent, False should be stored."""
+        mock_job_manager = MagicMock()
+        mock_storage = MagicMock()
+
+        payload = {
+            "corrections": {"corrected_segments": []},
+            "instrumental_selection": "with_backing",
+            # no is_duet field
+        }
+        result = self._call_complete_review(mock_job, payload, mock_job_manager, mock_storage)
+
+        assert result["status"] == "success"
+        calls = [c for c in mock_job_manager.update_state_data.call_args_list
+                 if c.args[1] == "is_duet"]
+        assert len(calls) == 1
+        assert calls[0].args[2] is False
+
+    def test_complete_rejects_non_bool_is_duet(self, mock_job):
+        """is_duet with a non-boolean value should return 400."""
+        import asyncio
+        from fastapi import HTTPException
+        from backend.api.routes.review import complete_review
+
+        mock_job_manager = MagicMock()
+        mock_storage = MagicMock()
+        mock_job_manager.get_job.return_value = mock_job
+
+        payload = {
+            "corrections": {"corrected_segments": []},
+            "instrumental_selection": "with_backing",
+            "is_duet": "not a bool",
+        }
+
+        async def _run():
+            return await complete_review(
+                job_id=mock_job.job_id,
+                updated_data=payload,
+                auth_info=("user@test.com", "job_owner"),
+            )
+
+        with patch("backend.api.routes.review.JobManager", return_value=mock_job_manager), \
+             patch("backend.api.routes.review.StorageService", return_value=mock_storage):
+            with pytest.raises(HTTPException) as exc_info:
+                asyncio.run(_run())
+            assert exc_info.value.status_code == 400
+            assert "is_duet" in exc_info.value.detail
+
+    def test_is_duet_not_saved_in_corrections_payload(self, mock_job):
+        """is_duet should be stripped from the corrections save payload."""
+        mock_job_manager = MagicMock()
+        mock_storage = MagicMock()
+
+        payload = {
+            "corrections": [{"id": 1, "type": "edit"}],
+            "corrected_segments": [{"id": 1, "text": "hello"}],
+            "instrumental_selection": "clean",
+            "is_duet": True,
+        }
+        self._call_complete_review(mock_job, payload, mock_job_manager, mock_storage)
+
+        # If corrections were uploaded, is_duet must NOT be in the uploaded data
+        if mock_storage.upload_json.called:
+            uploaded_data = mock_storage.upload_json.call_args[0][1]
+            assert "is_duet" not in uploaded_data
+            assert "instrumental_selection" not in uploaded_data

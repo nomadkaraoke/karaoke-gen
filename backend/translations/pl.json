@@ -71,7 +71,8 @@
     "annotationSaveError": "Błąd podczas zapisywania adnotacji: {error}",
     "waveformGenerationError": "Błąd podczas generowania danych fali dźwiękowej: {error}",
     "waveformNoAudio": "Brak dostępnego dźwięku dla fali dźwiękowej",
-    "sessionSaveError": "Dane poprawek są wymagane"
+    "sessionSaveError": "Dane poprawek są wymagane",
+    "invalidIsDuetFlag": "is_duet musi być wartością logiczną (true lub false)"
   },
   "audioSearch": {
     "notEnabled": "Wyszukiwanie audio nie jest włączone dla tego konta",

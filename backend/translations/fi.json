@@ -71,7 +71,8 @@
     "annotationSaveError": "Virhe tallennettaessa merkintöjä: {error}",
     "waveformGenerationError": "Virhe luotaessa aaltomuotodataa: {error}",
     "waveformNoAudio": "Ääntä ei ole saatavilla aaltomuotoa varten",
-    "sessionSaveError": "Korjaustiedot vaaditaan"
+    "sessionSaveError": "Korjaustiedot vaaditaan",
+    "invalidIsDuetFlag": "is_duet täytyy olla totuusarvo (true tai false)"
   },
   "audioSearch": {
     "notEnabled": "Äänihaku ei ole käytössä tälle asiakkaalle",

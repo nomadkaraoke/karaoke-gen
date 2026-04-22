@@ -71,7 +71,8 @@
     "annotationSaveError": "Fel vid sparande av anteckningar: {error}",
     "waveformGenerationError": "Fel vid generering av vågformsdata: {error}",
     "waveformNoAudio": "Inget ljud tillgängligt för vågform",
-    "sessionSaveError": "Korrigeringsdata krävs"
+    "sessionSaveError": "Korrigeringsdata krävs",
+    "invalidIsDuetFlag": "is_duet måste vara ett booleskt värde (true eller false)"
   },
   "audioSearch": {
     "notEnabled": "Ljudsökning är inte aktiverad för denna klient",

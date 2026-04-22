@@ -71,7 +71,8 @@
     "annotationSaveError": "Fout bij het opslaan van annotaties: {error}",
     "waveformGenerationError": "Fout bij het genereren van golfvormgegevens: {error}",
     "waveformNoAudio": "Geen audio beschikbaar voor golfvorm",
-    "sessionSaveError": "Correctiegegevens zijn vereist"
+    "sessionSaveError": "Correctiegegevens zijn vereist",
+    "invalidIsDuetFlag": "is_duet moet een boolean (true of false) zijn"
   },
   "audioSearch": {
     "notEnabled": "Audio zoeken is niet ingeschakeld voor deze tenant",

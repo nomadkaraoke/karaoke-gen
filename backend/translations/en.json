@@ -71,7 +71,8 @@
     "annotationSaveError": "Error saving annotations: {error}",
     "waveformGenerationError": "Error generating waveform data: {error}",
     "waveformNoAudio": "No audio available for waveform",
-    "sessionSaveError": "Correction data is required"
+    "sessionSaveError": "Correction data is required",
+    "invalidIsDuetFlag": "is_duet must be a boolean (true or false)"
   },
   "audioSearch": {
     "notEnabled": "Audio search is not enabled for this tenant",

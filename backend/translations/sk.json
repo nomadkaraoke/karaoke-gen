@@ -71,7 +71,8 @@
     "annotationSaveError": "Chyba pri ukladaní anotácií: {error}",
     "waveformGenerationError": "Chyba pri generovaní údajov o zvukovej vlne: {error}",
     "waveformNoAudio": "Nie je k dispozícii žiadny zvuk pre zvukovú vlnu",
-    "sessionSaveError": "Vyžadujú sa údaje o opravách"
+    "sessionSaveError": "Vyžadujú sa údaje o opravách",
+    "invalidIsDuetFlag": "is_duet musí byť boolean (true alebo false)"
   },
   "audioSearch": {
     "notEnabled": "Vyhľadávanie zvuku nie je pre tohto nájomcu povolené",

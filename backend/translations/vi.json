@@ -71,7 +71,8 @@
     "annotationSaveError": "Lỗi khi lưu chú thích: {error}",
     "waveformGenerationError": "Lỗi khi tạo dữ liệu dạng sóng: {error}",
     "waveformNoAudio": "Không có âm thanh cho dạng sóng",
-    "sessionSaveError": "Yêu cầu dữ liệu chỉnh sửa"
+    "sessionSaveError": "Yêu cầu dữ liệu chỉnh sửa",
+    "invalidIsDuetFlag": "is_duet phải là kiểu boolean (true hoặc false)"
   },
   "audioSearch": {
     "notEnabled": "Tìm kiếm âm thanh không được bật cho tenant này",

@@ -71,7 +71,8 @@
     "annotationSaveError": "Fehler beim Speichern der Anmerkungen: {error}",
     "waveformGenerationError": "Fehler beim Generieren der Wellenform-Daten: {error}",
     "waveformNoAudio": "Kein Audio für Wellenform verfügbar",
-    "sessionSaveError": "Korrekturdaten sind erforderlich"
+    "sessionSaveError": "Korrekturdaten sind erforderlich",
+    "invalidIsDuetFlag": "is_duet muss ein Boolean sein (true oder false)"
   },
   "audioSearch": {
     "notEnabled": "Die Audiosuche ist für diesen Mandanten nicht aktiviert",

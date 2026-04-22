@@ -71,7 +71,8 @@
     "annotationSaveError": "Pogreška pri spremanju bilješki: {error}",
     "waveformGenerationError": "Pogreška pri generiranju podataka valnog oblika: {error}",
     "waveformNoAudio": "Nema dostupnog zvuka za valni oblik",
-    "sessionSaveError": "Podaci o ispravcima su obavezni"
+    "sessionSaveError": "Podaci o ispravcima su obavezni",
+    "invalidIsDuetFlag": "is_duet mora biti boolean (true ili false)"
   },
   "audioSearch": {
     "notEnabled": "Pretraživanje zvuka nije omogućeno za ovog zakupca",

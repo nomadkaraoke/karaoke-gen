@@ -71,7 +71,8 @@
     "annotationSaveError": "Error en desar les anotacions: {error}",
     "waveformGenerationError": "Error en generar les dades de la forma d'ona: {error}",
     "waveformNoAudio": "No hi ha àudio disponible per a la forma d'ona",
-    "sessionSaveError": "Es requereixen dades de correcció"
+    "sessionSaveError": "Es requereixen dades de correcció",
+    "invalidIsDuetFlag": "is_duet ha de ser un booleà (cert o fals)"
   },
   "audioSearch": {
     "notEnabled": "La cerca d'àudio no està activada per a aquest tenant",

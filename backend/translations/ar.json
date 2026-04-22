@@ -71,7 +71,8 @@
     "annotationSaveError": "خطأ في حفظ التعليقات التوضيحية: {error}",
     "waveformGenerationError": "خطأ في إنشاء بيانات الشكل الموجي: {error}",
     "waveformNoAudio": "لا يوجد صوت متاح للشكل الموجي",
-    "sessionSaveError": "بيانات التصحيح مطلوبة"
+    "sessionSaveError": "بيانات التصحيح مطلوبة",
+    "invalidIsDuetFlag": "يجب أن يكون is_duet قيمة منطقية (true أو false)"
   },
   "audioSearch": {
     "notEnabled": "البحث الصوتي غير مفعل لهذا المستأجر",

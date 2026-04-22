@@ -71,7 +71,8 @@
     "annotationSaveError": "Ошибка при сохранении аннотаций: {error}",
     "waveformGenerationError": "Ошибка при генерации данных осциллограммы: {error}",
     "waveformNoAudio": "Нет аудио для осциллограммы",
-    "sessionSaveError": "Требуются данные исправлений"
+    "sessionSaveError": "Требуются данные исправлений",
+    "invalidIsDuetFlag": "is_duet должно быть булевым значением (true или false)"
   },
   "audioSearch": {
     "notEnabled": "Поиск аудио не включен для этого аккаунта",

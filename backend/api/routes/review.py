@@ -327,10 +327,20 @@ async def complete_review(
             detail=t("en", "review.invalidInstrumentalSelection", valid_selections=valid_selections)
         )
 
+    # === is_duet flag (optional, defaults to False) ===
+    is_duet_raw = updated_data.get("is_duet", False)
+    if not isinstance(is_duet_raw, bool):
+        raise HTTPException(
+            status_code=400,
+            detail=t("en", "review.invalidIsDuetFlag"),
+        )
+    is_duet = is_duet_raw
+
     try:
-        # Remove instrumental_selection from updated_data before saving to corrections
-        # (it's stored separately in state_data)
-        corrections_to_save = {k: v for k, v in updated_data.items() if k != "instrumental_selection"}
+        # Remove instrumental_selection and is_duet from updated_data before saving corrections
+        # (they're stored separately in state_data)
+        excluded_fields = {"instrumental_selection", "is_duet"}
+        corrections_to_save = {k: v for k, v in updated_data.items() if k not in excluded_fields}
 
         # Only write corrections_updated.json if there's actual correction data.
         # Writing an empty dict causes KeyError downstream when render workers
@@ -347,6 +357,10 @@ async def complete_review(
         # This will be used by render_video_worker to skip AWAITING_INSTRUMENTAL_SELECTION
         job_manager.update_state_data(job_id, 'instrumental_selection', instrumental_selection)
         logger.info(f"Job {job_id}: Stored instrumental selection: {instrumental_selection}")
+
+        # Store duet flag so render worker knows to use multi-singer styles
+        job_manager.update_state_data(job_id, 'is_duet', is_duet)
+        logger.info(f"Job {job_id}: Stored is_duet flag: {is_duet}")
 
         # Clear worker progress keys to ensure workers will run fresh (not skip due to idempotency)
         # This handles cases where a job is re-reviewed after completion or where state was inconsistent.

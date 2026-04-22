@@ -71,7 +71,8 @@
     "annotationSaveError": "Chyba při ukládání anotací: {error}",
     "waveformGenerationError": "Chyba při generování dat křivky: {error}",
     "waveformNoAudio": "Pro křivku není k dispozici žádný zvuk",
-    "sessionSaveError": "Jsou vyžadována data oprav"
+    "sessionSaveError": "Jsou vyžadována data oprav",
+    "invalidIsDuetFlag": "is_duet musí být typu boolean (true nebo false)"
   },
   "audioSearch": {
     "notEnabled": "Vyhledávání zvuku není pro tohoto tenanta povoleno",

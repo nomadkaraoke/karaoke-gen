@@ -71,7 +71,8 @@
     "annotationSaveError": "Σφάλμα κατά την αποθήκευση των σχολίων: {error}",
     "waveformGenerationError": "Σφάλμα κατά τη δημιουργία δεδομένων κυματομορφής: {error}",
     "waveformNoAudio": "Δεν υπάρχει διαθέσιμος ήχος για την κυματομορφή",
-    "sessionSaveError": "Απαιτούνται δεδομένα διόρθωσης"
+    "sessionSaveError": "Απαιτούνται δεδομένα διόρθωσης",
+    "invalidIsDuetFlag": "Το is_duet πρέπει να είναι boolean (true ή false)"
   },
   "audioSearch": {
     "notEnabled": "Η αναζήτηση ήχου δεν είναι ενεργοποιημένη για αυτόν τον μισθωτή",

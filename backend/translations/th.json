@@ -71,7 +71,8 @@
     "annotationSaveError": "เกิดข้อผิดพลาดในการบันทึกคำอธิบายประกอบ: {error}",
     "waveformGenerationError": "เกิดข้อผิดพลาดในการสร้างข้อมูลรูปคลื่นเสียง: {error}",
     "waveformNoAudio": "ไม่มีเสียงสำหรับรูปคลื่นเสียง",
-    "sessionSaveError": "จำเป็นต้องมีข้อมูลการแก้ไข"
+    "sessionSaveError": "จำเป็นต้องมีข้อมูลการแก้ไข",
+    "invalidIsDuetFlag": "is_duet ต้องเป็นค่าบูลีน (true หรือ false)"
   },
   "audioSearch": {
     "notEnabled": "ไม่ได้เปิดใช้งานการค้นหาเสียงสำหรับผู้เช่ารายนี้",
