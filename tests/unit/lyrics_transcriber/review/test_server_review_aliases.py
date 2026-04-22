@@ -151,3 +151,41 @@ class TestReviewAnnotationsAlias:
     def test_empty_batch_returns_success(self, client):
         r = client.post("/api/review/local/v1/annotations", json={"annotations": []})
         assert r.status_code in (200, 201), r.text
+
+
+class TestReviewSessionsStubs:
+    """Review-session endpoints are cloud-only (persistent per-user snapshots).
+
+    In local CLI mode they don't need real persistence, but the review UI
+    auto-save fires on a timer and the LyricsAnalyzer hits the list endpoint
+    on mount. Without stubs these log a 404 every few seconds and a user-
+    visible error on mount; stubs return neutral empty responses so the UI
+    falls back to its localStorage path silently.
+    """
+
+    def test_list_returns_empty_sessions(self, client):
+        r = client.get("/api/review/local/sessions")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body == {"sessions": []}
+
+    def test_save_accepts_payload(self, client):
+        payload = {
+            "correction_data": {"foo": "bar"},
+            "edit_count": 3,
+            "trigger": "auto",
+            "summary": {"total_edits": 3},
+        }
+        r = client.post("/api/review/local/sessions", json=payload)
+        assert r.status_code in (200, 201), r.text
+        body = r.json()
+        # Frontend only needs a truthy status field; it tolerates anything else.
+        assert "status" in body
+
+    def test_get_unknown_session_returns_404(self, client):
+        r = client.get("/api/review/local/sessions/does-not-exist")
+        assert r.status_code == 404
+
+    def test_delete_is_idempotent(self, client):
+        r = client.delete("/api/review/local/sessions/anything")
+        assert r.status_code in (200, 204), r.text

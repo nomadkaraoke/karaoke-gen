@@ -435,6 +435,48 @@ class ReviewServer:
             methods=["POST"],
         )
 
+        # Review sessions are a cloud-only feature (persistent snapshots of
+        # in-progress reviews keyed by user). In local CLI mode we don't need
+        # real persistence, but LyricsAnalyzer probes the list endpoint on
+        # mount and the auto-save timer hits the save endpoint every few
+        # seconds. Without these stubs each local review session produces a
+        # stream of 404s and a user-visible error on mount; the frontend
+        # tolerates empty/no-op responses and falls back to its localStorage
+        # path silently.
+        async def list_review_sessions_stub(job_id: str):
+            return {"sessions": []}
+
+        async def save_review_session_stub(
+            job_id: str, payload: Dict[str, Any] = Body(default_factory=dict)
+        ):
+            return {"status": "success", "session_id": None}
+
+        async def get_review_session_stub(job_id: str, session_id: str):
+            raise HTTPException(
+                status_code=404,
+                detail="Review sessions are not persisted in local CLI mode",
+            )
+
+        async def delete_review_session_stub(job_id: str, session_id: str):
+            return {"status": "deleted"}
+
+        self.app.add_api_route(
+            "/api/review/{job_id}/sessions", list_review_sessions_stub, methods=["GET"]
+        )
+        self.app.add_api_route(
+            "/api/review/{job_id}/sessions", save_review_session_stub, methods=["POST"]
+        )
+        self.app.add_api_route(
+            "/api/review/{job_id}/sessions/{session_id}",
+            get_review_session_stub,
+            methods=["GET"],
+        )
+        self.app.add_api_route(
+            "/api/review/{job_id}/sessions/{session_id}",
+            delete_review_session_stub,
+            methods=["DELETE"],
+        )
+
         # Instrumental review data endpoints
         self.app.add_api_route("/api/jobs/{job_id}/instrumental-analysis", self.get_instrumental_analysis, methods=["GET"])
         self.app.add_api_route("/api/jobs/{job_id}/waveform-data", self.get_waveform_data, methods=["GET"])
