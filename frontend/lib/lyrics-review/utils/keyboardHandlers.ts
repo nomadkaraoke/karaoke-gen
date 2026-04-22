@@ -19,6 +19,9 @@ type KeyboardState = {
   }
   onNextGap?: () => void
   onPrevGap?: () => void
+  isDuet?: boolean
+  focusedSegmentIndex?: number | null
+  onAssignSegmentSinger?: (segmentIndex: number, singer: 0 | 1 | 2) => void
 }
 
 // Update the modal handler state
@@ -112,6 +115,25 @@ export const setupKeyboardHandlers = (state: KeyboardState) => {
           console.log('Keyboard handler - Using global audio toggle')
         }
         window.toggleAudioPlayback()
+      }
+    } else if (
+      state.isDuet &&
+      state.focusedSegmentIndex != null &&
+      state.onAssignSegmentSinger &&
+      !isModalOpen
+    ) {
+      if (e.key === '1') {
+        e.preventDefault()
+        state.onAssignSegmentSinger(state.focusedSegmentIndex, 1)
+        return
+      } else if (e.key === '2') {
+        e.preventDefault()
+        state.onAssignSegmentSinger(state.focusedSegmentIndex, 2)
+        return
+      } else if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault()
+        state.onAssignSegmentSinger(state.focusedSegmentIndex, 0)
+        return
       }
     }
   }

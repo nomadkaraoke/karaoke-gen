@@ -40,6 +40,7 @@ export default function TranscriptionView({
   editedWordIds,
   isDuet,
   onSegmentSingerChange,
+  onSegmentFocus,
 }: TranscriptionViewProps) {
   const t = useTranslations('lyricsReview.transcription')
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
@@ -158,6 +159,9 @@ export default function TranscriptionView({
               return (
                 <div
                   key={segment.id}
+                  tabIndex={isDuet && onSegmentFocus ? 0 : undefined}
+                  onFocus={isDuet && onSegmentFocus ? () => onSegmentFocus(segmentIndex) : undefined}
+                  onBlur={isDuet && onSegmentFocus ? () => onSegmentFocus(null) : undefined}
                   className={cn('flex items-start w-full hover:bg-muted/50 transition-colors', rowTintClass)}
                 >
                   {/* Segment controls */}

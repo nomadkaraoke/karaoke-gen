@@ -171,6 +171,8 @@ export default function LyricsAnalyzer({
     (initialData as any).is_duet ?? false
   )
 
+  const [focusedSegmentIndex, setFocusedSegmentIndex] = useState<number | null>(null)
+
   const [advancedMode, setAdvancedMode] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('lyricsReviewAdvancedMode') === 'true'
@@ -433,6 +435,13 @@ export default function LyricsAnalyzer({
       setIsCtrlPressed,
       onNextGap: handleNextGap,
       onPrevGap: handlePrevGap,
+      isDuet,
+      focusedSegmentIndex,
+      onAssignSegmentSinger: (idx, singer) => {
+        const segments = [...data.corrected_segments]
+        segments[idx] = { ...segments[idx], singer }
+        updateDataWithHistory({ ...data, corrected_segments: segments }, 'singer change')
+      },
     })
 
     window.addEventListener('keydown', handleKeyDown)
@@ -449,7 +458,7 @@ export default function LyricsAnalyzer({
       document.body.style.userSelect = ''
       cleanup()
     }
-  }, [isAnyModalOpen, handleNextGap, handlePrevGap])
+  }, [isAnyModalOpen, handleNextGap, handlePrevGap, isDuet, focusedSegmentIndex, data, updateDataWithHistory])
 
   // Update modal state tracking
   useEffect(() => {
@@ -1299,6 +1308,7 @@ export default function LyricsAnalyzer({
             segments[segmentIdx] = { ...segments[segmentIdx], singer: next }
             updateDataWithHistory({ ...data, corrected_segments: segments }, 'singer change')
           }}
+          onSegmentFocus={setFocusedSegmentIndex}
         />
         <ReferenceView
           referenceSources={data.reference_lyrics}

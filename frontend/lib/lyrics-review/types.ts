@@ -391,6 +391,7 @@ export interface TranscriptionViewProps {
   editedWordIds?: Set<string>
   isDuet?: boolean
   onSegmentSingerChange?: (segmentIdx: number, next: SingerId) => void
+  onSegmentFocus?: (segmentIndex: number | null) => void
 }
 
 export interface ReferenceViewProps extends BaseViewProps {
