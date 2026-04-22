@@ -3121,7 +3121,8 @@ export const lyricsReviewApi = {
   async completeReview(
     jobId: string,
     correctionData: CorrectionData,
-    instrumentalSelection: InstrumentalSelectionType
+    instrumentalSelection: InstrumentalSelectionType,
+    isDuet?: boolean
   ): Promise<{ status: string; instrumental_selection: string }> {
     const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/complete`, {
       method: 'POST',
@@ -3131,7 +3132,8 @@ export const lyricsReviewApi = {
       },
       body: JSON.stringify({
         ...correctionData,
-        instrumental_selection: instrumentalSelection
+        instrumental_selection: instrumentalSelection,
+        is_duet: isDuet ?? false,
       })
     })
     return handleResponse(response)

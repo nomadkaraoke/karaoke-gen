@@ -480,7 +480,8 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
       // Map "uploaded" to "custom" for the API — both use stems/custom_instrumental in GCS
       const apiSelection = selectedOption === "uploaded" ? "custom" : selectedOption
       const correctionData = await lyricsReviewApi.getCorrectionData(job.job_id)
-      await lyricsReviewApi.completeReview(job.job_id, correctionData, apiSelection)
+      const isDuet = (correctionData as any).is_duet ?? false
+      await lyricsReviewApi.completeReview(job.job_id, correctionData, apiSelection, isDuet)
 
       // Show success screen in both modes
       setShowSuccess(true)

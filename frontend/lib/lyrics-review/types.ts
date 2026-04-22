@@ -389,6 +389,8 @@ export interface TranscriptionViewProps {
   advancedMode?: boolean
   onAdvancedModeToggle?: (enabled: boolean) => void
   editedWordIds?: Set<string>
+  isDuet?: boolean
+  onSegmentSingerChange?: (segmentIdx: number, next: SingerId) => void
 }
 
 export interface ReferenceViewProps extends BaseViewProps {

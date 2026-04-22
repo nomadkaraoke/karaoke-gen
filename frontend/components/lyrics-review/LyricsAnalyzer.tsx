@@ -167,6 +167,10 @@ export default function LyricsAnalyzer({
   const [sessionsLoading, setSessionsLoading] = useState(false)
 
   // Advanced mode for transcription view (Simple/Advanced toggle)
+  const [isDuet, setIsDuet] = useState<boolean>(
+    (initialData as any).is_duet ?? false
+  )
+
   const [advancedMode, setAdvancedMode] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('lyricsReviewAdvancedMode') === 'true'
@@ -928,7 +932,7 @@ export default function LyricsAnalyzer({
         toast.success('Lyrics saved! Using uploaded instrumental, generating video...')
         try {
           const correctionData = await lyricsReviewApi.getCorrectionData(jobId)
-          await lyricsReviewApi.completeReview(jobId, correctionData, 'custom')
+          await lyricsReviewApi.completeReview(jobId, correctionData, 'custom', isDuet)
           setShowSuccess(true)
           setCountdown(3)
         } catch (err) {
@@ -1261,6 +1265,8 @@ export default function LyricsAnalyzer({
         onAcceptAllCorrections={handleAcceptAllCorrections}
         onAcceptHighConfidenceCorrections={handleAcceptHighConfidenceCorrections}
         onRevertAllCorrections={handleRevertAllCorrections}
+        isDuet={isDuet}
+        onToggleDuet={() => setIsDuet(d => !d)}
       />
 
       <div className={cn('grid gap-2', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
@@ -1287,6 +1293,12 @@ export default function LyricsAnalyzer({
           advancedMode={advancedMode}
           onAdvancedModeToggle={handleAdvancedModeToggle}
           editedWordIds={editedWordIds}
+          isDuet={isDuet}
+          onSegmentSingerChange={(segmentIdx, next) => {
+            const segments = [...data.corrected_segments]
+            segments[segmentIdx] = { ...segments[segmentIdx], singer: next }
+            updateDataWithHistory({ ...data, corrected_segments: segments }, 'singer change')
+          }}
         />
         <ReferenceView
           referenceSources={data.reference_lyrics}
