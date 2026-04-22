@@ -129,3 +129,25 @@ class TestReviewAudioStemAlias:
     def test_unknown_hash_or_stem_returns_404(self, client):
         r = client.get("/api/review/local/audio/not-a-hash-or-stem")
         assert r.status_code == 404
+
+
+class TestReviewAnnotationsAlias:
+    """`POST /api/review/{job_id}/v1/annotations` is called on review submit.
+
+    The cloud backend accepts either a single annotation dict or the batch
+    form `{"annotations": [...]}`. The local server only needs to not 404 —
+    annotation storage is optional and may not be wired up in CLI mode.
+    """
+
+    def test_batch_annotations_does_not_404(self, client):
+        payload = {
+            "annotations": [
+                {"ai_correction_id": "c1", "reviewer_action": "accepted", "reason_category": "ok"}
+            ]
+        }
+        r = client.post("/api/review/local/v1/annotations", json=payload)
+        assert r.status_code != 404, r.text
+
+    def test_empty_batch_returns_success(self, client):
+        r = client.post("/api/review/local/v1/annotations", json={"annotations": []})
+        assert r.status_code in (200, 201), r.text
