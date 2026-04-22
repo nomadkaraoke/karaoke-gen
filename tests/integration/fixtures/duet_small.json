@@ -1,0 +1,45 @@
+{
+  "original_segments": [],
+  "corrected_segments": [
+    {
+      "id": "s1",
+      "text": "Hello darkness my old friend",
+      "start_time": 0.5,
+      "end_time": 2.5,
+      "singer": 1,
+      "words": [
+        {"id": "w1", "text": "Hello", "start_time": 0.5, "end_time": 0.9},
+        {"id": "w2", "text": "darkness", "start_time": 1.0, "end_time": 1.5},
+        {"id": "w3", "text": "my", "start_time": 1.6, "end_time": 1.8},
+        {"id": "w4", "text": "old", "start_time": 1.9, "end_time": 2.1},
+        {"id": "w5", "text": "friend", "start_time": 2.2, "end_time": 2.5}
+      ]
+    },
+    {
+      "id": "s2",
+      "text": "I've come to talk with you",
+      "start_time": 3.0,
+      "end_time": 5.0,
+      "singer": 2,
+      "words": [
+        {"id": "w6", "text": "I've", "start_time": 3.0, "end_time": 3.3},
+        {"id": "w7", "text": "come", "start_time": 3.4, "end_time": 3.7},
+        {"id": "w8", "text": "to", "start_time": 3.8, "end_time": 3.95},
+        {"id": "w9", "text": "talk", "start_time": 4.0, "end_time": 4.3, "singer": 1},
+        {"id": "w10", "text": "with", "start_time": 4.4, "end_time": 4.7},
+        {"id": "w11", "text": "you", "start_time": 4.8, "end_time": 5.0}
+      ]
+    },
+    {
+      "id": "s3",
+      "text": "Hello again",
+      "start_time": 5.5,
+      "end_time": 7.0,
+      "singer": 0,
+      "words": [
+        {"id": "w12", "text": "Hello", "start_time": 5.5, "end_time": 6.2},
+        {"id": "w13", "text": "again", "start_time": 6.3, "end_time": 7.0}
+      ]
+    }
+  ]
+}
