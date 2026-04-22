@@ -1,5 +1,8 @@
 // Core types for lyrics review functionality
 
+// Singer id. 1 = Singer 1, 2 = Singer 2, 0 = Both. undefined = default (Singer 1).
+export type SingerId = 0 | 1 | 2
+
 export interface Word {
   id: string
   text: string
@@ -7,6 +10,7 @@ export interface Word {
   end_time: number | null
   confidence?: number
   created_during_correction?: boolean
+  singer?: SingerId
 }
 
 export interface LyricsSegment {
@@ -15,6 +19,7 @@ export interface LyricsSegment {
   words: Word[]
   start_time: number | null
   end_time: number | null
+  singer?: SingerId
 }
 
 export interface WordCorrection {
@@ -128,6 +133,7 @@ export interface CorrectionData {
   correction_steps: CorrectionStep[]
   word_id_map: Record<string, string>
   segment_id_map: Record<string, string>
+  is_duet?: boolean
   // Instrumental selection data (added for combined review flow)
   instrumental_options?: InstrumentalOption[]
   backing_vocals_analysis?: BackingVocalsAnalysis | null
