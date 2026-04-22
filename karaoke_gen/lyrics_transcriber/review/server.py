@@ -177,6 +177,7 @@ class ReviewServer:
         frontend_dir = str(get_nextjs_assets_dir())
         self.logger.info(f"Using Next.js frontend from {frontend_dir}")
         self._frontend_dir = frontend_dir  # Store for use in route handlers
+        self._locales = self._discover_locales(frontend_dir)
 
         # Mount Next.js static assets directory
         nextjs_static = os.path.join(frontend_dir, "_next")
@@ -186,6 +187,59 @@ class ReviewServer:
         # Mount the entire frontend directory for static files, but use html=False
         # so it doesn't serve index.html automatically for directories
         self.app.mount("/static", StaticFiles(directory=frontend_dir), name="frontend_static")
+
+    @staticmethod
+    def _discover_locales(frontend_dir: str) -> set:
+        """Return the set of locale subdirs present in the Next.js static export.
+
+        The i18n build generates `/{locale}/...` mirrors of every page for
+        each configured locale (e.g. `en`, `es`, `de`, `ja`). The
+        LocaleRedirect client component on the legacy root paths unconditionally
+        navigates to `/{locale}/...` based on browser preference, so the server
+        must accept those locale-prefixed URLs too or every local-mode review
+        browser load 404s.
+        """
+        locales: set = set()
+        if not os.path.isdir(frontend_dir):
+            return locales
+        for name in os.listdir(frontend_dir):
+            if len(name) == 2 and name.isalpha() and name.islower():
+                if os.path.isdir(os.path.join(frontend_dir, name)):
+                    locales.add(name)
+        return locales
+
+    def _render_local_review_html(self, locale_prefix: str = "") -> "HTMLResponse":
+        """Read the local-review index.html and patch in the missing Turbopack chunk.
+
+        Shared between the legacy non-locale route and the locale-prefixed
+        routes so both paths get the same chunk-injection workaround.
+        """
+        from fastapi.responses import HTMLResponse
+        frontend_dir = self._frontend_dir
+        base = os.path.join(frontend_dir, locale_prefix) if locale_prefix else frontend_dir
+        local_review_html = os.path.join(base, "app", "jobs", "local", "review", "index.html")
+        if not os.path.exists(local_review_html):
+            raise HTTPException(status_code=404, detail="Review page not found")
+
+        with open(local_review_html, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        # Find the missing chunk that contains JobRouterClient (module 78280)
+        # The chunk name is determined at build time, so we need to find it dynamically
+        # We look for ",78280," which is the Turbopack module ID pattern
+        import glob
+        chunks_dir = os.path.join(frontend_dir, "_next", "static", "chunks")
+        for chunk_file in glob.glob(os.path.join(chunks_dir, "*.js")):
+            chunk_name = os.path.basename(chunk_file)
+            with open(chunk_file, 'r', encoding='utf-8') as cf:
+                chunk_content = cf.read(500)
+                if ",78280," in chunk_content:
+                    script_tag = f'<script src="/_next/static/chunks/{chunk_name}" async=""></script>'
+                    if chunk_name not in html_content:
+                        html_content = html_content.replace('</head>', f'{script_tag}</head>')
+                    break
+
+        return HTMLResponse(content=html_content, media_type="text/html")
 
     def _register_spa_routes(self) -> None:
         """Register SPA fallback routes for Next.js client-side routing."""
@@ -203,45 +257,31 @@ class ReviewServer:
         @self.app.get("/app/jobs/local/review")
         async def serve_local_review():
             """Serve pre-rendered local review page with patched chunk loading."""
-            from fastapi.responses import HTMLResponse
-            local_review_html = os.path.join(frontend_dir, "app", "jobs", "local", "review", "index.html")
-            if os.path.exists(local_review_html):
-                # Read the HTML and inject the missing chunk script
-                # This works around a Turbopack static export issue where the RSC stream
-                # references module chunks that don't contain the actual code
-                with open(local_review_html, 'r', encoding='utf-8') as f:
-                    html_content = f.read()
+            return self._render_local_review_html()
 
-                # Find the missing chunk that contains JobRouterClient (module 78280)
-                # The chunk name is determined at build time, so we need to find it dynamically
-                # We look for ",78280," which is the Turbopack module ID pattern
-                import glob
-                chunks_dir = os.path.join(frontend_dir, "_next", "static", "chunks")
-                for chunk_file in glob.glob(os.path.join(chunks_dir, "*.js")):
-                    chunk_name = os.path.basename(chunk_file)
-                    # Check if this chunk contains module 78280 (JobRouterClient)
-                    with open(chunk_file, 'r', encoding='utf-8') as cf:
-                        chunk_content = cf.read(500)  # Module ID is near the start
-                        if ",78280," in chunk_content:
-                            # Inject this chunk script if not already present
-                            script_tag = f'<script src="/_next/static/chunks/{chunk_name}" async=""></script>'
-                            if chunk_name not in html_content:
-                                # Insert before closing </head>
-                                html_content = html_content.replace('</head>', f'{script_tag}</head>')
-                            break
-
-                return HTMLResponse(content=html_content, media_type="text/html")
-            # Fallback to jobs index
-            jobs_html = os.path.join(frontend_dir, "app", "jobs", "index.html")
-            if os.path.exists(jobs_html):
-                return FileResponse(jobs_html, media_type="text/html")
-            raise HTTPException(status_code=404, detail="Review page not found")
+        # Locale-prefixed variant — the LocaleRedirect client component bounces
+        # legacy non-locale paths to /{locale}/... paths, so we need to serve
+        # those too from the corresponding locale subdir in the static build.
+        @self.app.get("/{locale}/app/jobs/local/review")
+        async def serve_local_review_localized(locale: str):
+            if locale not in self._locales:
+                raise HTTPException(status_code=404, detail="Unknown locale")
+            return self._render_local_review_html(locale)
 
         # Job routes - serve the jobs page HTML for client-side routing
         @self.app.get("/app/jobs/{path:path}")
         async def serve_jobs_routes(path: str):
             """Serve jobs index.html for all /app/jobs/* routes (SPA routing)."""
             jobs_html = os.path.join(frontend_dir, "app", "jobs", "index.html")
+            if os.path.exists(jobs_html):
+                return FileResponse(jobs_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Jobs page not found")
+
+        @self.app.get("/{locale}/app/jobs/{path:path}")
+        async def serve_jobs_routes_localized(locale: str, path: str):
+            if locale not in self._locales:
+                raise HTTPException(status_code=404, detail="Unknown locale")
+            jobs_html = os.path.join(frontend_dir, locale, "app", "jobs", "index.html")
             if os.path.exists(jobs_html):
                 return FileResponse(jobs_html, media_type="text/html")
             raise HTTPException(status_code=404, detail="Jobs page not found")
@@ -255,6 +295,28 @@ class ReviewServer:
                 return FileResponse(app_html, media_type="text/html")
             # Fallback to root index.html
             index_html = os.path.join(frontend_dir, "index.html")
+            if os.path.exists(index_html):
+                return FileResponse(index_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Frontend not found")
+
+        @self.app.get("/{locale}/app/{path:path}")
+        async def serve_app_routes_localized(locale: str, path: str):
+            if locale not in self._locales:
+                raise HTTPException(status_code=404, detail="Unknown locale")
+            app_html = os.path.join(frontend_dir, locale, "app", "index.html")
+            if os.path.exists(app_html):
+                return FileResponse(app_html, media_type="text/html")
+            index_html = os.path.join(frontend_dir, locale, "index.html")
+            if os.path.exists(index_html):
+                return FileResponse(index_html, media_type="text/html")
+            raise HTTPException(status_code=404, detail="Frontend not found")
+
+        # Locale root — covers `/en`, `/es`, etc.
+        @self.app.get("/{locale}")
+        async def serve_locale_root(locale: str):
+            if locale not in self._locales:
+                raise HTTPException(status_code=404, detail="Unknown locale")
+            index_html = os.path.join(frontend_dir, locale, "index.html")
             if os.path.exists(index_html):
                 return FileResponse(index_html, media_type="text/html")
             raise HTTPException(status_code=404, detail="Frontend not found")
