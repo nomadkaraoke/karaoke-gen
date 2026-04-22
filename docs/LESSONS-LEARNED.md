@@ -1157,3 +1157,40 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
   CDG output will need this before it can be tested with real inputs.
 
 **Key insight:** Module-level side effects that start async work (like `fetchUser()` on import) are dangerous when pages exist solely to redirect. The async work starts, the redirect fires, the fetch aborts, and error handlers run with destructive consequences. Either guard redirecting pages from triggering side effects, or make error handlers resilient to abort errors.
+
+## Local ReviewServer Drift from Cloud Backend (Apr 2026)
+
+The unified Next.js frontend is built once and serves both the cloud
+deployment and the local CLI's `ReviewServer`. It does not branch its API
+calls by mode — `createLyricsReviewApiClient(jobId)` always hits
+`/api/review/{jobId}/...`. That means the local server is effectively a
+contract implementation of `backend/api/routes/review.py`, and any route
+added to the cloud side has to get an alias on the local side or the
+review UI silently breaks (audio 404s, auto-save 404 spam, submit 404 on
+`/v1/annotations`, etc.).
+
+Things that are NOT worth locally implementing:
+
+- **Audio editor endpoints** (`/api/review/{jobId}/input-audio-info`,
+  `/audio-edit-sessions`, `/audio-edit/apply|undo|redo|submit|upload`) —
+  only reachable via the `audio-edit` route type, which the local CLI
+  never enters (it opens `/app/jobs/local/review` directly). Adding
+  stubs here just invites drift; if they ever start being called from
+  the review flow, fail loudly and revisit.
+
+Things that *are* worth stubbing even without real persistence:
+
+- **Review sessions** (`/sessions`, `/sessions/{id}`). `LyricsAnalyzer`
+  probes the list endpoint on mount and the auto-save timer hits it on
+  a schedule. Without a stub each local run spams 404s and surfaces an
+  error on first load.
+
+Operational note on reference_lyrics: the relevance filter rejects
+Spotify hits with <30% relevance, which is the correct behavior when
+the Spotify search returns a totally different song (a common failure
+mode with unusual/long track titles like test fixtures containing
+`(145s duet clip)` suffixes). A 0% match *should* be rejected. Users
+can recover via the review UI's "Search All Providers" control with
+`force_sources=["spotify"]` (registered at
+`/api/review/{job_id}/search-lyrics`); no code change to the filter is
+warranted.
