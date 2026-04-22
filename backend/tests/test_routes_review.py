@@ -875,3 +875,134 @@ class TestReviewCompleteDuetFlag:
             uploaded_data = mock_storage.upload_json.call_args[0][1]
             assert "is_duet" not in uploaded_data
             assert "instrumental_selection" not in uploaded_data
+
+
+class TestPreviewVideoDuetFlag:
+    """Tests for is_duet flag handling in generate_preview_video endpoint.
+
+    The preview-video endpoint must accept an optional boolean is_duet field,
+    validate it, and pass it into OutputConfig so the preview renders with duet
+    colours rather than solo colours.
+
+    We test the extraction + validation logic directly on the endpoint function
+    (which runs before the heavy tempfile/GCS work) and verify that OutputConfig
+    is constructed with the right is_duet kwarg by intercepting the class.
+    """
+
+    @pytest.fixture
+    def mock_job(self):
+        from backend.models.job import Job, JobStatus
+        job = MagicMock(spec=Job)
+        job.job_id = "job-preview-duet"
+        job.status = JobStatus.AWAITING_REVIEW
+        job.input_media_gcs_path = "jobs/job-preview-duet/audio/input.flac"
+        job.style_params_gcs_path = None
+        job.style_assets = {}
+        job.artist = "Test Artist"
+        job.title = "Test Song"
+        return job
+
+    def _run_preview_video(self, mock_job, payload, captured_config_kwargs):
+        """Run generate_preview_video with all heavy dependencies mocked.
+
+        Captures the kwargs passed to OutputConfig() so tests can assert on
+        the is_duet value without needing real GCS or video generation.
+        """
+        import asyncio
+        import tempfile
+        from backend.api.routes.review import generate_preview_video
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_storage = MagicMock()
+        mock_encoding_service = MagicMock()
+        mock_encoding_service.is_preview_enabled = False  # skip GCE path
+
+        mock_correction_result = MagicMock()
+        mock_correction_result.segments = []
+
+        def fake_output_config(**kwargs):
+            captured_config_kwargs.append(kwargs)
+            return MagicMock()
+
+        async def _run():
+            return await generate_preview_video(
+                job_id=mock_job.job_id,
+                updated_data=payload,
+                auth_info=("user@test.com", "job_owner"),
+            )
+
+        with patch("backend.api.routes.review.JobManager", return_value=mock_job_manager), \
+             patch("backend.api.routes.review.StorageService", return_value=mock_storage), \
+             patch("backend.api.routes.review.get_encoding_service", return_value=mock_encoding_service), \
+             patch("backend.api.routes.review.load_styles_from_gcs", return_value=("/tmp/styles.json", {})), \
+             patch("backend.api.routes.review.CorrectionResult") as mock_cr, \
+             patch("backend.api.routes.review.CorrectionOperations") as mock_co, \
+             patch("backend.api.routes.review.OutputConfig", side_effect=fake_output_config), \
+             patch("backend.api.routes.review.create_span") as mock_span, \
+             patch("backend.api.routes.review.job_log_context") as mock_log_ctx, \
+             patch("backend.api.routes.review.add_span_event"), \
+             patch("tempfile.TemporaryDirectory") as mock_tmpdir, \
+             patch("os.makedirs"):
+            # Make context managers work
+            mock_span.return_value.__enter__ = MagicMock(return_value=MagicMock())
+            mock_span.return_value.__exit__ = MagicMock(return_value=False)
+            mock_log_ctx.return_value.__enter__ = MagicMock(return_value=None)
+            mock_log_ctx.return_value.__exit__ = MagicMock(return_value=False)
+            mock_tmpdir.return_value.__enter__ = MagicMock(return_value="/tmp/preview_test")
+            mock_tmpdir.return_value.__exit__ = MagicMock(return_value=False)
+            mock_cr.from_dict.return_value = mock_correction_result
+            # corrections.json download: write valid JSON
+            corrections_json = json.dumps({"lines": [], "metadata": {}})
+            mock_storage.download_file.side_effect = lambda gcs, local: None
+            with patch("builtins.open", side_effect=lambda p, *a, **kw:
+                       __import__('io').StringIO(corrections_json) if 'r' in str(a) else
+                       open.__class__(p, *a, **kw)):
+                mock_co.generate_preview_video.return_value = {
+                    "video_path": "/tmp/preview.mp4",
+                    "ass_path": "/tmp/preview.ass",
+                }
+                try:
+                    asyncio.run(_run())
+                except Exception:
+                    pass  # Some paths raise; we only need captured_config_kwargs
+
+    def test_preview_video_passes_is_duet_true_to_output_config(self, mock_job):
+        """is_duet=True in request body must be forwarded to OutputConfig."""
+        captured = []
+        self._run_preview_video(mock_job, {"is_duet": True}, captured)
+        assert len(captured) >= 1, "OutputConfig must be constructed"
+        assert captured[0].get("is_duet") is True
+
+    def test_preview_video_defaults_is_duet_false_when_absent(self, mock_job):
+        """When is_duet is absent, OutputConfig must receive is_duet=False."""
+        captured = []
+        self._run_preview_video(mock_job, {}, captured)
+        assert len(captured) >= 1, "OutputConfig must be constructed"
+        assert captured[0].get("is_duet") is False
+
+    def test_preview_video_rejects_non_bool_is_duet(self, mock_job):
+        """is_duet with a non-boolean value should return 400 before OutputConfig."""
+        import asyncio
+        from fastapi import HTTPException
+        from backend.api.routes.review import generate_preview_video
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.get_job.return_value = mock_job
+        mock_encoding_service = MagicMock()
+        mock_encoding_service.is_preview_enabled = False
+
+        async def _run():
+            return await generate_preview_video(
+                job_id=mock_job.job_id,
+                updated_data={"is_duet": "yes"},
+                auth_info=("user@test.com", "job_owner"),
+            )
+
+        with patch("backend.api.routes.review.JobManager", return_value=mock_job_manager), \
+             patch("backend.api.routes.review.get_encoding_service", return_value=mock_encoding_service):
+            with pytest.raises(HTTPException) as exc_info:
+                asyncio.run(_run())
+            assert exc_info.value.status_code == 400
+            assert "is_duet" in exc_info.value.detail

@@ -1005,7 +1005,13 @@ async def submit_corrections(
         job_manager.update_state_data(job_id, 'corrected_lyrics', corrections_for_firestore)
         if submission.user_notes:
             job_manager.update_state_data(job_id, 'review_notes', submission.user_notes)
-        
+
+        # Persist is_duet when explicitly provided; don't overwrite a previously-set flag
+        # when the field is absent from the request (None means "not specified").
+        if submission.is_duet is not None:
+            job_manager.update_state_data(job_id, 'is_duet', submission.is_duet)
+            logger.info(f"Job {job_id}: Stored is_duet flag via /corrections: {submission.is_duet}")
+
         # Transition to IN_REVIEW if not already
         if job.status == JobStatus.AWAITING_REVIEW:
             job_manager.transition_to_state(
@@ -1013,15 +1019,15 @@ async def submit_corrections(
                 new_status=JobStatus.IN_REVIEW,
                 message="User is reviewing lyrics"
             )
-        
+
         # Save updated corrections to GCS for the render worker
         from backend.services.storage_service import StorageService
         storage = StorageService()
-        
+
         corrections_gcs_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
         storage.upload_json(corrections_gcs_path, submission.corrections)
         job_manager.update_file_url(job_id, 'lyrics', 'corrections_updated', corrections_gcs_path)
-        
+
         logger.info(f"Job {job_id}: Corrections saved (review in progress)")
         
         return {

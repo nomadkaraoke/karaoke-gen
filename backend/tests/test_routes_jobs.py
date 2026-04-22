@@ -828,3 +828,113 @@ class TestSearchFiltering:
         # Verify caller can slice: simulates jobs_dicts[:limit] in route handler
         assert len(result[:3]) == 3
 
+
+class TestCorrectionsDuetFlag:
+    """Tests for is_duet flag handling in the /corrections endpoint.
+
+    The /corrections endpoint now accepts an optional is_duet field.
+    When present it must be a bool and is persisted to state_data.
+    When absent, state_data is NOT touched (preserves any prior flag value).
+    """
+
+    @pytest.fixture
+    def mock_job(self):
+        job = MagicMock(spec=Job)
+        job.job_id = "job-corrections-duet"
+        job.status = JobStatus.AWAITING_REVIEW
+        job.state_data = {}
+        return job
+
+    def _call_submit_corrections(self, mock_job, is_duet_value, is_duet_provided, mock_job_manager, mock_storage):
+        """Call submit_corrections directly, bypassing HTTP layer."""
+        import asyncio
+        from backend.api.routes.jobs import submit_corrections
+        from backend.models.requests import CorrectionsSubmission
+
+        valid_corrections = {"lines": [], "metadata": {}}
+        submission_kwargs = {"corrections": valid_corrections}
+        if is_duet_provided:
+            submission_kwargs["is_duet"] = is_duet_value
+        submission = CorrectionsSubmission(**submission_kwargs)
+
+        mock_job_manager.get_job.return_value = mock_job
+        mock_job_manager.update_state_data.return_value = None
+        mock_job_manager.transition_to_state.return_value = True
+        mock_storage.upload_json.return_value = None
+        mock_storage.update_file_url.return_value = None
+
+        mock_request = MagicMock()
+        mock_request.headers = {}
+
+        async def _run():
+            return await submit_corrections(
+                job_id=mock_job.job_id,
+                submission=submission,
+                http_request=mock_request,
+                background_tasks=MagicMock(),
+                auth_result=MagicMock(user_email="test@test.com", role="job_owner", job_id=mock_job.job_id),
+            )
+
+        with patch("backend.api.routes.jobs.job_manager", mock_job_manager), \
+             patch("backend.api.routes.jobs._check_job_ownership", return_value=True), \
+             patch("backend.api.routes.jobs.get_locale_from_request", return_value="en"), \
+             patch("backend.api.routes.jobs.StorageService", return_value=mock_storage):
+            result = asyncio.run(_run())
+        return result
+
+    def test_corrections_saves_is_duet_true(self, mock_job):
+        """is_duet=True should be persisted via update_state_data."""
+        mock_jm = MagicMock()
+        mock_st = MagicMock()
+
+        result = self._call_submit_corrections(mock_job, True, True, mock_jm, mock_st)
+
+        assert result["status"] == "success"
+        calls = [c for c in mock_jm.update_state_data.call_args_list
+                 if c.args[1] == "is_duet"]
+        assert len(calls) == 1
+        assert calls[0].args[2] is True
+
+    def test_corrections_saves_is_duet_false(self, mock_job):
+        """is_duet=False should be persisted via update_state_data."""
+        mock_jm = MagicMock()
+        mock_st = MagicMock()
+
+        result = self._call_submit_corrections(mock_job, False, True, mock_jm, mock_st)
+
+        assert result["status"] == "success"
+        calls = [c for c in mock_jm.update_state_data.call_args_list
+                 if c.args[1] == "is_duet"]
+        assert len(calls) == 1
+        assert calls[0].args[2] is False
+
+    def test_corrections_without_is_duet_does_not_touch_state_data(self, mock_job):
+        """When is_duet is absent, update_state_data must NOT be called for is_duet."""
+        mock_jm = MagicMock()
+        mock_st = MagicMock()
+
+        result = self._call_submit_corrections(mock_job, None, False, mock_jm, mock_st)
+
+        assert result["status"] == "success"
+        is_duet_calls = [c for c in mock_jm.update_state_data.call_args_list
+                         if c.args[1] == "is_duet"]
+        assert len(is_duet_calls) == 0, (
+            "is_duet must NOT be written to state_data when absent from request "
+            "(would overwrite a previously-persisted value with False)"
+        )
+
+    def test_corrections_submission_model_accepts_is_duet(self):
+        """CorrectionsSubmission Pydantic model must accept is_duet=True/False/None."""
+        from backend.models.requests import CorrectionsSubmission
+
+        base = {"corrections": {"lines": [], "metadata": {}}}
+
+        s1 = CorrectionsSubmission(**base, is_duet=True)
+        assert s1.is_duet is True
+
+        s2 = CorrectionsSubmission(**base, is_duet=False)
+        assert s2.is_duet is False
+
+        s3 = CorrectionsSubmission(**base)
+        assert s3.is_duet is None
+

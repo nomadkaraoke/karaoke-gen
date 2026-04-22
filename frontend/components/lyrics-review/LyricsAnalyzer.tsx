@@ -68,14 +68,14 @@ declare global {
 }
 
 interface ApiClient {
-  submitCorrections: (data: CorrectionData) => Promise<void>
+  submitCorrections: (data: CorrectionData, isDuet?: boolean) => Promise<void>
   submitAnnotations: (annotations: never[]) => Promise<void>
   submitEditLog: (editLog: EditLog) => Promise<void>
   updateHandlers: (handlers: string[]) => Promise<CorrectionData>
   addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
   searchLyrics?: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
-  generatePreviewVideo: (data: CorrectionData) => Promise<{
+  generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
     preview_hash?: string
@@ -918,8 +918,8 @@ export default function LyricsAnalyzer({
       const dataToSubmit =
         timingOffsetMs !== 0 ? applyOffsetToCorrectionData(data, timingOffsetMs) : data
 
-      // 1. Save corrections (not final submission yet)
-      await apiClient.submitCorrections(dataToSubmit)
+      // 1. Save corrections (not final submission yet), including current duet flag
+      await apiClient.submitCorrections(dataToSubmit, isDuet)
 
       // 2. Save edit log (non-blocking)
       if (editLog.entries.length > 0) {
@@ -1446,6 +1446,7 @@ export default function LyricsAnalyzer({
         isSubmitting={isSubmitting}
         apiClient={apiClient}
         timingOffsetMs={timingOffsetMs}
+        isDuet={isDuet}
       />
 
       <AddLyricsModal

@@ -9,7 +9,7 @@ import { CorrectionData } from '@/lib/lyrics-review/types'
 import { applyOffsetToCorrectionData } from '@/lib/lyrics-review/utils/timingUtils'
 
 interface ApiClient {
-  generatePreviewVideo: (data: CorrectionData) => Promise<{
+  generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
     preview_hash?: string
@@ -23,6 +23,7 @@ interface PreviewVideoSectionProps {
   updatedData: CorrectionData
   videoRef?: RefObject<HTMLVideoElement>
   timingOffsetMs?: number
+  isDuet?: boolean
 }
 
 export default function PreviewVideoSection({
@@ -31,6 +32,7 @@ export default function PreviewVideoSection({
   updatedData,
   videoRef,
   timingOffsetMs = 0,
+  isDuet,
 }: PreviewVideoSectionProps) {
   const t = useTranslations('lyricsReview.previewVideo')
   const [previewState, setPreviewState] = useState<{
@@ -51,7 +53,7 @@ export default function PreviewVideoSection({
               ? applyOffsetToCorrectionData(updatedData, timingOffsetMs)
               : updatedData
 
-          const response = await apiClient.generatePreviewVideo(dataToPreview)
+          const response = await apiClient.generatePreviewVideo(dataToPreview, isDuet)
 
           if (response.status === 'worker_starting') {
             setPreviewState({
@@ -92,7 +94,7 @@ export default function PreviewVideoSection({
 
       generatePreview()
     }
-  }, [isModalOpen, apiClient, updatedData, timingOffsetMs])
+  }, [isModalOpen, apiClient, updatedData, timingOffsetMs, isDuet])
 
   if (!apiClient) return null
 

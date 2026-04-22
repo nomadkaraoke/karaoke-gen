@@ -38,12 +38,13 @@ class UploadSubmissionRequest(BaseModel):
 class CorrectionsSubmission(BaseModel):
     """
     Request to submit corrected lyrics after human review.
-    
+
     This is the critical human-in-the-loop interaction point.
     The corrections data comes from the lyrics-transcriber review interface.
     """
     corrections: Dict[str, Any]  # Full corrections JSON from frontend
     user_notes: Optional[str] = None  # Optional notes from reviewer
+    is_duet: Optional[bool] = None  # When present, persists duet flag to state_data
     
     @validator('corrections')
     def validate_corrections_format(cls, v):

@@ -8,7 +8,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import PreviewVideoSection from '../PreviewVideoSection'
 
 interface ApiClient {
-  generatePreviewVideo: (data: CorrectionData) => Promise<{
+  generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
     preview_hash?: string
@@ -24,6 +24,7 @@ interface ReviewChangesModalProps {
   isSubmitting?: boolean
   apiClient?: ApiClient | null
   timingOffsetMs?: number
+  isDuet?: boolean
 }
 
 export default function ReviewChangesModal({
@@ -34,6 +35,7 @@ export default function ReviewChangesModal({
   isSubmitting = false,
   apiClient = null,
   timingOffsetMs = 0,
+  isDuet,
 }: ReviewChangesModalProps) {
   const t = useTranslations('lyricsReview.modals.reviewChanges')
   const corrections = data.corrections || []
@@ -61,6 +63,7 @@ export default function ReviewChangesModal({
           isModalOpen={open}
           updatedData={data}
           timingOffsetMs={timingOffsetMs}
+          isDuet={isDuet}
         />
 
         {/* No lyrics warning */}

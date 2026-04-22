@@ -704,7 +704,17 @@ async def generate_preview_video(
 
     # Check if user wants theme background image (slower) or black background (faster, default)
     use_background_image = updated_data.get("use_background_image", False)
-    logger.info(f"Job {job_id}: Generating preview video (GCE: {use_gce_preview}, background image: {use_background_image})")
+
+    # === is_duet flag (optional, defaults to False) ===
+    is_duet_raw = updated_data.get("is_duet", False)
+    if not isinstance(is_duet_raw, bool):
+        raise HTTPException(
+            status_code=400,
+            detail=t("en", "review.invalidIsDuetFlag"),
+        )
+    is_duet = is_duet_raw
+
+    logger.info(f"Job {job_id}: Generating preview video (GCE: {use_gce_preview}, background image: {use_background_image}, is_duet: {is_duet})")
 
     # Use tracing and job_log_context for full observability
     with create_span("generate-preview-video", {"job_id": job_id, "use_gce": use_gce_preview}) as span:
@@ -752,6 +762,7 @@ async def generate_preview_video(
                         output_dir=output_dir,
                         cache_dir=cache_dir,
                         video_resolution="360p",
+                        is_duet=is_duet,
                     )
 
                     # 6. Generate preview (ASS-only if using GCE, or full video if local)
