@@ -1158,6 +1158,20 @@
         "deleteCount": "Delete ({count})"
       },
       "upcomingMore": "+{count} more"
+    },
+    "duet": {
+      "markAsDuet": "Mark as duet",
+      "duetOn": "Duet: ON",
+      "markAsDuetHint": "Enable to mark segments as Singer 1, Singer 2, or Both. Colors will appear in the final video.",
+      "singer1": "Singer 1",
+      "singer2": "Singer 2",
+      "both": "Both",
+      "singerChipAriaLabel": "Singer for this segment (click to change)",
+      "singerChipAriaLabelWithOverrides": "Singer for this segment with word-level overrides (click to change)",
+      "wordOverrideNote": "Word-level singer overrides apply to the karaoke video only — CDG output uses the segment's main singer.",
+      "legendSinger": "Singer:",
+      "keyboardHintSegment": "With a segment focused, press 1 / 2 / B",
+      "resetOverridesTooltip": "Reset word overrides in this segment"
     }
   },
   "instrumentalReview": {

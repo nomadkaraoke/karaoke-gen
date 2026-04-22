@@ -1158,6 +1158,20 @@
         "deleteCount": "Suprimeix ({count})"
       },
       "upcomingMore": "+{count} més"
+    },
+    "duet": {
+      "both": "Tots dos",
+      "duetOn": "Duet: ACTIVAT",
+      "keyboardHintSegment": "Amb un segment seleccionat, prem 1 / 2 / B",
+      "legendSinger": "Cantant:",
+      "markAsDuet": "Marca com a duet",
+      "markAsDuetHint": "Activa-ho per marcar els segments com a Cantant 1, Cantant 2 o Tots dos. Els colors apareixeran al vídeo final.",
+      "resetOverridesTooltip": "Restableix les modificacions de paraules en aquest segment",
+      "singer1": "Cantant 1",
+      "singer2": "Cantant 2",
+      "singerChipAriaLabel": "Cantant per a aquest segment (fes clic per canviar)",
+      "singerChipAriaLabelWithOverrides": "Cantant per a aquest segment amb modificacions a nivell de paraula (fes clic per canviar)",
+      "wordOverrideNote": "Les modificacions de cantant a nivell de paraula només s'apliquen al vídeo de karaoke — la sortida CDG utilitza el cantant principal del segment."
     }
   },
   "instrumentalReview": {

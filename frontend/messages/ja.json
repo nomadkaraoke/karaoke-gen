@@ -1158,6 +1158,20 @@
         "deleteCount": "削除 ({count})"
       },
       "upcomingMore": "他 +{count}"
+    },
+    "duet": {
+      "both": "両方",
+      "duetOn": "デュエット：オン",
+      "keyboardHintSegment": "セグメントを選択した状態で、1 / 2 / B を押します",
+      "legendSinger": "シンガー：",
+      "markAsDuet": "デュエットとしてマーク",
+      "markAsDuetHint": "有効にすると、セグメントをシンガー1、シンガー2、または両方にマークできます。最終的な動画には色が反映されます。",
+      "resetOverridesTooltip": "このセグメントの単語ごとの上書きをリセット",
+      "singer1": "シンガー1",
+      "singer2": "シンガー2",
+      "singerChipAriaLabel": "このセグメントのシンガー（クリックして変更）",
+      "singerChipAriaLabelWithOverrides": "単語ごとの上書きがあるこのセグメントのシンガー（クリックして変更）",
+      "wordOverrideNote": "単語ごとのシンガーの上書きはカラオケ動画にのみ適用されます。CDG出力ではセグメントのメインシンガーが使用されます。"
     }
   },
   "instrumentalReview": {

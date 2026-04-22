@@ -1158,6 +1158,20 @@
         "deleteCount": "حذف ({count})"
       },
       "upcomingMore": "+{count} المزيد"
+    },
+    "duet": {
+      "both": "كلاهما",
+      "duetOn": "ثنائي: مفعل",
+      "keyboardHintSegment": "عند تحديد مقطع، اضغط على 1 / 2 / B",
+      "legendSinger": "المغني:",
+      "markAsDuet": "تحديد كغناء ثنائي",
+      "markAsDuetHint": "قم بالتفعيل لتحديد المقاطع للمغني 1، أو المغني 2، أو كليهما. ستظهر الألوان في الفيديو النهائي.",
+      "resetOverridesTooltip": "إعادة تعيين تجاوزات الكلمات في هذا المقطع",
+      "singer1": "المغني 1",
+      "singer2": "المغني 2",
+      "singerChipAriaLabel": "المغني لهذا المقطع (انقر للتغيير)",
+      "singerChipAriaLabelWithOverrides": "المغني لهذا المقطع مع تجاوزات على مستوى الكلمة (انقر للتغيير)",
+      "wordOverrideNote": "تجاوزات المغني على مستوى الكلمة تنطبق على فيديو الكاريوكي فقط — يستخدم إخراج CDG المغني الرئيسي للمقطع."
     }
   },
   "instrumentalReview": {

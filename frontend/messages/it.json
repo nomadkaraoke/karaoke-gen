@@ -1158,6 +1158,20 @@
         "deleteCount": "Elimina ({count})"
       },
       "upcomingMore": "+{count} altre"
+    },
+    "duet": {
+      "both": "Entrambi",
+      "duetOn": "Duetto: ON",
+      "keyboardHintSegment": "Con un segmento selezionato, premi 1 / 2 / B",
+      "legendSinger": "Cantante:",
+      "markAsDuet": "Segna come duetto",
+      "markAsDuetHint": "Abilita per segnare i segmenti come Cantante 1, Cantante 2 o Entrambi. I colori appariranno nel video finale.",
+      "resetOverridesTooltip": "Reimposta le sovrascritture delle parole in questo segmento",
+      "singer1": "Cantante 1",
+      "singer2": "Cantante 2",
+      "singerChipAriaLabel": "Cantante per questo segmento (clicca per cambiare)",
+      "singerChipAriaLabelWithOverrides": "Cantante per questo segmento con sovrascritture a livello di parola (clicca per cambiare)",
+      "wordOverrideNote": "Le sovrascritture del cantante a livello di parola si applicano solo al video karaoke — l'output CDG usa il cantante principale del segmento."
     }
   },
   "instrumentalReview": {

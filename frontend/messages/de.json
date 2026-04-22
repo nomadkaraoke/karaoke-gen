@@ -1158,6 +1158,20 @@
         "deleteCount": "Löschen ({count})"
       },
       "upcomingMore": "+{count} weitere"
+    },
+    "duet": {
+      "both": "Beide",
+      "duetOn": "Duett: EIN",
+      "keyboardHintSegment": "Wenn ein Segment fokussiert ist, drücke 1 / 2 / B",
+      "legendSinger": "Sänger:",
+      "markAsDuet": "Als Duett markieren",
+      "markAsDuetHint": "Aktivieren, um Segmente als Sänger 1, Sänger 2 oder Beide zu markieren. Die Farben werden im endgültigen Video angezeigt.",
+      "resetOverridesTooltip": "Wort-Überschreibungen in diesem Segment zurücksetzen",
+      "singer1": "Sänger 1",
+      "singer2": "Sänger 2",
+      "singerChipAriaLabel": "Sänger für dieses Segment (zum Ändern klicken)",
+      "singerChipAriaLabelWithOverrides": "Sänger für dieses Segment mit Wort-Überschreibungen (zum Ändern klicken)",
+      "wordOverrideNote": "Sänger-Überschreibungen auf Wortebene gelten nur für das Karaoke-Video — die CDG-Ausgabe verwendet den Hauptsänger des Segments."
     }
   },
   "instrumentalReview": {

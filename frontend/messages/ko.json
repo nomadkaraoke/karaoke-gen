@@ -1158,6 +1158,20 @@
         "deleteCount": "삭제 ({count})"
       },
       "upcomingMore": "+{count}개 더"
+    },
+    "duet": {
+      "both": "함께",
+      "duetOn": "듀엣: 켜짐",
+      "keyboardHintSegment": "구간을 선택한 상태에서 1 / 2 / B를 누르세요",
+      "legendSinger": "가수:",
+      "markAsDuet": "듀엣으로 표시",
+      "markAsDuetHint": "구간을 가수 1, 가수 2 또는 함께로 표시하려면 활성화하세요. 최종 비디오에 색상이 표시됩니다.",
+      "resetOverridesTooltip": "이 구간의 단어별 설정 초기화",
+      "singer1": "가수 1",
+      "singer2": "가수 2",
+      "singerChipAriaLabel": "이 구간의 가수 (클릭하여 변경)",
+      "singerChipAriaLabelWithOverrides": "단어별 설정이 적용된 이 구간의 가수 (클릭하여 변경)",
+      "wordOverrideNote": "단어별 가수 설정은 노래방 비디오에만 적용됩니다 — CDG 출력은 해당 구간의 메인 가수를 사용합니다."
     }
   },
   "instrumentalReview": {

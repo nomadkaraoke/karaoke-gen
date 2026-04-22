@@ -1158,6 +1158,20 @@
         "deleteCount": "Xóa ({count})"
       },
       "upcomingMore": "+{count} từ khác"
+    },
+    "duet": {
+      "both": "Cả hai",
+      "duetOn": "Song ca: BẬT",
+      "keyboardHintSegment": "Khi chọn một đoạn, nhấn 1 / 2 / B",
+      "legendSinger": "Ca sĩ:",
+      "markAsDuet": "Đánh dấu là song ca",
+      "markAsDuetHint": "Bật để đánh dấu các đoạn là Ca sĩ 1, Ca sĩ 2, hoặc Cả hai. Màu sắc sẽ hiển thị trong video cuối cùng.",
+      "resetOverridesTooltip": "Đặt lại các ghi đè từ trong đoạn này",
+      "singer1": "Ca sĩ 1",
+      "singer2": "Ca sĩ 2",
+      "singerChipAriaLabel": "Ca sĩ cho đoạn này (nhấp để thay đổi)",
+      "singerChipAriaLabelWithOverrides": "Ca sĩ cho đoạn này với các ghi đè cấp độ từ (nhấp để thay đổi)",
+      "wordOverrideNote": "Các ghi đè ca sĩ cấp độ từ chỉ áp dụng cho video karaoke — đầu ra CDG sử dụng ca sĩ chính của đoạn."
     }
   },
   "instrumentalReview": {

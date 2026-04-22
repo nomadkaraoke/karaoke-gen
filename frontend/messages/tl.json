@@ -1158,6 +1158,20 @@
         "deleteCount": "Tanggalin ({count})"
       },
       "upcomingMore": "+{count} pa"
+    },
+    "duet": {
+      "both": "Pareho",
+      "duetOn": "Duet: ON",
+      "keyboardHintSegment": "Kapag naka-focus ang segment, pindutin ang 1 / 2 / B",
+      "legendSinger": "Singer:",
+      "markAsDuet": "Markahan bilang duet",
+      "markAsDuetHint": "I-enable para markahan ang mga segment bilang Singer 1, Singer 2, o Pareho. Lalabas ang mga kulay sa pinal na video.",
+      "resetOverridesTooltip": "I-reset ang mga word override sa segment na ito",
+      "singer1": "Singer 1",
+      "singer2": "Singer 2",
+      "singerChipAriaLabel": "Singer para sa segment na ito (i-click para baguhin)",
+      "singerChipAriaLabelWithOverrides": "Singer para sa segment na ito na may mga word-level override (i-click para baguhin)",
+      "wordOverrideNote": "Ang mga word-level singer override ay para lang sa karaoke video — ginagamit ng CDG output ang pangunahing singer ng segment."
     }
   },
   "instrumentalReview": {

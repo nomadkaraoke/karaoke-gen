@@ -1158,6 +1158,20 @@
         "deleteCount": "מחק ({count})"
       },
       "upcomingMore": "+{count} נוספים"
+    },
+    "duet": {
+      "both": "שניהם",
+      "duetOn": "דואט: מופעל",
+      "keyboardHintSegment": "כאשר מקטע מסומן, לחצו על 1 / 2 / B",
+      "legendSinger": "זמר:",
+      "markAsDuet": "סמן כדואט",
+      "markAsDuetHint": "הפעילו כדי לסמן מקטעים כזמר 1, זמר 2 או שניהם. הצבעים יופיעו בווידאו הסופי.",
+      "resetOverridesTooltip": "איפוס עקיפות מילים במקטע זה",
+      "singer1": "זמר 1",
+      "singer2": "זמר 2",
+      "singerChipAriaLabel": "זמר למקטע זה (לחצו לשינוי)",
+      "singerChipAriaLabelWithOverrides": "זמר למקטע זה עם עקיפות ברמת המילה (לחצו לשינוי)",
+      "wordOverrideNote": "עקיפות זמר ברמת המילה חלות על וידאו הקריוקי בלבד — פלט CDG משתמש בזמר הראשי של המקטע."
     }
   },
   "instrumentalReview": {

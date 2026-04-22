@@ -1158,6 +1158,20 @@
         "deleteCount": "Vymazať ({count})"
       },
       "upcomingMore": "+{count} ďalších"
+    },
+    "duet": {
+      "both": "Obaja",
+      "duetOn": "Duet: ZAP",
+      "keyboardHintSegment": "Keď je segment vybratý, stlač 1 / 2 / B",
+      "legendSinger": "Spevák:",
+      "markAsDuet": "Označiť ako duet",
+      "markAsDuetHint": "Zapni pre označenie segmentov ako Spevák 1, Spevák 2 alebo Obaja. Farby sa zobrazia vo výslednom videu.",
+      "resetOverridesTooltip": "Zrušiť úpravy slov v tomto segmente",
+      "singer1": "Spevák 1",
+      "singer2": "Spevák 2",
+      "singerChipAriaLabel": "Spevák pre tento segment (klikni pre zmenu)",
+      "singerChipAriaLabelWithOverrides": "Spevák pre tento segment s úpravami na úrovni slov (klikni pre zmenu)",
+      "wordOverrideNote": "Úpravy speváka na úrovni slov sa aplikujú len na karaoke video — CDG výstup používa hlavného speváka segmentu."
     }
   },
   "instrumentalReview": {

@@ -1158,6 +1158,20 @@
         "deleteCount": "Șterge ({count})"
       },
       "upcomingMore": "+{count} mai multe"
+    },
+    "duet": {
+      "both": "Amândoi",
+      "duetOn": "Duet: ACTIVAT",
+      "keyboardHintSegment": "Cu un segment selectat, apasă 1 / 2 / B",
+      "legendSinger": "Cântăreț:",
+      "markAsDuet": "Marchează ca duet",
+      "markAsDuetHint": "Activează pentru a marca segmentele ca Cântărețul 1, Cântărețul 2 sau Amândoi. Culorile vor apărea în videoclipul final.",
+      "resetOverridesTooltip": "Resetează suprascrierile de cuvinte din acest segment",
+      "singer1": "Cântărețul 1",
+      "singer2": "Cântărețul 2",
+      "singerChipAriaLabel": "Cântărețul pentru acest segment (dă click pentru a schimba)",
+      "singerChipAriaLabelWithOverrides": "Cântărețul pentru acest segment cu suprascrieri la nivel de cuvânt (dă click pentru a schimba)",
+      "wordOverrideNote": "Suprascrierile cântărețului la nivel de cuvânt se aplică doar videoclipului de karaoke — rezultatul CDG folosește cântărețul principal al segmentului."
     }
   },
   "instrumentalReview": {

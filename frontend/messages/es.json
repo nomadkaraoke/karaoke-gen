@@ -1158,6 +1158,20 @@
         "deleteCount": "Eliminar ({count})"
       },
       "upcomingMore": "+{count} más"
+    },
+    "duet": {
+      "both": "Ambos",
+      "duetOn": "Dúo: ACTIVADO",
+      "keyboardHintSegment": "Con un segmento enfocado, presiona 1 / 2 / B",
+      "legendSinger": "Cantante:",
+      "markAsDuet": "Marcar como dúo",
+      "markAsDuetHint": "Actívalo para marcar segmentos como Cantante 1, Cantante 2 o Ambos. Los colores aparecerán en el video final.",
+      "resetOverridesTooltip": "Restablecer anulaciones de palabras en este segmento",
+      "singer1": "Cantante 1",
+      "singer2": "Cantante 2",
+      "singerChipAriaLabel": "Cantante para este segmento (haz clic para cambiar)",
+      "singerChipAriaLabelWithOverrides": "Cantante para este segmento con anulaciones a nivel de palabra (haz clic para cambiar)",
+      "wordOverrideNote": "Las anulaciones de cantante a nivel de palabra se aplican solo al video de karaoke — la salida CDG usa el cantante principal del segmento."
     }
   },
   "instrumentalReview": {

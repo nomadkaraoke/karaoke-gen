@@ -1158,6 +1158,20 @@
         "deleteCount": "Excluir ({count})"
       },
       "upcomingMore": "+{count} mais"
+    },
+    "duet": {
+      "both": "Ambos",
+      "duetOn": "Dueto: ATIVADO",
+      "keyboardHintSegment": "Com um segmento focado, pressione 1 / 2 / B",
+      "legendSinger": "Cantor:",
+      "markAsDuet": "Marcar como dueto",
+      "markAsDuetHint": "Ative para marcar segmentos como Cantor 1, Cantor 2 ou Ambos. As cores aparecerão no vídeo final.",
+      "resetOverridesTooltip": "Redefinir substituições de palavras neste segmento",
+      "singer1": "Cantor 1",
+      "singer2": "Cantor 2",
+      "singerChipAriaLabel": "Cantor para este segmento (clique para alterar)",
+      "singerChipAriaLabelWithOverrides": "Cantor para este segmento com substituições no nível da palavra (clique para alterar)",
+      "wordOverrideNote": "As substituições de cantor no nível da palavra se aplicam apenas ao vídeo de karaokê — a saída CDG usa o cantor principal do segmento."
     }
   },
   "instrumentalReview": {

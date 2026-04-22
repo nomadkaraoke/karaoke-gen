@@ -1158,6 +1158,20 @@
         "deleteCount": "Izbriši ({count})"
       },
       "upcomingMore": "+{count} više"
+    },
+    "duet": {
+      "both": "Oboje",
+      "duetOn": "Duet: UKLJUČEN",
+      "keyboardHintSegment": "Kada je segment označen, pritisni 1 / 2 / B",
+      "legendSinger": "Pjevač:",
+      "markAsDuet": "Označi kao duet",
+      "markAsDuetHint": "Omogući za označavanje segmenata kao Pjevač 1, Pjevač 2 ili Oboje. Boje će se prikazati u konačnom videu.",
+      "resetOverridesTooltip": "Poništi izmjene riječi u ovom segmentu",
+      "singer1": "Pjevač 1",
+      "singer2": "Pjevač 2",
+      "singerChipAriaLabel": "Pjevač za ovaj segment (klikni za promjenu)",
+      "singerChipAriaLabelWithOverrides": "Pjevač za ovaj segment s izmjenama na razini riječi (klikni za promjenu)",
+      "wordOverrideNote": "Izmjene pjevača na razini riječi primjenjuju se samo na karaoke video — CDG izlaz koristi glavnog pjevača segmenta."
     }
   },
   "instrumentalReview": {

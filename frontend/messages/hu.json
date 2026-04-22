@@ -1158,6 +1158,20 @@
         "deleteCount": "Törlés ({count})"
       },
       "upcomingMore": "+{count} további"
+    },
+    "duet": {
+      "both": "Mindkettő",
+      "duetOn": "Duett: BE",
+      "keyboardHintSegment": "Ha egy szegmens ki van jelölve, nyomd meg az 1 / 2 / B gombot",
+      "legendSinger": "Énekes:",
+      "markAsDuet": "Megjelölés duettként",
+      "markAsDuetHint": "Engedélyezd, hogy a szegmenseket 1. énekes, 2. énekes vagy Mindkettő címkével lásd el. A színek megjelennek a végső videóban.",
+      "resetOverridesTooltip": "Szavankénti felülbírálások visszaállítása ebben a szegmensben",
+      "singer1": "1. énekes",
+      "singer2": "2. énekes",
+      "singerChipAriaLabel": "Énekes ehhez a szegmenshez (kattints a módosításhoz)",
+      "singerChipAriaLabelWithOverrides": "Énekes ehhez a szegmenshez szavankénti felülbírálásokkal (kattints a módosításhoz)",
+      "wordOverrideNote": "A szavankénti énekes-felülbírálások csak a karaoke videóra vonatkoznak — a CDG kimenet a szegmens fő énekesét használja."
     }
   },
   "instrumentalReview": {

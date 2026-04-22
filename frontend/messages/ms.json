@@ -1158,6 +1158,20 @@
         "deleteCount": "Padam ({count})"
       },
       "upcomingMore": "+{count} lagi"
+    },
+    "duet": {
+      "both": "Kedua-duanya",
+      "duetOn": "Duet: ON",
+      "keyboardHintSegment": "Apabila segmen difokuskan, tekan 1 / 2 / B",
+      "legendSinger": "Penyanyi:",
+      "markAsDuet": "Tandakan sebagai duet",
+      "markAsDuetHint": "Dayakan untuk menanda segmen sebagai Penyanyi 1, Penyanyi 2, atau Kedua-duanya. Warna akan muncul dalam video akhir.",
+      "resetOverridesTooltip": "Tetapkan semula tetapan ganti perkataan dalam segmen ini",
+      "singer1": "Penyanyi 1",
+      "singer2": "Penyanyi 2",
+      "singerChipAriaLabel": "Penyanyi untuk segmen ini (klik untuk tukar)",
+      "singerChipAriaLabelWithOverrides": "Penyanyi untuk segmen ini dengan tetapan ganti peringkat perkataan (klik untuk tukar)",
+      "wordOverrideNote": "Tetapan ganti penyanyi peringkat perkataan hanya digunakan pada video karaoke — output CDG menggunakan penyanyi utama segmen tersebut."
     }
   },
   "instrumentalReview": {

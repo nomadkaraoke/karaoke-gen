@@ -1158,6 +1158,20 @@
         "deleteCount": "Verwijder ({count})"
       },
       "upcomingMore": "+{count} meer"
+    },
+    "duet": {
+      "both": "Beide",
+      "duetOn": "Duet: AAN",
+      "keyboardHintSegment": "Met een segment geselecteerd, druk op 1 / 2 / B",
+      "legendSinger": "Zanger:",
+      "markAsDuet": "Markeer als duet",
+      "markAsDuetHint": "Schakel in om segmenten te markeren als Zanger 1, Zanger 2 of Beide. Kleuren verschijnen in de uiteindelijke video.",
+      "resetOverridesTooltip": "Reset woordaanpassingen in dit segment",
+      "singer1": "Zanger 1",
+      "singer2": "Zanger 2",
+      "singerChipAriaLabel": "Zanger voor dit segment (klik om te wijzigen)",
+      "singerChipAriaLabelWithOverrides": "Zanger voor dit segment met aanpassingen op woordniveau (klik om te wijzigen)",
+      "wordOverrideNote": "Zangeraanpassingen op woordniveau zijn alleen van toepassing op de karaokevideo — CDG-uitvoer gebruikt de hoofdzanger van het segment."
     }
   },
   "instrumentalReview": {

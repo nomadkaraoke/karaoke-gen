@@ -1158,6 +1158,20 @@
         "deleteCount": "删除 ({count})"
       },
       "upcomingMore": "还有 +{count} 个"
+    },
+    "duet": {
+      "both": "合唱",
+      "duetOn": "对唱：开启",
+      "keyboardHintSegment": "选中片段后，按 1 / 2 / B",
+      "legendSinger": "歌手：",
+      "markAsDuet": "标记为对唱",
+      "markAsDuetHint": "启用后可将片段标记为歌手 1、歌手 2 或合唱。颜色将显示在最终视频中。",
+      "resetOverridesTooltip": "重置此片段中的词级覆盖设置",
+      "singer1": "歌手 1",
+      "singer2": "歌手 2",
+      "singerChipAriaLabel": "此片段的歌手（点击更改）",
+      "singerChipAriaLabelWithOverrides": "包含词级覆盖设置的此片段歌手（点击更改）",
+      "wordOverrideNote": "词级歌手覆盖设置仅适用于卡拉OK视频 — CDG 输出将使用该片段的主要歌手。"
     }
   },
   "instrumentalReview": {

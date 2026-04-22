@@ -1158,6 +1158,20 @@
         "deleteCount": "Usuń ({count})"
       },
       "upcomingMore": "+{count} więcej"
+    },
+    "duet": {
+      "both": "Razem",
+      "duetOn": "Duet: WŁ.",
+      "keyboardHintSegment": "Mając zaznaczony segment, naciśnij 1 / 2 / B",
+      "legendSinger": "Wokalista:",
+      "markAsDuet": "Oznacz jako duet",
+      "markAsDuetHint": "Włącz, aby oznaczyć segmenty jako Wokalista 1, Wokalista 2 lub Razem. Kolory pojawią się w gotowym wideo.",
+      "resetOverridesTooltip": "Zresetuj nadpisania słów w tym segmencie",
+      "singer1": "Wokalista 1",
+      "singer2": "Wokalista 2",
+      "singerChipAriaLabel": "Wokalista dla tego segmentu (kliknij, aby zmienić)",
+      "singerChipAriaLabelWithOverrides": "Wokalista dla tego segmentu z nadpisaniami na poziomie słów (kliknij, aby zmienić)",
+      "wordOverrideNote": "Nadpisania wokalisty na poziomie słów dotyczą tylko wideo karaoke — plik CDG używa głównego wokalisty segmentu."
     }
   },
   "instrumentalReview": {

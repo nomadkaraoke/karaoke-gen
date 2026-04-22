@@ -1158,6 +1158,20 @@
         "deleteCount": "Ta bort ({count})"
       },
       "upcomingMore": "+{count} fler"
+    },
+    "duet": {
+      "both": "Båda",
+      "duetOn": "Duett: PÅ",
+      "keyboardHintSegment": "Med ett segment markerat, tryck på 1 / 2 / B",
+      "legendSinger": "Sångare:",
+      "markAsDuet": "Markera som duett",
+      "markAsDuetHint": "Aktivera för att markera segment som Sångare 1, Sångare 2 eller Båda. Färgerna kommer att visas i den slutgiltiga videon.",
+      "resetOverridesTooltip": "Återställ åsidosättningar av ord i detta segment",
+      "singer1": "Sångare 1",
+      "singer2": "Sångare 2",
+      "singerChipAriaLabel": "Sångare för detta segment (klicka för att ändra)",
+      "singerChipAriaLabelWithOverrides": "Sångare för detta segment med åsidosättningar på ordnivå (klicka för att ändra)",
+      "wordOverrideNote": "Åsidosättningar av sångare på ordnivå gäller endast för karaokevideon — CDG-utdata använder segmentets huvudsakliga sångare."
     }
   },
   "instrumentalReview": {

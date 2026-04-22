@@ -1158,6 +1158,20 @@
         "deleteCount": "Supprimer ({count})"
       },
       "upcomingMore": "+{count} de plus"
+    },
+    "duet": {
+      "both": "Les deux",
+      "duetOn": "Duo : Activé",
+      "keyboardHintSegment": "Avec un segment sélectionné, appuie sur 1 / 2 / B",
+      "legendSinger": "Chanteur :",
+      "markAsDuet": "Marquer comme duo",
+      "markAsDuetHint": "Active cette option pour marquer les segments comme Chanteur 1, Chanteur 2 ou Les deux. Les couleurs apparaîtront dans la vidéo finale.",
+      "resetOverridesTooltip": "Réinitialiser les modifications de mots dans ce segment",
+      "singer1": "Chanteur 1",
+      "singer2": "Chanteur 2",
+      "singerChipAriaLabel": "Chanteur pour ce segment (clique pour changer)",
+      "singerChipAriaLabelWithOverrides": "Chanteur pour ce segment avec des modifications au niveau des mots (clique pour changer)",
+      "wordOverrideNote": "Les modifications de chanteur au niveau des mots s'appliquent uniquement à la vidéo karaoké — la sortie CDG utilise le chanteur principal du segment."
     }
   },
   "instrumentalReview": {

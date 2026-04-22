@@ -1158,6 +1158,20 @@
         "deleteCount": "Sil ({count})"
       },
       "upcomingMore": "+{count} daha"
+    },
+    "duet": {
+      "both": "İkisi",
+      "duetOn": "Düet: AÇIK",
+      "keyboardHintSegment": "Bir bölüm seçiliyken 1 / 2 / B tuşlarına bas",
+      "legendSinger": "Şarkıcı:",
+      "markAsDuet": "Düet olarak işaretle",
+      "markAsDuetHint": "Bölümleri Şarkıcı 1, Şarkıcı 2 veya İkisi olarak işaretlemek için etkinleştir. Renkler son videoda görünecektir.",
+      "resetOverridesTooltip": "Bu bölümdeki kelime geçersiz kılmalarını sıfırla",
+      "singer1": "Şarkıcı 1",
+      "singer2": "Şarkıcı 2",
+      "singerChipAriaLabel": "Bu bölüm için şarkıcı (değiştirmek için tıkla)",
+      "singerChipAriaLabelWithOverrides": "Kelime düzeyinde geçersiz kılmalara sahip bu bölüm için şarkıcı (değiştirmek için tıkla)",
+      "wordOverrideNote": "Kelime düzeyindeki şarkıcı geçersiz kılmaları yalnızca karaoke videosuna uygulanır — CDG çıktısı bölümün ana şarkıcısını kullanır."
     }
   },
   "instrumentalReview": {
