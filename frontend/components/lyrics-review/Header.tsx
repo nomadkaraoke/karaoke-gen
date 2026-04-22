@@ -65,6 +65,8 @@ interface HeaderProps {
   onAcceptAllCorrections?: () => void
   onAcceptHighConfidenceCorrections?: () => void
   onRevertAllCorrections?: () => void
+  isDuet?: boolean
+  onToggleDuet?: () => void
 }
 
 export default function Header({
@@ -96,8 +98,11 @@ export default function Header({
   onAcceptAllCorrections,
   onAcceptHighConfidenceCorrections,
   onRevertAllCorrections,
+  isDuet = false,
+  onToggleDuet,
 }: HeaderProps) {
   const t = useTranslations('lyricsReview.header')
+  const tDuet = useTranslations('lyricsReview.duet')
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
   // Check if agentic mode is active
@@ -307,6 +312,27 @@ export default function Header({
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">{t('timingOffsetDesc')}</TooltipContent>
+                </Tooltip>
+              )}
+
+              {onToggleDuet && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onToggleDuet}
+                      className={cn(
+                        'h-8 text-xs',
+                        isDuet
+                          ? 'bg-pink-900/40 border-pink-500 text-pink-100 hover:bg-pink-900/60'
+                          : 'border-border text-foreground hover:bg-muted'
+                      )}
+                    >
+                      ◐ {isDuet ? tDuet('duetOn') : tDuet('markAsDuet')}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">{tDuet('markAsDuetHint')}</TooltipContent>
                 </Tooltip>
               )}
 
