@@ -1147,14 +1147,62 @@ For this bug, the missing test was: "does `transcribe_lyrics()` return `lyrics_d
   splitting lines at word boundaries would produce visually distinct
   display lines on the CDG and make the output worse, not better.
 - Theme JSON gains an optional `singers` block under `karaoke` for
-  per-singer color overrides. Themes without it continue to work —
-  all singers render with the flat colors, which is a valid (if dull)
-  fallback.
-- Follow-up: `build_cdg_lyrics` helper exists but isn't yet wired
-  into `CDGGenerator`'s TOML-based flow — integration is deferred to
-  a follow-up task since the current CDG code constructs settings
-  dicts directly rather than via `SettingsLyric`. End-to-end duet
-  CDG output will need this before it can be tested with real inputs.
+  per-singer color overrides. Themes without it fall back to the
+  built-in blue/pink/yellow duet palette in `DEFAULT_KARAOKE_STYLE`
+  (via `resolve_singer_colors`) — previously they collapsed to the
+  flat theme colors, rendering all three "singers" identically.
+- `build_karaoke_styles._make_style` must use `.get("font_size", 250)`
+  rather than `karaoke_style["font_size"]`: themes stored in GCS don't
+  always declare `font_size` at the karaoke-block level (the CLI /
+  video-resolution param is the authoritative source and the caller
+  overrides `s.Fontsize` after the factory returns anyway). Without
+  the fallback, `/preview-video` and the ASS generator crash with
+  `KeyError('font_size')`.
+- CDG TOML structure for duets: ONE `SettingsLyric` with `text` that
+  contains every visual line prefixed as `N|text` (e.g. `1|HELLO`,
+  `2|WORLD`, `3|TOGETHER`). The composer parses `N|` per-line to
+  override the lyric-level default singer. `config.singers` carries
+  the palette in 1-indexed order. Visual-line breaks at segment
+  boundaries are forced by prefixing the first word of each segment
+  (except the first) with `/` so `format_lyrics` flushes `current_line`
+  before starting the next singer's words.
+- Countdown offset matters for CDG: video rendering pads vocals with
+  a countdown intro which shifts segment times forward. CDG renders
+  against the *unpadded* instrumental, so when loading segments for
+  the CDG path, shift all times back by `countdown_padding_seconds`
+  and drop any segment whose end is now <=0. Otherwise CDG lyrics
+  drift 3 seconds behind the audio.
+- Color model for duet rendering (shared by ASS and CDG, after the
+  flip in commit `b2f20b43`): pre-sung text shows the singer's
+  signature color (blue/pink/yellow) so performers can read ahead
+  and see who sings what; the karaoke sweep turns words white. For
+  CDG this is `active_fill=#FFFFFF, inactive_fill=<signature>`. If
+  you ever think "white default, color on highlight" seems more
+  obvious, remember that it removes the singer-identification cue
+  and makes duet charts much harder to perform.
+- Singer 1's blue was originally `#7070F7`; brightened to `#9AA8FF`
+  (sky blue) because the original luminance was too close to dark
+  navy backgrounds like `#111427`. When choosing CDG singer colors,
+  consider the readable contrast against the theme's background
+  color — CDG's 16-color palette leaves little room for subtlety.
+- `is_duet` has to be latched True through the submit→complete flow.
+  The InstrumentalSelector component's submit payload can send
+  `is_duet: false` (it reads from `correctionData.is_duet` which
+  isn't round-tripped through `/corrections`), and if the
+  `complete_review` endpoint writes that unconditionally, a prior
+  True from `submit_corrections` gets clobbered and the final render
+  silently reverts to solo. Both local `ReviewServer` and cloud
+  `backend/api/routes/review.py::complete_review` enforce an
+  up-only latch.
+- The GCE encoding worker (`backend/services/gce_encoding/main.py`)
+  needs `is_duet` on its `RenderVideoRequest` model — plumbing it
+  only through `render_video_worker.py`'s payload dict is insufficient
+  because the worker's Pydantic model discards unknown fields.
+- Duet CDG in the standard-encoding path requires `KaraokeFinalise`
+  to know both `is_duet` AND receive a corrections JSON path; the
+  LRC-based `generate_cdg_from_lrc` has no singer info so it always
+  produces solo output. When `is_duet=True` + a corrections JSON is
+  available, use `CDGGenerator.generate_cdg(segments=...)` instead.
 
 **Key insight:** Module-level side effects that start async work (like `fetchUser()` on import) are dangerous when pages exist solely to redirect. The async work starts, the redirect fires, the fetch aborts, and error handlers run with destructive consequences. Either guard redirecting pages from triggering side effects, or make error handlers resilient to abort errors.
 
