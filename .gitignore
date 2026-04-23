@@ -13,6 +13,9 @@ tests/outputs
 /input
 /output/
 
+# Local karaoke-gen CLI test output dirs (created during manual validation)
+/test-output-*/
+
 # Cloud Infra
 .emulator-logs
 
