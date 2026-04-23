@@ -16,6 +16,7 @@ import {
   type MuteRegion,
   type InstrumentalSelectionType,
 } from "@/lib/api"
+import { hasMultipleSingers } from "@/lib/lyrics-review/duet"
 import { StemComparison, type AudioType } from "./StemComparison"
 import { WaveformViewer } from "./WaveformViewer"
 import { MuteRegionEditor } from "./MuteRegionEditor"
@@ -480,7 +481,11 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
       // Map "uploaded" to "custom" for the API — both use stems/custom_instrumental in GCS
       const apiSelection = selectedOption === "uploaded" ? "custom" : selectedOption
       const correctionData = await lyricsReviewApi.getCorrectionData(job.job_id)
-      const isDuet = (correctionData as any).is_duet ?? false
+      // `is_duet` isn't round-tripped through the /corrections response, so
+      // fall back to detecting duet intent from the segment data itself —
+      // if any segment or word has a singer≠1, this is a duet job.
+      const isDuet =
+        (correctionData as any).is_duet ?? hasMultipleSingers(correctionData.corrected_segments ?? [])
       await lyricsReviewApi.completeReview(job.job_id, correctionData, apiSelection, isDuet)
 
       // Show success screen in both modes

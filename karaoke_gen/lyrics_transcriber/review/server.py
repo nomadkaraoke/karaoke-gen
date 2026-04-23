@@ -987,12 +987,21 @@ class ReviewServer:
                 self.instrumental_selection = instrumental_selection
                 self.logger.info(f"Instrumental selection: {instrumental_selection}")
 
-            # Capture duet flag if the frontend supplied one on the final submit —
-            # preserves a prior value from submit_corrections if this payload omits it.
+            # Capture duet flag if the frontend supplied one on the final submit.
+            # Latch-up-only: we never downgrade True→False here because the
+            # InstrumentalSelector component's submit payload often sends
+            # `is_duet: false` (it reads from the freshly-fetched correctionData
+            # which doesn't round-trip the flag) and we don't want that to
+            # clobber a True set by the earlier lyrics-review submit_corrections.
             is_duet_raw = updated_data.pop("is_duet", None)
-            if isinstance(is_duet_raw, bool):
-                self.is_duet = is_duet_raw
-                self.logger.info(f"Duet mode (from complete): {self.is_duet}")
+            if is_duet_raw is True:
+                self.is_duet = True
+                self.logger.info("Duet mode (from complete): True")
+            elif is_duet_raw is False and self.is_duet:
+                self.logger.info(
+                    "Ignoring is_duet=False on complete — already set True by "
+                    "lyrics-review submit; keeping True"
+                )
 
             # Apply pending corrections if they were saved earlier
             if self.pending_corrections:
