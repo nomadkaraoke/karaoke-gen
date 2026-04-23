@@ -207,6 +207,93 @@ class TestRunRenderVideo:
         assert len(jobs[job_id]["output_files"]) == 4
         assert jobs[job_id]["metadata"]["countdown_padding_added"] is False
 
+    def test_is_duet_propagates_into_output_config(self, tmp_path):
+        """When the request carries is_duet=True, OutputConfig must receive it
+        so SubtitlesGenerator emits per-singer ASS styles on the GCE worker."""
+        from backend.services.gce_encoding.main import run_render_video, jobs, RenderVideoRequest
+
+        job_id = "rv-test-duet"
+        work_dir = tmp_path / "work"
+        work_dir.mkdir()
+
+        request = RenderVideoRequest(
+            job_id=job_id,
+            original_corrections_gcs_path="gs://bucket/jobs/test/lyrics/corrections.json",
+            audio_gcs_path="gs://bucket/jobs/test/audio.flac",
+            output_gcs_prefix="gs://bucket/jobs/test/output",
+            artist="Test", title="Song",
+            is_duet=True,
+        )
+        mock_outputs = self._make_mock_outputs(tmp_path)
+
+        jobs[job_id] = {
+            "job_id": job_id, "status": "pending", "progress": 0,
+            "error": None, "output_files": None, "metadata": None,
+        }
+
+        captured_configs = []
+
+        class _FakeOutputConfig:
+            def __init__(self, **kwargs):
+                captured_configs.append(kwargs)
+                for k, v in kwargs.items():
+                    setattr(self, k, v)
+
+        mock_correction_result = MagicMock(corrected_segments=[])
+        mock_gen = MagicMock()
+        mock_gen.generate_outputs.return_value = mock_outputs
+
+        import sys as _sys
+        fake_modules = {
+            "karaoke_gen.lyrics_transcriber.output.generator": MagicMock(
+                OutputGenerator=MagicMock(return_value=mock_gen),
+            ),
+            "karaoke_gen.lyrics_transcriber.output.countdown_processor": MagicMock(
+                CountdownProcessor=MagicMock(return_value=MagicMock(
+                    process=MagicMock(return_value=(mock_correction_result, str(work_dir / "audio.flac"), False, 0))
+                )),
+            ),
+            "karaoke_gen.lyrics_transcriber.types": MagicMock(
+                CorrectionResult=MagicMock(from_dict=MagicMock(return_value=mock_correction_result)),
+            ),
+            "karaoke_gen.lyrics_transcriber.correction.operations": MagicMock(),
+            "karaoke_gen.lyrics_transcriber.core.config": MagicMock(OutputConfig=_FakeOutputConfig),
+            "karaoke_gen.style_loader": MagicMock(
+                load_styles_from_gcs=MagicMock(return_value=(str(tmp_path / "styles.json"), {})),
+            ),
+            "karaoke_gen.utils": MagicMock(
+                sanitize_filename=MagicMock(side_effect=lambda x: x.replace(" ", "_")),
+            ),
+        }
+
+        def fake_download(uri, path):
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            Path(path).write_text("{}")
+
+        with patch("backend.services.gce_encoding.main.download_single_file_from_gcs", side_effect=fake_download):
+            with patch("backend.services.gce_encoding.main.download_with_cache"):
+                with patch("backend.services.gce_encoding.main.upload_single_file_to_gcs"):
+                    with patch("backend.services.gce_encoding.main.subprocess"):
+                        with patch.dict(_sys.modules, fake_modules):
+                            run_render_video(job_id, work_dir, request)
+
+        assert captured_configs, "OutputConfig was never constructed"
+        assert captured_configs[0].get("is_duet") is True, (
+            f"is_duet=True from the request must propagate to OutputConfig, got: {captured_configs[0]}"
+        )
+
+    def test_is_duet_defaults_to_false_when_absent(self, tmp_path):
+        """RenderVideoRequest's is_duet field defaults to False."""
+        from backend.services.gce_encoding.main import RenderVideoRequest
+        req = RenderVideoRequest(
+            job_id="rv-default-duet",
+            original_corrections_gcs_path="gs://b/c.json",
+            audio_gcs_path="gs://b/a.flac",
+            output_gcs_prefix="gs://b/out",
+            artist="A", title="T",
+        )
+        assert req.is_duet is False
+
     def test_uploads_all_output_files(self, tmp_path):
         """run_render_video uploads video, ass, lrc, and txt to correct GCS paths."""
         job_id = "rv-test-002"

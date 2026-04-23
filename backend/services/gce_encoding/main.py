@@ -73,6 +73,9 @@ class RenderVideoRequest(BaseModel):
     title: str
     subtitle_offset_ms: int = 0
     video_resolution: str = "4k"
+    # Multi-singer / duet rendering. When True, OutputConfig is_duet is set
+    # so the SubtitlesGenerator and CDGGenerator emit per-singer styles.
+    is_duet: bool = False
 
 
 class JobStatus(BaseModel):
@@ -419,6 +422,7 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
             generate_lrc=True,
             video_resolution=request.video_resolution,
             subtitle_offset_ms=request.subtitle_offset_ms,
+            is_duet=request.is_duet,
         )
 
         output_generator = OutputGenerator(config, logger)
