@@ -50,6 +50,8 @@ class KaraokeFinalise:
         selected_instrumental_file=None,  # Add support for pre-selected instrumental file
         countdown_padding_seconds=None,  # Padding applied to vocals; instrumental must match
         no_video=False,  # Skip video encoding and distribution
+        is_duet=False,  # Multi-singer / duet rendering for CDG
+        duet_corrections_json_path=None,  # Local path to corrections JSON with per-segment singer tags
     ):
         self.log_level = log_level
         self.log_formatter = log_formatter
@@ -113,6 +115,8 @@ class KaraokeFinalise:
         self.selected_instrumental_file = selected_instrumental_file
         self.countdown_padding_seconds = countdown_padding_seconds
         self.no_video = no_video
+        self.is_duet = is_duet
+        self.duet_corrections_json_path = duet_corrections_json_path
 
         self.suffixes = {
             "title_mov": " (Title).mov",
@@ -1025,6 +1029,71 @@ class KaraokeFinalise:
         else:
             self.logger.info("Non-interactive mode: automatically confirming final video files")
 
+    def _load_duet_segments(self):
+        """Load reviewed segments (with per-segment singer tags) from the
+        corrections JSON provided to the constructor. Returns None if no path
+        was provided or the file is missing/malformed — caller falls back to
+        the LRC-based (solo) CDG path.
+
+        If countdown padding was applied to the video (segments were shifted
+        forward to match padded vocals), we shift them back here because the
+        CDG renders against the UNPADDED instrumental audio.
+        """
+        path = self.duet_corrections_json_path
+        if not path or not os.path.isfile(path):
+            return None
+        try:
+            import json as _json
+            from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
+            with open(path, "r", encoding="utf-8") as f:
+                data = _json.load(f)
+            raw_segments = data.get("corrected_segments") or data.get("segments") or []
+            if not raw_segments:
+                self.logger.warning(
+                    f"Duet corrections JSON had no corrected_segments: {path}"
+                )
+                return None
+            segments = [LyricsSegment.from_dict(s) for s in raw_segments]
+
+            pad = self.countdown_padding_seconds or 0
+            if pad and pad > 0:
+                self.logger.info(
+                    f"Shifting duet segments back by {pad}s to align with unpadded CDG instrumental"
+                )
+                shifted = []
+                for seg in segments:
+                    new_start = max(0.0, seg.start_time - pad)
+                    new_end = max(new_start, seg.end_time - pad)
+                    new_words = [
+                        Word(
+                            id=w.id,
+                            text=w.text,
+                            start_time=max(0.0, w.start_time - pad),
+                            end_time=max(0.0, w.end_time - pad),
+                            singer=w.singer,
+                            confidence=w.confidence,
+                            created_during_correction=w.created_during_correction,
+                        )
+                        for w in seg.words
+                    ]
+                    shifted.append(LyricsSegment(
+                        id=seg.id,
+                        text=seg.text,
+                        words=new_words,
+                        start_time=new_start,
+                        end_time=new_end,
+                        singer=seg.singer,
+                    ))
+                # Drop segments that now end before t=0 (entirely inside the countdown)
+                shifted = [s for s in shifted if s.end_time > 0]
+                return shifted
+            return segments
+        except Exception as exc:
+            self.logger.warning(
+                f"Failed to load duet segments from {path}: {exc} — falling back to LRC path"
+            )
+            return None
+
     def create_cdg_zip_file(self, input_files, output_files, artist, title):
         self.logger.info(f"Creating CDG and MP3 files, then zipping them...")
 
@@ -1055,14 +1124,39 @@ class KaraokeFinalise:
             if self.cdg_styles is None:
                 raise ValueError("CDG styles configuration is required when enable_cdg is True")
 
-            generator = CDGGenerator(output_dir=os.getcwd(), logger=self.logger)
-            cdg_file, mp3_file, zip_file = generator.generate_cdg_from_lrc(
-                lrc_file=input_files["karaoke_lrc"],
-                audio_file=input_files["instrumental_audio"],
-                title=title,
-                artist=artist,
-                cdg_styles=self.cdg_styles,
-            )
+            # Duet-aware CDG generation: when is_duet=True and we have access
+            # to the reviewed segments (via corrections JSON), render via the
+            # segment-based CDGGenerator.generate_cdg path so singer tags and
+            # the 3-singer palette make it into the TOML. LRC has no singer
+            # information so the LRC-based path always produces solo output.
+            duet_segments = self._load_duet_segments() if self.is_duet else None
+
+            if duet_segments is not None:
+                self.logger.info(
+                    f"Generating CDG in duet mode from {len(duet_segments)} reviewed segments"
+                )
+                generator = CDGGenerator(output_dir=os.getcwd(), logger=self.logger, is_duet=True)
+                cdg_file, mp3_file, zip_file = generator.generate_cdg(
+                    segments=duet_segments,
+                    audio_file=input_files["instrumental_audio"],
+                    title=title,
+                    artist=artist,
+                    cdg_styles=self.cdg_styles,
+                )
+            else:
+                if self.is_duet:
+                    self.logger.warning(
+                        "is_duet=True but no duet_corrections_json_path was provided — "
+                        "falling back to LRC-based CDG generation (solo colors only)."
+                    )
+                generator = CDGGenerator(output_dir=os.getcwd(), logger=self.logger)
+                cdg_file, mp3_file, zip_file = generator.generate_cdg_from_lrc(
+                    lrc_file=input_files["karaoke_lrc"],
+                    audio_file=input_files["instrumental_audio"],
+                    title=title,
+                    artist=artist,
+                    cdg_styles=self.cdg_styles,
+                )
 
             # Rename the generated ZIP file to match our expected naming convention
             if os.path.isfile(zip_file):

@@ -1120,6 +1120,16 @@ async def async_main():
                 sys.exit(1)
                 return # Explicit return for testing
 
+        # Resolve the corrections JSON path (has per-segment singer tags from review)
+        # so KaraokeFinalise can use the segment-based CDG path for duets.
+        # Both is_duet and corrections_json_path are only defined in the review branch;
+        # fall back to safe defaults when running without an interactive review.
+        _is_duet = locals().get("is_duet", False)
+        _corrections_path = locals().get("corrections_json_path")
+        duet_corrections_json_path = (
+            _corrections_path if _corrections_path and os.path.isfile(_corrections_path) else None
+        )
+
         kfinalise = KaraokeFinalise(
             log_formatter=log_formatter,
             log_level=log_level,
@@ -1142,6 +1152,8 @@ async def async_main():
             selected_instrumental_file=selected_instrumental_file,
             countdown_padding_seconds=countdown_padding_seconds,
             no_video=args.no_video,
+            is_duet=_is_duet,
+            duet_corrections_json_path=duet_corrections_json_path,
         )
 
         try:

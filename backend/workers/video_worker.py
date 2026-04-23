@@ -799,6 +799,24 @@ async def generate_video_legacy(job_id: str) -> bool:
                         f.write(job.youtube_description_template)
                     job_log.info("YouTube description template written to temp file")
 
+                # Duet-aware CDG: download the corrections JSON locally if present
+                # so KaraokeFinalise can read per-segment singer tags for the CDG.
+                is_duet_state = bool(job.state_data.get("is_duet", False))
+                duet_corrections_local_path = None
+                if is_duet_state and getattr(job, 'enable_cdg', False):
+                    try:
+                        corrections_blob = (
+                            f"jobs/{job_id}/lyrics/corrections_updated.json"
+                            if storage.file_exists(f"jobs/{job_id}/lyrics/corrections_updated.json")
+                            else f"jobs/{job_id}/lyrics/corrections.json"
+                        )
+                        duet_corrections_local_path = os.path.join(temp_dir, "corrections_for_cdg.json")
+                        storage.download_file(corrections_blob, duet_corrections_local_path)
+                        job_log.info(f"Downloaded corrections for duet CDG from {corrections_blob}")
+                    except Exception as exc:
+                        job_log.warning(f"Could not download corrections for duet CDG: {exc}")
+                        duet_corrections_local_path = None
+
                 finalise = KaraokeFinalise(
                     logger=logger,
                     log_level=logging.INFO,
@@ -807,6 +825,9 @@ async def generate_video_legacy(job_id: str) -> bool:
                     # CDG/TXT generation
                     enable_cdg=getattr(job, 'enable_cdg', False),
                     enable_txt=getattr(job, 'enable_txt', False),
+                    # Duet-aware CDG rendering
+                    is_duet=is_duet_state,
+                    duet_corrections_json_path=duet_corrections_local_path,
                     cdg_styles=cdg_styles,
                     # Brand code and organization (server-side mode uses rclone)
                     brand_prefix=getattr(job, 'brand_prefix', None),
