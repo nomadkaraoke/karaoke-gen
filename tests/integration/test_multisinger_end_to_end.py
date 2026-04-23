@@ -57,9 +57,14 @@ class TestDuetEndToEnd:
     def test_duet_word_override_produces_inline_color_tag(self, duet_segments, tmp_path):
         out = _run_ass(duet_segments, is_duet=True, tmp_path=tmp_path)
         content = Path(out).read_text()
-        # In s2 (Singer 2), word "talk" has singer=1 override. Its color tag should appear.
-        # Singer 1 primary = 112, 112, 247 → BGR: F7 70 70 → &HF77070&
-        assert "\\c&HF77070&" in content
+        # In s2 (Singer 2), word "talk" has singer=1 override. The word should
+        # get Singer 1's primary, secondary and outline colors inlined so it is
+        # fully themed to Singer 1 throughout the karaoke sweep.
+        # Singer 1 (post color-flip): primary=(230,230,255), secondary=(112,112,247),
+        # outline=(26,58,235). ASS uses BGR.
+        assert "\\1c&HFFE6E6&" in content  # primary (post-sung tint)
+        assert "\\2c&HF77070&" in content  # secondary (pre-sung signature blue)
+        assert "\\3c&HEB3A1A&" in content  # outline
 
     def test_solo_ass_has_one_default_style(self, duet_segments, tmp_path):
         # Force solo even though fixture has singer fields — is_duet=False ignores them

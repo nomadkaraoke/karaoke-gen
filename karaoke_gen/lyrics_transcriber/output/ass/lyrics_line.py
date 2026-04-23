@@ -292,9 +292,16 @@ class LyricsLine:
             if needs_override and current_inline_singer != word_singer:
                 override_style = styles_by_singer.get(word_singer)
                 if override_style is not None:
-                    # PrimaryColour tuple is (R, G, B[, A]). ASS inline format: &HBBGGRR&
-                    r, g, b = override_style.PrimaryColour[:3]
-                    text += r"{\c&H" + f"{b:02X}{g:02X}{r:02X}" + r"&}"
+                    # ASS inline format: &HBBGGRR&. Override primary (post-sung
+                    # tint), secondary (pre-sung signature) and outline so the
+                    # word is fully themed to its override singer, not just the
+                    # after-sung tint.
+                    def _bgr(rgba):
+                        r, g, b = rgba[:3]
+                        return f"{b:02X}{g:02X}{r:02X}"
+                    text += r"{\1c&H" + _bgr(override_style.PrimaryColour) + r"&}"
+                    text += r"{\2c&H" + _bgr(override_style.SecondaryColour) + r"&}"
+                    text += r"{\3c&H" + _bgr(override_style.OutlineColour) + r"&}"
                     current_inline_singer = word_singer
                 elif current_inline_singer is not None:
                     # Missing singer in map — reset to line's base style so the

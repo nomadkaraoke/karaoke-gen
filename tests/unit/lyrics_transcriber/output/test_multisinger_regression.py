@@ -65,7 +65,9 @@ def test_solo_ass_no_color_override_tags(tmp_path):
     output = gen.generate_ass(segments, output_prefix="test", audio_filepath="/fake/audio.mp3")
     with open(output, "r", encoding="utf-8") as f:
         content = f.read()
-    assert "\\c&H" not in content, "Solo ASS must not contain inline color override tags"
+    assert "\\1c&H" not in content, "Solo ASS must not contain inline primary-color override tags"
+    assert "\\2c&H" not in content, "Solo ASS must not contain inline secondary-color override tags"
+    assert "\\3c&H" not in content, "Solo ASS must not contain inline outline-color override tags"
     # Count number of Style definition lines — should be exactly 1 Style
     style_lines = [l for l in content.split("\n") if l.startswith("Style:")]
     assert len(style_lines) == 1, f"Solo ASS must have exactly one Style, got {len(style_lines)}"

@@ -187,7 +187,8 @@ class TestLyricsLineWordOverride:
         text = events[-1].Text
         # Singer 2 primary = 247, 112, 180 → BGR hex: B4 70 F7 (padded)
         # ASS color format: &HBBGGRR& i.e. B4 70 F7 → &HB470F7&
-        assert "\\c&HB470F7&" in text
+        # Full override now emits primary (\1c), secondary (\2c), outline (\3c).
+        assert "\\1c&HB470F7&" in text
         # Reset tag after the overridden word
         assert "{\\r}" in text
 
@@ -203,7 +204,9 @@ class TestLyricsLineWordOverride:
             styles_by_singer={1: by_name["Karaoke.Singer1"], 2: by_name["Karaoke.Singer2"], 0: by_name["Karaoke.Both"]},
         )
         text = events[-1].Text
-        assert "\\c&H" not in text
+        assert "\\1c&H" not in text
+        assert "\\2c&H" not in text
+        assert "\\3c&H" not in text
         assert "{\\r}" not in text
 
     def test_override_resets_when_word_singer_not_in_map(self, karaoke_style_dict):
@@ -235,8 +238,8 @@ class TestLyricsLineWordOverride:
         )
         text = events[-1].Text
 
-        # Singer 2 override was applied to "there"
-        assert "\\c&HB470F7&" in text
+        # Singer 2 override was applied to "there" — full override emits all three color tags
+        assert "\\1c&HB470F7&" in text
         # Reset tag must appear before the third word (w2 fallback to segment singer 1)
         # so the text between the two color-related markers shouldn't end with stale singer 2 color
         # A simple structural check: the \r must precede "friend"
