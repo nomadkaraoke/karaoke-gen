@@ -1373,6 +1373,21 @@ async def _setup_working_directory(
         lrc_path = os.path.join(temp_dir, f"{base_name} (Karaoke).lrc")
         storage.download_file(lrc_url, lrc_path)
         log_progress("Downloaded LRC file")
+
+    # Download the reviewed-corrections JSON when is_duet is latched so the
+    # CDG path can use segment-based generation (with per-line singer tags).
+    # Prefer corrections_updated.json (post-review) over corrections.json.
+    if bool(job.state_data.get("is_duet", False)) and getattr(job, 'enable_cdg', False):
+        corrections_local_path = os.path.join(temp_dir, "corrections_updated.json")
+        corrections_url = (
+            lyrics_urls.get('corrections_updated') or lyrics_urls.get('corrections')
+        )
+        if corrections_url:
+            try:
+                storage.download_file(corrections_url, corrections_local_path)
+                log_progress(f"Downloaded duet corrections JSON ({corrections_url})")
+            except Exception as exc:
+                log_progress(f"WARNING: failed to download duet corrections JSON: {exc}")
     
     # Download title/end JPG files (used for YouTube thumbnail)
     screens = job.file_urls.get('screens', {})

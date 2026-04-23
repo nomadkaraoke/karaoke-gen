@@ -59,6 +59,8 @@ class PackagingService:
         output_cdg_path: Optional[str] = None,
         lrc_has_countdown_padding: bool = False,
         countdown_padding_seconds: float = 3.0,
+        is_duet: bool = False,
+        duet_corrections_json_path: Optional[str] = None,
     ) -> Tuple[str, Optional[str], Optional[str]]:
         """
         Create a CDG package (ZIP containing CDG and MP3 files).
@@ -128,17 +130,46 @@ class PackagingService:
         from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
 
         output_dir = os.path.dirname(output_zip_path) or os.getcwd()
-        generator = CDGGenerator(output_dir=output_dir, logger=self.logger)
 
-        cdg_file, mp3_file, zip_file = generator.generate_cdg_from_lrc(
-            lrc_file=lrc_file,
-            audio_file=audio_file,
-            title=title,
-            artist=artist,
-            cdg_styles=self.cdg_styles,
-            lrc_has_countdown_padding=lrc_has_countdown_padding,
-            countdown_padding_seconds=countdown_padding_seconds,
-        )
+        # Duet-aware CDG generation: when is_duet is True AND we have a
+        # corrections JSON with per-segment singer tags, use the segment-
+        # based generate_cdg path so the TOML gets the 3-singer palette
+        # and per-line `N|text` prefixes. The LRC-based path has no singer
+        # information and would always render solo colors.
+        duet_segments = None
+        if is_duet:
+            duet_segments = self._load_duet_segments(
+                duet_corrections_json_path,
+                countdown_padding_seconds=countdown_padding_seconds if lrc_has_countdown_padding else 0,
+            )
+
+        if duet_segments is not None:
+            self.logger.info(
+                f"Generating CDG in duet mode from {len(duet_segments)} reviewed segments"
+            )
+            generator = CDGGenerator(output_dir=output_dir, logger=self.logger, is_duet=True)
+            cdg_file, mp3_file, zip_file = generator.generate_cdg(
+                segments=duet_segments,
+                audio_file=audio_file,
+                title=title,
+                artist=artist,
+                cdg_styles=self.cdg_styles,
+            )
+        else:
+            if is_duet:
+                self.logger.warning(
+                    "is_duet=True but no usable duet corrections JSON — falling back to LRC-based CDG (solo colors)"
+                )
+            generator = CDGGenerator(output_dir=output_dir, logger=self.logger)
+            cdg_file, mp3_file, zip_file = generator.generate_cdg_from_lrc(
+                lrc_file=lrc_file,
+                audio_file=audio_file,
+                title=title,
+                artist=artist,
+                cdg_styles=self.cdg_styles,
+                lrc_has_countdown_padding=lrc_has_countdown_padding,
+                countdown_padding_seconds=countdown_padding_seconds,
+            )
 
         # Rename ZIP to expected output path if different
         if os.path.isfile(zip_file) and zip_file != output_zip_path:
@@ -242,6 +273,76 @@ class PackagingService:
 
         self.logger.info(f"TXT package created: {output_zip_path}")
         return output_zip_path, output_txt_path
+
+    def _load_duet_segments(
+        self,
+        corrections_json_path: Optional[str],
+        countdown_padding_seconds: float = 0,
+    ):
+        """Load reviewed segments with per-segment singer tags for duet CDG.
+
+        Returns None when no usable JSON is available — caller falls back to
+        the LRC-based (solo) CDG path. When countdown_padding_seconds > 0,
+        shifts all timings back so CDG (which renders against the unpadded
+        instrumental) stays in sync with the audio.
+        """
+        if not corrections_json_path or not os.path.isfile(corrections_json_path):
+            self.logger.info(
+                f"Duet corrections JSON not available at {corrections_json_path!r}"
+            )
+            return None
+        try:
+            import json as _json
+            from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
+            with open(corrections_json_path, "r", encoding="utf-8") as f:
+                data = _json.load(f)
+            # corrections_updated.json can be either {corrections: {corrected_segments: [...]}}
+            # or {corrected_segments: [...]} depending on the writer; support both.
+            inner = data.get("corrections") if isinstance(data.get("corrections"), dict) else data
+            raw_segments = inner.get("corrected_segments") or inner.get("segments") or []
+            if not raw_segments:
+                self.logger.warning(
+                    f"Duet corrections JSON had no corrected_segments: {corrections_json_path}"
+                )
+                return None
+            segments = [LyricsSegment.from_dict(s) for s in raw_segments]
+
+            pad = countdown_padding_seconds or 0
+            if pad and pad > 0:
+                self.logger.info(
+                    f"Shifting duet segments back by {pad}s to align with unpadded CDG instrumental"
+                )
+                shifted = []
+                for seg in segments:
+                    new_start = max(0.0, seg.start_time - pad)
+                    new_end = max(new_start, seg.end_time - pad)
+                    new_words = [
+                        Word(
+                            id=w.id,
+                            text=w.text,
+                            start_time=max(0.0, w.start_time - pad),
+                            end_time=max(0.0, w.end_time - pad),
+                            singer=w.singer,
+                            confidence=w.confidence,
+                            created_during_correction=w.created_during_correction,
+                        )
+                        for w in seg.words
+                    ]
+                    shifted.append(LyricsSegment(
+                        id=seg.id,
+                        text=seg.text,
+                        words=new_words,
+                        start_time=new_start,
+                        end_time=new_end,
+                        singer=seg.singer,
+                    ))
+                segments = [s for s in shifted if s.end_time > 0]
+            return segments
+        except Exception as exc:
+            self.logger.warning(
+                f"Failed to load duet segments from {corrections_json_path}: {exc} — falling back to LRC path"
+            )
+            return None
 
     def _create_zip_from_files(
         self,

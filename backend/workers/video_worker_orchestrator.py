@@ -80,6 +80,15 @@ class OrchestratorConfig:
     # When True, CDG generation will strip the countdown segment and adjust timestamps
     lrc_has_countdown_padding: bool = False
 
+    # Multi-singer / duet rendering for CDG. When True + duet_corrections_json_path
+    # resolves to a readable JSON, CDG generation uses the segment-based path
+    # (with per-line N|singer tags and the 3-singer palette) instead of the
+    # solo LRC-based path. Segments live in corrections_updated.json; timings
+    # are shifted back by countdown_padding_seconds to align with the unpadded
+    # CDG instrumental.
+    is_duet: bool = False
+    duet_corrections_json_path: Optional[str] = None
+
     # Encoding backend preference
     encoding_backend: str = "auto"  # "auto", "local", "gce"
 
@@ -359,6 +368,8 @@ class VideoWorkerOrchestrator:
                     output_cdg_path=cdg_path,
                     lrc_has_countdown_padding=self.config.lrc_has_countdown_padding,
                     countdown_padding_seconds=self.config.countdown_padding_seconds or 3.0,
+                    is_duet=self.config.is_duet,
+                    duet_corrections_json_path=self.config.duet_corrections_json_path,
                 )
 
                 self.result.final_karaoke_cdg_zip = zip_file
@@ -912,6 +923,24 @@ def create_orchestrator_config_from_job(
     from backend.services.job_defaults_service import get_effective_distribution_for_job
     dist = get_effective_distribution_for_job(job)
 
+    # Duet CDG rendering: when is_duet is latched True on the job, the CDG
+    # path needs access to the reviewed segments so it can emit per-line
+    # singer tags. The orchestrator runs after _setup_working_directory,
+    # which downloads corrections_updated.json locally if the file_url exists.
+    is_duet = bool(job.state_data.get("is_duet", False))
+    duet_corrections_json_path = None
+    if is_duet:
+        # Prefer corrections_updated.json (post-review) over corrections.json
+        candidates = [
+            os.path.join(temp_dir, "corrections_updated.json"),
+            os.path.join(temp_dir, f"{base_name} (Lyrics Corrections).json"),
+            os.path.join(temp_dir, "corrections.json"),
+        ]
+        for candidate in candidates:
+            if os.path.isfile(candidate):
+                duet_corrections_json_path = candidate
+                break
+
     return OrchestratorConfig(
         job_id=job.job_id,
         artist=job.artist,
@@ -956,6 +985,10 @@ def create_orchestrator_config_from_job(
 
         # CDG sync fix: track if LRC already has countdown timestamps
         lrc_has_countdown_padding=lrc_has_countdown_padding,
+
+        # Duet CDG rendering
+        is_duet=is_duet,
+        duet_corrections_json_path=duet_corrections_json_path,
 
         # Encoding backend - auto selects GCE if available
         encoding_backend="auto",
