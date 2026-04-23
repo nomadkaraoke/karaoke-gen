@@ -92,7 +92,10 @@
       "feature5Title": "Auf YouTube veröffentlicht",
       "feature5Desc": "Jedes Video wird automatisch auf unserem YouTube-Kanal veröffentlicht, um es einfach zu teilen.",
       "feature6Title": "Volle Kontrolle vor dem Export",
-      "feature6Desc": "Überprüfe und korrigiere Transkriptionsfehler, bevor das endgültige Video generiert wird."
+      "feature6Desc": "Überprüfe und korrigiere Transkriptionsfehler, bevor das endgültige Video generiert wird.",
+      "feature7Badge": "NEU",
+      "feature7Desc": "Singst du ein Duett? Weise während der Textüberprüfung jeder Zeile einen Sänger zu. Im fertigen Video wird farblich markiert, wer was singt – blau für Sänger 1, pink für Sänger 2, gelb, wenn ihr zusammen singt.",
+      "feature7Title": "Duett- & Mehrsänger-Modus"
     },
     "screenshots": {
       "title": "Sieh es in Aktion",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Höre dir Audio-Optionen an und wähle die beste Instrumentalspur",
       "exampleOutputAlt": "Abgeschlossener Karaoke-Auftrag mit Download-Optionen für 4K, 720p, CDG und mehr",
       "exampleOutputTitle": "Herunterladen & Teilen",
-      "exampleOutputDesc": "Hol dir dein 4K-Video, 720p, CDG und mehr in wenigen Minuten"
+      "exampleOutputDesc": "Hol dir dein 4K-Video, 720p, CDG und mehr in wenigen Minuten",
+      "duetModeAlt": "Standbild eines Karaoke-Videos, das farblich markierten Duett-Text zeigt – gelb für gemeinsame Zeilen, blau für Sänger 1, pink für Sänger 2",
+      "duetModeBadge": "NEU",
+      "duetModeDesc": "Weise während der Textüberprüfung jeder Zeile einen Sänger zu – im fertigen Video wird farblich markiert, wer was singt, damit Duettpartner nie ihren Einsatz verpassen.",
+      "duetModeTitle": "Duett-Modus"
     },
     "pricing": {
       "title": "Einfache Preise",

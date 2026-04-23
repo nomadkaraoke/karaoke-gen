@@ -92,7 +92,10 @@
       "feature5Title": "Dipublikasikan ke YouTube",
       "feature5Desc": "Setiap video secara otomatis dipublikasikan ke channel YouTube kami agar mudah dibagikan.",
       "feature6Title": "Kontrol Penuh Sebelum Ekspor",
-      "feature6Desc": "Tinjau dan perbaiki kesalahan transkripsi apa pun sebelum video akhir dibuat."
+      "feature6Desc": "Tinjau dan perbaiki kesalahan transkripsi apa pun sebelum video akhir dibuat.",
+      "feature7Badge": "BARU",
+      "feature7Desc": "Nyanyi duet? Tentukan penyanyi untuk setiap baris lirik saat peninjauan, dan video akhirnya akan menampilkan kode warna untuk masing-masing penyanyi—biru untuk penyanyi 1, merah muda untuk penyanyi 2, dan kuning saat kalian bernyanyi bersama.",
+      "feature7Title": "Mode Duet & Multi-Penyanyi"
     },
     "screenshots": {
       "title": "Lihat Aksinya",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Dengarkan opsi audio dan pilih track latar terbaik",
       "exampleOutputAlt": "Proyek karaoke selesai dengan opsi unduhan untuk 4K, 720p, CDG, dan lainnya",
       "exampleOutputTitle": "Unduh & Bagikan",
-      "exampleOutputDesc": "Dapatkan video 4K, 720p, CDG, dan lainnya dalam hitungan menit"
+      "exampleOutputDesc": "Dapatkan video 4K, 720p, CDG, dan lainnya dalam hitungan menit",
+      "duetModeAlt": "Cuplikan video karaoke yang menampilkan lirik duet dengan kode warna — kuning untuk lirik bersama, biru untuk penyanyi 1, merah muda untuk penyanyi 2",
+      "duetModeBadge": "BARU",
+      "duetModeDesc": "Tentukan penyanyi untuk setiap baris lirik saat peninjauan — video akhirnya akan menampilkan kode warna untuk masing-masing penyanyi sehingga pasangan duet tidak akan melewatkan giliran mereka.",
+      "duetModeTitle": "Mode Duet"
     },
     "pricing": {
       "title": "Harga yang Simpel",

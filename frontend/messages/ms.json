@@ -92,7 +92,10 @@
       "feature5Title": "Diterbitkan ke YouTube",
       "feature5Desc": "Setiap video diterbitkan secara automatik ke saluran YouTube kami untuk perkongsian mudah.",
       "feature6Title": "Kawalan Penuh Sebelum Eksport",
-      "feature6Desc": "Semak dan betulkan sebarang ralat transkripsi sebelum video akhir dijana."
+      "feature6Desc": "Semak dan betulkan sebarang ralat transkripsi sebelum video akhir dijana.",
+      "feature7Badge": "BARU",
+      "feature7Desc": "Menyanyi duet? Tetapkan setiap baris kepada penyanyi semasa semakan dan video akhir akan membezakan setiap penyanyi dengan kod warna—biru untuk penyanyi 1, merah jambu untuk penyanyi 2, kuning apabila anda menyanyi bersama.",
+      "feature7Title": "Mod Duet & Berbilang Penyanyi"
     },
     "screenshots": {
       "title": "Lihat Ia Beraksi",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Dengar pilihan audio dan pilih trek latar terbaik",
       "exampleOutputAlt": "Kerja karaoke selesai dengan pilihan muat turun untuk 4K, 720p, CDG, dan banyak lagi",
       "exampleOutputTitle": "Muat Turun & Kongsi",
-      "exampleOutputDesc": "Dapatkan video 4K, 720p, CDG, dan banyak lagi dalam beberapa minit"
+      "exampleOutputDesc": "Dapatkan video 4K, 720p, CDG, dan banyak lagi dalam beberapa minit",
+      "duetModeAlt": "Tangkapan skrin video karaoke menunjukkan lirik duet berkod warna — kuning untuk baris bersama, biru untuk penyanyi 1, merah jambu untuk penyanyi 2",
+      "duetModeBadge": "BARU",
+      "duetModeDesc": "Tetapkan setiap baris kepada penyanyi semasa semakan — video akhir akan membezakan setiap penyanyi dengan kod warna supaya pasangan duet tidak terlepas giliran mereka.",
+      "duetModeTitle": "Mod Duet"
     },
     "pricing": {
       "title": "Harga Ringkas",

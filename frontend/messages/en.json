@@ -92,7 +92,10 @@
       "feature5Title": "Published to YouTube",
       "feature5Desc": "Every video is automatically published to our YouTube channel for easy sharing.",
       "feature6Title": "Full Control Before Export",
-      "feature6Desc": "Review and correct any transcription errors before the final video is generated."
+      "feature6Desc": "Review and correct any transcription errors before the final video is generated.",
+      "feature7Title": "Duet & Multi-Singer Mode",
+      "feature7Desc": "Singing a duet? Assign each line to a singer during review and the final video colour-codes who sings what—blue for singer 1, pink for singer 2, yellow when you sing together.",
+      "feature7Badge": "NEW"
     },
     "screenshots": {
       "title": "See It In Action",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Listen to audio options and pick the best backing track",
       "exampleOutputAlt": "Completed karaoke job with download options for 4K, 720p, CDG, and more",
       "exampleOutputTitle": "Download & Share",
-      "exampleOutputDesc": "Get your 4K video, 720p, CDG, and more in minutes"
+      "exampleOutputDesc": "Get your 4K video, 720p, CDG, and more in minutes",
+      "duetModeAlt": "Karaoke video still showing colour-coded duet lyrics — yellow for shared lines, blue for singer 1, pink for singer 2",
+      "duetModeTitle": "Duet Mode",
+      "duetModeDesc": "Assign each line to a singer during review — the final video colour-codes who sings what so duet partners never miss their cue.",
+      "duetModeBadge": "NEW"
     },
     "pricing": {
       "title": "Simple Pricing",

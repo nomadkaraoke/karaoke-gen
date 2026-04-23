@@ -92,7 +92,10 @@
       "feature5Title": "Udgivet på YouTube",
       "feature5Desc": "Hver video udgives automatisk på vores YouTube-kanal for nem deling.",
       "feature6Title": "Fuld kontrol før eksport",
-      "feature6Desc": "Gennemgå og ret eventuelle transskriptionsfejl, før den endelige video genereres."
+      "feature6Desc": "Gennemgå og ret eventuelle transskriptionsfejl, før den endelige video genereres.",
+      "feature7Badge": "NY",
+      "feature7Desc": "Synger du en duet? Tildel hver linje til en sanger under gennemgangen, og den endelige video farvekoder, hvem der synger hvad – blå for sanger 1, pink for sanger 2 og gul, når I synger sammen.",
+      "feature7Title": "Duet- og flersangertilstand"
     },
     "screenshots": {
       "title": "Se det i aktion",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Lyt til lydmuligheder og vælg det bedste backing track",
       "exampleOutputAlt": "Fuldført karaokejob med downloadmuligheder for 4K, 720p, CDG og mere",
       "exampleOutputTitle": "Download og del",
-      "exampleOutputDesc": "Få din 4K-video, 720p, CDG og mere på få minutter"
+      "exampleOutputDesc": "Få din 4K-video, 720p, CDG og mere på få minutter",
+      "duetModeAlt": "Stillbillede af karaokevideo, der viser farvekodede duettekster – gul for fælles linjer, blå for sanger 1, pink for sanger 2",
+      "duetModeBadge": "NY",
+      "duetModeDesc": "Tildel hver linje til en sanger under gennemgangen – den endelige video farvekoder, hvem der synger hvad, så duetpartnere aldrig misser deres indsats.",
+      "duetModeTitle": "Duettilstand"
     },
     "pricing": {
       "title": "Simpel prissætning",

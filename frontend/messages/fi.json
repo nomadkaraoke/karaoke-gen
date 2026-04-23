@@ -92,7 +92,10 @@
       "feature5Title": "Julkaistaan YouTubeen",
       "feature5Desc": "Jokainen video julkaistaan automaattisesti YouTube-kanavallemme helppoa jakamista varten.",
       "feature6Title": "Täysi hallinta ennen vientiä",
-      "feature6Desc": "Tarkista ja korjaa mahdolliset litterointivirheet ennen lopullisen videon luomista."
+      "feature6Desc": "Tarkista ja korjaa mahdolliset litterointivirheet ennen lopullisen videon luomista.",
+      "feature7Badge": "UUSI",
+      "feature7Desc": "Laulatko duettoa? Määritä jokainen rivi laulajalle tarkistusvaiheessa, niin lopullisessa videossa on värikoodattu, kuka laulaa mitäkin – sininen 1. laulajalle, vaaleanpunainen 2. laulajalle ja keltainen, kun laulatte yhdessä.",
+      "feature7Title": "Duetto- ja usean laulajan tila"
     },
     "screenshots": {
       "title": "Katso miten se toimii",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Kuuntele äänivaihtoehtoja ja valitse paras taustanauha",
       "exampleOutputAlt": "Valmis karaoketyö latausvaihtoehdoilla 4K, 720p, CDG ja muille",
       "exampleOutputTitle": "Lataa ja jaa",
-      "exampleOutputDesc": "Hanki 4K-video, 720p, CDG ja muuta minuuteissa"
+      "exampleOutputDesc": "Hanki 4K-video, 720p, CDG ja muuta minuuteissa",
+      "duetModeAlt": "Karaokevideon pysäytyskuva, jossa näkyvät värikoodatut dueton sanat – keltainen yhteisille riveille, sininen 1. laulajalle, vaaleanpunainen 2. laulajalle",
+      "duetModeBadge": "UUSI",
+      "duetModeDesc": "Määritä jokainen rivi laulajalle tarkistusvaiheessa – lopullisessa videossa on värikoodattu, kuka laulaa mitäkin, jotta duettokumppanit eivät koskaan missaa vuoroaan.",
+      "duetModeTitle": "Duettotila"
     },
     "pricing": {
       "title": "Yksinkertainen hinnoittelu",

@@ -92,7 +92,10 @@
       "feature5Title": "Được xuất bản lên YouTube",
       "feature5Desc": "Mỗi video tự động được xuất bản lên kênh YouTube của chúng tôi để dễ dàng chia sẻ.",
       "feature6Title": "Kiểm soát hoàn toàn trước khi xuất",
-      "feature6Desc": "Xem lại và sửa bất kỳ lỗi nhận diện nào trước khi video cuối cùng được tạo."
+      "feature6Desc": "Xem lại và sửa bất kỳ lỗi nhận diện nào trước khi video cuối cùng được tạo.",
+      "feature7Badge": "MỚI",
+      "feature7Desc": "Bạn muốn hát song ca? Hãy phân công từng câu hát cho mỗi ca sĩ ở bước xem lại, video xuất ra sẽ hiển thị màu sắc riêng cho từng người—màu xanh dương cho ca sĩ 1, màu hồng cho ca sĩ 2, và màu vàng khi các bạn cùng hát.",
+      "feature7Title": "Chế độ Song ca & Nhiều ca sĩ"
     },
     "screenshots": {
       "title": "Xem thực tế",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Nghe các tùy chọn âm thanh và chọn nhạc nền tốt nhất",
       "exampleOutputAlt": "Công việc karaoke đã hoàn thành với các tùy chọn tải xuống cho 4K, 720p, CDG và hơn thế nữa",
       "exampleOutputTitle": "Tải xuống & Chia sẻ",
-      "exampleOutputDesc": "Nhận video 4K, 720p, CDG và hơn thế nữa trong vài phút"
+      "exampleOutputDesc": "Nhận video 4K, 720p, CDG và hơn thế nữa trong vài phút",
+      "duetModeAlt": "Ảnh chụp video karaoke hiển thị lời bài hát song ca được phân màu — màu vàng cho câu hát chung, màu xanh dương cho ca sĩ 1, màu hồng cho ca sĩ 2",
+      "duetModeBadge": "MỚI",
+      "duetModeDesc": "Phân công từng câu hát cho mỗi ca sĩ ở bước xem lại — video xuất ra sẽ hiển thị màu sắc riêng cho từng người để các bạn hát song ca không bao giờ lỡ lượt hát của mình.",
+      "duetModeTitle": "Chế độ Song ca"
     },
     "pricing": {
       "title": "Bảng giá đơn giản",

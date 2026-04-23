@@ -92,7 +92,10 @@
       "feature5Title": "Objavljeno na YouTubeu",
       "feature5Desc": "Svaki video se automatski objavljuje na našem YouTube kanalu za jednostavno dijeljenje.",
       "feature6Title": "Potpuna kontrola prije izvoza",
-      "feature6Desc": "Pregledaj i ispravi sve greške u transkripciji prije generiranja konačnog videa."
+      "feature6Desc": "Pregledaj i ispravi sve greške u transkripciji prije generiranja konačnog videa.",
+      "feature7Badge": "NOVO",
+      "feature7Desc": "Pjevaš duet? Dodijeli svaki stih pjevaču tijekom pregleda, a konačni video bojama označava tko što pjeva — plavo za pjevača 1, ružičasto za pjevača 2, žuto kada pjevate zajedno.",
+      "feature7Title": "Način za duete i više pjevača"
     },
     "screenshots": {
       "title": "Pogledaj u akciji",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Poslušaj zvučne opcije i odaberi najbolju prateću pjesmu",
       "exampleOutputAlt": "Završen karaoke posao s opcijama preuzimanja za 4K, 720p, CDG i više",
       "exampleOutputTitle": "Preuzmi i podijeli",
-      "exampleOutputDesc": "Preuzmi svoj 4K video, 720p, CDG i više u nekoliko minuta"
+      "exampleOutputDesc": "Preuzmi svoj 4K video, 720p, CDG i više u nekoliko minuta",
+      "duetModeAlt": "Kadar iz karaoke videa koji prikazuje tekst dueta označen bojama — žuto za zajedničke stihove, plavo za pjevača 1, ružičasto za pjevača 2",
+      "duetModeBadge": "NOVO",
+      "duetModeDesc": "Dodijeli svaki stih pjevaču tijekom pregleda — konačni video bojama označava tko što pjeva kako partneri u duetu nikada ne bi propustili svoj red.",
+      "duetModeTitle": "Način za duet"
     },
     "pricing": {
       "title": "Jednostavne cijene",

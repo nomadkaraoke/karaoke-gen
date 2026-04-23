@@ -92,7 +92,10 @@
       "feature5Title": "Naka-publish sa YouTube",
       "feature5Desc": "Ang bawat video ay awtomatikong pina-publish sa aming YouTube channel para madaling i-share.",
       "feature6Title": "Buong Kontrol Bago I-export",
-      "feature6Desc": "I-review at itama ang anumang mali sa transcription bago i-generate ang pinal na video."
+      "feature6Desc": "I-review at itama ang anumang mali sa transcription bago i-generate ang pinal na video.",
+      "feature7Badge": "BAGO",
+      "feature7Desc": "Kakanta ng duet? I-assign ang bawat linya sa singer habang nagre-review at ipapakita sa pinal na video ang color-coding kung sino ang kakanta—asul para sa singer 1, pink para sa singer 2, at dilaw kapag sabay kayong kakanta.",
+      "feature7Title": "Duet at Multi-Singer Mode"
     },
     "screenshots": {
       "title": "Tingnan Ito sa Aksyon",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Pakinggan ang mga audio option at piliin ang pinakamagandang backing track",
       "exampleOutputAlt": "Nakumpletong karaoke job na may mga download option para sa 4K, 720p, CDG, at iba pa",
       "exampleOutputTitle": "I-download at I-share",
-      "exampleOutputDesc": "Kunin ang iyong 4K video, 720p, CDG, at iba pa sa loob ng ilang minuto"
+      "exampleOutputDesc": "Kunin ang iyong 4K video, 720p, CDG, at iba pa sa loob ng ilang minuto",
+      "duetModeAlt": "Larawan ng karaoke video na nagpapakita ng color-coded na lyrics ng duet — dilaw para sa mga linyang sabay kakantahin, asul para sa singer 1, pink para sa singer 2",
+      "duetModeBadge": "BAGO",
+      "duetModeDesc": "I-assign ang bawat linya sa singer habang nagre-review — ipapakita sa pinal na video ang color-coding kung sino ang kakanta para hindi ma-miss ng magka-duet ang kanilang cue.",
+      "duetModeTitle": "Duet Mode"
     },
     "pricing": {
       "title": "Simpleng Pagpepresyo",

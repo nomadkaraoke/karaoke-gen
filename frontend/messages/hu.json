@@ -92,7 +92,10 @@
       "feature5Title": "Közzétéve a YouTube-on",
       "feature5Desc": "Minden videó automatikusan felkerül a YouTube csatornánkra az egyszerű megosztás érdekében.",
       "feature6Title": "Teljes irányítás az exportálás előtt",
-      "feature6Desc": "Nézd át és javítsd ki az átírási hibákat a végső videó generálása előtt."
+      "feature6Desc": "Nézd át és javítsd ki az átírási hibákat a végső videó generálása előtt.",
+      "feature7Badge": "ÚJ",
+      "feature7Desc": "Duettet énekelsz? Rendelj minden sort egy énekeshez az átnézés során, és a végső videó színkódokkal jelöli, ki mit énekel — kék az 1. énekesé, rózsaszín a 2. énekesé, sárga pedig, amikor együtt énekeltek.",
+      "feature7Title": "Duett és több énekeses mód"
     },
     "screenshots": {
       "title": "Nézd meg működés közben",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Hallgasd meg a hang opciókat, és válaszd ki a legjobb zenei alapot",
       "exampleOutputAlt": "Befejezett karaoke projekt letöltési lehetőségekkel 4K, 720p, CDG és egyéb formátumokban",
       "exampleOutputTitle": "Letöltés és megosztás",
-      "exampleOutputDesc": "Kapd meg a 4K videódat, 720p-t, CDG-t és egyebeket percek alatt"
+      "exampleOutputDesc": "Kapd meg a 4K videódat, 720p-t, CDG-t és egyebeket percek alatt",
+      "duetModeAlt": "Karaoke videó állóképe, amely színkódolt duett dalszöveget mutat — sárga a közös soroké, kék az 1. énekesé, rózsaszín a 2. énekesé",
+      "duetModeBadge": "ÚJ",
+      "duetModeDesc": "Rendelj minden sort egy énekeshez az átnézés során — a végső videó színkódokkal jelöli, ki mit énekel, így a duettpartnerek sosem tévesztik el a belépést.",
+      "duetModeTitle": "Duett mód"
     },
     "pricing": {
       "title": "Egyszerű árazás",

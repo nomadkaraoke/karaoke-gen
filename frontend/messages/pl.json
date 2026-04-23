@@ -92,7 +92,10 @@
       "feature5Title": "Opublikowane na YouTube",
       "feature5Desc": "Każde wideo jest automatycznie publikowane na naszym kanale YouTube dla łatwego udostępniania.",
       "feature6Title": "Pełna kontrola przed eksportem",
-      "feature6Desc": "Sprawdź i popraw wszelkie błędy transkrypcji przed wygenerowaniem ostatecznego wideo."
+      "feature6Desc": "Sprawdź i popraw wszelkie błędy transkrypcji przed wygenerowaniem ostatecznego wideo.",
+      "feature7Badge": "NOWOŚĆ",
+      "feature7Desc": "Śpiewasz w duecie? Przypisz każdą linijkę do wykonawcy podczas sprawdzania, a gotowy film oznaczy kolorami, kto co śpiewa — na niebiesko dla wykonawcy 1, na różowo dla wykonawcy 2, a na żółto, gdy śpiewacie razem.",
+      "feature7Title": "Tryb duetu i wielu wykonawców"
     },
     "screenshots": {
       "title": "Zobacz to w akcji",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Posłuchaj opcji dźwiękowych i wybierz najlepszy podkład",
       "exampleOutputAlt": "Ukończone zadanie karaoke z opcjami pobierania dla 4K, 720p, CDG i więcej",
       "exampleOutputTitle": "Pobierz i udostępnij",
-      "exampleOutputDesc": "Odbierz swoje wideo 4K, 720p, CDG i więcej w kilka minut"
+      "exampleOutputDesc": "Odbierz swoje wideo 4K, 720p, CDG i więcej w kilka minut",
+      "duetModeAlt": "Kadr z filmu karaoke pokazujący oznaczony kolorami tekst duetu — żółty dla wspólnych linijek, niebieski dla wykonawcy 1, różowy dla wykonawcy 2",
+      "duetModeBadge": "NOWOŚĆ",
+      "duetModeDesc": "Przypisz każdą linijkę do wykonawcy podczas sprawdzania — gotowy film oznaczy kolorami, kto co śpiewa, dzięki czemu partnerzy w duecie nigdy nie przegapią swojego wejścia.",
+      "duetModeTitle": "Tryb duetu"
     },
     "pricing": {
       "title": "Prosty cennik",

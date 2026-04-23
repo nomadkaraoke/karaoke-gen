@@ -92,7 +92,10 @@
       "feature5Title": "Publiceras på YouTube",
       "feature5Desc": "Varje video publiceras automatiskt på vår YouTube-kanal för enkel delning.",
       "feature6Title": "Full kontroll före export",
-      "feature6Desc": "Granska och korrigera eventuella transkriberingsfel innan den slutgiltiga videon genereras."
+      "feature6Desc": "Granska och korrigera eventuella transkriberingsfel innan den slutgiltiga videon genereras.",
+      "feature7Badge": "NYHET",
+      "feature7Desc": "Sjunger du en duett? Tilldela varje rad till en sångare under granskningen så färgkodar den slutgiltiga videon vem som sjunger vad – blått för sångare 1, rosa för sångare 2, gult när ni sjunger tillsammans.",
+      "feature7Title": "Duett- och flersångarläge"
     },
     "screenshots": {
       "title": "Se det i aktion",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Lyssna på ljudalternativ och välj det bästa bakgrundsspåret",
       "exampleOutputAlt": "Färdigt karaokejobb med nedladdningsalternativ för 4K, 720p, CDG och mer",
       "exampleOutputTitle": "Ladda ner och dela",
-      "exampleOutputDesc": "Få din 4K-video, 720p, CDG och mer på några minuter"
+      "exampleOutputDesc": "Få din 4K-video, 720p, CDG och mer på några minuter",
+      "duetModeAlt": "Stillbild från karaokevideo som visar färgkodad duetttext – gult för gemensamma rader, blått för sångare 1, rosa för sångare 2",
+      "duetModeBadge": "NYHET",
+      "duetModeDesc": "Tilldela varje rad till en sångare under granskningen – den slutgiltiga videon färgkodar vem som sjunger vad så att duettpartners aldrig missar sin insats.",
+      "duetModeTitle": "Duettläge"
     },
     "pricing": {
       "title": "Enkel prissättning",

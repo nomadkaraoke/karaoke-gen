@@ -92,7 +92,10 @@
       "feature5Title": "Publicado en YouTube",
       "feature5Desc": "Cada video se publica automáticamente en nuestro canal de YouTube para compartirlo fácilmente.",
       "feature6Title": "Control total antes de exportar",
-      "feature6Desc": "Revisa y corrige cualquier error de transcripción antes de que se genere el video final."
+      "feature6Desc": "Revisa y corrige cualquier error de transcripción antes de que se genere el video final.",
+      "feature7Badge": "NUEVO",
+      "feature7Desc": "¿Cantas a dúo? Asigna cada línea a un cantante durante la revisión y el video final codificará por colores quién canta qué: azul para el cantante 1, rosa para el cantante 2 y amarillo cuando canten juntos.",
+      "feature7Title": "Modo Dúo y Multicantante"
     },
     "screenshots": {
       "title": "Míralo en acción",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Escucha las opciones de audio y elige la mejor pista de acompañamiento",
       "exampleOutputAlt": "Trabajo de karaoke completado con opciones de descarga para 4K, 720p, CDG y más",
       "exampleOutputTitle": "Descarga y comparte",
-      "exampleOutputDesc": "Obtén tu video 4K, 720p, CDG y más en minutos"
+      "exampleOutputDesc": "Obtén tu video 4K, 720p, CDG y más en minutos",
+      "duetModeAlt": "Captura de un video de karaoke que muestra letras de dúo codificadas por colores: amarillo para líneas compartidas, azul para el cantante 1 y rosa para el cantante 2",
+      "duetModeBadge": "NUEVO",
+      "duetModeDesc": "Asigna cada línea a un cantante durante la revisión: el video final codifica por colores quién canta qué para que los compañeros de dúo nunca pierdan su entrada.",
+      "duetModeTitle": "Modo dúo"
     },
     "pricing": {
       "title": "Precios simples",

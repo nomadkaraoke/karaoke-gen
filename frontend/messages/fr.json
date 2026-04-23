@@ -92,7 +92,10 @@
       "feature5Title": "Publié sur YouTube",
       "feature5Desc": "Chaque vidéo est automatiquement publiée sur notre chaîne YouTube pour un partage facile.",
       "feature6Title": "Contrôle total avant l'exportation",
-      "feature6Desc": "Vérifie et corrige toute erreur de transcription avant la génération de la vidéo finale."
+      "feature6Desc": "Vérifie et corrige toute erreur de transcription avant la génération de la vidéo finale.",
+      "feature7Badge": "NOUVEAU",
+      "feature7Desc": "Tu chantes en duo ? Attribue chaque ligne à un chanteur lors de la révision et la vidéo finale utilise un code couleur pour indiquer qui chante quoi : bleu pour le chanteur 1, rose pour le chanteur 2, jaune quand vous chantez ensemble.",
+      "feature7Title": "Mode Duo et Multi-chanteurs"
     },
     "screenshots": {
       "title": "Vois-le en action",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Écoute les options audio et choisis la meilleure piste d'accompagnement",
       "exampleOutputAlt": "Projet karaoké terminé avec options de téléchargement pour 4K, 720p, CDG, et plus",
       "exampleOutputTitle": "Télécharge et partage",
-      "exampleOutputDesc": "Obtiens ta vidéo 4K, 720p, CDG, et plus en quelques minutes"
+      "exampleOutputDesc": "Obtiens ta vidéo 4K, 720p, CDG, et plus en quelques minutes",
+      "duetModeAlt": "Capture d'une vidéo de karaoké montrant les paroles d'un duo avec un code couleur : jaune pour les lignes partagées, bleu pour le chanteur 1, rose pour le chanteur 2",
+      "duetModeBadge": "NOUVEAU",
+      "duetModeDesc": "Attribue chaque ligne à un chanteur lors de la révision : la vidéo finale utilise un code couleur pour indiquer qui chante quoi, afin que les partenaires du duo ne ratent jamais leur entrée.",
+      "duetModeTitle": "Mode Duo"
     },
     "pricing": {
       "title": "Tarification simple",

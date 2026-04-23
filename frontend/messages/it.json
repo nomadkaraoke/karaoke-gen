@@ -92,7 +92,10 @@
       "feature5Title": "Pubblicato su YouTube",
       "feature5Desc": "Ogni video viene pubblicato automaticamente sul nostro canale YouTube per una facile condivisione.",
       "feature6Title": "Controllo totale prima dell'esportazione",
-      "feature6Desc": "Rivedi e correggi eventuali errori di trascrizione prima che venga generato il video finale."
+      "feature6Desc": "Rivedi e correggi eventuali errori di trascrizione prima che venga generato il video finale.",
+      "feature7Badge": "NUOVO",
+      "feature7Desc": "Canti un duetto? Assegna ogni verso a un cantante durante la revisione e il video finale indicherà con colori diversi chi canta cosa: blu per il cantante 1, rosa per il cantante 2, giallo quando cantate insieme.",
+      "feature7Title": "Modalità Duetto e Multi-Cantante"
     },
     "screenshots": {
       "title": "Guardalo in azione",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Ascolta le opzioni audio e scegli la migliore base musicale",
       "exampleOutputAlt": "Lavoro karaoke completato con opzioni di download per 4K, 720p, CDG e altro",
       "exampleOutputTitle": "Scarica e condividi",
-      "exampleOutputDesc": "Ottieni il tuo video 4K, 720p, CDG e altro in pochi minuti"
+      "exampleOutputDesc": "Ottieni il tuo video 4K, 720p, CDG e altro in pochi minuti",
+      "duetModeAlt": "Fermo immagine del video karaoke che mostra il testo del duetto con colori diversi: giallo per i versi condivisi, blu per il cantante 1, rosa per il cantante 2",
+      "duetModeBadge": "NUOVO",
+      "duetModeDesc": "Assegna ogni verso a un cantante durante la revisione: il video finale indica con colori diversi chi canta cosa, così i partner del duetto non perdono mai l'attacco.",
+      "duetModeTitle": "Modalità Duetto"
     },
     "pricing": {
       "title": "Prezzi semplici",

@@ -92,7 +92,10 @@
       "feature5Title": "YouTube'da Yayınlanır",
       "feature5Desc": "Kolay paylaşım için her video otomatik olarak YouTube kanalımızda yayınlanır.",
       "feature6Title": "Dışa Aktarmadan Önce Tam Kontrol",
-      "feature6Desc": "Son video oluşturulmadan önce transkripsiyon hatalarını incele ve düzelt."
+      "feature6Desc": "Son video oluşturulmadan önce transkripsiyon hatalarını incele ve düzelt.",
+      "feature7Badge": "YENİ",
+      "feature7Desc": "Düet mi söylüyorsun? İnceleme sırasında her satırı bir şarkıcıya ata, böylece son videoda kimin ne söyleyeceği renklerle kodlanır: 1. şarkıcı için mavi, 2. şarkıcı için pembe, birlikte söylediğinizde sarı.",
+      "feature7Title": "Düet ve Çoklu Şarkıcı Modu"
     },
     "screenshots": {
       "title": "İş Başında Gör",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Ses seçeneklerini dinle ve en iyi altyapıyı seç",
       "exampleOutputAlt": "4K, 720p, CDG ve daha fazlası için indirme seçenekleriyle tamamlanmış karaoke işi",
       "exampleOutputTitle": "İndir ve Paylaş",
-      "exampleOutputDesc": "Dakikalar içinde 4K videonu, 720p, CDG ve daha fazlasını al"
+      "exampleOutputDesc": "Dakikalar içinde 4K videonu, 720p, CDG ve daha fazlasını al",
+      "duetModeAlt": "Renk kodlu düet şarkı sözlerini gösteren karaoke video karesi — ortak satırlar için sarı, 1. şarkıcı için mavi, 2. şarkıcı için pembe",
+      "duetModeBadge": "YENİ",
+      "duetModeDesc": "İnceleme sırasında her satırı bir şarkıcıya ata — son videoda kimin ne söyleyeceği renklerle kodlanır, böylece düet partnerleri sıralarını asla kaçırmaz.",
+      "duetModeTitle": "Düet Modu"
     },
     "pricing": {
       "title": "Basit Fiyatlandırma",

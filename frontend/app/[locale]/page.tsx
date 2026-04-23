@@ -348,6 +348,30 @@ function ConsumerLandingPage() {
               </div>
             ))}
           </div>
+
+          {/* Featured: Duet Mode — full-width card with preview image */}
+          <div className="mt-6 bg-dark-800 border border-dark-700 rounded-xl overflow-hidden card-hover">
+            <div className="grid md:grid-cols-2 gap-0">
+              <div className="relative aspect-video md:aspect-auto bg-dark-900">
+                <Image
+                  src="/screenshots/duet-mode.avif"
+                  alt={t('features.feature7Title')}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+              <div className="p-6 md:p-8 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-primary-500/20 text-primary-400 border border-primary-500/40">
+                    {t('features.feature7Badge')}
+                  </span>
+                  <h3 className="font-semibold text-lg">{t('features.feature7Title')}</h3>
+                </div>
+                <p className="text-dark-400 text-sm">{t('features.feature7Desc')}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -424,6 +448,28 @@ function ConsumerLandingPage() {
               <div className="p-4">
                 <h3 className="font-semibold mb-1">{t('screenshots.exampleOutputTitle')}</h3>
                 <p className="text-dark-400 text-sm">{t('screenshots.exampleOutputDesc')}</p>
+              </div>
+            </div>
+
+            {/* Duet Mode Screenshot — spans both columns on md+ */}
+            <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden md:col-span-2">
+              <div className="aspect-video bg-dark-900 relative">
+                <Image
+                  src="/screenshots/duet-mode.avif"
+                  alt={t('screenshots.duetModeAlt')}
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 100vw"
+                />
+              </div>
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-primary-500/20 text-primary-400 border border-primary-500/40">
+                    {t('screenshots.duetModeBadge')}
+                  </span>
+                  <h3 className="font-semibold">{t('screenshots.duetModeTitle')}</h3>
+                </div>
+                <p className="text-dark-400 text-sm">{t('screenshots.duetModeDesc')}</p>
               </div>
             </div>
           </div>

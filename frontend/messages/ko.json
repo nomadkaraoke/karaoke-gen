@@ -92,7 +92,10 @@
       "feature5Title": "YouTube에 게시",
       "feature5Desc": "모든 비디오는 쉽게 공유할 수 있도록 저희 YouTube 채널에 자동으로 게시됩니다.",
       "feature6Title": "내보내기 전 완벽한 제어",
-      "feature6Desc": "최종 비디오가 생성되기 전에 가사 인식 오류를 검토하고 수정할 수 있습니다."
+      "feature6Desc": "최종 비디오가 생성되기 전에 가사 인식 오류를 검토하고 수정할 수 있습니다.",
+      "feature7Badge": "NEW",
+      "feature7Desc": "듀엣을 부르시나요? 검토 단계에서 각 파트를 부를 사람에게 지정해 보세요. 완성된 영상에서는 누가 어떤 파트를 부르는지 색상으로 구분됩니다. 가수 1은 파란색, 가수 2는 분홍색, 함께 부르는 파트는 노란색으로 표시됩니다.",
+      "feature7Title": "듀엣 및 멀티 싱어 모드"
     },
     "screenshots": {
       "title": "작동 방식 보기",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "오디오 옵션을 들어보고 가장 좋은 반주 트랙을 선택하세요",
       "exampleOutputAlt": "4K, 720p, CDG 등의 다운로드 옵션이 포함된 완료된 노래방 작업",
       "exampleOutputTitle": "다운로드 및 공유",
-      "exampleOutputDesc": "몇 분 만에 4K 비디오, 720p, CDG 등을 받아보세요"
+      "exampleOutputDesc": "몇 분 만에 4K 비디오, 720p, CDG 등을 받아보세요",
+      "duetModeAlt": "색상으로 구분된 듀엣 가사가 표시된 노래방 영상 스틸컷 — 함께 부르는 파트는 노란색, 가수 1은 파란색, 가수 2는 분홍색",
+      "duetModeBadge": "NEW",
+      "duetModeDesc": "검토 단계에서 각 파트를 부를 사람에게 지정해 보세요. 완성된 영상에서는 누가 어떤 파트를 부르는지 색상으로 구분되어 듀엣 파트너가 타이밍을 놓치지 않게 도와줍니다.",
+      "duetModeTitle": "듀엣 모드"
     },
     "pricing": {
       "title": "간단한 요금제",

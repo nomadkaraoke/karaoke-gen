@@ -92,7 +92,10 @@
       "feature5Title": "Gepubliceerd op YouTube",
       "feature5Desc": "Elke video wordt automatisch gepubliceerd op ons YouTube kanaal om makkelijk te delen.",
       "feature6Title": "Volledige controle voor export",
-      "feature6Desc": "Controleer en corrigeer eventuele transcriptiefouten voordat de definitieve video wordt gegenereerd."
+      "feature6Desc": "Controleer en corrigeer eventuele transcriptiefouten voordat de definitieve video wordt gegenereerd.",
+      "feature7Badge": "NIEUW",
+      "feature7Desc": "Zing je een duet? Wijs tijdens het nakijken elke regel toe aan een zanger en de uiteindelijke video geeft met kleuren aan wie wat zingt — blauw voor zanger 1, roze voor zanger 2, geel wanneer jullie samen zingen.",
+      "feature7Title": "Duet- & Multi-zangermodus"
     },
     "screenshots": {
       "title": "Zie het in actie",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Luister naar audio-opties en kies de beste backing track",
       "exampleOutputAlt": "Voltooide karaoke taak met downloadopties voor 4K, 720p, CDG en meer",
       "exampleOutputTitle": "Downloaden & Delen",
-      "exampleOutputDesc": "Ontvang je 4K video, 720p, CDG en meer in enkele minuten"
+      "exampleOutputDesc": "Ontvang je 4K video, 720p, CDG en meer in enkele minuten",
+      "duetModeAlt": "Still van een karaokevideo met kleurgecodeerde duet-songteksten — geel voor gedeelde regels, blauw voor zanger 1, roze voor zanger 2",
+      "duetModeBadge": "NIEUW",
+      "duetModeDesc": "Wijs tijdens het nakijken elke regel toe aan een zanger — de uiteindelijke video geeft met kleuren aan wie wat zingt, zodat duetpartners nooit hun inzet missen.",
+      "duetModeTitle": "Duetmodus"
     },
     "pricing": {
       "title": "Eenvoudige prijzen",

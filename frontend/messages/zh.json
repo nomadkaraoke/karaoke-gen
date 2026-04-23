@@ -92,7 +92,10 @@
       "feature5Title": "发布到 YouTube",
       "feature5Desc": "每个视频都会自动发布到我们的 YouTube 频道，方便分享。",
       "feature6Title": "导出前完全控制",
-      "feature6Desc": "在生成最终视频之前，检查并纠正任何转录错误。"
+      "feature6Desc": "在生成最终视频之前，检查并纠正任何转录错误。",
+      "feature7Badge": "全新",
+      "feature7Desc": "想要合唱？在校对时将每一行歌词分配给相应的歌手，最终的视频会用颜色区分谁唱哪一句——蓝色代表歌手1，粉色代表歌手2，黄色代表合唱。",
+      "feature7Title": "合唱与多歌手模式"
     },
     "screenshots": {
       "title": "看看实际效果",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "试听音频选项并选择最佳的伴奏轨道",
       "exampleOutputAlt": "已完成的卡拉OK任务，提供 4K、720p、CDG 等下载选项",
       "exampleOutputTitle": "下载与分享",
-      "exampleOutputDesc": "几分钟内即可获取您的 4K 视频、720p、CDG 等文件"
+      "exampleOutputDesc": "几分钟内即可获取您的 4K 视频、720p、CDG 等文件",
+      "duetModeAlt": "卡拉OK视频截图，显示用颜色区分的合唱歌词——黄色代表合唱，蓝色代表歌手1，粉色代表歌手2",
+      "duetModeBadge": "全新",
+      "duetModeDesc": "在校对时将每一行歌词分配给相应的歌手——最终的视频会用颜色区分谁唱哪一句，让合唱搭档再也不会错过演唱时机。",
+      "duetModeTitle": "对唱模式"
     },
     "pricing": {
       "title": "简单的定价",

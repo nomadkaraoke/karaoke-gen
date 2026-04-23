@@ -92,7 +92,10 @@
       "feature5Title": "Publicat pe YouTube",
       "feature5Desc": "Fiecare videoclip este publicat automat pe canalul nostru de YouTube pentru a fi partajat ușor.",
       "feature6Title": "Control complet înainte de export",
-      "feature6Desc": "Revizuiește și corectează orice erori de transcriere înainte ca videoclipul final să fie generat."
+      "feature6Desc": "Revizuiește și corectează orice erori de transcriere înainte ca videoclipul final să fie generat.",
+      "feature7Badge": "NOU",
+      "feature7Desc": "Cânți un duet? Atribuie fiecare vers unui solist în etapa de revizuire, iar videoclipul final va indica prin culori cine ce cântă — albastru pentru solistul 1, roz pentru solistul 2, galben când cântați împreună.",
+      "feature7Title": "Mod Duet & Multi-Solist"
     },
     "screenshots": {
       "title": "Vezi cum funcționează",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Ascultă opțiunile audio și alege cel mai bun fundal muzical",
       "exampleOutputAlt": "Job de karaoke finalizat cu opțiuni de descărcare pentru 4K, 720p, CDG și altele",
       "exampleOutputTitle": "Descarcă și distribuie",
-      "exampleOutputDesc": "Obține videoclipul tău 4K, 720p, CDG și altele în câteva minute"
+      "exampleOutputDesc": "Obține videoclipul tău 4K, 720p, CDG și altele în câteva minute",
+      "duetModeAlt": "Cadru din videoclipul de karaoke care arată versurile duetului codificate pe culori — galben pentru versurile comune, albastru pentru solistul 1, roz pentru solistul 2",
+      "duetModeBadge": "NOU",
+      "duetModeDesc": "Atribuie fiecare vers unui solist în etapa de revizuire — videoclipul final indică prin culori cine ce cântă, astfel încât partenerii de duet să nu-și rateze niciodată intrarea.",
+      "duetModeTitle": "Mod Duet"
     },
     "pricing": {
       "title": "Prețuri simple",

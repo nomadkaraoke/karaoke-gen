@@ -92,7 +92,10 @@
       "feature5Title": "Publicat a YouTube",
       "feature5Desc": "Cada vídeo es publica automàticament al nostre canal de YouTube per compartir-lo fàcilment.",
       "feature6Title": "Control total abans d'exportar",
-      "feature6Desc": "Revisa i corregeix qualsevol error de transcripció abans que es generi el vídeo final."
+      "feature6Desc": "Revisa i corregeix qualsevol error de transcripció abans que es generi el vídeo final.",
+      "feature7Badge": "NOU",
+      "feature7Desc": "Cantes un duet? Assigna cada línia a un cantant durant la revisió i el vídeo final codificarà per colors qui canta què: blau per al cantant 1, rosa per al cantant 2, groc quan canteu junts.",
+      "feature7Title": "Mode Duet i Multicantant"
     },
     "screenshots": {
       "title": "Mira-ho en acció",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Escolta les opcions d'àudio i tria la millor pista de fons",
       "exampleOutputAlt": "Treball de karaoke completat amb opcions de descàrrega per a 4K, 720p, CDG i més",
       "exampleOutputTitle": "Descarrega i comparteix",
-      "exampleOutputDesc": "Aconsegueix el teu vídeo 4K, 720p, CDG i més en minuts"
+      "exampleOutputDesc": "Aconsegueix el teu vídeo 4K, 720p, CDG i més en minuts",
+      "duetModeAlt": "Fotograma de vídeo de karaoke que mostra lletres de duet codificades per colors: groc per a les línies compartides, blau per al cantant 1, rosa per al cantant 2",
+      "duetModeBadge": "NOU",
+      "duetModeDesc": "Assigna cada línia a un cantant durant la revisió: el vídeo final codifica per colors qui canta què perquè els companys de duet no es perdin mai la seva entrada.",
+      "duetModeTitle": "Mode Duet"
     },
     "pricing": {
       "title": "Preus senzills",

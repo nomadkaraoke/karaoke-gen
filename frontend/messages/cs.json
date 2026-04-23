@@ -92,7 +92,10 @@
       "feature5Title": "Publikováno na YouTube",
       "feature5Desc": "Každé video je automaticky publikováno na náš YouTube kanál pro snadné sdílení.",
       "feature6Title": "Plná kontrola před exportem",
-      "feature6Desc": "Zkontroluj a oprav případné chyby v přepisu před vygenerováním finálního videa."
+      "feature6Desc": "Zkontroluj a oprav případné chyby v přepisu před vygenerováním finálního videa.",
+      "feature7Badge": "NOVINKA",
+      "feature7Desc": "Zpíváš duet? Při kontrole přiřaď každý řádek konkrétnímu zpěvákovi a výsledné video barevně odliší, kdo co zpívá – modrá pro zpěváka 1, růžová pro zpěváka 2 a žlutá, když zpíváte spolu.",
+      "feature7Title": "Režim pro duety a více zpěváků"
     },
     "screenshots": {
       "title": "Podívej se, jak to funguje",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Poslechni si možnosti zvuku a vyber tu nejlepší doprovodnou stopu",
       "exampleOutputAlt": "Dokončená karaoke úloha s možnostmi stažení pro 4K, 720p, CDG a další",
       "exampleOutputTitle": "Stáhnout a sdílet",
-      "exampleOutputDesc": "Získej své 4K video, 720p, CDG a další během několika minut"
+      "exampleOutputDesc": "Získej své 4K video, 720p, CDG a další během několika minut",
+      "duetModeAlt": "Snímek z karaoke videa s barevně odlišeným textem duetu – žlutá pro společné řádky, modrá pro zpěváka 1, růžová pro zpěváka 2",
+      "duetModeBadge": "NOVINKA",
+      "duetModeDesc": "Při kontrole přiřaď každý řádek konkrétnímu zpěvákovi – výsledné video barevně odliší, kdo co zpívá, takže partneři v duetu nikdy nepropásnou svůj nástup.",
+      "duetModeTitle": "Režim duetu"
     },
     "pricing": {
       "title": "Jednoduché ceny",

@@ -92,7 +92,10 @@
       "feature5Title": "Publicado no YouTube",
       "feature5Desc": "Todo vídeo é publicado automaticamente no nosso canal do YouTube para facilitar o compartilhamento.",
       "feature6Title": "Controle Total Antes de Exportar",
-      "feature6Desc": "Revise e corrija quaisquer erros de transcrição antes que o vídeo final seja gerado."
+      "feature6Desc": "Revise e corrija quaisquer erros de transcrição antes que o vídeo final seja gerado.",
+      "feature7Badge": "NOVO",
+      "feature7Desc": "Vai cantar um dueto? Atribua cada linha a um cantor durante a revisão e o vídeo final diferenciará por cores quem canta o quê — azul para o cantor 1, rosa para o cantor 2 e amarelo quando vocês cantarem juntos.",
+      "feature7Title": "Modo Dueto e Multicantor"
     },
     "screenshots": {
       "title": "Veja em Ação",
@@ -108,7 +111,11 @@
       "instrumentalReviewDesc": "Ouça as opções de áudio e escolha a melhor faixa de apoio",
       "exampleOutputAlt": "Trabalho de karaokê concluído com opções de download para 4K, 720p, CDG e mais",
       "exampleOutputTitle": "Baixe e Compartilhe",
-      "exampleOutputDesc": "Receba seu vídeo 4K, 720p, CDG e mais em minutos"
+      "exampleOutputDesc": "Receba seu vídeo 4K, 720p, CDG e mais em minutos",
+      "duetModeAlt": "Imagem de um vídeo de karaokê mostrando letras de dueto diferenciadas por cores — amarelo para linhas compartilhadas, azul para o cantor 1, rosa para o cantor 2",
+      "duetModeBadge": "NOVO",
+      "duetModeDesc": "Atribua cada linha a um cantor durante a revisão — o vídeo final diferencia por cores quem canta o quê, para que os parceiros de dueto nunca percam a deixa.",
+      "duetModeTitle": "Modo Dueto"
     },
     "pricing": {
       "title": "Preços Simples",
