@@ -104,25 +104,31 @@ DEFAULT_KARAOKE_STYLE = {
     # NEW: optional per-singer color overrides. Keys: "1" / "2" / "both".
     # Missing singer or missing field falls back to the flat colors above.
     # Key note: "both" corresponds to SingerId 0.
+    #
+    # Duet color model: UNHIGHLIGHTED text shows the singer's signature colour
+    # (blue / pink / yellow) so viewers can read ahead and see who's about to
+    # sing. As each word is sung, the karaoke sweep fills it with a near-white
+    # tint of the same hue, signalling "this has been sung" while subtly
+    # preserving the singer identity. Outline stays dark-hue for contrast.
     "singers": {
-        # Singer 1 inherits the flat colors above — explicit empty dict for clarity
-        "1": {},
-        # Singer 2: pink (highlighted) with a notably darker dusky rose pre-highlight.
-        # Pink is close to white in luminance so we need substantial darkening
-        # (~60%) on the secondary to get a clearly-visible karaoke sweep.
+        # Singer 1: blue pre-sung → subtle blue-tinted near-white when sung
+        "1": {
+            "primary_color":   "230, 230, 255, 255",
+            "secondary_color": "112, 112, 247, 255",
+            "outline_color":   "26, 58, 235, 255",
+            "back_color":      "0, 0, 0, 0",
+        },
+        # Singer 2: pink pre-sung → subtle pink-tinted near-white when sung
         "2": {
-            "primary_color":   "247, 112, 180, 255",
-            "secondary_color": "155, 75, 130, 255",
+            "primary_color":   "255, 235, 245, 255",
+            "secondary_color": "247, 112, 180, 255",
             "outline_color":   "158, 26, 96, 255",
             "back_color":      "0, 0, 0, 0",
         },
-        # Both: yellow (highlighted) with muted amber pre-highlight. Plain white
-        # (as Singer 1/2 use) reads too similar next to bright yellow because
-        # both are high-luminance on a dark background, so the karaoke sweep
-        # effect was nearly invisible. Muted amber gives a clear saturation pop.
+        # Both: yellow pre-sung → subtle yellow-tinted near-white when sung
         "both": {
-            "primary_color":   "252, 211, 77, 255",
-            "secondary_color": "160, 140, 60, 255",
+            "primary_color":   "255, 252, 230, 255",
+            "secondary_color": "252, 211, 77, 255",
             "outline_color":   "146, 108, 0, 255",
             "back_color":      "0, 0, 0, 0",
         },

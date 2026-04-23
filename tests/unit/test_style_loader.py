@@ -627,14 +627,25 @@ class TestKaraokeSingersBlock:
         singers = DEFAULT_KARAOKE_STYLE["singers"]
         assert set(singers.keys()) == {"1", "2", "both"}
 
-    def test_singer2_has_pink_primary(self):
+    def test_singer2_has_pink_unhighlighted(self):
+        """Duet model: secondary (pre-sung) is the singer's signature color."""
         from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
-        # Pink active for Singer 2
-        assert DEFAULT_KARAOKE_STYLE["singers"]["2"]["primary_color"] == "247, 112, 180, 255"
+        assert DEFAULT_KARAOKE_STYLE["singers"]["2"]["secondary_color"] == "247, 112, 180, 255"
 
-    def test_both_has_yellow_primary(self):
+    def test_both_has_yellow_unhighlighted(self):
         from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
-        assert DEFAULT_KARAOKE_STYLE["singers"]["both"]["primary_color"] == "252, 211, 77, 255"
+        assert DEFAULT_KARAOKE_STYLE["singers"]["both"]["secondary_color"] == "252, 211, 77, 255"
+
+    def test_highlighted_primaries_are_near_white(self):
+        """Duet model: primary (post-sung) is near-white with a subtle hue tint."""
+        from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
+        for key in ("1", "2", "both"):
+            primary = DEFAULT_KARAOKE_STYLE["singers"][key]["primary_color"]
+            r, g, b, _ = [int(x.strip()) for x in primary.split(",")]
+            # Every channel should be ≥ 230 (near-white) but at least one should
+            # differ from pure white to preserve the singer's hue hint.
+            assert r >= 230 and g >= 230 and b >= 230, f"Singer {key} primary not near-white: {primary}"
+            assert (r, g, b) != (255, 255, 255), f"Singer {key} primary is pure white, should have tint"
 
 
 class TestResolveSingerColors:
