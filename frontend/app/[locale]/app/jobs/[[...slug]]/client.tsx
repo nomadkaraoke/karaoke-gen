@@ -14,8 +14,11 @@ import { ThemeToggle } from "@/components/ThemeToggle"
 import CrashReportBoundary from "@/components/CrashReportBoundary"
 import type { CorrectionData } from "@/lib/lyrics-review/types"
 import { isLocalMode, createLocalModeJob } from "@/lib/local-mode"
-
-type RouteType = "review" | "instrumental" | "audio-edit" | "unknown"
+import {
+  parseRouteFromPathname,
+  parseRouteFromHash,
+  type RouteType,
+} from "@/lib/job-router-routes"
 
 type AccessState =
   | { status: "loading" }
@@ -26,44 +29,6 @@ type AccessState =
   | { status: "invalid_route" }
   | { status: "authorized"; job: Job; routeType: RouteType }
   | { status: "local_mode"; job: Job; routeType: RouteType }
-
-// Parse route from window.location.pathname (used for local mode with path-based routing)
-// For static exports, useParams() returns empty - we must parse the URL directly
-function parseRouteFromPathname(pathname: string): { jobId: string | null; routeType: RouteType } {
-  if (!pathname) {
-    return { jobId: null, routeType: "unknown" }
-  }
-
-  // Expected format: /app/jobs/{jobId}/{action}
-  // e.g., /app/jobs/local/review or /app/jobs/local/instrumental
-  const match = pathname.match(/^\/app\/jobs\/([^/]+)\/(review|instrumental|audio-edit)\/?$/)
-
-  if (match) {
-    const [, jobId, action] = match
-    return { jobId, routeType: action as RouteType }
-  }
-
-  return { jobId: null, routeType: "unknown" }
-}
-
-// Parse route from URL hash (used for cloud mode)
-// Expected format: #/{jobId}/review or #/{jobId}/instrumental
-function parseRouteFromHash(hash: string): { jobId: string | null; routeType: RouteType } {
-  if (!hash || hash.length <= 1) {
-    return { jobId: null, routeType: "unknown" }
-  }
-
-  // Remove the leading '#' and parse
-  const hashPath = hash.substring(1)
-  // Support BOTH review and instrumental routes
-  const match = hashPath.match(/^\/?([^/]+)\/(review|instrumental|audio-edit)\/?$/)
-
-  if (match) {
-    const [, jobId, action] = match
-    return { jobId, routeType: action as RouteType }
-  }
-  return { jobId: null, routeType: "unknown" }
-}
 
 function getExpectedStates(routeType: RouteType): string[] {
   switch (routeType) {
