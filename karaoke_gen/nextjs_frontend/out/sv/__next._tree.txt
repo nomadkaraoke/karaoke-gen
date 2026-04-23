@@ -1,4 +1,4 @@
 :HL["/_next/static/chunks/36a509a8156f2e6d.css","style"]
-:HL["/_next/static/chunks/907f09bfca0f6d32.css","style"]
+:HL["/_next/static/chunks/f52acd82585a6ba7.css","style"]
 :HL["/_next/static/media/AvenirNext_Bold-s.p.c6f99132.ttf","font",{"crossOrigin":"","type":"font/ttf"}]
-0:{"buildId":"hqe8EoFYZ1liOI9xrtZqj","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"locale","paramType":"d","paramKey":"sv","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
+0:{"buildId":"P40LWA0AhBvftdaNpEKk4","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"locale","paramType":"d","paramKey":"sv","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
