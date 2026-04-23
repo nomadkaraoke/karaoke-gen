@@ -58,19 +58,28 @@ def build_cdg_lyrics(
     return out
 
 
+def _rgb_to_hex(rgb) -> str:
+    """Convert an (R, G, B) tuple to a #RRGGBB hex string."""
+    r, g, b = rgb[0], rgb[1], rgb[2]
+    return "#{:02X}{:02X}{:02X}".format(int(r), int(g), int(b))
+
+
 class CDGGenerator:
     """Generates CD+G (CD Graphics) format karaoke files."""
 
-    def __init__(self, output_dir: str, logger: Optional[logging.Logger] = None):
+    def __init__(self, output_dir: str, logger: Optional[logging.Logger] = None, is_duet: bool = False):
         """Initialize CDGGenerator.
 
         Args:
             output_dir: Directory where output files will be written
             logger: Optional logger instance
+            is_duet: When True, emit the 3-singer duet palette and tag each
+                lyric line with its segment-level singer index (1/2/3).
         """
         self.output_dir = output_dir
         self.logger = logger or logging.getLogger(__name__)
         self.cdg_visible_width = 280
+        self.is_duet = is_duet
 
     def _sanitize_filename(self, filename: str) -> str:
         """Replace or remove characters that are unsafe for filenames."""
@@ -117,7 +126,7 @@ class CDGGenerator:
         self._validate_and_setup_font(cdg_styles)
 
         # Convert segments to the format expected by the rest of the code
-        lyrics_data = self._convert_segments_to_lyrics_data(segments)
+        lyrics_data = self._convert_segments_to_lyrics_data(segments, is_duet=self.is_duet)
 
         toml_file = self._create_toml_file(
             audio_file=audio_file,
@@ -144,16 +153,39 @@ class CDGGenerator:
             self.logger.error(f"Error composing CDG: {e}")
             raise
 
-    def _convert_segments_to_lyrics_data(self, segments: List[LyricsSegment]) -> List[dict]:
-        """Convert LyricsSegment objects to the format needed for CDG generation."""
+    def _convert_segments_to_lyrics_data(
+        self,
+        segments: List[LyricsSegment],
+        is_duet: bool = False,
+    ) -> List[dict]:
+        """Convert LyricsSegment objects to the format needed for CDG generation.
+
+        In solo mode, each entry is ``{"timestamp", "text"}`` (byte-identical
+        to the legacy flow). In duet mode, entries also carry a ``"singer"``
+        field (1/2/3 — CDG composer 1-indexed). The first word of each segment
+        (except the very first) is prefixed with ``/`` so ``format_lyrics``
+        breaks visual lines at segment boundaries; this keeps each visual line
+        associated with exactly one singer.
+        """
         lyrics_data = []
 
-        for segment in segments:
-            # Convert each word to a lyric entry
-            for word in segment.words:
+        for seg_idx, segment in enumerate(segments):
+            seg_singer = 1
+            if is_duet and segment.singer is not None:
+                seg_singer = _SINGER_ID_TO_CDG_INDEX.get(segment.singer, 1)
+
+            for word_idx, word in enumerate(segment.words):
                 # Convert time from seconds to centiseconds
                 timestamp = int(word.start_time * 100)
-                lyrics_data.append({"timestamp": timestamp, "text": word.text.upper()})  # CDG format expects uppercase text
+                text = word.text.upper()  # CDG format expects uppercase text
+                # Force a visual line break at every segment boundary in duet
+                # mode so wrapped lines never mix words from different singers.
+                if is_duet and seg_idx > 0 and word_idx == 0 and not text.startswith("/"):
+                    text = "/" + text
+                entry = {"timestamp": timestamp, "text": text}
+                if is_duet:
+                    entry["singer"] = seg_singer
+                lyrics_data.append(entry)
                 self.logger.debug(f"Added lyric: timestamp {timestamp}, text '{word.text}'")
 
         # Sort by timestamp to ensure correct order
@@ -197,8 +229,14 @@ class CDGGenerator:
         self.logger.debug(f"Using absolute audio file path: {audio_file}")
 
         self._validate_cdg_styles(cdg_styles)
+        # Duet mode only kicks in when lyrics_data carries singer fields (set by
+        # _convert_segments_to_lyrics_data when self.is_duet is True). The LRC
+        # path never sets singer, so it always lands in the solo branch below.
+        is_duet = self.is_duet and any("singer" in entry for entry in lyrics_data)
         instrumentals = self._detect_instrumentals(lyrics_data, cdg_styles)
-        sync_times, formatted_lyrics = self._format_lyrics_data(lyrics_data, instrumentals, cdg_styles)
+        sync_times, formatted_lyrics, line_singers = self._format_lyrics_data(
+            lyrics_data, instrumentals, cdg_styles, is_duet=is_duet,
+        )
 
         toml_data = self._create_toml_data(
             title=title,
@@ -209,6 +247,8 @@ class CDGGenerator:
             instrumentals=instrumentals,
             formatted_lyrics=formatted_lyrics,
             cdg_styles=cdg_styles,
+            line_singers=line_singers,
+            is_duet=is_duet,
         )
 
         self._write_toml_file(toml_data, output_file)
@@ -419,17 +459,30 @@ class CDGGenerator:
             instrumental_text=cdg_styles["instrumental_text"],
         )
 
-    def _format_lyrics_data(self, lyrics_data: List[dict], instrumentals: List[dict], cdg_styles: dict) -> tuple[List[int], List[str]]:
+    def _format_lyrics_data(
+        self,
+        lyrics_data: List[dict],
+        instrumentals: List[dict],
+        cdg_styles: dict,
+        is_duet: bool = False,
+    ) -> tuple[List[int], str, Optional[List[int]]]:
         """Format lyrics data with lead-in symbols and handle line wrapping.
 
         Returns:
-            tuple: (sync_times, formatted_lyrics) where sync_times includes lead-in timings
+            tuple: (sync_times, formatted_text, line_singers)
+            - sync_times: includes lead-in timings
+            - formatted_text: newline-joined visual lines (no per-line singer
+              prefixes — callers handle that)
+            - line_singers: parallel list of singer indices per visual line
+              when is_duet=True; None otherwise
         """
         sync_times = []
         formatted_lyrics = []
+        word_singers: Optional[List[int]] = [] if is_duet else None
 
         for i, lyric in enumerate(lyrics_data):
             self.logger.debug(f"Processing lyric {i}: timestamp {lyric['timestamp']}, text '{lyric['text']}'")
+            singer_for_word = lyric.get("singer", 1) if is_duet else None
 
             if i == 0 or lyric["timestamp"] - lyrics_data[i - 1]["timestamp"] >= cdg_styles["lead_in_threshold"]:
                 lead_in_start = lyric["timestamp"] - cdg_styles["lead_in_total"]
@@ -438,21 +491,27 @@ class CDGGenerator:
                     sync_time = lead_in_start + j * cdg_styles["lead_in_duration"]
                     sync_times.append(sync_time)
                     formatted_lyrics.append(symbol)
+                    if word_singers is not None:
+                        # Lead-in symbols inherit the following lyric's singer
+                        word_singers.append(singer_for_word)
                     self.logger.debug(f"  Added lead-in symbol {j+1}: '{symbol}' at {sync_time}")
 
             sync_times.append(lyric["timestamp"])
             formatted_lyrics.append(lyric["text"])
+            if word_singers is not None:
+                word_singers.append(singer_for_word)
             self.logger.debug(f"Added lyric: '{lyric['text']}' at {lyric['timestamp']}")
 
-        formatted_text = self.format_lyrics(
+        formatted_text, line_singers = self.format_lyrics(
             formatted_lyrics,
             instrumentals,
             sync_times,
             font_path=cdg_styles["font_path"],
             font_size=cdg_styles["font_size"],
+            word_singers=word_singers,
         )
 
-        return sync_times, formatted_text
+        return sync_times, formatted_text, line_singers
 
     def _create_toml_data(
         self,
@@ -462,8 +521,10 @@ class CDGGenerator:
         output_name: str,
         sync_times: List[int],
         instrumentals: List[dict],
-        formatted_lyrics: List[str],
+        formatted_lyrics,
         cdg_styles: dict,
+        line_singers: Optional[List[int]] = None,
+        is_duet: bool = False,
     ) -> dict:
         """Create TOML data structure."""
         if not cdg_styles.get("font_path"):
@@ -472,6 +533,43 @@ class CDGGenerator:
                 "Check that the font file exists and was downloaded correctly."
             )
         safe_output_name = self._get_safe_filename(artist, title, "Karaoke")
+
+        # Build the singers palette and per-line singer-tagged text
+        if is_duet:
+            # Lazy import to avoid pulling style_loader at module load time
+            from karaoke_gen.style_loader import CDG_DUET_SINGERS
+            singers = [
+                {
+                    "active_fill": _rgb_to_hex(s.active_fill),
+                    "active_stroke": _rgb_to_hex(s.active_stroke),
+                    "inactive_fill": _rgb_to_hex(s.inactive_fill),
+                    "inactive_stroke": _rgb_to_hex(s.inactive_stroke),
+                }
+                for s in CDG_DUET_SINGERS
+            ]
+            lyric_lines = formatted_lyrics.split("\n") if isinstance(formatted_lyrics, str) else list(formatted_lyrics)
+            if line_singers is None or len(line_singers) != len(lyric_lines):
+                # Defensive fallback: if we somehow lost the mapping, default
+                # every line to singer 1. This keeps the file valid instead of
+                # crashing the render.
+                self.logger.warning(
+                    "CDG duet: line_singers missing/mismatched (have %s, lines %s) — defaulting to singer 1",
+                    0 if line_singers is None else len(line_singers),
+                    len(lyric_lines),
+                )
+                line_singers = [1] * len(lyric_lines)
+            lyric_text = "\n".join(f"{s}|{line}" for s, line in zip(line_singers, lyric_lines))
+        else:
+            singers = [
+                {
+                    "active_fill": cdg_styles["active_fill"],
+                    "active_stroke": cdg_styles["active_stroke"],
+                    "inactive_fill": cdg_styles["inactive_fill"],
+                    "inactive_stroke": cdg_styles["inactive_stroke"],
+                }
+            ]
+            lyric_text = formatted_lyrics
+
         return {
             "title": title,
             "artist": artist,
@@ -485,14 +583,7 @@ class CDGGenerator:
             "font_size": cdg_styles["font_size"],
             "stroke_width": cdg_styles["stroke_width"],
             "stroke_style": cdg_styles["stroke_style"],
-            "singers": [
-                {
-                    "active_fill": cdg_styles["active_fill"],
-                    "active_stroke": cdg_styles["active_stroke"],
-                    "inactive_fill": cdg_styles["inactive_fill"],
-                    "inactive_stroke": cdg_styles["inactive_stroke"],
-                }
-            ],
+            "singers": singers,
             "lyrics": [
                 {
                     "singer": 1,
@@ -500,7 +591,7 @@ class CDGGenerator:
                     "row": cdg_styles["row"],
                     "line_tile_height": cdg_styles["line_tile_height"],
                     "lines_per_page": cdg_styles["lines_per_page"],
-                    "text": formatted_lyrics,
+                    "text": lyric_text,
                 }
             ],
             "title_color": cdg_styles["title_color"],
@@ -561,36 +652,76 @@ class CDGGenerator:
 
         return lines
 
-    def format_lyrics(self, lyrics_data, instrumentals, sync_times, font_path=None, font_size=18):
-        formatted_lyrics = []
+    def format_lyrics(
+        self,
+        lyrics_data,
+        instrumentals,
+        sync_times,
+        font_path=None,
+        font_size=18,
+        word_singers: Optional[List[int]] = None,
+    ):
+        """Word-wrap lyrics into visual lines and pad pages.
+
+        When ``word_singers`` is provided (duet mode), we track the singer
+        associated with each visual line (accumulated from the current_line's
+        source words) and return both the joined string and a parallel
+        line_singers list. When it is None (solo), returns (joined_string, None)
+        to preserve the legacy signature's text output exactly.
+        """
+        formatted_lyrics: List[str] = []
+        line_singers: Optional[List[int]] = [] if word_singers is not None else None
         font = self.get_font(font_path, font_size)
         self.logger.debug(f"Using font: {font}")
 
         current_line = ""
+        # Track the singer that owns current_line. All words accumulated into
+        # current_line share a singer (duet mode inserts '/' at segment
+        # boundaries, which forces a flush before the next singer begins).
+        current_line_singer: Optional[int] = None
+        last_seen_singer: int = 1  # For padding '~' lines after final flush
         lines_on_page = 0
         page_number = 1
 
+        def _flush_wrapped(wrapped_lines: List[str], owner_singer: Optional[int]) -> None:
+            """Append wrapped lines (with post-punctuation padding) and track singers."""
+            nonlocal lines_on_page, page_number
+            for wrapped_line in wrapped_lines:
+                formatted_lyrics.append(wrapped_line)
+                if line_singers is not None:
+                    line_singers.append(owner_singer if owner_singer is not None else 1)
+                lines_on_page += 1
+                self.logger.debug(f"format_lyrics: Added wrapped line: '{wrapped_line}'. Lines on page: {lines_on_page}")
+                # Add empty line after punctuation immediately
+                if wrapped_line.endswith(("!", "?", ".")) and not wrapped_line == "~":
+                    formatted_lyrics.append("~")
+                    if line_singers is not None:
+                        line_singers.append(owner_singer if owner_singer is not None else 1)
+                    lines_on_page += 1
+                    self.logger.debug(f"format_lyrics: Added empty line after punctuation. Lines on page now: {lines_on_page}")
+                if lines_on_page == 4:
+                    lines_on_page = 0
+                    page_number += 1
+                    self.logger.debug(f"format_lyrics: Page full. New page number: {page_number}")
+
         for i, text in enumerate(lyrics_data):
             self.logger.debug(f"format_lyrics: Processing text {i}: '{text}' (sync time: {sync_times[i]})")
+            entry_singer = word_singers[i] if word_singers is not None else None
+            if entry_singer is not None:
+                last_seen_singer = entry_singer
 
             if text.startswith("/"):
                 if current_line:
                     wrapped_lines = get_wrapped_text(current_line.strip(), font, CDG_VISIBLE_WIDTH).split("\n")
-                    for wrapped_line in wrapped_lines:
-                        formatted_lyrics.append(wrapped_line)
-                        lines_on_page += 1
-                        self.logger.debug(f"format_lyrics: Added wrapped line: '{wrapped_line}'. Lines on page: {lines_on_page}")
-                        # Add empty line after punctuation immediately
-                        if wrapped_line.endswith(("!", "?", ".")) and not wrapped_line == "~":
-                            formatted_lyrics.append("~")
-                            lines_on_page += 1
-                            self.logger.debug(f"format_lyrics: Added empty line after punctuation. Lines on page now: {lines_on_page}")
-                        if lines_on_page == 4:
-                            lines_on_page = 0
-                            page_number += 1
-                            self.logger.debug(f"format_lyrics: Page full. New page number: {page_number}")
+                    _flush_wrapped(wrapped_lines, current_line_singer)
                     current_line = ""
+                # Start fresh: current_line's singer is this new entry's singer
+                current_line_singer = entry_singer
                 text = text[1:]
+            else:
+                # Keep current_line_singer set on first accumulation
+                if current_line_singer is None:
+                    current_line_singer = entry_singer
 
             current_line += text + " "
             # self.logger.debug(f"format_lyrics: Current line: '{current_line}'")
@@ -602,17 +733,9 @@ class CDGGenerator:
             if is_last_before_instrumental or i == len(lyrics_data) - 1:
                 if current_line:
                     wrapped_lines = get_wrapped_text(current_line.strip(), font, CDG_VISIBLE_WIDTH).split("\n")
-                    for wrapped_line in wrapped_lines:
-                        formatted_lyrics.append(wrapped_line)
-                        lines_on_page += 1
-                        self.logger.debug(
-                            f"format_lyrics: Added wrapped line at end of section: '{wrapped_line}'. Lines on page: {lines_on_page}"
-                        )
-                        if lines_on_page == 4:
-                            lines_on_page = 0
-                            page_number += 1
-                            self.logger.debug(f"format_lyrics: Page full. New page number: {page_number}")
+                    _flush_wrapped(wrapped_lines, current_line_singer)
                     current_line = ""
+                    current_line_singer = None
 
                 if is_last_before_instrumental:
                     self.logger.debug(f"format_lyrics: is_last_before_instrumental: True lines_on_page: {lines_on_page}")
@@ -620,6 +743,8 @@ class CDGGenerator:
                     remaining_lines = 4 - (lines_on_page % 4) if lines_on_page % 4 != 0 else 0
                     if remaining_lines > 0:
                         formatted_lyrics.extend(["~"] * remaining_lines)
+                        if line_singers is not None:
+                            line_singers.extend([last_seen_singer] * remaining_lines)
                         self.logger.debug(f"format_lyrics: Added {remaining_lines} empty lines to complete current page")
 
                     # Reset the counter and increment page
@@ -627,7 +752,13 @@ class CDGGenerator:
                     page_number += 1
                     self.logger.debug(f"format_lyrics: Reset lines_on_page to 0. New page number: {page_number}")
 
-        return "\n".join(formatted_lyrics)
+        joined = "\n".join(formatted_lyrics)
+        if word_singers is None:
+            # Legacy callers (LRC path) expect a single string return value.
+            # Preserve that by returning a tuple only when duet mode was
+            # requested; otherwise return the string directly.
+            return joined, None
+        return joined, line_singers
 
     def generate_cdg_from_lrc(
         self,

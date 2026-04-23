@@ -88,3 +88,85 @@ class TestCdgEndToEnd:
         from karaoke_gen.lyrics_transcriber.output.cdg import build_cdg_lyrics
         result = build_cdg_lyrics(duet_segments, is_duet=False, line_tile_height=4, lines_per_page=3)
         assert all(r.singer == 1 for r in result)
+
+    def test_cdg_duet_toml_round_trips_through_composer(self, duet_segments, tmp_path):
+        """Generate duet TOML, parse it via KaraokeComposer's structurer, and
+        verify the resulting Settings has the 3-singer palette and singer-
+        tagged lyric lines. Stops short of running compose() (needs audio).
+        """
+        import os
+        import tomllib
+        from unittest.mock import MagicMock
+        from cattrs.preconf.json import make_converter
+        from cattrs import Converter
+        from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
+        from karaoke_gen.lyrics_transcriber.output.cdgmaker.config import Settings
+        import karaoke_gen.lyrics_transcriber.output as output_mod
+
+        font_path = os.path.join(os.path.dirname(output_mod.__file__), "fonts", "arial.ttf")
+        assert os.path.isfile(font_path)
+
+        # A minimal but complete cdg_styles dict
+        styles = {
+            "title_color": "white", "artist_color": "white",
+            "background_color": "blue", "border_color": "black",
+            "font_path": font_path, "font_size": 20,
+            "stroke_width": 1, "stroke_style": "octagon",
+            "active_fill": "yellow", "active_stroke": "black",
+            "inactive_fill": "white", "inactive_stroke": "black",
+            "title_screen_background": str(font_path),
+            "instrumental_background": str(font_path),
+            "instrumental_transition": "fade",
+            "instrumental_font_color": "gray",
+            "title_screen_transition": "fade",
+            "row": 1, "line_tile_height": 24, "lines_per_page": 4,
+            "clear_mode": "page", "sync_offset": 0,
+            "instrumental_gap_threshold": 500,
+            "instrumental_text": "INSTRUMENTAL",
+            "lead_in_threshold": 9999999,
+            "lead_in_symbols": ["*"], "lead_in_duration": 50, "lead_in_total": 150,
+            "title_artist_gap": 10, "title_top_padding": 0,
+            "intro_duration_seconds": 5, "first_syllable_buffer_seconds": 0.1,
+            "outro_background": str(font_path), "outro_transition": "fade",
+            "outro_text_line1": "End", "outro_text_line2": "www.example.com",
+            "outro_line1_color": "white", "outro_line2_color": "gray",
+            "outro_line1_line2_gap": 5,
+        }
+
+        gen = CDGGenerator(output_dir=str(tmp_path), logger=MagicMock(), is_duet=True)
+        lyrics_data = gen._convert_segments_to_lyrics_data(duet_segments, is_duet=True)
+        toml_file = tmp_path / "duet.toml"
+        gen.generate_toml(
+            audio_file="/fake/audio.mp3",
+            title="Duet Test",
+            artist="Artist",
+            lyrics_data=lyrics_data,
+            output_file=str(toml_file),
+            cdg_styles=styles,
+        )
+
+        with open(toml_file, "rb") as f:
+            raw = tomllib.load(f)
+
+        converter = Converter(prefer_attrib_converters=True)
+        settings = converter.structure(raw, Settings)
+
+        # 1. Palette has exactly 3 singers with the duet colors
+        assert len(settings.singers) == 3
+        assert settings.singers[0].active_fill == (112, 112, 247)   # Singer 1 blue
+        assert settings.singers[1].active_fill == (247, 112, 180)   # Singer 2 pink
+        assert settings.singers[2].active_fill == (252, 211, 77)    # Both yellow
+
+        # 2. Lyrics text contains per-line N|singer prefixes (composer splits
+        #    on \n+ and reads the prefix to choose singer per line).
+        lyric_text = settings.lyrics[0].text
+        non_empty = [line for line in lyric_text.split("\n") if line.strip()]
+        assert non_empty, "Expected at least one non-empty lyric line"
+        prefixes = set()
+        for line in non_empty:
+            assert "|" in line, f"Expected every duet line to be singer-tagged, got: {line!r}"
+            prefix = line.split("|", 1)[0]
+            assert prefix.isdigit(), f"Expected integer singer prefix, got: {prefix!r}"
+            prefixes.add(prefix)
+        # The fixture has singers 1, 2, and Both (→3); all three should appear
+        assert {"1", "2", "3"}.issubset(prefixes)

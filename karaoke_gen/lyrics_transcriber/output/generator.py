@@ -83,7 +83,11 @@ class OutputGenerator:
         self.lyrics_file = LyricsFileGenerator(self.config.output_dir, self.logger)
 
         if self.config.generate_cdg:
-            self.cdg = CDGGenerator(self.config.output_dir, self.logger)
+            self.cdg = CDGGenerator(
+                self.config.output_dir,
+                self.logger,
+                is_duet=self.config.is_duet,
+            )
 
         self.preview_mode = preview_mode
         if self.config.render_video:
