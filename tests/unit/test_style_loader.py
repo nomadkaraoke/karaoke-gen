@@ -728,12 +728,20 @@ class TestCdgDuetSingers:
 
     def test_cdg_duet_singer_1_is_blue(self):
         from karaoke_gen.style_loader import CDG_DUET_SINGERS
-        assert CDG_DUET_SINGERS[0].active_fill == (112, 112, 247)
+        # Color model (post-flip): inactive = signature color (pre-sung),
+        # active = white (sweep highlight). Singer 1 signature = sky blue
+        # (brightened from #7070F7 to #9AA8FF for contrast on dark backgrounds).
+        assert CDG_DUET_SINGERS[0].inactive_fill == (154, 168, 255)
+        assert CDG_DUET_SINGERS[0].active_fill == (255, 255, 255)
 
     def test_cdg_duet_singer_2_is_pink(self):
         from karaoke_gen.style_loader import CDG_DUET_SINGERS
-        assert CDG_DUET_SINGERS[1].active_fill == (247, 112, 180)
+        # Singer 2 signature = pink
+        assert CDG_DUET_SINGERS[1].inactive_fill == (247, 112, 180)
+        assert CDG_DUET_SINGERS[1].active_fill == (255, 255, 255)
 
     def test_cdg_duet_singer_both_is_yellow(self):
         from karaoke_gen.style_loader import CDG_DUET_SINGERS
-        assert CDG_DUET_SINGERS[2].active_fill == (252, 211, 77)
+        # Both (SingerId 0 → CDG singer 3) signature = yellow
+        assert CDG_DUET_SINGERS[2].inactive_fill == (252, 211, 77)
+        assert CDG_DUET_SINGERS[2].active_fill == (255, 255, 255)

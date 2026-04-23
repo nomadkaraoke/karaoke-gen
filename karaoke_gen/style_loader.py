@@ -727,21 +727,31 @@ def get_existing_images(style_params: Dict[str, Any]) -> Tuple[Optional[str], Op
 def _build_cdg_duet_singers():
     # Imported here to avoid top-level import of the cdgmaker package
     from karaoke_gen.lyrics_transcriber.output.cdgmaker.config import SettingsSinger
+    # Color model (matches the ASS/MP4 path, commit b2f20b43):
+    #   inactive (pre-sung / upcoming)  → the singer's signature color, so
+    #                                     performers can read ahead and see
+    #                                     who sings what.
+    #   active (currently being sung)   → white, making the sweep read
+    #                                     clearly against the colored text.
+    # CDG composer semantics: "active" = highlighted/sweep-fill,
+    # "inactive" = the resting color before/after the sweep.
     return [
-        # Singer 1: blue (#7070F7 active, #1A3AEB stroke)
+        # Singer 1: blue pre-sung → white when sung.
+        # Brightened from #7070F7 to #9AA8FF (sky blue) so it reads clearly
+        # against dark backgrounds like the nomad #111427 navy.
         SettingsSinger(
-            active_fill="#7070F7", active_stroke="#1A3AEB",
-            inactive_fill="#FFFFFF", inactive_stroke="#505050",
+            active_fill="#FFFFFF", active_stroke="#505050",
+            inactive_fill="#9AA8FF", inactive_stroke="#2A4AEB",
         ),
-        # Singer 2: pink (#F770B4 active, #9E1A60 stroke)
+        # Singer 2: pink pre-sung → white when sung
         SettingsSinger(
-            active_fill="#F770B4", active_stroke="#9E1A60",
-            inactive_fill="#FFFFFF", inactive_stroke="#505050",
+            active_fill="#FFFFFF", active_stroke="#505050",
+            inactive_fill="#F770B4", inactive_stroke="#9E1A60",
         ),
-        # Both: yellow (#FCD34D active, #926C00 stroke)
+        # Both: yellow pre-sung → white when sung
         SettingsSinger(
-            active_fill="#FCD34D", active_stroke="#926C00",
-            inactive_fill="#FFFFFF", inactive_stroke="#505050",
+            active_fill="#FFFFFF", active_stroke="#505050",
+            inactive_fill="#FCD34D", inactive_stroke="#926C00",
         ),
     ]
 

@@ -151,11 +151,16 @@ class TestCdgEndToEnd:
         converter = Converter(prefer_attrib_converters=True)
         settings = converter.structure(raw, Settings)
 
-        # 1. Palette has exactly 3 singers with the duet colors
+        # 1. Palette has exactly 3 singers with the duet colors. After the
+        #    color-flip, signature colors live on inactive_fill (pre-sung) so
+        #    performers can read ahead; active_fill is white (sweep highlight).
         assert len(settings.singers) == 3
-        assert settings.singers[0].active_fill == (112, 112, 247)   # Singer 1 blue
-        assert settings.singers[1].active_fill == (247, 112, 180)   # Singer 2 pink
-        assert settings.singers[2].active_fill == (252, 211, 77)    # Both yellow
+        assert settings.singers[0].inactive_fill == (154, 168, 255)   # Singer 1 sky-blue pre-sung
+        assert settings.singers[0].active_fill == (255, 255, 255)     # white highlight
+        assert settings.singers[1].inactive_fill == (247, 112, 180)   # Singer 2 pink pre-sung
+        assert settings.singers[1].active_fill == (255, 255, 255)
+        assert settings.singers[2].inactive_fill == (252, 211, 77)    # Both yellow pre-sung
+        assert settings.singers[2].active_fill == (255, 255, 255)
 
         # 2. Lyrics text contains per-line N|singer prefixes (composer splits
         #    on \n+ and reads the prefix to choose singer per line).

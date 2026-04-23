@@ -107,12 +107,17 @@ class TestDuetTomlSingersPalette:
         ]
         data = _generate_and_parse_toml(segments, is_duet=True, cdg_styles=styles)
         assert len(data["singers"]) == 3
-        # Singer 1: blue active (#7070F7)
-        assert data["singers"][0]["active_fill"].upper() == "#7070F7"
-        # Singer 2: pink active (#F770B4)
-        assert data["singers"][1]["active_fill"].upper() == "#F770B4"
-        # Both: yellow active (#FCD34D)
-        assert data["singers"][2]["active_fill"].upper() == "#FCD34D"
+        # Post color-flip: inactive = signature (pre-sung, readable ahead),
+        # active = white (sweep highlight). Matches the ASS/MP4 color model.
+        # Singer 1: sky-blue inactive (#9AA8FF), white active
+        assert data["singers"][0]["inactive_fill"].upper() == "#9AA8FF"
+        assert data["singers"][0]["active_fill"].upper() == "#FFFFFF"
+        # Singer 2: pink inactive (#F770B4), white active
+        assert data["singers"][1]["inactive_fill"].upper() == "#F770B4"
+        assert data["singers"][1]["active_fill"].upper() == "#FFFFFF"
+        # Both: yellow inactive (#FCD34D), white active
+        assert data["singers"][2]["inactive_fill"].upper() == "#FCD34D"
+        assert data["singers"][2]["active_fill"].upper() == "#FFFFFF"
 
     def test_solo_keeps_one_singer_entry(self, real_font_path):
         styles = _fixture_cdg_styles(real_font_path)
