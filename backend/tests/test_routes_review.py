@@ -809,8 +809,10 @@ class TestReviewCompleteDuetFlag:
         assert len(calls) == 1
         assert calls[0].args[2] is True
 
-    def test_complete_defaults_is_duet_false_when_absent(self, mock_job):
-        """When is_duet is absent, False should be stored."""
+    def test_complete_leaves_is_duet_untouched_when_absent(self, mock_job):
+        """Latch-up-only: when is_duet is absent from payload, don't write
+        anything — a prior submit_corrections may have set True and we must
+        not clobber it."""
         mock_job_manager = MagicMock()
         mock_storage = MagicMock()
 
@@ -818,6 +820,44 @@ class TestReviewCompleteDuetFlag:
             "corrections": {"corrected_segments": []},
             "instrumental_selection": "with_backing",
             # no is_duet field
+        }
+        result = self._call_complete_review(mock_job, payload, mock_job_manager, mock_storage)
+
+        assert result["status"] == "success"
+        calls = [c for c in mock_job_manager.update_state_data.call_args_list
+                 if c.args[1] == "is_duet"]
+        assert calls == [], "is_duet should not be written when payload omits the field"
+
+    def test_complete_latch_ignores_false_when_prior_true(self, mock_job):
+        """is_duet=False on complete is ignored when a prior submit_corrections
+        already persisted True. Prevents InstrumentalSelector's fallback
+        payload from silently downgrading duet jobs to solo."""
+        mock_job_manager = MagicMock()
+        mock_storage = MagicMock()
+        mock_job.state_data = {"is_duet": True}
+
+        payload = {
+            "corrections": {"corrected_segments": []},
+            "instrumental_selection": "with_backing",
+            "is_duet": False,
+        }
+        result = self._call_complete_review(mock_job, payload, mock_job_manager, mock_storage)
+
+        assert result["status"] == "success"
+        calls = [c for c in mock_job_manager.update_state_data.call_args_list
+                 if c.args[1] == "is_duet"]
+        assert calls == [], "is_duet=False must not overwrite a prior-True value"
+
+    def test_complete_writes_false_when_no_prior_true(self, mock_job):
+        """is_duet=False is honoured when no prior True has been latched."""
+        mock_job_manager = MagicMock()
+        mock_storage = MagicMock()
+        mock_job.state_data = {}
+
+        payload = {
+            "corrections": {"corrected_segments": []},
+            "instrumental_selection": "with_backing",
+            "is_duet": False,
         }
         result = self._call_complete_review(mock_job, payload, mock_job_manager, mock_storage)
 
