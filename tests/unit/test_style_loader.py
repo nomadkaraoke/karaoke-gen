@@ -651,8 +651,11 @@ class TestKaraokeSingersBlock:
 class TestResolveSingerColors:
     """Tests for resolve_singer_colors — per-singer color resolution."""
 
-    def test_resolve_singer1_uses_flat_colors_when_no_override(self):
-        from karaoke_gen.style_loader import resolve_singer_colors
+    def test_resolve_singer1_falls_back_to_default_palette_when_theme_has_no_override(self):
+        """Theme with empty singers block → fall back to DEFAULT_KARAOKE_STYLE's
+        built-in blue/pink/yellow palette so duets still look distinct even
+        when the theme doesn't declare per-singer colors."""
+        from karaoke_gen.style_loader import resolve_singer_colors, DEFAULT_KARAOKE_STYLE
         karaoke = {
             "primary_color": "1, 1, 1, 255",
             "secondary_color": "2, 2, 2, 255",
@@ -661,11 +664,15 @@ class TestResolveSingerColors:
             "singers": {},
         }
         colors = resolve_singer_colors(karaoke, 1)
-        assert colors["primary_color"] == "1, 1, 1, 255"
-        assert colors["outline_color"] == "3, 3, 3, 255"
+        default_singer1 = DEFAULT_KARAOKE_STYLE["singers"]["1"]
+        assert colors["primary_color"] == default_singer1["primary_color"]
+        assert colors["outline_color"] == default_singer1["outline_color"]
 
-    def test_resolve_singer2_overrides_only_specified_fields(self):
-        from karaoke_gen.style_loader import resolve_singer_colors
+    def test_resolve_singer2_theme_override_wins_over_defaults(self):
+        """Theme-supplied per-singer override takes precedence over the
+        built-in default palette; non-overridden fields fall back to the
+        default palette (not the flat theme colors)."""
+        from karaoke_gen.style_loader import resolve_singer_colors, DEFAULT_KARAOKE_STYLE
         karaoke = {
             "primary_color": "1, 1, 1, 255",
             "secondary_color": "2, 2, 2, 255",
@@ -674,10 +681,11 @@ class TestResolveSingerColors:
             "singers": {"2": {"primary_color": "9, 9, 9, 255"}},
         }
         colors = resolve_singer_colors(karaoke, 2)
+        default_singer2 = DEFAULT_KARAOKE_STYLE["singers"]["2"]
         assert colors["primary_color"] == "9, 9, 9, 255"
-        # Fields not overridden fall back to flat colors
-        assert colors["secondary_color"] == "2, 2, 2, 255"
-        assert colors["outline_color"] == "3, 3, 3, 255"
+        # Fields not overridden fall back to the default duet palette
+        assert colors["secondary_color"] == default_singer2["secondary_color"]
+        assert colors["outline_color"] == default_singer2["outline_color"]
 
     def test_resolve_both_uses_both_key_not_numeric(self):
         from karaoke_gen.style_loader import resolve_singer_colors
@@ -692,7 +700,9 @@ class TestResolveSingerColors:
         assert colors["primary_color"] == "7, 7, 7, 255"
 
     def test_resolve_handles_missing_singers_block(self):
-        from karaoke_gen.style_loader import resolve_singer_colors
+        """Theme with no "singers" key at all falls back to DEFAULT_KARAOKE_STYLE's
+        built-in palette for per-singer colors."""
+        from karaoke_gen.style_loader import resolve_singer_colors, DEFAULT_KARAOKE_STYLE
         karaoke = {
             "primary_color": "1, 1, 1, 255",
             "secondary_color": "2, 2, 2, 255",
@@ -701,8 +711,8 @@ class TestResolveSingerColors:
             # no "singers" key
         }
         colors = resolve_singer_colors(karaoke, 2)
-        # Should fall back to flat for every field
-        assert colors["primary_color"] == "1, 1, 1, 255"
+        # Primary color comes from the built-in Singer 2 default (pink signature)
+        assert colors["primary_color"] == DEFAULT_KARAOKE_STYLE["singers"]["2"]["primary_color"]
 
 
 class TestCdgDuetSingers:

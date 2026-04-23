@@ -164,20 +164,32 @@ _SINGER_COLOR_FIELDS = ("primary_color", "secondary_color", "outline_color", "ba
 def resolve_singer_colors(karaoke_style: Dict[str, Any], singer_id: int) -> Dict[str, str]:
     """Return the resolved color dict for a given SingerId.
 
-    Starts from the flat colors (primary_color, secondary_color, outline_color,
-    back_color) and overlays any fields specified under karaoke_style["singers"][key],
-    where key is "1", "2", or "both" depending on singer_id.
+    Resolution order (first match wins) per color field:
+      1. karaoke_style["singers"][key] from the theme JSON (author-specified
+         per-singer override).
+      2. DEFAULT_KARAOKE_STYLE["singers"][key] (built-in blue/pink/yellow
+         duet palette — used when the theme doesn't declare singer colors).
+      3. karaoke_style[field] (theme's flat color).
+
+    The default-palette fallback (step 2) means duets rendered with themes
+    that don't declare singer colors still get distinct blue/pink/yellow
+    singer identification instead of collapsing to a single color.
 
     singer_id must be 0 ("both"), 1, or 2.
     """
-    singers_block = karaoke_style.get("singers", {}) or {}
     key = _SINGER_KEY_MAP[singer_id]
-    override = singers_block.get(key, {}) or {}
+    theme_singers = karaoke_style.get("singers") or {}
+    theme_override = theme_singers.get(key) or {}
+    default_override = DEFAULT_KARAOKE_STYLE.get("singers", {}).get(key, {})
 
-    return {
-        field: override.get(field, karaoke_style.get(field))
-        for field in _SINGER_COLOR_FIELDS
-    }
+    def _pick(field: str):
+        if field in theme_override:
+            return theme_override[field]
+        if field in default_override:
+            return default_override[field]
+        return karaoke_style.get(field)
+
+    return {field: _pick(field) for field in _SINGER_COLOR_FIELDS}
 
 
 # =============================================================================

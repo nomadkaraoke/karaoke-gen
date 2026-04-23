@@ -93,9 +93,15 @@ class TestBuildKaraokeStyles:
     def test_singer2_picks_up_overridden_primary(self, karaoke_style_dict):
         styles = build_karaoke_styles(karaoke_style_dict, singers=[2])
         assert styles[0].Name == "Karaoke.Singer2"
+        # Theme override wins for primary
         assert styles[0].PrimaryColour == (247, 112, 180, 255)
-        # Non-overridden fields still come from flat theme
-        assert styles[0].SecondaryColour == (255, 255, 255, 255)
+        # Fields not overridden by the theme fall back to the built-in default
+        # duet palette (Singer 2 secondary = 247, 112, 180 — pink signature).
+        from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
+        expected = tuple(
+            int(x.strip()) for x in DEFAULT_KARAOKE_STYLE["singers"]["2"]["secondary_color"].split(",")
+        )
+        assert styles[0].SecondaryColour == expected
 
     def test_both_is_yellow(self, karaoke_style_dict):
         styles = build_karaoke_styles(karaoke_style_dict, singers=[0])

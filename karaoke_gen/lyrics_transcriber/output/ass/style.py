@@ -224,7 +224,13 @@ def build_karaoke_styles(karaoke_style: dict, singers, solo: bool = False) -> li
         s.Name = name
         s.Fontname = karaoke_style["font"]
         s.Fontpath = karaoke_style.get("font_path", "")
-        s.Fontsize = karaoke_style["font_size"]
+        # Fontsize is authoritative at the caller (SubtitlesGenerator overrides
+        # s.Fontsize per resolution / preview mode after this factory returns).
+        # Not every style JSON declares font_size at the karaoke-block level
+        # (e.g. the nomad theme relies on the CLI/video-resolution default), so
+        # fall back to the same default as DEFAULT_KARAOKE_STYLE rather than
+        # crashing — the value is overwritten before rendering anyway.
+        s.Fontsize = karaoke_style.get("font_size", 250)
         s.PrimaryColour = _parse_color(colors["primary_color"])
         s.SecondaryColour = _parse_color(colors["secondary_color"])
         s.OutlineColour = _parse_color(colors["outline_color"])
