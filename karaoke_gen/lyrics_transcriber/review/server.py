@@ -403,7 +403,7 @@ class ReviewServer:
         # same frontend build works against the local CLI ReviewServer too.
         self.app.add_api_route("/api/review/{job_id}/search-lyrics", self.search_lyrics, methods=["POST"])
         self.app.add_api_route("/api/review/{job_id}/add-lyrics", self.add_lyrics, methods=["POST"])
-        self.app.add_api_route("/api/review/{job_id}/handlers", self.update_handlers_cloud, methods=["PATCH"])
+        self.app.add_api_route("/api/review/{job_id}/handlers", self.update_handlers_cloud, methods=["POST"])
         self.app.add_api_route("/api/review/{job_id}/instrumental-analysis", self.get_instrumental_analysis, methods=["GET"])
         self.app.add_api_route("/api/review/{job_id}/waveform-data", self.get_waveform_data, methods=["GET"])
 

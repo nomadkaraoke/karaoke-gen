@@ -62,6 +62,24 @@ describe('segmentOperations — singer inheritance', () => {
     expect(mergedWords.find((w: any) => w.id === 'w1')?.singer).toBeUndefined()
   })
 
+  it('merge: promotes implicit-singer words when only the first segment has an explicit singer', () => {
+    // First segment explicit singer=2, second segment has no singer (implicitly 1)
+    // with implicit-singer words. Without resolving segment singers, w2 would
+    // silently flip from singer 1 → singer 2 after merge. With the fix, w2
+    // is explicitly pinned to singer 1 on merge so its hue survives.
+    const data = baseData([
+      { id: 's1', text: 'hello', start_time: 0, end_time: 1,
+        words: [{ id: 'w1', text: 'hello', start_time: 0, end_time: 1 }], singer: 2 },
+      { id: 's2', text: 'world', start_time: 1, end_time: 2,
+        words: [{ id: 'w2', text: 'world', start_time: 1, end_time: 2 }] /* no singer set */ },
+    ])
+    const result = mergeSegment(data, 0, true)
+    expect(result.corrected_segments[0].singer).toBe(2)
+    const mergedWords = result.corrected_segments[0].words
+    expect(mergedWords.find((w: any) => w.id === 'w1')?.singer).toBeUndefined()
+    expect(mergedWords.find((w: any) => w.id === 'w2')?.singer).toBe(1)
+  })
+
   it('addSegmentBefore: inherits next segment singer', () => {
     const data = baseData([
       { id: 's1', text: 'hello', start_time: 1, end_time: 2, words: [], singer: 2 },

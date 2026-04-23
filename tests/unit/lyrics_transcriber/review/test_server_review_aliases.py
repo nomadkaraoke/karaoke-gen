@@ -101,6 +101,22 @@ def client(fake_frontend, audio_files, monkeypatch):
     return TestClient(server.app)
 
 
+class TestReviewHandlersAlias:
+    """`/api/review/{job_id}/handlers` must accept POST (matching the cloud
+    backend and the frontend client)."""
+
+    def test_handlers_post_is_routed(self, client):
+        r = client.post("/api/review/local/handlers", json=[])
+        # The route must match — 200/500 is fine, 405 means the method is
+        # wrong (which is the regression we're guarding against).
+        assert r.status_code != 405, r.text
+
+    def test_handlers_patch_returns_405(self, client):
+        """Cloud frontend never sends PATCH — explicit guard against drift."""
+        r = client.patch("/api/review/local/handlers", json=[])
+        assert r.status_code == 405
+
+
 class TestReviewAudioStemAlias:
     """`/api/review/{job_id}/audio/{stem_or_hash}` must serve both stems and
     the original audio-by-hash without the frontend needing to know which."""

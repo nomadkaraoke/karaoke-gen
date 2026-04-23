@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid'
 import { CorrectionData, LyricsSegment } from '../types'
+import { resolveSegmentSinger } from '../duet'
 
 export const addSegmentBefore = (data: CorrectionData, beforeIndex: number): CorrectionData => {
   const newData = { ...data }
@@ -141,12 +142,18 @@ export function mergeSegment(
   const secondSegment = mergeWithNext ? targetSegment : baseSegment
 
   // Promote implicit word singers from the second segment into explicit overrides.
-  // Words in secondSegment that have no word-level singer inherit secondSegment.singer implicitly.
-  // After merge, the merged segment's singer = firstSegment.singer, so those words must get
-  // an explicit singer to avoid being silently reassigned.
+  // Words in secondSegment with no word-level singer inherit secondSegment's
+  // RESOLVED singer (explicit value or the default of 1). After merge, the
+  // merged segment takes firstSegment's resolved singer, so any second-segment
+  // words whose resolved singer differs must be explicitly pinned to preserve
+  // their singer assignment. Using `resolveSegmentSinger` covers the case
+  // where secondSegment.singer is undefined (implicitly 1) while firstSegment
+  // is explicitly 2 — without this, w2 would silently flip to singer 2 on merge.
+  const firstResolved = resolveSegmentSinger(firstSegment)
+  const secondResolved = resolveSegmentSinger(secondSegment)
   const promoteSecondWords = secondSegment.words.map((word) => {
-    if (word.singer === undefined && secondSegment.singer !== undefined) {
-      return { ...word, singer: secondSegment.singer }
+    if (word.singer === undefined && firstResolved !== secondResolved) {
+      return { ...word, singer: secondResolved }
     }
     return word
   })
