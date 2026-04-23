@@ -107,10 +107,12 @@ DEFAULT_KARAOKE_STYLE = {
     "singers": {
         # Singer 1 inherits the flat colors above — explicit empty dict for clarity
         "1": {},
-        # Singer 2: pink
+        # Singer 2: pink (highlighted) with muted rose pre-highlight. Plain white
+        # read as nearly white next to vivid pink because pink is close to white
+        # in luminance; the dusky rose gives a visible saturation pop on the sweep.
         "2": {
             "primary_color":   "247, 112, 180, 255",
-            "secondary_color": "255, 255, 255, 255",
+            "secondary_color": "200, 110, 160, 255",
             "outline_color":   "158, 26, 96, 255",
             "back_color":      "0, 0, 0, 0",
         },
