@@ -109,6 +109,10 @@ class ReviewServer:
         self.with_backing_path = with_backing_path
         self.backing_vocals_path = backing_vocals_path
         self.instrumental_selection: Optional[str] = None
+        # Duet mode flag — set from the is_duet field in submit_corrections
+        # / complete_review request bodies. Exposed after start() returns so the
+        # CLI caller can propagate it to the final-render OutputConfig.
+        self.is_duet: bool = False
 
         # Create FastAPI instance and configure
         self.app = FastAPI()
@@ -949,6 +953,16 @@ class ReviewServer:
         The corrections are saved but the review is not marked as complete yet.
         """
         try:
+            # Capture the duet flag if the frontend included one. We track this
+            # separately from pending_corrections so the CLI can read it after
+            # start() returns (the final-render OutputConfig needs is_duet to
+            # produce per-singer styles — the preview path plumbs it via
+            # updated_data, but the CLI's post-review render path doesn't).
+            is_duet_raw = request_body.get("is_duet")
+            if isinstance(is_duet_raw, bool):
+                self.is_duet = is_duet_raw
+                self.logger.info(f"Duet mode: {self.is_duet}")
+
             # Extract the corrections data from the wrapper
             corrections_data = request_body.get("corrections", request_body)
 
@@ -972,6 +986,13 @@ class ReviewServer:
             if instrumental_selection:
                 self.instrumental_selection = instrumental_selection
                 self.logger.info(f"Instrumental selection: {instrumental_selection}")
+
+            # Capture duet flag if the frontend supplied one on the final submit —
+            # preserves a prior value from submit_corrections if this payload omits it.
+            is_duet_raw = updated_data.pop("is_duet", None)
+            if isinstance(is_duet_raw, bool):
+                self.is_duet = is_duet_raw
+                self.logger.info(f"Duet mode (from complete): {self.is_duet}")
 
             # Apply pending corrections if they were saved earlier
             if self.pending_corrections:

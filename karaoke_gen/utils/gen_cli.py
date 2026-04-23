@@ -175,16 +175,17 @@ def run_combined_review(
         logger: Logger instance
 
     Returns:
-        Tuple of (instrumental_selection, reviewed_correction_result)
+        Tuple of (instrumental_selection, reviewed_correction_result, is_duet)
         - instrumental_selection: "clean", "with_backing", etc. or None if not selected
         - reviewed_correction_result: Updated CorrectionResult after review, or None if failed
+        - is_duet: True if the user toggled duet mode during review, False otherwise
     """
     import json as json_module
 
     # Load existing correction result from JSON
     if not corrections_json_path or not os.path.exists(corrections_json_path):
         logger.warning(f"Corrections JSON not found: {corrections_json_path}")
-        return None, None
+        return None, None, False
 
     try:
         with open(corrections_json_path, "r", encoding="utf-8") as f:
@@ -193,7 +194,7 @@ def run_combined_review(
         logger.info(f"Loaded correction result from {corrections_json_path}")
     except Exception as e:
         logger.error(f"Failed to load corrections JSON: {e}")
-        return None, None
+        return None, None, False
 
     # Get separation results
     separated = track.get("separated_audio", {})
@@ -319,6 +320,11 @@ def run_combined_review(
         if instrumental_selection:
             logger.info(f"User selected instrumental: {instrumental_selection}")
 
+        # Duet flag — drives per-singer styles in the post-review final render
+        is_duet = bool(getattr(review_server, "is_duet", False))
+        if is_duet:
+            logger.info("Duet mode enabled — final render will use per-singer styles")
+
         # Save reviewed result back to JSON
         try:
             with open(corrections_json_path, "w", encoding="utf-8") as f:
@@ -327,14 +333,14 @@ def run_combined_review(
         except Exception as e:
             logger.warning(f"Failed to save reviewed corrections: {e}")
 
-        return instrumental_selection, reviewed_result
+        return instrumental_selection, reviewed_result, is_duet
 
     except KeyboardInterrupt:
         logger.info("Combined review cancelled by user")
-        return None, None
+        return None, None, False
     except Exception as e:
         logger.error(f"Error during interactive review: {e}")
-        return None, None
+        return None, None, False
 
 
 
@@ -945,7 +951,7 @@ async def async_main():
             audio_filepath = track.get("input_audio_wav", "")
 
             logger.info("Running interactive review (lyrics → instrumental)...")
-            instrumental_selection, reviewed_result = run_combined_review(
+            instrumental_selection, reviewed_result, is_duet = run_combined_review(
                 track=track,
                 track_dir=track_dir,
                 corrections_json_path=corrections_json_path,
@@ -1009,6 +1015,7 @@ async def async_main():
                     generate_plain_text=False,
                     generate_lrc=False,
                     video_resolution="4k",
+                    is_duet=is_duet,
                 )
 
                 output_generator = OutputGenerator(output_config, logger)

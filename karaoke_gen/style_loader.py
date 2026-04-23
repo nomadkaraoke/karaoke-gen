@@ -107,12 +107,12 @@ DEFAULT_KARAOKE_STYLE = {
     "singers": {
         # Singer 1 inherits the flat colors above — explicit empty dict for clarity
         "1": {},
-        # Singer 2: pink (highlighted) with muted rose pre-highlight. Plain white
-        # read as nearly white next to vivid pink because pink is close to white
-        # in luminance; the dusky rose gives a visible saturation pop on the sweep.
+        # Singer 2: pink (highlighted) with a notably darker dusky rose pre-highlight.
+        # Pink is close to white in luminance so we need substantial darkening
+        # (~60%) on the secondary to get a clearly-visible karaoke sweep.
         "2": {
             "primary_color":   "247, 112, 180, 255",
-            "secondary_color": "200, 110, 160, 255",
+            "secondary_color": "155, 75, 130, 255",
             "outline_color":   "158, 26, 96, 255",
             "back_color":      "0, 0, 0, 0",
         },
