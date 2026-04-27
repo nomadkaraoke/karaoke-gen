@@ -294,7 +294,7 @@ print('primary:', doc.to_dict().get('primary'))
    - `Cold-started VM <name> is now ready`
    - Job proceeds to encoding without retry exhaustion.
 
-5. If the readiness wait times out (~5 min: 120s waiting for VM RUNNING, then 180s waiting for /health), the log will show `Cold-start readiness wait timed out: ...`. The retry loop then continues with attempts 1-7 (~85s of backoff), so the worst-case end-to-end before the job fails is ~6.5 minutes. Investigate VM boot:
+5. If the readiness wait times out (~5 min: 120s waiting for VM RUNNING, then 180s waiting for /health), the log will show `Cold-start readiness wait timed out: ...`. The retry loop then continues with attempts 1-7 (~90s of backoff: 5+10+15+15+15+15+15), so the worst-case end-to-end before the job fails is ~6.5 minutes. Investigate VM boot:
    ```bash
    gcloud compute instances get-serial-port-output <vm-name> --zone=us-central1-c --project=nomadkaraoke | tail -100
    gcloud compute ssh <vm-name> --zone=us-central1-c --project=nomadkaraoke --command="sudo systemctl status encoding-worker"
