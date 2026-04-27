@@ -13,7 +13,7 @@ import pytest
 import sys
 import types
 from unittest.mock import MagicMock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from backend.services.referral_service import (
     ReferralService,
@@ -416,6 +416,96 @@ class TestRecordEarning:
             referred_email="user@example.com",
             stripe_session_id="cs_test_789",
             purchase_amount_cents=1750,
+        )
+        assert result is None
+
+    def test_creates_earning_with_tz_aware_referred_at(self, service, mock_db):
+        """Regression: Firestore returns TZ-aware datetimes — earning window
+        comparison must not raise TypeError when referred_at has tzinfo set."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            "email": "referred@example.com",
+            "referred_by_code": "abc12345",
+            # TZ-aware datetime — exactly what Firestore returns in production
+            "referred_at": datetime.now(timezone.utc) - timedelta(days=1),
+        }
+
+        mock_link_doc = MagicMock()
+        mock_link_doc.exists = True
+        mock_link_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "kickback_percent": 20,
+            "earning_duration_days": 365,
+            "discount_percent": 10,
+            "discount_duration_days": 30,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        }
+
+        def collection_side_effect(name):
+            mock_col = MagicMock()
+            if name == "gen_users":
+                mock_col.document.return_value.get.return_value = mock_user_doc
+            elif name == REFERRAL_LINKS_COLLECTION:
+                mock_col.document.return_value.get.return_value = mock_link_doc
+            return mock_col
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        result = service.record_earning(
+            referred_email="referred@example.com",
+            stripe_session_id="cs_test_tz",
+            purchase_amount_cents=2800,
+        )
+        assert result is not None
+        assert result["earning_amount_cents"] == 560  # 20% of 2800
+
+    def test_no_earning_outside_window_with_tz_aware_referred_at(self, service, mock_db):
+        """Regression: TZ-aware referred_at past the earning window must
+        cleanly return None instead of raising TypeError."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            "email": "referred@example.com",
+            "referred_by_code": "abc12345",
+            "referred_at": datetime.now(timezone.utc) - timedelta(days=400),
+        }
+
+        mock_link_doc = MagicMock()
+        mock_link_doc.exists = True
+        mock_link_doc.to_dict.return_value = {
+            "code": "abc12345",
+            "owner_email": "referrer@example.com",
+            "kickback_percent": 20,
+            "earning_duration_days": 365,
+            "discount_percent": 10,
+            "discount_duration_days": 30,
+            "is_vanity": False,
+            "enabled": True,
+            "stats": {"clicks": 0, "signups": 0, "purchases": 0, "total_earned_cents": 0},
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        }
+
+        def collection_side_effect(name):
+            mock_col = MagicMock()
+            if name == "gen_users":
+                mock_col.document.return_value.get.return_value = mock_user_doc
+            elif name == REFERRAL_LINKS_COLLECTION:
+                mock_col.document.return_value.get.return_value = mock_link_doc
+            return mock_col
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        result = service.record_earning(
+            referred_email="referred@example.com",
+            stripe_session_id="cs_test_tz_expired",
+            purchase_amount_cents=2800,
         )
         assert result is None
 

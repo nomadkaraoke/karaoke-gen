@@ -131,7 +131,9 @@ When two sequential human review steps can be combined into one, do it. We origi
 ## Common Gotchas
 
 ### Firestore Timezone-Aware vs Naive Datetime Comparison (Apr 2026)
-**What happened**: `_build_user_public()` compared `referral_discount_expires_at` (from Firestore, timezone-aware) with `datetime.utcnow()` (naive), causing `TypeError: can't compare offset-naive and offset-aware datetimes`. This crashed the `verify_magic_link` endpoint, **blocking ALL logins for referred users** in production.
+**What happened**: First instance — `_build_user_public()` compared `referral_discount_expires_at` (from Firestore, timezone-aware) with `datetime.utcnow()` (naive), causing `TypeError: can't compare offset-naive and offset-aware datetimes`. This crashed the `verify_magic_link` endpoint, **blocking ALL logins for referred users** in production.
+
+Second instance — `record_earning()` in `referral_service.py` had the identical bug comparing `earning_expires` (derived from TZ-aware `referred_at`) against naive `datetime.utcnow()`. The exception was swallowed by a broad `except` in the Stripe webhook handler and only logged as a warning, so **every referral earning was silently lost** for ~3 weeks. `referral_earnings` collection was empty in production despite real referred-user purchases.
 
 **Fix**: Check `expires.tzinfo` and apply it to `now` before comparing:
 ```python
@@ -142,6 +144,8 @@ has_discount = expires > now
 ```
 
 **Pattern**: Always handle timezone-awareness when comparing Firestore datetimes with Python datetimes. Firestore returns `DatetimeWithNanoseconds` (timezone-aware). The codebase uses `datetime.utcnow()` (naive) everywhere. Any comparison between the two will crash.
+
+**Test discipline**: Existing unit tests for `record_earning` mocked `referred_at` with naive `datetime.utcnow()`, so the bug was invisible to tests. When mocking Firestore-returned datetimes in tests, **always use TZ-aware values** (`datetime.now(timezone.utc)`) to match production reality. Broad `except Exception` blocks in webhook handlers must surface as ERROR-level logs (or alerts), not silent warnings.
 
 ### Firestore Composite Indexes Must Be Created for Multi-Field Queries (Apr 2026)
 **What happened**: `get_dashboard_data()` queried `referral_earnings` with `.where("referrer_email", "==", ...).order_by("created_at", ...)` which requires a composite index. Without it, Firestore returns `FailedPrecondition: 400 The query requires an index`. This manifested as a 500 error on `/api/referrals/me` with CORS headers suppressed (frontend saw CORS error, not the real error).

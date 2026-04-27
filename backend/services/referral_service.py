@@ -295,9 +295,13 @@ class ReferralService:
         if not link:
             return None
 
-        # Check earning window
+        # Check earning window. Firestore returns timezone-aware datetimes;
+        # datetime.utcnow() is naive — comparing the two raises TypeError.
         earning_expires = referred_at + timedelta(days=link.earning_duration_days)
-        if datetime.utcnow() > earning_expires:
+        now = datetime.utcnow()
+        if earning_expires.tzinfo is not None:
+            now = now.replace(tzinfo=earning_expires.tzinfo)
+        if now > earning_expires:
             return None
 
         # Calculate earning
