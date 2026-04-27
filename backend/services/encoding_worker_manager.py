@@ -25,10 +25,13 @@ Usage:
     result = manager.ensure_primary_running()
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, UTC
 from typing import Optional
+
+import aiohttp
 
 from google.cloud import firestore
 
@@ -235,5 +238,87 @@ class EncodingWorkerManager:
             "vm_name": vm_name,
             "primary_url": config.primary_url,
         }
+
+    # ------------------------------------------------------------------
+    # Task 3: cold-start readiness gate
+    # ------------------------------------------------------------------
+
+    async def wait_for_worker_ready(
+        self,
+        vm_name: str,
+        health_url: str,
+        *,
+        vm_timeout: float = 120.0,
+        health_timeout: float = 180.0,
+        poll_interval: float = 5.0,
+    ) -> None:
+        """Block until the VM is RUNNING and the worker /health endpoint returns 200.
+
+        Two-phase wait, used after ensure_primary_running() reports started=True
+        (i.e., the VM was actually TERMINATED and is cold-booting):
+
+          Phase 1 — poll get_vm_status until RUNNING (max vm_timeout seconds)
+          Phase 2 — poll GET health_url until 200 (max health_timeout seconds)
+
+        Connection errors and non-200 responses during phase 2 are treated as
+        "not ready, keep polling". A TimeoutError is raised if either phase
+        exceeds its budget.
+
+        Args:
+            vm_name: Name of the GCE VM to poll.
+            health_url: Full URL of the worker /health endpoint
+                (e.g. "http://10.0.0.1:8080/health").
+            vm_timeout: Max seconds to wait for VM RUNNING.
+            health_timeout: Max seconds to wait for /health 200.
+            poll_interval: Seconds between polls in either phase.
+
+        Raises:
+            TimeoutError: If VM never reaches RUNNING, or /health never returns 200.
+        """
+        # Phase 1: VM status
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + vm_timeout
+        last_status = None
+        last_log = 0.0
+        while loop.time() < deadline:
+            last_status = self.get_vm_status(vm_name)
+            if last_status == "RUNNING":
+                logger.info("VM %s reached RUNNING", vm_name)
+                break
+            now = loop.time()
+            if now - last_log >= 30.0:
+                logger.info("Waiting for VM %s (status=%s)", vm_name, last_status)
+                last_log = now
+            await asyncio.sleep(poll_interval)
+        else:
+            raise TimeoutError(
+                f"VM {vm_name} did not reach RUNNING within {vm_timeout}s "
+                f"(last status: {last_status})"
+            )
+
+        # Phase 2: worker /health
+        deadline = loop.time() + health_timeout
+        last_log = 0.0
+        last_detail = "no response"
+        async with aiohttp.ClientSession() as session:
+            while loop.time() < deadline:
+                try:
+                    async with session.get(health_url, timeout=5.0) as resp:
+                        if resp.status == 200:
+                            logger.info("Worker at %s is healthy", health_url)
+                            return
+                        last_detail = f"HTTP {resp.status}"
+                except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
+                    last_detail = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+                now = loop.time()
+                if now - last_log >= 30.0:
+                    logger.info("Waiting for worker /health at %s (last: %s)", health_url, last_detail)
+                    last_log = now
+                await asyncio.sleep(poll_interval)
+
+        raise TimeoutError(
+            f"Worker at {health_url} did not become healthy within {health_timeout}s "
+            f"(last: {last_detail})"
+        )
 
 

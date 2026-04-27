@@ -7,8 +7,9 @@ Tests cover:
 """
 
 import pytest
+import aiohttp
 from datetime import datetime, UTC
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch, call, AsyncMock
 
 from backend.services.encoding_worker_manager import (
     EncodingWorkerConfig,
@@ -328,3 +329,150 @@ class TestVMLifecycle:
 
         manager.stop_vm("encoding-worker-blue")
         mock_compute.stop.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Task 3: wait_for_worker_ready (cold-start readiness gate)
+# ---------------------------------------------------------------------------
+
+
+class TestWaitForWorkerReady:
+    """Tests for the wait_for_worker_ready() readiness gate."""
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _mk_health_session(get_callable):
+        """Build a mock ClientSession whose .get(url, ...) returns an async-CM Resp."""
+        mock_session = MagicMock()
+        mock_session.get = get_callable
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        return mock_session
+
+    @staticmethod
+    def _mk_resp_cm(status):
+        """Return a callable that, when invoked with a URL, returns an async-CM Resp."""
+        class _Resp:
+            def __init__(self, s):
+                self.status = s
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): return None
+        def _get(url, **kwargs):
+            return _Resp(status)
+        return _get
+
+    # ------------------------------------------------------------------
+    # Tests
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_returns_immediately_when_vm_running_and_healthy(self, manager, mock_compute):
+        """Happy path: VM already RUNNING, /health returns 200 on first poll."""
+        mock_instance = MagicMock()
+        mock_instance.status = "RUNNING"
+        mock_compute.get.return_value = mock_instance
+
+        mock_session = self._mk_health_session(self._mk_resp_cm(200))
+
+        with patch("backend.services.encoding_worker_manager.aiohttp.ClientSession", return_value=mock_session):
+            await manager.wait_for_worker_ready(
+                "encoding-worker-blue",
+                "http://10.0.0.1:8080/health",
+                vm_timeout=2.0,
+                health_timeout=2.0,
+                poll_interval=0.05,
+            )
+
+        # Single VM status check, single health check
+        assert mock_compute.get.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_polls_vm_until_running(self, manager, mock_compute):
+        """Polls VM status through STAGING → RUNNING."""
+        statuses = ["STAGING", "STAGING", "RUNNING"]
+        instances = [MagicMock(status=s) for s in statuses]
+        mock_compute.get.side_effect = instances
+
+        mock_session = self._mk_health_session(self._mk_resp_cm(200))
+
+        with patch("backend.services.encoding_worker_manager.aiohttp.ClientSession", return_value=mock_session):
+            await manager.wait_for_worker_ready(
+                "encoding-worker-blue",
+                "http://10.0.0.1:8080/health",
+                vm_timeout=2.0,
+                health_timeout=2.0,
+                poll_interval=0.05,
+            )
+
+        assert mock_compute.get.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_times_out_when_vm_never_runs(self, manager, mock_compute):
+        """Raises TimeoutError if VM stays in STAGING past vm_timeout."""
+        mock_instance = MagicMock()
+        mock_instance.status = "STAGING"
+        mock_compute.get.return_value = mock_instance
+
+        with pytest.raises(TimeoutError, match="did not reach RUNNING"):
+            await manager.wait_for_worker_ready(
+                "encoding-worker-blue",
+                "http://10.0.0.1:8080/health",
+                vm_timeout=0.2,
+                health_timeout=2.0,
+                poll_interval=0.05,
+            )
+
+    @pytest.mark.asyncio
+    async def test_times_out_when_health_never_200(self, manager, mock_compute):
+        """Raises TimeoutError if /health never returns 200 past health_timeout."""
+        mock_instance = MagicMock()
+        mock_instance.status = "RUNNING"
+        mock_compute.get.return_value = mock_instance
+
+        mock_session = self._mk_health_session(self._mk_resp_cm(503))
+
+        with patch("backend.services.encoding_worker_manager.aiohttp.ClientSession", return_value=mock_session):
+            with pytest.raises(TimeoutError, match="did not become healthy"):
+                await manager.wait_for_worker_ready(
+                    "encoding-worker-blue",
+                    "http://10.0.0.1:8080/health",
+                    vm_timeout=2.0,
+                    health_timeout=0.2,
+                    poll_interval=0.05,
+                )
+
+    @pytest.mark.asyncio
+    async def test_tolerates_health_connection_errors(self, manager, mock_compute):
+        """Connection errors during /health polling are treated as 'not ready', keep polling."""
+        mock_instance = MagicMock()
+        mock_instance.status = "RUNNING"
+        mock_compute.get.return_value = mock_instance
+
+        call_count = {"n": 0}
+
+        class _OkResp:
+            status = 200
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): return None
+
+        def flaky_get(url, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] < 3:
+                raise aiohttp.ClientConnectorError(MagicMock(), OSError("connection refused"))
+            return _OkResp()
+
+        mock_session = self._mk_health_session(flaky_get)
+
+        with patch("backend.services.encoding_worker_manager.aiohttp.ClientSession", return_value=mock_session):
+            await manager.wait_for_worker_ready(
+                "encoding-worker-blue",
+                "http://10.0.0.1:8080/health",
+                vm_timeout=2.0,
+                health_timeout=2.0,
+                poll_interval=0.05,
+            )
+
+        assert call_count["n"] == 3
