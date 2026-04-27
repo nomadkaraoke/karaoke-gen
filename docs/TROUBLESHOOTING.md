@@ -255,6 +255,53 @@ print('primary:', doc.to_dict().get('primary'))
 
 ---
 
+## Verifying GCE encoding worker cold-start fix
+
+**Background:** The encoding worker VM auto-stops when idle to save cost. When a render request hits a TERMINATED VM, the backend awaits a readiness gate (`EncodingWorkerManager.wait_for_worker_ready`) instead of relying on the deploy-restart-sized 90s retry window. This was added in v0.172.3 to fix the 2026-04-24 incident (job 2c577535) where a cold VM exceeded the retry budget.
+
+**To verify in production after a deploy:**
+
+1. Get the primary VM name from Firestore config:
+   ```bash
+   python3 -c "
+   import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+   from google.cloud import firestore
+   db = firestore.Client(project='nomadkaraoke')
+   print(db.collection('config').document('encoding-worker').get().to_dict()['primary_vm'])
+   "
+   ```
+
+2. Stop it:
+   ```bash
+   gcloud compute instances stop <vm-name> --zone=us-central1-c --project=nomadkaraoke
+   ```
+
+3. Submit a test render through the dashboard, or trigger one with a known review-complete job.
+
+4. Watch the backend logs for the readiness-wait sequence:
+   ```bash
+   gcloud logging read 'resource.labels.service_name="karaoke-backend" AND textPayload=~"Waiting for VM|Worker at .* is healthy|Cold-started VM"' \
+     --project=nomadkaraoke --freshness=10m --order=asc \
+     --format='value(timestamp,textPayload)'
+   ```
+
+   Expected sequence:
+   - `Encoding worker unreachable — started VM <name> as fallback`
+   - `Waiting for VM <name> (status=STAGING)` (every 30s during VM boot)
+   - `VM <name> reached RUNNING`
+   - `Waiting for worker /health at ...` (every 30s during service init)
+   - `Worker at .../health is healthy`
+   - `Cold-started VM <name> is now ready`
+   - Job proceeds to encoding without retry exhaustion.
+
+5. If the readiness wait times out (~5 min: 120s waiting for VM RUNNING, then 180s waiting for /health), the log will show `Cold-start readiness wait timed out: ...`. The retry loop then continues with attempts 1-7 (~85s of backoff), so the worst-case end-to-end before the job fails is ~6.5 minutes. Investigate VM boot:
+   ```bash
+   gcloud compute instances get-serial-port-output <vm-name> --zone=us-central1-c --project=nomadkaraoke | tail -100
+   gcloud compute ssh <vm-name> --zone=us-central1-c --project=nomadkaraoke --command="sudo systemctl status encoding-worker"
+   ```
+
+---
+
 ## Surgical job repair: re-run audio separation without losing lyrics/review
 
 **When to use:** Jobs where audio separation failed or produced incomplete stems, but the user has already completed lyrics review. The admin `/restart` endpoint clears ALL state including lyrics — use direct Firestore updates instead.
