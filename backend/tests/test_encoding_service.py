@@ -401,3 +401,28 @@ class TestDynamicURLResolution:
 
         url = service._get_worker_url()
         assert url == "http://static:8080"
+
+
+class TestFormatException:
+    """Tests for the _format_exception helper used in retry logs."""
+
+    def test_renders_message_when_present(self):
+        from backend.services.encoding_service import _format_exception
+        e = RuntimeError("something broke")
+        assert _format_exception(e) == "RuntimeError: something broke"
+
+    def test_renders_type_only_when_message_empty(self):
+        """aiohttp.ClientConnectorError often has empty str(e) — show type."""
+        from backend.services.encoding_service import _format_exception
+
+        class _SilentError(Exception):
+            def __str__(self):
+                return ""
+
+        assert _format_exception(_SilentError()) == "_SilentError"
+
+    def test_handles_real_aiohttp_connector_error(self):
+        from backend.services.encoding_service import _format_exception
+        e = aiohttp.ClientConnectorError(MagicMock(), OSError())
+        # Type name should always appear
+        assert "ClientConnectorError" in _format_exception(e)

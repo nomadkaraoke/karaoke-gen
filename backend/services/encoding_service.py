@@ -45,6 +45,18 @@ MAX_BACKOFF_SECONDS = 15.0
 MAX_CONSECUTIVE_POLL_FAILURES = 5
 
 
+def _format_exception(e: BaseException) -> str:
+    """Render an exception with type info.
+
+    Some aiohttp connection errors have empty str(e), which made the original
+    "GCE worker connection failed after 8 attempts: " log line useless during
+    the 2026-04-24 cold-start incident (job 2c577535). Always include the
+    type name so operators can tell what failure class hit them.
+    """
+    msg = str(e)
+    return f"{type(e).__name__}: {msg}" if msg else type(e).__name__
+
+
 class EncodingService:
     """Service for dispatching encoding jobs to GCE worker."""
 
@@ -202,14 +214,16 @@ class EncodingService:
                     self._warmup_encoding_worker_fallback(job_id)
                 if attempt < MAX_RETRIES:
                     logger.warning(
-                        f"[job:{job_id}] GCE worker connection failed (attempt {attempt + 1}/{MAX_RETRIES + 1}): {e}. "
+                        f"[job:{job_id}] GCE worker connection failed "
+                        f"(attempt {attempt + 1}/{MAX_RETRIES + 1}): {_format_exception(e)}. "
                         f"Retrying in {backoff:.1f}s..."
                     )
                     await asyncio.sleep(backoff)
                     backoff = min(backoff * 2, MAX_BACKOFF_SECONDS)
                 else:
                     logger.error(
-                        f"[job:{job_id}] GCE worker connection failed after {MAX_RETRIES + 1} attempts: {e}"
+                        f"[job:{job_id}] GCE worker connection failed "
+                        f"after {MAX_RETRIES + 1} attempts: {_format_exception(e)}"
                     )
 
         raise last_exception
