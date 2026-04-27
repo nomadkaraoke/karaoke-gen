@@ -242,32 +242,96 @@ class TestRequestWithRetry:
 class TestWarmupFallback:
     """Tests for _warmup_encoding_worker_fallback() in the retry loop."""
 
-    def test_warmup_fallback_called_on_first_connection_failure(self, encoding_service):
+    @pytest.mark.asyncio
+    async def test_warmup_fallback_called_on_first_connection_failure(self, encoding_service):
         """Warmup fallback is called when the first connection attempt fails."""
         mock_manager = MagicMock()
         mock_manager.ensure_primary_running.return_value = {
-            "started": True, "vm_name": "encoding-worker-b", "primary_url": "http://1.2.3.4:8080"
+            "started": False, "vm_name": "encoding-worker-b", "primary_url": "http://1.2.3.4:8080"
         }
         encoding_service._worker_manager = mock_manager
 
-        encoding_service._warmup_encoding_worker_fallback("test-job")
+        await encoding_service._warmup_encoding_worker_fallback("test-job")
 
         mock_manager.ensure_primary_running.assert_called_once()
 
-    def test_warmup_fallback_noop_without_worker_manager(self, encoding_service):
+    @pytest.mark.asyncio
+    async def test_warmup_fallback_noop_without_worker_manager(self, encoding_service):
         """Warmup fallback is a no-op when worker_manager is not set (dev mode)."""
         encoding_service._worker_manager = None
         # Should not raise
-        encoding_service._warmup_encoding_worker_fallback("test-job")
+        await encoding_service._warmup_encoding_worker_fallback("test-job")
 
-    def test_warmup_fallback_swallows_exceptions(self, encoding_service):
+    @pytest.mark.asyncio
+    async def test_warmup_fallback_swallows_exceptions(self, encoding_service):
         """Warmup fallback never raises — failures are logged but non-fatal."""
         mock_manager = MagicMock()
         mock_manager.ensure_primary_running.side_effect = Exception("Compute API down")
         encoding_service._worker_manager = mock_manager
 
         # Should not raise
-        encoding_service._warmup_encoding_worker_fallback("test-job")
+        await encoding_service._warmup_encoding_worker_fallback("test-job")
+
+    @pytest.mark.asyncio
+    async def test_warmup_skips_readiness_wait_when_vm_already_running(self, encoding_service):
+        """When started=False (deploy restart), DO NOT await readiness — fall back to fast retry."""
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.return_value = {
+            "started": False, "vm_name": "encoding-worker-b", "primary_url": "http://1.2.3.4:8080"
+        }
+        mock_manager.wait_for_worker_ready = AsyncMock()
+        encoding_service._worker_manager = mock_manager
+
+        await encoding_service._warmup_encoding_worker_fallback("test-job")
+
+        mock_manager.wait_for_worker_ready.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_warmup_awaits_readiness_when_cold_started(self, encoding_service):
+        """When started=True (VM was TERMINATED), AWAIT wait_for_worker_ready."""
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.return_value = {
+            "started": True, "vm_name": "encoding-worker-a", "primary_url": "http://1.2.3.4:8080"
+        }
+        mock_manager.wait_for_worker_ready = AsyncMock()
+        encoding_service._worker_manager = mock_manager
+
+        await encoding_service._warmup_encoding_worker_fallback("test-job")
+
+        mock_manager.wait_for_worker_ready.assert_awaited_once_with(
+            "encoding-worker-a",
+            "http://1.2.3.4:8080/health",
+        )
+
+    @pytest.mark.asyncio
+    async def test_warmup_swallows_readiness_timeout(self, encoding_service):
+        """If wait_for_worker_ready times out, log and return — main retry loop will surface it."""
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.return_value = {
+            "started": True, "vm_name": "encoding-worker-a", "primary_url": "http://1.2.3.4:8080"
+        }
+        mock_manager.wait_for_worker_ready = AsyncMock(side_effect=TimeoutError("VM stuck in STAGING"))
+        encoding_service._worker_manager = mock_manager
+
+        # Should not raise
+        await encoding_service._warmup_encoding_worker_fallback("test-job")
+
+        mock_manager.wait_for_worker_ready.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_warmup_swallows_readiness_unexpected_error(self, encoding_service):
+        """If wait_for_worker_ready raises a non-TimeoutError, log and return — never propagate."""
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.return_value = {
+            "started": True, "vm_name": "encoding-worker-a", "primary_url": "http://1.2.3.4:8080"
+        }
+        mock_manager.wait_for_worker_ready = AsyncMock(side_effect=RuntimeError("compute API error"))
+        encoding_service._worker_manager = mock_manager
+
+        # Should not raise
+        await encoding_service._warmup_encoding_worker_fallback("test-job")
+
+        mock_manager.wait_for_worker_ready.assert_awaited_once()
 
 
 class TestWaitForCompletionPollTolerance:
