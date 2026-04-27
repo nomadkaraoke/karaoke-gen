@@ -392,6 +392,47 @@ class TestColdStartIntegration:
         mock_manager.ensure_primary_running.assert_called_once()
         mock_manager.wait_for_worker_ready.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_warmup_only_runs_on_first_attempt(self, encoding_service):
+        """
+        Regression guard: the `if attempt == 0` guard in _request_with_retry must
+        keep the warmup fallback from re-running on every retry. If someone
+        refactored that guard out, every retry would re-trigger the readiness
+        wait — wasteful and possibly buggy. This test pins the contract.
+        """
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.return_value = {
+            "started": False, "vm_name": "encoding-worker-a", "primary_url": "http://1.2.3.4:8080"
+        }
+        mock_manager.wait_for_worker_ready = AsyncMock()
+        encoding_service._worker_manager = mock_manager
+
+        # All 3 calls fail — exhausts retries to confirm the guard holds across many attempts
+        call_count = {"n": 0}
+
+        class _Session:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): return None
+            def post(self, *a, **kw):
+                call_count["n"] += 1
+                raise aiohttp.ClientConnectorError(MagicMock(), OSError())
+
+        with patch("backend.services.encoding_service.aiohttp.ClientSession", return_value=_Session()), \
+             patch("backend.services.encoding_service.asyncio.sleep", new_callable=AsyncMock), \
+             pytest.raises(aiohttp.ClientConnectorError):
+            await encoding_service._request_with_retry(
+                "POST",
+                "http://1.2.3.4:8080/encode",
+                headers={},
+                json_payload={},
+                timeout=5.0,
+                job_id="j1",
+            )
+
+        # All MAX_RETRIES + 1 attempts ran, but warmup fired exactly once.
+        assert call_count["n"] == MAX_RETRIES + 1
+        mock_manager.ensure_primary_running.assert_called_once()
+
 
 class TestWaitForCompletionPollTolerance:
     """Tests for wait_for_completion() transient failure tolerance."""
