@@ -334,6 +334,65 @@ class TestWarmupFallback:
         mock_manager.wait_for_worker_ready.assert_awaited_once()
 
 
+class TestColdStartIntegration:
+    """End-to-end: first request fails, warmup awaits readiness, retry succeeds."""
+
+    @pytest.mark.asyncio
+    async def test_cold_start_recovery_no_retry_exhaustion(self, encoding_service):
+        """
+        Simulates the 2026-04-24 incident path with the fix in place:
+          1. First HTTP attempt raises ClientConnectorError (VM was TERMINATED).
+          2. Warmup fallback runs, ensure_primary_running returns started=True.
+          3. wait_for_worker_ready resolves quickly (mocked).
+          4. Second HTTP attempt succeeds.
+        With the fix, no 8-retry exhaustion happens.
+        """
+        # Mock worker manager
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.return_value = {
+            "started": True, "vm_name": "encoding-worker-a", "primary_url": "http://1.2.3.4:8080"
+        }
+        mock_manager.wait_for_worker_ready = AsyncMock()
+        encoding_service._worker_manager = mock_manager
+
+        # First call raises, second call succeeds
+        call_count = {"n": 0}
+
+        class _Resp:
+            def __init__(self, status, payload):
+                self.status = status
+                self._payload = payload
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): return None
+            async def json(self): return self._payload
+            async def text(self): return ""
+
+        class _Session:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): return None
+            def post(self, *a, **kw):
+                call_count["n"] += 1
+                if call_count["n"] == 1:
+                    raise aiohttp.ClientConnectorError(MagicMock(), OSError())
+                return _Resp(200, {"status": "accepted", "job_id": "j1"})
+
+        with patch("backend.services.encoding_service.aiohttp.ClientSession", return_value=_Session()), \
+             patch("backend.services.encoding_service.asyncio.sleep", new_callable=AsyncMock):
+            result = await encoding_service._request_with_retry(
+                "POST",
+                "http://1.2.3.4:8080/encode",
+                headers={},
+                json_payload={},
+                timeout=5.0,
+                job_id="j1",
+            )
+
+        assert result["status"] == 200
+        assert call_count["n"] == 2  # one fail, one success — no retry exhaustion
+        mock_manager.ensure_primary_running.assert_called_once()
+        mock_manager.wait_for_worker_ready.assert_awaited_once()
+
+
 class TestWaitForCompletionPollTolerance:
     """Tests for wait_for_completion() transient failure tolerance."""
 
