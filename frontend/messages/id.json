@@ -282,7 +282,7 @@
       "noAccount": "Belum punya akun? Cukup masukkan email Anda untuk memulai.",
       "checkEmailTitle": "Periksa Email Anda",
       "checkEmailSent": "Kami mengirimkan tautan masuk ke:",
-      "checkEmailExpiry": "Klik tautan di email untuk masuk. Tautan kedaluwarsa dalam 15 menit.",
+      "checkEmailExpiry": "Klik tautan di email untuk masuk. Tautan ini akan kedaluwarsa dalam 24 jam.",
       "tryDifferentEmail": "Coba Email Lain",
       "accessTokenTitle": "Token Akses",
       "accessTokenPrompt": "Masukkan token akses Anda untuk mengautentikasi",

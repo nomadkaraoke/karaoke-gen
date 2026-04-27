@@ -282,7 +282,7 @@
       "noAccount": "Nu ai cont? Introdu doar emailul tău pentru a începe.",
       "checkEmailTitle": "Verifică-ți emailul",
       "checkEmailSent": "Am trimis un link de conectare la:",
-      "checkEmailExpiry": "Fă clic pe linkul din email pentru a te conecta. Linkul expiră în 15 minute.",
+      "checkEmailExpiry": "Fă clic pe linkul din e-mail pentru a te conecta. Linkul expiră în 24 de ore.",
       "tryDifferentEmail": "Încearcă un alt email",
       "accessTokenTitle": "Token de acces",
       "accessTokenPrompt": "Introdu tokenul tău de acces pentru a te autentifica",

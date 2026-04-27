@@ -199,7 +199,7 @@
       "greeting": "Halo,",
       "signInPrompt": "Klik tombol di bawah ini untuk masuk ke {brand_name}:",
       "signInButton": "Masuk",
-      "expiryWarning": "Tautan ini kedaluwarsa dalam 15 menit dan hanya dapat digunakan satu kali.",
+      "expiryWarning": "Tautan ini akan kedaluwarsa dalam 24 jam dan hanya dapat digunakan satu kali.",
       "fallbackLink": "Jika tombol tidak berfungsi, salin dan tempel tautan ini ke browser Anda:",
       "ignoreNote": "Jika Anda tidak meminta email ini, Anda dapat mengabaikannya dengan aman."
     },

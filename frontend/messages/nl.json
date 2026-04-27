@@ -282,7 +282,7 @@
       "noAccount": "Geen account? Voer gewoon je e-mailadres in om te beginnen.",
       "checkEmailTitle": "Controleer je e-mail",
       "checkEmailSent": "We hebben een inloglink gestuurd naar:",
-      "checkEmailExpiry": "Klik op de link in de e-mail om in te loggen. De link verloopt over 15 minuten.",
+      "checkEmailExpiry": "Klik op de link in de e-mail om in te loggen. De link verloopt over 24 uur.",
       "tryDifferentEmail": "Probeer een ander e-mailadres",
       "accessTokenTitle": "Toegangstoken",
       "accessTokenPrompt": "Voer je toegangstoken in om te authenticeren",

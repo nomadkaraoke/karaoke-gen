@@ -282,7 +282,7 @@
       "noAccount": "No account? Just enter your email to get started.",
       "checkEmailTitle": "Check Your Email",
       "checkEmailSent": "We sent a sign-in link to:",
-      "checkEmailExpiry": "Click the link in the email to sign in. The link expires in 15 minutes.",
+      "checkEmailExpiry": "Click the link in the email to sign in. The link expires in 24 hours.",
       "tryDifferentEmail": "Try a Different Email",
       "accessTokenTitle": "Access Token",
       "accessTokenPrompt": "Enter your access token to authenticate",

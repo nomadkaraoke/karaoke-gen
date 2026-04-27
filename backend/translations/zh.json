@@ -199,7 +199,7 @@
       "greeting": "您好，",
       "signInPrompt": "请点击下方按钮登录 {brand_name}：",
       "signInButton": "登录",
-      "expiryWarning": "此链接将在 15 分钟后失效，且只能使用一次。",
+      "expiryWarning": "此链接将在24小时后失效，且只能使用一次。",
       "fallbackLink": "如果按钮不起作用，请复制并粘贴此链接到您的浏览器中：",
       "ignoreNote": "如果您未请求此邮件，请直接忽略。"
     },

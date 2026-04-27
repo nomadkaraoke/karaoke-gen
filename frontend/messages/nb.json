@@ -282,7 +282,7 @@
       "noAccount": "Ingen konto? Bare skriv inn e-posten din for å komme i gang.",
       "checkEmailTitle": "Sjekk e-posten din",
       "checkEmailSent": "Vi sendte en innloggingslenke til:",
-      "checkEmailExpiry": "Klikk på lenken i e-posten for å logge inn. Lenken utløper om 15 minutter.",
+      "checkEmailExpiry": "Klikk på lenken i e-posten for å logge inn. Lenken utløper om 24 timer.",
       "tryDifferentEmail": "Prøv en annen e-post",
       "accessTokenTitle": "Tilgangstoken",
       "accessTokenPrompt": "Skriv inn tilgangstokenet ditt for å autentisere",

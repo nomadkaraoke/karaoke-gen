@@ -199,7 +199,7 @@
       "greeting": "Hej,",
       "signInPrompt": "Klik på knappen nedenfor for at logge ind på {brand_name}:",
       "signInButton": "Log ind",
-      "expiryWarning": "Dette link udløber om 15 minutter og kan kun bruges én gang.",
+      "expiryWarning": "Dette link udløber om 24 timer og kan kun bruges én gang.",
       "fallbackLink": "Hvis knappen ikke virker, kan du kopiere og indsætte dette link i din browser:",
       "ignoreNote": "Hvis du ikke har anmodet om denne e-mail, kan du roligt ignorere den."
     },

@@ -199,7 +199,7 @@
       "greeting": "Szia!",
       "signInPrompt": "Kattints az alábbi gombra a {brand_name} oldalra történő bejelentkezéshez:",
       "signInButton": "Bejelentkezés",
-      "expiryWarning": "Ez a link 15 perc múlva lejár, és csak egyszer használható fel.",
+      "expiryWarning": "Ez a link 24 óra múlva lejár, és csak egyszer használható fel.",
       "fallbackLink": "Ha a gomb nem működik, másold be ezt a linket a böngésződbe:",
       "ignoreNote": "Ha nem te kérted ezt az e-mailt, nyugodtan hagyd figyelmen kívül."
     },

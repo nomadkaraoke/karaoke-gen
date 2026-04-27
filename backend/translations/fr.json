@@ -199,7 +199,7 @@
       "greeting": "Salut,",
       "signInPrompt": "Clique sur le bouton ci-dessous pour te connecter à {brand_name} :",
       "signInButton": "Se connecter",
-      "expiryWarning": "Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.",
+      "expiryWarning": "Ce lien expire dans 24 heures et ne peut être utilisé qu'une seule fois.",
       "fallbackLink": "Si le bouton ne fonctionne pas, copie et colle ce lien dans ton navigateur :",
       "ignoreNote": "Si tu n'as pas demandé cet e-mail, tu peux l'ignorer en toute sécurité."
     },

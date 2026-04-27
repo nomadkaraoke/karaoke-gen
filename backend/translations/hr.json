@@ -199,7 +199,7 @@
       "greeting": "Bok,",
       "signInPrompt": "Klikni na gumb ispod za prijavu u {brand_name}:",
       "signInButton": "Prijavi se",
-      "expiryWarning": "Ova poveznica istječe za 15 minuta i može se iskoristiti samo jednom.",
+      "expiryWarning": "Ova poveznica ističe za 24 sata i može se iskoristiti samo jednom.",
       "fallbackLink": "Ako gumb ne radi, kopiraj i zalijepi ovu poveznicu u svoj preglednik:",
       "ignoreNote": "Ako nisi zatražio/la ovaj e-mail, slobodno ga ignoriraj."
     },

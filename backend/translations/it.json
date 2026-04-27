@@ -199,7 +199,7 @@
       "greeting": "Ciao,",
       "signInPrompt": "Clicca sul pulsante qui sotto per accedere a {brand_name}:",
       "signInButton": "Accedi",
-      "expiryWarning": "Questo link scade tra 15 minuti e può essere utilizzato una sola volta.",
+      "expiryWarning": "Questo link scade in 24 ore e può essere utilizzato una sola volta.",
       "fallbackLink": "Se il pulsante non funziona, copia e incolla questo link nel tuo browser:",
       "ignoreNote": "Se non hai richiesto questa email, puoi tranquillamente ignorarla."
     },

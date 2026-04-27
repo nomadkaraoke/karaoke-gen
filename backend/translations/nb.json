@@ -199,7 +199,7 @@
       "greeting": "Hei,",
       "signInPrompt": "Klikk på knappen nedenfor for å logge inn på {brand_name}:",
       "signInButton": "Logg inn",
-      "expiryWarning": "Denne lenken utløper om 15 minutter og kan bare brukes én gang.",
+      "expiryWarning": "Denne lenken utløper om 24 timer og kan bare brukes én gang.",
       "fallbackLink": "Hvis knappen ikke fungerer, kopier og lim inn denne lenken i nettleseren din:",
       "ignoreNote": "Hvis du ikke ba om denne e-posten, kan du trygt ignorere den."
     },

@@ -282,7 +282,7 @@
       "noAccount": "Kein Konto? Gib einfach deine E-Mail ein, um loszulegen.",
       "checkEmailTitle": "Überprüfe deine E-Mails",
       "checkEmailSent": "Wir haben einen Anmeldelink gesendet an:",
-      "checkEmailExpiry": "Klicke auf den Link in der E-Mail, um dich anzumelden. Der Link läuft in 15 Minuten ab.",
+      "checkEmailExpiry": "Klicke auf den Link in der E-Mail, um dich anzumelden. Der Link läuft in 24 Stunden ab.",
       "tryDifferentEmail": "Andere E-Mail probieren",
       "accessTokenTitle": "Access Token",
       "accessTokenPrompt": "Gib dein Access Token zur Authentifizierung ein",

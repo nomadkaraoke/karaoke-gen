@@ -282,7 +282,7 @@
       "noAccount": "Nemaš račun? Samo unesi svoj e-mail za početak.",
       "checkEmailTitle": "Provjeri svoj e-mail",
       "checkEmailSent": "Poslali smo poveznicu za prijavu na:",
-      "checkEmailExpiry": "Klikni na poveznicu u e-mailu za prijavu. Poveznica ističe za 15 minuta.",
+      "checkEmailExpiry": "Klikni na poveznicu u e-mailu za prijavu. Poveznica istječe za 24 sata.",
       "tryDifferentEmail": "Pokušaj s drugim e-mailom",
       "accessTokenTitle": "Pristupni token",
       "accessTokenPrompt": "Unesi svoj pristupni token za autentifikaciju",

@@ -199,7 +199,7 @@
       "greeting": "Hola,",
       "signInPrompt": "Fes clic al botó de sota per iniciar sessió a {brand_name}:",
       "signInButton": "Inicia sessió",
-      "expiryWarning": "Aquest enllaç caduca en 15 minuts i només es pot utilitzar una vegada.",
+      "expiryWarning": "Aquest enllaç caduca en 24 hores i només es pot utilitzar una vegada.",
       "fallbackLink": "Si el botó no funciona, copia i enganxa aquest enllaç al teu navegador:",
       "ignoreNote": "Si no has sol·licitat aquest correu, pots ignorar-lo amb seguretat."
     },

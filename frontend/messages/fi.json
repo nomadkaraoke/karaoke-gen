@@ -282,7 +282,7 @@
       "noAccount": "Ei tiliä? Anna vain sähköpostisi aloittaaksesi.",
       "checkEmailTitle": "Tarkista sähköpostisi",
       "checkEmailSent": "Lähetimme kirjautumislinkin osoitteeseen:",
-      "checkEmailExpiry": "Napsauta sähköpostissa olevaa linkkiä kirjautuaksesi sisään. Linkki vanhenee 15 minuutin kuluttua.",
+      "checkEmailExpiry": "Klikkaa sähköpostissa olevaa linkkiä kirjautuaksesi sisään. Linkki vanhenee 24 tunnin kuluttua.",
       "tryDifferentEmail": "Kokeile eri sähköpostia",
       "accessTokenTitle": "Pääsytunnus",
       "accessTokenPrompt": "Anna pääsytunnuksesi todentaaksesi",

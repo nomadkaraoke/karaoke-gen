@@ -199,7 +199,7 @@
       "greeting": "Ahoj,",
       "signInPrompt": "Klikni na tlačítko níže pro přihlášení do {brand_name}:",
       "signInButton": "Přihlásit se",
-      "expiryWarning": "Tento odkaz vyprší za 15 minut a lze jej použít pouze jednou.",
+      "expiryWarning": "Tento odkaz vyprší za 24 hodin a můžeš ho použít jen jednou.",
       "fallbackLink": "Pokud tlačítko nefunguje, zkopíruj a vlož tento odkaz do prohlížeče:",
       "ignoreNote": "Pokud jsi o tento e-mail nepožádal(a), můžeš ho bezpečně ignorovat."
     },

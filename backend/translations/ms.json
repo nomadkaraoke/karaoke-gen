@@ -199,7 +199,7 @@
       "greeting": "Hai,",
       "signInPrompt": "Klik butang di bawah untuk log masuk ke {brand_name}:",
       "signInButton": "Log Masuk",
-      "expiryWarning": "Pautan ini tamat tempoh dalam 15 minit dan hanya boleh digunakan sekali.",
+      "expiryWarning": "Pautan ini akan tamat tempoh dalam masa 24 jam dan hanya boleh digunakan sekali sahaja.",
       "fallbackLink": "Jika butang tidak berfungsi, salin dan tampal pautan ini ke dalam pelayar anda:",
       "ignoreNote": "Jika anda tidak meminta e-mel ini, anda boleh mengabaikannya."
     },

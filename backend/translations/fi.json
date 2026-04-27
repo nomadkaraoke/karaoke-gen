@@ -199,7 +199,7 @@
       "greeting": "Hei,",
       "signInPrompt": "Klikkaa alla olevaa painiketta kirjautuaksesi sisään palveluun {brand_name}:",
       "signInButton": "Kirjaudu sisään",
-      "expiryWarning": "Tämä linkki vanhenee 15 minuutin kuluttua ja sitä voi käyttää vain kerran.",
+      "expiryWarning": "Tämä linkki vanhenee 24 tunnin kuluttua ja sen voi käyttää vain kerran.",
       "fallbackLink": "Jos painike ei toimi, kopioi ja liitä tämä linkki selaimeesi:",
       "ignoreNote": "Jos et pyytänyt tätä sähköpostia, voit jättää sen huomiotta."
     },

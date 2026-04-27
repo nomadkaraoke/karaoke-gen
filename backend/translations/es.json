@@ -199,7 +199,7 @@
       "greeting": "Hola,",
       "signInPrompt": "Haz clic en el botón de abajo para iniciar sesión en {brand_name}:",
       "signInButton": "Iniciar sesión",
-      "expiryWarning": "Este enlace expira en 15 minutos y solo se puede usar una vez.",
+      "expiryWarning": "Este enlace caduca en 24 horas y solo se puede usar una vez.",
       "fallbackLink": "Si el botón no funciona, copia y pega este enlace en tu navegador:",
       "ignoreNote": "Si no solicitaste este correo, puedes ignorarlo de forma segura."
     },

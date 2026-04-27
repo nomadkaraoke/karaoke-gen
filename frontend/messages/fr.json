@@ -282,7 +282,7 @@
       "noAccount": "Pas de compte ? Entre juste ton e-mail pour commencer.",
       "checkEmailTitle": "Vérifie tes e-mails",
       "checkEmailSent": "Nous avons envoyé un lien de connexion à :",
-      "checkEmailExpiry": "Clique sur le lien dans l'e-mail pour te connecter. Le lien expire dans 15 minutes.",
+      "checkEmailExpiry": "Clique sur le lien dans l'e-mail pour te connecter. Le lien expire dans 24 heures.",
       "tryDifferentEmail": "Essayer un autre e-mail",
       "accessTokenTitle": "Jeton d'accès",
       "accessTokenPrompt": "Entre ton jeton d'accès pour t'authentifier",

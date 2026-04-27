@@ -282,7 +282,7 @@
       "noAccount": "Chưa có tài khoản? Chỉ cần nhập email của bạn để bắt đầu.",
       "checkEmailTitle": "Kiểm tra email của bạn",
       "checkEmailSent": "Chúng tôi đã gửi liên kết đăng nhập đến:",
-      "checkEmailExpiry": "Nhấp vào liên kết trong email để đăng nhập. Liên kết sẽ hết hạn sau 15 phút.",
+      "checkEmailExpiry": "Nhấp vào liên kết trong email để đăng nhập. Liên kết này sẽ hết hạn sau 24 giờ.",
       "tryDifferentEmail": "Thử một email khác",
       "accessTokenTitle": "Token truy cập",
       "accessTokenPrompt": "Nhập token truy cập của bạn để xác thực",
