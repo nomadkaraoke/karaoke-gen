@@ -282,7 +282,7 @@
       "noAccount": "¿No tienes cuenta? Solo ingresa tu correo para empezar.",
       "checkEmailTitle": "Revisa tu correo",
       "checkEmailSent": "Enviamos un enlace de inicio de sesión a:",
-      "checkEmailExpiry": "Haz clic en el enlace del correo para iniciar sesión. El enlace expira en 15 minutos.",
+      "checkEmailExpiry": "Haz clic en el enlace del correo para iniciar sesión. El enlace caduca en 24 horas.",
       "tryDifferentEmail": "Intentar con un correo diferente",
       "accessTokenTitle": "Token de acceso",
       "accessTokenPrompt": "Ingresa tu token de acceso para autenticarte",

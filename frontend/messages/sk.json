@@ -282,7 +282,7 @@
       "noAccount": "Nemáš účet? Stačí zadať e-mail a môžeš začať.",
       "checkEmailTitle": "Skontroluj si e-mail",
       "checkEmailSent": "Poslali sme prihlasovací odkaz na:",
-      "checkEmailExpiry": "Klikni na odkaz v e-maile pre prihlásenie. Odkaz vyprší o 15 minút.",
+      "checkEmailExpiry": "Na prihlásenie klikni na odkaz v e-maile. Platnosť odkazu vyprší o 24 hodín.",
       "tryDifferentEmail": "Skúsiť iný e-mail",
       "accessTokenTitle": "Prístupový token",
       "accessTokenPrompt": "Zadaj svoj prístupový token pre overenie",

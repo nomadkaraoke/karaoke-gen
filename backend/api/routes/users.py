@@ -217,7 +217,7 @@ async def send_magic_link(
     Send a magic link email for passwordless authentication.
 
     The user will receive an email with a link that logs them in.
-    Links expire after 15 minutes and can only be used once.
+    Links expire after 24 hours and can only be used once.
 
     For white-label tenants, validates email domain against tenant config.
     """

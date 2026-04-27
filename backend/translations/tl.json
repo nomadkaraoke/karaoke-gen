@@ -199,7 +199,7 @@
       "greeting": "Kumusta,",
       "signInPrompt": "I-click ang button sa ibaba para mag-sign in sa {brand_name}:",
       "signInButton": "Mag-sign In",
-      "expiryWarning": "Mag-e-expire ang link na ito sa loob ng 15 minuto at maaari lang gamitin nang isang beses.",
+      "expiryWarning": "Mag-e-expire ang link na ito sa loob ng 24 na oras at isang beses lang pwedeng gamitin.",
       "fallbackLink": "Kung hindi gumagana ang button, kopyahin at i-paste ang link na ito sa iyong browser:",
       "ignoreNote": "Kung hindi mo ni-request ang email na ito, maaari mo itong balewalain."
     },

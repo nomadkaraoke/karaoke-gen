@@ -282,7 +282,7 @@
       "noAccount": "没有账户？只需输入您的电子邮件即可开始。",
       "checkEmailTitle": "检查您的电子邮件",
       "checkEmailSent": "我们已将登录链接发送至：",
-      "checkEmailExpiry": "点击电子邮件中的链接进行登录。该链接在 15 分钟内有效。",
+      "checkEmailExpiry": "点击邮件中的链接即可登录。该链接将在 24 小时后失效。",
       "tryDifferentEmail": "尝试其他电子邮件",
       "accessTokenTitle": "访问令牌",
       "accessTokenPrompt": "输入您的访问令牌进行身份验证",

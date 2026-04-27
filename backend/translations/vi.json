@@ -199,7 +199,7 @@
       "greeting": "Chào bạn,",
       "signInPrompt": "Nhấp vào nút bên dưới để đăng nhập vào {brand_name}:",
       "signInButton": "Đăng nhập",
-      "expiryWarning": "Liên kết này sẽ hết hạn sau 15 phút và chỉ có thể sử dụng một lần.",
+      "expiryWarning": "Liên kết này sẽ hết hạn trong 24 giờ và chỉ dùng được một lần.",
       "fallbackLink": "Nếu nút không hoạt động, hãy sao chép và dán liên kết này vào trình duyệt của bạn:",
       "ignoreNote": "Nếu bạn không yêu cầu email này, bạn có thể bỏ qua nó một cách an toàn."
     },

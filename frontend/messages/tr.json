@@ -282,7 +282,7 @@
       "noAccount": "Hesabın yok mu? Başlamak için sadece e-postanı gir.",
       "checkEmailTitle": "E-postanı Kontrol Et",
       "checkEmailSent": "Şu adrese bir giriş bağlantısı gönderdik:",
-      "checkEmailExpiry": "Giriş yapmak için e-postadaki bağlantıya tıkla. Bağlantının süresi 15 dakika içinde dolacak.",
+      "checkEmailExpiry": "Giriş yapmak için e-postadaki bağlantıya tıkla. Bağlantının süresi 24 saat içinde dolacak.",
       "tryDifferentEmail": "Farklı Bir E-posta Dene",
       "accessTokenTitle": "Erişim Belirteci",
       "accessTokenPrompt": "Kimlik doğrulaması için erişim belirtecini gir",

@@ -282,7 +282,7 @@
       "noAccount": "No tens compte? Només has d'introduir el teu correu electrònic per començar.",
       "checkEmailTitle": "Revisa el teu correu electrònic",
       "checkEmailSent": "Hem enviat un enllaç d'inici de sessió a:",
-      "checkEmailExpiry": "Fes clic a l'enllaç del correu electrònic per iniciar sessió. L'enllaç caduca en 15 minuts.",
+      "checkEmailExpiry": "Fes clic a l'enllaç del correu electrònic per iniciar sessió. L'enllaç caduca en 24 hores.",
       "tryDifferentEmail": "Prova amb un correu electrònic diferent",
       "accessTokenTitle": "Testimoni d'accés",
       "accessTokenPrompt": "Introdueix el teu testimoni d'accés per autenticar-te",

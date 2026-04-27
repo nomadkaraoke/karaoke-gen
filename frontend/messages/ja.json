@@ -282,7 +282,7 @@
       "noAccount": "アカウントをお持ちでないですか？メールアドレスを入力するだけで始められます。",
       "checkEmailTitle": "メールを確認してください",
       "checkEmailSent": "以下の宛先にサインインリンクを送信しました:",
-      "checkEmailExpiry": "メール内のリンクをクリックしてサインインしてください。リンクの有効期限は15分です。",
+      "checkEmailExpiry": "サインインするには、メール内のリンクをクリックしてください。リンクの有効期限は24時間です。",
       "tryDifferentEmail": "別のメールアドレスを試す",
       "accessTokenTitle": "アクセストークン",
       "accessTokenPrompt": "認証用のアクセストークンを入力してください",

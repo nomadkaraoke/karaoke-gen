@@ -282,7 +282,7 @@
       "noAccount": "Δεν έχεις λογαριασμό; Απλά βάλε το email σου για να ξεκινήσεις.",
       "checkEmailTitle": "Έλεγξε το Email σου",
       "checkEmailSent": "Στείλαμε ένα link σύνδεσης στο:",
-      "checkEmailExpiry": "Κάνε κλικ στο link στο email για να συνδεθείς. Το link λήγει σε 15 λεπτά.",
+      "checkEmailExpiry": "Κάνε κλικ στον σύνδεσμο στο email για να συνδεθείς. Ο σύνδεσμος λήγει σε 24 ώρες.",
       "tryDifferentEmail": "Δοκίμασε ένα Διαφορετικό Email",
       "accessTokenTitle": "Access Token",
       "accessTokenPrompt": "Βάλε το access token σου για έλεγχο ταυτότητας",

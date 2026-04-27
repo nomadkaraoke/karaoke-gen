@@ -199,7 +199,7 @@
       "greeting": "Cześć,",
       "signInPrompt": "Kliknij przycisk poniżej, aby zalogować się do {brand_name}:",
       "signInButton": "Zaloguj się",
-      "expiryWarning": "Ten link wygasa za 15 minut i może być użyty tylko raz.",
+      "expiryWarning": "Ten link wygasa za 24 godziny i można go użyć tylko raz.",
       "fallbackLink": "Jeśli przycisk nie działa, skopiuj i wklej ten link do przeglądarki:",
       "ignoreNote": "Jeśli to nie Ty prosiłeś o ten e-mail, możesz go zignorować."
     },

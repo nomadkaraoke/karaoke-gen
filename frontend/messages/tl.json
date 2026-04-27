@@ -282,7 +282,7 @@
       "noAccount": "Walang account? Ilagay lang ang iyong email para makapagsimula.",
       "checkEmailTitle": "Suriin ang Iyong Email",
       "checkEmailSent": "Nagpadala kami ng sign-in link sa:",
-      "checkEmailExpiry": "I-click ang link sa email para mag-sign in. Mag-e-expire ang link sa loob ng 15 minuto.",
+      "checkEmailExpiry": "I-click ang link sa email para mag-sign in. Mag-e-expire ang link sa loob ng 24 na oras.",
       "tryDifferentEmail": "Sumubok ng Ibang Email",
       "accessTokenTitle": "Access Token",
       "accessTokenPrompt": "Ilagay ang iyong access token para mag-authenticate",

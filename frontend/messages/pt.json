@@ -282,7 +282,7 @@
       "noAccount": "Não tem uma conta? Basta inserir seu e-mail para começar.",
       "checkEmailTitle": "Verifique Seu E-mail",
       "checkEmailSent": "Enviamos um link de login para:",
-      "checkEmailExpiry": "Clique no link no e-mail para entrar. O link expira em 15 minutos.",
+      "checkEmailExpiry": "Clique no link do e-mail para entrar. O link expira em 24 horas.",
       "tryDifferentEmail": "Tentar um E-mail Diferente",
       "accessTokenTitle": "Token de Acesso",
       "accessTokenPrompt": "Insira seu token de acesso para autenticar",

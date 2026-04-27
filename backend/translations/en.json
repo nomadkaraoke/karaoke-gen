@@ -199,7 +199,7 @@
       "greeting": "Hi there,",
       "signInPrompt": "Click the button below to sign in to {brand_name}:",
       "signInButton": "Sign In",
-      "expiryWarning": "This link expires in 15 minutes and can only be used once.",
+      "expiryWarning": "This link expires in 24 hours and can only be used once.",
       "fallbackLink": "If the button doesn't work, copy and paste this link into your browser:",
       "ignoreNote": "If you didn't request this email, you can safely ignore it."
     },

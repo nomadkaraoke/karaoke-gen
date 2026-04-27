@@ -39,7 +39,7 @@ SESSIONS_COLLECTION = "sessions"
 PROCESSED_STRIPE_SESSIONS_COLLECTION = "processed_stripe_sessions"
 
 # Token/session configuration
-MAGIC_LINK_EXPIRY_MINUTES = 15
+MAGIC_LINK_EXPIRY_MINUTES = 24 * 60  # 24h — buffer for slow email delivery (Yahoo can defer for hours)
 SESSION_EXPIRY_DAYS = 7
 SESSION_ABSOLUTE_EXPIRY_DAYS = 30
 MAX_CREDIT_TRANSACTIONS = 100  # Keep last N transactions

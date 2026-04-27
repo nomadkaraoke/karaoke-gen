@@ -282,7 +282,7 @@
       "noAccount": "Tiada akaun? Hanya masukkan e-mel anda untuk bermula.",
       "checkEmailTitle": "Semak E-mel Anda",
       "checkEmailSent": "Kami telah menghantar pautan log masuk ke:",
-      "checkEmailExpiry": "Klik pautan dalam e-mel untuk log masuk. Pautan luput dalam masa 15 minit.",
+      "checkEmailExpiry": "Klik pautan dalam e-mel untuk log masuk. Pautan tersebut akan tamat tempoh dalam masa 24 jam.",
       "tryDifferentEmail": "Cuba E-mel Lain",
       "accessTokenTitle": "Token Akses",
       "accessTokenPrompt": "Masukkan token akses anda untuk mengesahkan",

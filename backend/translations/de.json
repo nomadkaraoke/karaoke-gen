@@ -199,7 +199,7 @@
       "greeting": "Hallo,",
       "signInPrompt": "Klicke auf den untenstehenden Button, um dich bei {brand_name} anzumelden:",
       "signInButton": "Anmelden",
-      "expiryWarning": "Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.",
+      "expiryWarning": "Dieser Link läuft in 24 Stunden ab und kann nur einmal verwendet werden.",
       "fallbackLink": "Wenn der Button nicht funktioniert, kopiere diesen Link und füge ihn in deinen Browser ein:",
       "ignoreNote": "Wenn du diese E-Mail nicht angefordert hast, kannst du sie getrost ignorieren."
     },

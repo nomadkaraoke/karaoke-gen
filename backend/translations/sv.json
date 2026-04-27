@@ -199,7 +199,7 @@
       "greeting": "Hej,",
       "signInPrompt": "Klicka på knappen nedan för att logga in på {brand_name}:",
       "signInButton": "Logga in",
-      "expiryWarning": "Denna länk löper ut om 15 minuter och kan endast användas en gång.",
+      "expiryWarning": "Den här länken går ut om 24 timmar och kan bara användas en gång.",
       "fallbackLink": "Om knappen inte fungerar, kopiera och klistra in denna länk i din webbläsare:",
       "ignoreNote": "Om du inte begärde detta e-postmeddelande kan du tryggt ignorera det."
     },

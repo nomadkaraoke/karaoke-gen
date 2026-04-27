@@ -282,7 +282,7 @@
       "noAccount": "ยังไม่มีบัญชีใช่ไหม? เพียงป้อนอีเมลของคุณเพื่อเริ่มต้น",
       "checkEmailTitle": "ตรวจสอบอีเมลของคุณ",
       "checkEmailSent": "เราได้ส่งลิงก์เข้าสู่ระบบไปที่:",
-      "checkEmailExpiry": "คลิกลิงก์ในอีเมลเพื่อเข้าสู่ระบบ ลิงก์จะหมดอายุใน 15 นาที",
+      "checkEmailExpiry": "คลิกลิงก์ในอีเมลเพื่อเข้าสู่ระบบ ลิงก์จะหมดอายุใน 24 ชั่วโมง",
       "tryDifferentEmail": "ลองใช้อีเมลอื่น",
       "accessTokenTitle": "Access Token",
       "accessTokenPrompt": "ป้อน access token ของคุณเพื่อตรวจสอบสิทธิ์",

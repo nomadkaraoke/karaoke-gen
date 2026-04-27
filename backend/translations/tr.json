@@ -199,7 +199,7 @@
       "greeting": "Merhaba,",
       "signInPrompt": "{brand_name} hesabına giriş yapmak için aşağıdaki butona tıkla:",
       "signInButton": "Giriş Yap",
-      "expiryWarning": "Bu bağlantının süresi 15 dakika içinde dolar ve sadece bir kez kullanılabilir.",
+      "expiryWarning": "Bu bağlantının süresi 24 saat içinde dolar ve yalnızca bir kez kullanılabilir.",
       "fallbackLink": "Eğer buton çalışmazsa, şu bağlantıyı kopyalayıp tarayıcına yapıştır:",
       "ignoreNote": "Bu e-postayı sen talep etmediysen, güvenle görmezden gelebilirsin."
     },

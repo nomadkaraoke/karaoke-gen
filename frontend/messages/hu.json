@@ -282,7 +282,7 @@
       "noAccount": "Nincs fiókod? Csak add meg az e-mail címedet a kezdéshez.",
       "checkEmailTitle": "Ellenőrizd az e-mailjeidet",
       "checkEmailSent": "Elküldtünk egy bejelentkezési linket ide:",
-      "checkEmailExpiry": "Kattints az e-mailben található linkre a bejelentkezéshez. A link 15 perc múlva lejár.",
+      "checkEmailExpiry": "Kattints az e-mailben található linkre a bejelentkezéshez. A link 24 óra múlva lejár.",
       "tryDifferentEmail": "Próbálj meg egy másik e-mailt",
       "accessTokenTitle": "Hozzáférési token",
       "accessTokenPrompt": "Add meg a hozzáférési tokent a hitelesítéshez",

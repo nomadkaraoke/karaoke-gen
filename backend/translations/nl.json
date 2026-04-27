@@ -199,7 +199,7 @@
       "greeting": "Hoi,",
       "signInPrompt": "Klik op de onderstaande knop om in te loggen bij {brand_name}:",
       "signInButton": "Inloggen",
-      "expiryWarning": "Deze link verloopt over 15 minuten en kan slechts één keer worden gebruikt.",
+      "expiryWarning": "Deze link verloopt over 24 uur en kan slechts één keer worden gebruikt.",
       "fallbackLink": "Als de knop niet werkt, kopieer en plak dan deze link in je browser:",
       "ignoreNote": "Als je deze e-mail niet hebt aangevraagd, kun je deze veilig negeren."
     },
