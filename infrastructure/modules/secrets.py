@@ -26,7 +26,8 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # Payment and email
         "stripe-secret-key",
         "stripe-webhook-secret",
-        "sendgrid-api-key",
+        "sendgrid-api-key",  # Legacy — retained during Postmark cutover; remove once stable
+        "postmark-server-token",
 
         # Observability (Langfuse for LLM tracing)
         "langfuse-public-key",

@@ -247,6 +247,12 @@ gdrive_validator_function = cloudfunctionsv2.Function(
                 secret=all_secrets["sendgrid-api-key"].secret_id,
                 version="latest",
             ),
+            cloudfunctionsv2.FunctionServiceConfigSecretEnvironmentVariableArgs(
+                key="POSTMARK_SERVER_TOKEN",
+                project_id=PROJECT_ID,
+                secret=all_secrets["postmark-server-token"].secret_id,
+                version="latest",
+            ),
         ],
     ),
 )

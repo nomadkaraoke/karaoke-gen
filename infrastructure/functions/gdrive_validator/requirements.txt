@@ -5,9 +5,6 @@ google-auth>=2.23.0
 # Cloud Functions framework
 functions-framework>=3.0.0
 
-# HTTP requests for Pushbullet API
+# HTTP requests for Pushbullet and Postmark APIs
 requests>=2.31.0
-
-# Email notifications via SendGrid
-sendgrid>=6.0.0
 

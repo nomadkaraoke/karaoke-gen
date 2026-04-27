@@ -509,7 +509,16 @@ def create_video_encoding_job(
                                 name="GOOGLE_CLOUD_PROJECT",
                                 value=PROJECT_ID,
                             ),
-                            # SendGrid for completion emails
+                            # Email provider for completion emails (Postmark primary, SendGrid fallback)
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="POSTMARK_SERVER_TOKEN",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/postmark-server-token",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="SENDGRID_API_KEY",
                                 value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(

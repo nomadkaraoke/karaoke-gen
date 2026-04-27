@@ -6,7 +6,7 @@ Validates the Nomad Karaoke public share folder for:
 - Invalid filename formats
 - Sequence gaps (with configurable known gaps)
 
-Sends email notification (via SendGrid) if issues are detected.
+Sends email notification (via Postmark) if issues are detected.
 Pushbullet is kept as a secondary fallback.
 
 Triggered daily via Cloud Scheduler and after each job completion.
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Configuration from environment variables
 GDRIVE_FOLDER_ID = os.environ.get("GDRIVE_FOLDER_ID", "1laRKAyxo0v817SstfM5XkpbWiNKNAMSX")
 PUSHBULLET_API_KEY = os.environ.get("PUSHBULLET_API_KEY", "").strip()
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "").strip()
+POSTMARK_SERVER_TOKEN = os.environ.get("POSTMARK_SERVER_TOKEN", "").strip()
 EMAIL_TO = os.environ.get("EMAIL_TO", "gen@nomadkaraoke.com")
 EMAIL_FROM = os.environ.get("EMAIL_FROM", "gen@nomadkaraoke.com")
 
@@ -330,40 +330,51 @@ def format_notification(issues: dict) -> tuple[str, str]:
 
 
 def send_email_notification(subject: str, body: str) -> bool:
-    """Send a notification via SendGrid email API."""
-    if not SENDGRID_API_KEY:
-        logger.warning("SENDGRID_API_KEY not set, skipping email notification")
+    """Send a notification via Postmark email API."""
+    if not POSTMARK_SERVER_TOKEN:
+        logger.warning("POSTMARK_SERVER_TOKEN not set, skipping email notification")
         return False
 
     try:
-        from sendgrid import SendGridAPIClient
-        from sendgrid.helpers.mail import Mail, Email, To, Content
-
-        sg = SendGridAPIClient(api_key=SENDGRID_API_KEY)
-
         # Convert plain text body to simple HTML (preserve whitespace/newlines)
         html_body = body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         html_body = html_body.replace("\n", "<br>\n")
         html_body = f"<pre style='font-family: monospace; white-space: pre-wrap;'>{html_body}</pre>"
 
-        message = Mail(
-            from_email=Email(EMAIL_FROM, "Nomad Karaoke GDrive Validator"),
-            to_emails=To(EMAIL_TO),
-            subject=subject,
-            html_content=Content("text/html", html_body),
+        response = requests.post(
+            "https://api.postmarkapp.com/email",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Postmark-Server-Token": POSTMARK_SERVER_TOKEN,
+            },
+            json={
+                "From": f'"Nomad Karaoke GDrive Validator" <{EMAIL_FROM}>',
+                "To": EMAIL_TO,
+                "Subject": subject,
+                "HtmlBody": html_body,
+                "TextBody": body,
+                "MessageStream": "outbound",
+            },
+            timeout=10,
         )
 
-        response = sg.send(message)
-
         if 200 <= response.status_code < 300:
-            logger.info(f"Email notification sent to {EMAIL_TO}")
+            logger.info(f"Email notification sent to {EMAIL_TO} via Postmark")
             return True
-        else:
-            logger.error(f"SendGrid returned status {response.status_code}")
-            return False
+
+        try:
+            err = response.json()
+            logger.error(
+                f"Postmark returned status {response.status_code}: "
+                f"ErrorCode={err.get('ErrorCode')} Message={err.get('Message')}"
+            )
+        except ValueError:
+            logger.error(f"Postmark returned status {response.status_code}: {response.text[:200]}")
+        return False
 
     except Exception:
-        logger.exception("Failed to send email notification via SendGrid")
+        logger.exception("Failed to send email notification via Postmark")
         return False
 
 

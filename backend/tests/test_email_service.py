@@ -12,6 +12,7 @@ from backend.services.email_service import (
     EmailProvider,
     ConsoleEmailProvider,
     SendGridEmailProvider,
+    PostmarkEmailProvider,
     get_email_service,
 )
 
@@ -151,6 +152,165 @@ class TestSendGridEmailProvider:
             )
 
         assert result is False
+
+
+class TestPostmarkEmailProvider:
+    """Tests for Postmark email provider."""
+
+    def _mock_response(self, status_code=200, body=None):
+        resp = Mock()
+        resp.status_code = status_code
+        resp.json.return_value = body or {"To": "user@example.com", "MessageID": "abc"}
+        resp.text = ""
+        return resp
+
+    def test_send_email_success(self):
+        provider = PostmarkEmailProvider(
+            server_token="test-token",
+            from_email="from@example.com",
+            from_name="Test Sender",
+        )
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._mock_response(200)
+
+            result = provider.send_email(
+                to_email="user@example.com",
+                subject="Test Subject",
+                html_content="<p>Test</p>",
+                text_content="Test",
+            )
+
+        assert result is True
+        mock_post.assert_called_once()
+        call = mock_post.call_args
+        assert call.kwargs["headers"]["X-Postmark-Server-Token"] == "test-token"
+        payload = call.kwargs["json"]
+        assert payload["From"] == '"Test Sender" <from@example.com>'
+        assert payload["To"] == "user@example.com"
+        assert payload["Subject"] == "Test Subject"
+        assert payload["HtmlBody"] == "<p>Test</p>"
+        assert payload["TextBody"] == "Test"
+        assert payload["MessageStream"] == "outbound"
+
+    def test_send_email_with_cc_and_bcc_dedupes(self):
+        provider = PostmarkEmailProvider(
+            server_token="test-token",
+            from_email="from@example.com",
+        )
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._mock_response(200)
+
+            result = provider.send_email(
+                to_email="user@example.com",
+                subject="Test",
+                html_content="<p>x</p>",
+                cc_emails=["cc1@example.com", "CC1@example.com", "cc2@example.com"],
+                bcc_emails=["bcc@example.com"],
+            )
+
+        assert result is True
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["Cc"] == "cc1@example.com, cc2@example.com"
+        assert payload["Bcc"] == "bcc@example.com"
+
+    def test_send_email_with_sender_override(self):
+        provider = PostmarkEmailProvider(
+            server_token="test-token",
+            from_email="default@example.com",
+            from_name="Default",
+        )
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._mock_response(200)
+
+            provider.send_email(
+                to_email="user@example.com",
+                subject="Test",
+                html_content="<p>x</p>",
+                from_email_override="tenant@partner.com",
+            )
+
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["From"] == '"Default" <tenant@partner.com>'
+
+    def test_send_email_failure_status(self):
+        provider = PostmarkEmailProvider(server_token="t", from_email="f@e.com")
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._mock_response(
+                422, body={"ErrorCode": 406, "Message": "Inactive recipient"}
+            )
+
+            result = provider.send_email(
+                to_email="user@example.com",
+                subject="Test",
+                html_content="<p>x</p>",
+            )
+
+        assert result is False
+
+    def test_send_email_request_exception(self):
+        import requests as _requests
+        provider = PostmarkEmailProvider(server_token="t", from_email="f@e.com")
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.side_effect = _requests.ConnectionError("network down")
+
+            result = provider.send_email(
+                to_email="user@example.com",
+                subject="Test",
+                html_content="<p>x</p>",
+            )
+
+        assert result is False
+
+
+class TestEmailServiceProviderSelection:
+    """Tests for EmailService._get_provider() selection logic."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_env(self, monkeypatch):
+        for var in ("EMAIL_PROVIDER", "POSTMARK_SERVER_TOKEN", "SENDGRID_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+
+    def test_explicit_postmark_uses_postmark(self, monkeypatch):
+        monkeypatch.setenv("EMAIL_PROVIDER", "postmark")
+        monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "pm-token")
+        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
+        svc = EmailService()
+        assert isinstance(svc.provider, PostmarkEmailProvider)
+        assert svc.is_configured() is True
+
+    def test_explicit_sendgrid_uses_sendgrid(self, monkeypatch):
+        monkeypatch.setenv("EMAIL_PROVIDER", "sendgrid")
+        monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "pm-token")
+        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
+        svc = EmailService()
+        assert isinstance(svc.provider, SendGridEmailProvider)
+
+    def test_explicit_postmark_without_token_falls_back_to_console(self, monkeypatch):
+        monkeypatch.setenv("EMAIL_PROVIDER", "postmark")
+        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
+        svc = EmailService()
+        assert isinstance(svc.provider, ConsoleEmailProvider)
+        assert svc.is_configured() is False
+
+    def test_auto_prefers_postmark_when_both_keys_set(self, monkeypatch):
+        monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "pm-token")
+        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
+        svc = EmailService()
+        assert isinstance(svc.provider, PostmarkEmailProvider)
+
+    def test_auto_falls_back_to_sendgrid_when_only_sendgrid_set(self, monkeypatch):
+        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
+        svc = EmailService()
+        assert isinstance(svc.provider, SendGridEmailProvider)
+
+    def test_auto_uses_console_when_no_keys(self, monkeypatch):
+        svc = EmailService()
+        assert isinstance(svc.provider, ConsoleEmailProvider)
 
 
 class TestEmailServiceJobCompletion:

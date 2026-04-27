@@ -2,13 +2,12 @@
 Email service for sending transactional emails.
 
 Supports multiple providers:
-- SendGrid (recommended for production)
+- Postmark (production default — better Yahoo/AOL deliverability)
+- SendGrid (legacy fallback, retained during cutover)
 - Console logging (for development/testing)
 
-Future providers can be added:
-- Mailgun
-- AWS SES
-- Postmark
+Provider selection: EMAIL_PROVIDER env var (postmark|sendgrid). Defaults to
+postmark when both keys are present.
 """
 import html
 import logging
@@ -17,6 +16,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from zoneinfo import ZoneInfo
+
+import requests
 
 from backend.config import get_settings
 from backend.i18n import t, get_locale_prefix
@@ -205,6 +206,93 @@ class SendGridEmailProvider(EmailProvider):
             return False
 
 
+class PostmarkEmailProvider(EmailProvider):
+    """
+    Postmark email provider for production.
+
+    Requires POSTMARK_SERVER_TOKEN environment variable. Sends via the
+    Postmark REST API directly (no SDK dependency).
+    """
+
+    API_URL = "https://api.postmarkapp.com/email"
+
+    def __init__(self, server_token: str, from_email: str, from_name: str = "Nomad Karaoke"):
+        self.server_token = server_token
+        self.from_email = from_email
+        self.from_name = from_name
+
+    def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
+        bcc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
+    ) -> bool:
+        try:
+            sender_email = from_email_override or self.from_email
+            payload = {
+                "From": f'"{self.from_name}" <{sender_email}>',
+                "To": to_email,
+                "Subject": subject,
+                "HtmlBody": html_content,
+                "MessageStream": "outbound",
+            }
+            if text_content:
+                payload["TextBody"] = text_content
+
+            if cc_emails:
+                payload["Cc"] = ", ".join(_dedupe_emails(cc_emails))
+            if bcc_emails:
+                payload["Bcc"] = ", ".join(_dedupe_emails(bcc_emails))
+
+            response = requests.post(
+                self.API_URL,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-Postmark-Server-Token": self.server_token,
+                },
+                json=payload,
+                timeout=10,
+            )
+
+            if 200 <= response.status_code < 300:
+                cc_info = f" (CC: {', '.join(cc_emails)})" if cc_emails else ""
+                bcc_info = f" (BCC: {', '.join(bcc_emails)})" if bcc_emails else ""
+                logger.info(f"Email sent to {to_email}{cc_info}{bcc_info} via Postmark")
+                return True
+
+            # Surface Postmark's structured error so we can see suppressions, invalid signature, etc.
+            try:
+                err = response.json()
+                logger.error(
+                    f"Postmark returned status {response.status_code}: "
+                    f"ErrorCode={err.get('ErrorCode')} Message={err.get('Message')}"
+                )
+            except ValueError:
+                logger.error(f"Postmark returned status {response.status_code}: {response.text[:200]}")
+            return False
+
+        except requests.RequestException:
+            logger.exception("Failed to send email via Postmark")
+            return False
+
+
+def _dedupe_emails(emails: List[str]) -> List[str]:
+    """Lowercase-normalize and deduplicate a list of email addresses, preserving order."""
+    seen = set()
+    out = []
+    for em in emails:
+        normalized = em.strip().lower()
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            out.append(em.strip())
+    return out
+
+
 class EmailService:
     """
     High-level email service for sending transactional emails.
@@ -227,21 +315,48 @@ class EmailService:
         self.buy_url = os.getenv("BUY_URL", self.frontend_url)
 
     def _get_provider(self) -> EmailProvider:
-        """Get the configured email provider."""
+        """
+        Get the configured email provider.
+
+        Selection rules:
+        - EMAIL_PROVIDER=postmark → Postmark (requires POSTMARK_SERVER_TOKEN)
+        - EMAIL_PROVIDER=sendgrid → SendGrid (requires SENDGRID_API_KEY)
+        - Unset/auto → Postmark if its token is set, else SendGrid if its key is set, else console
+        """
+        provider_name = (os.getenv("EMAIL_PROVIDER") or "").strip().lower()
+        postmark_token = os.getenv("POSTMARK_SERVER_TOKEN")
         sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
         from_email = os.getenv("EMAIL_FROM", "gen@nomadkaraoke.com")
         from_name = os.getenv("EMAIL_FROM_NAME", "Nomad Karaoke")
 
-        if sendgrid_api_key:
+        if provider_name == "postmark":
+            if not postmark_token:
+                logger.error("EMAIL_PROVIDER=postmark but POSTMARK_SERVER_TOKEN is not set; falling back to console")
+                return ConsoleEmailProvider()
+            logger.info("Using Postmark email provider")
+            return PostmarkEmailProvider(postmark_token, from_email, from_name)
+
+        if provider_name == "sendgrid":
+            if not sendgrid_api_key:
+                logger.error("EMAIL_PROVIDER=sendgrid but SENDGRID_API_KEY is not set; falling back to console")
+                return ConsoleEmailProvider()
             logger.info("Using SendGrid email provider")
             return SendGridEmailProvider(sendgrid_api_key, from_email, from_name)
-        else:
-            logger.warning("No email provider configured, using console logging")
-            return ConsoleEmailProvider()
+
+        # Auto-detect: prefer Postmark when both keys are present
+        if postmark_token:
+            logger.info("Using Postmark email provider (auto-detected)")
+            return PostmarkEmailProvider(postmark_token, from_email, from_name)
+        if sendgrid_api_key:
+            logger.info("Using SendGrid email provider (auto-detected)")
+            return SendGridEmailProvider(sendgrid_api_key, from_email, from_name)
+
+        logger.warning("No email provider configured, using console logging")
+        return ConsoleEmailProvider()
 
     def is_configured(self) -> bool:
         """Check if a real email provider is configured (not just console logging)."""
-        return isinstance(self.provider, SendGridEmailProvider)
+        return isinstance(self.provider, (SendGridEmailProvider, PostmarkEmailProvider))
 
     def send_magic_link(
         self,
