@@ -175,13 +175,70 @@ class CustomLyricsService:
         full text is included in the prompt body. For PDFs, the body
         references the attached PDF and the bytes are sent inline.
         """
-        # Minimal text-only happy path (Task 2). File parsing added in Task 3.
-        text = (custom_text or "").strip()
+        text_chunks: list[str] = []
+        if custom_text and custom_text.strip():
+            text_chunks.append(custom_text.strip())
+
+        pdf_bytes: Optional[bytes] = None
         if file_bytes is not None:
-            raise CustomLyricsServiceError(
-                "file uploads not yet supported", status_code=501
+            self._validate_file(
+                file_bytes=file_bytes, file_mime=file_mime, file_name=file_name
             )
-        return text, None
+            kind = SUPPORTED_MIMES[file_mime]  # validated above
+            if kind == "pdf":
+                pdf_bytes = file_bytes
+            elif kind == "docx":
+                text_chunks.append(self._extract_docx_text(file_bytes))
+            elif kind in ("txt", "md"):
+                text_chunks.append(file_bytes.decode("utf-8", errors="replace"))
+            else:  # defensive — validated already
+                raise CustomLyricsServiceError(
+                    f"unsupported file kind: {kind}", status_code=400
+                )
+
+        combined = "\n\n".join(chunk for chunk in text_chunks if chunk.strip())
+        return combined, pdf_bytes
+
+    def _validate_file(
+        self,
+        *,
+        file_bytes: bytes,
+        file_mime: Optional[str],
+        file_name: Optional[str],
+    ) -> None:
+        max_bytes = self.settings.custom_lyrics_max_file_mb * 1024 * 1024
+        if len(file_bytes) > max_bytes:
+            raise CustomLyricsServiceError(
+                f"file exceeds {self.settings.custom_lyrics_max_file_mb} MB limit",
+                status_code=400,
+            )
+        if file_mime not in SUPPORTED_MIMES:
+            raise CustomLyricsServiceError(
+                f"unsupported file mime: {file_mime!r}; expected one of "
+                f"{sorted(SUPPORTED_MIMES.keys())}",
+                status_code=400,
+            )
+
+    @staticmethod
+    def _extract_docx_text(file_bytes: bytes) -> str:
+        import io
+
+        try:
+            import docx as docx_mod  # python-docx
+        except ImportError as exc:  # pragma: no cover
+            raise CustomLyricsServiceError(
+                "python-docx is not installed", status_code=500
+            ) from exc
+
+        try:
+            doc = docx_mod.Document(io.BytesIO(file_bytes))
+        except Exception as exc:  # python-docx raises various Package* errors
+            raise CustomLyricsServiceError(
+                f"could not parse .docx: {exc}", status_code=400
+            ) from exc
+
+        paragraphs = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
+        return "\n".join(paragraphs)
 
     def _build_user_prompt(
         self,
