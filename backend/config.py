@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     credit_eval_enabled: bool = os.getenv("CREDIT_EVAL_ENABLED", "true").lower() in ("true", "1", "yes")
     credit_eval_model: str = os.getenv("CREDIT_EVAL_MODEL", "gemini-3.1-pro-preview")
 
+    # Custom Lyrics (LLM-powered) — used by the Custom Lyrics mode in the
+    # Edit All Lyrics modal. Stateless service: takes operator-provided
+    # custom-lyrics text/file and returns transformed lyric lines.
+    custom_lyrics_model: str = os.getenv("CUSTOM_LYRICS_MODEL", "gemini-3.1-pro-preview")
+    custom_lyrics_max_file_mb: int = int(os.getenv("CUSTOM_LYRICS_MAX_FILE_MB", "5"))
+    custom_lyrics_max_input_lines: int = int(os.getenv("CUSTOM_LYRICS_MAX_INPUT_LINES", "500"))
+
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
     # When disabled (default), workers are triggered via direct HTTP (for development)
