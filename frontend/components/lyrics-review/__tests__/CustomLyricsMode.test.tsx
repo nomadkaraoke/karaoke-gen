@@ -10,7 +10,6 @@ import type { LyricsSegment } from '@/lib/lyrics-review/types'
 // `useTranslations` resolves keys from the messages prop on
 // `NextIntlClientProvider` instead.
 jest.mock('next-intl', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react') as typeof import('react')
   const MessagesContext = React.createContext({} as Record<string, unknown>)
 
