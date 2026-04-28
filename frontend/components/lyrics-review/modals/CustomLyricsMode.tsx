@@ -311,7 +311,68 @@ export default function CustomLyricsMode({
           )}
 
           {/* Preview phase — Task 12 */}
-        </div>
+          {phase === 'preview' && (
+            <>
+              <div className="flex items-center justify-between">
+                <span
+                  className={
+                    'text-sm font-medium ' +
+                    (previewLineDiff === 0 ? 'text-green-500' : 'text-destructive')
+                  }
+                >
+                  {previewLineDiff === 0 ? (
+                    <span className="flex items-center gap-1">
+                      <Check className="h-4 w-4" />
+                      {previewLineCount}/{expectedLineCount} lines
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle className="h-4 w-4" />
+                      {previewLineCount}/{expectedLineCount} lines
+                    </span>
+                  )}
+                </span>
+                {modelUsed && (
+                  <span className="text-xs text-muted-foreground">
+                    {t('modelLabel')}: {modelUsed}
+                  </span>
+                )}
+              </div>
+
+              {(warnings.length > 0 || lineCountMismatch) && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-yellow-500/10 text-sm text-yellow-700 dark:text-yellow-300">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <ul className="list-disc list-inside">
+                    {warnings.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                    {lineCountMismatch && warnings.length === 0 && (
+                      <li>{t('lineCountMismatchFallback')}</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              <Textarea
+                value={generatedText}
+                onChange={(e) => setGeneratedText(e.target.value)}
+                placeholder={t('previewPlaceholder')}
+                className="flex-1 resize-none font-mono text-sm min-h-[260px]"
+              />
+
+              {previewLineDiff !== 0 && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-sm text-destructive">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p>
+                    {previewLineDiff > 0
+                      ? t('tooManyLines', { diff: Math.abs(previewLineDiff), expected: expectedLineCount, actual: previewLineCount })
+                      : t('tooFewLines', { diff: Math.abs(previewLineDiff), expected: expectedLineCount, actual: previewLineCount })}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+</div>
 
         <DialogFooter>
           {phase === 'input' && (
@@ -326,6 +387,26 @@ export default function CustomLyricsMode({
             </>
           )}
           {/* Preview footer added in Task 12 */}
+          {phase === 'preview' && (
+            <>
+              <Button variant="outline" onClick={() => setPhase('input')}>
+                {t('backToInput')}
+              </Button>
+              <Button variant="outline" onClick={runGenerate}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                {t('regenerate')}
+              </Button>
+              <Button onClick={handleSave} disabled={!canSave}>
+                <Check className="h-4 w-4 mr-2" />
+                {t('saveCustom')}
+              </Button>
+            </>
+          )}
+          {phase === 'generating' && (
+            <Button variant="outline" disabled>
+              {t('generating')}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
