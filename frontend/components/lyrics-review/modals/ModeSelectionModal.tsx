@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, ClipboardPaste, TextCursorInput, CaseSensitive, X, type LucideIcon } from 'lucide-react'
+import { RefreshCw, ClipboardPaste, TextCursorInput, CaseSensitive, Sparkles, X, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ModeSelectionModalProps {
@@ -13,6 +13,7 @@ interface ModeSelectionModalProps {
   onSelectResync: () => void
   onSelectReplaceSegments: () => void
   onSelectChangeCase: () => void
+  onSelectCustomLyrics: () => void
   hasExistingLyrics: boolean
 }
 
@@ -34,12 +35,13 @@ export default function ModeSelectionModal({
   onSelectResync,
   onSelectReplaceSegments,
   onSelectChangeCase,
+  onSelectCustomLyrics,
   hasExistingLyrics,
 }: ModeSelectionModalProps) {
   const t = useTranslations('lyricsReview.modals.modeSelection')
   const tCommon = useTranslations('common')
 
-  const options: ModeOption[] = [
+  const rawOptions: Array<ModeOption | false> = [
     hasExistingLyrics && {
       key: 'resync',
       icon: RefreshCw,
@@ -68,6 +70,15 @@ export default function ModeSelectionModal({
       tagTone: 'positive' as const,
       onSelect: onSelectChangeCase,
     },
+    hasExistingLyrics && {
+      key: 'customLyrics',
+      icon: Sparkles,
+      title: t('customLyricsTitle'),
+      desc: t('customLyricsDesc'),
+      tag: t('customLyricsTag'),
+      tagTone: 'positive' as const,
+      onSelect: onSelectCustomLyrics,
+    },
     {
       key: 'replaceAll',
       icon: ClipboardPaste,
@@ -77,7 +88,8 @@ export default function ModeSelectionModal({
       tagTone: 'caution' as const,
       onSelect: onSelectReplace,
     },
-  ].filter((opt): opt is ModeOption => Boolean(opt))
+  ]
+  const options: ModeOption[] = rawOptions.filter((opt): opt is ModeOption => Boolean(opt))
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
