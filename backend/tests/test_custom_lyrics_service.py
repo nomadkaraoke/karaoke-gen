@@ -265,3 +265,69 @@ def test_oversize_file_rejected(service: CustomLyricsService) -> None:
             notes=None,
         )
     assert exc_info.value.status_code == 400
+
+
+def test_retry_succeeds_on_second_attempt(service: CustomLyricsService) -> None:
+    existing_lines = ["a", "b", "c"]
+
+    responses = [
+        _mock_gemini_response(["bad", "wrong-count"]),
+        _mock_gemini_response(["A", "B", "C"]),
+    ]
+
+    with patch(
+        "backend.services.custom_lyrics_service.genai.Client"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = responses
+        mock_client_cls.return_value = mock_client
+
+        result = service.generate(
+            job_id="job-1",
+            existing_lines=existing_lines,
+            artist=None,
+            title=None,
+            custom_text="anything",
+            file_bytes=None,
+            file_mime=None,
+            file_name=None,
+            notes=None,
+        )
+
+    assert result.lines == ["A", "B", "C"]
+    assert result.retry_count == 1
+    assert result.line_count_mismatch is False
+    assert result.warnings == []
+
+
+def test_retry_exhausted_returns_mismatch_with_warning(
+    service: CustomLyricsService,
+) -> None:
+    existing_lines = ["a", "b", "c"]
+    bad = _mock_gemini_response(["only-two", "lines-here"])
+
+    with patch(
+        "backend.services.custom_lyrics_service.genai.Client"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = [bad, bad]
+        mock_client_cls.return_value = mock_client
+
+        result = service.generate(
+            job_id="job-1",
+            existing_lines=existing_lines,
+            artist=None,
+            title=None,
+            custom_text="anything",
+            file_bytes=None,
+            file_mime=None,
+            file_name=None,
+            notes=None,
+        )
+
+    assert result.lines == ["only-two", "lines-here"]
+    assert result.retry_count == 1
+    assert result.line_count_mismatch is True
+    assert len(result.warnings) == 1
+    assert "2 lines" in result.warnings[0]
+    assert "3 were expected" in result.warnings[0]
