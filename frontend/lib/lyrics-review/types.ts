@@ -178,7 +178,7 @@ export type EditOperationType =
   | 'word_change' | 'word_delete' | 'word_add'
   | 'word_split' | 'word_merge'
   | 'segment_delete' | 'segment_add' | 'segment_split' | 'segment_merge'
-  | 'find_replace' | 'replace_all_lyrics' | 'change_case'
+  | 'find_replace' | 'replace_all_lyrics' | 'change_case' | 'custom_lyrics_replace'
   | 'timing_change' | 'revert_correction' | 'revert_all'
 
 export type EditFeedbackReason =

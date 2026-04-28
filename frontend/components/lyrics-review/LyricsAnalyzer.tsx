@@ -23,7 +23,7 @@ import {
 } from '@/lib/lyrics-review/types'
 import type { EditLog, EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
 import type { InstrumentalSelectionType, LyricsReviewApiClient } from '@/lib/api'
-import { lyricsReviewApi, warmupEncodingWorker, heartbeatEncodingWorker } from '@/lib/api'
+import { lyricsReviewApi, warmupEncodingWorker, heartbeatEncodingWorker, getAccessToken } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import ReferenceView from './ReferenceView'
 import TranscriptionView from './TranscriptionView'
@@ -1166,7 +1166,10 @@ export default function LyricsAnalyzer({
   const handleSaveReplaceAllLyrics = useCallback(
     (
       newSegments: LyricsSegment[],
-      meta?: { operation: 'replace_all_lyrics' | 'change_case'; details?: Record<string, unknown> }
+      meta?: {
+        operation: 'replace_all_lyrics' | 'change_case' | 'custom_lyrics_replace'
+        details?: Record<string, unknown>
+      }
     ) => {
       const operation = meta?.operation ?? 'replace_all_lyrics'
       const details =
@@ -1176,11 +1179,19 @@ export default function LyricsAnalyzer({
         }
       addEditEntry(editLog, operation, { details })
       const newData = { ...data, corrected_segments: newSegments }
-      const historyLabel = operation === 'change_case' ? 'change case' : 'replace all lyrics'
+      const historyLabel =
+        operation === 'change_case'
+          ? 'change case'
+          : operation === 'custom_lyrics_replace'
+            ? 'custom lyrics replace'
+            : 'replace all lyrics'
       updateDataWithHistory(newData, historyLabel)
       setIsReplaceAllLyricsModalOpen(false)
+      if (operation === 'custom_lyrics_replace') {
+        toast.info(t('toasts.customLyricsSaved'))
+      }
     },
-    [data, updateDataWithHistory, editLog]
+    [data, updateDataWithHistory, editLog, t]
   )
 
   // Undo/Redo
@@ -1489,6 +1500,10 @@ export default function LyricsAnalyzer({
         currentTime={currentAudioTime}
         setModalSpacebarHandler={handleSetModalSpacebarHandler}
         existingSegments={data.corrected_segments}
+        jobId={jobId ?? ''}
+        artist={data.metadata?.artist}
+        title={data.metadata?.title}
+        authToken={getAccessToken() ?? undefined}
       />
 
       <EditFeedbackBar
