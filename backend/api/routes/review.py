@@ -440,6 +440,81 @@ async def complete_review(
         raise HTTPException(status_code=500, detail=t("en", "review.reviewCompletedError", error=str(e)))
 
 
+@router.post("/{job_id}/custom-lyrics/generate", response_model=CustomLyricsResponse)
+async def generate_custom_lyrics(
+    job_id: str,
+    existing_lines: str = Form(..., description="JSON-encoded array of segment lines"),
+    custom_text: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    artist: Optional[str] = Form(None),
+    title: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+    service: CustomLyricsService = Depends(_get_custom_lyrics_service_dep),
+) -> CustomLyricsResponse:
+    """Generate custom lyrics for a job using Gemini 3.1 Pro.
+
+    Stateless: returns generated lines for the frontend to render in an
+    editable preview. Persistence happens via the existing /complete path
+    after the user reviews and saves.
+    """
+    # Parse existing_lines JSON
+    try:
+        parsed_lines = json.loads(existing_lines)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"existing_lines is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(parsed_lines, list) or not all(
+        isinstance(x, str) for x in parsed_lines
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="existing_lines must be a JSON array of strings",
+        )
+    if not parsed_lines:
+        raise HTTPException(status_code=400, detail="existing_lines is empty")
+
+    # Read file body (if any) — capped check is done by service too
+    file_bytes: Optional[bytes] = None
+    file_mime: Optional[str] = None
+    file_name: Optional[str] = None
+    if file is not None:
+        file_bytes = await file.read()
+        file_mime = file.content_type
+        file_name = file.filename
+
+    if not custom_text and not file_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="must provide either custom_text or a file upload",
+        )
+
+    try:
+        result = service.generate(
+            job_id=job_id,
+            existing_lines=parsed_lines,
+            artist=artist,
+            title=title,
+            custom_text=custom_text,
+            file_bytes=file_bytes,
+            file_mime=file_mime,
+            file_name=file_name,
+            notes=notes,
+        )
+    except CustomLyricsServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return CustomLyricsResponse(
+        lines=result.lines,
+        warnings=result.warnings,
+        model=result.model,
+        line_count_mismatch=result.line_count_mismatch,
+        retry_count=result.retry_count,
+        duration_ms=result.duration_ms,
+    )
+
+
 @router.post("/{job_id}/handlers")
 async def update_handlers(
     job_id: str,
