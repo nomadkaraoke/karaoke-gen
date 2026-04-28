@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set, Tuple
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
@@ -37,6 +37,27 @@ from backend.api.dependencies import require_auth, require_review_auth
 from backend.services.auth_service import UserType
 from backend.config import get_settings
 from backend.i18n import t, get_locale_from_request
+
+from pydantic import BaseModel as _PydBaseModel
+from backend.services.custom_lyrics_service import (
+    CustomLyricsService,
+    CustomLyricsServiceError,
+    get_custom_lyrics_service,
+)
+
+
+class CustomLyricsResponse(_PydBaseModel):
+    lines: list[str]
+    warnings: list[str]
+    model: str
+    line_count_mismatch: bool
+    retry_count: int
+    duration_ms: int
+
+
+def _get_custom_lyrics_service_dep() -> CustomLyricsService:
+    """FastAPI dependency wrapper around the singleton accessor."""
+    return get_custom_lyrics_service()
 
 # LyricsTranscriber imports for preview generation
 from karaoke_gen.lyrics_transcriber.types import CorrectionResult
