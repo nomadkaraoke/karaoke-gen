@@ -331,3 +331,110 @@ def test_retry_exhausted_returns_mismatch_with_warning(
     assert len(result.warnings) == 1
     assert "2 lines" in result.warnings[0]
     assert "3 were expected" in result.warnings[0]
+
+
+def test_gemini_exception_propagates_as_service_error(
+    service: CustomLyricsService,
+) -> None:
+    with patch(
+        "backend.services.custom_lyrics_service.genai.Client"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = RuntimeError(
+            "vertex unavailable"
+        )
+        mock_client_cls.return_value = mock_client
+
+        with pytest.raises(RuntimeError, match="vertex unavailable"):
+            service.generate(
+                job_id="job-1",
+                existing_lines=["a"],
+                artist=None,
+                title=None,
+                custom_text="any",
+                file_bytes=None,
+                file_mime=None,
+                file_name=None,
+                notes=None,
+            )
+
+
+def test_gemini_returns_non_json_raises_502(service: CustomLyricsService) -> None:
+    bad = MagicMock()
+    bad.text = "Sure! Here you go: ..."  # not JSON
+
+    with patch(
+        "backend.services.custom_lyrics_service.genai.Client"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = bad
+        mock_client_cls.return_value = mock_client
+
+        with pytest.raises(CustomLyricsServiceError) as exc_info:
+            service.generate(
+                job_id="job-1",
+                existing_lines=["a"],
+                artist=None,
+                title=None,
+                custom_text="any",
+                file_bytes=None,
+                file_mime=None,
+                file_name=None,
+                notes=None,
+            )
+        assert exc_info.value.status_code == 502
+
+
+def test_gemini_returns_wrong_shape_raises_502(service: CustomLyricsService) -> None:
+    bad = MagicMock()
+    bad.text = json.dumps({"output": ["a"]})  # missing "lines" key
+
+    with patch(
+        "backend.services.custom_lyrics_service.genai.Client"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = bad
+        mock_client_cls.return_value = mock_client
+
+        with pytest.raises(CustomLyricsServiceError) as exc_info:
+            service.generate(
+                job_id="job-1",
+                existing_lines=["a"],
+                artist=None,
+                title=None,
+                custom_text="any",
+                file_bytes=None,
+                file_mime=None,
+                file_name=None,
+                notes=None,
+            )
+        assert exc_info.value.status_code == 502
+
+
+def test_notes_field_included_in_prompt(service: CustomLyricsService) -> None:
+    captured_prompts: list[str] = []
+
+    def fake_generate_content(*, model, contents, config):  # noqa: ARG001
+        captured_prompts.append(contents[0])
+        return _mock_gemini_response(["a"])
+
+    with patch(
+        "backend.services.custom_lyrics_service.genai.Client"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = fake_generate_content
+        mock_client_cls.return_value = mock_client
+
+        service.generate(
+            job_id="job-1",
+            existing_lines=["a"],
+            artist=None,
+            title=None,
+            custom_text="any",
+            file_bytes=None,
+            file_mime=None,
+            file_name=None,
+            notes="Wedding for John & Jane — keep it cheesy",
+        )
+
+    assert any("John & Jane" in p for p in captured_prompts)
