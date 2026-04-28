@@ -940,6 +940,9 @@
       "byCategory": "By Category",
       "noCorrections": "No agentic corrections"
     },
+    "toasts": {
+      "customLyricsSaved": "Custom lyrics applied. Manually sync each edited segment to ensure word timings are good for customised lyrics."
+    },
     "modals": {
       "addLyrics": {
         "title": "Add Reference Lyrics",
@@ -1001,7 +1004,40 @@
         "replaceAllWarning": "All existing timing data will be lost",
         "changeCaseTitle": "Change Case",
         "changeCaseDesc": "Convert all lyrics to UPPERCASE, lowercase, Title Case, or Sentence case. Timing is fully preserved.",
-        "changeCaseRecommended": "Recommended for style consistency"
+        "changeCaseRecommended": "Recommended for style consistency",
+        "customLyricsTitle": "Custom Lyrics",
+        "customLyricsDesc": "Replace lyrics with custom versions for weddings, birthdays, parties. AI matches each line to the original structure.",
+        "customLyricsTag": "AI-powered, recommended for client requests"
+      },
+      "customLyricsMode": {
+        "title": "Custom Lyrics (AI-powered)",
+        "description": "Provide the client's custom lyrics or notes — AI will return exactly {count} lines matching the original structure.",
+        "tabText": "Paste text",
+        "tabFile": "Upload file",
+        "textLabel": "Custom lyrics or instructions",
+        "textPlaceholder": "Paste the client's custom lyrics here, or describe what should change. Examples:\n\nReplace 'baby' with 'Mary' throughout.\nVerse 2 should be about our trip to Italy.\nKeep the chorus original.",
+        "fileLabel": "Client document",
+        "chooseFile": "Choose file",
+        "fileHint": "Accepted: {allowed} (max {maxMb} MB)",
+        "fileTypeError": "Unsupported file type. Allowed: {allowed}",
+        "fileSizeError": "File is too large (max {maxMb} MB)",
+        "notesLabel": "Notes / instructions (optional)",
+        "notesPlaceholder": "Extra context for the AI, e.g. 'Wedding for John & Jane — keep it cheesy'",
+        "generate": "Generate Custom Lyrics",
+        "generatingTitle": "Generating custom lyrics with AI...",
+        "generatingSubtitle": "This can take up to a minute. You can cancel and try again.",
+        "generating": "Generating...",
+        "cancelGeneration": "Cancel",
+        "cancel": "Cancel",
+        "modelLabel": "Model",
+        "backToInput": "Edit inputs",
+        "regenerate": "Regenerate",
+        "saveCustom": "Save Custom Lyrics",
+        "previewPlaceholder": "Generated lyrics will appear here...",
+        "lineCountMismatchFallback": "AI returned a different number of lines than expected. Adjust the textarea or click Regenerate.",
+        "tooManyLines": "You have {diff} extra line(s). Expected {expected}, got {actual}. Remove lines or click Regenerate.",
+        "tooFewLines": "You're missing {diff} line(s). Expected {expected}, got {actual}. Add lines or click Regenerate.",
+        "genericError": "Something went wrong. Please try again."
       },
       "replaceAllLyrics": {
         "pastePrompt": "Paste your new lyrics below:",

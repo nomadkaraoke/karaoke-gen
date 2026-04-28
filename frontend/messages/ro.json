@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Toate datele de sincronizare existente vor fi pierdute",
         "changeCaseDesc": "Convertește toate versurile în MAJUSCULE, minuscule, Format titlu sau Format propoziție. Sincronizarea este păstrată integral.",
         "changeCaseRecommended": "Recomandat pentru consecvența stilului",
-        "changeCaseTitle": "Schimbă formatul literelor"
+        "changeCaseTitle": "Schimbă formatul literelor",
+        "customLyricsDesc": "Înlocuiește versurile cu versiuni personalizate pentru nunți, zile de naștere, petreceri. AI-ul potrivește fiecare rând cu structura originală.",
+        "customLyricsTag": "Bazat pe AI, recomandat pentru cererile clienților",
+        "customLyricsTitle": "Versuri personalizate"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Lipește noile tale versuri mai jos:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 caractere minimum",
         "skip": "Sari",
         "saveAndContinue": "Salvează și continuă"
+      },
+      "customLyricsMode": {
+        "backToInput": "Editează datele introduse",
+        "chooseFile": "Alege fișier",
+        "description": "Furnizează versurile personalizate sau notițele clientului — AI-ul va returna exact {count} rânduri care se potrivesc cu structura originală.",
+        "fileHint": "Acceptat: {allowed} (max {maxMb} MB)",
+        "fileLabel": "Documentul clientului",
+        "fileSizeError": "Fișierul este prea mare (max {maxMb} MB)",
+        "fileTypeError": "Tip de fișier neacceptat. Permis: {allowed}",
+        "generate": "Generează versuri personalizate",
+        "generating": "Se generează...",
+        "generatingSubtitle": "Acest lucru poate dura până la un minut. Poți anula și încerca din nou.",
+        "generatingTitle": "Se generează versuri personalizate cu AI...",
+        "lineCountMismatchFallback": "AI-ul a returnat un număr diferit de rânduri față de cel așteptat. Ajustează zona de text sau apasă pe Regenerează.",
+        "modelLabel": "Model",
+        "notesLabel": "Notițe / instrucțiuni (opțional)",
+        "notesPlaceholder": "Context suplimentar pentru AI, de ex. 'Nuntă pentru John & Jane — păstrează un ton siropos'",
+        "previewPlaceholder": "Versurile generate vor apărea aici...",
+        "regenerate": "Regenerează",
+        "saveCustom": "Salvează versurile personalizate",
+        "tabFile": "Încarcă fișier",
+        "tabText": "Lipește text",
+        "textLabel": "Versuri personalizate sau instrucțiuni",
+        "textPlaceholder": "Lipește versurile personalizate ale clientului aici, sau descrie ce ar trebui să se schimbe. Exemple:\n\nÎnlocuiește 'baby' cu 'Mary' peste tot.\nStrofa 2 ar trebui să fie despre excursia noastră în Italia.\nPăstrează refrenul original.",
+        "title": "Versuri personalizate (bazat pe AI)",
+        "tooFewLines": "Îți lipsesc {diff} rând(uri). Așteptat {expected}, obținut {actual}. Adaugă rânduri sau apasă pe Regenerează.",
+        "tooManyLines": "Ai {diff} rând(uri) în plus. Așteptat {expected}, obținut {actual}. Elimină rânduri sau apasă pe Regenerează.",
+        "cancel": "Anulează",
+        "cancelGeneration": "Anulează",
+        "genericError": "Ceva nu a mers bine. Te rog să încerci din nou."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Cântărețul pentru acest segment (dă click pentru a schimba)",
       "singerChipAriaLabelWithOverrides": "Cântărețul pentru acest segment cu suprascrieri la nivel de cuvânt (dă click pentru a schimba)",
       "wordOverrideNote": "Suprascrierile cântărețului la nivel de cuvânt se aplică doar videoclipului de karaoke — rezultatul CDG folosește cântărețul principal al segmentului."
+    },
+    "toasts": {
+      "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate."
     }
   },
   "instrumentalReview": {

@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Toutes les données de timing existantes seront perdues",
         "changeCaseDesc": "Convertis toutes les paroles en MAJUSCULES, minuscules, Majuscule à chaque mot ou Majuscule en début de phrase. La synchronisation est entièrement conservée.",
         "changeCaseRecommended": "Recommandé pour la cohérence du style",
-        "changeCaseTitle": "Modifier la casse"
+        "changeCaseTitle": "Modifier la casse",
+        "customLyricsDesc": "Remplace les paroles par des versions personnalisées pour les mariages, anniversaires ou soirées. L'IA fait correspondre chaque ligne à la structure originale.",
+        "customLyricsTag": "Généré par l'IA, recommandé pour les demandes clients",
+        "customLyricsTitle": "Paroles personnalisées"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Colle tes nouvelles paroles ci-dessous :",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 caractères minimum",
         "skip": "Passer",
         "saveAndContinue": "Enregistrer et Continuer"
+      },
+      "customLyricsMode": {
+        "backToInput": "Modifier la saisie",
+        "chooseFile": "Choisir un fichier",
+        "description": "Fournis les paroles personnalisées ou les notes du client — l'IA renverra exactement {count} lignes correspondant à la structure originale.",
+        "fileHint": "Formats acceptés : {allowed} (max. {maxMb} Mo)",
+        "fileLabel": "Document du client",
+        "fileSizeError": "Le fichier est trop volumineux (max. {maxMb} Mo)",
+        "fileTypeError": "Type de fichier non pris en charge. Formats autorisés : {allowed}",
+        "generate": "Générer les paroles personnalisées",
+        "generating": "Génération...",
+        "generatingSubtitle": "Cela peut prendre jusqu'à une minute. Tu peux annuler et réessayer.",
+        "generatingTitle": "Génération des paroles personnalisées par l'IA...",
+        "lineCountMismatchFallback": "L'IA a renvoyé un nombre de lignes différent de celui attendu. Ajuste la zone de texte ou clique sur Régénérer.",
+        "modelLabel": "Modèle",
+        "notesLabel": "Notes / instructions (facultatif)",
+        "notesPlaceholder": "Contexte supplémentaire pour l'IA, ex : 'Mariage de John & Jane — garde un ton kitsch'",
+        "previewPlaceholder": "Les paroles générées apparaîtront ici...",
+        "regenerate": "Régénérer",
+        "saveCustom": "Enregistrer les paroles personnalisées",
+        "tabFile": "Importer un fichier",
+        "tabText": "Coller du texte",
+        "textLabel": "Paroles personnalisées ou instructions",
+        "textPlaceholder": "Colle les paroles personnalisées du client ici, ou décris ce qui doit changer. Exemples :\n\nRemplace 'baby' par 'Mary' partout.\nLe couplet 2 doit parler de notre voyage en Italie.\nGarde le refrain original.",
+        "title": "Paroles personnalisées (généré par l'IA)",
+        "tooFewLines": "Il te manque {diff} ligne(s). Attendues : {expected}, obtenues : {actual}. Ajoute des lignes ou clique sur Régénérer.",
+        "tooManyLines": "Tu as {diff} ligne(s) en trop. Attendues : {expected}, obtenues : {actual}. Supprime des lignes ou clique sur Régénérer.",
+        "cancel": "Annuler",
+        "cancelGeneration": "Annuler",
+        "genericError": "Quelque chose s'est mal passé. Réessaie."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Chanteur pour ce segment (clique pour changer)",
       "singerChipAriaLabelWithOverrides": "Chanteur pour ce segment avec des modifications au niveau des mots (clique pour changer)",
       "wordOverrideNote": "Les modifications de chanteur au niveau des mots s'appliquent uniquement à la vidéo karaoké — la sortie CDG utilise le chanteur principal du segment."
+    },
+    "toasts": {
+      "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct."
     }
   },
   "instrumentalReview": {

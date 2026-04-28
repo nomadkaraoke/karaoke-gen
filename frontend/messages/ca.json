@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Es perdran totes les dades de temps existents",
         "changeCaseDesc": "Converteix tota la lletra a MAJÚSCULES, minúscules, Tipus títol o Tipus oració. La sincronització es conserva completament.",
         "changeCaseRecommended": "Recomanat per a la coherència d'estil",
-        "changeCaseTitle": "Canvia majúscules/minúscules"
+        "changeCaseTitle": "Canvia majúscules/minúscules",
+        "customLyricsDesc": "Substitueix la lletra per versions personalitzades per a casaments, aniversaris o festes. La IA fa coincidir cada línia amb l'estructura original.",
+        "customLyricsTag": "Impulsat per IA, recomanat per a peticions de clients",
+        "customLyricsTitle": "Lletra personalitzada"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Enganxa les teves noves lletres a continuació:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 caràcters mínims",
         "skip": "Omet",
         "saveAndContinue": "Desa i continua"
+      },
+      "customLyricsMode": {
+        "backToInput": "Edita les entrades",
+        "chooseFile": "Tria un fitxer",
+        "description": "Proporciona la lletra personalitzada o les notes del client — la IA retornarà exactament {count} línies que coincideixin amb l'estructura original.",
+        "fileHint": "Acceptat: {allowed} (màx. {maxMb} MB)",
+        "fileLabel": "Document del client",
+        "fileSizeError": "El fitxer és massa gran (màx. {maxMb} MB)",
+        "fileTypeError": "Tipus de fitxer no compatible. Permesos: {allowed}",
+        "generate": "Genera la lletra personalitzada",
+        "generating": "S'està generant...",
+        "generatingSubtitle": "Això pot trigar fins a un minut. Pots cancel·lar-ho i tornar-ho a provar.",
+        "generatingTitle": "S'està generant la lletra personalitzada amb IA...",
+        "lineCountMismatchFallback": "La IA ha retornat un nombre de línies diferent de l'esperat. Ajusta el quadre de text o fes clic a Regenera.",
+        "modelLabel": "Model",
+        "notesLabel": "Notes / instruccions (opcionals)",
+        "notesPlaceholder": "Context addicional per a la IA, p. ex. 'Casament d'en John i la Jane — que sigui cursi'",
+        "previewPlaceholder": "La lletra generada apareixerà aquí...",
+        "regenerate": "Regenera",
+        "saveCustom": "Desa la lletra personalitzada",
+        "tabFile": "Puja un fitxer",
+        "tabText": "Enganxa el text",
+        "textLabel": "Lletra personalitzada o instruccions",
+        "textPlaceholder": "Enganxa la lletra personalitzada del client aquí, o descriu què hauria de canviar. Exemples:\n\nSubstitueix 'baby' per 'Mary' a tot arreu.\nL'estrofa 2 hauria de parlar del nostre viatge a Itàlia.\nMantingues la tornada original.",
+        "title": "Lletra personalitzada (impulsada per IA)",
+        "tooFewLines": "Et falten {diff} línia/es. Se n'esperaven {expected}, n'hi ha {actual}. Afegeix línies o fes clic a Regenera.",
+        "tooManyLines": "Tens {diff} línia/es de més. Se n'esperaven {expected}, n'hi ha {actual}. Elimina línies o fes clic a Regenera.",
+        "cancel": "Cancel·la",
+        "cancelGeneration": "Cancel·la",
+        "genericError": "Alguna cosa ha anat malament. Torna-ho a provar."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Cantant per a aquest segment (fes clic per canviar)",
       "singerChipAriaLabelWithOverrides": "Cantant per a aquest segment amb modificacions a nivell de paraula (fes clic per canviar)",
       "wordOverrideNote": "Les modificacions de cantant a nivell de paraula només s'apliquen al vídeo de karaoke — la sortida CDG utilitza el cantant principal del segment."
+    },
+    "toasts": {
+      "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada."
     }
   },
   "instrumentalReview": {

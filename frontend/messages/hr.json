@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Svi postojeći podaci o tempiranju bit će izgubljeni",
         "changeCaseDesc": "Pretvori cijeli tekst u VELIKA SLOVA, mala slova, Velika Početna Slova ili Rečenični format. Tajming je u potpunosti sačuvan.",
         "changeCaseRecommended": "Preporučuje se za dosljednost stila",
-        "changeCaseTitle": "Promijeni veličinu slova"
+        "changeCaseTitle": "Promijeni veličinu slova",
+        "customLyricsDesc": "Zamijeni tekst prilagođenim verzijama za vjenčanja, rođendane, zabave. AI prilagođava svaku liniju originalnoj strukturi.",
+        "customLyricsTag": "Pokreće AI, preporučuje se za zahtjeve klijenata",
+        "customLyricsTitle": "Prilagođeni tekst"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Zalijepi svoj novi tekst u nastavku:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 minimalno znakova",
         "skip": "Preskoči",
         "saveAndContinue": "Spremi i nastavi"
+      },
+      "customLyricsMode": {
+        "backToInput": "Uredi unose",
+        "chooseFile": "Odaberi datoteku",
+        "description": "Unesi klijentov prilagođeni tekst ili bilješke — AI će vratiti točno {count} linija koje odgovaraju originalnoj strukturi.",
+        "fileHint": "Prihvaćeno: {allowed} (maks. {maxMb} MB)",
+        "fileLabel": "Klijentov dokument",
+        "fileSizeError": "Datoteka je prevelika (maks. {maxMb} MB)",
+        "fileTypeError": "Nepodržana vrsta datoteke. Dopušteno: {allowed}",
+        "generate": "Generiraj prilagođeni tekst",
+        "generating": "Generiranje...",
+        "generatingSubtitle": "Ovo može potrajati do jedne minute. Možeš otkazati i pokušati ponovno.",
+        "generatingTitle": "Generiranje prilagođenog teksta pomoću AI-ja...",
+        "lineCountMismatchFallback": "AI je vratio drugačiji broj linija od očekivanog. Prilagodi tekstualno polje ili klikni Generiraj ponovno.",
+        "modelLabel": "Model",
+        "notesLabel": "Bilješke / upute (neobavezno)",
+        "notesPlaceholder": "Dodatni kontekst za AI, npr. 'Vjenčanje za Ivana i Anu — neka bude sladunjavo'",
+        "previewPlaceholder": "Generirani tekst pojavit će se ovdje...",
+        "regenerate": "Generiraj ponovno",
+        "saveCustom": "Spremi prilagođeni tekst",
+        "tabFile": "Prenesi datoteku",
+        "tabText": "Zalijepi tekst",
+        "textLabel": "Prilagođeni tekst ili upute",
+        "textPlaceholder": "Ovdje zalijepi klijentov prilagođeni tekst ili opiši što treba promijeniti. Primjeri:\n\nSvugdje zamijeni 'baby' s 'Mary'.\n2. kitica treba biti o našem putovanju u Italiju.\nZadrži originalni refren.",
+        "title": "Prilagođeni tekst (pokreće AI)",
+        "tooFewLines": "Nedostaje ti {diff} linija. Očekivano {expected}, dobiveno {actual}. Dodaj linije ili klikni Generiraj ponovno.",
+        "tooManyLines": "Imaš {diff} linija viška. Očekivano {expected}, dobiveno {actual}. Ukloni linije ili klikni Generiraj ponovno.",
+        "cancel": "Odustani",
+        "cancelGeneration": "Odustani",
+        "genericError": "Nešto je pošlo po zlu. Pokušaj ponovno."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Pjevač za ovaj segment (klikni za promjenu)",
       "singerChipAriaLabelWithOverrides": "Pjevač za ovaj segment s izmjenama na razini riječi (klikni za promjenu)",
       "wordOverrideNote": "Izmjene pjevača na razini riječi primjenjuju se samo na karaoke video — CDG izlaz koristi glavnog pjevača segmenta."
+    },
+    "toasts": {
+      "customLyricsSaved": "Prilagođeni tekst je primijenjen. Ručno sinkroniziraj svaki uređeni segment kako bi tempiranje riječi bilo točno za prilagođeni tekst."
     }
   },
   "instrumentalReview": {

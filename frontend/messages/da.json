@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Alle eksisterende timingdata vil gå tabt",
         "changeCaseDesc": "Konverter hele teksten til STORE BOGSTAVER, små bogstaver, Stort Begyndelsesbogstav eller Sætningsstil. Timingen bevares fuldt ud.",
         "changeCaseRecommended": "Anbefales for stilmæssig konsistens",
-        "changeCaseTitle": "Skift store/små bogstaver"
+        "changeCaseTitle": "Skift store/små bogstaver",
+        "customLyricsDesc": "Udskift sangtekster med tilpassede versioner til bryllupper, fødselsdage og fester. AI'en matcher hver linje med den originale struktur.",
+        "customLyricsTag": "AI-drevet, anbefales til kundeanmodninger",
+        "customLyricsTitle": "Tilpasset sangtekst"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Indsæt dine nye sangtekster nedenfor:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 minimum tegn",
         "skip": "Spring over",
         "saveAndContinue": "Gem og fortsæt"
+      },
+      "customLyricsMode": {
+        "backToInput": "Rediger input",
+        "chooseFile": "Vælg fil",
+        "description": "Angiv kundens tilpassede sangtekst eller noter — AI'en vil returnere præcis {count} linjer, der matcher den originale struktur.",
+        "fileHint": "Accepteret: {allowed} (maks. {maxMb} MB)",
+        "fileLabel": "Kundedokument",
+        "fileSizeError": "Filen er for stor (maks. {maxMb} MB)",
+        "fileTypeError": "Filtypen understøttes ikke. Tilladt: {allowed}",
+        "generate": "Generer tilpasset sangtekst",
+        "generating": "Genererer...",
+        "generatingSubtitle": "Dette kan tage op til et minut. Du kan annullere og prøve igen.",
+        "generatingTitle": "Genererer tilpasset sangtekst med AI...",
+        "lineCountMismatchFallback": "AI'en returnerede et andet antal linjer end forventet. Juster tekstfeltet eller klik på Generer igen.",
+        "modelLabel": "Model",
+        "notesLabel": "Noter / instruktioner (valgfrit)",
+        "notesPlaceholder": "Ekstra kontekst til AI'en, f.eks. 'Bryllup for John & Jane — gør det lidt plat'",
+        "previewPlaceholder": "Den genererede sangtekst vises her...",
+        "regenerate": "Generer igen",
+        "saveCustom": "Gem tilpasset sangtekst",
+        "tabFile": "Upload fil",
+        "tabText": "Indsæt tekst",
+        "textLabel": "Tilpasset sangtekst eller instruktioner",
+        "textPlaceholder": "Indsæt kundens tilpassede sangtekst her, eller beskriv hvad der skal ændres. Eksempler:\n\nUdskift 'baby' med 'Mary' overalt.\nVers 2 skal handle om vores tur til Italien.\nBehold det originale omkvæd.",
+        "title": "Tilpasset sangtekst (AI-drevet)",
+        "tooFewLines": "Du mangler {diff} linje(r). Forventede {expected}, fik {actual}. Tilføj linjer eller klik på Generer igen.",
+        "tooManyLines": "Du har {diff} ekstra linje(r). Forventede {expected}, fik {actual}. Fjern linjer eller klik på Generer igen.",
+        "cancel": "Annuller",
+        "cancelGeneration": "Annuller",
+        "genericError": "Noget gik galt. Prøv venligst igen."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Sanger for dette segment (klik for at ændre)",
       "singerChipAriaLabelWithOverrides": "Sanger for dette segment med tilsidesættelser på ordniveau (klik for at ændre)",
       "wordOverrideNote": "Sanger-tilsidesættelser på ordniveau gælder kun for karaoke-videoen — CDG-output bruger segmentets primære sanger."
+    },
+    "toasts": {
+      "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst."
     }
   },
   "instrumentalReview": {

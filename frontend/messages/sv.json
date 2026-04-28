@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "All befintlig tajmingdata kommer att gå förlorad",
         "changeCaseDesc": "Konvertera all sångtext till VERSALER, gemener, Versal på varje ord eller Inledande versal. Tidsynkningen bevaras helt.",
         "changeCaseRecommended": "Rekommenderas för enhetlig stil",
-        "changeCaseTitle": "Ändra skiftläge"
+        "changeCaseTitle": "Ändra skiftläge",
+        "customLyricsDesc": "Ersätt låttexten med anpassade versioner för bröllop, födelsedagar och fester. AI:n matchar varje rad mot originalstrukturen.",
+        "customLyricsTag": "AI-driven, rekommenderas för kundförfrågningar",
+        "customLyricsTitle": "Anpassad låttext"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Klistra in din nya text nedan:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 tecken minimum",
         "skip": "Hoppa över",
         "saveAndContinue": "Spara & Fortsätt"
+      },
+      "customLyricsMode": {
+        "backToInput": "Redigera uppgifter",
+        "chooseFile": "Välj fil",
+        "description": "Ange kundens anpassade låttext eller anteckningar — AI:n returnerar exakt {count} rader som matchar originalstrukturen.",
+        "fileHint": "Accepteras: {allowed} (max {maxMb} MB)",
+        "fileLabel": "Kunddokument",
+        "fileSizeError": "Filen är för stor (max {maxMb} MB)",
+        "fileTypeError": "Filtypen stöds inte. Tillåtna: {allowed}",
+        "generate": "Generera anpassad låttext",
+        "generating": "Genererar...",
+        "generatingSubtitle": "Detta kan ta upp till en minut. Du kan avbryta och försöka igen.",
+        "generatingTitle": "Genererar anpassad låttext med AI...",
+        "lineCountMismatchFallback": "AI:n returnerade ett annat antal rader än förväntat. Justera textfältet eller klicka på Generera igen.",
+        "modelLabel": "Modell",
+        "notesLabel": "Anteckningar / instruktioner (valfritt)",
+        "notesPlaceholder": "Extra kontext för AI:n, t.ex. 'Bröllop för John & Jane — håll det smörigt'",
+        "previewPlaceholder": "Den genererade låttexten visas här...",
+        "regenerate": "Generera igen",
+        "saveCustom": "Spara anpassad låttext",
+        "tabFile": "Ladda upp fil",
+        "tabText": "Klistra in text",
+        "textLabel": "Anpassad låttext eller instruktioner",
+        "textPlaceholder": "Klistra in kundens anpassade låttext här, eller beskriv vad som ska ändras. Exempel:\n\nByt ut 'baby' mot 'Mary' överallt.\nVers 2 ska handla om vår resa till Italien.\nBehåll originalrefrängen.",
+        "title": "Anpassad låttext (AI-driven)",
+        "tooFewLines": "Du saknar {diff} rad(er). Förväntade {expected}, fick {actual}. Lägg till rader eller klicka på Generera igen.",
+        "tooManyLines": "Du har {diff} extra rad(er). Förväntade {expected}, fick {actual}. Ta bort rader eller klicka på Generera igen.",
+        "cancel": "Avbryt",
+        "cancelGeneration": "Avbryt",
+        "genericError": "Något gick fel. Försök igen."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Sångare för detta segment (klicka för att ändra)",
       "singerChipAriaLabelWithOverrides": "Sångare för detta segment med åsidosättningar på ordnivå (klicka för att ändra)",
       "wordOverrideNote": "Åsidosättningar av sångare på ordnivå gäller endast för karaokevideon — CDG-utdata använder segmentets huvudsakliga sångare."
+    },
+    "toasts": {
+      "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten."
     }
   },
   "instrumentalReview": {

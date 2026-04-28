@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Tüm mevcut zamanlama verileri kaybolacak",
         "changeCaseDesc": "Tüm şarkı sözlerini BÜYÜK HARF, küçük harf, Başlık Düzeni veya Cümle düzenine dönüştür. Zamanlama tamamen korunur.",
         "changeCaseRecommended": "Stil tutarlılığı için önerilir",
-        "changeCaseTitle": "Büyük/Küçük Harf Değiştir"
+        "changeCaseTitle": "Büyük/Küçük Harf Değiştir",
+        "customLyricsDesc": "Düğünler, doğum günleri ve partiler için şarkı sözlerini özel versiyonlarla değiştir. Yapay zeka her satırı orijinal yapıyla eşleştirir.",
+        "customLyricsTag": "Yapay zeka destekli, müşteri istekleri için önerilir",
+        "customLyricsTitle": "Özel Şarkı Sözleri"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Yeni sözlerini aşağıya yapıştır:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 minimum karakter",
         "skip": "Atla",
         "saveAndContinue": "Kaydet & Devam Et"
+      },
+      "customLyricsMode": {
+        "backToInput": "Girdileri düzenle",
+        "chooseFile": "Dosya seç",
+        "description": "Müşterinin özel şarkı sözlerini veya notlarını gir — Yapay zeka orijinal yapıyla eşleşen tam olarak {count} satır döndürecek.",
+        "fileHint": "Kabul edilenler: {allowed} (maksimum {maxMb} MB)",
+        "fileLabel": "Müşteri belgesi",
+        "fileSizeError": "Dosya çok büyük (maksimum {maxMb} MB)",
+        "fileTypeError": "Desteklenmeyen dosya türü. İzin verilenler: {allowed}",
+        "generate": "Özel Şarkı Sözleri Oluştur",
+        "generating": "Oluşturuluyor...",
+        "generatingSubtitle": "Bu işlem bir dakikaya kadar sürebilir. İptal edip tekrar deneyebilirsin.",
+        "generatingTitle": "Yapay zeka ile özel şarkı sözleri oluşturuluyor...",
+        "lineCountMismatchFallback": "Yapay zeka beklenenden farklı sayıda satır döndürdü. Metin alanını ayarla veya Yeniden Oluştur'a tıkla.",
+        "modelLabel": "Model",
+        "notesLabel": "Notlar / talimatlar (isteğe bağlı)",
+        "notesPlaceholder": "Yapay zeka için ek bilgi, örn. 'John ve Jane'in düğünü — biraz klişe olsun'",
+        "previewPlaceholder": "Oluşturulan şarkı sözleri burada görünecek...",
+        "regenerate": "Yeniden Oluştur",
+        "saveCustom": "Özel Şarkı Sözlerini Kaydet",
+        "tabFile": "Dosya yükle",
+        "tabText": "Metni yapıştır",
+        "textLabel": "Özel şarkı sözleri veya talimatlar",
+        "textPlaceholder": "Müşterinin özel şarkı sözlerini buraya yapıştır veya nelerin değişmesi gerektiğini açıkla. Örnekler:\n\nHer yerdeki 'baby' kelimesini 'Mary' ile değiştir.\n2. kıta İtalya gezimiz hakkında olsun.\nNakaratı orijinal bırak.",
+        "title": "Özel Şarkı Sözleri (Yapay Zeka Destekli)",
+        "tooFewLines": "{diff} satır eksik. Beklenen: {expected}, alınan: {actual}. Satır ekle veya Yeniden Oluştur'a tıkla.",
+        "tooManyLines": "{diff} satır fazla. Beklenen: {expected}, alınan: {actual}. Satırları kaldır veya Yeniden Oluştur'a tıkla.",
+        "cancel": "İptal",
+        "cancelGeneration": "İptal",
+        "genericError": "Bir şeyler ters gitti. Lütfen tekrar dene."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Bu bölüm için şarkıcı (değiştirmek için tıkla)",
       "singerChipAriaLabelWithOverrides": "Kelime düzeyinde geçersiz kılmalara sahip bu bölüm için şarkıcı (değiştirmek için tıkla)",
       "wordOverrideNote": "Kelime düzeyindeki şarkıcı geçersiz kılmaları yalnızca karaoke videosuna uygulanır — CDG çıktısı bölümün ana şarkıcısını kullanır."
+    },
+    "toasts": {
+      "customLyricsSaved": "Özel şarkı sözleri uygulandı. Özelleştirilmiş sözlerde kelime zamanlamalarının doğru olduğundan emin olmak için düzenlenen her bölümü manuel olarak senkronize et."
     }
   },
   "instrumentalReview": {

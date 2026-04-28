@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Alle bestaande timinggegevens gaan verloren",
         "changeCaseDesc": "Zet alle songteksten om naar HOOFDLETTERS, kleine letters, Beginhoofdletters of een Hoofdletter per zin. De timing blijft volledig behouden.",
         "changeCaseRecommended": "Aanbevolen voor stijlconsistentie",
-        "changeCaseTitle": "Hoofdlettergebruik wijzigen"
+        "changeCaseTitle": "Hoofdlettergebruik wijzigen",
+        "customLyricsDesc": "Vervang de songtekst door een aangepaste versie voor bruiloften, verjaardagen of feesten. De AI past elke regel aan de originele structuur aan.",
+        "customLyricsTag": "AI-gestuurd, aanbevolen voor klantverzoeken",
+        "customLyricsTitle": "Aangepaste songtekst"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Plak je nieuwe songteksten hieronder:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 minimale tekens",
         "skip": "Overslaan",
         "saveAndContinue": "Opslaan & doorgaan"
+      },
+      "customLyricsMode": {
+        "backToInput": "Invoer bewerken",
+        "chooseFile": "Kies bestand",
+        "description": "Geef de aangepaste songtekst of notities van de klant op — de AI genereert precies {count} regels die passen bij de originele structuur.",
+        "fileHint": "Geaccepteerd: {allowed} (max. {maxMb} MB)",
+        "fileLabel": "Klantdocument",
+        "fileSizeError": "Bestand is te groot (max. {maxMb} MB)",
+        "fileTypeError": "Niet-ondersteund bestandstype. Toegestaan: {allowed}",
+        "generate": "Genereer aangepaste songtekst",
+        "generating": "Genereren...",
+        "generatingSubtitle": "Dit kan tot een minuut duren. Je kunt annuleren en het opnieuw proberen.",
+        "generatingTitle": "Aangepaste songtekst genereren met AI...",
+        "lineCountMismatchFallback": "De AI heeft een ander aantal regels teruggegeven dan verwacht. Pas de tekst aan of klik op Opnieuw genereren.",
+        "modelLabel": "Model",
+        "notesLabel": "Notities / instructies (optioneel)",
+        "notesPlaceholder": "Extra context voor de AI, bijv. 'Bruiloft voor John & Jane — houd het cheesy'",
+        "previewPlaceholder": "De gegenereerde songtekst verschijnt hier...",
+        "regenerate": "Opnieuw genereren",
+        "saveCustom": "Aangepaste songtekst opslaan",
+        "tabFile": "Bestand uploaden",
+        "tabText": "Tekst plakken",
+        "textLabel": "Aangepaste songtekst of instructies",
+        "textPlaceholder": "Plak hier de aangepaste songtekst van de klant, of beschrijf wat er moet veranderen. Voorbeelden:\n\nVervang 'baby' overal door 'Mary'.\nCouplet 2 moet gaan over onze reis naar Italië.\nHoud het refrein origineel.",
+        "title": "Aangepaste songtekst (AI-gestuurd)",
+        "tooFewLines": "Je mist {diff} regel(s). Verwacht: {expected}, gekregen: {actual}. Voeg regels toe of klik op Opnieuw genereren.",
+        "tooManyLines": "Je hebt {diff} regel(s) te veel. Verwacht: {expected}, gekregen: {actual}. Verwijder regels of klik op Opnieuw genereren.",
+        "cancel": "Annuleren",
+        "cancelGeneration": "Annuleren",
+        "genericError": "Er is iets misgegaan. Probeer het opnieuw."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Zanger voor dit segment (klik om te wijzigen)",
       "singerChipAriaLabelWithOverrides": "Zanger voor dit segment met aanpassingen op woordniveau (klik om te wijzigen)",
       "wordOverrideNote": "Zangeraanpassingen op woordniveau zijn alleen van toepassing op de karaokevideo — CDG-uitvoer gebruikt de hoofdzanger van het segment."
+    },
+    "toasts": {
+      "customLyricsSaved": "Aangepaste songtekst toegepast. Synchroniseer elk bewerkt segment handmatig zodat de timing van de woorden perfect aansluit op de nieuwe songtekst."
     }
   },
   "instrumentalReview": {

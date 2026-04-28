@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Minden meglévő időzítési adat elvész",
         "changeCaseDesc": "Alakítsd át az összes dalszöveget NAGYBETŰSRE, kisbetűsre, Cím szerinti nagybetűsre vagy Mondatkezdő nagybetűsre. Az időzítés teljesen megmarad.",
         "changeCaseRecommended": "Az egységes stílus érdekében ajánlott",
-        "changeCaseTitle": "Kis- és nagybetűk módosítása"
+        "changeCaseTitle": "Kis- és nagybetűk módosítása",
+        "customLyricsDesc": "Cseréld le a dalszöveget egyedi verziókra esküvőkre, születésnapokra, bulikra. Az MI minden sort az eredeti szerkezethez igazít.",
+        "customLyricsTag": "MI-alapú, ügyfélkérésekhez ajánlott",
+        "customLyricsTitle": "Egyedi dalszöveg"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Illeszd be az új dalszöveget alább:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 minimum karakter",
         "skip": "Kihagyás",
         "saveAndContinue": "Mentés és folytatás"
+      },
+      "customLyricsMode": {
+        "backToInput": "Bemenetek szerkesztése",
+        "chooseFile": "Fájl kiválasztása",
+        "description": "Add meg az ügyfél egyedi dalszövegét vagy megjegyzéseit — az MI pontosan {count} sort fog visszaadni, amely illeszkedik az eredeti szerkezethez.",
+        "fileHint": "Elfogadott: {allowed} (max. {maxMb} MB)",
+        "fileLabel": "Ügyfél dokumentuma",
+        "fileSizeError": "A fájl túl nagy (max. {maxMb} MB)",
+        "fileTypeError": "Nem támogatott fájltípus. Engedélyezett: {allowed}",
+        "generate": "Egyedi dalszöveg generálása",
+        "generating": "Generálás...",
+        "generatingSubtitle": "Ez akár egy percig is eltarthat. Megszakíthatod és újrapróbálhatod.",
+        "generatingTitle": "Egyedi dalszöveg generálása MI-vel...",
+        "lineCountMismatchFallback": "Az MI a vártnál eltérő számú sort adott vissza. Módosítsd a szövegmezőt, vagy kattints az Újragenerálás gombra.",
+        "modelLabel": "Modell",
+        "notesLabel": "Megjegyzések / utasítások (opcionális)",
+        "notesPlaceholder": "További kontextus az MI számára, pl. 'Esküvő Johnnak és Jane-nek — legyen giccses'",
+        "previewPlaceholder": "A generált dalszöveg itt fog megjelenni...",
+        "regenerate": "Újragenerálás",
+        "saveCustom": "Egyedi dalszöveg mentése",
+        "tabFile": "Fájl feltöltése",
+        "tabText": "Szöveg beillesztése",
+        "textLabel": "Egyedi dalszöveg vagy utasítások",
+        "textPlaceholder": "Illeszd be ide az ügyfél egyedi dalszövegét, vagy írd le, minek kellene változnia. Példák:\n\nCseréld ki a 'baby' szót 'Mary'-re mindenhol.\nA 2. versszak szóljon az olaszországi utunkról.\nA refrén maradjon az eredeti.",
+        "title": "Egyedi dalszöveg (MI-alapú)",
+        "tooFewLines": "Hiányzik {diff} sor. Várt: {expected}, kapott: {actual}. Adj hozzá sorokat, vagy kattints az Újragenerálás gombra.",
+        "tooManyLines": "Van {diff} felesleges sorod. Várt: {expected}, kapott: {actual}. Törölj sorokat, vagy kattints az Újragenerálás gombra.",
+        "cancel": "Mégse",
+        "cancelGeneration": "Mégse",
+        "genericError": "Valami hiba történt. Kérlek, próbáld újra."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Énekes ehhez a szegmenshez (kattints a módosításhoz)",
       "singerChipAriaLabelWithOverrides": "Énekes ehhez a szegmenshez szavankénti felülbírálásokkal (kattints a módosításhoz)",
       "wordOverrideNote": "A szavankénti énekes-felülbírálások csak a karaoke videóra vonatkoznak — a CDG kimenet a szegmens fő énekesét használja."
+    },
+    "toasts": {
+      "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez."
     }
   },
   "instrumentalReview": {

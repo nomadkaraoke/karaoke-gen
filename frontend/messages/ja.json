@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "既存のすべてのタイミングデータが失われます",
         "changeCaseDesc": "すべての歌詞を大文字、小文字、タイトルケース、またはセンテンスケースに変換します。タイミングはそのまま維持されます。",
         "changeCaseRecommended": "スタイルの統一におすすめ",
-        "changeCaseTitle": "大文字・小文字の変更"
+        "changeCaseTitle": "大文字・小文字の変更",
+        "customLyricsDesc": "結婚式、誕生日、パーティー用に歌詞をカスタムバージョンに置き換えます。AIが各行を元の構成に合わせます。",
+        "customLyricsTag": "AI搭載、クライアントからのリクエストに最適",
+        "customLyricsTitle": "カスタム歌詞"
       },
       "replaceAllLyrics": {
         "pastePrompt": "以下に新しい歌詞を貼り付けてください:",
@@ -1127,6 +1130,36 @@
         "minChars": "最小文字数 {count}/10",
         "skip": "スキップ",
         "saveAndContinue": "保存して続行"
+      },
+      "customLyricsMode": {
+        "backToInput": "入力を編集",
+        "chooseFile": "ファイルを選択",
+        "description": "クライアントのカスタム歌詞やメモを入力してください。AIが元の構成に合わせて、ぴったり{count}行の歌詞を生成します。",
+        "fileHint": "対応フォーマット: {allowed} (最大 {maxMb} MB)",
+        "fileLabel": "クライアントのドキュメント",
+        "fileSizeError": "ファイルサイズが大きすぎます (最大 {maxMb} MB)",
+        "fileTypeError": "サポートされていないファイル形式です。対応フォーマット: {allowed}",
+        "generate": "カスタム歌詞を生成",
+        "generating": "生成中...",
+        "generatingSubtitle": "最大1分ほどかかる場合があります。キャンセルしてやり直すことも可能です。",
+        "generatingTitle": "AIでカスタム歌詞を生成中...",
+        "lineCountMismatchFallback": "AIが生成した行数が元の行数と異なります。テキストエリアを調整するか、「再生成」をクリックしてください。",
+        "modelLabel": "モデル",
+        "notesLabel": "メモ / 指示 (任意)",
+        "notesPlaceholder": "AIへの追加の指示（例: 「ジョンとジェーンの結婚式用 — 少しベタな感じで」など）",
+        "previewPlaceholder": "生成された歌詞がここに表示されます...",
+        "regenerate": "再生成",
+        "saveCustom": "カスタム歌詞を保存",
+        "tabFile": "ファイルをアップロード",
+        "tabText": "テキストを貼り付け",
+        "textLabel": "カスタム歌詞または指示",
+        "textPlaceholder": "ここにクライアントのカスタム歌詞を貼り付けるか、変更内容を説明してください。例:\n\n「baby」をすべて「Mary」に置き換える。\n2番のAメロはイタリア旅行についてにする。\nサビは元のままにする。",
+        "title": "カスタム歌詞 (AI搭載)",
+        "tooFewLines": "{diff}行不足しています。必要な行数は{expected}行ですが、実際は{actual}行です。行を追加するか、「再生成」をクリックしてください。",
+        "tooManyLines": "{diff}行オーバーしています。必要な行数は{expected}行ですが、実際は{actual}行です。行を削除するか、「再生成」をクリックしてください。",
+        "cancel": "キャンセル",
+        "cancelGeneration": "キャンセル",
+        "genericError": "問題が発生しました。もう一度お試しください。"
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "このセグメントのシンガー（クリックして変更）",
       "singerChipAriaLabelWithOverrides": "単語ごとの上書きがあるこのセグメントのシンガー（クリックして変更）",
       "wordOverrideNote": "単語ごとのシンガーの上書きはカラオケ動画にのみ適用されます。CDG出力ではセグメントのメインシンガーが使用されます。"
+    },
+    "toasts": {
+      "customLyricsSaved": "カスタム歌詞を適用しました。カスタマイズした歌詞のタイミングが合うように、編集した各セグメントを手動で同期してください。"
     }
   },
   "instrumentalReview": {

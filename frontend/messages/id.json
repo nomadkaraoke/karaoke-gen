@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Semua data waktu yang ada akan hilang",
         "changeCaseDesc": "Ubah semua lirik menjadi HURUF BESAR, huruf kecil, Huruf Kapital Setiap Kata, atau Huruf kapital awal kalimat. Timing lirik dipertahankan sepenuhnya.",
         "changeCaseRecommended": "Direkomendasikan untuk konsistensi gaya",
-        "changeCaseTitle": "Ubah Kapitalisasi"
+        "changeCaseTitle": "Ubah Kapitalisasi",
+        "customLyricsDesc": "Ganti lirik dengan versi kustom untuk pernikahan, ulang tahun, atau pesta. AI akan menyesuaikan setiap baris dengan struktur aslinya.",
+        "customLyricsTag": "Didukung AI, disarankan untuk permintaan klien",
+        "customLyricsTitle": "Lirik Kustom"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Tempel lirik baru Anda di bawah ini:",
@@ -1127,6 +1130,36 @@
         "minChars": "Minimal {count}/10 karakter",
         "skip": "Lewati",
         "saveAndContinue": "Simpan & Lanjutkan"
+      },
+      "customLyricsMode": {
+        "backToInput": "Edit input",
+        "chooseFile": "Pilih file",
+        "description": "Berikan lirik kustom atau catatan dari klien — AI akan menghasilkan tepat {count} baris yang sesuai dengan struktur aslinya.",
+        "fileHint": "Diterima: {allowed} (maks {maxMb} MB)",
+        "fileLabel": "Dokumen klien",
+        "fileSizeError": "File terlalu besar (maks {maxMb} MB)",
+        "fileTypeError": "Jenis file tidak didukung. Diizinkan: {allowed}",
+        "generate": "Buat Lirik Kustom",
+        "generating": "Membuat...",
+        "generatingSubtitle": "Proses ini mungkin memakan waktu hingga satu menit. Anda bisa membatalkan dan mencoba lagi.",
+        "generatingTitle": "Membuat lirik kustom dengan AI...",
+        "lineCountMismatchFallback": "AI menghasilkan jumlah baris yang berbeda dari yang diharapkan. Sesuaikan kotak teks atau klik Buat Ulang.",
+        "modelLabel": "Model",
+        "notesLabel": "Catatan / instruksi (opsional)",
+        "notesPlaceholder": "Konteks tambahan untuk AI, misalnya 'Pernikahan untuk John & Jane — buat sedikit gombal'",
+        "previewPlaceholder": "Lirik yang dibuat akan muncul di sini...",
+        "regenerate": "Buat Ulang",
+        "saveCustom": "Simpan Lirik Kustom",
+        "tabFile": "Unggah file",
+        "tabText": "Tempel teks",
+        "textLabel": "Lirik kustom atau instruksi",
+        "textPlaceholder": "Tempel lirik kustom klien di sini, atau jelaskan apa yang harus diubah. Contoh:\n\nGanti kata 'baby' dengan 'Mary' di seluruh lirik.\nBait 2 harus tentang perjalanan kami ke Italia.\nBiarkan bagian chorus seperti aslinya.",
+        "title": "Lirik Kustom (Didukung AI)",
+        "tooFewLines": "Kurang {diff} baris. Seharusnya {expected}, tapi yang ada {actual}. Tambahkan baris atau klik Buat Ulang.",
+        "tooManyLines": "Kelebihan {diff} baris. Seharusnya {expected}, tapi yang ada {actual}. Hapus baris atau klik Buat Ulang.",
+        "cancel": "Batal",
+        "cancelGeneration": "Batal",
+        "genericError": "Terjadi kesalahan. Silakan coba lagi."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Penyanyi untuk segmen ini (klik untuk mengubah)",
       "singerChipAriaLabelWithOverrides": "Penyanyi untuk segmen ini dengan penggantian tingkat kata (klik untuk mengubah)",
       "wordOverrideNote": "Penggantian penyanyi tingkat kata hanya berlaku untuk video karaoke — output CDG menggunakan penyanyi utama segmen tersebut."
+    },
+    "toasts": {
+      "customLyricsSaved": "Lirik kustom berhasil diterapkan. Sinkronkan setiap segmen yang diedit secara manual untuk memastikan ketepatan waktu lirik yang baru."
     }
   },
   "instrumentalReview": {

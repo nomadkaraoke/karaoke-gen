@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "所有现有的时间同步数据都将丢失",
         "changeCaseDesc": "将所有歌词转换为大写、小写、首字母大写或句首大写。时间轴将完全保留。",
         "changeCaseRecommended": "推荐用于保持样式一致",
-        "changeCaseTitle": "更改大小写"
+        "changeCaseTitle": "更改大小写",
+        "customLyricsDesc": "为婚礼、生日、派对等场合将歌词替换为自定义版本。AI 会将每一行与原始结构进行匹配。",
+        "customLyricsTag": "AI 驱动，推荐用于客户需求",
+        "customLyricsTitle": "自定义歌词"
       },
       "replaceAllLyrics": {
         "pastePrompt": "在下方粘贴您的新歌词：",
@@ -1127,6 +1130,36 @@
         "minChars": "最少 {count}/10 个字符",
         "skip": "跳过",
         "saveAndContinue": "保存并继续"
+      },
+      "customLyricsMode": {
+        "backToInput": "编辑输入",
+        "chooseFile": "选择文件",
+        "description": "提供客户的自定义歌词或备注——AI 将返回完全符合原始结构的 {count} 行歌词。",
+        "fileHint": "接受的格式：{allowed}（最大 {maxMb} MB）",
+        "fileLabel": "客户文档",
+        "fileSizeError": "文件过大（最大 {maxMb} MB）",
+        "fileTypeError": "不支持的文件类型。允许的格式：{allowed}",
+        "generate": "生成自定义歌词",
+        "generating": "生成中...",
+        "generatingSubtitle": "这最多可能需要一分钟。您可以取消并重试。",
+        "generatingTitle": "正在使用 AI 生成自定义歌词...",
+        "lineCountMismatchFallback": "AI 返回的行数与预期不符。请调整文本框内容或点击重新生成。",
+        "modelLabel": "模型",
+        "notesLabel": "备注 / 说明（可选）",
+        "notesPlaceholder": "为 AI 提供额外背景信息，例如“John 和 Jane 的婚礼——越煽情越好”",
+        "previewPlaceholder": "生成的歌词将显示在这里...",
+        "regenerate": "重新生成",
+        "saveCustom": "保存自定义歌词",
+        "tabFile": "上传文件",
+        "tabText": "粘贴文本",
+        "textLabel": "自定义歌词或说明",
+        "textPlaceholder": "在此处粘贴客户的自定义歌词，或描述需要修改的内容。例如：\n\n将所有的“baby”替换为“Mary”。\n第 2 节主歌应该是关于我们的意大利之旅。\n保留原版副歌。",
+        "title": "自定义歌词（AI 驱动）",
+        "tooFewLines": "缺少 {diff} 行。预期 {expected} 行，实际 {actual} 行。请添加行数或点击重新生成。",
+        "tooManyLines": "多出 {diff} 行。预期 {expected} 行，实际 {actual} 行。请删除行数或点击重新生成。",
+        "cancel": "取消",
+        "cancelGeneration": "取消",
+        "genericError": "出了点问题，请重试。"
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "此片段的歌手（点击更改）",
       "singerChipAriaLabelWithOverrides": "包含词级覆盖设置的此片段歌手（点击更改）",
       "wordOverrideNote": "词级歌手覆盖设置仅适用于卡拉OK视频 — CDG 输出将使用该片段的主要歌手。"
+    },
+    "toasts": {
+      "customLyricsSaved": "已应用自定义歌词。请手动同步每个编辑过的片段，以确保自定义歌词的每个词都能准确同步。"
     }
   },
   "instrumentalReview": {

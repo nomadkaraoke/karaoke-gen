@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Todos os dados de tempo existentes serão perdidos",
         "changeCaseDesc": "Converta todas as letras para MAIÚSCULAS, minúsculas, Iniciais maiúsculas ou Formato de frase. A sincronização é totalmente preservada.",
         "changeCaseRecommended": "Recomendado para consistência de estilo",
-        "changeCaseTitle": "Alterar Maiúsculas/Minúsculas"
+        "changeCaseTitle": "Alterar Maiúsculas/Minúsculas",
+        "customLyricsDesc": "Substitua as letras por versões personalizadas para casamentos, aniversários, festas. A IA adapta cada linha à estrutura original.",
+        "customLyricsTag": "Com IA, recomendado para pedidos de clientes",
+        "customLyricsTitle": "Letras Personalizadas"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Cole suas novas letras abaixo:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 caracteres mínimos",
         "skip": "Pular",
         "saveAndContinue": "Salvar e Continuar"
+      },
+      "customLyricsMode": {
+        "backToInput": "Editar dados",
+        "chooseFile": "Escolher arquivo",
+        "description": "Forneça as letras personalizadas ou notas do cliente — a IA retornará exatamente {count} linhas correspondendo à estrutura original.",
+        "fileHint": "Aceito: {allowed} (máx. {maxMb} MB)",
+        "fileLabel": "Documento do cliente",
+        "fileSizeError": "O arquivo é muito grande (máx. {maxMb} MB)",
+        "fileTypeError": "Tipo de arquivo não suportado. Permitido: {allowed}",
+        "generate": "Gerar Letras Personalizadas",
+        "generating": "Gerando...",
+        "generatingSubtitle": "Isso pode levar até um minuto. Você pode cancelar e tentar novamente.",
+        "generatingTitle": "Gerando letras personalizadas com IA...",
+        "lineCountMismatchFallback": "A IA retornou um número de linhas diferente do esperado. Ajuste a área de texto ou clique em Gerar novamente.",
+        "modelLabel": "Modelo",
+        "notesLabel": "Notas / instruções (opcional)",
+        "notesPlaceholder": "Contexto extra para a IA, ex: 'Casamento do João e da Maria — mantenha bem brega'",
+        "previewPlaceholder": "As letras geradas aparecerão aqui...",
+        "regenerate": "Gerar novamente",
+        "saveCustom": "Salvar Letras Personalizadas",
+        "tabFile": "Enviar arquivo",
+        "tabText": "Colar texto",
+        "textLabel": "Letras personalizadas ou instruções",
+        "textPlaceholder": "Cole as letras personalizadas do cliente aqui, ou descreva o que deve mudar. Exemplos:\n\nSubstitua 'baby' por 'Mary' em toda a música.\nO verso 2 deve ser sobre nossa viagem à Itália.\nMantenha o refrão original.",
+        "title": "Letras Personalizadas (com IA)",
+        "tooFewLines": "Falta(m) {diff} linha(s). Esperadas {expected}, obtidas {actual}. Adicione linhas ou clique em Gerar novamente.",
+        "tooManyLines": "Você tem {diff} linha(s) extra(s). Esperadas {expected}, obtidas {actual}. Remova linhas ou clique em Gerar novamente.",
+        "cancel": "Cancelar",
+        "cancelGeneration": "Cancelar",
+        "genericError": "Algo deu errado. Tente novamente."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Cantor para este segmento (clique para alterar)",
       "singerChipAriaLabelWithOverrides": "Cantor para este segmento com substituições no nível da palavra (clique para alterar)",
       "wordOverrideNote": "As substituições de cantor no nível da palavra se aplicam apenas ao vídeo de karaokê — a saída CDG usa o cantor principal do segmento."
+    },
+    "toasts": {
+      "customLyricsSaved": "Letras personalizadas aplicadas. Sincronize manualmente cada segmento editado para garantir que o tempo das palavras fique adequado para as novas letras."
     }
   },
   "instrumentalReview": {

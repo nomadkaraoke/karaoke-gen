@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Tutti i dati di tempismo esistenti andranno persi",
         "changeCaseDesc": "Converti tutto il testo in MAIUSCOLO, minuscolo, Iniziali Maiuscole o Maiuscolo a inizio frase. La sincronizzazione rimane inalterata.",
         "changeCaseRecommended": "Consigliato per la coerenza dello stile",
-        "changeCaseTitle": "Cambia maiuscole/minuscole"
+        "changeCaseTitle": "Cambia maiuscole/minuscole",
+        "customLyricsDesc": "Sostituisci il testo con versioni personalizzate per matrimoni, compleanni, feste. L'IA adatta ogni riga alla struttura originale.",
+        "customLyricsTag": "Basato sull'IA, consigliato per le richieste dei clienti",
+        "customLyricsTitle": "Testo personalizzato"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Incolla il tuo nuovo testo qui sotto:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 caratteri minimi",
         "skip": "Salta",
         "saveAndContinue": "Salva e continua"
+      },
+      "customLyricsMode": {
+        "backToInput": "Modifica input",
+        "chooseFile": "Scegli file",
+        "description": "Fornisci il testo personalizzato o le note del cliente: l'IA restituirà esattamente {count} righe che rispettano la struttura originale.",
+        "fileHint": "Accettati: {allowed} (max {maxMb} MB)",
+        "fileLabel": "Documento del cliente",
+        "fileSizeError": "Il file è troppo grande (max {maxMb} MB)",
+        "fileTypeError": "Tipo di file non supportato. Consentiti: {allowed}",
+        "generate": "Genera testo personalizzato",
+        "generating": "Generazione in corso...",
+        "generatingSubtitle": "Può volerci fino a un minuto. Puoi annullare e riprovare.",
+        "generatingTitle": "Generazione del testo personalizzato con l'IA...",
+        "lineCountMismatchFallback": "L'IA ha restituito un numero di righe diverso dal previsto. Modifica il testo o clicca su Rigenera.",
+        "modelLabel": "Modello",
+        "notesLabel": "Note / istruzioni (opzionale)",
+        "notesPlaceholder": "Contesto aggiuntivo per l'IA, es. 'Matrimonio di John e Jane — mantieni un tono sdolcinato'",
+        "previewPlaceholder": "Il testo generato apparirà qui...",
+        "regenerate": "Rigenera",
+        "saveCustom": "Salva testo personalizzato",
+        "tabFile": "Carica file",
+        "tabText": "Incolla testo",
+        "textLabel": "Testo personalizzato o istruzioni",
+        "textPlaceholder": "Incolla qui il testo personalizzato del cliente, o descrivi cosa dovrebbe cambiare. Esempi:\n\nSostituisci 'baby' con 'Mary' ovunque.\nLa strofa 2 dovrebbe parlare del nostro viaggio in Italia.\nMantieni il ritornello originale.",
+        "title": "Testo personalizzato (basato sull'IA)",
+        "tooFewLines": "Ti mancano {diff} riga/e. Previste {expected}, ottenute {actual}. Aggiungi righe o clicca su Rigenera.",
+        "tooManyLines": "Hai {diff} riga/e in più. Previste {expected}, ottenute {actual}. Rimuovi righe o clicca su Rigenera.",
+        "cancel": "Annulla",
+        "cancelGeneration": "Annulla",
+        "genericError": "Qualcosa è andato storto. Riprova."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Cantante per questo segmento (clicca per cambiare)",
       "singerChipAriaLabelWithOverrides": "Cantante per questo segmento con sovrascritture a livello di parola (clicca per cambiare)",
       "wordOverrideNote": "Le sovrascritture del cantante a livello di parola si applicano solo al video karaoke — l'output CDG usa il cantante principale del segmento."
+    },
+    "toasts": {
+      "customLyricsSaved": "Testo personalizzato applicato. Sincronizza manualmente ogni segmento modificato per assicurarti che il tempismo delle parole sia corretto per il testo personalizzato."
     }
   },
   "instrumentalReview": {

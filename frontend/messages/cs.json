@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Všechna existující data časování budou ztracena",
         "changeCaseDesc": "Převeď celý text na VELKÁ PÍSMENA, malá písmena, Velká první písmena nebo Velké počáteční písmeno. Časování zůstane plně zachováno.",
         "changeCaseRecommended": "Doporučeno pro sjednocení stylu",
-        "changeCaseTitle": "Změnit velikost písmen"
+        "changeCaseTitle": "Změnit velikost písmen",
+        "customLyricsDesc": "Nahraď text vlastními verzemi pro svatby, narozeniny nebo večírky. AI přizpůsobí každý řádek původní struktuře.",
+        "customLyricsTag": "S podporou AI, doporučeno pro požadavky klientů",
+        "customLyricsTitle": "Vlastní text"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Vlož svůj nový text níže:",
@@ -1127,6 +1130,36 @@
         "minChars": "Minimálně {count}/10 znaků",
         "skip": "Přeskočit",
         "saveAndContinue": "Uložit a pokračovat"
+      },
+      "customLyricsMode": {
+        "backToInput": "Upravit vstupy",
+        "chooseFile": "Vybrat soubor",
+        "description": "Zadej vlastní text nebo poznámky klienta – umělá inteligence vrátí přesně {count} řádků odpovídajících původní struktuře.",
+        "fileHint": "Povoleno: {allowed} (max. {maxMb} MB)",
+        "fileLabel": "Dokument klienta",
+        "fileSizeError": "Soubor je příliš velký (max. {maxMb} MB)",
+        "fileTypeError": "Nepodporovaný typ souboru. Povoleno: {allowed}",
+        "generate": "Vygenerovat vlastní text",
+        "generating": "Generování...",
+        "generatingSubtitle": "Může to trvat až minutu. Můžeš to zrušit a zkusit znovu.",
+        "generatingTitle": "Generování vlastního textu pomocí AI...",
+        "lineCountMismatchFallback": "AI vrátila jiný počet řádků, než se očekávalo. Uprav textové pole nebo klikni na Přegenerovat.",
+        "modelLabel": "Model",
+        "notesLabel": "Poznámky / instrukce (volitelné)",
+        "notesPlaceholder": "Další kontext pro AI, např. 'Svatba pro Jana a Janu – ať je to kýčovité'",
+        "previewPlaceholder": "Vygenerovaný text se zobrazí zde...",
+        "regenerate": "Přegenerovat",
+        "saveCustom": "Uložit vlastní text",
+        "tabFile": "Nahrát soubor",
+        "tabText": "Vložit text",
+        "textLabel": "Vlastní text nebo instrukce",
+        "textPlaceholder": "Sem vlož vlastní text klienta nebo popiš, co se má změnit. Příklady:\n\nVšude nahraď 'baby' za 'Mary'.\nDruhá sloka by měla být o našem výletu do Itálie.\nRefrén nech původní.",
+        "title": "Vlastní text (s podporou AI)",
+        "tooFewLines": "Chybí ti {diff} řádek/řádků. Očekáváno {expected}, získáno {actual}. Přidej řádky nebo klikni na Přegenerovat.",
+        "tooManyLines": "Máš navíc {diff} řádek/řádků. Očekáváno {expected}, získáno {actual}. Odstraň řádky nebo klikni na Přegenerovat.",
+        "cancel": "Zrušit",
+        "cancelGeneration": "Zrušit",
+        "genericError": "Něco se pokazilo. Zkus to prosím znovu."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Zpěvák pro tento segment (kliknutím změníš)",
       "singerChipAriaLabelWithOverrides": "Zpěvák pro tento segment s přepsáním na úrovni slov (kliknutím změníš)",
       "wordOverrideNote": "Přepsání zpěváka na úrovni slov se vztahuje pouze na karaoke video — výstup CDG používá hlavního zpěváka segmentu."
+    },
+    "toasts": {
+      "customLyricsSaved": "Vlastní text byl aplikován. Ručně synchronizuj každý upravený segment, aby bylo zajištěno správné načasování slov pro upravený text."
     }
   },
   "instrumentalReview": {

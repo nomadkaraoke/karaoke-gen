@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Alle bestehenden Timing-Daten gehen verloren",
         "changeCaseDesc": "Konvertiere den gesamten Text in GROSSBUCHSTABEN, Kleinbuchstaben, Wortanfang groß oder Satzanfang groß. Das Timing bleibt vollständig erhalten.",
         "changeCaseRecommended": "Empfohlen für einen einheitlichen Stil",
-        "changeCaseTitle": "Groß-/Kleinschreibung ändern"
+        "changeCaseTitle": "Groß-/Kleinschreibung ändern",
+        "customLyricsDesc": "Ersetze den Text durch benutzerdefinierte Versionen für Hochzeiten, Geburtstage oder Partys. Die KI passt jede Zeile an die ursprüngliche Struktur an.",
+        "customLyricsTag": "KI-gestützt, empfohlen für Kundenanfragen",
+        "customLyricsTitle": "Benutzerdefinierter Text"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Füge deinen neuen Text unten ein:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 Mindestzeichen",
         "skip": "Überspringen",
         "saveAndContinue": "Speichern & Weiter"
+      },
+      "customLyricsMode": {
+        "backToInput": "Eingaben bearbeiten",
+        "chooseFile": "Datei auswählen",
+        "description": "Gib den benutzerdefinierten Text oder die Notizen des Kunden an — die KI gibt genau {count} Zeilen zurück, die der ursprünglichen Struktur entsprechen.",
+        "fileHint": "Akzeptiert: {allowed} (max. {maxMb} MB)",
+        "fileLabel": "Kundendokument",
+        "fileSizeError": "Datei ist zu groß (max. {maxMb} MB)",
+        "fileTypeError": "Nicht unterstützter Dateityp. Erlaubt: {allowed}",
+        "generate": "Benutzerdefinierten Text generieren",
+        "generating": "Generiere...",
+        "generatingSubtitle": "Dies kann bis zu einer Minute dauern. Du kannst abbrechen und es erneut versuchen.",
+        "generatingTitle": "Generiere benutzerdefinierten Text mit KI...",
+        "lineCountMismatchFallback": "Die KI hat eine andere Anzahl von Zeilen als erwartet zurückgegeben. Passe das Textfeld an oder klicke auf Neu generieren.",
+        "modelLabel": "Modell",
+        "notesLabel": "Notizen / Anweisungen (optional)",
+        "notesPlaceholder": "Zusätzlicher Kontext für die KI, z. B. 'Hochzeit für John & Jane — mach es schön kitschig'",
+        "previewPlaceholder": "Generierter Text wird hier angezeigt...",
+        "regenerate": "Neu generieren",
+        "saveCustom": "Benutzerdefinierten Text speichern",
+        "tabFile": "Datei hochladen",
+        "tabText": "Text einfügen",
+        "textLabel": "Benutzerdefinierter Text oder Anweisungen",
+        "textPlaceholder": "Füge hier den benutzerdefinierten Text des Kunden ein oder beschreibe, was sich ändern soll. Beispiele:\n\nErsetze durchgehend 'Baby' durch 'Mary'.\nStrophe 2 soll von unserer Reise nach Italien handeln.\nBehalte den originalen Refrain bei.",
+        "title": "Benutzerdefinierter Text (KI-gestützt)",
+        "tooFewLines": "Dir fehlen {diff} Zeile(n). Erwartet: {expected}, erhalten: {actual}. Füge Zeilen hinzu oder klicke auf Neu generieren.",
+        "tooManyLines": "Du hast {diff} Zeile(n) zu viel. Erwartet: {expected}, erhalten: {actual}. Entferne Zeilen oder klicke auf Neu generieren.",
+        "cancel": "Abbrechen",
+        "cancelGeneration": "Abbrechen",
+        "genericError": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Sänger für dieses Segment (zum Ändern klicken)",
       "singerChipAriaLabelWithOverrides": "Sänger für dieses Segment mit Wort-Überschreibungen (zum Ändern klicken)",
       "wordOverrideNote": "Sänger-Überschreibungen auf Wortebene gelten nur für das Karaoke-Video — die CDG-Ausgabe verwendet den Hauptsänger des Segments."
+    },
+    "toasts": {
+      "customLyricsSaved": "Benutzerdefinierter Text angewendet. Synchronisiere jedes bearbeitete Segment manuell, um sicherzustellen, dass das Wort-Timing für den neuen Text stimmt."
     }
   },
   "instrumentalReview": {

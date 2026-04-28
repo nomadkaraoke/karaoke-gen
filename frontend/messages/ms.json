@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Semua data pemasaan sedia ada akan hilang",
         "changeCaseDesc": "Tukar semua lirik kepada HURUF BESAR, huruf kecil, Kes Tajuk, atau Kes ayat. Pemasaan dikekalkan sepenuhnya.",
         "changeCaseRecommended": "Disyorkan untuk konsistensi gaya",
-        "changeCaseTitle": "Tukar Kes Huruf"
+        "changeCaseTitle": "Tukar Kes Huruf",
+        "customLyricsDesc": "Gantikan lirik dengan versi tersuai untuk perkahwinan, hari jadi, parti. AI memadankan setiap baris dengan struktur asal.",
+        "customLyricsTag": "Dikuasakan AI, disyorkan untuk permintaan pelanggan",
+        "customLyricsTitle": "Lirik Tersuai"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Tampal lirik baharu anda di bawah:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 aksara minimum",
         "skip": "Langkau",
         "saveAndContinue": "Simpan & Teruskan"
+      },
+      "customLyricsMode": {
+        "backToInput": "Sunting input",
+        "chooseFile": "Pilih fail",
+        "description": "Sediakan lirik tersuai atau nota pelanggan — AI akan mengembalikan tepat {count} baris yang sepadan dengan struktur asal.",
+        "fileHint": "Diterima: {allowed} (maksimum {maxMb} MB)",
+        "fileLabel": "Dokumen pelanggan",
+        "fileSizeError": "Fail terlalu besar (maksimum {maxMb} MB)",
+        "fileTypeError": "Jenis fail tidak disokong. Dibenarkan: {allowed}",
+        "generate": "Jana Lirik Tersuai",
+        "generating": "Menjana...",
+        "generatingSubtitle": "Ini mungkin mengambil masa sehingga satu minit. Anda boleh batalkan dan cuba lagi.",
+        "generatingTitle": "Menjana lirik tersuai dengan AI...",
+        "lineCountMismatchFallback": "AI mengembalikan bilangan baris yang berbeza daripada yang dijangkakan. Laraskan kawasan teks atau klik Jana Semula.",
+        "modelLabel": "Model",
+        "notesLabel": "Nota / arahan (pilihan)",
+        "notesPlaceholder": "Konteks tambahan untuk AI, cth. 'Perkahwinan untuk John & Jane — jadikan ia romantik'",
+        "previewPlaceholder": "Lirik yang dijana akan dipaparkan di sini...",
+        "regenerate": "Jana Semula",
+        "saveCustom": "Simpan Lirik Tersuai",
+        "tabFile": "Muat naik fail",
+        "tabText": "Tampal teks",
+        "textLabel": "Lirik tersuai atau arahan",
+        "textPlaceholder": "Tampal lirik tersuai pelanggan di sini, atau terangkan apa yang patut diubah. Contoh:\n\nGantikan 'baby' dengan 'Mary' sepenuhnya.\nRangkap 2 sepatutnya tentang percutian kami ke Itali.\nKekalkan korus asal.",
+        "title": "Lirik Tersuai (Dikuasakan AI)",
+        "tooFewLines": "Anda kekurangan {diff} baris. Dijangka {expected}, dapat {actual}. Tambah baris atau klik Jana Semula.",
+        "tooManyLines": "Anda mempunyai {diff} baris tambahan. Dijangka {expected}, dapat {actual}. Buang baris atau klik Jana Semula.",
+        "cancel": "Batal",
+        "cancelGeneration": "Batal",
+        "genericError": "Sesuatu yang tidak kena berlaku. Sila cuba lagi."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Penyanyi untuk segmen ini (klik untuk tukar)",
       "singerChipAriaLabelWithOverrides": "Penyanyi untuk segmen ini dengan tetapan ganti peringkat perkataan (klik untuk tukar)",
       "wordOverrideNote": "Tetapan ganti penyanyi peringkat perkataan hanya digunakan pada video karaoke — output CDG menggunakan penyanyi utama segmen tersebut."
+    },
+    "toasts": {
+      "customLyricsSaved": "Lirik tersuai digunakan. Segerakkan setiap segmen yang disunting secara manual untuk memastikan pemasaan perkataan adalah tepat untuk lirik tersuai."
     }
   },
   "instrumentalReview": {

@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Tất cả dữ liệu thời gian hiện có sẽ bị mất",
         "changeCaseDesc": "Chuyển đổi tất cả lời bài hát thành CHỮ IN HOA, chữ thường, Viết Hoa Chữ Cái Đầu, hoặc Viết hoa chữ cái đầu câu. Thời gian hiển thị được giữ nguyên hoàn toàn.",
         "changeCaseRecommended": "Khuyên dùng để đồng nhất phong cách",
-        "changeCaseTitle": "Đổi kiểu viết hoa"
+        "changeCaseTitle": "Đổi kiểu viết hoa",
+        "customLyricsDesc": "Thay thế lời bài hát bằng các phiên bản tùy chỉnh cho đám cưới, sinh nhật, tiệc tùng. AI sẽ khớp từng dòng với cấu trúc gốc.",
+        "customLyricsTag": "Tích hợp AI, khuyên dùng cho các yêu cầu của khách hàng",
+        "customLyricsTitle": "Lời bài hát tùy chỉnh"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Dán lời bài hát mới của bạn vào bên dưới:",
@@ -1127,6 +1130,36 @@
         "minChars": "Tối thiểu {count}/10 ký tự",
         "skip": "Bỏ qua",
         "saveAndContinue": "Lưu & Tiếp tục"
+      },
+      "customLyricsMode": {
+        "backToInput": "Chỉnh sửa nội dung",
+        "chooseFile": "Chọn tệp",
+        "description": "Cung cấp lời bài hát tùy chỉnh hoặc ghi chú của khách hàng — AI sẽ trả về chính xác {count} dòng khớp với cấu trúc gốc.",
+        "fileHint": "Chấp nhận: {allowed} (tối đa {maxMb} MB)",
+        "fileLabel": "Tài liệu của khách hàng",
+        "fileSizeError": "Tệp quá lớn (tối đa {maxMb} MB)",
+        "fileTypeError": "Loại tệp không được hỗ trợ. Cho phép: {allowed}",
+        "generate": "Tạo lời bài hát tùy chỉnh",
+        "generating": "Đang tạo...",
+        "generatingSubtitle": "Quá trình này có thể mất đến một phút. Bạn có thể hủy và thử lại.",
+        "generatingTitle": "Đang tạo lời bài hát tùy chỉnh bằng AI...",
+        "lineCountMismatchFallback": "AI đã trả về số dòng khác với dự kiến. Hãy điều chỉnh văn bản hoặc nhấp vào Tạo lại.",
+        "modelLabel": "Mô hình",
+        "notesLabel": "Ghi chú / hướng dẫn (tùy chọn)",
+        "notesPlaceholder": "Ngữ cảnh bổ sung cho AI, ví dụ: 'Đám cưới của John & Jane — giữ giọng điệu sến súa'",
+        "previewPlaceholder": "Lời bài hát được tạo sẽ xuất hiện ở đây...",
+        "regenerate": "Tạo lại",
+        "saveCustom": "Lưu lời bài hát tùy chỉnh",
+        "tabFile": "Tải tệp lên",
+        "tabText": "Dán văn bản",
+        "textLabel": "Lời bài hát tùy chỉnh hoặc hướng dẫn",
+        "textPlaceholder": "Dán lời bài hát tùy chỉnh của khách hàng vào đây, hoặc mô tả những gì cần thay đổi. Ví dụ:\n\nThay thế toàn bộ từ 'baby' bằng 'Mary'.\nLời 2 nên nói về chuyến đi Ý của chúng tôi.\nGiữ nguyên phần điệp khúc.",
+        "title": "Lời bài hát tùy chỉnh (Tích hợp AI)",
+        "tooFewLines": "Bạn đang thiếu {diff} dòng. Dự kiến {expected}, hiện có {actual}. Hãy thêm dòng hoặc nhấp vào Tạo lại.",
+        "tooManyLines": "Bạn đang thừa {diff} dòng. Dự kiến {expected}, hiện có {actual}. Hãy xóa bớt dòng hoặc nhấp vào Tạo lại.",
+        "cancel": "Hủy",
+        "cancelGeneration": "Hủy",
+        "genericError": "Đã xảy ra lỗi. Vui lòng thử lại."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Ca sĩ cho đoạn này (nhấp để thay đổi)",
       "singerChipAriaLabelWithOverrides": "Ca sĩ cho đoạn này với các ghi đè cấp độ từ (nhấp để thay đổi)",
       "wordOverrideNote": "Các ghi đè ca sĩ cấp độ từ chỉ áp dụng cho video karaoke — đầu ra CDG sử dụng ca sĩ chính của đoạn."
+    },
+    "toasts": {
+      "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh."
     }
   },
   "instrumentalReview": {

@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Mawawala ang lahat ng umiiral na timing data",
         "changeCaseDesc": "I-convert ang lahat ng lyrics sa UPPERCASE, lowercase, Title Case, o Sentence case. Mananatili ang eksaktong timing.",
         "changeCaseRecommended": "Inirerekomenda para sa pagkakapare-pareho ng istilo",
-        "changeCaseTitle": "Baguhin ang Case"
+        "changeCaseTitle": "Baguhin ang Case",
+        "customLyricsDesc": "Palitan ang lyrics ng custom na bersyon para sa mga kasal, birthday, o party. Itutugma ng AI ang bawat linya sa orihinal na istraktura.",
+        "customLyricsTag": "Gamit ang AI, inirerekomenda para sa mga request ng kliyente",
+        "customLyricsTitle": "Custom na Lyrics"
       },
       "replaceAllLyrics": {
         "pastePrompt": "I-paste ang iyong bagong lyrics sa ibaba:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 minimum na character",
         "skip": "Laktawan",
         "saveAndContinue": "I-save at Magpatuloy"
+      },
+      "customLyricsMode": {
+        "backToInput": "I-edit ang mga input",
+        "chooseFile": "Pumili ng file",
+        "description": "Ibigay ang custom na lyrics o notes ng kliyente — magbibigay ang AI ng eksaktong {count} na linya na tutugma sa orihinal na istraktura.",
+        "fileHint": "Tinatanggap: {allowed} (max {maxMb} MB)",
+        "fileLabel": "Dokumento ng kliyente",
+        "fileSizeError": "Masyadong malaki ang file (max {maxMb} MB)",
+        "fileTypeError": "Hindi sinusuportahang uri ng file. Pinapayagan: {allowed}",
+        "generate": "Bumuo ng Custom na Lyrics",
+        "generating": "Binubuo...",
+        "generatingSubtitle": "Maaaring tumagal ito ng hanggang isang minuto. Pwede mo itong kanselahin at subukan muli.",
+        "generatingTitle": "Bumubuo ng custom na lyrics gamit ang AI...",
+        "lineCountMismatchFallback": "Iba ang bilang ng linyang ibinigay ng AI kaysa sa inaasahan. I-adjust ang textarea o i-click ang Bumuo Muli.",
+        "modelLabel": "Model",
+        "notesLabel": "Mga tala / tagubilin (opsyonal)",
+        "notesPlaceholder": "Karagdagang konteksto para sa AI, hal. 'Kasal nina John & Jane — gawing cheesy'",
+        "previewPlaceholder": "Dito lalabas ang mga binuong lyrics...",
+        "regenerate": "Bumuo Muli",
+        "saveCustom": "I-save ang Custom na Lyrics",
+        "tabFile": "Mag-upload ng file",
+        "tabText": "I-paste ang text",
+        "textLabel": "Custom na lyrics o mga tagubilin",
+        "textPlaceholder": "I-paste ang custom na lyrics ng kliyente rito, o ilarawan kung ano ang dapat baguhin. Mga halimbawa:\n\nPalitan ang 'baby' ng 'Mary' sa buong kanta.\nAng Verse 2 ay dapat tungkol sa aming biyahe sa Italy.\nPanatilihin ang orihinal na chorus.",
+        "title": "Custom na Lyrics (Gamit ang AI)",
+        "tooFewLines": "Kulang ng {diff} na linya. Inaasahang {expected}, pero {actual} ang nakuha. Magdagdag ng mga linya o i-click ang Bumuo Muli.",
+        "tooManyLines": "Sobra ng {diff} na linya. Inaasahang {expected}, pero {actual} ang nakuha. Magbawas ng mga linya o i-click ang Bumuo Muli.",
+        "cancel": "Kanselahin",
+        "cancelGeneration": "Kanselahin",
+        "genericError": "May nangyaring mali. Pakisubukan muli."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Singer para sa segment na ito (i-click para baguhin)",
       "singerChipAriaLabelWithOverrides": "Singer para sa segment na ito na may mga word-level override (i-click para baguhin)",
       "wordOverrideNote": "Ang mga word-level singer override ay para lang sa karaoke video — ginagamit ng CDG output ang pangunahing singer ng segment."
+    },
+    "toasts": {
+      "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics."
     }
   },
   "instrumentalReview": {

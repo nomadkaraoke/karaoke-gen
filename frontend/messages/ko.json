@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "모든 기존 타이밍 데이터가 손실됩니다",
         "changeCaseDesc": "모든 가사를 대문자, 소문자, 단어 첫 글자 대문자 또는 문장 첫 글자 대문자로 변환합니다. 타이밍은 완벽하게 유지됩니다.",
         "changeCaseRecommended": "스타일 일관성을 위해 권장합니다",
-        "changeCaseTitle": "대소문자 변경"
+        "changeCaseTitle": "대소문자 변경",
+        "customLyricsDesc": "결혼식, 생일, 파티를 위한 맞춤형 버전으로 가사를 변경하세요. AI가 각 줄을 원본 구조에 맞게 조정합니다.",
+        "customLyricsTag": "AI 기반, 고객 요청 시 권장",
+        "customLyricsTitle": "맞춤형 가사"
       },
       "replaceAllLyrics": {
         "pastePrompt": "아래에 새 가사를 붙여넣으세요:",
@@ -1127,6 +1130,36 @@
         "minChars": "최소 {count}/10자",
         "skip": "건너뛰기",
         "saveAndContinue": "저장 및 계속"
+      },
+      "customLyricsMode": {
+        "backToInput": "입력 내용 수정",
+        "chooseFile": "파일 선택",
+        "description": "고객의 맞춤형 가사나 메모를 제공해 주세요. AI가 원본 구조와 정확히 일치하는 {count}줄의 가사를 반환합니다.",
+        "fileHint": "허용됨: {allowed} (최대 {maxMb}MB)",
+        "fileLabel": "고객 문서",
+        "fileSizeError": "파일이 너무 큽니다 (최대 {maxMb}MB)",
+        "fileTypeError": "지원되지 않는 파일 형식입니다. 허용됨: {allowed}",
+        "generate": "맞춤형 가사 생성",
+        "generating": "생성 중...",
+        "generatingSubtitle": "최대 1분이 소요될 수 있습니다. 취소하고 다시 시도할 수 있습니다.",
+        "generatingTitle": "AI로 맞춤형 가사 생성 중...",
+        "lineCountMismatchFallback": "AI가 예상과 다른 줄 수를 반환했습니다. 텍스트 영역을 조정하거나 '재생성'을 클릭하세요.",
+        "modelLabel": "모델",
+        "notesLabel": "메모 / 지시사항 (선택 사항)",
+        "notesPlaceholder": "AI를 위한 추가 배경 정보 (예: 'John과 Jane의 결혼식 — 약간 오글거리는 느낌으로')",
+        "previewPlaceholder": "생성된 가사가 여기에 표시됩니다...",
+        "regenerate": "재생성",
+        "saveCustom": "맞춤형 가사 저장",
+        "tabFile": "파일 업로드",
+        "tabText": "텍스트 붙여넣기",
+        "textLabel": "맞춤형 가사 또는 지시사항",
+        "textPlaceholder": "여기에 고객의 맞춤형 가사를 붙여넣거나 변경할 내용을 설명해 주세요. 예시:\n\n전체적으로 'baby'를 'Mary'로 바꿔주세요.\n2절은 우리의 이탈리아 여행에 대한 내용으로 해주세요.\n후렴구는 원본 그대로 유지해 주세요.",
+        "title": "맞춤형 가사 (AI 기반)",
+        "tooFewLines": "{diff}줄이 부족합니다. 예상 {expected}줄, 현재 {actual}줄. 줄을 추가하거나 '재생성'을 클릭하세요.",
+        "tooManyLines": "{diff}줄이 너무 많습니다. 예상 {expected}줄, 현재 {actual}줄. 줄을 삭제하거나 '재생성'을 클릭하세요.",
+        "cancel": "취소",
+        "cancelGeneration": "취소",
+        "genericError": "문제가 발생했습니다. 다시 시도해 주세요."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "이 구간의 가수 (클릭하여 변경)",
       "singerChipAriaLabelWithOverrides": "단어별 설정이 적용된 이 구간의 가수 (클릭하여 변경)",
       "wordOverrideNote": "단어별 가수 설정은 노래방 비디오에만 적용됩니다 — CDG 출력은 해당 구간의 메인 가수를 사용합니다."
+    },
+    "toasts": {
+      "customLyricsSaved": "맞춤형 가사가 적용되었습니다. 단어 타이밍이 잘 맞도록 편집된 각 구간을 수동으로 동기화해 주세요."
     }
   },
   "instrumentalReview": {

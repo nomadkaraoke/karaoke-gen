@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Kaikki olemassa olevat ajoitustiedot menetetään",
         "changeCaseDesc": "Muunna kaikki sanoitukset muotoon ISOT KIRJAIMET, pienet kirjaimet, Otsikkotyyli tai Virkkeen alkukirjain. Ajoitus säilyy täysin.",
         "changeCaseRecommended": "Suositellaan tyylin yhtenäisyyden vuoksi",
-        "changeCaseTitle": "Vaihda kirjainkokoa"
+        "changeCaseTitle": "Vaihda kirjainkokoa",
+        "customLyricsDesc": "Korvaa sanoitukset mukautetuilla versioilla häihin, syntymäpäiville ja juhliin. Tekoäly sovittaa jokaisen rivin alkuperäiseen rakenteeseen.",
+        "customLyricsTag": "Tekoälyavusteinen, suositellaan asiakkaiden pyyntöihin",
+        "customLyricsTitle": "Mukautetut sanoitukset"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Liitä uudet sanoituksesi alle:",
@@ -1127,6 +1130,36 @@
         "minChars": "{count}/10 merkkiä vähintään",
         "skip": "Ohita",
         "saveAndContinue": "Tallenna ja jatka"
+      },
+      "customLyricsMode": {
+        "backToInput": "Muokkaa syötteitä",
+        "chooseFile": "Valitse tiedosto",
+        "description": "Anna asiakkaan mukautetut sanoitukset tai ohjeet — tekoäly palauttaa tasan {count} riviä, jotka vastaavat alkuperäistä rakennetta.",
+        "fileHint": "Sallitut: {allowed} (enintään {maxMb} MB)",
+        "fileLabel": "Asiakkaan tiedosto",
+        "fileSizeError": "Tiedosto on liian suuri (enintään {maxMb} MB)",
+        "fileTypeError": "Tiedostotyyppiä ei tueta. Sallitut: {allowed}",
+        "generate": "Luo mukautetut sanoitukset",
+        "generating": "Luodaan...",
+        "generatingSubtitle": "Tässä voi kestää jopa minuutti. Voit peruuttaa ja yrittää uudelleen.",
+        "generatingTitle": "Luodaan mukautettuja sanoituksia tekoälyllä...",
+        "lineCountMismatchFallback": "Tekoäly palautti eri määrän rivejä kuin odotettiin. Muokkaa tekstikenttää tai paina Luo uudelleen.",
+        "modelLabel": "Malli",
+        "notesLabel": "Lisätiedot / ohjeet (valinnainen)",
+        "notesPlaceholder": "Lisätietoa tekoälylle, esim. 'Matin ja Maijan häät — tee tästä siirappinen'",
+        "previewPlaceholder": "Luodut sanoitukset ilmestyvät tähän...",
+        "regenerate": "Luo uudelleen",
+        "saveCustom": "Tallenna mukautetut sanoitukset",
+        "tabFile": "Lataa tiedosto",
+        "tabText": "Liitä teksti",
+        "textLabel": "Mukautetut sanoitukset tai ohjeet",
+        "textPlaceholder": "Liitä asiakkaan mukautetut sanoitukset tähän tai kuvaile, minkä pitäisi muuttua. Esimerkkejä:\n\nKorvaa 'baby' sanalla 'Mary' kaikkialla.\n2. säkeistön tulisi kertoa matkastamme Italiaan.\nPidä kertosäe alkuperäisenä.",
+        "title": "Mukautetut sanoitukset (tekoälyavusteinen)",
+        "tooFewLines": "Sinulta puuttuu {diff} rivi(ä). Odotettiin {expected}, saatiin {actual}. Lisää rivejä tai paina Luo uudelleen.",
+        "tooManyLines": "Sinulla on {diff} rivi(ä) liikaa. Odotettiin {expected}, saatiin {actual}. Poista rivejä tai paina Luo uudelleen.",
+        "cancel": "Peruuta",
+        "cancelGeneration": "Peruuta",
+        "genericError": "Jotain meni pieleen. Yritä uudelleen."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Tämän segmentin laulaja (klikkaa muuttaaksesi)",
       "singerChipAriaLabelWithOverrides": "Tämän segmentin laulaja sanakohtaisilla muutoksilla (klikkaa muuttaaksesi)",
       "wordOverrideNote": "Sanakohtaiset laulajamuutokset koskevat vain karaokevideota — CDG-tuloste käyttää segmentin päälaulajaa."
+    },
+    "toasts": {
+      "customLyricsSaved": "Mukautetut sanoitukset otettu käyttöön. Synkronoi jokainen muokattu segmentti manuaalisesti varmistaaksesi, että sanojen ajoitukset sopivat mukautettuihin sanoituksiin."
     }
   },
   "instrumentalReview": {

@@ -1001,7 +1001,10 @@
         "replaceAllWarning": "Wszystkie istniejące dane synchronizacji zostaną utracone",
         "changeCaseDesc": "Zmień wielkość liter w całym tekście na WIELKIE LITERY, małe litery, Każde Słowo Wielką Literą lub Jak w zdaniu. Synchronizacja jest w pełni zachowana.",
         "changeCaseRecommended": "Zalecane dla spójności stylu",
-        "changeCaseTitle": "Zmień wielkość liter"
+        "changeCaseTitle": "Zmień wielkość liter",
+        "customLyricsDesc": "Zastąp tekst własnymi wersjami na wesela, urodziny czy imprezy. AI dopasuje każdy wers do oryginalnej struktury.",
+        "customLyricsTag": "Z pomocą AI, zalecane dla próśb klientów",
+        "customLyricsTitle": "Własny tekst"
       },
       "replaceAllLyrics": {
         "pastePrompt": "Wklej swój nowy tekst poniżej:",
@@ -1127,6 +1130,36 @@
         "minChars": "Minimum {count}/10 znaków",
         "skip": "Pomiń",
         "saveAndContinue": "Zapisz i kontynuuj"
+      },
+      "customLyricsMode": {
+        "backToInput": "Wróć do edycji",
+        "chooseFile": "Wybierz plik",
+        "description": "Podaj własny tekst lub notatki od klienta — AI zwróci dokładnie {count} wersów pasujących do oryginalnej struktury.",
+        "fileHint": "Akceptowane: {allowed} (maks. {maxMb} MB)",
+        "fileLabel": "Dokument klienta",
+        "fileSizeError": "Plik jest za duży (maks. {maxMb} MB)",
+        "fileTypeError": "Nieobsługiwany typ pliku. Dozwolone: {allowed}",
+        "generate": "Wygeneruj własny tekst",
+        "generating": "Generowanie...",
+        "generatingSubtitle": "Może to potrwać do minuty. Możesz anulować i spróbować ponownie.",
+        "generatingTitle": "Generowanie własnego tekstu przez AI...",
+        "lineCountMismatchFallback": "AI zwróciło inną liczbę wersów, niż oczekiwano. Popraw tekst w polu lub kliknij Wygeneruj ponownie.",
+        "modelLabel": "Model",
+        "notesLabel": "Notatki / instrukcje (opcjonalnie)",
+        "notesPlaceholder": "Dodatkowy kontekst dla AI, np. 'Wesele Jana i Anny — niech będzie zabawnie'",
+        "previewPlaceholder": "Wygenerowany tekst pojawi się tutaj...",
+        "regenerate": "Wygeneruj ponownie",
+        "saveCustom": "Zapisz własny tekst",
+        "tabFile": "Wgraj plik",
+        "tabText": "Wklej tekst",
+        "textLabel": "Własny tekst lub instrukcje",
+        "textPlaceholder": "Wklej tutaj własny tekst od klienta lub opisz, co powinno się zmienić. Przykłady:\n\nZastąp słowo 'kochanie' imieniem 'Maria' w całym tekście.\nZwrotka 2 powinna być o naszej wycieczce do Włoch.\nZachowaj oryginalny refren.",
+        "title": "Własny tekst (z pomocą AI)",
+        "tooFewLines": "Brakuje {diff} wersów. Oczekiwano {expected}, otrzymano {actual}. Dodaj wersy lub kliknij Wygeneruj ponownie.",
+        "tooManyLines": "Masz o {diff} wersów za dużo. Oczekiwano {expected}, otrzymano {actual}. Usuń wersy lub kliknij Wygeneruj ponownie.",
+        "cancel": "Anuluj",
+        "cancelGeneration": "Anuluj",
+        "genericError": "Coś poszło nie tak. Spróbuj ponownie."
       }
     },
     "synchronizer": {
@@ -1179,6 +1212,9 @@
       "singerChipAriaLabel": "Wokalista dla tego segmentu (kliknij, aby zmienić)",
       "singerChipAriaLabelWithOverrides": "Wokalista dla tego segmentu z nadpisaniami na poziomie słów (kliknij, aby zmienić)",
       "wordOverrideNote": "Nadpisania wokalisty na poziomie słów dotyczą tylko wideo karaoke — plik CDG używa głównego wokalisty segmentu."
+    },
+    "toasts": {
+      "customLyricsSaved": "Zastosowano własny tekst. Zsynchronizuj ręcznie każdy edytowany segment, aby upewnić się, że czas wyświetlania słów pasuje do nowego tekstu."
     }
   },
   "instrumentalReview": {
