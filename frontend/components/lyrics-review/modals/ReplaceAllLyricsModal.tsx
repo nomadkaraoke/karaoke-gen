@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { X, ArrowLeft, ClipboardPaste, Sparkles, Info, Check, AlertTriangle } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { LyricsSegment, Word } from '@/lib/lyrics-review/types'
-import { createWordsWithDistributedTiming } from '@/lib/lyrics-review/utils/wordUtils'
+import { segmentsFromLines } from '@/lib/lyrics-review/utils/segmentsFromLines'
 import { applyCaseToSegments, convertCase, type CaseType } from '@/lib/lyrics-review/utils/caseConversion'
 import ModeSelectionModal from './ModeSelectionModal'
 import LyricsSynchronizer from '../synchronizer/LyricsSynchronizer'
@@ -150,44 +150,7 @@ export default function ReplaceAllLyricsModal({
   // and only update the word text — so case-only or single-word edits don't drop timing.
   const handleApplyReplaceSegments = useCallback(() => {
     const newLines = inputText.split('\n')
-    const updatedSegments: LyricsSegment[] = existingSegments.map((segment, i) => {
-      const newLineText = newLines[i]?.trim() ?? ''
-      const originalText = segment.text.trim()
-
-      if (newLineText === originalText) {
-        // Unchanged — deep copy to avoid mutation
-        return JSON.parse(JSON.stringify(segment))
-      }
-
-      const newWordTexts = newLineText.split(/\s+/).filter((w) => w.length > 0)
-
-      // Same word count — preserve timing, only swap text per word
-      if (newWordTexts.length === segment.words.length && newWordTexts.length > 0) {
-        const updatedWords = segment.words.map((word, idx) => ({
-          ...word,
-          text: newWordTexts[idx],
-        }))
-        return {
-          ...segment,
-          text: newLineText,
-          words: updatedWords,
-        }
-      }
-
-      // Word count changed — distribute timing across new words
-      const newWords = createWordsWithDistributedTiming(
-        newLineText,
-        segment.start_time,
-        segment.end_time
-      )
-
-      return {
-        ...segment,
-        text: newLineText,
-        words: newWords,
-      }
-    })
-
+    const updatedSegments = segmentsFromLines(newLines, existingSegments)
     onSave(updatedSegments)
     handleClose()
   }, [inputText, existingSegments, onSave, handleClose])
