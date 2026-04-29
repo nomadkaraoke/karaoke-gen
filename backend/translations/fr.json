@@ -109,7 +109,7 @@
     "stripeWebhookProcessingError": "Erreur lors du traitement du webhook Stripe : {error}",
     "feedbackSaveError": "Erreur lors de l'enregistrement des commentaires : {error}",
     "feedbackNotEligible": "Utilisateur non éligible pour laisser des commentaires",
-    "resendNoToken": "Nous n'avons pas reconnu ce lien de connexion. Retourne en arrière et demandes-en un nouveau via le formulaire de connexion."
+    "resendNoToken": "Nous n'avons pas reconnu ce lien de connexion. Retourne en arrière et demande-en un nouveau via le formulaire de connexion."
   },
   "fileUpload": {
     "invalidTheme": "Thème introuvable : {theme_id}. Utilise GET /api/themes pour lister les thèmes disponibles.",

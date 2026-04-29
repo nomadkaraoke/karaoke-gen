@@ -195,6 +195,60 @@ class TestResendFromToken:
 
         assert response.status_code == 503
 
+    def test_cooldown_window_suppresses_repeat_resends(
+        self, client, mock_user_svc, mock_email_svc
+    ):
+        """A second resend within the cooldown window does not re-send."""
+        recent = datetime.utcnow() - timedelta(seconds=10)
+        mock_user_svc.db.collection.return_value.document.return_value.get.return_value = (
+            _make_token_doc(
+                exists=True,
+                data={
+                    "email": "user@example.com",
+                    "last_resend_at": recent,
+                },
+            )
+        )
+
+        response = client.post(
+            "/api/users/auth/resend-from-token",
+            json={"token": "recently-resent-token"},
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        # Still report sent so the UI shows the success state to the user
+        # who already received an email a moment ago.
+        assert body["status"] == "sent"
+        assert body["masked_email"] == "us***@ex***.com"
+        # But no new email was actually sent.
+        mock_email_svc.send_magic_link.assert_not_called()
+        mock_user_svc.create_magic_link.assert_not_called()
+
+    def test_cooldown_expired_allows_resend(
+        self, client, mock_user_svc, mock_email_svc
+    ):
+        """Once the cooldown elapses, a fresh resend goes through."""
+        old = datetime.utcnow() - timedelta(minutes=5)
+        mock_user_svc.db.collection.return_value.document.return_value.get.return_value = (
+            _make_token_doc(
+                exists=True,
+                data={
+                    "email": "user@example.com",
+                    "last_resend_at": old,
+                },
+            )
+        )
+
+        response = client.post(
+            "/api/users/auth/resend-from-token",
+            json={"token": "old-resend-token"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "sent"
+        mock_email_svc.send_magic_link.assert_called_once()
+
     def test_tenant_context_carried_forward(
         self, client, mock_user_svc, mock_email_svc
     ):

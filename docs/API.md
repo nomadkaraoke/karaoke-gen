@@ -925,17 +925,29 @@ Content-Type: application/json
 
 Used by the verify failure UI to give users a one-click recovery when their sign-in link has expired or already been used. The endpoint looks up the token in Firestore, mints a fresh magic link for the same email, and sends it. The original token is a 32-byte cryptographic secret only the email recipient could possess, so resending to the recorded address adds no new attack surface.
 
-Response:
+Responses — `status` is either `"sent"` (a fresh link was emailed) or `"no_token"` (the token was not found in Firestore):
+
+Successful resend:
 
 ```json
 {
-  "status": "sent" | "no_token",
-  "masked_email": "ho***@ya***.com" | null,
-  "message": "..."
+  "status": "sent",
+  "masked_email": "ho***@ya***.com",
+  "message": "If this email is registered, you will receive a sign-in link shortly."
 }
 ```
 
-When the token doc is not found, returns `status: "no_token"` so the UI can fall back to the standard sign-in form. Tenant context, referral code, and device fingerprint from the original token are preserved on the new link.
+Token not recognised (the UI should fall back to the standard sign-in form):
+
+```json
+{
+  "status": "no_token",
+  "masked_email": null,
+  "message": "We couldn't recognise that sign-in link. Please go back and request a new one from the sign-in form."
+}
+```
+
+A short per-token cooldown applies — repeated resend attempts for the same token within 60 seconds return `status: "sent"` without re-sending the email. Tenant context, referral code, and device fingerprint from the original token are preserved on the new link.
 
 ### Get Current User
 

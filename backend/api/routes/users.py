@@ -534,6 +534,34 @@ async def resend_magic_link_from_token(
             detail=t(locale, "users.emailServiceNotConfigured"),
         )
 
+    # Per-token cooldown: ignore repeat clicks of the resend button (or
+    # email-scanner pre-fetches) within a short window. We still report
+    # "sent" so the UI doesn't degrade — the user already got an email.
+    RESEND_COOLDOWN_SECONDS = 60
+    last_resend_at = magic_link_data.get("last_resend_at")
+    if last_resend_at is not None:
+        last_resend_dt = last_resend_at
+        if isinstance(last_resend_at, str):
+            try:
+                last_resend_dt = datetime.fromisoformat(last_resend_at.replace("Z", "+00:00"))
+            except ValueError:
+                last_resend_dt = None
+        if last_resend_dt is not None:
+            now = datetime.utcnow()
+            if last_resend_dt.tzinfo is not None:
+                from datetime import timezone as _tz
+                now = now.replace(tzinfo=_tz.utc)
+            elapsed = (now - last_resend_dt).total_seconds()
+            if 0 <= elapsed < RESEND_COOLDOWN_SECONDS:
+                logger.info(
+                    f"Resend cooldown active for {_mask_email(email)} ({elapsed:.0f}s elapsed)"
+                )
+                return ResendFromTokenResponse(
+                    status="sent",
+                    masked_email=_mask_email(email),
+                    message=t(locale, "users.magicLinkSent"),
+                )
+
     ip_address = get_client_ip(http_request)
     user_agent = http_request.headers.get("user-agent")
 
@@ -581,6 +609,14 @@ async def resend_magic_link_from_token(
 
     if not sent:
         logger.error(f"Failed to resend magic link email to {_mask_email(email)}")
+
+    # Stamp the original token so the cooldown applies to subsequent clicks.
+    try:
+        user_service.db.collection(MAGIC_LINKS_COLLECTION).document(token).update({
+            "last_resend_at": datetime.utcnow(),
+        })
+    except Exception:
+        logger.exception("Failed to stamp last_resend_at on magic link doc")
 
     logger.info(f"Resent magic link to {_mask_email(email)} from expired/used token")
 

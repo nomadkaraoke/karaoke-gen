@@ -307,7 +307,7 @@
     "resendFailedBody": "Un problème est survenu de notre côté. Réessaie dans un instant, ou connecte-toi depuis l'application.",
     "resendFailedTitle": "Impossible d'envoyer un nouveau lien",
     "resendNewLinkButton": "M'envoyer un nouveau lien par e-mail",
-    "resendNoTokenBody": "Retourne au formulaire de connexion et demandes-en un nouveau.",
+    "resendNoTokenBody": "Retourne au formulaire de connexion et demande-en un nouveau.",
     "resendNoTokenTitle": "Nous n'avons pas trouvé ce lien",
     "resendSuccessBody": "Nous avons envoyé un nouveau lien de connexion à {maskedEmail}. Il est valable pendant 24 heures.",
     "resendSuccessTitle": "Vérifie tes e-mails",
