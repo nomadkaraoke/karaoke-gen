@@ -108,7 +108,8 @@
     "stripeSendError": "Fel vid sändning av Stripe-kassalänk: {error}",
     "stripeWebhookProcessingError": "Fel vid bearbetning av Stripe-webhook: {error}",
     "feedbackSaveError": "Fel vid sparande av feedback: {error}",
-    "feedbackNotEligible": "Användaren är inte berättigad till feedback"
+    "feedbackNotEligible": "Användaren är inte berättigad till feedback",
+    "resendNoToken": "Vi kunde inte känna igen inloggningslänken. Gå tillbaka och begär en ny via inloggningsformuläret."
   },
   "fileUpload": {
     "invalidTheme": "Temat hittades inte: {theme_id}. Använd GET /api/themes för att lista tillgängliga teman.",

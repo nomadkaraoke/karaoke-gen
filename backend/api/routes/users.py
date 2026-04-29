@@ -43,6 +43,8 @@ from backend.models.user import (
     SendMagicLinkRequest,
     SendMagicLinkResponse,
     VerifyMagicLinkResponse,
+    ResendFromTokenRequest,
+    ResendFromTokenResponse,
     AddCreditsRequest,
     AddCreditsResponse,
     UserListResponse,
@@ -476,6 +478,116 @@ async def verify_magic_link(
         tenant_subdomain=tenant_subdomain,
         credits_granted=credits_granted,
         credit_status=credit_status,
+    )
+
+
+@router.post("/auth/resend-from-token", response_model=ResendFromTokenResponse)
+async def resend_magic_link_from_token(
+    request: ResendFromTokenRequest,
+    http_request: Request,
+    user_service: UserService = Depends(get_user_service),
+    email_service: EmailService = Depends(get_email_service),
+):
+    """
+    Resend a magic link to the email associated with a previously-issued token.
+
+    Used by the verify failure UI to give users a one-click recovery when their
+    sign-in link has expired or already been used. The original token is a 32-byte
+    cryptographic secret — only the email recipient could possess it — so resending
+    to the email recorded in the token doc adds no new attack surface.
+
+    Behaviour:
+    - Token doc found → mint a fresh magic link, send it, return masked email.
+    - Token doc missing → return status="no_token" so the UI can fall back to
+      the standard sign-in form.
+    """
+    from backend.services.user_service import MAGIC_LINKS_COLLECTION
+    from backend.middleware.tenant import get_tenant_from_request, get_tenant_config_from_request
+
+    locale = get_locale_from_request(http_request)
+    token = (request.token or "").strip()
+
+    if not token:
+        raise HTTPException(status_code=422, detail=t(locale, "users.invalidToken"))
+
+    magic_link_doc = user_service.db.collection(MAGIC_LINKS_COLLECTION).document(token).get()
+    if not magic_link_doc.exists:
+        return ResendFromTokenResponse(
+            status="no_token",
+            masked_email=None,
+            message=t(locale, "users.resendNoToken"),
+        )
+
+    magic_link_data = magic_link_doc.to_dict() or {}
+    email = (magic_link_data.get("email") or "").lower()
+    if not email:
+        return ResendFromTokenResponse(
+            status="no_token",
+            masked_email=None,
+            message=t(locale, "users.resendNoToken"),
+        )
+
+    if not email_service.is_configured():
+        logger.error("Email service not configured - cannot resend magic links")
+        raise HTTPException(
+            status_code=503,
+            detail=t(locale, "users.emailServiceNotConfigured"),
+        )
+
+    ip_address = get_client_ip(http_request)
+    user_agent = http_request.headers.get("user-agent")
+
+    # Carry forward tenant context: prefer the original token's tenant so the
+    # resent link goes to the same portal the user originally signed up on.
+    original_tenant_id = magic_link_data.get("tenant_id")
+    request_tenant_id = get_tenant_from_request(http_request)
+    request_tenant_config = get_tenant_config_from_request(http_request)
+    tenant_id = original_tenant_id or request_tenant_id
+
+    tenant_config = request_tenant_config
+    if original_tenant_id and original_tenant_id != request_tenant_id:
+        from backend.services.tenant_service import get_tenant_service
+        tenant_config = get_tenant_service().get_tenant_config(original_tenant_id)
+
+    referral_code = magic_link_data.get("referral_code")
+    device_fingerprint = magic_link_data.get("device_fingerprint")
+
+    new_link = user_service.create_magic_link(
+        email,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        tenant_id=tenant_id,
+        device_fingerprint=device_fingerprint,
+        referral_code=referral_code,
+    )
+
+    sender_email = None
+    tenant_frontend_url = None
+    tenant_name = None
+    if tenant_config:
+        sender_email = tenant_config.get_sender_email()
+        tenant_frontend_url = tenant_config.get_frontend_url()
+        tenant_name = tenant_config.name
+
+    sent = email_service.send_magic_link(
+        email,
+        new_link.token,
+        sender_email=sender_email,
+        tenant_frontend_url=tenant_frontend_url,
+        tenant_name=tenant_name,
+        locale=locale,
+        referral_code=referral_code,
+    )
+
+    if not sent:
+        logger.error(f"Failed to resend magic link email to {_mask_email(email)}")
+
+    logger.info(f"Resent magic link to {_mask_email(email)} from expired/used token")
+
+    return ResendFromTokenResponse(
+        status="sent",
+        masked_email=_mask_email(email),
+        message=t(locale, "users.magicLinkSent"),
     )
 
 

@@ -108,7 +108,8 @@
     "stripeSendError": "Ralat menghantar pautan daftar keluar Stripe: {error}",
     "stripeWebhookProcessingError": "Ralat memproses webhook Stripe: {error}",
     "feedbackSaveError": "Ralat menyimpan maklum balas: {error}",
-    "feedbackNotEligible": "Pengguna tidak layak untuk maklum balas"
+    "feedbackNotEligible": "Pengguna tidak layak untuk maklum balas",
+    "resendNoToken": "Kami tidak dapat mengenal pasti pautan log masuk tersebut. Sila kembali dan minta pautan baharu melalui borang log masuk."
   },
   "fileUpload": {
     "invalidTheme": "Tema tidak dijumpai: {theme_id}. Gunakan GET /api/themes untuk menyenaraikan tema yang tersedia.",

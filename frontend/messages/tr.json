@@ -303,7 +303,15 @@
       "login": "Giriş",
       "discountActive": "indirim aktif",
       "discountActiveHint": "İndirim afişini göstermek için tıkla"
-    }
+    },
+    "resendFailedBody": "Sistemimizde bir sorun oluştu. Lütfen kısa bir süre sonra tekrar dene veya uygulamadan giriş yap.",
+    "resendFailedTitle": "Yeni bağlantı gönderilemedi",
+    "resendNewLinkButton": "Bana yeni bir bağlantı gönder",
+    "resendNoTokenBody": "Lütfen giriş formuna dönüp yeni bir bağlantı iste.",
+    "resendNoTokenTitle": "Bağlantıyı bulamadık",
+    "resendSuccessBody": "{maskedEmail} adresine yeni bir giriş bağlantısı gönderdik. Bu bağlantı 24 saat boyunca geçerlidir.",
+    "resendSuccessTitle": "E-postanı kontrol et",
+    "resending": "Gönderiliyor..."
   },
   "payment": {
     "title": "Ödeme Başarılı!",

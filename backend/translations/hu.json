@@ -108,7 +108,8 @@
     "stripeSendError": "Hiba a Stripe fizetési link küldésekor: {error}",
     "stripeWebhookProcessingError": "Hiba a Stripe webhook feldolgozásakor: {error}",
     "feedbackSaveError": "Hiba a visszajelzés mentésekor: {error}",
-    "feedbackNotEligible": "A felhasználó nem jogosult visszajelzésre"
+    "feedbackNotEligible": "A felhasználó nem jogosult visszajelzésre",
+    "resendNoToken": "Nem sikerült felismernünk ezt a bejelentkezési linket. Kérlek, lépj vissza, és kérj egy újat a bejelentkezési űrlapon."
   },
   "fileUpload": {
     "invalidTheme": "A téma nem található: {theme_id}. Használd a GET /api/themes végpontot az elérhető témák listázásához.",

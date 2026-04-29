@@ -303,7 +303,15 @@
       "login": "Bejelentkezés",
       "discountActive": "kedvezmény aktív",
       "discountActiveHint": "Kattints a kedvezmény bannerének megjelenítéséhez"
-    }
+    },
+    "resendFailedBody": "Nálunk történt valami hiba. Kérlek, próbáld újra egy kicsit később, vagy jelentkezz be az alkalmazásból.",
+    "resendFailedTitle": "Nem sikerült új linket küldeni",
+    "resendNewLinkButton": "Kérek egy új linket e-mailben",
+    "resendNoTokenBody": "Kérlek, menj vissza a bejelentkezési űrlaphoz, és kérj egy újat.",
+    "resendNoTokenTitle": "Nem találtuk ezt a linket",
+    "resendSuccessBody": "Küldtünk egy új bejelentkezési linket a(z) {maskedEmail} címre. A link 24 óráig érvényes.",
+    "resendSuccessTitle": "Ellenőrizd a postaládádat",
+    "resending": "Küldés..."
   },
   "payment": {
     "title": "Sikeres fizetés!",

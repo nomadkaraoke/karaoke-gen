@@ -303,7 +303,15 @@
       "login": "Accedi",
       "discountActive": "sconto attivo",
       "discountActiveHint": "Clicca per mostrare il banner dello sconto"
-    }
+    },
+    "resendFailedBody": "Si è verificato un errore da parte nostra. Riprova tra poco, oppure accedi dall'app.",
+    "resendFailedTitle": "Impossibile inviare un nuovo link",
+    "resendNewLinkButton": "Inviami un nuovo link via email",
+    "resendNoTokenBody": "Torna al modulo di accesso e richiedine uno nuovo.",
+    "resendNoTokenTitle": "Non siamo riusciti a trovare quel link",
+    "resendSuccessBody": "Abbiamo inviato un nuovo link di accesso a {maskedEmail}. È valido per le prossime 24 ore.",
+    "resendSuccessTitle": "Controlla la tua email",
+    "resending": "Invio in corso..."
   },
   "payment": {
     "title": "Pagamento riuscito!",

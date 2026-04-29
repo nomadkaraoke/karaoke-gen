@@ -303,7 +303,15 @@
       "login": "Đăng nhập",
       "discountActive": "đang áp dụng giảm giá",
       "discountActiveHint": "Nhấp để hiển thị banner giảm giá"
-    }
+    },
+    "resendFailedBody": "Đã có lỗi xảy ra từ phía chúng tôi. Vui lòng thử lại trong giây lát hoặc đăng nhập từ ứng dụng.",
+    "resendFailedTitle": "Không thể gửi liên kết mới",
+    "resendNewLinkButton": "Gửi cho tôi liên kết mới qua email",
+    "resendNoTokenBody": "Vui lòng quay lại trang đăng nhập và yêu cầu một liên kết mới.",
+    "resendNoTokenTitle": "Chúng tôi không tìm thấy liên kết đó",
+    "resendSuccessBody": "Chúng tôi đã gửi một liên kết đăng nhập mới đến {maskedEmail}. Liên kết này có hiệu lực trong 24 giờ tới.",
+    "resendSuccessTitle": "Kiểm tra email của bạn",
+    "resending": "Đang gửi..."
   },
   "payment": {
     "title": "Thanh toán thành công!",

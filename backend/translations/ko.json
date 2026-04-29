@@ -108,7 +108,8 @@
     "stripeSendError": "Stripe 결제 링크 전송 중 오류 발생: {error}",
     "stripeWebhookProcessingError": "Stripe 웹훅 처리 중 오류 발생: {error}",
     "feedbackSaveError": "피드백 저장 중 오류 발생: {error}",
-    "feedbackNotEligible": "사용자가 피드백 대상이 아닙니다"
+    "feedbackNotEligible": "사용자가 피드백 대상이 아닙니다",
+    "resendNoToken": "로그인 링크를 확인할 수 없습니다. 로그인 화면으로 돌아가서 새 링크를 요청해 주세요."
   },
   "fileUpload": {
     "invalidTheme": "테마를 찾을 수 없습니다: {theme_id}. 사용 가능한 테마를 나열하려면 GET /api/themes를 사용하세요.",

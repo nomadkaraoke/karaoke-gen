@@ -108,7 +108,8 @@
     "stripeSendError": "Pogreška pri slanju Stripe poveznice za naplatu: {error}",
     "stripeWebhookProcessingError": "Pogreška pri obradi Stripe webhooka: {error}",
     "feedbackSaveError": "Pogreška pri spremanju povratnih informacija: {error}",
-    "feedbackNotEligible": "Korisnik ne ispunjava uvjete za povratne informacije"
+    "feedbackNotEligible": "Korisnik ne ispunjava uvjete za povratne informacije",
+    "resendNoToken": "Nismo uspjeli prepoznati tu poveznicu za prijavu. Molimo te da se vratiš i zatražiš novu putem obrasca za prijavu."
   },
   "fileUpload": {
     "invalidTheme": "Tema nije pronađena: {theme_id}. Koristi GET /api/themes za popis dostupnih tema.",

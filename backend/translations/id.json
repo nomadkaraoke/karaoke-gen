@@ -108,7 +108,8 @@
     "stripeSendError": "Kesalahan saat mengirim tautan checkout Stripe: {error}",
     "stripeWebhookProcessingError": "Kesalahan saat memproses webhook Stripe: {error}",
     "feedbackSaveError": "Kesalahan saat menyimpan umpan balik: {error}",
-    "feedbackNotEligible": "Pengguna tidak memenuhi syarat untuk memberikan umpan balik"
+    "feedbackNotEligible": "Pengguna tidak memenuhi syarat untuk memberikan umpan balik",
+    "resendNoToken": "Kami tidak mengenali tautan masuk tersebut. Silakan kembali dan minta tautan baru melalui formulir masuk."
   },
   "fileUpload": {
     "invalidTheme": "Tema tidak ditemukan: {theme_id}. Gunakan GET /api/themes untuk melihat daftar tema yang tersedia.",

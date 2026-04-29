@@ -303,7 +303,15 @@
       "login": "تسجيل الدخول",
       "discountActive": "خصم فعّال",
       "discountActiveHint": "انقر لعرض شريط الخصم"
-    }
+    },
+    "resendFailedBody": "حدث خطأ من جانبنا. يرجى المحاولة مرة أخرى بعد قليل، أو تسجيل الدخول من التطبيق.",
+    "resendFailedTitle": "تعذر إرسال رابط جديد",
+    "resendNewLinkButton": "أرسل لي رابطاً جديداً عبر البريد الإلكتروني",
+    "resendNoTokenBody": "يرجى العودة إلى نموذج تسجيل الدخول وطلب رابط جديد.",
+    "resendNoTokenTitle": "لم نتمكن من العثور على هذا الرابط",
+    "resendSuccessBody": "لقد أرسلنا رابط تسجيل دخول جديد إلى {maskedEmail}. الرابط صالح للـ 24 ساعة القادمة.",
+    "resendSuccessTitle": "تحقق من بريدك الإلكتروني",
+    "resending": "جارٍ الإرسال..."
   },
   "payment": {
     "title": "تم الدفع بنجاح!",

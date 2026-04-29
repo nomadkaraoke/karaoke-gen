@@ -303,7 +303,15 @@
       "login": "Inicia sessió",
       "discountActive": "descompte actiu",
       "discountActiveHint": "Fes clic per mostrar el bàner de descompte"
-    }
+    },
+    "resendFailedBody": "Hi ha hagut un error per part nostra. Si us plau, torna-ho a provar d'aquí a un moment o inicia sessió des de l'aplicació.",
+    "resendFailedTitle": "No s'ha pogut enviar un enllaç nou",
+    "resendNewLinkButton": "Envia'm un enllaç nou per correu",
+    "resendNoTokenBody": "Si us plau, torna al formulari d'inici de sessió i demana'n un de nou.",
+    "resendNoTokenTitle": "No hem pogut trobar aquest enllaç",
+    "resendSuccessBody": "Hem enviat un enllaç d'inici de sessió nou a {maskedEmail}. És vàlid durant les pròximes 24 hores.",
+    "resendSuccessTitle": "Comprova el teu correu electrònic",
+    "resending": "Enviant..."
   },
   "payment": {
     "title": "Pagament completat amb èxit!",

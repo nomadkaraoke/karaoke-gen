@@ -303,7 +303,15 @@
       "login": "लॉगिन करो",
       "discountActive": "डिस्काउंट सक्रिय",
       "discountActiveHint": "डिस्काउंट बैनर देखने के लिए क्लिक करो"
-    }
+    },
+    "resendFailedBody": "हमारी तरफ से कुछ गड़बड़ हो गई है। कृपया थोड़ी देर में फिर से कोशिश करो, या ऐप से साइन इन करो।",
+    "resendFailedTitle": "नया लिंक नहीं भेज सके",
+    "resendNewLinkButton": "मुझे एक नया लिंक ईमेल करो",
+    "resendNoTokenBody": "कृपया साइन-इन फॉर्म पर वापस जाओ और एक नए लिंक का अनुरोध करो।",
+    "resendNoTokenTitle": "हमें वह लिंक नहीं मिला",
+    "resendSuccessBody": "हमने {maskedEmail} पर एक नया साइन-इन लिंक भेजा है। यह अगले 24 घंटों के लिए मान्य है।",
+    "resendSuccessTitle": "अपना ईमेल चेक करो",
+    "resending": "भेज रहे हैं..."
   },
   "payment": {
     "title": "पेमेंट सफल रहा!",

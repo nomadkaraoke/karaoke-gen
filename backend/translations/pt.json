@@ -108,7 +108,8 @@
     "stripeSendError": "Erro ao enviar link de checkout do Stripe: {error}",
     "stripeWebhookProcessingError": "Erro ao processar webhook do Stripe: {error}",
     "feedbackSaveError": "Erro ao salvar feedback: {error}",
-    "feedbackNotEligible": "Usuário não elegível para feedback"
+    "feedbackNotEligible": "Usuário não elegível para feedback",
+    "resendNoToken": "Não conseguimos reconhecer esse link de login. Por favor, volte e solicite um novo no formulário de login."
   },
   "fileUpload": {
     "invalidTheme": "Tema não encontrado: {theme_id}. Use GET /api/themes para listar os temas disponíveis.",

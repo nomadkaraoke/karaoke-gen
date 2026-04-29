@@ -303,7 +303,15 @@
       "login": "ログイン",
       "discountActive": "割引適用中",
       "discountActiveHint": "クリックして割引バナーを表示"
-    }
+    },
+    "resendFailedBody": "申し訳ありません、エラーが発生しました。しばらくしてからもう一度お試しいただくか、アプリからサインインしてください。",
+    "resendFailedTitle": "新しいリンクを送信できませんでした",
+    "resendNewLinkButton": "新しいリンクをメールで送信",
+    "resendNoTokenBody": "サインイン画面に戻って、新しいリンクをリクエストしてください。",
+    "resendNoTokenTitle": "リンクが見つかりませんでした",
+    "resendSuccessBody": "新しいサインインリンクを {maskedEmail} 宛に送信しました。リンクの有効期限は24時間です。",
+    "resendSuccessTitle": "メールをご確認ください",
+    "resending": "送信中..."
   },
   "payment": {
     "title": "支払いが完了しました！",

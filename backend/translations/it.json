@@ -108,7 +108,8 @@
     "stripeSendError": "Errore durante l'invio del link di checkout Stripe: {error}",
     "stripeWebhookProcessingError": "Errore durante l'elaborazione del webhook Stripe: {error}",
     "feedbackSaveError": "Errore durante il salvataggio del feedback: {error}",
-    "feedbackNotEligible": "Utente non idoneo per il feedback"
+    "feedbackNotEligible": "Utente non idoneo per il feedback",
+    "resendNoToken": "Non siamo riusciti a riconoscere quel link di accesso. Torna indietro e richiedine uno nuovo dal modulo di accesso."
   },
   "fileUpload": {
     "invalidTheme": "Tema non trovato: {theme_id}. Usa GET /api/themes per elencare i temi disponibili.",

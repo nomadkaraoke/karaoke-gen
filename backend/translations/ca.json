@@ -108,7 +108,8 @@
     "stripeSendError": "Error en enviar l'enllaç de pagament de Stripe: {error}",
     "stripeWebhookProcessingError": "Error en processar el webhook de Stripe: {error}",
     "feedbackSaveError": "Error en desar els comentaris: {error}",
-    "feedbackNotEligible": "L'usuari no és elegible per deixar comentaris"
+    "feedbackNotEligible": "L'usuari no és elegible per deixar comentaris",
+    "resendNoToken": "No hem pogut reconèixer aquest enllaç d'inici de sessió. Si us plau, torna enrere i sol·licita'n un de nou des del formulari d'inici de sessió."
   },
   "fileUpload": {
     "invalidTheme": "Tema no trobat: {theme_id}. Utilitza GET /api/themes per llistar els temes disponibles.",

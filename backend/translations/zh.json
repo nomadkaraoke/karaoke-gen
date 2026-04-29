@@ -108,7 +108,8 @@
     "stripeSendError": "发送 Stripe 结账链接时出错：{error}",
     "stripeWebhookProcessingError": "处理 Stripe webhook 时出错：{error}",
     "feedbackSaveError": "保存反馈时出错：{error}",
-    "feedbackNotEligible": "用户不符合提供反馈的条件"
+    "feedbackNotEligible": "用户不符合提供反馈的条件",
+    "resendNoToken": "我们无法识别该登录链接。请返回并通过登录表单重新获取新链接。"
   },
   "fileUpload": {
     "invalidTheme": "未找到主题：{theme_id}。请使用 GET /api/themes 列出可用主题。",

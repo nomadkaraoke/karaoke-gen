@@ -108,7 +108,8 @@
     "stripeSendError": "Eroare la trimiterea linkului de checkout Stripe: {error}",
     "stripeWebhookProcessingError": "Eroare la procesarea webhook-ului Stripe: {error}",
     "feedbackSaveError": "Eroare la salvarea feedback-ului: {error}",
-    "feedbackNotEligible": "Utilizatorul nu este eligibil pentru feedback"
+    "feedbackNotEligible": "Utilizatorul nu este eligibil pentru feedback",
+    "resendNoToken": "Nu am putut recunoaște acel link de conectare. Te rugăm să revii și să soliciți unul nou din formularul de conectare."
   },
   "fileUpload": {
     "invalidTheme": "Tema nu a fost găsită: {theme_id}. Folosește GET /api/themes pentru a lista temele disponibile.",

@@ -108,7 +108,8 @@
     "stripeSendError": "Error sa pagpadala ng Stripe checkout link: {error}",
     "stripeWebhookProcessingError": "Error sa pagproseso ng Stripe webhook: {error}",
     "feedbackSaveError": "Error sa pag-save ng feedback: {error}",
-    "feedbackNotEligible": "Hindi kwalipikado ang user para sa feedback"
+    "feedbackNotEligible": "Hindi kwalipikado ang user para sa feedback",
+    "resendNoToken": "Hindi namin matukoy ang sign-in link na iyon. Bumalik lang at humiling ng bago mula sa sign-in form."
   },
   "fileUpload": {
     "invalidTheme": "Hindi nahanap ang theme: {theme_id}. Gamitin ang GET /api/themes para ilista ang mga available na theme.",

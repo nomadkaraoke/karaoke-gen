@@ -303,7 +303,15 @@
       "login": "Mag-login",
       "discountActive": "aktibo ang discount",
       "discountActiveHint": "I-click para ipakita ang discount banner"
-    }
+    },
+    "resendFailedBody": "May nagkaproblema sa aming panig. Pakisubukan ulit maya-maya, o mag-sign in mula sa app.",
+    "resendFailedTitle": "Hindi maipadala ang bagong link",
+    "resendNewLinkButton": "I-email sa akin ang bagong link",
+    "resendNoTokenBody": "Bumalik lang sa sign-in form at humiling ng bago.",
+    "resendNoTokenTitle": "Hindi namin mahanap ang link na iyon",
+    "resendSuccessBody": "Nagpadala kami ng bagong sign-in link sa {maskedEmail}. Valid ito sa loob ng 24 oras.",
+    "resendSuccessTitle": "I-check ang iyong email",
+    "resending": "Ipinapadala..."
   },
   "payment": {
     "title": "Matagumpay ang Pagbabayad!",

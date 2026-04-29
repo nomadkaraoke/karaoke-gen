@@ -108,7 +108,8 @@
     "stripeSendError": "Fehler beim Senden des Stripe-Checkout-Links: {error}",
     "stripeWebhookProcessingError": "Fehler bei der Verarbeitung des Stripe-Webhooks: {error}",
     "feedbackSaveError": "Fehler beim Speichern des Feedbacks: {error}",
-    "feedbackNotEligible": "Benutzer ist nicht für Feedback berechtigt"
+    "feedbackNotEligible": "Benutzer ist nicht für Feedback berechtigt",
+    "resendNoToken": "Wir konnten diesen Anmeldelink nicht erkennen. Bitte gehe zurück und fordere einen neuen über das Anmeldeformular an."
   },
   "fileUpload": {
     "invalidTheme": "Theme nicht gefunden: {theme_id}. Verwende GET /api/themes, um verfügbare Themes aufzulisten.",

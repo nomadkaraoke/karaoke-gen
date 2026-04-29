@@ -303,7 +303,15 @@
       "login": "Zaloguj się",
       "discountActive": "zniżka aktywna",
       "discountActiveHint": "Kliknij, aby wyświetlić baner ze zniżką"
-    }
+    },
+    "resendFailedBody": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie za chwilę lub zaloguj się w aplikacji.",
+    "resendFailedTitle": "Nie udało się wysłać nowego linku",
+    "resendNewLinkButton": "Wyślij mi nowy link e-mailem",
+    "resendNoTokenBody": "Wróć do formularza logowania i poproś o nowy.",
+    "resendNoTokenTitle": "Nie znaleźliśmy tego linku",
+    "resendSuccessBody": "Wysłaliśmy nowy link do logowania na adres {maskedEmail}. Jest ważny przez najbliższe 24 godziny.",
+    "resendSuccessTitle": "Sprawdź swój e-mail",
+    "resending": "Wysyłanie..."
   },
   "payment": {
     "title": "Płatność zakończona sukcesem!",

@@ -108,7 +108,8 @@
     "stripeSendError": "Chyba při odesílání odkazu na pokladnu Stripe: {error}",
     "stripeWebhookProcessingError": "Chyba při zpracování webhooku Stripe: {error}",
     "feedbackSaveError": "Chyba při ukládání zpětné vazby: {error}",
-    "feedbackNotEligible": "Uživatel nemá nárok na zpětnou vazbu"
+    "feedbackNotEligible": "Uživatel nemá nárok na zpětnou vazbu",
+    "resendNoToken": "Tento přihlašovací odkaz jsme nerozpoznali. Vrať se prosím zpět a vyžádej si nový v přihlašovacím formuláři."
   },
   "fileUpload": {
     "invalidTheme": "Motiv nebyl nalezen: {theme_id}. Použij GET /api/themes pro vypsání dostupných motivů.",

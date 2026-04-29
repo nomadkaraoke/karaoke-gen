@@ -108,7 +108,8 @@
     "stripeSendError": "Fout bij het verzenden van Stripe checkout-link: {error}",
     "stripeWebhookProcessingError": "Fout bij het verwerken van Stripe webhook: {error}",
     "feedbackSaveError": "Fout bij het opslaan van feedback: {error}",
-    "feedbackNotEligible": "Gebruiker komt niet in aanmerking voor feedback"
+    "feedbackNotEligible": "Gebruiker komt niet in aanmerking voor feedback",
+    "resendNoToken": "We konden die inloglink niet herkennen. Ga terug en vraag een nieuwe aan via het inlogformulier."
   },
   "fileUpload": {
     "invalidTheme": "Thema niet gevonden: {theme_id}. Gebruik GET /api/themes om beschikbare thema's te bekijken.",

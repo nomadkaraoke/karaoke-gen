@@ -303,7 +303,15 @@
       "login": "Autentificare",
       "discountActive": "reducere activă",
       "discountActiveHint": "Dă click pentru a afișa bannerul de reducere"
-    }
+    },
+    "resendFailedBody": "A apărut o problemă la noi. Încearcă din nou în câteva momente sau conectează-te din aplicație.",
+    "resendFailedTitle": "Nu am putut trimite un link nou",
+    "resendNewLinkButton": "Trimite-mi un link nou pe email",
+    "resendNoTokenBody": "Întoarce-te la formularul de conectare și solicită unul nou.",
+    "resendNoTokenTitle": "Nu am putut găsi acel link",
+    "resendSuccessBody": "Am trimis un nou link de conectare la {maskedEmail}. Este valabil pentru următoarele 24 de ore.",
+    "resendSuccessTitle": "Verifică-ți emailul",
+    "resending": "Se trimite..."
   },
   "payment": {
     "title": "Plată realizată cu succes!",

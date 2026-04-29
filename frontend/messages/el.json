@@ -303,7 +303,15 @@
       "login": "Σύνδεση",
       "discountActive": "ενεργή έκπτωση",
       "discountActiveHint": "Κάνε κλικ για εμφάνιση του banner έκπτωσης"
-    }
+    },
+    "resendFailedBody": "Κάτι πήγε στραβά από την πλευρά μας. Δοκίμασε ξανά σε λίγο ή συνδέσου από την εφαρμογή.",
+    "resendFailedTitle": "Δεν μπορέσαμε να στείλουμε νέο σύνδεσμο",
+    "resendNewLinkButton": "Στείλε μου νέο σύνδεσμο μέσω email",
+    "resendNoTokenBody": "Επίστρεψε στη φόρμα σύνδεσης και ζήτησε έναν νέο.",
+    "resendNoTokenTitle": "Δεν μπορέσαμε να βρούμε αυτόν τον σύνδεσμο",
+    "resendSuccessBody": "Στείλαμε έναν νέο σύνδεσμο σύνδεσης στο {maskedEmail}. Ισχύει για τις επόμενες 24 ώρες.",
+    "resendSuccessTitle": "Έλεγξε το email σου",
+    "resending": "Αποστολή..."
   },
   "payment": {
     "title": "Η Πληρωμή Ήταν Επιτυχής!",

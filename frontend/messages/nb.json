@@ -303,7 +303,15 @@
       "login": "Logg inn",
       "discountActive": "rabatt aktiv",
       "discountActiveHint": "Klikk for å vise rabattbanner"
-    }
+    },
+    "resendFailedBody": "Noe gikk galt hos oss. Prøv igjen om et øyeblikk, eller logg inn fra appen.",
+    "resendFailedTitle": "Kunne ikke sende en ny lenke",
+    "resendNewLinkButton": "Send meg en ny lenke på e-post",
+    "resendNoTokenBody": "Gå tilbake til innloggingsskjemaet og be om en ny.",
+    "resendNoTokenTitle": "Vi fant ikke den lenken",
+    "resendSuccessBody": "Vi har sendt en ny innloggingslenke til {maskedEmail}. Den er gyldig i 24 timer.",
+    "resendSuccessTitle": "Sjekk e-posten din",
+    "resending": "Sender..."
   },
   "payment": {
     "title": "Betaling vellykket!",

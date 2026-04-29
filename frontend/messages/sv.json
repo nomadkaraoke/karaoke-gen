@@ -303,7 +303,15 @@
       "login": "Logga in",
       "discountActive": "rabatt aktiv",
       "discountActiveHint": "Klicka för att visa rabattbannern"
-    }
+    },
+    "resendFailedBody": "Något gick fel på vår sida. Försök igen om en stund, eller logga in från appen.",
+    "resendFailedTitle": "Kunde inte skicka en ny länk",
+    "resendNewLinkButton": "Mejla mig en ny länk",
+    "resendNoTokenBody": "Gå tillbaka till inloggningsformuläret och begär en ny.",
+    "resendNoTokenTitle": "Vi kunde inte hitta den länken",
+    "resendSuccessBody": "Vi har skickat en ny inloggningslänk till {maskedEmail}. Den är giltig i 24 timmar.",
+    "resendSuccessTitle": "Kolla din e-post",
+    "resending": "Skickar..."
   },
   "payment": {
     "title": "Betalning lyckades!",

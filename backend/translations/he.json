@@ -108,7 +108,8 @@
     "stripeSendError": "שגיאה בשליחת קישור התשלום של Stripe: {error}",
     "stripeWebhookProcessingError": "שגיאה בעיבוד ה-webhook של Stripe: {error}",
     "feedbackSaveError": "שגיאה בשמירת המשוב: {error}",
-    "feedbackNotEligible": "המשתמש אינו זכאי למשוב"
+    "feedbackNotEligible": "המשתמש אינו זכאי למשוב",
+    "resendNoToken": "לא הצלחנו לזהות את קישור ההתחברות הזה. אנא חזרו לאחור ובקשו קישור חדש דרך טופס ההתחברות."
   },
   "fileUpload": {
     "invalidTheme": "ערכת הנושא לא נמצאה: {theme_id}. השתמשו ב- GET /api/themes כדי להציג את ערכות הנושא הזמינות.",

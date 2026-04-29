@@ -108,7 +108,8 @@
     "stripeSendError": "Stripeチェックアウトリンクの送信中にエラーが発生しました: {error}",
     "stripeWebhookProcessingError": "Stripe Webhookの処理中にエラーが発生しました: {error}",
     "feedbackSaveError": "フィードバックの保存中にエラーが発生しました: {error}",
-    "feedbackNotEligible": "このユーザーはフィードバックの対象外です"
+    "feedbackNotEligible": "このユーザーはフィードバックの対象外です",
+    "resendNoToken": "サインインリンクを認識できませんでした。お手数ですが、サインインフォームに戻って新しいリンクをリクエストしてください。"
   },
   "fileUpload": {
     "invalidTheme": "テーマが見つかりません: {theme_id}。利用可能なテーマを一覧表示するには GET /api/themes を使用してください。",

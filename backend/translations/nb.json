@@ -108,7 +108,8 @@
     "stripeSendError": "Feil ved sending av Stripe-utsjekkingslenke: {error}",
     "stripeWebhookProcessingError": "Feil ved behandling av Stripe-webhook: {error}",
     "feedbackSaveError": "Feil ved lagring av tilbakemelding: {error}",
-    "feedbackNotEligible": "Brukeren er ikke kvalifisert for tilbakemelding"
+    "feedbackNotEligible": "Brukeren er ikke kvalifisert for tilbakemelding",
+    "resendNoToken": "Vi kunne ikke gjenkjenne den innloggingslenken. Gå tilbake og be om en ny fra innloggingsskjemaet."
   },
   "fileUpload": {
     "invalidTheme": "Tema ikke funnet: {theme_id}. Bruk GET /api/themes for å liste opp tilgjengelige temaer.",

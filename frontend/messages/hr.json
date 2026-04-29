@@ -303,7 +303,15 @@
       "login": "Prijava",
       "discountActive": "popust aktivan",
       "discountActiveHint": "Klikni za prikaz bannera s popustom"
-    }
+    },
+    "resendFailedBody": "Nešto je pošlo po zlu s naše strane. Pokušaj ponovno za koji trenutak ili se prijavi iz aplikacije.",
+    "resendFailedTitle": "Nismo uspjeli poslati novu poveznicu",
+    "resendNewLinkButton": "Pošalji mi novu poveznicu e-poštom",
+    "resendNoTokenBody": "Vrati se na obrazac za prijavu i zatraži novu.",
+    "resendNoTokenTitle": "Nismo mogli pronaći tu poveznicu",
+    "resendSuccessBody": "Poslali smo novu poveznicu za prijavu na {maskedEmail}. Vrijedi sljedeća 24 sata.",
+    "resendSuccessTitle": "Provjeri svoju e-poštu",
+    "resending": "Slanje..."
   },
   "payment": {
     "title": "Plaćanje uspješno!",

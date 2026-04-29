@@ -108,7 +108,8 @@
     "stripeSendError": "Stripe चेकआउट लिंक भेजने में त्रुटि: {error}",
     "stripeWebhookProcessingError": "Stripe वेबहुक प्रोसेस करने में त्रुटि: {error}",
     "feedbackSaveError": "फ़ीडबैक सेव करने में त्रुटि: {error}",
-    "feedbackNotEligible": "यूज़र फ़ीडबैक के लिए योग्य नहीं है"
+    "feedbackNotEligible": "यूज़र फ़ीडबैक के लिए योग्य नहीं है",
+    "resendNoToken": "हम उस साइन-इन लिंक को पहचान नहीं पाए। कृपया वापस जाओ और साइन-इन फ़ॉर्म से एक नए लिंक का अनुरोध करो।"
   },
   "fileUpload": {
     "invalidTheme": "थीम नहीं मिली: {theme_id}। उपलब्ध थीम्स की सूची के लिए GET /api/themes का उपयोग करो।",

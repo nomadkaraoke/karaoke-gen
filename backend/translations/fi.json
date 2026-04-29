@@ -108,7 +108,8 @@
     "stripeSendError": "Virhe lähetettäessä Stripe-kassalinkkiä: {error}",
     "stripeWebhookProcessingError": "Virhe käsiteltäessä Stripe-webhookia: {error}",
     "feedbackSaveError": "Virhe tallennettaessa palautetta: {error}",
-    "feedbackNotEligible": "Käyttäjä ei ole oikeutettu antamaan palautetta"
+    "feedbackNotEligible": "Käyttäjä ei ole oikeutettu antamaan palautetta",
+    "resendNoToken": "Emme tunnistaneet tuota kirjautumislinkkiä. Palaa takaisin ja pyydä uusi kirjautumislomakkeelta."
   },
   "fileUpload": {
     "invalidTheme": "Teemaa ei löytynyt: {theme_id}. Käytä GET /api/themes listataksesi saatavilla olevat teemat.",

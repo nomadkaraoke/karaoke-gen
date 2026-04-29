@@ -303,7 +303,15 @@
       "login": "Entrar",
       "discountActive": "desconto ativo",
       "discountActiveHint": "Clique para mostrar o banner de desconto"
-    }
+    },
+    "resendFailedBody": "Algo deu errado por aqui. Por favor, tente novamente em instantes ou faça login pelo aplicativo.",
+    "resendFailedTitle": "Não foi possível enviar um novo link",
+    "resendNewLinkButton": "Me envie um novo link por e-mail",
+    "resendNoTokenBody": "Por favor, volte ao formulário de login e solicite um novo.",
+    "resendNoTokenTitle": "Não conseguimos encontrar esse link",
+    "resendSuccessBody": "Enviamos um novo link de login para {maskedEmail}. Ele é válido pelas próximas 24 horas.",
+    "resendSuccessTitle": "Verifique seu e-mail",
+    "resending": "Enviando..."
   },
   "payment": {
     "title": "Pagamento Bem-sucedido!",

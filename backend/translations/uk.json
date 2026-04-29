@@ -108,7 +108,8 @@
     "stripeSendError": "Помилка надсилання посилання на оплату Stripe: {error}",
     "stripeWebhookProcessingError": "Помилка обробки вебхука Stripe: {error}",
     "feedbackSaveError": "Помилка збереження відгуку: {error}",
-    "feedbackNotEligible": "Користувач не має права на залишення відгуку"
+    "feedbackNotEligible": "Користувач не має права на залишення відгуку",
+    "resendNoToken": "Ми не змогли розпізнати це посилання для входу. Будь ласка, повернися та надішли запит на нове через форму входу."
   },
   "fileUpload": {
     "invalidTheme": "Тему не знайдено: {theme_id}. Використовуй GET /api/themes, щоб отримати список доступних тем.",

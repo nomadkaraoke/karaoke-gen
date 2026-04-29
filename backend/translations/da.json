@@ -108,7 +108,8 @@
     "stripeSendError": "Fejl ved afsendelse af Stripe-betalingslink: {error}",
     "stripeWebhookProcessingError": "Fejl ved behandling af Stripe-webhook: {error}",
     "feedbackSaveError": "Fejl ved lagring af feedback: {error}",
-    "feedbackNotEligible": "Brugeren er ikke berettiget til feedback"
+    "feedbackNotEligible": "Brugeren er ikke berettiget til feedback",
+    "resendNoToken": "Vi kunne ikke genkende det login-link. Gå tilbage og anmod om et nyt fra login-formularen."
   },
   "fileUpload": {
     "invalidTheme": "Temaet blev ikke fundet: {theme_id}. Brug GET /api/themes til at se tilgængelige temaer.",

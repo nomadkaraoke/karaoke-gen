@@ -303,7 +303,15 @@
       "login": "התחבר",
       "discountActive": "הנחה פעילה",
       "discountActiveHint": "לחצו להצגת באנר ההנחה"
-    }
+    },
+    "resendFailedBody": "משהו השתבש אצלנו. אנא נסו שוב בעוד רגע, או היכנסו דרך האפליקציה.",
+    "resendFailedTitle": "לא הצלחנו לשלוח קישור חדש",
+    "resendNewLinkButton": "שלחו לי קישור חדש למייל",
+    "resendNoTokenBody": "אנא חזרו לטופס ההתחברות ובקשו קישור חדש.",
+    "resendNoTokenTitle": "לא הצלחנו למצוא את הקישור הזה",
+    "resendSuccessBody": "שלחנו קישור התחברות חדש לכתובת {maskedEmail}. הקישור תקף ל-24 השעות הקרובות.",
+    "resendSuccessTitle": "בדקו את המייל שלכם",
+    "resending": "שולחים..."
   },
   "payment": {
     "title": "התשלום בוצע בהצלחה!",

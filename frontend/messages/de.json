@@ -303,7 +303,15 @@
       "login": "Anmelden",
       "discountActive": "Rabatt aktiv",
       "discountActiveHint": "Klicke, um das Rabatt-Banner anzuzeigen"
-    }
+    },
+    "resendFailedBody": "Auf unserer Seite ist etwas schiefgelaufen. Bitte versuche es in einem Moment noch einmal oder melde dich über die App an.",
+    "resendFailedTitle": "Neuer Link konnte nicht gesendet werden",
+    "resendNewLinkButton": "Sende mir einen neuen Link per E-Mail",
+    "resendNoTokenBody": "Bitte gehe zurück zum Anmeldeformular und fordere einen neuen an.",
+    "resendNoTokenTitle": "Wir konnten diesen Link nicht finden",
+    "resendSuccessBody": "Wir haben einen neuen Anmeldelink an {maskedEmail} gesendet. Er ist für die nächsten 24 Stunden gültig.",
+    "resendSuccessTitle": "Überprüfe deine E-Mails",
+    "resending": "Wird gesendet..."
   },
   "payment": {
     "title": "Zahlung erfolgreich!",

@@ -108,7 +108,8 @@
     "stripeSendError": "Σφάλμα κατά την αποστολή του συνδέσμου πληρωμής Stripe: {error}",
     "stripeWebhookProcessingError": "Σφάλμα κατά την επεξεργασία του webhook του Stripe: {error}",
     "feedbackSaveError": "Σφάλμα κατά την αποθήκευση των σχολίων: {error}",
-    "feedbackNotEligible": "Ο χρήστης δεν δικαιούται να αφήσει σχόλια"
+    "feedbackNotEligible": "Ο χρήστης δεν δικαιούται να αφήσει σχόλια",
+    "resendNoToken": "Δεν μπορέσαμε να αναγνωρίσουμε αυτόν τον σύνδεσμο σύνδεσης. Παρακαλούμε, επίστρεψε και ζήτησε έναν νέο από τη φόρμα σύνδεσης."
   },
   "fileUpload": {
     "invalidTheme": "Το θέμα δεν βρέθηκε: {theme_id}. Χρησιμοποίησε το GET /api/themes για να δεις τα διαθέσιμα θέματα.",

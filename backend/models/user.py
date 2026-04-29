@@ -191,6 +191,18 @@ class VerifyMagicLinkRequest(BaseModel):
     token: str
 
 
+class ResendFromTokenRequest(BaseModel):
+    """Request to resend a magic link based on a previously-issued (expired/used) token."""
+    token: str
+
+
+class ResendFromTokenResponse(BaseModel):
+    """Response after attempting to resend a magic link from a known token."""
+    status: str  # "sent" | "no_token"
+    masked_email: Optional[str] = None
+    message: str
+
+
 class VerifyMagicLinkResponse(BaseModel):
     """Response after verifying magic link."""
     status: str

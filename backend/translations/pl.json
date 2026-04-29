@@ -108,7 +108,8 @@
     "stripeSendError": "Błąd podczas wysyłania linku do płatności Stripe: {error}",
     "stripeWebhookProcessingError": "Błąd podczas przetwarzania webhooka Stripe: {error}",
     "feedbackSaveError": "Błąd podczas zapisywania opinii: {error}",
-    "feedbackNotEligible": "Użytkownik nie kwalifikuje się do wystawienia opinii"
+    "feedbackNotEligible": "Użytkownik nie kwalifikuje się do wystawienia opinii",
+    "resendNoToken": "Nie rozpoznaliśmy tego linku do logowania. Wróć i poproś o nowy w formularzu logowania."
   },
   "fileUpload": {
     "invalidTheme": "Nie znaleziono motywu: {theme_id}. Użyj GET /api/themes, aby wyświetlić dostępne motywy.",

@@ -303,7 +303,15 @@
       "login": "Kirjaudu",
       "discountActive": "alennus aktiivinen",
       "discountActiveHint": "Klikkaa näyttääksesi alennusbannerin"
-    }
+    },
+    "resendFailedBody": "Jokin meni pieleen. Yritä hetken kuluttua uudelleen tai kirjaudu sisään sovelluksen kautta.",
+    "resendFailedTitle": "Uuden linkin lähettäminen epäonnistui",
+    "resendNewLinkButton": "Lähetä uusi linkki sähköpostitse",
+    "resendNoTokenBody": "Palaa kirjautumissivulle ja pyydä uusi linkki.",
+    "resendNoTokenTitle": "Emme löytäneet kyseistä linkkiä",
+    "resendSuccessBody": "Lähetimme uuden kirjautumislinkin osoitteeseen {maskedEmail}. Se on voimassa seuraavat 24 tuntia.",
+    "resendSuccessTitle": "Tarkista sähköpostisi",
+    "resending": "Lähetetään..."
   },
   "payment": {
     "title": "Maksu onnistui!",

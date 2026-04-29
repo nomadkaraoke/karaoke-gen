@@ -303,7 +303,15 @@
       "login": "Iniciar sesión",
       "discountActive": "descuento activo",
       "discountActiveHint": "Haz clic para mostrar el banner de descuento"
-    }
+    },
+    "resendFailedBody": "Algo salió mal de nuestra parte. Por favor, inténtalo de nuevo en un momento o inicia sesión desde la aplicación.",
+    "resendFailedTitle": "No se pudo enviar un nuevo enlace",
+    "resendNewLinkButton": "Envíame un nuevo enlace por correo",
+    "resendNoTokenBody": "Por favor, vuelve al formulario de inicio de sesión y solicita uno nuevo.",
+    "resendNoTokenTitle": "No pudimos encontrar ese enlace",
+    "resendSuccessBody": "Hemos enviado un nuevo enlace de inicio de sesión a {maskedEmail}. Es válido durante las próximas 24 horas.",
+    "resendSuccessTitle": "Revisa tu correo",
+    "resending": "Enviando..."
   },
   "payment": {
     "title": "¡Pago exitoso!",

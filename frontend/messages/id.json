@@ -303,7 +303,15 @@
       "login": "Masuk",
       "discountActive": "diskon aktif",
       "discountActiveHint": "Klik untuk menampilkan banner diskon"
-    }
+    },
+    "resendFailedBody": "Terjadi kesalahan pada sistem kami. Silakan coba beberapa saat lagi, atau masuk melalui aplikasi.",
+    "resendFailedTitle": "Gagal mengirim tautan baru",
+    "resendNewLinkButton": "Kirim tautan baru ke email saya",
+    "resendNoTokenBody": "Silakan kembali ke halaman masuk dan minta tautan baru.",
+    "resendNoTokenTitle": "Kami tidak dapat menemukan tautan tersebut",
+    "resendSuccessBody": "Kami telah mengirimkan tautan masuk baru ke {maskedEmail}. Tautan ini berlaku selama 24 jam ke depan.",
+    "resendSuccessTitle": "Cek email Anda",
+    "resending": "Mengirim..."
   },
   "payment": {
     "title": "Pembayaran Berhasil!",

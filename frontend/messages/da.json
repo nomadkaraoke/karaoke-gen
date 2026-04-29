@@ -303,7 +303,15 @@
       "login": "Log ind",
       "discountActive": "rabat aktiv",
       "discountActiveHint": "Klik for at vise rabatbanneret"
-    }
+    },
+    "resendFailedBody": "Noget gik galt hos os. Prøv igen om et øjeblik, eller log ind fra appen.",
+    "resendFailedTitle": "Kunne ikke sende et nyt link",
+    "resendNewLinkButton": "Send mig et nyt link på e-mail",
+    "resendNoTokenBody": "Gå tilbage til login-formularen og anmod om et nyt.",
+    "resendNoTokenTitle": "Vi kunne ikke finde det link",
+    "resendSuccessBody": "Vi har sendt et nyt login-link til {maskedEmail}. Det er gyldigt i de næste 24 timer.",
+    "resendSuccessTitle": "Tjek din e-mail",
+    "resending": "Sender..."
   },
   "payment": {
     "title": "Betaling gennemført!",

@@ -108,7 +108,8 @@
     "stripeSendError": "Stripe ödeme bağlantısı gönderme hatası: {error}",
     "stripeWebhookProcessingError": "Stripe webhook işleme hatası: {error}",
     "feedbackSaveError": "Geri bildirim kaydetme hatası: {error}",
-    "feedbackNotEligible": "Kullanıcı geri bildirim için uygun değil"
+    "feedbackNotEligible": "Kullanıcı geri bildirim için uygun değil",
+    "resendNoToken": "Bu giriş bağlantısını tanıyamadık. Lütfen geri dön ve giriş formundan yenisini iste."
   },
   "fileUpload": {
     "invalidTheme": "Tema bulunamadı: {theme_id}. Mevcut temaları listelemek için GET /api/themes kullan.",

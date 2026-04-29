@@ -108,7 +108,8 @@
     "stripeSendError": "Error al enviar el enlace de pago de Stripe: {error}",
     "stripeWebhookProcessingError": "Error al procesar el webhook de Stripe: {error}",
     "feedbackSaveError": "Error al guardar los comentarios: {error}",
-    "feedbackNotEligible": "El usuario no es elegible para dar comentarios"
+    "feedbackNotEligible": "El usuario no es elegible para dar comentarios",
+    "resendNoToken": "No pudimos reconocer ese enlace de inicio de sesión. Por favor, vuelve y solicita uno nuevo desde el formulario de inicio de sesión."
   },
   "fileUpload": {
     "invalidTheme": "Tema no encontrado: {theme_id}. Usa GET /api/themes para listar los temas disponibles.",

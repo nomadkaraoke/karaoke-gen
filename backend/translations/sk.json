@@ -108,7 +108,8 @@
     "stripeSendError": "Chyba pri odosielaní odkazu na platbu Stripe: {error}",
     "stripeWebhookProcessingError": "Chyba pri spracovaní webhooku Stripe: {error}",
     "feedbackSaveError": "Chyba pri ukladaní spätnej väzby: {error}",
-    "feedbackNotEligible": "Používateľ nemá nárok na spätnú väzbu"
+    "feedbackNotEligible": "Používateľ nemá nárok na spätnú väzbu",
+    "resendNoToken": "Tento prihlasovací odkaz sme nerozpoznali. Vráť sa prosím späť a požiadaj o nový cez prihlasovací formulár."
   },
   "fileUpload": {
     "invalidTheme": "Téma sa nenašla: {theme_id}. Použi GET /api/themes na zobrazenie dostupných tém.",

@@ -303,7 +303,15 @@
       "login": "登录",
       "discountActive": "折扣已生效",
       "discountActiveHint": "点击显示折扣横幅"
-    }
+    },
+    "resendFailedBody": "系统出了点小问题。请稍后再试，或直接在应用内登录。",
+    "resendFailedTitle": "无法发送新链接",
+    "resendNewLinkButton": "发送新链接到我的邮箱",
+    "resendNoTokenBody": "请返回登录页面并获取新链接。",
+    "resendNoTokenTitle": "无法找到该链接",
+    "resendSuccessBody": "我们已将新的登录链接发送至 {maskedEmail}，该链接在24小时内有效。",
+    "resendSuccessTitle": "请查收邮件",
+    "resending": "发送中..."
   },
   "payment": {
     "title": "付款成功！",

@@ -3,13 +3,15 @@
 import { Suspense, useEffect, useState, useRef } from "react"
 import { useRouter } from "@/i18n/routing"
 import { useSearchParams } from "next/navigation"
-import { Loader2, CheckCircle, XCircle, Gift, ShoppingCart } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Gift, ShoppingCart, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { setReferralCode } from "@/lib/referral"
+import { api } from "@/lib/api"
 import { useTranslations } from "next-intl"
 
 type VerifyState = "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
+type ResendState = "idle" | "sending" | "sent" | "no_token" | "failed"
 
 function VerifyMagicLinkContent() {
   const t = useTranslations('auth')
@@ -19,6 +21,9 @@ function VerifyMagicLinkContent() {
   const [errorMessage, setErrorMessage] = useState("")
   const [creditsGranted, setCreditsGranted] = useState(0)
   const [creditStatus, setCreditStatus] = useState<string>("not_applicable")
+  const [originalToken, setOriginalToken] = useState<string | null>(null)
+  const [resendState, setResendState] = useState<ResendState>("idle")
+  const [resendMaskedEmail, setResendMaskedEmail] = useState<string | null>(null)
   const hasVerified = useRef(false)
 
   const { verifyMagicLink, user, error } = useAuth()
@@ -40,6 +45,10 @@ function VerifyMagicLinkContent() {
       setErrorMessage(t('noVerificationToken'))
       return
     }
+
+    // Remember the original token so the failure UI can offer a one-click
+    // resend without forcing the user to re-enter their email.
+    setOriginalToken(token)
 
     const verify = async () => {
       // Show "preparing your account" while the backend runs AI evaluation
@@ -92,6 +101,22 @@ function VerifyMagicLinkContent() {
 
   const goToApp = () => router.push("/app")
   const goToBuy = () => router.push("/app?buy=true")
+
+  const handleResend = async () => {
+    if (!originalToken || resendState === "sending") return
+    setResendState("sending")
+    try {
+      const result = await api.resendMagicLinkFromToken(originalToken)
+      if (result.status === "sent") {
+        setResendMaskedEmail(result.masked_email)
+        setResendState("sent")
+      } else {
+        setResendState("no_token")
+      }
+    } catch {
+      setResendState("failed")
+    }
+  }
 
   return (
     <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
@@ -230,7 +255,7 @@ function VerifyMagicLinkContent() {
       )}
 
       {/* Error */}
-      {state === "error" && (
+      {state === "error" && resendState !== "sent" && resendState !== "no_token" && (
         <>
           <XCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-foreground mb-2">
@@ -239,17 +264,78 @@ function VerifyMagicLinkContent() {
           <p className="text-muted-foreground mb-6">
             {errorMessage || t('linkExpiredOrUsed')}
           </p>
+          {resendState === "failed" && (
+            <p className="text-sm text-destructive mb-4">
+              {t('resendFailedBody')}
+            </p>
+          )}
           <div className="space-y-2">
+            {originalToken && (
+              <Button
+                onClick={handleResend}
+                disabled={resendState === "sending"}
+                className="w-full bg-primary hover:bg-primary/90"
+              >
+                {resendState === "sending" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('resending')}
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4 mr-2" />
+                    {t('resendNewLinkButton')}
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               onClick={() => router.push("/app")}
-              className="w-full bg-primary hover:bg-primary/90"
+              variant={originalToken ? "ghost" : "default"}
+              className={originalToken ? "w-full" : "w-full bg-primary hover:bg-primary/90"}
             >
               {t('goToApp')}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              {t('requestNewLink')}
-            </p>
           </div>
+        </>
+      )}
+
+      {/* Resend success */}
+      {state === "error" && resendState === "sent" && (
+        <>
+          <Mail className="w-12 h-12 text-primary mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-foreground mb-2">
+            {t('resendSuccessTitle')}
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            {t('resendSuccessBody', { maskedEmail: resendMaskedEmail || '' })}
+          </p>
+          <Button
+            onClick={() => router.push("/app")}
+            variant="ghost"
+            className="w-full"
+          >
+            {t('goToApp')}
+          </Button>
+        </>
+      )}
+
+      {/* Resend: token not recognised */}
+      {state === "error" && resendState === "no_token" && (
+        <>
+          <XCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-foreground mb-2">
+            {t('resendNoTokenTitle')}
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            {t('resendNoTokenBody')}
+          </p>
+          <Button
+            onClick={() => router.push("/app")}
+            className="w-full bg-primary hover:bg-primary/90"
+          >
+            {t('goToApp')}
+          </Button>
         </>
       )}
     </div>

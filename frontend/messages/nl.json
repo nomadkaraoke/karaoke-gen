@@ -303,7 +303,15 @@
       "login": "Inloggen",
       "discountActive": "korting actief",
       "discountActiveHint": "Klik om de kortingsbanner te tonen"
-    }
+    },
+    "resendFailedBody": "Er is aan onze kant iets misgegaan. Probeer het zo nog eens, of log in via de app.",
+    "resendFailedTitle": "We konden geen nieuwe link sturen",
+    "resendNewLinkButton": "E-mail me een nieuwe link",
+    "resendNoTokenBody": "Ga terug naar het inlogformulier en vraag een nieuwe aan.",
+    "resendNoTokenTitle": "We konden die link niet vinden",
+    "resendSuccessBody": "We hebben een nieuwe inloglink naar {maskedEmail} gestuurd. Deze is de komende 24 uur geldig.",
+    "resendSuccessTitle": "Check je e-mail",
+    "resending": "Verzenden..."
   },
   "payment": {
     "title": "Betaling succesvol!",

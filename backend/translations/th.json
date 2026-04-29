@@ -108,7 +108,8 @@
     "stripeSendError": "เกิดข้อผิดพลาดในการส่งลิงก์ชำระเงิน Stripe: {error}",
     "stripeWebhookProcessingError": "เกิดข้อผิดพลาดในการประมวลผล Stripe webhook: {error}",
     "feedbackSaveError": "เกิดข้อผิดพลาดในการบันทึกข้อเสนอแนะ: {error}",
-    "feedbackNotEligible": "ผู้ใช้ไม่มีสิทธิ์ให้ข้อเสนอแนะ"
+    "feedbackNotEligible": "ผู้ใช้ไม่มีสิทธิ์ให้ข้อเสนอแนะ",
+    "resendNoToken": "เราไม่สามารถตรวจสอบลิงก์เข้าสู่ระบบนี้ได้ โปรดย้อนกลับไปขอลิงก์ใหม่จากหน้าเข้าสู่ระบบ"
   },
   "fileUpload": {
     "invalidTheme": "ไม่พบธีม: {theme_id} ใช้ GET /api/themes เพื่อแสดงรายการธีมที่มี",

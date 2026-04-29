@@ -303,7 +303,15 @@
       "login": "Log Masuk",
       "discountActive": "diskaun aktif",
       "discountActiveHint": "Klik untuk papar sepanduk diskaun"
-    }
+    },
+    "resendFailedBody": "Terdapat masalah di pihak kami. Sila cuba sebentar lagi, atau log masuk dari aplikasi.",
+    "resendFailedTitle": "Tidak dapat menghantar pautan baharu",
+    "resendNewLinkButton": "E-melkan pautan baharu kepada saya",
+    "resendNoTokenBody": "Sila kembali ke borang log masuk dan minta pautan baharu.",
+    "resendNoTokenTitle": "Kami tidak dapat mencari pautan tersebut",
+    "resendSuccessBody": "Kami telah menghantar pautan log masuk baharu ke {maskedEmail}. Ia sah selama 24 jam seterusnya.",
+    "resendSuccessTitle": "Semak e-mel anda",
+    "resending": "Menghantar..."
   },
   "payment": {
     "title": "Pembayaran Berjaya!",

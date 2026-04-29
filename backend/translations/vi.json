@@ -108,7 +108,8 @@
     "stripeSendError": "Lỗi khi gửi liên kết thanh toán Stripe: {error}",
     "stripeWebhookProcessingError": "Lỗi khi xử lý webhook Stripe: {error}",
     "feedbackSaveError": "Lỗi khi lưu phản hồi: {error}",
-    "feedbackNotEligible": "Người dùng không đủ điều kiện để gửi phản hồi"
+    "feedbackNotEligible": "Người dùng không đủ điều kiện để gửi phản hồi",
+    "resendNoToken": "Chúng tôi không nhận ra liên kết đăng nhập đó. Vui lòng quay lại và yêu cầu một liên kết mới từ trang đăng nhập."
   },
   "fileUpload": {
     "invalidTheme": "Không tìm thấy theme: {theme_id}. Sử dụng GET /api/themes để liệt kê các theme có sẵn.",

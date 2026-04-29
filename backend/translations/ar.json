@@ -108,7 +108,8 @@
     "stripeSendError": "خطأ في إرسال رابط الدفع الخاص بـ Stripe: {error}",
     "stripeWebhookProcessingError": "خطأ في معالجة الويب هوك (webhook) الخاص بـ Stripe: {error}",
     "feedbackSaveError": "خطأ في حفظ الملاحظات: {error}",
-    "feedbackNotEligible": "المستخدم غير مؤهل لتقديم الملاحظات"
+    "feedbackNotEligible": "المستخدم غير مؤهل لتقديم الملاحظات",
+    "resendNoToken": "لم نتمكن من التعرف على رابط تسجيل الدخول هذا. يرجى العودة وطلب رابط جديد من نموذج تسجيل الدخول."
   },
   "fileUpload": {
     "invalidTheme": "السمة غير موجودة: {theme_id}. استخدم GET /api/themes لعرض السمات المتاحة.",

@@ -97,6 +97,7 @@
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",
     "magicLinkSent": "If this email is registered, you will receive a sign-in link shortly.",
+    "resendNoToken": "We couldn't recognise that sign-in link. Please go back and request a new one from the sign-in form.",
     "emailServiceNotConfigured": "Email service is not available. Please contact support.",
     "emailDomainNotAllowed": "Email domain not allowed for this tenant",
     "invalidToken": "Invalid token",

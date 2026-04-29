@@ -1307,6 +1307,26 @@ export const api = {
   },
 
   /**
+   * Resend a magic link to the email associated with a previously-issued
+   * (expired or used) token. Used by the verify failure UI to give users
+   * a one-click recovery path.
+   */
+  async resendMagicLinkFromToken(token: string): Promise<{
+    status: 'sent' | 'no_token';
+    masked_email: string | null;
+    message: string;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/auth/resend-from-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Get the current user's profile
    */
   async getCurrentUser(): Promise<UserProfileResponse> {

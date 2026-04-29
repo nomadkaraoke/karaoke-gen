@@ -303,7 +303,15 @@
       "login": "로그인",
       "discountActive": "할인 적용 중",
       "discountActiveHint": "할인 배너를 보려면 클릭하세요"
-    }
+    },
+    "resendFailedBody": "저희 쪽에 문제가 발생했습니다. 잠시 후 다시 시도하시거나 앱에서 로그인해 주세요.",
+    "resendFailedTitle": "새 링크를 보낼 수 없습니다",
+    "resendNewLinkButton": "새 링크 이메일로 받기",
+    "resendNoTokenBody": "로그인 화면으로 돌아가서 새 링크를 요청해 주세요.",
+    "resendNoTokenTitle": "해당 링크를 찾을 수 없습니다",
+    "resendSuccessBody": "{maskedEmail}(으)로 새 로그인 링크를 보냈습니다. 이 링크는 24시간 동안 유효합니다.",
+    "resendSuccessTitle": "이메일을 확인해 주세요",
+    "resending": "전송 중..."
   },
   "payment": {
     "title": "결제가 완료되었습니다!",

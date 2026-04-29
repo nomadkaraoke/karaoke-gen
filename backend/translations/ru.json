@@ -108,7 +108,8 @@
     "stripeSendError": "Ошибка при отправке ссылки на оплату Stripe: {error}",
     "stripeWebhookProcessingError": "Ошибка при обработке вебхука Stripe: {error}",
     "feedbackSaveError": "Ошибка при сохранении отзыва: {error}",
-    "feedbackNotEligible": "Пользователь не может оставить отзыв"
+    "feedbackNotEligible": "Пользователь не может оставить отзыв",
+    "resendNoToken": "Мы не смогли распознать эту ссылку для входа. Пожалуйста, вернись и запроси новую через форму входа."
   },
   "fileUpload": {
     "invalidTheme": "Тема не найдена: {theme_id}. Используй GET /api/themes для получения списка доступных тем.",

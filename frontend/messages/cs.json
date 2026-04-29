@@ -303,7 +303,15 @@
       "login": "Přihlásit se",
       "discountActive": "sleva aktivní",
       "discountActiveHint": "Kliknutím zobrazíš banner se slevou"
-    }
+    },
+    "resendFailedBody": "Něco se u nás pokazilo. Zkus to prosím znovu za chvíli, nebo se přihlas z aplikace.",
+    "resendFailedTitle": "Nepodařilo se odeslat nový odkaz",
+    "resendNewLinkButton": "Pošli mi nový odkaz e-mailem",
+    "resendNoTokenBody": "Vrať se prosím zpět na přihlašovací formulář a vyžádej si nový.",
+    "resendNoTokenTitle": "Tento odkaz jsme nenašli",
+    "resendSuccessBody": "Poslali jsme nový přihlašovací odkaz na {maskedEmail}. Platí následujících 24 hodin.",
+    "resendSuccessTitle": "Zkontroluj si e-mail",
+    "resending": "Odesílání..."
   },
   "payment": {
     "title": "Platba úspěšná!",
