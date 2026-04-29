@@ -914,6 +914,29 @@ Returns session token, user info, and `credits_granted` (number of welcome credi
 
 **Admin Login Token**: The same endpoint supports admin login tokens embedded in notification emails. When a made-for-you order is received, the admin notification email includes a link with `?admin_token=TOKEN` that auto-logs the admin into the app. The frontend detects this parameter and calls the verify endpoint to authenticate. Admin tokens expire after 24 hours.
 
+### Resend Magic Link From Token
+
+```http
+POST /api/users/auth/resend-from-token
+Content-Type: application/json
+
+{"token": "PREVIOUSLY_ISSUED_TOKEN"}
+```
+
+Used by the verify failure UI to give users a one-click recovery when their sign-in link has expired or already been used. The endpoint looks up the token in Firestore, mints a fresh magic link for the same email, and sends it. The original token is a 32-byte cryptographic secret only the email recipient could possess, so resending to the recorded address adds no new attack surface.
+
+Response:
+
+```json
+{
+  "status": "sent" | "no_token",
+  "masked_email": "ho***@ya***.com" | null,
+  "message": "..."
+}
+```
+
+When the token doc is not found, returns `status: "no_token"` so the UI can fall back to the standard sign-in form. Tenant context, referral code, and device fingerprint from the original token are preserved on the new link.
+
 ### Get Current User
 
 ```http
