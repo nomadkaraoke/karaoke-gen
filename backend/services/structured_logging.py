@@ -37,6 +37,17 @@ SEVERITY_MAP = {
 }
 
 
+# Standard LogRecord attributes set by the logging module itself. Anything
+# else on a record came from the caller's `extra=` dict and should be
+# forwarded to Cloud Logging.
+_RESERVED_LOG_RECORD_ATTRS = frozenset({
+    "args", "asctime", "created", "exc_info", "exc_text", "filename",
+    "funcName", "levelname", "levelno", "lineno", "message", "module",
+    "msecs", "msg", "name", "pathname", "process", "processName",
+    "relativeCreated", "stack_info", "thread", "threadName", "taskName",
+})
+
+
 class StructuredFormatter(logging.Formatter):
     """
     JSON formatter with trace correlation for Google Cloud Logging.
@@ -89,21 +100,16 @@ class StructuredFormatter(logging.Formatter):
         if span_id:
             log_entry["logging.googleapis.com/spanId"] = span_id
         
-        # Add custom fields from 'extra' dict
-        # Common fields we want to extract from log records
-        custom_fields = [
-            # Job-related fields
-            "job_id", "worker", "operation", "duration", "status", "error",
-            # Audit logging fields (from middleware and auth)
-            "request_id", "user_email", "client_ip", "latency_ms",
-            "audit_type", "method", "path", "status_code", "query_string",
-            "user_agent", "user_type", "is_admin", "remaining_uses",
-            "auth_message", "token_provided", "token_length", "auth_header_present",
-        ]
-        for field in custom_fields:
-            value = getattr(record, field, None)
-            if value is not None:
-                log_entry[field] = value
+        # Forward any custom field passed via `extra=` on the log call.
+        # Use a denylist of standard LogRecord attributes rather than an
+        # allowlist — otherwise new diagnostic fields silently drop on the
+        # floor and feature owners discover this only when debugging prod.
+        for key, value in record.__dict__.items():
+            if key in _RESERVED_LOG_RECORD_ATTRS or key.startswith("_"):
+                continue
+            if value is None:
+                continue
+            log_entry[key] = value
         
         # Add source location for debugging
         if record.pathname and record.lineno:
