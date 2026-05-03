@@ -1,0 +1,30 @@
+[
+  {
+    "text": "Row, row, row your boat,",
+    "start_time": 0.0,
+    "end_time": 1.5,
+    "id": "rr-0",
+    "words": []
+  },
+  {
+    "text": "Gently down the stream,",
+    "start_time": 1.5,
+    "end_time": 3.0,
+    "id": "rr-1",
+    "words": []
+  },
+  {
+    "text": "Merrily, merrily, merrily, merrily,",
+    "start_time": 3.0,
+    "end_time": 4.5,
+    "id": "rr-2",
+    "words": []
+  },
+  {
+    "text": "Life is but a dream.",
+    "start_time": 4.5,
+    "end_time": 6.0,
+    "id": "rr-3",
+    "words": []
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "seg-00",
+    "start_time": 0.0,
+    "end_time": 2.5,
+    "text": "For he's a jolly good fellow",
+    "words": []
+  },
+  {
+    "id": "seg-01",
+    "start_time": 2.5,
+    "end_time": 5.0,
+    "text": "For he's a jolly good fellow",
+    "words": []
+  },
+  {
+    "id": "seg-02",
+    "start_time": 5.0,
+    "end_time": 7.5,
+    "text": "For he's a jolly good fellow",
+    "words": []
+  },
+  {
+    "id": "seg-03",
+    "start_time": 7.5,
+    "end_time": 10.0,
+    "text": "Which nobody can deny",
+    "words": []
+  }
+]

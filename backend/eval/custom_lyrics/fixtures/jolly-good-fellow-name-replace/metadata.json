@@ -1,0 +1,11 @@
+{
+  "id": "jolly-good-fellow-name-replace",
+  "artist": "Traditional",
+  "title": "For He's a Jolly Good Fellow",
+  "difficulty": "easy",
+  "input_style": "explicit name replacement instruction",
+  "settings_to_test": [
+    {"name": "default", "allow_reword": true, "allow_omit": true, "fixed_line_count": true, "strictness": "balanced"},
+    {"name": "strict", "allow_reword": true, "allow_omit": true, "fixed_line_count": true, "strictness": "strict"}
+  ]
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "seg-00",
+    "start_time": 0.0,
+    "end_time": 2.0,
+    "text": "Twinkle, twinkle, little star",
+    "words": []
+  },
+  {
+    "id": "seg-01",
+    "start_time": 2.0,
+    "end_time": 4.0,
+    "text": "How I wonder what you are",
+    "words": []
+  },
+  {
+    "id": "seg-02",
+    "start_time": 4.0,
+    "end_time": 6.0,
+    "text": "Up above the world so high",
+    "words": []
+  },
+  {
+    "id": "seg-03",
+    "start_time": 6.0,
+    "end_time": 8.0,
+    "text": "Like a diamond in the sky",
+    "words": []
+  },
+  {
+    "id": "seg-04",
+    "start_time": 8.0,
+    "end_time": 10.0,
+    "text": "Twinkle, twinkle, little star",
+    "words": []
+  },
+  {
+    "id": "seg-05",
+    "start_time": 10.0,
+    "end_time": 12.0,
+    "text": "How I wonder what you are",
+    "words": []
+  }
+]

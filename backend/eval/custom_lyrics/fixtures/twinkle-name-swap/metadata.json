@@ -1,0 +1,11 @@
+{
+  "id": "twinkle-name-swap",
+  "artist": "Traditional",
+  "title": "Twinkle Twinkle Little Star",
+  "difficulty": "easy",
+  "input_style": "simple word substitution, well-defined target",
+  "settings_to_test": [
+    {"name": "default", "allow_reword": true, "allow_omit": true, "fixed_line_count": true, "strictness": "balanced"},
+    {"name": "strict", "allow_reword": true, "allow_omit": true, "fixed_line_count": true, "strictness": "strict"}
+  ]
+}

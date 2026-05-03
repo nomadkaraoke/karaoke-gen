@@ -1,0 +1,11 @@
+{
+  "id": "row-row-line-surplus",
+  "artist": "Traditional",
+  "title": "Row, Row, Row Your Boat",
+  "difficulty": "medium",
+  "input_style": "client input far exceeds song's structural capacity (line surplus)",
+  "settings_to_test": [
+    {"name": "default", "allow_reword": true, "allow_omit": true, "fixed_line_count": true, "strictness": "balanced"},
+    {"name": "strict", "allow_reword": true, "allow_omit": true, "fixed_line_count": true, "strictness": "strict"}
+  ]
+}
