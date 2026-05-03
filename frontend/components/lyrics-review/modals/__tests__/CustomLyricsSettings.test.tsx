@@ -39,6 +39,13 @@ describe('CustomLyricsSettings', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows contradiction warning when reword=OFF and strictness=Tight', () => {
+    renderWith({ ...DEFAULT_GENERATION_SETTINGS, allow_reword: false, strictness: 'tight' })
+    expect(
+      screen.getByText(/AI may be unable to match syllable counts/i),
+    ).toBeInTheDocument()
+  })
+
   it('does not show warning at safe combinations', () => {
     renderWith(DEFAULT_GENERATION_SETTINGS)
     expect(

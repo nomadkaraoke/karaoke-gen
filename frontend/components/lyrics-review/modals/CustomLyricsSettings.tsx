@@ -14,6 +14,7 @@ import {
   GenerationSettings,
   StrictnessLevel,
 } from '@/lib/api/customLyrics'
+import { cn } from '@/lib/utils'
 
 const STRICTNESS_ORDER: StrictnessLevel[] = [
   'verbatim',
@@ -41,11 +42,21 @@ export default function CustomLyricsSettings({ settings, onChange, disabled = fa
     onChange({ ...settings, [key]: value })
   }
 
-  const strictnessHint = (level: StrictnessLevel) =>
-    t(`strictnessHint${level.charAt(0).toUpperCase() + level.slice(1)}` as const)
+  const labels: Record<StrictnessLevel, string> = {
+    verbatim: t('strictnessVerbatim'),
+    loose: t('strictnessLoose'),
+    balanced: t('strictnessBalanced'),
+    tight: t('strictnessTight'),
+    strict: t('strictnessStrict'),
+  }
 
-  const strictnessLabel = (level: StrictnessLevel) =>
-    t(`strictness${level.charAt(0).toUpperCase() + level.slice(1)}` as const)
+  const hints: Record<StrictnessLevel, string> = {
+    verbatim: t('strictnessHintVerbatim'),
+    loose: t('strictnessHintLoose'),
+    balanced: t('strictnessHintBalanced'),
+    tight: t('strictnessHintTight'),
+    strict: t('strictnessHintStrict'),
+  }
 
   return (
     <Collapsible defaultOpen className="border rounded-md">
@@ -80,27 +91,28 @@ export default function CustomLyricsSettings({ settings, onChange, disabled = fa
         />
 
         <div className="pt-2">
-          <Label className="text-sm font-medium">{t('strictness')}</Label>
-          <div className="mt-2 grid grid-cols-5 gap-1">
+          <Label id="strictness-label" className="text-sm font-medium">{t('strictness')}</Label>
+          <div role="group" aria-labelledby="strictness-label" className="mt-2 grid grid-cols-5 gap-1">
             {STRICTNESS_ORDER.map((level) => (
               <button
                 key={level}
                 type="button"
                 disabled={disabled}
                 onClick={() => set('strictness', level)}
-                className={
-                  'rounded-md text-xs py-1.5 transition-colors ' +
-                  (settings.strictness === level
+                aria-pressed={settings.strictness === level}
+                className={cn(
+                  'rounded-md text-xs py-1.5 transition-colors',
+                  settings.strictness === level
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted hover:bg-muted/70')
-                }
+                    : 'bg-muted hover:bg-muted/70',
+                )}
               >
-                {strictnessLabel(level)}
+                {labels[level]}
               </button>
             ))}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            {strictnessHint(settings.strictness)}
+            {hints[settings.strictness]}
           </p>
         </div>
 
@@ -138,7 +150,6 @@ function ToggleRow({ name, label, hint, checked, onChange, disabled }: ToggleRow
         checked={checked}
         onCheckedChange={onChange}
         disabled={disabled}
-        aria-label={label}
       />
     </div>
   )
