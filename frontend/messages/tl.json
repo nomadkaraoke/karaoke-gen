@@ -1167,7 +1167,28 @@
         "tooManyLines": "Sobra ng {diff} na linya. Inaasahang {expected}, pero {actual} ang nakuha. Magbawas ng mga linya o i-click ang Bumuo Muli.",
         "cancel": "Kanselahin",
         "cancelGeneration": "Kanselahin",
-        "genericError": "May nangyaring mali. Pakisubukan muli."
+        "genericError": "May nangyaring mali. Pakisubukan muli.",
+        "settings": {
+          "allowOmit": "Payagang alisin ang lyrics ng kliyente",
+          "allowOmitHint": "Hayaan ang AI na alisin ang materyal ng kliyente na hindi akma sa istraktura ng kanta.",
+          "allowReword": "Payagang baguhin ang mga salita ng lyrics ng kliyente",
+          "allowRewordHint": "Hayaan ang AI na i-paraphrase o paikliin ang text ng kliyente para sumakto sa kanta.",
+          "contradictionWarning": "Naka-disable ang pagbabago ng salita; maaaring hindi mapantayan ng AI ang bilang ng pantig. I-enable ang pagbabago ng salita o gamitin ang Verbatim na higpit.",
+          "fixedLineCount": "Panatilihin ang orihinal na bilang ng segment",
+          "fixedLineCountHint": "Panatilihin ang parehong bilang ng mga linya gaya ng orihinal na kanta.",
+          "strictness": "Higpit sa pagkanta",
+          "strictnessBalanced": "Balanse",
+          "strictnessHintBalanced": "Tumbasan ang bilang ng pantig ng bawat linya sa loob ng ±2.",
+          "strictnessHintLoose": "Tumbasan nang bahagya ang bilang ng pantig kung saan madali.",
+          "strictnessHintStrict": "Eksaktong tugma ng pantig. Priyoridad ang katumpakan ng ritmo.",
+          "strictnessHintTight": "Tumbasan nang malapit ang bilang ng pantig, ±1.",
+          "strictnessHintVerbatim": "Gamitin ang text ng kliyente kung ano ito. Hindi layunin ang pagtugma sa ritmo.",
+          "strictnessLoose": "Maluwag",
+          "strictnessStrict": "Mahigpit",
+          "strictnessTight": "Lapat",
+          "strictnessVerbatim": "Verbatim",
+          "title": "Mga setting ng pagbuo"
+        }
       }
     },
     "synchronizer": {

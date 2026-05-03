@@ -1167,7 +1167,28 @@
         "tooManyLines": "Van {diff} felesleges sorod. Várt: {expected}, kapott: {actual}. Törölj sorokat, vagy kattints az Újragenerálás gombra.",
         "cancel": "Mégse",
         "cancelGeneration": "Mégse",
-        "genericError": "Valami hiba történt. Kérlek, próbáld újra."
+        "genericError": "Valami hiba történt. Kérlek, próbáld újra.",
+        "settings": {
+          "allowOmit": "Ügyfél szövege elhagyásának engedélyezése",
+          "allowOmitHint": "Engedd, hogy az MI elhagyja azokat az ügyfél által megadott részeket, amelyek nem illenek a dal szerkezetébe.",
+          "allowReword": "Ügyfél szövege átfogalmazásának engedélyezése",
+          "allowRewordHint": "Engedd, hogy az MI átfogalmazza vagy lerövidítse az ügyfél szövegét, hogy illeszkedjen a dalhoz.",
+          "contradictionWarning": "Az átfogalmazás ki van kapcsolva; előfordulhat, hogy az MI nem tudja egyeztetni a szótagszámokat. Engedélyezd az átfogalmazást, vagy használd a Szó szerinti szigorúságot.",
+          "fixedLineCount": "Eredeti szegmensszám megtartása",
+          "fixedLineCountHint": "Tartsd meg ugyanazt a sorszámot, mint az eredeti dalban.",
+          "strictness": "Énekelhetőség szigorúsága",
+          "strictnessBalanced": "Kiegyensúlyozott",
+          "strictnessHintBalanced": "Minden sor szótagszámának egyeztetése ±2 eltéréssel.",
+          "strictnessHintLoose": "Nagyjából egyezzen a szótagszám, ahol kényelmes.",
+          "strictnessHintStrict": "Pontos szótagegyezés. A ritmus pontossága a prioritás.",
+          "strictnessHintTight": "Szoros szótagegyezés, ±1.",
+          "strictnessHintVerbatim": "Az ügyfél szövegének használata változtatás nélkül. A ritmus egyeztetése nem cél.",
+          "strictnessLoose": "Laza",
+          "strictnessStrict": "Szigorú",
+          "strictnessTight": "Szoros",
+          "strictnessVerbatim": "Szó szerinti",
+          "title": "Generálási beállítások"
+        }
       }
     },
     "synchronizer": {

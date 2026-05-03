@@ -1167,7 +1167,28 @@
         "tooManyLines": "יש {diff} שורות מיותרות. צפויות {expected}, התקבלו {actual}. יש להסיר שורות או ללחוץ על 'יצירה מחדש'.",
         "cancel": "ביטול",
         "cancelGeneration": "ביטול",
-        "genericError": "משהו השתבש. אנא נסה שוב."
+        "genericError": "משהו השתבש. אנא נסה שוב.",
+        "settings": {
+          "allowOmit": "אפשר השמטת מילות שיר של הלקוח",
+          "allowOmitHint": "אפשר לבינה המלאכותית להשמיט חומר של הלקוח שלא מתאים למבנה השיר.",
+          "allowReword": "אפשר ניסוח מחדש של מילות השיר של הלקוח",
+          "allowRewordHint": "אפשר לבינה המלאכותית לנסח מחדש או לקצר את הטקסט של הלקוח כדי שיתאים לשיר.",
+          "contradictionWarning": "ניסוח מחדש מושבת; ייתכן שהבינה המלאכותית לא תוכל להתאים את ספירת ההברות. יש להפעיל ניסוח מחדש או להשתמש בהקפדה מילולית (Verbatim).",
+          "fixedLineCount": "שמור על מספר המקטעים המקורי",
+          "fixedLineCountHint": "שמור על אותו מספר שורות כמו בשיר המקורי.",
+          "strictness": "הקפדה על התאמה לשירה",
+          "strictnessBalanced": "מאוזנת",
+          "strictnessHintBalanced": "התאם את ספירת ההברות בכל שורה בטווח של ±2.",
+          "strictnessHintLoose": "התאם בערך את ספירת ההברות היכן שנוח.",
+          "strictnessHintStrict": "התאמת הברות מדויקת. דיוק הקצב הוא בעדיפות עליונה.",
+          "strictnessHintTight": "התאם מקרוב את ספירת ההברות, ±1.",
+          "strictnessHintVerbatim": "השתמש בטקסט של הלקוח כפי שהוא. התאמת קצב אינה המטרה.",
+          "strictnessLoose": "גמישה",
+          "strictnessStrict": "נוקשה",
+          "strictnessTight": "הדוקה",
+          "strictnessVerbatim": "מילולית",
+          "title": "הגדרות יצירה"
+        }
       }
     },
     "synchronizer": {

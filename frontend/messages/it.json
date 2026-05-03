@@ -1167,7 +1167,28 @@
         "tooManyLines": "Hai {diff} riga/e in più. Previste {expected}, ottenute {actual}. Rimuovi righe o clicca su Rigenera.",
         "cancel": "Annulla",
         "cancelGeneration": "Annulla",
-        "genericError": "Qualcosa è andato storto. Riprova."
+        "genericError": "Qualcosa è andato storto. Riprova.",
+        "settings": {
+          "allowOmit": "Consenti di omettere i testi del cliente",
+          "allowOmitHint": "Lascia che l'IA scarti il materiale del cliente che non si adatta alla struttura della canzone.",
+          "allowReword": "Consenti di riformulare i testi del cliente",
+          "allowRewordHint": "Lascia che l'IA parafrasi o accorci il testo del cliente per adattarlo alla canzone.",
+          "contradictionWarning": "La riformulazione è disabilitata; l'IA potrebbe non essere in grado di rispettare il conteggio delle sillabe. Abilita la riformulazione o usa il rigore Letterale.",
+          "fixedLineCount": "Mantieni il conteggio originale dei segmenti",
+          "fixedLineCountHint": "Mantieni lo stesso numero di righe della canzone originale.",
+          "strictness": "Rigore di cantabilità",
+          "strictnessBalanced": "Bilanciato",
+          "strictnessHintBalanced": "Fai corrispondere il conteggio delle sillabe di ogni riga entro ±2.",
+          "strictnessHintLoose": "Fai corrispondere approssimativamente il conteggio delle sillabe dove opportuno.",
+          "strictnessHintStrict": "Corrispondenza esatta delle sillabe. La precisione del ritmo è la priorità.",
+          "strictnessHintTight": "Fai corrispondere fedelmente il conteggio delle sillabe, ±1.",
+          "strictnessHintVerbatim": "Usa il testo del cliente così com'è. La corrispondenza del ritmo non è un obiettivo.",
+          "strictnessLoose": "Flessibile",
+          "strictnessStrict": "Rigoroso",
+          "strictnessTight": "Preciso",
+          "strictnessVerbatim": "Letterale",
+          "title": "Impostazioni di generazione"
+        }
       }
     },
     "synchronizer": {

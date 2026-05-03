@@ -1167,7 +1167,28 @@
         "tooManyLines": "Você tem {diff} linha(s) extra(s). Esperadas {expected}, obtidas {actual}. Remova linhas ou clique em Gerar novamente.",
         "cancel": "Cancelar",
         "cancelGeneration": "Cancelar",
-        "genericError": "Algo deu errado. Tente novamente."
+        "genericError": "Algo deu errado. Tente novamente.",
+        "settings": {
+          "allowOmit": "Permitir omitir letras do cliente",
+          "allowOmitHint": "Permita que a IA descarte o material do cliente que não se encaixa na estrutura da música.",
+          "allowReword": "Permitir reescrever letras do cliente",
+          "allowRewordHint": "Permita que a IA parafraseie ou encurte o texto do cliente para se adaptar à música.",
+          "contradictionWarning": "A reescrita está desativada; a IA pode não conseguir igualar a contagem de sílabas. Ative a reescrita ou use o rigor Literal.",
+          "fixedLineCount": "Manter a contagem original de segmentos",
+          "fixedLineCountHint": "Mantenha o mesmo número de versos da música original.",
+          "strictness": "Rigor de cantabilidade",
+          "strictnessBalanced": "Equilibrado",
+          "strictnessHintBalanced": "Iguale a contagem de sílabas de cada verso com uma margem de ±2.",
+          "strictnessHintLoose": "Iguale aproximadamente a contagem de sílabas onde for conveniente.",
+          "strictnessHintStrict": "Correspondência exata de sílabas. A precisão rítmica é a prioridade.",
+          "strictnessHintTight": "Iguale de perto a contagem de sílabas, ±1.",
+          "strictnessHintVerbatim": "Use o texto do cliente exatamente como está. Igualar o ritmo não é um objetivo.",
+          "strictnessLoose": "Flexível",
+          "strictnessStrict": "Rigoroso",
+          "strictnessTight": "Restrito",
+          "strictnessVerbatim": "Literal",
+          "title": "Configurações de geração"
+        }
       }
     },
     "synchronizer": {

@@ -1167,7 +1167,28 @@
         "tooManyLines": "Tu as {diff} ligne(s) en trop. Attendues : {expected}, obtenues : {actual}. Supprime des lignes ou clique sur Régénérer.",
         "cancel": "Annuler",
         "cancelGeneration": "Annuler",
-        "genericError": "Quelque chose s'est mal passé. Réessaie."
+        "genericError": "Quelque chose s'est mal passé. Réessaie.",
+        "settings": {
+          "allowOmit": "Autoriser l'omission des paroles du client",
+          "allowOmitHint": "Laisse l'IA omettre les éléments du client qui ne correspondent pas à la structure de la chanson.",
+          "allowReword": "Autoriser la reformulation des paroles du client",
+          "allowRewordHint": "Laisse l'IA paraphraser ou raccourcir le texte du client pour l'adapter à la chanson.",
+          "contradictionWarning": "La reformulation est désactivée ; l'IA risque de ne pas pouvoir respecter le nombre de syllabes. Active la reformulation ou utilise la rigueur Verbatim.",
+          "fixedLineCount": "Conserver le nombre de segments d'origine",
+          "fixedLineCountHint": "Garde le même nombre de lignes que la chanson originale.",
+          "strictness": "Rigueur de chantabilité",
+          "strictnessBalanced": "Équilibrée",
+          "strictnessHintBalanced": "Respecte le nombre de syllabes de chaque ligne à ±2 près.",
+          "strictnessHintLoose": "Respecte approximativement le nombre de syllabes quand c'est possible.",
+          "strictnessHintStrict": "Correspondance exacte des syllabes. La précision rythmique est la priorité.",
+          "strictnessHintTight": "Respecte précisément le nombre de syllabes, à ±1 près.",
+          "strictnessHintVerbatim": "Utilise le texte du client tel quel. Le respect du rythme n'est pas un objectif.",
+          "strictnessLoose": "Souple",
+          "strictnessStrict": "Stricte",
+          "strictnessTight": "Précise",
+          "strictnessVerbatim": "Verbatim",
+          "title": "Paramètres de génération"
+        }
       }
     },
     "synchronizer": {

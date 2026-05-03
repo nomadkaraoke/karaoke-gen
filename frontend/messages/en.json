@@ -1045,7 +1045,28 @@
         "lineCountMismatchFallback": "AI returned a different number of lines than expected. Adjust the textarea or click Regenerate.",
         "tooManyLines": "You have {diff} extra line(s). Expected {expected}, got {actual}. Remove lines or click Regenerate.",
         "tooFewLines": "You're missing {diff} line(s). Expected {expected}, got {actual}. Add lines or click Regenerate.",
-        "genericError": "Something went wrong. Please try again."
+        "genericError": "Something went wrong. Please try again.",
+        "settings": {
+          "title": "Generation settings",
+          "allowReword": "Allow rewording client lyrics",
+          "allowRewordHint": "Let the AI paraphrase or shorten client text to fit the song.",
+          "allowOmit": "Allow omitting client lyrics",
+          "allowOmitHint": "Let the AI drop client material that doesn't fit the song's structure.",
+          "fixedLineCount": "Maintain original segment count",
+          "fixedLineCountHint": "Keep the same number of lines as the original song.",
+          "strictness": "Singability strictness",
+          "strictnessVerbatim": "Verbatim",
+          "strictnessLoose": "Loose",
+          "strictnessBalanced": "Balanced",
+          "strictnessTight": "Tight",
+          "strictnessStrict": "Strict",
+          "strictnessHintVerbatim": "Use the client's text as-is. Rhythm matching is not a goal.",
+          "strictnessHintLoose": "Roughly match syllable count where convenient.",
+          "strictnessHintBalanced": "Match each line's syllable count within ±2.",
+          "strictnessHintTight": "Closely match syllable count, ±1.",
+          "strictnessHintStrict": "Exact syllable match. Rhythm precision is the priority.",
+          "contradictionWarning": "Rewording is disabled; the AI may be unable to match syllable counts. Enable rewording or use Verbatim strictness."
+        }
       },
       "replaceAllLyrics": {
         "pastePrompt": "Paste your new lyrics below:",

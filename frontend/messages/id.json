@@ -1167,7 +1167,28 @@
         "tooManyLines": "Kelebihan {diff} baris. Seharusnya {expected}, tapi yang ada {actual}. Hapus baris atau klik Buat Ulang.",
         "cancel": "Batal",
         "cancelGeneration": "Batal",
-        "genericError": "Terjadi kesalahan. Silakan coba lagi."
+        "genericError": "Terjadi kesalahan. Silakan coba lagi.",
+        "settings": {
+          "allowOmit": "Izinkan menghilangkan lirik klien",
+          "allowOmitHint": "Biarkan AI menghilangkan materi klien yang tidak sesuai dengan struktur lagu.",
+          "allowReword": "Izinkan mengubah kata lirik klien",
+          "allowRewordHint": "Biarkan AI memparafrase atau menyingkat teks klien agar sesuai dengan lagu.",
+          "contradictionWarning": "Pengubahan kata dinonaktifkan; AI mungkin tidak dapat mencocokkan jumlah suku kata. Aktifkan pengubahan kata atau gunakan tingkat ketat Verbatim.",
+          "fixedLineCount": "Pertahankan jumlah segmen asli",
+          "fixedLineCountHint": "Pertahankan jumlah baris yang sama dengan lagu aslinya.",
+          "strictness": "Keketatan kemudahan dinyanyikan",
+          "strictnessBalanced": "Seimbang",
+          "strictnessHintBalanced": "Cocokkan jumlah suku kata setiap baris dalam rentang ±2.",
+          "strictnessHintLoose": "Cocokkan jumlah suku kata secara kasar jika memungkinkan.",
+          "strictnessHintStrict": "Suku kata cocok persis. Presisi ritme adalah prioritas.",
+          "strictnessHintTight": "Cocokkan jumlah suku kata dengan saksama, ±1.",
+          "strictnessHintVerbatim": "Gunakan teks klien apa adanya. Pencocokan ritme bukanlah tujuan.",
+          "strictnessLoose": "Longgar",
+          "strictnessStrict": "Ketat",
+          "strictnessTight": "Tepat",
+          "strictnessVerbatim": "Verbatim",
+          "title": "Pengaturan pembuatan"
+        }
       }
     },
     "synchronizer": {

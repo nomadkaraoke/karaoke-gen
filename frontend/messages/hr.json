@@ -1167,7 +1167,28 @@
         "tooManyLines": "Imaš {diff} linija viška. Očekivano {expected}, dobiveno {actual}. Ukloni linije ili klikni Generiraj ponovno.",
         "cancel": "Odustani",
         "cancelGeneration": "Odustani",
-        "genericError": "Nešto je pošlo po zlu. Pokušaj ponovno."
+        "genericError": "Nešto je pošlo po zlu. Pokušaj ponovno.",
+        "settings": {
+          "allowOmit": "Dopusti izostavljanje teksta klijenta",
+          "allowOmitHint": "Neka AI izbaci materijal klijenta koji se ne uklapa u strukturu pjesme.",
+          "allowReword": "Dopusti preformuliranje teksta klijenta",
+          "allowRewordHint": "Neka AI parafrazira ili skrati tekst klijenta kako bi odgovarao pjesmi.",
+          "contradictionWarning": "Preformuliranje je onemogućeno; AI možda neće moći uskladiti broj slogova. Omogući preformuliranje ili koristi strogost 'Doslovno'.",
+          "fixedLineCount": "Zadrži originalni broj segmenata",
+          "fixedLineCountHint": "Zadrži isti broj redaka kao u originalnoj pjesmi.",
+          "strictness": "Strogost pjevnosti",
+          "strictnessBalanced": "Uravnoteženo",
+          "strictnessHintBalanced": "Uskladi broj slogova svakog retka unutar ±2.",
+          "strictnessHintLoose": "Grubo uskladi broj slogova gdje je to prikladno.",
+          "strictnessHintStrict": "Točno podudaranje slogova. Preciznost ritma je prioritet.",
+          "strictnessHintTight": "Usko uskladi broj slogova, ±1.",
+          "strictnessHintVerbatim": "Koristi tekst klijenta točno onakav kakav jest. Usklađivanje ritma nije cilj.",
+          "strictnessLoose": "Slobodno",
+          "strictnessStrict": "Strogo",
+          "strictnessTight": "Čvrsto",
+          "strictnessVerbatim": "Doslovno",
+          "title": "Postavke generiranja"
+        }
       }
     },
     "synchronizer": {

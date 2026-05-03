@@ -1167,7 +1167,28 @@
         "tooManyLines": "{diff}行オーバーしています。必要な行数は{expected}行ですが、実際は{actual}行です。行を削除するか、「再生成」をクリックしてください。",
         "cancel": "キャンセル",
         "cancelGeneration": "キャンセル",
-        "genericError": "問題が発生しました。もう一度お試しください。"
+        "genericError": "問題が発生しました。もう一度お試しください。",
+        "settings": {
+          "allowOmit": "クライアントの歌詞の省略を許可する",
+          "allowOmitHint": "曲の構成に合わないクライアントのテキストをAIが省略できるようにします。",
+          "allowReword": "クライアントの歌詞の言い換えを許可する",
+          "allowRewordHint": "曲に合わせてAIがクライアントのテキストを言い換えたり短くしたりできるようにします。",
+          "contradictionWarning": "言い換えが無効になっています。AIが音節数を合わせられない可能性があります。言い換えを有効にするか、厳密さを「そのまま」に設定してください。",
+          "fixedLineCount": "元のセグメント数を維持する",
+          "fixedLineCountHint": "原曲と同じ行数を維持します。",
+          "strictness": "歌いやすさの厳密さ",
+          "strictnessBalanced": "バランス",
+          "strictnessHintBalanced": "各行の音節数を±2の範囲内で合わせます。",
+          "strictnessHintLoose": "可能な範囲で音節数を大まかに合わせます。",
+          "strictnessHintStrict": "音節数を正確に合わせます。リズムの正確さが最優先されます。",
+          "strictnessHintTight": "音節数を±1の範囲内で厳密に合わせます。",
+          "strictnessHintVerbatim": "クライアントのテキストをそのまま使用します。リズムを合わせることは目的としません。",
+          "strictnessLoose": "緩め",
+          "strictnessStrict": "厳密",
+          "strictnessTight": "やや厳密",
+          "strictnessVerbatim": "そのまま",
+          "title": "生成設定"
+        }
       }
     },
     "synchronizer": {

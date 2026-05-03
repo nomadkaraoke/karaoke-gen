@@ -1167,7 +1167,28 @@
         "tooManyLines": "Sinulla on {diff} rivi(ä) liikaa. Odotettiin {expected}, saatiin {actual}. Poista rivejä tai paina Luo uudelleen.",
         "cancel": "Peruuta",
         "cancelGeneration": "Peruuta",
-        "genericError": "Jotain meni pieleen. Yritä uudelleen."
+        "genericError": "Jotain meni pieleen. Yritä uudelleen.",
+        "settings": {
+          "allowOmit": "Salli asiakkaan sanoitusten pois jättäminen",
+          "allowOmitHint": "Anna tekoälyn jättää pois asiakkaan materiaalia, joka ei sovi kappaleen rakenteeseen.",
+          "allowReword": "Salli asiakkaan sanoitusten uudelleenmuotoilu",
+          "allowRewordHint": "Anna tekoälyn mukailla tai lyhentää asiakkaan tekstiä kappaleeseen sopivaksi.",
+          "contradictionWarning": "Uudelleenmuotoilu on poissa käytöstä; tekoäly ei ehkä pysty täsmäämään tavumääriä. Ota uudelleenmuotoilu käyttöön tai käytä Sanatarkka-tarkkuutta.",
+          "fixedLineCount": "Säilytä alkuperäinen segmenttien määrä",
+          "fixedLineCountHint": "Pidä sama rivimäärä kuin alkuperäisessä kappaleessa.",
+          "strictness": "Laulettavuuden tarkkuus",
+          "strictnessBalanced": "Tasapainoinen",
+          "strictnessHintBalanced": "Täsmää jokaisen rivin tavumäärä ±2 tavun tarkkuudella.",
+          "strictnessHintLoose": "Täsmää tavumäärä suurin piirtein, kun se on sopivaa.",
+          "strictnessHintStrict": "Tarkka tavumäärä. Rytmin tarkkuus on etusijalla.",
+          "strictnessHintTight": "Täsmää tavumäärä tiukasti, ±1.",
+          "strictnessHintVerbatim": "Käytä asiakkaan tekstiä sellaisenaan. Rytmin täsmääminen ei ole tavoitteena.",
+          "strictnessLoose": "Joustava",
+          "strictnessStrict": "Ehdoton",
+          "strictnessTight": "Tiukka",
+          "strictnessVerbatim": "Sanatarkka",
+          "title": "Luontiasetukset"
+        }
       }
     },
     "synchronizer": {

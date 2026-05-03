@@ -1167,7 +1167,28 @@
         "tooManyLines": "Bạn đang thừa {diff} dòng. Dự kiến {expected}, hiện có {actual}. Hãy xóa bớt dòng hoặc nhấp vào Tạo lại.",
         "cancel": "Hủy",
         "cancelGeneration": "Hủy",
-        "genericError": "Đã xảy ra lỗi. Vui lòng thử lại."
+        "genericError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+        "settings": {
+          "allowOmit": "Cho phép lược bỏ lời của khách hàng",
+          "allowOmitHint": "Để AI bỏ qua nội dung của khách hàng không phù hợp với cấu trúc bài hát.",
+          "allowReword": "Cho phép viết lại lời của khách hàng",
+          "allowRewordHint": "Để AI diễn giải lại hoặc rút gọn văn bản của khách hàng cho phù hợp với bài hát.",
+          "contradictionWarning": "Tính năng viết lại đã bị tắt; AI có thể không khớp được số lượng âm tiết. Hãy bật tính năng viết lại hoặc sử dụng độ nghiêm ngặt Nguyên văn.",
+          "fixedLineCount": "Giữ nguyên số lượng phân đoạn gốc",
+          "fixedLineCountHint": "Giữ nguyên số dòng giống như bài hát gốc.",
+          "strictness": "Độ nghiêm ngặt về khả năng hát",
+          "strictnessBalanced": "Cân bằng",
+          "strictnessHintBalanced": "Khớp số lượng âm tiết của mỗi dòng trong khoảng ±2.",
+          "strictnessHintLoose": "Khớp tương đối số lượng âm tiết khi thuận tiện.",
+          "strictnessHintStrict": "Khớp chính xác âm tiết. Độ chính xác của nhịp điệu là ưu tiên hàng đầu.",
+          "strictnessHintTight": "Khớp sát số lượng âm tiết, ±1.",
+          "strictnessHintVerbatim": "Sử dụng nguyên văn văn bản của khách hàng. Việc khớp nhịp điệu không phải là mục tiêu.",
+          "strictnessLoose": "Linh hoạt",
+          "strictnessStrict": "Nghiêm ngặt",
+          "strictnessTight": "Chặt chẽ",
+          "strictnessVerbatim": "Nguyên văn",
+          "title": "Cài đặt tạo"
+        }
       }
     },
     "synchronizer": {

@@ -1167,7 +1167,28 @@
         "tooManyLines": "Tens {diff} línia/es de més. Se n'esperaven {expected}, n'hi ha {actual}. Elimina línies o fes clic a Regenera.",
         "cancel": "Cancel·la",
         "cancelGeneration": "Cancel·la",
-        "genericError": "Alguna cosa ha anat malament. Torna-ho a provar."
+        "genericError": "Alguna cosa ha anat malament. Torna-ho a provar.",
+        "settings": {
+          "allowOmit": "Permet ometre la lletra del client",
+          "allowOmitHint": "Deixa que la IA ometi el material del client que no s'ajusti a l'estructura de la cançó.",
+          "allowReword": "Permet reescriure la lletra del client",
+          "allowRewordHint": "Deixa que la IA parafrasegi o escurci el text del client perquè s'ajusti a la cançó.",
+          "contradictionWarning": "La reescriptura està desactivada; és possible que la IA no pugui quadrar el recompte de síl·labes. Activa la reescriptura o utilitza el rigor Literal.",
+          "fixedLineCount": "Mantén el nombre de segments original",
+          "fixedLineCountHint": "Mantén el mateix nombre de línies que la cançó original.",
+          "strictness": "Rigor de cantabilitat",
+          "strictnessBalanced": "Equilibrat",
+          "strictnessHintBalanced": "Quadra el recompte de síl·labes de cada línia amb un marge de ±2.",
+          "strictnessHintLoose": "Quadra aproximadament el recompte de síl·labes quan convingui.",
+          "strictnessHintStrict": "Coincidència exacta de síl·labes. La precisió del ritme és la prioritat.",
+          "strictnessHintTight": "Quadra de prop el recompte de síl·labes, ±1.",
+          "strictnessHintVerbatim": "Utilitza el text del client tal qual. Quadrar el ritme no és un objectiu.",
+          "strictnessLoose": "Flexible",
+          "strictnessStrict": "Estricte",
+          "strictnessTight": "Ajustat",
+          "strictnessVerbatim": "Literal",
+          "title": "Configuració de generació"
+        }
       }
     },
     "synchronizer": {

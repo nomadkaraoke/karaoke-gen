@@ -1167,7 +1167,28 @@
         "tooManyLines": "Tienes {diff} línea(s) extra. Se esperaban {expected}, se obtuvieron {actual}. Elimina líneas o haz clic en Regenerar.",
         "cancel": "Cancelar",
         "cancelGeneration": "Cancelar",
-        "genericError": "Algo salió mal. Por favor, inténtalo de nuevo."
+        "genericError": "Algo salió mal. Por favor, inténtalo de nuevo.",
+        "settings": {
+          "allowOmit": "Permitir omitir las letras del cliente",
+          "allowOmitHint": "Deja que la IA descarte el material del cliente que no se ajuste a la estructura de la canción.",
+          "allowReword": "Permitir reformular las letras del cliente",
+          "allowRewordHint": "Deja que la IA parafrasee o acorte el texto del cliente para que se ajuste a la canción.",
+          "contradictionWarning": "La reformulación está desactivada; es posible que la IA no pueda igualar el conteo de sílabas. Activa la reformulación o usa la rigurosidad Literal.",
+          "fixedLineCount": "Mantener el conteo de segmentos original",
+          "fixedLineCountHint": "Mantén el mismo número de líneas que la canción original.",
+          "strictness": "Rigurosidad de cantabilidad",
+          "strictnessBalanced": "Equilibrada",
+          "strictnessHintBalanced": "Iguala el conteo de sílabas de cada línea con un margen de ±2.",
+          "strictnessHintLoose": "Iguala aproximadamente el conteo de sílabas donde sea conveniente.",
+          "strictnessHintStrict": "Coincidencia exacta de sílabas. La precisión del ritmo es la prioridad.",
+          "strictnessHintTight": "Iguala de cerca el conteo de sílabas, ±1.",
+          "strictnessHintVerbatim": "Usa el texto del cliente tal cual. Igualar el ritmo no es un objetivo.",
+          "strictnessLoose": "Flexible",
+          "strictnessStrict": "Estricta",
+          "strictnessTight": "Ajustada",
+          "strictnessVerbatim": "Literal",
+          "title": "Configuración de generación"
+        }
       }
     },
     "synchronizer": {

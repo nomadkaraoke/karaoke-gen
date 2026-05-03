@@ -1167,7 +1167,28 @@
         "tooManyLines": "Anda mempunyai {diff} baris tambahan. Dijangka {expected}, dapat {actual}. Buang baris atau klik Jana Semula.",
         "cancel": "Batal",
         "cancelGeneration": "Batal",
-        "genericError": "Sesuatu yang tidak kena berlaku. Sila cuba lagi."
+        "genericError": "Sesuatu yang tidak kena berlaku. Sila cuba lagi.",
+        "settings": {
+          "allowOmit": "Benarkan pengguguran lirik pelanggan",
+          "allowOmitHint": "Biarkan AI menggugurkan bahan pelanggan yang tidak sesuai dengan struktur lagu.",
+          "allowReword": "Benarkan penyusunan semula lirik pelanggan",
+          "allowRewordHint": "Biarkan AI memparafrasa atau memendekkan teks pelanggan agar sesuai dengan lagu.",
+          "contradictionWarning": "Penyusunan semula dilumpuhkan; AI mungkin tidak dapat memadankan jumlah suku kata. Dayakan penyusunan semula atau gunakan ketegasan Verbatim.",
+          "fixedLineCount": "Kekalkan jumlah segmen asal",
+          "fixedLineCountHint": "Kekalkan bilangan baris yang sama seperti lagu asal.",
+          "strictness": "Ketegasan kebolehan menyanyi",
+          "strictnessBalanced": "Seimbang",
+          "strictnessHintBalanced": "Padankan jumlah suku kata setiap baris dalam lingkungan ±2.",
+          "strictnessHintLoose": "Padankan jumlah suku kata secara kasar di mana sesuai.",
+          "strictnessHintStrict": "Padanan suku kata tepat. Ketepatan irama adalah keutamaan.",
+          "strictnessHintTight": "Padankan jumlah suku kata dengan rapat, ±1.",
+          "strictnessHintVerbatim": "Gunakan teks pelanggan seadanya. Padanan irama bukanlah matlamat.",
+          "strictnessLoose": "Longgar",
+          "strictnessStrict": "Tegas",
+          "strictnessTight": "Ketat",
+          "strictnessVerbatim": "Verbatim",
+          "title": "Tetapan penjanaan"
+        }
       }
     },
     "synchronizer": {

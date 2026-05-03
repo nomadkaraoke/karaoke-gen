@@ -1167,7 +1167,28 @@
         "tooManyLines": "Du har {diff} extra rad(er). Förväntade {expected}, fick {actual}. Ta bort rader eller klicka på Generera igen.",
         "cancel": "Avbryt",
         "cancelGeneration": "Avbryt",
-        "genericError": "Något gick fel. Försök igen."
+        "genericError": "Något gick fel. Försök igen.",
+        "settings": {
+          "allowOmit": "Tillåt att utelämna klientens text",
+          "allowOmitHint": "Låt AI:n ta bort klientmaterial som inte passar låtens struktur.",
+          "allowReword": "Tillåt omformulering av klientens text",
+          "allowRewordHint": "Låt AI:n omskriva eller förkorta klientens text för att passa låten.",
+          "contradictionWarning": "Omformulering är inaktiverad; AI:n kanske inte kan matcha antalet stavelser. Aktivera omformulering eller använd striktheten Ordgrann.",
+          "fixedLineCount": "Behåll ursprungligt antal segment",
+          "fixedLineCountHint": "Behåll samma antal rader som i originallåten.",
+          "strictness": "Strikthet för sångbarhet",
+          "strictnessBalanced": "Balanserad",
+          "strictnessHintBalanced": "Matcha varje rads antal stavelser inom ±2.",
+          "strictnessHintLoose": "Matcha antalet stavelser ungefärligt där det passar.",
+          "strictnessHintStrict": "Exakt matchning av stavelser. Rytmprecision är prioriterat.",
+          "strictnessHintTight": "Matcha antalet stavelser nära, ±1.",
+          "strictnessHintVerbatim": "Använd klientens text som den är. Rytmmatchning är inte ett mål.",
+          "strictnessLoose": "Lös",
+          "strictnessStrict": "Strikt",
+          "strictnessTight": "Stram",
+          "strictnessVerbatim": "Ordgrann",
+          "title": "Genereringsinställningar"
+        }
       }
     },
     "synchronizer": {

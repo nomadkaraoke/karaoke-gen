@@ -1167,7 +1167,28 @@
         "tooManyLines": "Je hebt {diff} regel(s) te veel. Verwacht: {expected}, gekregen: {actual}. Verwijder regels of klik op Opnieuw genereren.",
         "cancel": "Annuleren",
         "cancelGeneration": "Annuleren",
-        "genericError": "Er is iets misgegaan. Probeer het opnieuw."
+        "genericError": "Er is iets misgegaan. Probeer het opnieuw.",
+        "settings": {
+          "allowOmit": "Toestaan dat songteksten van de klant worden weggelaten",
+          "allowOmitHint": "Laat de AI materiaal van de klant weglaten dat niet in de structuur van het nummer past.",
+          "allowReword": "Toestaan dat songteksten van de klant worden geherformuleerd",
+          "allowRewordHint": "Laat de AI tekst van de klant parafraseren of inkorten zodat het in het nummer past.",
+          "contradictionWarning": "Herformuleren is uitgeschakeld; de AI is mogelijk niet in staat om het aantal lettergrepen te matchen. Schakel herformuleren in of gebruik de striktheid Woordelijk.",
+          "fixedLineCount": "Behoud het oorspronkelijke aantal segmenten",
+          "fixedLineCountHint": "Behoud hetzelfde aantal regels als het originele nummer.",
+          "strictness": "Striktheid zingbaarheid",
+          "strictnessBalanced": "Gebalanceerd",
+          "strictnessHintBalanced": "Match het aantal lettergrepen van elke regel binnen ±2.",
+          "strictnessHintLoose": "Match het aantal lettergrepen grofweg waar dat uitkomt.",
+          "strictnessHintStrict": "Exacte match van lettergrepen. Ritme-precisie is de prioriteit.",
+          "strictnessHintTight": "Match het aantal lettergrepen nauwkeurig, ±1.",
+          "strictnessHintVerbatim": "Gebruik de tekst van de klant zoals deze is. Ritme matchen is geen doel.",
+          "strictnessLoose": "Los",
+          "strictnessStrict": "Strikt",
+          "strictnessTight": "Strak",
+          "strictnessVerbatim": "Woordelijk",
+          "title": "Generatie-instellingen"
+        }
       }
     },
     "synchronizer": {

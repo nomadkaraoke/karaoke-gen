@@ -1167,7 +1167,28 @@
         "tooManyLines": "{diff} satır fazla. Beklenen: {expected}, alınan: {actual}. Satırları kaldır veya Yeniden Oluştur'a tıkla.",
         "cancel": "İptal",
         "cancelGeneration": "İptal",
-        "genericError": "Bir şeyler ters gitti. Lütfen tekrar dene."
+        "genericError": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+        "settings": {
+          "allowOmit": "Müşteri sözlerini atlamaya izin ver",
+          "allowOmitHint": "Yapay zekanın şarkının yapısına uymayan müşteri materyalini çıkarmasına izin ver.",
+          "allowReword": "Müşteri sözlerini yeniden yazmaya izin ver",
+          "allowRewordHint": "Yapay zekanın şarkıya uyması için müşteri metnini başka sözcüklerle ifade etmesine veya kısaltmasına izin ver.",
+          "contradictionWarning": "Yeniden yazma devre dışı; yapay zeka hece sayılarını eşleştiremeyebilir. Yeniden yazmayı etkinleştir veya Birebir sıkılık ayarını kullan.",
+          "fixedLineCount": "Orijinal bölüm sayısını koru",
+          "fixedLineCountHint": "Orijinal şarkıyla aynı satır sayısını koru.",
+          "strictness": "Söylenebilirlik sıkılığı",
+          "strictnessBalanced": "Dengeli",
+          "strictnessHintBalanced": "Her satırın hece sayısını ±2 farkla eşleştir.",
+          "strictnessHintLoose": "Uygun olan yerlerde hece sayısını kabaca eşleştir.",
+          "strictnessHintStrict": "Tam hece eşleşmesi. Ritim hassasiyeti önceliklidir.",
+          "strictnessHintTight": "Hece sayısını yakından eşleştir, ±1.",
+          "strictnessHintVerbatim": "Müşterinin metnini olduğu gibi kullan. Ritim eşleştirme hedeflenmez.",
+          "strictnessLoose": "Esnek",
+          "strictnessStrict": "Katı",
+          "strictnessTight": "Sıkı",
+          "strictnessVerbatim": "Birebir",
+          "title": "Oluşturma ayarları"
+        }
       }
     },
     "synchronizer": {

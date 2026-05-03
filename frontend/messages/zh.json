@@ -1167,7 +1167,28 @@
         "tooManyLines": "多出 {diff} 行。预期 {expected} 行，实际 {actual} 行。请删除行数或点击重新生成。",
         "cancel": "取消",
         "cancelGeneration": "取消",
-        "genericError": "出了点问题，请重试。"
+        "genericError": "出了点问题，请重试。",
+        "settings": {
+          "allowOmit": "允许省略客户歌词",
+          "allowOmitHint": "让 AI 丢弃不符合歌曲结构的客户素材。",
+          "allowReword": "允许改写客户歌词",
+          "allowRewordHint": "让 AI 释义或缩短客户文本以适应歌曲。",
+          "contradictionWarning": "改写功能已禁用；AI 可能无法匹配音节数。请启用改写功能或使用“逐字”严格度。",
+          "fixedLineCount": "保持原始段落数量",
+          "fixedLineCountHint": "保持与原曲相同的行数。",
+          "strictness": "可唱性严格度",
+          "strictnessBalanced": "平衡",
+          "strictnessHintBalanced": "匹配每行的音节数，误差在 ±2 以内。",
+          "strictnessHintLoose": "在方便的情况下大致匹配音节数。",
+          "strictnessHintStrict": "精确匹配音节。节奏精准度优先。",
+          "strictnessHintTight": "紧密匹配音节数，误差 ±1。",
+          "strictnessHintVerbatim": "按原样使用客户的文本。不以匹配节奏为目标。",
+          "strictnessLoose": "宽松",
+          "strictnessStrict": "严格",
+          "strictnessTight": "紧密",
+          "strictnessVerbatim": "逐字",
+          "title": "生成设置"
+        }
       }
     },
     "synchronizer": {

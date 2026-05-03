@@ -1167,7 +1167,28 @@
         "tooManyLines": "Du har {diff} ekstra linje(r). Forventede {expected}, fik {actual}. Fjern linjer eller klik på Generer igen.",
         "cancel": "Annuller",
         "cancelGeneration": "Annuller",
-        "genericError": "Noget gik galt. Prøv venligst igen."
+        "genericError": "Noget gik galt. Prøv venligst igen.",
+        "settings": {
+          "allowOmit": "Tillad udeladelse af klientens sangtekst",
+          "allowOmitHint": "Lad AI'en droppe klientmateriale, der ikke passer til sangens struktur.",
+          "allowReword": "Tillad omformulering af klientens sangtekst",
+          "allowRewordHint": "Lad AI'en omskrive eller forkorte klientens tekst, så den passer til sangen.",
+          "contradictionWarning": "Omformulering er deaktiveret; AI'en kan muligvis ikke matche stavelsesantallet. Aktivér omformulering eller brug Ordret-strenghed.",
+          "fixedLineCount": "Bevar det oprindelige antal segmenter",
+          "fixedLineCountHint": "Behold det samme antal linjer som i den originale sang.",
+          "strictness": "Strenghed for sangbarhed",
+          "strictnessBalanced": "Balanceret",
+          "strictnessHintBalanced": "Match hver linjes stavelsesantal inden for ±2.",
+          "strictnessHintLoose": "Match stavelsesantallet nogenlunde, hvor det passer.",
+          "strictnessHintStrict": "Nøjagtigt stavelsesmatch. Rytmepræcision har førsteprioritet.",
+          "strictnessHintTight": "Match stavelsesantallet tæt, ±1.",
+          "strictnessHintVerbatim": "Brug klientens tekst som den er. Rytmematch er ikke et mål.",
+          "strictnessLoose": "Løs",
+          "strictnessStrict": "Streng",
+          "strictnessTight": "Stram",
+          "strictnessVerbatim": "Ordret",
+          "title": "Genereringsindstillinger"
+        }
       }
     },
     "synchronizer": {

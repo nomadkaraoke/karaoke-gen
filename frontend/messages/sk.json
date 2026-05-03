@@ -1167,7 +1167,28 @@
         "tooManyLines": "Máš {diff} riadok/riadkov navyše. Očakávalo sa {expected}, máš {actual}. Odstráň riadky alebo klikni na Vygenerovať znova.",
         "cancel": "Zrušiť",
         "cancelGeneration": "Zrušiť",
-        "genericError": "Niečo sa pokazilo. Skús to znova."
+        "genericError": "Niečo sa pokazilo. Skús to znova.",
+        "settings": {
+          "allowOmit": "Povoliť vynechanie textu klienta",
+          "allowOmitHint": "Nechaj AI vynechať materiál klienta, ktorý nezapadá do štruktúry piesne.",
+          "allowReword": "Povoliť preformulovanie textu klienta",
+          "allowRewordHint": "Nechaj AI parafrázovať alebo skrátiť text klienta tak, aby sedel do piesne.",
+          "contradictionWarning": "Preformulovanie je vypnuté; AI možno nedokáže prispôsobiť počet slabík. Povoľ preformulovanie alebo použi prísnosť Doslovná.",
+          "fixedLineCount": "Zachovať pôvodný počet segmentov",
+          "fixedLineCountHint": "Zachovaj rovnaký počet riadkov ako v pôvodnej piesni.",
+          "strictness": "Prísnosť spievateľnosti",
+          "strictnessBalanced": "Vyvážená",
+          "strictnessHintBalanced": "Prispôsob počet slabík každého riadku s odchýlkou ±2.",
+          "strictnessHintLoose": "Zhruba prispôsob počet slabík tam, kde to vyhovuje.",
+          "strictnessHintStrict": "Presná zhoda slabík. Presnosť rytmu je prioritou.",
+          "strictnessHintTight": "Tesne prispôsob počet slabík, ±1.",
+          "strictnessHintVerbatim": "Použi text klienta tak, ako je. Prispôsobenie rytmu nie je cieľom.",
+          "strictnessLoose": "Voľná",
+          "strictnessStrict": "Prísna",
+          "strictnessTight": "Tesná",
+          "strictnessVerbatim": "Doslovná",
+          "title": "Nastavenia generovania"
+        }
       }
     },
     "synchronizer": {

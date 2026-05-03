@@ -1167,7 +1167,28 @@
         "tooManyLines": "Masz o {diff} wersów za dużo. Oczekiwano {expected}, otrzymano {actual}. Usuń wersy lub kliknij Wygeneruj ponownie.",
         "cancel": "Anuluj",
         "cancelGeneration": "Anuluj",
-        "genericError": "Coś poszło nie tak. Spróbuj ponownie."
+        "genericError": "Coś poszło nie tak. Spróbuj ponownie.",
+        "settings": {
+          "allowOmit": "Zezwól na pomijanie tekstu klienta",
+          "allowOmitHint": "Pozwól AI odrzucić materiał klienta, który nie pasuje do struktury piosenki.",
+          "allowReword": "Zezwól na przeredagowanie tekstu klienta",
+          "allowRewordHint": "Pozwól AI sparafrazować lub skrócić tekst klienta, aby pasował do piosenki.",
+          "contradictionWarning": "Przeredagowanie jest wyłączone; AI może nie być w stanie dopasować liczby sylab. Włącz przeredagowanie lub użyj rygorystyczności Dosłowna.",
+          "fixedLineCount": "Zachowaj oryginalną liczbę segmentów",
+          "fixedLineCountHint": "Zachowaj taką samą liczbę wersów jak w oryginalnej piosence.",
+          "strictness": "Rygorystyczność śpiewalności",
+          "strictnessBalanced": "Zrównoważona",
+          "strictnessHintBalanced": "Dopasuj liczbę sylab w każdym wersie z tolerancją ±2.",
+          "strictnessHintLoose": "Z grubsza dopasuj liczbę sylab tam, gdzie to wygodne.",
+          "strictnessHintStrict": "Dokładne dopasowanie sylab. Precyzja rytmu jest priorytetem.",
+          "strictnessHintTight": "Ściśle dopasuj liczbę sylab, ±1.",
+          "strictnessHintVerbatim": "Użyj tekstu klienta w niezmienionej formie. Dopasowanie rytmu nie jest celem.",
+          "strictnessLoose": "Luźna",
+          "strictnessStrict": "Rygorystyczna",
+          "strictnessTight": "Ścisła",
+          "strictnessVerbatim": "Dosłowna",
+          "title": "Ustawienia generowania"
+        }
       }
     },
     "synchronizer": {

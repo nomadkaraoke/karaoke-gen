@@ -1167,7 +1167,28 @@
         "tooManyLines": "Du hast {diff} Zeile(n) zu viel. Erwartet: {expected}, erhalten: {actual}. Entferne Zeilen oder klicke auf Neu generieren.",
         "cancel": "Abbrechen",
         "cancelGeneration": "Abbrechen",
-        "genericError": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+        "genericError": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+        "settings": {
+          "allowOmit": "Auslassen von Kundentexten erlauben",
+          "allowOmitHint": "Lass die KI Kundenmaterial weglassen, das nicht zur Struktur des Songs passt.",
+          "allowReword": "Umformulieren von Kundentexten erlauben",
+          "allowRewordHint": "Lass die KI den Kundentext umschreiben oder kürzen, damit er zum Song passt.",
+          "contradictionWarning": "Umformulieren ist deaktiviert; die KI kann möglicherweise die Silbenanzahl nicht anpassen. Aktiviere das Umformulieren oder verwende die Genauigkeit Wortwörtlich.",
+          "fixedLineCount": "Ursprüngliche Segmentanzahl beibehalten",
+          "fixedLineCountHint": "Behalte die gleiche Anzahl an Zeilen wie im Originalsong bei.",
+          "strictness": "Genauigkeit der Singbarkeit",
+          "strictnessBalanced": "Ausgewogen",
+          "strictnessHintBalanced": "Passe die Silbenanzahl jeder Zeile auf ±2 genau an.",
+          "strictnessHintLoose": "Passe die Silbenanzahl grob an, wo es passt.",
+          "strictnessHintStrict": "Exakte Silbenübereinstimmung. Rhythmuspräzision hat Priorität.",
+          "strictnessHintTight": "Passe die Silbenanzahl eng an, ±1.",
+          "strictnessHintVerbatim": "Verwende den Text des Kunden so wie er ist. Rhythmusanpassung ist kein Ziel.",
+          "strictnessLoose": "Locker",
+          "strictnessStrict": "Streng",
+          "strictnessTight": "Eng",
+          "strictnessVerbatim": "Wortwörtlich",
+          "title": "Generierungseinstellungen"
+        }
       }
     },
     "synchronizer": {
