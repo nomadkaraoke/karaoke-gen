@@ -1,4 +1,4 @@
-import { generateCustomLyrics } from '../customLyrics'
+import { generateCustomLyrics, DEFAULT_GENERATION_SETTINGS } from '../customLyrics'
 
 // jsdom does not expose `Response` as a global. Provide a minimal polyfill
 // sufficient for what the API client uses: status / ok / json().
@@ -55,6 +55,7 @@ describe('generateCustomLyrics', () => {
         notes: 'for clara',
         artist: 'A',
         title: 'T',
+        settings: DEFAULT_GENERATION_SETTINGS,
       },
       undefined,
       'fake-token',
@@ -71,7 +72,7 @@ describe('generateCustomLyrics', () => {
       'Bearer fake-token',
     )
     expect(result.lines).toEqual(['a', 'b'])
-    expect(result.lineCountMismatch).toBe(false)
+    expect(result.line_count_mismatch).toBe(false)
   })
 
   it('posts file when provided instead of text', async () => {
@@ -97,7 +98,7 @@ describe('generateCustomLyrics', () => {
 
     await generateCustomLyrics(
       'job-1',
-      { existingLines: ['a'], file },
+      { existingLines: ['a'], file, settings: DEFAULT_GENERATION_SETTINGS },
       undefined,
       'tok',
     )
@@ -119,7 +120,7 @@ describe('generateCustomLyrics', () => {
     await expect(
       generateCustomLyrics(
         'job-1',
-        { existingLines: ['a'], customText: 'x' },
+        { existingLines: ['a'], customText: 'x', settings: DEFAULT_GENERATION_SETTINGS },
         undefined,
         'tok',
       ),
@@ -139,7 +140,7 @@ describe('generateCustomLyrics', () => {
     const ac = new AbortController()
     await generateCustomLyrics(
       'job-1',
-      { existingLines: ['a'], customText: 'x' },
+      { existingLines: ['a'], customText: 'x', settings: DEFAULT_GENERATION_SETTINGS },
       ac.signal,
       'tok',
     )
