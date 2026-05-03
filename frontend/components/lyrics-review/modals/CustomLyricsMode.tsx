@@ -254,7 +254,7 @@ export default function CustomLyricsMode({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto flex flex-col gap-4">
           {/* Input phase */}
           {phase === 'input' && (
             <>
