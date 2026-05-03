@@ -1,6 +1,6 @@
 {
   "name": "karaoke-gen-frontend",
-  "version": "0.85.9",
+  "version": "0.86.0",
   "private": true,
   "scripts": {
     "prebuild": "node scripts/write-version.mjs",

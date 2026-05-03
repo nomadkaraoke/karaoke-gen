@@ -6,6 +6,19 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## AI Generation Patterns
+
+### Validate-and-Repair Loop with Plateau Detection (May 2026)
+When chaining LLM calls into a repair loop (e.g. syllable-aware custom lyrics), score plateau detection on the **full score tuple** (`(violation_count, total_min_delta)`), not just count. A loop that compares `new_violation_count >= prev_violation_count` will trip on iteration 0 because there's no prior count to compare against — and even past the first iteration, you can lose deltas (fewer overshoot, but still N violations) without count moving. Using the tuple lets the loop detect "still improving" cases that pure count misses. Spec'd plan pseudocode often gets this wrong; verify against tests like `test_max_iters_reached`.
+
+### Eval Harness Without Burning Budget — Disk-Backed Cache (May 2026)
+For LLM eval harnesses where each fixture × settings combo costs a real API call: build an `LlmCallCache` keyed on `sha256(system_prompt + user_prompt + model + sorted_settings)` that writes responses to JSON on disk. Add a `replay_only=True` mode that raises on cache miss. This decouples deterministic re-scoring (cheap, replay-only) from baseline capture (expensive, with-cache). The eval runner monkey-patches `service._call_gemini` via `unittest.mock.patch.object` to inject the cache layer without touching production code paths. Pattern lives in `backend/eval/custom_lyrics/`.
+
+### Shipping Without Phase 8 Validation — Deferred Falsifiability (May 2026)
+The syllable-aware custom-lyrics feature was shipped with the eval harness fully built but **without running the v1-ships criteria checks** (Year 5 ≥75% pass@2, macro corpus ≥70% pass@2). User chose to test in prod rather than burn an afternoon on baseline capture. Risk-acknowledged trade: if real-world Gemini output doesn't hit the criteria, fallback paths in the spec (chunked generation, per-line repair) become post-ship work. The eval infrastructure is ready to run anytime — `make eval-custom-lyrics` against existing fixtures captures baselines on demand.
+
+---
+
 ## UX Patterns
 
 ### Don't Conflate "No Results" with "Not Yet Searched" (Mar 2026)
