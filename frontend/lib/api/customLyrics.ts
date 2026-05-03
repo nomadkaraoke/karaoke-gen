@@ -10,6 +10,41 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? 'https://api.nomadkaraoke.com'
 
+export type StrictnessLevel = 'verbatim' | 'loose' | 'balanced' | 'tight' | 'strict'
+export type StopReason =
+  | 'success'
+  | 'plateau'
+  | 'max_iters_reached'
+  | 'line_count_mismatch'
+  | 'verbatim_skip'
+export type LineSeverity = 'ok' | 'minor' | 'major'
+
+export interface GenerationSettings {
+  allow_reword: boolean
+  allow_omit: boolean
+  fixed_line_count: boolean
+  strictness: StrictnessLevel
+}
+
+export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
+  allow_reword: true,
+  allow_omit: true,
+  fixed_line_count: true,
+  strictness: 'balanced',
+}
+
+export interface LineMetadata {
+  line_index: number
+  target_text: string
+  candidate_text: string
+  target_syllables: number[]
+  candidate_syllables: number[]
+  min_delta: number
+  passes: boolean
+  severity: LineSeverity
+  time_budget_seconds: number
+}
+
 export interface CustomLyricsParams {
   existingLines: string[]
   customText?: string
@@ -17,15 +52,19 @@ export interface CustomLyricsParams {
   artist?: string
   title?: string
   file?: File
+  settings: GenerationSettings
 }
 
 export interface CustomLyricsResponse {
   lines: string[]
+  line_metadata: LineMetadata[]
+  iterations_used: number
+  stop_reason: StopReason
+  settings_applied: GenerationSettings
+  new_segment_timing: Array<[number, number]> | null
+  line_count_mismatch: boolean
   warnings: string[]
   model: string
-  lineCountMismatch: boolean
-  retryCount: number
-  durationMs: number
 }
 
 export class CustomLyricsApiError extends Error {
@@ -51,6 +90,7 @@ export async function generateCustomLyrics(
   if (params.artist) form.set('artist', params.artist)
   if (params.title) form.set('title', params.title)
   if (params.file) form.set('file', params.file)
+  form.set('settings_json', JSON.stringify(params.settings))
 
   const headers: Record<string, string> = {}
   if (token) headers.Authorization = `Bearer ${token}`
@@ -74,10 +114,13 @@ export async function generateCustomLyrics(
   const data = await response.json()
   return {
     lines: data.lines,
+    line_metadata: data.line_metadata,
+    iterations_used: data.iterations_used,
+    stop_reason: data.stop_reason,
+    settings_applied: data.settings_applied,
+    new_segment_timing: data.new_segment_timing ?? null,
+    line_count_mismatch: data.line_count_mismatch,
     warnings: data.warnings ?? [],
     model: data.model,
-    lineCountMismatch: Boolean(data.line_count_mismatch),
-    retryCount: Number(data.retry_count ?? 0),
-    durationMs: Number(data.duration_ms ?? 0),
   }
 }
