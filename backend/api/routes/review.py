@@ -46,18 +46,97 @@ from backend.services.custom_lyrics_service import (
 )
 
 
+class LineMetadataResponse(_PydBaseModel):
+    line_index: int
+    target_text: str
+    candidate_text: str
+    target_syllables: list[int]
+    candidate_syllables: list[int]
+    min_delta: int
+    passes: bool
+    severity: str  # "ok" | "minor" | "major"
+    time_budget_seconds: float
+
+
 class CustomLyricsResponse(_PydBaseModel):
     lines: list[str]
+    line_metadata: list[LineMetadataResponse]
+    iterations_used: int
+    stop_reason: str  # "success" | "plateau" | "max_iters_reached" | "line_count_mismatch" | "verbatim_skip"
+    settings_applied: dict
+    new_segment_timing: Optional[list[tuple[float, float]]] = None
+    line_count_mismatch: bool
     warnings: list[str]
     model: str
-    line_count_mismatch: bool
-    retry_count: int
-    duration_ms: int
 
 
 def _get_custom_lyrics_service_dep() -> CustomLyricsService:
     """FastAPI dependency wrapper around the singleton accessor."""
     return get_custom_lyrics_service()
+
+
+async def _load_target_segments_for_custom_lyrics(
+    job_id: str,
+    target_lines: list[str],
+) -> list[dict]:
+    """Load segments with timing for the custom-lyrics endpoint.
+
+    Tries to fetch corrections.json from GCS for accurate per-segment timing
+    (start_time, end_time). Falls back to synthesized timing (2s per line)
+    if corrections.json is unavailable or has a mismatched line count.
+
+    Returns a list of dicts with at least start_time, end_time, text, words keys.
+    """
+    job_manager = JobManager()
+    storage = StorageService()
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        return _synthesized_segments(target_lines)
+
+    # Try corrections_updated first (latest review session edits), then corrections (original)
+    corrections_path = (
+        job.file_urls.get("lyrics", {}).get("corrections_updated")
+        or f"jobs/{job_id}/lyrics/corrections_updated.json"
+    )
+    if not (corrections_path and storage.file_exists(corrections_path)):
+        corrections_path = (
+            job.file_urls.get("lyrics", {}).get("corrections")
+            or f"jobs/{job_id}/lyrics/corrections.json"
+        )
+
+    try:
+        if corrections_path and storage.file_exists(corrections_path):
+            data = storage.download_json(corrections_path)
+            segments = data.get("corrected_segments") or data.get("segments") or []
+            if len(segments) == len(target_lines):
+                return segments
+            logger.warning(
+                f"Job {job_id}: corrections.json has {len(segments)} segments but "
+                f"{len(target_lines)} target_lines provided; using synthesized timing"
+            )
+    except Exception as e:  # noqa: BLE001 - degrade gracefully
+        logger.warning(
+            f"Job {job_id}: could not load segments from {corrections_path}: {e}; "
+            f"using synthesized timing"
+        )
+
+    return _synthesized_segments(target_lines)
+
+
+def _synthesized_segments(target_lines: list[str]) -> list[dict]:
+    """Fallback when real timing is unavailable: 2s per line."""
+    return [
+        {
+            "id": f"synth-{i}",
+            "start_time": float(i * 2.0),
+            "end_time": float((i + 1) * 2.0),
+            "text": line,
+            "words": [],
+        }
+        for i, line in enumerate(target_lines)
+    ]
+
 
 # LyricsTranscriber imports for preview generation
 from karaoke_gen.lyrics_transcriber.types import CorrectionResult
@@ -448,16 +527,22 @@ async def generate_custom_lyrics(
     notes: Optional[str] = Form(None),
     artist: Optional[str] = Form(None),
     title: Optional[str] = Form(None),
+    settings_json: Optional[str] = Form(None, description="JSON-encoded GenerationSettings"),
     file: Optional[UploadFile] = File(None),
     auth_info: Tuple[str, str] = Depends(require_review_auth),
     service: CustomLyricsService = Depends(_get_custom_lyrics_service_dep),
 ) -> CustomLyricsResponse:
-    """Generate custom lyrics for a job using Gemini 3.1 Pro.
+    """Generate syllable-aware custom lyrics for a job using Gemini 3.1 Pro.
 
-    Stateless: returns generated lines for the frontend to render in an
-    editable preview. Persistence happens via the existing /complete path
-    after the user reviews and saves.
+    Stateless: returns generated lines + per-line metadata for the frontend
+    to render in an annotated preview. Persistence happens via the existing
+    /complete path after the user reviews and saves.
     """
+    from backend.services.custom_lyrics.settings import (
+        GenerationSettings,
+        settings_from_dict,
+    )
+
     # Parse existing_lines JSON
     try:
         parsed_lines = json.loads(existing_lines)
@@ -475,7 +560,22 @@ async def generate_custom_lyrics(
     if not parsed_lines:
         raise HTTPException(status_code=400, detail="existing_lines is empty")
 
-    # Read file body (if any) — capped check is done by service too
+    # Parse settings (default to GenerationSettings() if missing)
+    if settings_json:
+        try:
+            settings_dict = json.loads(settings_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"settings_json is not valid JSON: {exc}"
+            ) from exc
+        try:
+            settings = settings_from_dict(settings_dict)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=f"invalid settings: {exc}") from exc
+    else:
+        settings = GenerationSettings()
+
+    # Read file body
     file_bytes: Optional[bytes] = None
     file_mime: Optional[str] = None
     file_name: Optional[str] = None
@@ -490,10 +590,14 @@ async def generate_custom_lyrics(
             detail="must provide either custom_text or a file upload",
         )
 
+    # Load segments for timing context
+    target_segments = await _load_target_segments_for_custom_lyrics(job_id, parsed_lines)
+
     try:
         result = service.generate(
             job_id=job_id,
-            existing_lines=parsed_lines,
+            target_lines=parsed_lines,
+            target_segments=target_segments,
             artist=artist,
             title=title,
             custom_text=custom_text,
@@ -501,17 +605,34 @@ async def generate_custom_lyrics(
             file_mime=file_mime,
             file_name=file_name,
             notes=notes,
+            settings=settings,
         )
     except CustomLyricsServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     return CustomLyricsResponse(
         lines=result.lines,
+        line_metadata=[
+            LineMetadataResponse(
+                line_index=v.line_index,
+                target_text=v.target_text,
+                candidate_text=v.candidate_text,
+                target_syllables=v.target_syllables,
+                candidate_syllables=v.candidate_syllables,
+                min_delta=v.min_delta,
+                passes=v.passes,
+                severity=v.severity.value,
+                time_budget_seconds=v.time_budget_seconds,
+            )
+            for v in result.line_metadata
+        ],
+        iterations_used=result.iterations_used,
+        stop_reason=result.stop_reason.value,
+        settings_applied=result.settings_applied.to_dict(),
+        new_segment_timing=result.new_segment_timing,
+        line_count_mismatch=result.line_count_mismatch,
         warnings=result.warnings,
         model=result.model,
-        line_count_mismatch=result.line_count_mismatch,
-        retry_count=result.retry_count,
-        duration_ms=result.duration_ms,
     )
 
 
