@@ -37,11 +37,18 @@ class _CounterProtocol(Protocol):
 
 def _segment_duration(seg: Any) -> float:
     """Accepts dict or object with start_time/end_time; returns end - start (>= 0)."""
-    start = seg["start_time"] if isinstance(seg, dict) else seg.start_time
-    end = seg["end_time"] if isinstance(seg, dict) else seg.end_time
+    if isinstance(seg, dict):
+        start = seg.get("start_time")
+        end = seg.get("end_time")
+    else:
+        start = getattr(seg, "start_time", None)
+        end = getattr(seg, "end_time", None)
     if start is None or end is None:
         return 0.0
-    return max(0.0, float(end) - float(start))
+    try:
+        return max(0.0, float(end) - float(start))
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def validate(

@@ -42,6 +42,27 @@ SUPPORTED_MIMES = {
 }
 
 
+def _format_worst_lines(validations: list[LineValidation], n: int = 3) -> list[dict]:
+    """Top-N failing lines for log breadcrumbs. Cuts text at 80 chars."""
+    failing = sorted(
+        (v for v in validations if not v.passes),
+        key=lambda v: v.min_delta,
+        reverse=True,
+    )[:n]
+    return [
+        {
+            "line_index": v.line_index,
+            "min_delta": v.min_delta,
+            "severity": v.severity.value,
+            "target": v.target_text[:80],
+            "candidate": v.candidate_text[:80],
+            "target_syllables": v.target_syllables,
+            "candidate_syllables": v.candidate_syllables,
+        }
+        for v in failing
+    ]
+
+
 class CustomLyricsServiceError(Exception):
     def __init__(self, message: str, *, status_code: int = 400) -> None:
         super().__init__(message)
@@ -114,11 +135,44 @@ class CustomLyricsService:
             settings=settings,
         )
 
-        candidate_lines = self._call_gemini(
-            system_prompt=sys_prompt,
-            user_prompt=initial_user_prompt,
-            pdf_bytes=pdf_bytes,
-            settings=settings,
+        logger.info(
+            "custom_lyrics_initial_call_start",
+            extra={
+                "job_id": job_id,
+                "model": self.settings.custom_lyrics_model,
+                "input_lines": n,
+                "settings": settings.to_dict(),
+                "tolerance": params.tolerance,
+                "max_iterations": params.max_iterations,
+                "system_prompt_chars": len(sys_prompt),
+                "user_prompt_chars": len(initial_user_prompt),
+                "pdf_bytes": len(pdf_bytes) if pdf_bytes else 0,
+                "input_lines_total_syllables": sum(sum(s) / 4 for s in target_syllables),
+            },
+        )
+
+        try:
+            candidate_lines = self._call_gemini(
+                system_prompt=sys_prompt,
+                user_prompt=initial_user_prompt,
+                pdf_bytes=pdf_bytes,
+                settings=settings,
+            )
+        except Exception:
+            logger.exception(
+                "custom_lyrics_initial_call_failed",
+                extra={"job_id": job_id, "stage": "initial"},
+            )
+            raise
+
+        logger.info(
+            "custom_lyrics_initial_call_complete",
+            extra={
+                "job_id": job_id,
+                "candidate_lines": len(candidate_lines),
+                "expected_lines": n,
+                "line_count_match": len(candidate_lines) == n,
+            },
         )
 
         # Verbatim path: skip the repair loop entirely
@@ -149,6 +203,16 @@ class CustomLyricsService:
         violation_count = sum(1 for v in validations if not v.passes)
         stop_reason = StopReason.SUCCESS if violation_count == 0 else StopReason.MAX_ITERS_REACHED
 
+        logger.info(
+            "custom_lyrics_initial_validation",
+            extra={
+                "job_id": job_id,
+                "violations": prev_score[0],
+                "total_min_delta": prev_score[1],
+                "worst_lines": _format_worst_lines(validations),
+            },
+        )
+
         while iteration < params.max_iterations:
             violations = [v for v in validations if not v.passes]
             if not violations:
@@ -164,20 +228,54 @@ class CustomLyricsService:
                 observed_rates=observed_rates,
                 settings=settings,
             )
-            candidate_lines = self._call_gemini(
-                system_prompt=sys_prompt,
-                user_prompt=repair_prompt,
-                pdf_bytes=pdf_bytes,
-                settings=settings,
+            iter_num = iteration + 1
+            logger.info(
+                "custom_lyrics_repair_call_start",
+                extra={
+                    "job_id": job_id,
+                    "iteration": iter_num,
+                    "max_iterations": params.max_iterations,
+                    "violations_to_repair": len(violations),
+                    "repair_prompt_chars": len(repair_prompt),
+                },
             )
+            try:
+                candidate_lines = self._call_gemini(
+                    system_prompt=sys_prompt,
+                    user_prompt=repair_prompt,
+                    pdf_bytes=pdf_bytes,
+                    settings=settings,
+                )
+            except Exception:
+                logger.exception(
+                    "custom_lyrics_repair_call_failed",
+                    extra={"job_id": job_id, "iteration": iter_num, "stage": "repair"},
+                )
+                raise
             validations = self._validate_with_length_handling(
                 candidate_lines, target_lines, target_segments,
                 tolerance=params.tolerance, fixed=settings.fixed_line_count,
             )
 
             new_score = self._score(validations)
-            if new_score < prev_score:
+            improved = new_score < prev_score
+            if improved:
                 best = (candidate_lines, validations)
+
+            logger.info(
+                "custom_lyrics_repair_iter_complete",
+                extra={
+                    "job_id": job_id,
+                    "iteration": iter_num,
+                    "violations_before": prev_score[0],
+                    "violations_after": new_score[0],
+                    "delta_total_before": prev_score[1],
+                    "delta_total_after": new_score[1],
+                    "improved": improved,
+                    "candidate_line_count": len(candidate_lines),
+                    "worst_lines": _format_worst_lines(validations),
+                },
+            )
 
             # Plateau when score did not strictly improve
             if new_score >= prev_score:
@@ -206,11 +304,18 @@ class CustomLyricsService:
 
     @staticmethod
     def _segment_duration(seg: Any) -> float:
-        start = seg["start_time"] if isinstance(seg, dict) else seg.start_time
-        end = seg["end_time"] if isinstance(seg, dict) else seg.end_time
+        if isinstance(seg, dict):
+            start = seg.get("start_time")
+            end = seg.get("end_time")
+        else:
+            start = getattr(seg, "start_time", None)
+            end = getattr(seg, "end_time", None)
         if start is None or end is None:
             return 0.0
-        return max(0.0, float(end) - float(start))
+        try:
+            return max(0.0, float(end) - float(start))
+        except (TypeError, ValueError):
+            return 0.0
 
     @staticmethod
     def _score(validations: list[LineValidation]) -> tuple[int, int]:

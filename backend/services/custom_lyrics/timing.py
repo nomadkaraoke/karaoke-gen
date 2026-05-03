@@ -12,7 +12,11 @@ def _median_count(counts: list[int]) -> int:
     if not counts:
         return 0
     sorted_c = sorted(counts)
-    return sorted_c[len(sorted_c) // 2]
+    n = len(sorted_c)
+    if n % 2 == 1:
+        return sorted_c[n // 2]
+    # Even-length: integer-rounded average of the two middle values
+    return (sorted_c[n // 2 - 1] + sorted_c[n // 2]) // 2
 
 
 def redistribute_timing_proportional(
@@ -42,14 +46,20 @@ def redistribute_timing_proportional(
             for i in range(len(new_lines))
         ]
 
+    # Treat zero-syllable lines as weight-1 so they get a non-zero slice.
+    # Otherwise an empty/whitespace line in a mostly-non-empty set yields a
+    # zero-length segment that the timing pipeline downstream may reject.
+    weights = [s if s > 0 else 1 for s in syllables]
+    total_weight = sum(weights)
+
     out: list[tuple[float, float]] = []
     cursor = start
     duration = end - start
-    for i, syl in enumerate(syllables):
-        if i == len(syllables) - 1:
+    for i, w in enumerate(weights):
+        if i == len(weights) - 1:
             out.append((cursor, end))  # last slice goes to exact end (avoid float drift)
         else:
-            slice_dur = duration * syl / total_syl
+            slice_dur = duration * w / total_weight
             out.append((cursor, cursor + slice_dur))
             cursor += slice_dur
     return out
