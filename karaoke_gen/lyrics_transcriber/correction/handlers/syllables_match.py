@@ -1,25 +1,10 @@
 from typing import List, Tuple, Dict, Any, Optional
-import spacy
 import logging
-import time
-import pyphen
-import nltk
-from nltk.corpus import cmudict
-import syllables
-from spacy_syllables import SpacySyllables
 
 from karaoke_gen.lyrics_transcriber.types import GapSequence, WordCorrection
 from karaoke_gen.lyrics_transcriber.correction.handlers.base import GapCorrectionHandler
 from karaoke_gen.lyrics_transcriber.correction.handlers.word_operations import WordOperations
-
-# Try to import preloaders (may not exist in standalone library usage)
-try:
-    from backend.services.spacy_preloader import get_preloaded_model
-    from backend.services.nltk_preloader import get_preloaded_cmudict
-
-    _HAS_PRELOADER = True
-except ImportError:
-    _HAS_PRELOADER = False
+from karaoke_gen.lyrics_transcriber.utils.syllable_counter import SyllableCounter
 
 
 class SyllablesMatchHandler(GapCorrectionHandler):
@@ -28,121 +13,21 @@ class SyllablesMatchHandler(GapCorrectionHandler):
     def __init__(self, logger: Optional[logging.Logger] = None):
         super().__init__(logger)
         self.logger = logger or logging.getLogger(__name__)
-        init_start = time.time()
-
-        # Marking SpacySyllables as used to prevent unused import warning
-        _ = SpacySyllables
-
-        # Try to use preloaded model first (avoids 60+ second load on Cloud Run)
-        if _HAS_PRELOADER:
-            preloaded = get_preloaded_model("en_core_web_sm")
-            if preloaded is not None:
-                self.logger.info("Using preloaded SpaCy model for syllable analysis")
-                self.nlp = preloaded
-                # Add syllables component if not already present
-                if "syllables" not in self.nlp.pipe_names:
-                    self.nlp.add_pipe("syllables", after="tagger")
-                self._init_nltk_resources()
-                init_elapsed = time.time() - init_start
-                self.logger.info(f"Initialized SyllablesMatchHandler in {init_elapsed:.2f}s (preloaded)")
-                return
-
-        # Fall back to loading model directly
-        self.logger.info("Loading SpaCy model for syllable analysis (not preloaded)...")
-        try:
-            self.nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            self.logger.info("Language model 'en_core_web_sm' not found. Attempting to download...")
-            import subprocess
-
-            try:
-                subprocess.check_call(["python", "-m", "spacy", "download", "en_core_web_sm"])
-                self.nlp = spacy.load("en_core_web_sm")
-                self.logger.info("Successfully downloaded and loaded en_core_web_sm")
-            except subprocess.CalledProcessError as e:
-                raise OSError(
-                    "Language model 'en_core_web_sm' could not be downloaded. "
-                    "Please install it manually with: python -m spacy download en_core_web_sm"
-                ) from e
-
-        # Add syllables component to pipeline if not already present
-        if "syllables" not in self.nlp.pipe_names:
-            self.nlp.add_pipe("syllables", after="tagger")
-
-        self._init_nltk_resources()
-        init_elapsed = time.time() - init_start
-        self.logger.info(f"Initialized SyllablesMatchHandler in {init_elapsed:.2f}s (lazy loaded)")
-
-    def _init_nltk_resources(self):
-        """Initialize NLTK resources (Pyphen and CMU dictionary)."""
-
-        # Initialize Pyphen for English
-        self.dic = pyphen.Pyphen(lang="en_US")
-
-        # Try to use preloaded cmudict first (avoids 50-100+ second download on Cloud Run)
-        if _HAS_PRELOADER:
-            preloaded_cmudict = get_preloaded_cmudict()
-            if preloaded_cmudict is not None:
-                self.logger.debug("Using preloaded NLTK cmudict")
-                self.cmudict = preloaded_cmudict
-                return
-
-        # Fall back to loading directly
-        self.logger.info("Loading NLTK cmudict (not preloaded)...")
-        try:
-            self.cmudict = cmudict.dict()
-        except LookupError:
-            nltk.download("cmudict")
-            self.cmudict = cmudict.dict()
-
-    def _count_syllables_spacy(self, words: List[str]) -> int:
-        """Count syllables using spacy_syllables."""
-        text = " ".join(words)
-        doc = self.nlp(text)
-        total_syllables = sum(token._.syllables_count or 1 for token in doc)
-        return total_syllables
-
-    def _count_syllables_pyphen(self, words: List[str]) -> int:
-        """Count syllables using pyphen."""
-        total_syllables = 0
-        for word in words:
-            hyphenated = self.dic.inserted(word)
-            syllables_count = len(hyphenated.split("-")) if hyphenated else 1
-            total_syllables += syllables_count
-        return total_syllables
-
-    def _count_syllables_nltk(self, words: List[str]) -> int:
-        """Count syllables using NLTK's CMU dictionary."""
-        total_syllables = 0
-        for word in words:
-            word = word.lower()
-            if word in self.cmudict:
-                syllables_count = len([ph for ph in self.cmudict[word][0] if ph[-1].isdigit()])
-                total_syllables += syllables_count
-            else:
-                total_syllables += 1
-        return total_syllables
-
-    def _count_syllables_lib(self, words: List[str]) -> int:
-        """Count syllables using the syllables library."""
-        total_syllables = 0
-        for word in words:
-            syllables_count = syllables.estimate(word)
-            total_syllables += syllables_count
-        return total_syllables
+        self._counter = SyllableCounter(logger=self.logger)
+        # Preserve attributes that external code may still inspect
+        self.nlp = self._counter.nlp
+        self.dic = self._counter.dic
+        self.cmudict = self._counter.cmudict
 
     def _count_syllables(self, words: List[str]) -> List[int]:
-        """Count syllables using multiple methods."""
-        spacy_count = self._count_syllables_spacy(words)
-        pyphen_count = self._count_syllables_pyphen(words)
-        nltk_count = self._count_syllables_nltk(words)
-        syllables_count = self._count_syllables_lib(words)
-
+        """Count syllables using multiple methods (delegates to shared SyllableCounter)."""
+        counts = self._counter.count_per_word(words)
         text = " ".join(words)
         self.logger.debug(
-            f"Syllable counts for '{text}': spacy={spacy_count}, pyphen={pyphen_count}, nltk={nltk_count}, syllables={syllables_count}"
+            f"Syllable counts for '{text}': spacy={counts[0]}, pyphen={counts[1]}, "
+            f"nltk={counts[2]}, syllables={counts[3]}"
         )
-        return [spacy_count, pyphen_count, nltk_count, syllables_count]
+        return counts
 
     def can_handle(self, gap: GapSequence, data: Optional[Dict[str, Any]] = None) -> Tuple[bool, Dict[str, Any]]:
         # Must have reference words
