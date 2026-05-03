@@ -73,4 +73,10 @@ describe('CustomLyricsPreview', () => {
     renderWith({ stopReason: 'plateau' })
     expect(screen.getByText(/AI couldn't improve further/i)).toBeInTheDocument()
   })
+
+  it('labels each input with its line number for accessibility', () => {
+    renderWith()
+    expect(screen.getByLabelText('Line 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Line 2')).toBeInTheDocument()
+  })
 })

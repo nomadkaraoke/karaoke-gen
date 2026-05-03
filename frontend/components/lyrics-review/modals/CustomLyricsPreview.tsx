@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { Check, AlertTriangle, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import type { LineMetadata, LineSeverity, StopReason } from '@/lib/api/customLyrics'
 
 interface Props {
@@ -93,10 +94,11 @@ interface LineRowProps {
 }
 
 function LineRow({ index, text, meta, onEdit }: LineRowProps) {
+  const t = useTranslations('lyricsReview.modals.customLyricsMode.preview')
   const severity: LineSeverity = meta?.severity ?? 'ok'
   const colorClass = severityClass(severity)
   const summary = meta
-    ? `target ${median(meta.target_syllables)} / actual ${median(meta.candidate_syllables)} · Δ${meta.min_delta}`
+    ? `${t('syllableSummary', { target: median(meta.target_syllables), actual: median(meta.candidate_syllables) })} · ${t('syllableDelta', { delta: meta.min_delta })}`
     : ''
 
   return (
@@ -107,7 +109,8 @@ function LineRow({ index, text, meta, onEdit }: LineRowProps) {
       <Input
         value={text}
         onChange={(e) => onEdit(e.target.value)}
-        className={'flex-1 font-mono text-sm h-8 ' + colorClass}
+        aria-label={t('lineNumberLabel', { n: index + 1 })}
+        className={cn('flex-1 font-mono text-sm h-8', colorClass)}
       />
       <span className="text-xs text-muted-foreground w-44 shrink-0 text-right">{summary}</span>
       <SeverityBadge severity={severity} />
@@ -128,7 +131,8 @@ function severityClass(s: LineSeverity): string {
 }
 
 function SeverityBadge({ severity }: { severity: LineSeverity }) {
-  if (severity === 'ok') return <Check className="h-4 w-4 text-green-500 shrink-0" />
-  if (severity === 'minor') return <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
-  return <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+  const t = useTranslations('lyricsReview.modals.customLyricsMode.preview')
+  if (severity === 'ok') return <Check className="h-4 w-4 text-green-500 shrink-0" aria-label={t('severityOk')} role="img" />
+  if (severity === 'minor') return <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" aria-label={t('severityMinor')} role="img" />
+  return <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-label={t('severityMajor')} role="img" />
 }
