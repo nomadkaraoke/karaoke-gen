@@ -36,3 +36,27 @@ def test_count_per_line_tokenises_then_counts(counter: SyllableCounter) -> None:
 def test_count_per_line_handles_punctuation(counter: SyllableCounter) -> None:
     counts = counter.count_per_line("Hello, world!")
     assert all(c >= 2 for c in counts)
+
+
+def test_any_method_within_all_match() -> None:
+    assert SyllableCounter.any_method_within([5, 5, 5, 5], [5, 5, 5, 5], tolerance=0) is True
+
+
+def test_any_method_within_one_pair_close() -> None:
+    # spacy(candidate)=10, syllables(target)=8 → delta=2; passes at tol=2
+    assert SyllableCounter.any_method_within([10, 11, 12, 13], [6, 7, 7, 8], tolerance=2) is True
+
+
+def test_any_method_within_no_pair_close() -> None:
+    assert SyllableCounter.any_method_within([10, 10, 10, 10], [5, 5, 5, 5], tolerance=2) is False
+
+
+def test_any_method_within_empty_inputs_returns_false() -> None:
+    assert SyllableCounter.any_method_within([], [5, 5, 5, 5], tolerance=10) is False
+    assert SyllableCounter.any_method_within([5, 5, 5, 5], [], tolerance=10) is False
+
+
+def test_min_delta() -> None:
+    assert SyllableCounter.min_delta([10, 11, 12, 13], [6, 7, 7, 8]) == 2
+    assert SyllableCounter.min_delta([5, 5, 5, 5], [5, 5, 5, 5]) == 0
+    assert SyllableCounter.min_delta([], [5, 5, 5, 5]) == 0
