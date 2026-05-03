@@ -577,6 +577,15 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: Cache spaCy model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/spacy
+          key: spacy-en_core_web_sm-${{ runner.os }}
+
+      - name: Install spaCy language models
+        run: poetry run python -m spacy download en_core_web_sm
+
       - name: Run all backend unit tests
         env:
           GOOGLE_CLOUD_PROJECT: test-project
