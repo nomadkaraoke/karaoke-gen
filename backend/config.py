@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     custom_lyrics_model: str = os.getenv("CUSTOM_LYRICS_MODEL", "gemini-3.1-pro-preview")
     custom_lyrics_max_file_mb: int = int(os.getenv("CUSTOM_LYRICS_MAX_FILE_MB", "5"))
     custom_lyrics_max_input_lines: int = int(os.getenv("CUSTOM_LYRICS_MAX_INPUT_LINES", "500"))
+    custom_lyrics_max_iterations: int = int(os.getenv("CUSTOM_LYRICS_MAX_ITERATIONS", "4"))
+    custom_lyrics_default_strictness: str = os.getenv("CUSTOM_LYRICS_DEFAULT_STRICTNESS", "balanced")
+    custom_lyrics_max_output_lines_multiplier: float = float(os.getenv("CUSTOM_LYRICS_MAX_OUTPUT_LINES_MULTIPLIER", "2.0"))
 
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
