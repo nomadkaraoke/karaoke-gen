@@ -310,10 +310,14 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
     })
   }, [])
 
-  // Check if there are words after cursor that can be unsynced
+  // Check if there are words after cursor that can be unsynced.
+  // Use the currentTime prop directly (not currentTimeRef) — reading the ref
+  // here is one frame stale because the effect that updates ref.current runs
+  // AFTER this useMemo. When currentTime jumps backward (user scrubs), the
+  // useMemo computes against the previous (higher) ref value and caches the
+  // wrong answer until currentTime changes again.
   const canUnsyncFromCursor = useMemo(() => {
-    const cursorTime = currentTimeRef.current
-    return allWords.some((w) => w.start_time !== null && w.start_time > cursorTime)
+    return allWords.some((w) => w.start_time !== null && w.start_time > currentTime)
   }, [allWords, currentTime])
 
   // Open edit lyrics modal
