@@ -211,9 +211,10 @@ export default function CustomLyricsMode({
   }, [phase, settings.fixed_line_count, previewLineDiff, previewLineCount, expectedLineCount])
 
   const handleLineEdit = useCallback((index: number, text: string) => {
+    const sanitized = text.replace(/\r?\n/g, ' ')
     setGeneratedText((prev) => {
       const lines = prev.split('\n')
-      lines[index] = text
+      lines[index] = sanitized
       return lines.join('\n')
     })
   }, [])
