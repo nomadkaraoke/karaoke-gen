@@ -5,12 +5,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, X, Sparkles, FileText, Type, AlertTriangle, Check, Upload, Info } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 import { LyricsSegment } from '@/lib/lyrics-review/types'
 import { segmentsFromLines } from '@/lib/lyrics-review/utils/segmentsFromLines'
-import { generateCustomLyrics, CustomLyricsApiError } from '@/lib/api/customLyrics'
+import {
+  generateCustomLyrics,
+  CustomLyricsApiError,
+  GenerationSettings,
+  DEFAULT_GENERATION_SETTINGS,
+  LineMetadata,
+  StopReason,
+} from '@/lib/api/customLyrics'
+import CustomLyricsSettings from './CustomLyricsSettings'
+import CustomLyricsPreview from './CustomLyricsPreview'
 
 const ACCEPTED_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -61,6 +70,11 @@ export default function CustomLyricsMode({
   const [lineCountMismatch, setLineCountMismatch] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [modelUsed, setModelUsed] = useState<string | null>(null)
+  const [settings, setSettings] = useState<GenerationSettings>(DEFAULT_GENERATION_SETTINGS)
+  const [lineMetadata, setLineMetadata] = useState<LineMetadata[]>([])
+  const [iterationsUsed, setIterationsUsed] = useState(0)
+  const [stopReason, setStopReason] = useState<StopReason>('success')
+  const [newSegmentTiming, setNewSegmentTiming] = useState<Array<[number, number]> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   // Reset state on open
@@ -77,6 +91,11 @@ export default function CustomLyricsMode({
       setLineCountMismatch(false)
       setError(null)
       setModelUsed(null)
+      setSettings(DEFAULT_GENERATION_SETTINGS)
+      setLineMetadata([])
+      setIterationsUsed(0)
+      setStopReason('success')
+      setNewSegmentTiming(null)
     }
   }, [open])
 
@@ -140,6 +159,7 @@ export default function CustomLyricsMode({
           notes: notes.trim() || undefined,
           artist,
           title,
+          settings,
         },
         ac.signal,
         authToken,
@@ -147,8 +167,12 @@ export default function CustomLyricsMode({
 
       setGeneratedText(response.lines.join('\n'))
       setWarnings(response.warnings)
-      setLineCountMismatch(response.lineCountMismatch)
+      setLineCountMismatch(response.line_count_mismatch)
       setModelUsed(response.model)
+      setLineMetadata(response.line_metadata)
+      setIterationsUsed(response.iterations_used)
+      setStopReason(response.stop_reason)
+      setNewSegmentTiming(response.new_segment_timing)
       setPhase('preview')
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
@@ -168,6 +192,7 @@ export default function CustomLyricsMode({
     notes,
     artist,
     title,
+    settings,
     authToken,
     t,
   ])
@@ -178,17 +203,32 @@ export default function CustomLyricsMode({
   )
   const expectedLineCount = existingLines.length
   const previewLineDiff = previewLineCount - expectedLineCount
-  const canSave = previewLineDiff === 0 && phase === 'preview'
+
+  const canSave = useMemo(() => {
+    if (phase !== 'preview') return false
+    if (settings.fixed_line_count) return previewLineDiff === 0
+    return previewLineCount > 0 && previewLineCount <= expectedLineCount * 2
+  }, [phase, settings.fixed_line_count, previewLineDiff, previewLineCount, expectedLineCount])
+
+  const handleLineEdit = useCallback((index: number, text: string) => {
+    setGeneratedText((prev) => {
+      const lines = prev.split('\n')
+      lines[index] = text
+      return lines.join('\n')
+    })
+  }, [])
 
   const handleSave = useCallback(() => {
     const lines = generatedText.split('\n')
-    const newSegments = segmentsFromLines(lines, existingSegments)
+    const newSegments = segmentsFromLines(lines, existingSegments, {
+      redistributedTiming: newSegmentTiming ?? undefined,
+    })
     onSave(newSegments, {
       source: inputTab,
       filename: file?.name,
       model: modelUsed ?? 'unknown',
     })
-  }, [generatedText, existingSegments, onSave, inputTab, file, modelUsed])
+  }, [generatedText, existingSegments, onSave, inputTab, file, modelUsed, newSegmentTiming])
 
   const handleClose = useCallback(() => {
     abortRef.current?.abort()
@@ -287,6 +327,12 @@ export default function CustomLyricsMode({
                 />
               </div>
 
+              <CustomLyricsSettings
+                settings={settings}
+                onChange={setSettings}
+                disabled={false}
+              />
+
               {error && (
                 <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-sm text-destructive">
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -310,7 +356,7 @@ export default function CustomLyricsMode({
             </div>
           )}
 
-          {/* Preview phase — Task 12 */}
+          {/* Preview phase */}
           {phase === 'preview' && (
             <>
               <div className="flex items-center justify-between">
@@ -353,14 +399,16 @@ export default function CustomLyricsMode({
                 </div>
               )}
 
-              <Textarea
-                value={generatedText}
-                onChange={(e) => setGeneratedText(e.target.value)}
-                placeholder={t('previewPlaceholder')}
-                className="flex-1 resize-none font-mono text-sm min-h-[260px]"
+              <CustomLyricsPreview
+                lines={generatedText.split('\n')}
+                lineMetadata={lineMetadata}
+                iterationsUsed={iterationsUsed}
+                stopReason={stopReason}
+                expectedLineCount={expectedLineCount}
+                onLineEdit={handleLineEdit}
               />
 
-              {previewLineDiff !== 0 && (
+              {settings.fixed_line_count && previewLineDiff !== 0 && (
                 <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-sm text-destructive">
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                   <p>
@@ -372,7 +420,7 @@ export default function CustomLyricsMode({
               )}
             </>
           )}
-</div>
+        </div>
 
         <DialogFooter>
           {phase === 'input' && (
