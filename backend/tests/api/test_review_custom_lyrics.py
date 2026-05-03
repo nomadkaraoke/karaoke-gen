@@ -56,17 +56,55 @@ def teardown_function(_):  # noqa: ANN001
     )
 
 
-def test_happy_path_text(client: TestClient) -> None:
-    _override_service(
-        CustomLyricsResult(
-            lines=["a", "b"],
-            warnings=[],
-            model="gemini-3.1-pro-preview",
-            line_count_mismatch=False,
-            duration_ms=42,
-            retry_count=0,
-        )
+def _make_result(
+    lines: list[str] | None = None,
+    *,
+    iterations_used: int = 0,
+    stop_reason_value: str = "success",
+    line_count_mismatch: bool = False,
+    new_segment_timing: list[tuple[float, float]] | None = None,
+    warnings: list[str] | None = None,
+    line_metadata: list | None = None,
+) -> "CustomLyricsResult":
+    """Build a minimal CustomLyricsResult for service-mock returns."""
+    from backend.services.custom_lyrics.result import CustomLyricsResult as _Result, StopReason
+    from backend.services.custom_lyrics.settings import GenerationSettings
+    from backend.services.custom_lyrics.validator import LineValidation, Severity
+
+    out_lines = lines if lines is not None else ["dear jane", "dear jane"]
+
+    if line_metadata is None:
+        line_metadata = [
+            LineValidation(
+                line_index=i,
+                target_text=f"target {i}",
+                candidate_text=line,
+                target_syllables=[2, 2, 2, 2],
+                candidate_syllables=[2, 2, 2, 2],
+                min_delta=0,
+                passes=True,
+                severity=Severity.OK,
+                time_budget_seconds=1.0,
+            )
+            for i, line in enumerate(out_lines)
+        ]
+
+    return _Result(
+        lines=out_lines,
+        line_metadata=line_metadata,
+        iterations_used=iterations_used,
+        stop_reason=StopReason(stop_reason_value),
+        settings_applied=GenerationSettings(),
+        model="gemini-3.1-pro-preview",
+        duration_ms=100,
+        new_segment_timing=new_segment_timing,
+        line_count_mismatch=line_count_mismatch,
+        warnings=warnings or [],
     )
+
+
+def test_happy_path_text(client: TestClient) -> None:
+    _override_service(_make_result(["a", "b"]))
 
     response = client.post(
         "/api/review/test-job/custom-lyrics/generate",
@@ -84,6 +122,8 @@ def test_happy_path_text(client: TestClient) -> None:
     assert body["lines"] == ["a", "b"]
     assert body["line_count_mismatch"] is False
     assert body["model"] == "gemini-3.1-pro-preview"
+    assert body["iterations_used"] == 0
+    assert body["stop_reason"] == "success"
 
 
 def test_missing_existing_lines_400(client: TestClient) -> None:
@@ -143,16 +183,7 @@ def test_no_text_and_no_file_400(client: TestClient) -> None:
 
 
 def test_file_upload_passed_through(client: TestClient) -> None:
-    mock_service = _override_service(
-        CustomLyricsResult(
-            lines=["x"],
-            warnings=[],
-            model="m",
-            line_count_mismatch=False,
-            duration_ms=1,
-            retry_count=0,
-        )
-    )
+    mock_service = _override_service(_make_result(["x"]))
 
     response = client.post(
         "/api/review/test-job/custom-lyrics/generate",
@@ -200,13 +231,11 @@ def test_service_502_propagates_status(client: TestClient) -> None:
 
 def test_line_count_mismatch_returns_200_with_flag(client: TestClient) -> None:
     _override_service(
-        CustomLyricsResult(
-            lines=["only-one"],
-            warnings=["AI returned 1 lines but 2 were expected."],
-            model="m",
+        _make_result(
+            ["only-one"],
             line_count_mismatch=True,
-            duration_ms=10,
-            retry_count=1,
+            stop_reason_value="line_count_mismatch",
+            warnings=["AI returned 1 lines but 2 were expected."],
         )
     )
 
@@ -222,4 +251,74 @@ def test_line_count_mismatch_returns_200_with_flag(client: TestClient) -> None:
     body = response.json()
     assert body["line_count_mismatch"] is True
     assert len(body["warnings"]) == 1
-    assert body["retry_count"] == 1
+    assert body["stop_reason"] == "line_count_mismatch"
+
+
+def test_endpoint_accepts_settings_json(client: TestClient) -> None:
+    """Posting valid settings_json plumbs settings through to the service."""
+    mock_service = _override_service(_make_result(["dear", "jane"]))
+    response = client.post(
+        "/api/review/job-1/custom-lyrics/generate",
+        data={
+            "existing_lines": json.dumps(["aa", "bb"]),
+            "custom_text": "x",
+            "settings_json": json.dumps({
+                "allow_reword": False,
+                "strictness": "tight",
+            }),
+        },
+    )
+    assert response.status_code == 200, response.text
+    call_kwargs = mock_service.generate.call_args.kwargs
+    settings = call_kwargs["settings"]
+    assert settings.allow_reword is False
+    assert settings.strictness.value == "tight"
+    # Defaults preserved when not specified
+    assert settings.allow_omit is True
+    assert settings.fixed_line_count is True
+
+
+def test_endpoint_rejects_invalid_settings_json(client: TestClient) -> None:
+    _override_service(_make_result())
+    response = client.post(
+        "/api/review/job-1/custom-lyrics/generate",
+        data={
+            "existing_lines": json.dumps(["aa"]),
+            "custom_text": "x",
+            "settings_json": "not json",
+        },
+    )
+    assert response.status_code == 400
+    assert "settings_json" in response.json()["detail"].lower()
+
+
+def test_endpoint_rejects_invalid_strictness(client: TestClient) -> None:
+    _override_service(_make_result())
+    response = client.post(
+        "/api/review/job-1/custom-lyrics/generate",
+        data={
+            "existing_lines": json.dumps(["aa"]),
+            "custom_text": "x",
+            "settings_json": json.dumps({"strictness": "extreme"}),
+        },
+    )
+    assert response.status_code == 400
+
+
+def test_endpoint_returns_line_metadata(client: TestClient) -> None:
+    """Response includes per-line metadata."""
+    _override_service(_make_result(["dear", "jane"]))
+    response = client.post(
+        "/api/review/job-1/custom-lyrics/generate",
+        data={
+            "existing_lines": json.dumps(["aa", "bb"]),
+            "custom_text": "x",
+        },
+    )
+    body = response.json()
+    assert "line_metadata" in body
+    assert len(body["line_metadata"]) == 2
+    for entry in body["line_metadata"]:
+        assert "min_delta" in entry
+        assert "severity" in entry
+        assert entry["severity"] in {"ok", "minor", "major"}
