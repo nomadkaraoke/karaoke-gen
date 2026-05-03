@@ -576,12 +576,21 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
 
       if (syncWordIndex > 0) {
         const prevWord = newWords[syncWordIndex - 1]
-        if (prevWord.start_time !== null && prevWord.end_time === null) {
-          const gap = currentTimeRef.current - prevWord.start_time
-          if (gap > 1.0) {
-            prevWord.end_time = prevWord.start_time + 0.5
-          } else {
-            prevWord.end_time = currentTimeRef.current - 0.005
+        if (prevWord.start_time !== null) {
+          // Cap previous word's end at the new word's start so they never
+          // overlap. Tap-mode keyUp optimistically sets end_time = start + 500ms;
+          // when the next word starts within 500ms, that placeholder must
+          // shrink, otherwise the karaoke video lights up multiple words at
+          // once. Hold-mode words may also still have null end_time if a
+          // keyUp was missed — they get the same cap.
+          const cap = currentTimeRef.current - 0.005
+          if (prevWord.end_time === null || prevWord.end_time > cap) {
+            const gap = currentTimeRef.current - prevWord.start_time
+            if (prevWord.end_time === null && gap > 1.0) {
+              prevWord.end_time = prevWord.start_time + 0.5
+            } else {
+              prevWord.end_time = Math.max(prevWord.start_time + 0.05, cap)
+            }
           }
         }
       }
@@ -680,12 +689,16 @@ const LyricsSynchronizer = memo(function LyricsSynchronizer({
 
     if (syncWordIndex > 0) {
       const prevWord = newWords[syncWordIndex - 1]
-      if (prevWord.start_time !== null && prevWord.end_time === null) {
-        const gap = currentTimeRef.current - prevWord.start_time
-        if (gap > 1.0) {
-          prevWord.end_time = prevWord.start_time + 0.5
-        } else {
-          prevWord.end_time = currentTimeRef.current - 0.005
+      if (prevWord.start_time !== null) {
+        // See handleKeyDown for rationale — same overlap-prevention logic.
+        const cap = currentTimeRef.current - 0.005
+        if (prevWord.end_time === null || prevWord.end_time > cap) {
+          const gap = currentTimeRef.current - prevWord.start_time
+          if (prevWord.end_time === null && gap > 1.0) {
+            prevWord.end_time = prevWord.start_time + 0.5
+          } else {
+            prevWord.end_time = Math.max(prevWord.start_time + 0.05, cap)
+          }
         }
       }
     }
