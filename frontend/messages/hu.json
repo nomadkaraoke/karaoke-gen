@@ -1188,6 +1188,22 @@
           "strictnessTight": "Szoros",
           "strictnessVerbatim": "Szó szerinti",
           "title": "Generálási beállítások"
+        },
+        "preview": {
+          "iterationsBadge": "MI iterációk: {n}",
+          "lineNumberLabel": "{n}. sor",
+          "linesPassingBadge": "{passing}/{total} sor megfelelő",
+          "severityMajor": "Súlyos",
+          "severityMinor": "Kisebb",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "A kimeneti sorok száma nem egyezik — javítsd manuálisan mentés előtt.",
+          "stopReasonMaxIters": "Maximális javítási kísérlet elérve; néhány sor még mindig túllépi a keretet.",
+          "stopReasonPlateau": "A MI nem tudott tovább javítani; néhány sor még mindig túllépi a keretet.",
+          "stopReasonSuccess": "Minden sor belefér a szótagkeretbe.",
+          "stopReasonVerbatimSkip": "Szó szerinti mód: a szótagok egyeztetése nem kötelező.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "cél {target} / tényleges {actual}",
+          "variableLineCountBanner": "A kimenet {actual} sort tartalmaz az eredeti {expected} helyett. A szegmensek arányosan lesznek újra időzítve — mentés után szinkronizálj minden szegmenst manuálisan."
         }
       }
     },

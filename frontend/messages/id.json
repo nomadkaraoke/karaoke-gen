@@ -1188,6 +1188,22 @@
           "strictnessTight": "Tepat",
           "strictnessVerbatim": "Verbatim",
           "title": "Pengaturan pembuatan"
+        },
+        "preview": {
+          "iterationsBadge": "Iterasi AI: {n}",
+          "lineNumberLabel": "Baris {n}",
+          "linesPassingBadge": "{passing}/{total} baris lolos",
+          "severityMajor": "Mayor",
+          "severityMinor": "Minor",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Jumlah baris output tidak cocok — perbaiki secara manual sebelum menyimpan.",
+          "stopReasonMaxIters": "Batas maksimal upaya perbaikan tercapai; beberapa baris masih melebihi batas.",
+          "stopReasonPlateau": "AI tidak dapat meningkatkan lebih lanjut; beberapa baris masih melebihi batas.",
+          "stopReasonSuccess": "Semua baris sesuai dengan batas suku kata.",
+          "stopReasonVerbatimSkip": "Mode verbatim: pencocokan suku kata tidak diwajibkan.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "target {target} / aktual {actual}",
+          "variableLineCountBanner": "Output memiliki {actual} baris vs {expected} baris asli. Waktu segmen akan diatur ulang secara proporsional — sinkronkan setiap segmen secara manual setelah menyimpan."
         }
       }
     },

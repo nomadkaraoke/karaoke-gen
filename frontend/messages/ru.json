@@ -1188,6 +1188,22 @@
           "strictnessTight": "Жесткая",
           "strictnessVerbatim": "Дословно",
           "title": "Настройки генерации"
+        },
+        "preview": {
+          "iterationsBadge": "Итерации ИИ: {n}",
+          "lineNumberLabel": "Строка {n}",
+          "linesPassingBadge": "{passing}/{total} строк проходит",
+          "severityMajor": "Критично",
+          "severityMinor": "Незначительно",
+          "severityOk": "ОК",
+          "stopReasonLineCountMismatch": "Количество строк не совпадает — исправь вручную перед сохранением.",
+          "stopReasonMaxIters": "Достигнут максимум попыток исправления; некоторые строки всё ещё превышают лимит.",
+          "stopReasonPlateau": "ИИ не смог улучшить результат; некоторые строки всё ещё превышают лимит.",
+          "stopReasonSuccess": "Все строки укладываются в лимит слогов.",
+          "stopReasonVerbatimSkip": "Дословный режим: совпадение слогов не требуется.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "цель {target} / факт {actual}",
+          "variableLineCountBanner": "Получено {actual} строк вместо {expected} исходных. Время сегментов будет изменено пропорционально — синхронизируй каждый сегмент вручную после сохранения."
         }
       }
     },

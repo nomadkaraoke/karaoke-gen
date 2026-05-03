@@ -1188,6 +1188,22 @@
           "strictnessTight": "Щільна",
           "strictnessVerbatim": "Дослівна",
           "title": "Налаштування генерації"
+        },
+        "preview": {
+          "iterationsBadge": "Ітерації ШІ: {n}",
+          "lineNumberLabel": "Рядок {n}",
+          "linesPassingBadge": "{passing}/{total} рядків проходять",
+          "severityMajor": "Значна",
+          "severityMinor": "Незначна",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Кількість рядків на виході не збігається — виправ вручну перед збереженням.",
+          "stopReasonMaxIters": "Досягнуто максимальної кількості спроб виправлення; деякі рядки все ще перевищують ліміт.",
+          "stopReasonPlateau": "ШІ не зміг покращити далі; деякі рядки все ще перевищують ліміт.",
+          "stopReasonSuccess": "Усі рядки вписуються в ліміт складів.",
+          "stopReasonVerbatimSkip": "Дослівний режим: відповідність складів не вимагається.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "ціль {target} / фактично {actual}",
+          "variableLineCountBanner": "На виході {actual} рядків замість {expected} в оригіналі. Сегменти будуть пропорційно перераховані в часі — синхронізуй кожен сегмент вручну після збереження."
         }
       }
     },

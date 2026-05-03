@@ -1188,6 +1188,22 @@
           "strictnessTight": "Restrito",
           "strictnessVerbatim": "Literal",
           "title": "Configurações de geração"
+        },
+        "preview": {
+          "iterationsBadge": "Iterações da IA: {n}",
+          "lineNumberLabel": "Linha {n}",
+          "linesPassingBadge": "{passing}/{total} linhas aprovadas",
+          "severityMajor": "Grave",
+          "severityMinor": "Leve",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "A contagem de linhas de saída não corresponde — corrija manualmente antes de salvar.",
+          "stopReasonMaxIters": "Número máximo de tentativas de reparo atingido; algumas linhas ainda estão acima do limite.",
+          "stopReasonPlateau": "A IA não conseguiu melhorar mais; algumas linhas ainda estão acima do limite.",
+          "stopReasonSuccess": "Todas as linhas se ajustam ao limite de sílabas.",
+          "stopReasonVerbatimSkip": "Modo literal: correspondência de sílabas não aplicada.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "meta {target} / real {actual}",
+          "variableLineCountBanner": "A saída tem {actual} linhas vs {expected} originais. Os segmentos serão ressincronizados proporcionalmente — sincronize cada segmento manualmente após salvar."
         }
       }
     },

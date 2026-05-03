@@ -1188,6 +1188,22 @@
           "strictnessTight": "타이트함",
           "strictnessVerbatim": "원문 그대로",
           "title": "생성 설정"
+        },
+        "preview": {
+          "iterationsBadge": "AI 반복: {n}",
+          "lineNumberLabel": "{n}번째 줄",
+          "linesPassingBadge": "{passing}/{total}줄 통과",
+          "severityMajor": "심각",
+          "severityMinor": "경미",
+          "severityOk": "정상",
+          "stopReasonLineCountMismatch": "출력 줄 수가 일치하지 않습니다. 저장하기 전에 수동으로 수정해 주세요.",
+          "stopReasonMaxIters": "최대 수정 시도 횟수에 도달했습니다. 일부 줄이 여전히 허용치를 초과합니다.",
+          "stopReasonPlateau": "AI가 더 이상 개선할 수 없습니다. 일부 줄이 여전히 허용치를 초과합니다.",
+          "stopReasonSuccess": "모든 줄이 음절 수 허용치에 맞습니다.",
+          "stopReasonVerbatimSkip": "원문 모드: 음절 수 맞추기가 강제되지 않습니다.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "목표 {target} / 실제 {actual}",
+          "variableLineCountBanner": "출력 결과가 원본 {expected}줄 대비 {actual}줄입니다. 구간이 비율에 맞춰 다시 조정됩니다. 저장 후 각 구간을 수동으로 동기화해 주세요."
         }
       }
     },

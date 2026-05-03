@@ -1188,6 +1188,22 @@
           "strictnessTight": "Strâns",
           "strictnessVerbatim": "Textual",
           "title": "Setări de generare"
+        },
+        "preview": {
+          "iterationsBadge": "Iterații AI: {n}",
+          "lineNumberLabel": "Linia {n}",
+          "linesPassingBadge": "{passing}/{total} linii valide",
+          "severityMajor": "Major",
+          "severityMinor": "Minor",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Numărul de linii rezultate nu se potrivește — corectează manual înainte de a salva.",
+          "stopReasonMaxIters": "Numărul maxim de încercări de reparare a fost atins; unele linii depășesc încă bugetul.",
+          "stopReasonPlateau": "AI-ul nu a putut îmbunătăți mai mult; unele linii depășesc încă bugetul.",
+          "stopReasonSuccess": "Toate liniile se încadrează în bugetul de silabe.",
+          "stopReasonVerbatimSkip": "Modul verbatim: potrivirea silabelor nu este impusă.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "țintă {target} / actual {actual}",
+          "variableLineCountBanner": "Rezultatul are {actual} linii față de {expected} original. Segmentele vor fi re-sincronizate proporțional — sincronizează fiecare segment manual după salvare."
         }
       }
     },

@@ -1188,6 +1188,22 @@
           "strictnessTight": "הדוקה",
           "strictnessVerbatim": "מילולית",
           "title": "הגדרות יצירה"
+        },
+        "preview": {
+          "iterationsBadge": "איטרציות AI: {n}",
+          "lineNumberLabel": "שורה {n}",
+          "linesPassingBadge": "{passing}/{total} שורות תקינות",
+          "severityMajor": "חמור",
+          "severityMinor": "משני",
+          "severityOk": "תקין",
+          "stopReasonLineCountMismatch": "מספר השורות בפלט אינו תואם — יש לתקן ידנית לפני השמירה.",
+          "stopReasonMaxIters": "הגענו למספר המרבי של ניסיונות תיקון; חלק מהשורות עדיין חורגות מהתקציב.",
+          "stopReasonPlateau": "ה-AI לא הצליח לשפר יותר; חלק מהשורות עדיין חורגות מהתקציב.",
+          "stopReasonSuccess": "כל השורות מתאימות לתקציב ההברות.",
+          "stopReasonVerbatimSkip": "מצב מילה במילה: התאמת הברות אינה נאכפת.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "יעד {target} / בפועל {actual}",
+          "variableLineCountBanner": "בפלט יש {actual} שורות לעומת {expected} במקור. המקטעים יתוזמנו מחדש באופן יחסי — יש לסנכרן כל מקטע ידנית לאחר השמירה."
         }
       }
     },

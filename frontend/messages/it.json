@@ -1188,6 +1188,22 @@
           "strictnessTight": "Preciso",
           "strictnessVerbatim": "Letterale",
           "title": "Impostazioni di generazione"
+        },
+        "preview": {
+          "iterationsBadge": "Iterazioni IA: {n}",
+          "lineNumberLabel": "Riga {n}",
+          "linesPassingBadge": "{passing}/{total} righe valide",
+          "severityMajor": "Grave",
+          "severityMinor": "Lieve",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Il numero di righe di output non corrisponde — correggi manualmente prima di salvare.",
+          "stopReasonMaxIters": "Raggiunto il limite massimo di tentativi di correzione; alcune righe superano ancora il limite.",
+          "stopReasonPlateau": "L'IA non ha potuto migliorare ulteriormente; alcune righe superano ancora il limite.",
+          "stopReasonSuccess": "Tutte le righe rispettano il limite di sillabe.",
+          "stopReasonVerbatimSkip": "Modalità letterale: corrispondenza delle sillabe non forzata.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "obiettivo {target} / effettivo {actual}",
+          "variableLineCountBanner": "L'output ha {actual} righe contro le {expected} originali. I tempi dei segmenti verranno ricalcolati in modo proporzionale — sincronizza manualmente ogni segmento dopo aver salvato."
         }
       }
     },

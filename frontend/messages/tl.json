@@ -1188,6 +1188,22 @@
           "strictnessTight": "Lapat",
           "strictnessVerbatim": "Verbatim",
           "title": "Mga setting ng pagbuo"
+        },
+        "preview": {
+          "iterationsBadge": "Mga AI iteration: {n}",
+          "lineNumberLabel": "Linya {n}",
+          "linesPassingBadge": "{passing}/{total} linyang pumasa",
+          "severityMajor": "Major",
+          "severityMinor": "Minor",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Hindi tugma ang bilang ng linya ng output — ayusin nang manual bago i-save.",
+          "stopReasonMaxIters": "Naabot na ang max na pagsubok sa pag-aayos; lumampas pa rin sa budget ang ilang linya.",
+          "stopReasonPlateau": "Hindi na mapabuti pa ng AI; lumampas pa rin sa budget ang ilang linya.",
+          "stopReasonSuccess": "Pasok sa syllable budget ang lahat ng linya.",
+          "stopReasonVerbatimSkip": "Verbatim mode: hindi ipinapatupad ang pagtutugma ng pantig.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "target {target} / aktwal {actual}",
+          "variableLineCountBanner": "May {actual} na linya ang output kumpara sa {expected} na orihinal. I-a-adjust ang oras ng mga segment nang proporsyonal — i-sync nang manual ang bawat segment pagkatapos i-save."
         }
       }
     },

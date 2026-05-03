@@ -1188,6 +1188,22 @@
           "strictnessTight": "Těsná",
           "strictnessVerbatim": "Doslovná",
           "title": "Nastavení generování"
+        },
+        "preview": {
+          "iterationsBadge": "Iterace AI: {n}",
+          "lineNumberLabel": "Řádek {n}",
+          "linesPassingBadge": "{passing}/{total} řádků vyhovuje",
+          "severityMajor": "Závažné",
+          "severityMinor": "Drobné",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Počet řádků na výstupu nesouhlasí — před uložením oprav ručně.",
+          "stopReasonMaxIters": "Dosaženo maxima pokusů o opravu; některé řádky stále překračují limit.",
+          "stopReasonPlateau": "AI už nedokázala výsledek zlepšit; některé řádky stále překračují limit.",
+          "stopReasonSuccess": "Všechny řádky se vejdou do limitu slabik.",
+          "stopReasonVerbatimSkip": "Doslovný režim: shoda slabik není vyžadována.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "cíl {target} / skutečnost {actual}",
+          "variableLineCountBanner": "Výstup má {actual} řádků oproti {expected} původním. Segmenty budou proporcionálně přečasovány — po uložení synchronizuj každý segment ručně."
         }
       }
     },

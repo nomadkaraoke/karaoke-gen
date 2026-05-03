@@ -1188,6 +1188,22 @@
           "strictnessTight": "Précise",
           "strictnessVerbatim": "Verbatim",
           "title": "Paramètres de génération"
+        },
+        "preview": {
+          "iterationsBadge": "Itérations de l'IA : {n}",
+          "lineNumberLabel": "Ligne {n}",
+          "linesPassingBadge": "{passing}/{total} lignes validées",
+          "severityMajor": "Majeur",
+          "severityMinor": "Mineur",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Le nombre de lignes générées ne correspond pas — corrige manuellement avant d'enregistrer.",
+          "stopReasonMaxIters": "Nombre maximum de tentatives de réparation atteint ; certaines lignes dépassent encore le budget.",
+          "stopReasonPlateau": "L'IA n'a pas pu faire mieux ; certaines lignes dépassent encore le budget.",
+          "stopReasonSuccess": "Toutes les lignes respectent le budget de syllabes.",
+          "stopReasonVerbatimSkip": "Mode verbatim : la correspondance des syllabes n'est pas imposée.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "cible {target} / réel {actual}",
+          "variableLineCountBanner": "Le résultat contient {actual} lignes contre {expected} à l'origine. Les segments seront recalés proportionnellement — synchronise chaque segment manuellement après l'enregistrement."
         }
       }
     },

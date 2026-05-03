@@ -1188,6 +1188,22 @@
           "strictnessTight": "やや厳密",
           "strictnessVerbatim": "そのまま",
           "title": "生成設定"
+        },
+        "preview": {
+          "iterationsBadge": "AI試行回数: {n}",
+          "lineNumberLabel": "{n}行目",
+          "linesPassingBadge": "{passing}/{total} 行クリア",
+          "severityMajor": "重大",
+          "severityMinor": "軽微",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "出力された行数が一致しません。保存する前に手動で修正してください。",
+          "stopReasonMaxIters": "最大修復試行回数に達しました。一部の行がまだ制限を超えています。",
+          "stopReasonPlateau": "AIによるこれ以上の改善ができませんでした。一部の行がまだ制限を超えています。",
+          "stopReasonSuccess": "すべての行がシラブルの制限内に収まりました。",
+          "stopReasonVerbatimSkip": "逐語モード: シラブルの照合は適用されません。",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "目標 {target} / 実際 {actual}",
+          "variableLineCountBanner": "出力は{actual}行ですが、元の行数は{expected}行です。セグメントのタイミングは比例して再調整されます。保存後、各セグメントを手動で同期してください。"
         }
       }
     },

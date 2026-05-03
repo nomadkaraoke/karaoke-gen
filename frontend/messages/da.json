@@ -1188,6 +1188,22 @@
           "strictnessTight": "Stram",
           "strictnessVerbatim": "Ordret",
           "title": "Genereringsindstillinger"
+        },
+        "preview": {
+          "iterationsBadge": "AI-iterationer: {n}",
+          "lineNumberLabel": "Linje {n}",
+          "linesPassingBadge": "{passing}/{total} linjer godkendt",
+          "severityMajor": "Alvorlig",
+          "severityMinor": "Mindre",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Antallet af output-linjer stemmer ikke overens — ret manuelt før du gemmer.",
+          "stopReasonMaxIters": "Maksimalt antal reparationsforsøg nået; nogle linjer overskrider stadig budgettet.",
+          "stopReasonPlateau": "AI kunne ikke forbedre yderligere; nogle linjer overskrider stadig budgettet.",
+          "stopReasonSuccess": "Alle linjer passer til stavelsesbudgettet.",
+          "stopReasonVerbatimSkip": "Ordret-tilstand: stavelsesmatch håndhæves ikke.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "mål {target} / faktisk {actual}",
+          "variableLineCountBanner": "Output har {actual} linjer mod {expected} oprindelige. Segmenter vil blive om-tidsindstillet proportionalt — synkroniser hvert segment manuelt efter du har gemt."
         }
       }
     },

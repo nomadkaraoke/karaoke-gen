@@ -1188,6 +1188,22 @@
           "strictnessTight": "Tiukka",
           "strictnessVerbatim": "Sanatarkka",
           "title": "Luontiasetukset"
+        },
+        "preview": {
+          "iterationsBadge": "Tekoälyn iteraatiot: {n}",
+          "lineNumberLabel": "Rivi {n}",
+          "linesPassingBadge": "{passing}/{total} riviä kunnossa",
+          "severityMajor": "Vakava",
+          "severityMinor": "Lievä",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Tulosteen rivimäärä ei täsmää — korjaa manuaalisesti ennen tallentamista.",
+          "stopReasonMaxIters": "Korjausyritysten enimmäismäärä saavutettu; jotkin rivit ylittävät yhä budjetin.",
+          "stopReasonPlateau": "Tekoäly ei pystynyt enää parantamaan; jotkin rivit ylittävät yhä budjetin.",
+          "stopReasonSuccess": "Kaikki rivit mahtuvat tavubudjettiin.",
+          "stopReasonVerbatimSkip": "Sanatarkka tila: tavujen täsmäytystä ei vaadita.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "tavoite {target} / todellinen {actual}",
+          "variableLineCountBanner": "Tulosteessa on {actual} riviä verrattuna alkuperäiseen {expected} riviin. Segmentit ajoitetaan uudelleen suhteellisesti — synkronoi jokainen segmentti manuaalisesti tallennuksen jälkeen."
         }
       }
     },

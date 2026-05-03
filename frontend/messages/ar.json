@@ -1188,6 +1188,22 @@
           "strictnessTight": "مُحكم",
           "strictnessVerbatim": "حرفي",
           "title": "إعدادات الإنشاء"
+        },
+        "preview": {
+          "iterationsBadge": "تكرارات الذكاء الاصطناعي: {n}",
+          "lineNumberLabel": "السطر {n}",
+          "linesPassingBadge": "{passing}/{total} أسطر مجتازة",
+          "severityMajor": "رئيسي",
+          "severityMinor": "ثانوي",
+          "severityOk": "سليم",
+          "stopReasonLineCountMismatch": "عدد أسطر المخرجات غير متطابق — يرجى الإصلاح يدويًا قبل الحفظ.",
+          "stopReasonMaxIters": "تم الوصول إلى الحد الأقصى لمحاولات الإصلاح؛ لا تزال بعض الأسطر تتجاوز الحد المسموح به.",
+          "stopReasonPlateau": "لم يتمكن الذكاء الاصطناعي من إجراء المزيد من التحسينات؛ لا تزال بعض الأسطر تتجاوز الحد المسموح به.",
+          "stopReasonSuccess": "جميع الأسطر تتناسب مع حد المقاطع اللفظية.",
+          "stopReasonVerbatimSkip": "الوضع الحرفي: لم يتم فرض مطابقة المقاطع اللفظية.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "الهدف {target} / الفعلي {actual}",
+          "variableLineCountBanner": "تحتوي المخرجات على {actual} أسطر مقابل {expected} في الأصل. سيتم إعادة ضبط توقيت المقاطع بشكل تناسبي — يرجى مزامنة كل مقطع يدويًا بعد الحفظ."
         }
       }
     },

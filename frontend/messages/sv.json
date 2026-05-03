@@ -1188,6 +1188,22 @@
           "strictnessTight": "Stram",
           "strictnessVerbatim": "Ordgrann",
           "title": "Genereringsinställningar"
+        },
+        "preview": {
+          "iterationsBadge": "AI-iterationer: {n}",
+          "lineNumberLabel": "Rad {n}",
+          "linesPassingBadge": "{passing}/{total} rader godkända",
+          "severityMajor": "Allvarlig",
+          "severityMinor": "Mindre",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Antalet rader i utdatan stämmer inte överens — åtgärda manuellt innan du sparar.",
+          "stopReasonMaxIters": "Maximalt antal reparationsförsök har nåtts; vissa rader överskrider fortfarande budgeten.",
+          "stopReasonPlateau": "AI kunde inte förbättra ytterligare; vissa rader överskrider fortfarande budgeten.",
+          "stopReasonSuccess": "Alla rader ryms inom stavelsebudgeten.",
+          "stopReasonVerbatimSkip": "Ordagrant läge: stavelse-matchning tillämpas inte.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "mål {target} / faktiskt {actual}",
+          "variableLineCountBanner": "Utdatan har {actual} rader jämfört med {expected} i originalet. Segmenten kommer att tidsjusteras proportionellt — synkronisera varje segment manuellt efter att du sparat."
         }
       }
     },

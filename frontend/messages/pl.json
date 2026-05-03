@@ -1188,6 +1188,22 @@
           "strictnessTight": "Ścisła",
           "strictnessVerbatim": "Dosłowna",
           "title": "Ustawienia generowania"
+        },
+        "preview": {
+          "iterationsBadge": "Iteracje AI: {n}",
+          "lineNumberLabel": "Wers {n}",
+          "linesPassingBadge": "{passing}/{total} poprawnych wersów",
+          "severityMajor": "Poważny",
+          "severityMinor": "Drobny",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Liczba wersów wyjściowych się nie zgadza — popraw ręcznie przed zapisaniem.",
+          "stopReasonMaxIters": "Osiągnięto maksymalną liczbę prób naprawy; niektóre wersy nadal przekraczają limit.",
+          "stopReasonPlateau": "AI nie mogło już nic poprawić; niektóre wersy nadal przekraczają limit.",
+          "stopReasonSuccess": "Wszystkie wersy mieszczą się w limicie sylab.",
+          "stopReasonVerbatimSkip": "Tryb dosłowny: dopasowywanie sylab nie jest wymuszane.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "cel {target} / aktualnie {actual}",
+          "variableLineCountBanner": "Wynik ma {actual} wersów w porównaniu do {expected} oryginalnych. Segmenty zostaną proporcjonalnie przesunięte w czasie — zsynchronizuj każdy segment ręcznie po zapisaniu."
         }
       }
     },

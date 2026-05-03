@@ -1188,6 +1188,22 @@
           "strictnessTight": "Chặt chẽ",
           "strictnessVerbatim": "Nguyên văn",
           "title": "Cài đặt tạo"
+        },
+        "preview": {
+          "iterationsBadge": "Số lần lặp AI: {n}",
+          "lineNumberLabel": "Dòng {n}",
+          "linesPassingBadge": "{passing}/{total} dòng đạt yêu cầu",
+          "severityMajor": "Nghiêm trọng",
+          "severityMinor": "Nhẹ",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Số dòng đầu ra không khớp — hãy sửa thủ công trước khi lưu.",
+          "stopReasonMaxIters": "Đã đạt số lần thử sửa tối đa; một số dòng vẫn vượt quá giới hạn âm tiết.",
+          "stopReasonPlateau": "AI không thể cải thiện thêm; một số dòng vẫn vượt quá giới hạn âm tiết.",
+          "stopReasonSuccess": "Tất cả các dòng đều vừa với giới hạn âm tiết.",
+          "stopReasonVerbatimSkip": "Chế độ nguyên văn: không bắt buộc khớp âm tiết.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "mục tiêu {target} / thực tế {actual}",
+          "variableLineCountBanner": "Đầu ra có {actual} dòng so với {expected} dòng gốc. Các phân đoạn sẽ được định thời gian lại theo tỷ lệ — hãy đồng bộ hóa từng phân đoạn thủ công sau khi lưu."
         }
       }
     },

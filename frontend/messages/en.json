@@ -1066,6 +1066,22 @@
           "strictnessHintTight": "Closely match syllable count, ±1.",
           "strictnessHintStrict": "Exact syllable match. Rhythm precision is the priority.",
           "contradictionWarning": "Rewording is disabled; the AI may be unable to match syllable counts. Enable rewording or use Verbatim strictness."
+        },
+        "preview": {
+          "iterationsBadge": "AI iterations: {n}",
+          "linesPassingBadge": "{passing}/{total} lines passing",
+          "severityOk": "OK",
+          "severityMinor": "Minor",
+          "severityMajor": "Major",
+          "stopReasonSuccess": "All lines fit the syllable budget.",
+          "stopReasonPlateau": "AI couldn't improve further; some lines still over budget.",
+          "stopReasonMaxIters": "Max repair attempts reached; some lines still over budget.",
+          "stopReasonLineCountMismatch": "Output line count doesn't match — fix manually before saving.",
+          "stopReasonVerbatimSkip": "Verbatim mode: syllable matching not enforced.",
+          "variableLineCountBanner": "Output has {actual} lines vs {expected} original. Segments will be re-timed proportionally — sync each segment manually after save.",
+          "lineNumberLabel": "Line {n}",
+          "syllableSummary": "target {target} / actual {actual}",
+          "syllableDelta": "Δ{delta}"
         }
       },
       "replaceAllLyrics": {

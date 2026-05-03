@@ -1188,6 +1188,22 @@
           "strictnessTight": "Ketat",
           "strictnessVerbatim": "Verbatim",
           "title": "Tetapan penjanaan"
+        },
+        "preview": {
+          "iterationsBadge": "Iterasi AI: {n}",
+          "lineNumberLabel": "Baris {n}",
+          "linesPassingBadge": "{passing}/{total} baris lulus",
+          "severityMajor": "Major",
+          "severityMinor": "Minor",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Bilangan baris output tidak sepadan — betulkan secara manual sebelum menyimpan.",
+          "stopReasonMaxIters": "Had percubaan pembaikan maksimum dicapai; beberapa baris masih melebihi bajet.",
+          "stopReasonPlateau": "AI tidak dapat membaiki dengan lebih lanjut; beberapa baris masih melebihi bajet.",
+          "stopReasonSuccess": "Semua baris menepati bajet suku kata.",
+          "stopReasonVerbatimSkip": "Mod verbatim: pemadanan suku kata tidak dikuatkuasakan.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "sasaran {target} / sebenar {actual}",
+          "variableLineCountBanner": "Output mempunyai {actual} baris berbanding {expected} yang asal. Masa segmen akan diselaraskan secara berkadar — segerakkan setiap segmen secara manual selepas simpan."
         }
       }
     },

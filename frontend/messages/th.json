@@ -1188,6 +1188,22 @@
           "strictnessTight": "รัดกุม",
           "strictnessVerbatim": "คงคำเดิม",
           "title": "การตั้งค่าการสร้าง"
+        },
+        "preview": {
+          "iterationsBadge": "รอบการทำงานของ AI: {n}",
+          "lineNumberLabel": "บรรทัดที่ {n}",
+          "linesPassingBadge": "ผ่าน {passing}/{total} บรรทัด",
+          "severityMajor": "มาก",
+          "severityMinor": "เล็กน้อย",
+          "severityOk": "ปกติ",
+          "stopReasonLineCountMismatch": "จำนวนบรรทัดของผลลัพธ์ไม่ตรงกัน — โปรดแก้ไขด้วยตนเองก่อนบันทึก",
+          "stopReasonMaxIters": "ถึงขีดจำกัดการพยายามแก้ไขแล้ว บางบรรทัดยังคงเกินกำหนด",
+          "stopReasonPlateau": "AI ไม่สามารถปรับปรุงให้ดีขึ้นได้อีก บางบรรทัดยังคงเกินกำหนด",
+          "stopReasonSuccess": "ทุกบรรทัดพอดีกับจำนวนพยางค์ที่กำหนด",
+          "stopReasonVerbatimSkip": "โหมดคำต่อคำ: ไม่บังคับการจับคู่พยางค์",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "เป้าหมาย {target} / จริง {actual}",
+          "variableLineCountBanner": "ผลลัพธ์มี {actual} บรรทัด เทียบกับต้นฉบับ {expected} บรรทัด ส่วนต่างๆ จะถูกปรับเวลาตามสัดส่วน — โปรดซิงค์แต่ละส่วนด้วยตนเองหลังจากบันทึก"
         }
       }
     },

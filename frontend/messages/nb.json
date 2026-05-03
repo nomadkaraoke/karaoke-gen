@@ -1188,6 +1188,22 @@
           "strictnessTight": "Tett",
           "strictnessVerbatim": "Ordrett",
           "title": "Genereringsinnstillinger"
+        },
+        "preview": {
+          "iterationsBadge": "AI-iterasjoner: {n}",
+          "lineNumberLabel": "Linje {n}",
+          "linesPassingBadge": "{passing}/{total} linjer godkjent",
+          "severityMajor": "Alvorlig",
+          "severityMinor": "Mindre",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Antall linjer i utdata stemmer ikke — fiks manuelt før du lagrer.",
+          "stopReasonMaxIters": "Maks antall reparasjonsforsøk nådd; noen linjer er fortsatt over budsjettet.",
+          "stopReasonPlateau": "AI kunne ikke forbedre mer; noen linjer er fortsatt over budsjettet.",
+          "stopReasonSuccess": "Alle linjer passer stavelsesbudsjettet.",
+          "stopReasonVerbatimSkip": "Ordrett modus: stavelsestilpasning håndheves ikke.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "mål {target} / faktisk {actual}",
+          "variableLineCountBanner": "Utdata har {actual} linjer mot {expected} opprinnelig. Segmenter vil bli tidsjustert proporsjonalt — synkroniser hvert segment manuelt etter at du har lagret."
         }
       }
     },

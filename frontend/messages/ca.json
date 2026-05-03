@@ -1188,6 +1188,22 @@
           "strictnessTight": "Ajustat",
           "strictnessVerbatim": "Literal",
           "title": "Configuració de generació"
+        },
+        "preview": {
+          "iterationsBadge": "Iteracions d'IA: {n}",
+          "lineNumberLabel": "Línia {n}",
+          "linesPassingBadge": "{passing}/{total} línies correctes",
+          "severityMajor": "Greu",
+          "severityMinor": "Lleu",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "El nombre de línies de sortida no coincideix — arregla-ho manualment abans de desar.",
+          "stopReasonMaxIters": "S'ha assolit el màxim d'intents de reparació; algunes línies encara superen el límit.",
+          "stopReasonPlateau": "La IA no ha pogut millorar més; algunes línies encara superen el límit.",
+          "stopReasonSuccess": "Totes les línies s'ajusten al límit de síl·labes.",
+          "stopReasonVerbatimSkip": "Mode literal: no s'aplica la coincidència de síl·labes.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "objectiu {target} / real {actual}",
+          "variableLineCountBanner": "La sortida té {actual} línies en comparació amb les {expected} originals. Els segments es resincronitzaran proporcionalment — sincronitza cada segment manualment després de desar."
         }
       }
     },

@@ -1188,6 +1188,22 @@
           "strictnessTight": "Σφιχτή",
           "strictnessVerbatim": "Κατά λέξη",
           "title": "Ρυθμίσεις δημιουργίας"
+        },
+        "preview": {
+          "iterationsBadge": "Επαναλήψεις AI: {n}",
+          "lineNumberLabel": "Γραμμή {n}",
+          "linesPassingBadge": "{passing}/{total} γραμμές επιτυχείς",
+          "severityMajor": "Σοβαρό",
+          "severityMinor": "Δευτερεύον",
+          "severityOk": "ΟΚ",
+          "stopReasonLineCountMismatch": "Ο αριθμός γραμμών εξόδου δεν ταιριάζει — διόρθωσέ το χειροκίνητα πριν την αποθήκευση.",
+          "stopReasonMaxIters": "Επιτεύχθηκε ο μέγιστος αριθμός προσπαθειών επιδιόρθωσης· ορισμένες γραμμές εξακολουθούν να υπερβαίνουν το όριο.",
+          "stopReasonPlateau": "Το AI δεν μπόρεσε να βελτιώσει περαιτέρω· ορισμένες γραμμές εξακολουθούν να υπερβαίνουν το όριο.",
+          "stopReasonSuccess": "Όλες οι γραμμές ταιριάζουν στο όριο συλλαβών.",
+          "stopReasonVerbatimSkip": "Λειτουργία αυτολεξεί: η αντιστοίχιση συλλαβών δεν επιβάλλεται.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "στόχος {target} / πραγματικό {actual}",
+          "variableLineCountBanner": "Η έξοδος έχει {actual} γραμμές έναντι {expected} αρχικών. Τα τμήματα θα επαναχρονιστούν αναλογικά — συγχρόνισε κάθε τμήμα χειροκίνητα μετά την αποθήκευση."
         }
       }
     },

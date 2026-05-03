@@ -1188,6 +1188,22 @@
           "strictnessTight": "Eng",
           "strictnessVerbatim": "Wortwörtlich",
           "title": "Generierungseinstellungen"
+        },
+        "preview": {
+          "iterationsBadge": "KI-Iterationen: {n}",
+          "lineNumberLabel": "Zeile {n}",
+          "linesPassingBadge": "{passing}/{total} Zeilen bestanden",
+          "severityMajor": "Schwerwiegend",
+          "severityMinor": "Geringfügig",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Die Anzahl der Ausgabezeilen stimmt nicht überein — korrigiere dies manuell vor dem Speichern.",
+          "stopReasonMaxIters": "Maximale Reparaturversuche erreicht; einige Zeilen überschreiten immer noch das Budget.",
+          "stopReasonPlateau": "KI konnte sich nicht weiter verbessern; einige Zeilen überschreiten immer noch das Budget.",
+          "stopReasonSuccess": "Alle Zeilen passen in das Silben-Budget.",
+          "stopReasonVerbatimSkip": "Wörtlicher Modus: Silbenabgleich wird nicht erzwungen.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "Ziel {target} / Ist {actual}",
+          "variableLineCountBanner": "Die Ausgabe hat {actual} Zeilen im Vergleich zu {expected} im Original. Segmente werden proportional neu getimt — synchronisiere jedes Segment nach dem Speichern manuell."
         }
       }
     },

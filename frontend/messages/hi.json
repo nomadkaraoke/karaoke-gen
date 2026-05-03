@@ -1188,6 +1188,22 @@
           "strictnessTight": "कड़ा",
           "strictnessVerbatim": "शब्दशः",
           "title": "जेनरेशन सेटिंग्स"
+        },
+        "preview": {
+          "iterationsBadge": "AI इटरेशन्स: {n}",
+          "lineNumberLabel": "लाइन {n}",
+          "linesPassingBadge": "{passing}/{total} लाइनें पास हो रही हैं",
+          "severityMajor": "गंभीर",
+          "severityMinor": "मामूली",
+          "severityOk": "ठीक है",
+          "stopReasonLineCountMismatch": "आउटपुट लाइनों की संख्या मेल नहीं खाती — सेव करने से पहले इसे मैन्युअल रूप से ठीक करो।",
+          "stopReasonMaxIters": "अधिकतम सुधार प्रयासों की सीमा पहुँच गई; कुछ लाइनें अभी भी बजट से बाहर हैं।",
+          "stopReasonPlateau": "AI इससे अधिक सुधार नहीं कर सका; कुछ लाइनें अभी भी बजट से बाहर हैं।",
+          "stopReasonSuccess": "सभी लाइनें सिलेबल बजट में फिट बैठती हैं।",
+          "stopReasonVerbatimSkip": "वर्बेटिम मोड: सिलेबल मैचिंग लागू नहीं की गई है।",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "टारगेट {target} / वास्तविक {actual}",
+          "variableLineCountBanner": "आउटपुट में मूल {expected} के मुकाबले {actual} लाइनें हैं। सेगमेंट को आनुपातिक रूप से री-टाइम किया जाएगा — सेव करने के बाद प्रत्येक सेगमेंट को मैन्युअल रूप से सिंक करो।"
         }
       }
     },

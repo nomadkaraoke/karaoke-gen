@@ -1188,6 +1188,22 @@
           "strictnessTight": "Strak",
           "strictnessVerbatim": "Woordelijk",
           "title": "Generatie-instellingen"
+        },
+        "preview": {
+          "iterationsBadge": "AI-iteraties: {n}",
+          "lineNumberLabel": "Regel {n}",
+          "linesPassingBadge": "{passing}/{total} regels goedgekeurd",
+          "severityMajor": "Ernstig",
+          "severityMinor": "Licht",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Aantal regels in uitvoer komt niet overeen — repareer handmatig voordat je opslaat.",
+          "stopReasonMaxIters": "Maximum aantal reparatiepogingen bereikt; sommige regels overschrijden nog steeds het budget.",
+          "stopReasonPlateau": "AI kon niet verder verbeteren; sommige regels overschrijden nog steeds het budget.",
+          "stopReasonSuccess": "Alle regels passen binnen het lettergreepbudget.",
+          "stopReasonVerbatimSkip": "Verbatim-modus: lettergreepcontrole wordt niet afgedwongen.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "doel {target} / werkelijk {actual}",
+          "variableLineCountBanner": "Uitvoer heeft {actual} regels vergeleken met {expected} origineel. Segmenten worden proportioneel opnieuw getimed — synchroniseer elk segment handmatig na het opslaan."
         }
       }
     },

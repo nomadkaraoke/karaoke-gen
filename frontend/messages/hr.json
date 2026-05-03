@@ -1188,6 +1188,22 @@
           "strictnessTight": "Čvrsto",
           "strictnessVerbatim": "Doslovno",
           "title": "Postavke generiranja"
+        },
+        "preview": {
+          "iterationsBadge": "AI iteracije: {n}",
+          "lineNumberLabel": "Redak {n}",
+          "linesPassingBadge": "{passing}/{total} redaka prolazi",
+          "severityMajor": "Značajno",
+          "severityMinor": "Manje",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "Broj izlaznih redaka se ne podudara — ispravi ručno prije spremanja.",
+          "stopReasonMaxIters": "Dosegnut je maksimalan broj pokušaja popravka; neki reci i dalje premašuju ograničenje.",
+          "stopReasonPlateau": "AI nije mogao dodatno poboljšati; neki reci i dalje premašuju ograničenje.",
+          "stopReasonSuccess": "Svi reci se uklapaju u ograničenje slogova.",
+          "stopReasonVerbatimSkip": "Doslovni način rada: podudaranje slogova nije obavezno.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "ciljano {target} / stvarno {actual}",
+          "variableLineCountBanner": "Izlaz ima {actual} redaka u usporedbi s {expected} originalnih. Segmenti će biti proporcionalno vremenski prilagođeni — sinkroniziraj svaki segment ručno nakon spremanja."
         }
       }
     },

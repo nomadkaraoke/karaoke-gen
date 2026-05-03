@@ -1188,6 +1188,22 @@
           "strictnessTight": "Ajustada",
           "strictnessVerbatim": "Literal",
           "title": "Configuración de generación"
+        },
+        "preview": {
+          "iterationsBadge": "Iteraciones de IA: {n}",
+          "lineNumberLabel": "Línea {n}",
+          "linesPassingBadge": "{passing}/{total} líneas aprobadas",
+          "severityMajor": "Grave",
+          "severityMinor": "Leve",
+          "severityOk": "OK",
+          "stopReasonLineCountMismatch": "El recuento de líneas de salida no coincide — corrígelo manualmente antes de guardar.",
+          "stopReasonMaxIters": "Se alcanzó el máximo de intentos de reparación; algunas líneas aún superan el presupuesto.",
+          "stopReasonPlateau": "La IA no pudo mejorar más; algunas líneas aún superan el presupuesto.",
+          "stopReasonSuccess": "Todas las líneas se ajustan al presupuesto de sílabas.",
+          "stopReasonVerbatimSkip": "Modo literal: no se aplica la coincidencia de sílabas.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "objetivo {target} / real {actual}",
+          "variableLineCountBanner": "La salida tiene {actual} líneas frente a las {expected} originales. Los segmentos se reprogramarán proporcionalmente — sincroniza cada segmento manualmente después de guardar."
         }
       }
     },

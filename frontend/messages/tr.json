@@ -1188,6 +1188,22 @@
           "strictnessTight": "Sıkı",
           "strictnessVerbatim": "Birebir",
           "title": "Oluşturma ayarları"
+        },
+        "preview": {
+          "iterationsBadge": "Yapay zeka yinelemeleri: {n}",
+          "lineNumberLabel": "Satır {n}",
+          "linesPassingBadge": "{passing}/{total} satır başarılı",
+          "severityMajor": "Ciddi",
+          "severityMinor": "Küçük",
+          "severityOk": "Tamam",
+          "stopReasonLineCountMismatch": "Çıktı satır sayısı eşleşmiyor — kaydetmeden önce manuel olarak düzelt.",
+          "stopReasonMaxIters": "Maksimum onarım denemesine ulaşıldı; bazı satırlar hâlâ bütçeyi aşıyor.",
+          "stopReasonPlateau": "Yapay zeka daha fazla iyileştiremedi; bazı satırlar hâlâ bütçeyi aşıyor.",
+          "stopReasonSuccess": "Tüm satırlar hece bütçesine uyuyor.",
+          "stopReasonVerbatimSkip": "Birebir mod: hece eşleştirme zorunlu değil.",
+          "syllableDelta": "Δ{delta}",
+          "syllableSummary": "hedef {target} / mevcut {actual}",
+          "variableLineCountBanner": "Çıktıda orijinal {expected} satıra karşılık {actual} satır var. Bölümler orantılı olarak yeniden zamanlandırılacak — kaydettikten sonra her bölümü manuel olarak senkronize et."
         }
       }
     },
