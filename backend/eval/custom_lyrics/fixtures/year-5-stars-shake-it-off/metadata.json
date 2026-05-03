@@ -1,0 +1,31 @@
+{
+  "id": "year-5-stars-shake-it-off",
+  "artist": "Taylor Swift",
+  "title": "Year 5 Stars",
+  "source_job_id": "2cb49a45",
+  "difficulty": "hard",
+  "input_style": "long substantive lines, name-heavy, mismatched syllable budget",
+  "settings_to_test": [
+    {
+      "name": "default",
+      "allow_reword": true,
+      "allow_omit": true,
+      "fixed_line_count": true,
+      "strictness": "balanced"
+    },
+    {
+      "name": "verbatim",
+      "allow_reword": true,
+      "allow_omit": true,
+      "fixed_line_count": true,
+      "strictness": "verbatim"
+    },
+    {
+      "name": "strict",
+      "allow_reword": true,
+      "allow_omit": true,
+      "fixed_line_count": true,
+      "strictness": "strict"
+    }
+  ]
+}

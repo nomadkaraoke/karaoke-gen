@@ -1,0 +1,4153 @@
+[
+  {
+    "text": "We walk in the room",
+    "start_time": 5.560231455291971,
+    "end_time": 7.100295563412409,
+    "id": "fs6wuc",
+    "words": [
+      {
+        "text": "We",
+        "start_time": 5.560231455291971,
+        "end_time": 5.720238115875913,
+        "id": "dhyc86",
+        "created_during_correction": false
+      },
+      {
+        "text": "walk",
+        "start_time": 5.740238948448905,
+        "end_time": 5.900245609032846,
+        "id": "ligs3l",
+        "created_during_correction": false
+      },
+      {
+        "text": "in",
+        "start_time": 5.940247274178832,
+        "end_time": 6.080253102189781,
+        "id": "q6lqrg",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 6.120254767335767,
+        "end_time": 6.320263093065694,
+        "id": "0ajvn1",
+        "created_during_correction": false
+      },
+      {
+        "text": "room",
+        "start_time": 6.360264758211679,
+        "end_time": 7.100295563412409,
+        "id": "qu8x27",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Yeah we own this place",
+    "start_time": 8.380348848083942,
+    "end_time": 10.22042544479927,
+    "id": "kbnbpv",
+    "words": [
+      {
+        "text": "Yeah",
+        "start_time": 8.380348848083942,
+        "end_time": 8.540355508667883,
+        "id": "p56xxj",
+        "created_during_correction": false
+      },
+      {
+        "text": "we",
+        "start_time": 8.58035717381387,
+        "end_time": 8.96037299270073,
+        "id": "0oeb0r",
+        "created_during_correction": false
+      },
+      {
+        "text": "own",
+        "start_time": 9.000374657846715,
+        "end_time": 9.10037882071168,
+        "id": "22xw8l",
+        "created_during_correction": false
+      },
+      {
+        "text": "this",
+        "start_time": 9.140380485857664,
+        "end_time": 9.280386313868613,
+        "id": "hrdh9m",
+        "created_during_correction": false
+      },
+      {
+        "text": "place",
+        "start_time": 9.34038881158759,
+        "end_time": 10.22042544479927,
+        "id": "r08lwu",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Anna hits the floor, mm- mm",
+    "start_time": 11.560481227189781,
+    "end_time": 14.200591126824818,
+    "id": "6mxmhy",
+    "words": [
+      {
+        "text": "Anna",
+        "start_time": 11.560481227189781,
+        "end_time": 11.740488720346715,
+        "id": "s5j4mk",
+        "created_during_correction": false
+      },
+      {
+        "text": "hits",
+        "start_time": 11.780490385492701,
+        "end_time": 11.900495380930657,
+        "id": "bid3k1",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 11.92049621350365,
+        "end_time": 12.240509534671533,
+        "id": "4mqzc2",
+        "created_during_correction": false
+      },
+      {
+        "text": "floor,",
+        "start_time": 12.300512032390511,
+        "end_time": 13.120546167883212,
+        "id": "oc5t4h",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm-",
+        "start_time": 13.520562819343066,
+        "end_time": 13.780573642791971,
+        "id": "o0fa0a",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm",
+        "start_time": 13.92057947080292,
+        "end_time": 14.200591126824818,
+        "id": "z8w4mo",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Watch her lead the way, mm- mm",
+    "start_time": 14.555272,
+    "end_time": 17.150689,
+    "id": "uby1zk",
+    "words": [
+      {
+        "text": "Watch",
+        "start_time": 14.555272,
+        "end_time": 14.725626,
+        "id": "25iNqkhfMPAKtj-Po79O8",
+        "confidence": 1
+      },
+      {
+        "text": "her",
+        "start_time": 14.730626,
+        "end_time": 14.900813999999999,
+        "id": "HqhFjhfDa5tnkz67GZVl9",
+        "confidence": 1
+      },
+      {
+        "text": "lead",
+        "start_time": 14.905814,
+        "end_time": 15.075584999999998,
+        "id": "axcm2LXNITGBrFRIWCrKi",
+        "confidence": 1
+      },
+      {
+        "text": "the",
+        "start_time": 15.080585,
+        "end_time": 15.291189,
+        "id": "Qgsg0rlqp864onAAbOpgJ",
+        "confidence": 1
+      },
+      {
+        "text": "way,",
+        "start_time": 15.296189,
+        "end_time": 16.01196,
+        "id": "fWkEx1KX7ADG2cq92s4HZ",
+        "confidence": 1
+      },
+      {
+        "text": "mm-",
+        "start_time": 16.406356,
+        "end_time": 16.750814000000002,
+        "id": "PVSju6Z2Z32JXEaCQUfky",
+        "confidence": 1
+      },
+      {
+        "text": "mm",
+        "start_time": 16.755814,
+        "end_time": 17.150689,
+        "id": "ojNZBMho1vTlC9IdANxDC",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Grace brings the rhythm",
+    "start_time": 17.576715,
+    "end_time": 18.823131,
+    "id": "j8znrr",
+    "words": [
+      {
+        "text": "Grace",
+        "start_time": 17.576715,
+        "end_time": 17.9602186874812,
+        "id": "104SCdrg_J-VAy0KLEeXY",
+        "confidence": 1
+      },
+      {
+        "text": "brings",
+        "start_time": 17.975173,
+        "end_time": 18.135569,
+        "id": "osTwD7WY7977MKRb6imOU",
+        "confidence": 1
+      },
+      {
+        "text": "the",
+        "start_time": 18.140569,
+        "end_time": 18.318131,
+        "id": "y_pVCF5HCoXtYLzJlHYpU",
+        "confidence": 1
+      },
+      {
+        "text": "rhythm",
+        "start_time": 18.323131,
+        "end_time": 18.823131,
+        "id": "os-iGuSpECtvr-WutTVPN",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Dancing every day",
+    "start_time": 20.542431,
+    "end_time": 21.849348,
+    "id": "31kzej",
+    "words": [
+      {
+        "text": "Dancing",
+        "start_time": 20.542431,
+        "end_time": 20.85416,
+        "id": "WbOAZtbDKaDNjDjAl5RGd",
+        "confidence": 1
+      },
+      {
+        "text": "every",
+        "start_time": 20.93841,
+        "end_time": 21.284327,
+        "id": "Z_vTsN099ll_tGxix0DkA",
+        "confidence": 1
+      },
+      {
+        "text": "day",
+        "start_time": 21.289327,
+        "end_time": 21.849348,
+        "id": "2hSjcj_AYLB-2pZdAUCnq",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Oona on guitar, mm- mm",
+    "start_time": 23.170374,
+    "end_time": 26.237833,
+    "id": "ww84gw",
+    "words": [
+      {
+        "text": "Oona",
+        "start_time": 23.170374,
+        "end_time": 23.831374,
+        "id": "nXowrrE7r8DSl-c7_nNP6",
+        "confidence": 1
+      },
+      {
+        "text": "on",
+        "start_time": 23.916249,
+        "end_time": 24.082499000000002,
+        "id": "EosKDnmtugimRoo9heEmp",
+        "confidence": 1
+      },
+      {
+        "text": "guitar,",
+        "start_time": 24.087499,
+        "end_time": 24.78741613186813,
+        "id": "QK0w1MVWV6KjEtYVqaCKU",
+        "confidence": 1
+      },
+      {
+        "text": "mm-",
+        "start_time": 25.341645,
+        "end_time": 25.571064860857664,
+        "id": "nan3HWMIIa9CTvhMhzpqX",
+        "confidence": 1
+      },
+      {
+        "text": "mm",
+        "start_time": 25.737833,
+        "end_time": 26.237833,
+        "id": "pcnyLhqjarav5ZD0P29wR",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Getting in the groove, mm- mm",
+    "start_time": 26.541104824361312,
+    "end_time": 29.121212226277372,
+    "id": "ldv183",
+    "words": [
+      {
+        "text": "Getting",
+        "start_time": 26.541104824361312,
+        "end_time": 26.74111315009124,
+        "id": "6kw7uu",
+        "created_during_correction": false
+      },
+      {
+        "text": "in",
+        "start_time": 26.761113982664234,
+        "end_time": 26.901119810675183,
+        "id": "xu9tnj",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 26.921120643248177,
+        "end_time": 27.26113479698905,
+        "id": "f25wxa",
+        "created_during_correction": false
+      },
+      {
+        "text": "groove,",
+        "start_time": 27.301136462135037,
+        "end_time": 28.081168932481752,
+        "id": "xke4j4",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm-",
+        "start_time": 28.601190579379562,
+        "end_time": 28.761197239963504,
+        "id": "vhike5",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm",
+        "start_time": 28.901203067974453,
+        "end_time": 29.121212226277372,
+        "id": "3r5god",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Eirini singing, Frankie right there",
+    "start_time": 29.218485,
+    "end_time": 34.40143202554744,
+    "id": "607qb0",
+    "words": [
+      {
+        "text": "Eirini",
+        "start_time": 29.218485,
+        "end_time": 30.097194,
+        "id": "R0UoSgXAHZQRX7OpqBnDz",
+        "confidence": 1
+      },
+      {
+        "text": "singing,",
+        "start_time": 30.315256,
+        "end_time": 31.259301644616787,
+        "id": "h2QX7BEh3S964S46XYo5c",
+        "confidence": 1
+      },
+      {
+        "text": "Frankie",
+        "start_time": 31.722985,
+        "end_time": 32.889986361664796,
+        "id": "Qx8ZOixbsZxdVgpI-Gher",
+        "confidence": 1
+      },
+      {
+        "text": "right",
+        "start_time": 32.99798369890511,
+        "end_time": 33.643556966697076,
+        "id": "k2eAUUxeJGkKoH-0GE_E1",
+        "confidence": 1
+      },
+      {
+        "text": "there",
+        "start_time": 33.75447979126895,
+        "end_time": 34.40143202554744,
+        "id": "SXUE7XdVBwmA3SOZcQvwZ",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Voices together, filling the air",
+    "start_time": 34.710087,
+    "end_time": 38.78,
+    "id": "c1jkze",
+    "words": [
+      {
+        "text": "Voices",
+        "start_time": 34.710087,
+        "end_time": 35.69484050601087,
+        "id": "zcrXXRFicbdbMbOxeJqHb",
+        "confidence": 1
+      },
+      {
+        "text": "together,",
+        "start_time": 35.794546,
+        "end_time": 36.83808724834563,
+        "id": "aAxS-x1ibKb6mCLK_4fHI",
+        "confidence": 1
+      },
+      {
+        "text": "filling",
+        "start_time": 37.4539109906804,
+        "end_time": 38.01890963903205,
+        "id": "8wtc1ghcP7HO4b1cy99Br",
+        "confidence": 1
+      },
+      {
+        "text": "the",
+        "start_time": 38.092608,
+        "end_time": 38.41806189010989,
+        "id": "pgi588qBcL3KIkt5o0VKc",
+        "confidence": 1
+      },
+      {
+        "text": "air",
+        "start_time": 38.484317,
+        "end_time": 38.78,
+        "id": "bDlp34trnix4oeSb6muT_",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Nobody stands a chance",
+    "start_time": 39.214458,
+    "end_time": 41.219625,
+    "id": "qrcqfm",
+    "words": [
+      {
+        "text": "Nobody",
+        "start_time": 39.214458,
+        "end_time": 39.97262628571429,
+        "id": "wNTDpZ-7BUxlcSp_Qofgh",
+        "confidence": 1
+      },
+      {
+        "text": "stands",
+        "start_time": 40.000333,
+        "end_time": 40.22372789230769,
+        "id": "pYq_ANAjtgdShTRA6hNAR",
+        "confidence": 1
+      },
+      {
+        "text": "a",
+        "start_time": 40.26128612967033,
+        "end_time": 40.43840793736264,
+        "id": "G9KonNC0MDglBLL7tqZmS",
+        "confidence": 1
+      },
+      {
+        "text": "chance",
+        "start_time": 40.468312,
+        "end_time": 41.219625,
+        "id": "rJvZoxRp4MA-CnhQbYEcP",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "'Cause the players gonna play, play, play, play, play",
+    "start_time": 41.941745905565696,
+    "end_time": 44.941870791514596,
+    "id": "wxrj30",
+    "words": [
+      {
+        "text": "'Cause",
+        "start_time": 41.941745905565696,
+        "end_time": 42.121753398722625,
+        "id": "atv8g4",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 42.14175423129562,
+        "end_time": 42.28176005930657,
+        "id": "8nnyvm",
+        "created_during_correction": false
+      },
+      {
+        "text": "players",
+        "start_time": 42.32176172445256,
+        "end_time": 42.68177671076642,
+        "id": "18lf6j",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 42.72177837591241,
+        "end_time": 43.0217908645073,
+        "id": "kjk3rs",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 43.06179252965328,
+        "end_time": 43.381805850821166,
+        "id": "raze8f",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 43.42180751596715,
+        "end_time": 43.76182166970803,
+        "id": "tavb7k",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 43.801823334854014,
+        "end_time": 44.14183748859489,
+        "id": "cz119x",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 44.181839153740874,
+        "end_time": 44.52185330748175,
+        "id": "ciizxh",
+        "created_during_correction": false
+      },
+      {
+        "text": "play",
+        "start_time": 44.561854972627735,
+        "end_time": 44.941870791514596,
+        "id": "wxiquz",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And the haters gonna hate, hate, hate, hate, hate",
+    "start_time": 45.00187328923358,
+    "end_time": 47.92199484489051,
+    "id": "j15miy",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 45.00187328923358,
+        "end_time": 45.10187745209854,
+        "id": "47x6uz",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 45.12187828467153,
+        "end_time": 45.26188411268248,
+        "id": "ply63n",
+        "created_during_correction": false
+      },
+      {
+        "text": "haters",
+        "start_time": 45.32188661040146,
+        "end_time": 45.66190076414234,
+        "id": "0x410s",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 45.701902429288324,
+        "end_time": 46.0219157504562,
+        "id": "ub63vl",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 46.06191741560219,
+        "end_time": 46.42193240191606,
+        "id": "if5z0f",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 46.44193323448905,
+        "end_time": 46.80194822080292,
+        "id": "i6yksj",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 46.84194988594891,
+        "end_time": 47.18196403968978,
+        "id": "lli4fy",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 47.22196570483577,
+        "end_time": 47.56197985857664,
+        "id": "qr51w0",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate",
+        "start_time": 47.58198069114964,
+        "end_time": 47.92199484489051,
+        "id": "ei1vop",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Baby, I'm just gonna shake, shake, shake, shake, shake",
+    "start_time": 47.9419956774635,
+    "end_time": 50.9621213959854,
+    "id": "35mpvn",
+    "words": [
+      {
+        "text": "Baby,",
+        "start_time": 47.9419956774635,
+        "end_time": 48.26200899863139,
+        "id": "l3o7rg",
+        "created_during_correction": false
+      },
+      {
+        "text": "I'm",
+        "start_time": 48.32201149635036,
+        "end_time": 48.44201649178832,
+        "id": "oi7mv3",
+        "created_during_correction": false
+      },
+      {
+        "text": "just",
+        "start_time": 48.48201815693431,
+        "end_time": 48.64202481751825,
+        "id": "y1xm64",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 48.682026482664234,
+        "end_time": 48.98203897125912,
+        "id": "pc488m",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 49.02204063640511,
+        "end_time": 49.36205479014598,
+        "id": "8k2kqv",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 49.40205645529197,
+        "end_time": 49.742070609032844,
+        "id": "wf3ui9",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 49.78207227417883,
+        "end_time": 50.12208642791971,
+        "id": "2fsh26",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 50.16208809306569,
+        "end_time": 50.52210307937956,
+        "id": "j3t5ts",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 50.54210391195255,
+        "end_time": 50.9621213959854,
+        "id": "afimfp",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I shake it off, I shake it off",
+    "start_time": 51.122128056569345,
+    "end_time": 53.182213811587594,
+    "id": "rbepoe",
+    "words": [
+      {
+        "text": "I",
+        "start_time": 51.122128056569345,
+        "end_time": 51.22213221943431,
+        "id": "e4264m",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 51.2421330520073,
+        "end_time": 51.502143875456206,
+        "id": "jxb9r5",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 51.54214554060219,
+        "end_time": 51.62214887089416,
+        "id": "8197h9",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 51.68215136861314,
+        "end_time": 52.022165522354015,
+        "id": "l0wvx0",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 52.22217384808394,
+        "end_time": 52.3421788435219,
+        "id": "ir8ujt",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 52.382180508667886,
+        "end_time": 52.64219133211679,
+        "id": "6hq9s4",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 52.682192997262774,
+        "end_time": 52.76219632755475,
+        "id": "ah6pap",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 52.82219882527372,
+        "end_time": 53.182213811587594,
+        "id": "zmn2yz",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Heartbreakers gonna break, break, break, break, break",
+    "start_time": 53.962246281934306,
+    "end_time": 56.922369502737226,
+    "id": "7m6ehq",
+    "words": [
+      {
+        "text": "Heartbreakers",
+        "start_time": 53.962246281934306,
+        "end_time": 54.66227542198905,
+        "id": "1bsd9j",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 54.70227708713504,
+        "end_time": 54.982288743156936,
+        "id": "41v86s",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 55.04229124087591,
+        "end_time": 55.382305394616786,
+        "id": "a7d44u",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 55.42230705976277,
+        "end_time": 55.74232038093066,
+        "id": "d4ymwp",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 55.782322046076644,
+        "end_time": 56.142337032390515,
+        "id": "3lk2bz",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 56.162337864963504,
+        "end_time": 56.522352851277375,
+        "id": "q18pxx",
+        "created_during_correction": false
+      },
+      {
+        "text": "break",
+        "start_time": 56.542353683850365,
+        "end_time": 56.922369502737226,
+        "id": "eort88",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And the fakers gonna fake, fake, fake, fake, fake",
+    "start_time": 56.96237116788321,
+    "end_time": 59.902493556113136,
+    "id": "ug78o5",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 56.96237116788321,
+        "end_time": 57.10237699589416,
+        "id": "e9rl77",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 57.12237782846715,
+        "end_time": 57.24238282390511,
+        "id": "1bs8ru",
+        "created_during_correction": false
+      },
+      {
+        "text": "fakers",
+        "start_time": 57.30238532162409,
+        "end_time": 57.68240114051095,
+        "id": "lhxrcu",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 57.702401973083944,
+        "end_time": 58.00241446167883,
+        "id": "o53cwi",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 58.06241695939781,
+        "end_time": 58.40243111313869,
+        "id": "samszj",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 58.44243277828467,
+        "end_time": 58.78244693202555,
+        "id": "y37vag",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 58.82244859717154,
+        "end_time": 59.142461918339414,
+        "id": "gn3ues",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 59.1824635834854,
+        "end_time": 59.522477737226275,
+        "id": "uwgeek",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake",
+        "start_time": 59.58248023494526,
+        "end_time": 59.902493556113136,
+        "id": "kyzpnp",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Baby, I'm just gonna shake, shake, shake, shake, shake",
+    "start_time": 59.94249522125912,
+    "end_time": 62.94262010720803,
+    "id": "cx2mku",
+    "words": [
+      {
+        "text": "Baby,",
+        "start_time": 59.94249522125912,
+        "end_time": 60.24250770985402,
+        "id": "snja3n",
+        "created_during_correction": false
+      },
+      {
+        "text": "I'm",
+        "start_time": 60.30251020757299,
+        "end_time": 60.44251603558394,
+        "id": "jan998",
+        "created_during_correction": false
+      },
+      {
+        "text": "just",
+        "start_time": 60.48251770072993,
+        "end_time": 60.64252436131387,
+        "id": "o7o24b",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 60.682526026459854,
+        "end_time": 60.96253768248175,
+        "id": "g27ygh",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 61.00253934762774,
+        "end_time": 61.36255433394161,
+        "id": "gsx0p1",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 61.40255599908759,
+        "end_time": 61.74257015282847,
+        "id": "s531t6",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 61.78257181797445,
+        "end_time": 62.12258597171533,
+        "id": "6zq97q",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 62.14258680428832,
+        "end_time": 62.50260179060219,
+        "id": "1hcl4w",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 62.54260345574818,
+        "end_time": 62.94262010720803,
+        "id": "7hd6py",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I shake it off, I shake it off",
+    "start_time": 63.122627600364964,
+    "end_time": 65.16271252281022,
+    "id": "c2wyoh",
+    "words": [
+      {
+        "text": "I",
+        "start_time": 63.122627600364964,
+        "end_time": 63.22263176322993,
+        "id": "hlo9ub",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 63.26263342837591,
+        "end_time": 63.502643419251825,
+        "id": "tid5j5",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 63.54264508439781,
+        "end_time": 63.642649247262774,
+        "id": "r4wngn",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 63.68265091240876,
+        "end_time": 64.04266589872263,
+        "id": "c2fr8z",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 64.22267339187957,
+        "end_time": 64.34267838731752,
+        "id": "cdju6x",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 64.3826800524635,
+        "end_time": 64.60268921076643,
+        "id": "6lk0sv",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 64.64269087591241,
+        "end_time": 64.74269503877737,
+        "id": "o3293q",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 64.82269836906934,
+        "end_time": 65.16271252281022,
+        "id": "9eawnc",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Mr Moulton jokes",
+    "start_time": 65.555784,
+    "end_time": 66.897784,
+    "id": "mtodv9",
+    "words": [
+      {
+        "text": "Mr",
+        "start_time": 65.555784,
+        "end_time": 65.939513,
+        "id": "6ZPvBEYUMXUprIQpF0MKY",
+        "confidence": 1
+      },
+      {
+        "text": "Moulton",
+        "start_time": 65.944513,
+        "end_time": 66.288617,
+        "id": "xym11AKrgMlvBvGQ4kQxv",
+        "confidence": 1
+      },
+      {
+        "text": "jokes",
+        "start_time": 66.293617,
+        "end_time": 66.897784,
+        "id": "DJoAC3XMVt5x53WbzKe3l",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "We try not to laugh",
+    "start_time": 68.556616,
+    "end_time": 69.754471,
+    "id": "g3r7c8",
+    "words": [
+      {
+        "text": "We",
+        "start_time": 68.556616,
+        "end_time": 68.71896687630844,
+        "id": "r4on5w",
+        "created_during_correction": false
+      },
+      {
+        "text": "try",
+        "start_time": 68.7382,
+        "end_time": 68.907533,
+        "id": "bspkji",
+        "created_during_correction": false
+      },
+      {
+        "text": "not",
+        "start_time": 68.912533,
+        "end_time": 69.0827,
+        "id": "k1ep3h",
+        "created_during_correction": false
+      },
+      {
+        "text": "to",
+        "start_time": 69.0877,
+        "end_time": 69.25984600000001,
+        "id": "f4rv8j",
+        "created_during_correction": false
+      },
+      {
+        "text": "laugh",
+        "start_time": 69.264846,
+        "end_time": 69.754471,
+        "id": "v0n79b",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "But we\u2019re ready now, mm- mm",
+    "start_time": 71.401471,
+    "end_time": 74.217929,
+    "id": "o4iegm",
+    "words": [
+      {
+        "text": "But",
+        "start_time": 71.401471,
+        "end_time": 71.617512,
+        "id": "Pr28YX6DI5_Z5YYn6d5_n",
+        "confidence": 1
+      },
+      {
+        "text": "we\u2019re",
+        "start_time": 71.622512,
+        "end_time": 71.78995,
+        "id": "kO320oRdmyMF9sx1W8_61",
+        "confidence": 1
+      },
+      {
+        "text": "ready",
+        "start_time": 71.79495,
+        "end_time": 72.22147100000001,
+        "id": "P-B1a91mhA9jAMus8XxNZ",
+        "confidence": 1
+      },
+      {
+        "text": "now,",
+        "start_time": 72.226471,
+        "end_time": 73.064533,
+        "id": "YzVkw9b5rmVyFIZda7-jF",
+        "confidence": 1
+      },
+      {
+        "text": "mm-",
+        "start_time": 73.322554,
+        "end_time": 73.712929,
+        "id": "-BML6-MguZUG0YHQi5N7t",
+        "confidence": 1
+      },
+      {
+        "text": "mm",
+        "start_time": 73.717929,
+        "end_time": 74.217929,
+        "id": "es6ydSYzMrjR_4jmFGCmt",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "We\u2019ve done the graft, mm- mm",
+    "start_time": 74.338353,
+    "end_time": 77.259561,
+    "id": "qerbvb",
+    "words": [
+      {
+        "text": "We\u2019ve",
+        "start_time": 74.338353,
+        "end_time": 74.823519,
+        "id": "6oI2noDpGq4gb8dQQ5sTW",
+        "confidence": 1
+      },
+      {
+        "text": "done",
+        "start_time": 74.913123,
+        "end_time": 75.08756100000001,
+        "id": "V3yvDegXwRQMYUz6ZXxhV",
+        "confidence": 1
+      },
+      {
+        "text": "the",
+        "start_time": 75.092561,
+        "end_time": 75.26766500000001,
+        "id": "Pqkuxk3TuUwDIruS02xeM",
+        "confidence": 1
+      },
+      {
+        "text": "graft,",
+        "start_time": 75.272665,
+        "end_time": 76.103186,
+        "id": "pUPDhfiL1Op8rS5Djb5xM",
+        "confidence": 1
+      },
+      {
+        "text": "mm-",
+        "start_time": 76.366582,
+        "end_time": 76.74986194305049,
+        "id": "xQkYI4JpOrnyVJIwKRS_s",
+        "confidence": 1
+      },
+      {
+        "text": "mm",
+        "start_time": 76.759561,
+        "end_time": 77.259561,
+        "id": "QrkGypJOFt1sqFwucKbFd",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "We\u2019re gonna win (hear the crowd go loud)",
+    "start_time": 77.397436,
+    "end_time": 80.221915,
+    "id": "dxwhp5",
+    "words": [
+      {
+        "text": "We\u2019re",
+        "start_time": 77.397436,
+        "end_time": 77.794519,
+        "id": "nZx2nn9pabPgpHgBN8uqP",
+        "confidence": 1
+      },
+      {
+        "text": "gonna",
+        "start_time": 77.88279,
+        "end_time": 78.235936,
+        "id": "3Se3S6O6o6U2ypGmntdRr",
+        "confidence": 1
+      },
+      {
+        "text": "win",
+        "start_time": 78.240352,
+        "end_time": 78.587915,
+        "id": "9W-4PBvbdefKo9ymnRK3C",
+        "confidence": 1
+      },
+      {
+        "text": "(hear",
+        "start_time": 78.845415,
+        "end_time": 79.19185200000001,
+        "id": "HRtsJ2SK-e1ibxOLGnBHi",
+        "confidence": 1
+      },
+      {
+        "text": "the",
+        "start_time": 79.196852,
+        "end_time": 79.366894,
+        "id": "6zwbnB8_DpGlBtlaIuwqD",
+        "confidence": 1
+      },
+      {
+        "text": "crowd",
+        "start_time": 79.371894,
+        "end_time": 79.52931097627736,
+        "id": "AdD7JLv5bFLsugD6_rKEB",
+        "confidence": 1
+      },
+      {
+        "text": "go",
+        "start_time": 79.541957,
+        "end_time": 79.716915,
+        "id": "arvl_xYugHfTvmeccaLGW",
+        "confidence": 1
+      },
+      {
+        "text": "loud)",
+        "start_time": 79.721915,
+        "end_time": 80.221915,
+        "id": "cosV4a6k7kUnw6yu_-M4D",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Singing all together (yeah we\u2019re making you proud)",
+    "start_time": 80.281335,
+    "end_time": 83.051147,
+    "id": "v2qsin",
+    "words": [
+      {
+        "text": "Singing",
+        "start_time": 80.281335,
+        "end_time": 80.63836378916415,
+        "id": "cSrWVaSCaQitG7x-xyN6W",
+        "confidence": 1
+      },
+      {
+        "text": "all",
+        "start_time": 80.65776128571429,
+        "end_time": 80.88336734146897,
+        "id": "L-v6GGLu1X-Kf0a_XwgGu",
+        "confidence": 1
+      },
+      {
+        "text": "together",
+        "start_time": 80.91056803736264,
+        "end_time": 81.58188956190568,
+        "id": "vL-rZS7EyXXCS_lcsMSRr",
+        "confidence": 1
+      },
+      {
+        "text": "(yeah",
+        "start_time": 81.728522,
+        "end_time": 81.65339939552919,
+        "id": "MHLHLOS8hOpfZigbTH8BT",
+        "confidence": 1
+      },
+      {
+        "text": "we\u2019re",
+        "start_time": 81.98971,
+        "end_time": 82.0384154225593,
+        "id": "cEAPan1LN8zMTs0Yr--8Q",
+        "confidence": 1
+      },
+      {
+        "text": "making",
+        "start_time": 82.167147,
+        "end_time": 82.33410500000001,
+        "id": "avYbmNl1Y9FvZs9-1TVun",
+        "confidence": 1
+      },
+      {
+        "text": "you",
+        "start_time": 82.339105,
+        "end_time": 82.546147,
+        "id": "koSvykt5cQR7p1zNtdDa4",
+        "confidence": 1
+      },
+      {
+        "text": "proud)",
+        "start_time": 82.551147,
+        "end_time": 83.051147,
+        "id": "57_FkGaIpdMudCIGdR3zl",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Clap your hands, feel the beat, mm- mm",
+    "start_time": 83.36347016423358,
+    "end_time": 86.22358922217154,
+    "id": "a9pi3l",
+    "words": [
+      {
+        "text": "Clap",
+        "start_time": 83.36347016423358,
+        "end_time": 83.50347599224453,
+        "id": "7prdzs",
+        "created_during_correction": false
+      },
+      {
+        "text": "your",
+        "start_time": 83.54347765739051,
+        "end_time": 83.72348515054745,
+        "id": "9adpi5",
+        "created_during_correction": false
+      },
+      {
+        "text": "hands,",
+        "start_time": 83.74348598312044,
+        "end_time": 83.88349181113139,
+        "id": "jnlux7",
+        "created_during_correction": false
+      },
+      {
+        "text": "feel",
+        "start_time": 83.92349347627737,
+        "end_time": 84.10350096943431,
+        "id": "6tunv9",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 84.14350263458029,
+        "end_time": 84.30350929516423,
+        "id": "270r4s",
+        "created_during_correction": false
+      },
+      {
+        "text": "beat,",
+        "start_time": 84.32351012773722,
+        "end_time": 84.6835251140511,
+        "id": "9tamw8",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm-",
+        "start_time": 85.54356091468978,
+        "end_time": 85.7835709055657,
+        "id": "m8xlc8",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm",
+        "start_time": 85.90357590100365,
+        "end_time": 86.22358922217154,
+        "id": "1t844m",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Come and take a glance, mm- mm",
+    "start_time": 86.56360337591241,
+    "end_time": 89.12370994525547,
+    "id": "73rxzg",
+    "words": [
+      {
+        "text": "Come",
+        "start_time": 86.56360337591241,
+        "end_time": 86.74361086906934,
+        "id": "uov0fe",
+        "created_during_correction": false
+      },
+      {
+        "text": "and",
+        "start_time": 86.76361170164233,
+        "end_time": 86.8836166970803,
+        "id": "zjvvlu",
+        "created_during_correction": false
+      },
+      {
+        "text": "take",
+        "start_time": 86.92361836222628,
+        "end_time": 87.10362585538321,
+        "id": "zd7foq",
+        "created_during_correction": false
+      },
+      {
+        "text": "a",
+        "start_time": 87.1236266879562,
+        "end_time": 87.28363334854015,
+        "id": "scatan",
+        "created_during_correction": false
+      },
+      {
+        "text": "glance,",
+        "start_time": 87.30363418111314,
+        "end_time": 88.2236724794708,
+        "id": "k1cqnf",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm-",
+        "start_time": 88.5236849680657,
+        "end_time": 88.76369495894161,
+        "id": "a39zqa",
+        "created_during_correction": false
+      },
+      {
+        "text": "mm",
+        "start_time": 88.88369995437957,
+        "end_time": 89.12370994525547,
+        "id": "rutn86",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "We\u2019re Year 5 strong",
+    "start_time": 89.18371244297445,
+    "end_time": 91.48380818886861,
+    "id": "htxvq4",
+    "words": [
+      {
+        "text": "We\u2019re",
+        "start_time": 89.18371244297445,
+        "end_time": 89.46372409899635,
+        "id": "3gk4b3",
+        "created_during_correction": false
+      },
+      {
+        "text": "Year",
+        "start_time": 89.52372659671533,
+        "end_time": 89.84373991788321,
+        "id": "80tbl0",
+        "created_during_correction": false
+      },
+      {
+        "text": "5",
+        "start_time": 89.92374324817519,
+        "end_time": 90.24375656934306,
+        "id": "d4m4n5",
+        "created_during_correction": false
+      },
+      {
+        "text": "strong",
+        "start_time": 90.32375989963504,
+        "end_time": 91.48380818886861,
+        "id": "3bc4k3",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Here we go, steal the show",
+    "start_time": 91.782717,
+    "end_time": 94.358863,
+    "id": "qzx7id",
+    "words": [
+      {
+        "text": "Here",
+        "start_time": 91.782717,
+        "end_time": 92.123092,
+        "id": "OD2hzqAecQR7OcxnQh4Ah",
+        "confidence": 1
+      },
+      {
+        "text": "we",
+        "start_time": 92.128092,
+        "end_time": 92.47288400000001,
+        "id": "-lTU3y2Prb0rbMULlvsBL",
+        "confidence": 1
+      },
+      {
+        "text": "go,",
+        "start_time": 92.477884,
+        "end_time": 92.953759,
+        "id": "zZn_YuxhHOOGFjOsp5rmC",
+        "confidence": 1
+      },
+      {
+        "text": "steal",
+        "start_time": 93.257176,
+        "end_time": 93.7294124160203,
+        "id": "drNuKWq_yWuIERTODfTar",
+        "confidence": 1
+      },
+      {
+        "text": "the",
+        "start_time": 93.78078,
+        "end_time": 93.99391309306569,
+        "id": "TNooYfLZ3NMQYHih0Rpja",
+        "confidence": 1
+      },
+      {
+        "text": "show",
+        "start_time": 94.001467,
+        "end_time": 94.358863,
+        "id": "qxJvsEbeKQXRK9QXa8YBR",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Watch us now, take our stance",
+    "start_time": 94.796774,
+    "end_time": 97.491482,
+    "id": "4fsljt",
+    "words": [
+      {
+        "text": "Watch",
+        "start_time": 94.796774,
+        "end_time": 95.14852400000001,
+        "id": "mUjTQAyCuXpBX_9wjgipM",
+        "confidence": 1
+      },
+      {
+        "text": "us",
+        "start_time": 95.153524,
+        "end_time": 95.450753,
+        "id": "2vZlEF_B2fKF8vfrKSbZD",
+        "confidence": 1
+      },
+      {
+        "text": "now,",
+        "start_time": 95.455753,
+        "end_time": 95.985836,
+        "id": "SYstn13xs6y1PXYpojgys",
+        "confidence": 1
+      },
+      {
+        "text": "take",
+        "start_time": 96.291191,
+        "end_time": 96.791191,
+        "id": "76Y7qYxWEH0Sz1-v9A_w4",
+        "confidence": 1
+      },
+      {
+        "text": "our",
+        "start_time": 96.812982,
+        "end_time": 96.98648200000001,
+        "id": "eFerAp4VcV6TEgr4kZj4p",
+        "confidence": 1
+      },
+      {
+        "text": "stance",
+        "start_time": 96.991482,
+        "end_time": 97.491482,
+        "id": "TSYFDnb071BzDMx5VV5Fl",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "Nobody stands a chance",
+    "start_time": 97.943159,
+    "end_time": 101.051222,
+    "id": "28ye85",
+    "words": [
+      {
+        "text": "Nobody",
+        "start_time": 97.943159,
+        "end_time": 98.853993,
+        "id": "RAA4AUaRySWAm9gCYJGvg",
+        "confidence": 1
+      },
+      {
+        "text": "stands",
+        "start_time": 99.294347,
+        "end_time": 99.862638,
+        "id": "F55UxCo4EUAgtqG7q3hW1",
+        "confidence": 1
+      },
+      {
+        "text": "a",
+        "start_time": 99.995993,
+        "end_time": 100.495993,
+        "id": "_Tc8g3yPT-v14IT1zbAru",
+        "confidence": 1
+      },
+      {
+        "text": "chance",
+        "start_time": 100.522201,
+        "end_time": 101.051222,
+        "id": "pheJOEmyAS8uO4o_oKGNY",
+        "confidence": 1
+      }
+    ]
+  },
+  {
+    "text": "'Cause the players gonna play, play, play, play, play",
+    "start_time": 101.96424445711679,
+    "end_time": 104.94436851049271,
+    "id": "0qkjei",
+    "words": [
+      {
+        "text": "'Cause",
+        "start_time": 101.96424445711679,
+        "end_time": 102.12425111770074,
+        "id": "380zjd",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 102.16425278284672,
+        "end_time": 102.28425777828467,
+        "id": "ybu2e8",
+        "created_during_correction": false
+      },
+      {
+        "text": "players",
+        "start_time": 102.30425861085766,
+        "end_time": 102.68427442974452,
+        "id": "y7y5ne",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 102.72427609489051,
+        "end_time": 103.00428775091241,
+        "id": "lm8yuy",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 103.0642902486314,
+        "end_time": 103.38430356979927,
+        "id": "2ufwig",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 103.40430440237226,
+        "end_time": 103.76431938868613,
+        "id": "tp26kr",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 103.80432105383211,
+        "end_time": 104.144335207573,
+        "id": "bh1ijg",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 104.18433687271897,
+        "end_time": 104.52435102645985,
+        "id": "wwlwvc",
+        "created_during_correction": false
+      },
+      {
+        "text": "play",
+        "start_time": 104.56435269160583,
+        "end_time": 104.94436851049271,
+        "id": "1q8cw2",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And the haters gonna hate, hate, hate, hate, hate",
+    "start_time": 105.00437100821168,
+    "end_time": 107.92449256386861,
+    "id": "ghcdzy",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 105.00437100821168,
+        "end_time": 105.10437517107664,
+        "id": "087atr",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 105.12437600364963,
+        "end_time": 105.26438183166059,
+        "id": "ruw0ht",
+        "created_during_correction": false
+      },
+      {
+        "text": "haters",
+        "start_time": 105.30438349680657,
+        "end_time": 105.66439848312044,
+        "id": "an47n4",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 105.70440014826643,
+        "end_time": 106.02441346943431,
+        "id": "qxpzst",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 106.06441513458029,
+        "end_time": 106.42443012089416,
+        "id": "algbx8",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 106.44443095346715,
+        "end_time": 106.80444593978102,
+        "id": "4a7980",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 106.82444677235401,
+        "end_time": 107.18446175866788,
+        "id": "die77e",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 107.22446342381387,
+        "end_time": 107.56447757755474,
+        "id": "av7u1l",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate",
+        "start_time": 107.58447841012774,
+        "end_time": 107.92449256386861,
+        "id": "nj168i",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Baby, I'm just gonna shake, shake, shake, shake, shake",
+    "start_time": 107.9444933964416,
+    "end_time": 110.94461828239051,
+    "id": "e1xsah",
+    "words": [
+      {
+        "text": "Baby,",
+        "start_time": 107.9444933964416,
+        "end_time": 108.26450671760949,
+        "id": "01l05e",
+        "created_during_correction": false
+      },
+      {
+        "text": "I'm",
+        "start_time": 108.32450921532846,
+        "end_time": 108.44451421076643,
+        "id": "hfxofp",
+        "created_during_correction": false
+      },
+      {
+        "text": "just",
+        "start_time": 108.48451587591241,
+        "end_time": 108.64452253649635,
+        "id": "ey0397",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 108.70452503421532,
+        "end_time": 108.98453669023722,
+        "id": "wzabj8",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 109.02453835538321,
+        "end_time": 109.36455250912408,
+        "id": "nbzq5h",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 109.40455417427007,
+        "end_time": 109.74456832801096,
+        "id": "0ytyga",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 109.78456999315694,
+        "end_time": 110.12458414689782,
+        "id": "cccod2",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 110.1645858120438,
+        "end_time": 110.52460079835767,
+        "id": "4za7qo",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 110.54460163093066,
+        "end_time": 110.94461828239051,
+        "id": "4zdwcc",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I shake it off, I shake it off",
+    "start_time": 111.12462577554744,
+    "end_time": 113.18471153056569,
+    "id": "kvczaa",
+    "words": [
+      {
+        "text": "I",
+        "start_time": 111.12462577554744,
+        "end_time": 111.2246299384124,
+        "id": "v2xprt",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 111.2646316035584,
+        "end_time": 111.5046415944343,
+        "id": "l6ckpl",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 111.5446432595803,
+        "end_time": 111.62464658987227,
+        "id": "fhl6ln",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 111.68464908759124,
+        "end_time": 112.02466324133212,
+        "id": "x8yhvg",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 112.22467156706205,
+        "end_time": 112.3446765625,
+        "id": "smegsw",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 112.38467822764599,
+        "end_time": 112.6246882185219,
+        "id": "mz721g",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 112.68469071624088,
+        "end_time": 112.78469487910584,
+        "id": "yjkpxw",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 112.80469571167883,
+        "end_time": 113.18471153056569,
+        "id": "lh638g",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Heartbreakers gonna break, break, break, break, break",
+    "start_time": 113.94474316833941,
+    "end_time": 116.92486722171533,
+    "id": "kzjte9",
+    "words": [
+      {
+        "text": "Heartbreakers",
+        "start_time": 113.94474316833941,
+        "end_time": 114.66477314096716,
+        "id": "ipxk0c",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 114.70477480611314,
+        "end_time": 114.98478646213503,
+        "id": "sts381",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 115.04478895985402,
+        "end_time": 115.38480311359488,
+        "id": "79t33e",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 115.40480394616789,
+        "end_time": 115.74481809990876,
+        "id": "7m82kn",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 115.78481976505475,
+        "end_time": 116.12483391879562,
+        "id": "7x3jow",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 116.16483558394161,
+        "end_time": 116.50484973768248,
+        "id": "4227w9",
+        "created_during_correction": false
+      },
+      {
+        "text": "break",
+        "start_time": 116.54485140282847,
+        "end_time": 116.92486722171533,
+        "id": "g6gxxf",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And the fakers gonna fake, fake, fake, fake, fake",
+    "start_time": 116.96486888686131,
+    "end_time": 119.90499127509125,
+    "id": "24qab5",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 116.96486888686131,
+        "end_time": 117.10487471487227,
+        "id": "tgyx97",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 117.14487638001825,
+        "end_time": 117.24488054288321,
+        "id": "1bdu61",
+        "created_during_correction": false
+      },
+      {
+        "text": "fakers",
+        "start_time": 117.30488304060219,
+        "end_time": 117.66489802691606,
+        "id": "dt1t81",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 117.70489969206204,
+        "end_time": 117.98491134808394,
+        "id": "kgwf7b",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 118.06491467837591,
+        "end_time": 118.38492799954379,
+        "id": "8noasb",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 118.44493049726277,
+        "end_time": 118.76494381843065,
+        "id": "jre65m",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 118.82494631614964,
+        "end_time": 119.14495963731751,
+        "id": "z1ek8p",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 119.1849613024635,
+        "end_time": 119.52497545620437,
+        "id": "tz2v79",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake",
+        "start_time": 119.58497795392336,
+        "end_time": 119.90499127509125,
+        "id": "sro6oh",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Baby, I'm just gonna shake, shake, shake, shake, shake",
+    "start_time": 119.92499210766424,
+    "end_time": 122.94511782618613,
+    "id": "yixzax",
+    "words": [
+      {
+        "text": "Baby,",
+        "start_time": 119.92499210766424,
+        "end_time": 120.2650062614051,
+        "id": "xjn5zj",
+        "created_during_correction": false
+      },
+      {
+        "text": "I'm",
+        "start_time": 120.32500875912409,
+        "end_time": 120.44501375456204,
+        "id": "5bbq1k",
+        "created_during_correction": false
+      },
+      {
+        "text": "just",
+        "start_time": 120.48501541970803,
+        "end_time": 120.64502208029197,
+        "id": "mqajpb",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 120.70502457801095,
+        "end_time": 120.98503623403285,
+        "id": "ztp52h",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 121.00503706660584,
+        "end_time": 121.36505205291971,
+        "id": "76zogg",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 121.3850528854927,
+        "end_time": 121.74506787180657,
+        "id": "fk17wc",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 121.78506953695256,
+        "end_time": 122.10508285812044,
+        "id": "j44s38",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 122.14508452326642,
+        "end_time": 122.50509950958029,
+        "id": "thw4we",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 122.52510034215328,
+        "end_time": 122.94511782618613,
+        "id": "cp02x0",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I shake it off, I shake it off",
+    "start_time": 123.10512448677008,
+    "end_time": 125.7652352189781,
+    "id": "6ctp37",
+    "words": [
+      {
+        "text": "I",
+        "start_time": 123.10512448677008,
+        "end_time": 123.20512864963504,
+        "id": "pdta3a",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 123.24513031478102,
+        "end_time": 123.50514113822993,
+        "id": "gsbhxb",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 123.54514280337591,
+        "end_time": 123.64514696624087,
+        "id": "rqqpwv",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 123.70514946395986,
+        "end_time": 124.04516361770074,
+        "id": "i1h4xn",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 124.22517111085766,
+        "end_time": 124.32517527372264,
+        "id": "jokqw4",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 124.36517693886861,
+        "end_time": 124.60518692974452,
+        "id": "xtcaks",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 124.64518859489051,
+        "end_time": 124.78519442290145,
+        "id": "4tlt0y",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 124.82519608804745,
+        "end_time": 125.7652352189781,
+        "id": "65xvth",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Shake it off, I shake it off",
+    "start_time": 126.26525603330292,
+    "end_time": 128.14533429516425,
+    "id": "724i0e",
+    "words": [
+      {
+        "text": "Shake",
+        "start_time": 126.26525603330292,
+        "end_time": 126.52526685675183,
+        "id": "hv70ah",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 126.5652685218978,
+        "end_time": 126.66527268476277,
+        "id": "9nsecy",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 126.70527434990876,
+        "end_time": 127.06528933622263,
+        "id": "zmeu0f",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 127.24529682937957,
+        "end_time": 127.36530182481752,
+        "id": "zhjk79",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 127.4053034899635,
+        "end_time": 127.64531348083942,
+        "id": "nw3fr6",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 127.6853151459854,
+        "end_time": 127.76531847627737,
+        "id": "23n2eg",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 127.82532097399636,
+        "end_time": 128.14533429516425,
+        "id": "vxjzl6",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 128.38534428604015,
+    "end_time": 131.18546084625913,
+    "id": "e03jok",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 128.38534428604015,
+        "end_time": 128.56535177919707,
+        "id": "jauloz",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 128.765360104927,
+        "end_time": 128.92536676551094,
+        "id": "fn71x5",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 129.1053742586679,
+        "end_time": 129.22537925410583,
+        "id": "l59jxh",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 129.26538091925184,
+        "end_time": 129.50539091012774,
+        "id": "tv577x",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 129.54539257527372,
+        "end_time": 129.62539590556568,
+        "id": "s9fwgw",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 129.68539840328467,
+        "end_time": 130.02541255702556,
+        "id": "ozrdxb",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 130.2254208827555,
+        "end_time": 130.34542587819342,
+        "id": "n18obk",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 130.3854275433394,
+        "end_time": 130.6454383667883,
+        "id": "is7xjp",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 130.68544003193432,
+        "end_time": 130.76544336222628,
+        "id": "oaerok",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 130.82544585994526,
+        "end_time": 131.18546084625913,
+        "id": "dko4lg",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 131.38546917198906,
+    "end_time": 134.14558406706203,
+    "id": "b7bg3g",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 131.38546917198906,
+        "end_time": 131.56547666514598,
+        "id": "buhi3e",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 131.7654849908759,
+        "end_time": 131.92549165145985,
+        "id": "nj9nvz",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 132.0854983120438,
+        "end_time": 132.22550414005474,
+        "id": "bk8uc8",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 132.26550580520072,
+        "end_time": 132.50551579607665,
+        "id": "ms7s48",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 132.54551746122263,
+        "end_time": 132.6455216240876,
+        "id": "d7xb8h",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 132.68552328923357,
+        "end_time": 133.02553744297444,
+        "id": "rm04e6",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 133.26554743385037,
+        "end_time": 133.36555159671533,
+        "id": "vdizai",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 133.40555326186131,
+        "end_time": 133.62556242016424,
+        "id": "dh3any",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 133.66556408531022,
+        "end_time": 133.74556741560218,
+        "id": "vlw6m3",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 133.80556991332116,
+        "end_time": 134.14558406706203,
+        "id": "iss68k",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 134.38559405793796,
+    "end_time": 137.48572310675183,
+    "id": "00og2z",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 134.38559405793796,
+        "end_time": 134.5656015510949,
+        "id": "g12vof",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 134.7656098768248,
+        "end_time": 134.92561653740876,
+        "id": "5140bb",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 135.1056240305657,
+        "end_time": 135.22562902600365,
+        "id": "o5u2lr",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 135.26563069114962,
+        "end_time": 135.50564068202556,
+        "id": "ftwhrv",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 135.54564234717154,
+        "end_time": 135.6256456774635,
+        "id": "0bgai9",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 135.68564817518248,
+        "end_time": 135.98566066377737,
+        "id": "htn1g1",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 136.2256706546533,
+        "end_time": 136.34567565009124,
+        "id": "elfzp4",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 136.36567648266424,
+        "end_time": 136.60568647354015,
+        "id": "0k27cb",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 136.64568813868613,
+        "end_time": 136.7256914689781,
+        "id": "0xikhe",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 136.78569396669707,
+        "end_time": 137.48572310675183,
+        "id": "g29jkx",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Hey, hey, hey",
+    "start_time": 139.06578888001826,
+    "end_time": 140.0058280109489,
+    "id": "4uhf7t",
+    "words": [
+      {
+        "text": "Hey,",
+        "start_time": 139.06578888001826,
+        "end_time": 139.24579637317518,
+        "id": "vyj0fh",
+        "created_during_correction": false
+      },
+      {
+        "text": "hey,",
+        "start_time": 139.28579803832116,
+        "end_time": 139.42580386633213,
+        "id": "2kmtqg",
+        "created_during_correction": false
+      },
+      {
+        "text": "hey",
+        "start_time": 139.4658055314781,
+        "end_time": 140.0058280109489,
+        "id": "ai0hyz",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Just think, while you've been gettin' down and out about the liars",
+    "start_time": 140.52584965784672,
+    "end_time": 143.48597287864965,
+    "id": "k5l130",
+    "words": [
+      {
+        "text": "Just",
+        "start_time": 140.52584965784672,
+        "end_time": 140.70585715100364,
+        "id": "17y7fm",
+        "created_during_correction": false
+      },
+      {
+        "text": "think,",
+        "start_time": 140.74585881614965,
+        "end_time": 140.92586630930657,
+        "id": "3mqyng",
+        "created_during_correction": false
+      },
+      {
+        "text": "while",
+        "start_time": 140.94586714187957,
+        "end_time": 141.1258746350365,
+        "id": "dv1h1e",
+        "created_during_correction": false
+      },
+      {
+        "text": "you've",
+        "start_time": 141.16587630018248,
+        "end_time": 141.3658846259124,
+        "id": "pe4syf",
+        "created_during_correction": false
+      },
+      {
+        "text": "been",
+        "start_time": 141.3858854584854,
+        "end_time": 141.54589211906935,
+        "id": "38cyj1",
+        "created_during_correction": false
+      },
+      {
+        "text": "gettin'",
+        "start_time": 141.56589295164233,
+        "end_time": 141.8659054402372,
+        "id": "latpij",
+        "created_during_correction": false
+      },
+      {
+        "text": "down",
+        "start_time": 141.9459087705292,
+        "end_time": 142.2659220916971,
+        "id": "5rwhzy",
+        "created_during_correction": false
+      },
+      {
+        "text": "and",
+        "start_time": 142.28592292427007,
+        "end_time": 142.36592625456205,
+        "id": "3pr6ed",
+        "created_during_correction": false
+      },
+      {
+        "text": "out",
+        "start_time": 142.40592791970803,
+        "end_time": 142.60593624543796,
+        "id": "fkerbw",
+        "created_during_correction": false
+      },
+      {
+        "text": "about",
+        "start_time": 142.62593707801096,
+        "end_time": 142.8259454037409,
+        "id": "7xoze1",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 142.84594623631386,
+        "end_time": 142.96595123175183,
+        "id": "xqtjhh",
+        "created_during_correction": false
+      },
+      {
+        "text": "liars",
+        "start_time": 143.0259537294708,
+        "end_time": 143.48597287864965,
+        "id": "ka0c12",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And the dirty, dirty cheats of the world",
+    "start_time": 143.52597454379563,
+    "end_time": 145.40605280565694,
+    "id": "pbqbw8",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 143.52597454379563,
+        "end_time": 143.60597787408759,
+        "id": "egl1uu",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 143.6259787066606,
+        "end_time": 143.74598370209853,
+        "id": "n4ffol",
+        "created_during_correction": false
+      },
+      {
+        "text": "dirty,",
+        "start_time": 143.8059861998175,
+        "end_time": 144.1059986884124,
+        "id": "b6sm8y",
+        "created_during_correction": false
+      },
+      {
+        "text": "dirty",
+        "start_time": 144.1460003535584,
+        "end_time": 144.4260120095803,
+        "id": "rdsy5f",
+        "created_during_correction": false
+      },
+      {
+        "text": "cheats",
+        "start_time": 144.50601533987228,
+        "end_time": 144.78602699589416,
+        "id": "zl19al",
+        "created_during_correction": false
+      },
+      {
+        "text": "of",
+        "start_time": 144.84602949361314,
+        "end_time": 144.90603199133213,
+        "id": "bx0ugb",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 144.9460336564781,
+        "end_time": 145.02603698677007,
+        "id": "0oyykb",
+        "created_during_correction": false
+      },
+      {
+        "text": "world",
+        "start_time": 145.06603865191605,
+        "end_time": 145.40605280565694,
+        "id": "g20wxk",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "You could've been gettin' down to this sick beat",
+    "start_time": 145.60606113138687,
+    "end_time": 149.26621349224453,
+    "id": "n43gvk",
+    "words": [
+      {
+        "text": "You",
+        "start_time": 145.60606113138687,
+        "end_time": 145.7460669593978,
+        "id": "6xljs5",
+        "created_during_correction": false
+      },
+      {
+        "text": "could've",
+        "start_time": 145.84607112226277,
+        "end_time": 146.10608194571168,
+        "id": "fjpbof",
+        "created_during_correction": false
+      },
+      {
+        "text": "been",
+        "start_time": 146.12608277828468,
+        "end_time": 146.26608860629563,
+        "id": "3xzz3h",
+        "created_during_correction": false
+      },
+      {
+        "text": "gettin'",
+        "start_time": 146.2860894388686,
+        "end_time": 146.5461002623175,
+        "id": "5iz8vv",
+        "created_during_correction": false
+      },
+      {
+        "text": "down",
+        "start_time": 146.6261035926095,
+        "end_time": 146.94611691377736,
+        "id": "hlglfh",
+        "created_during_correction": false
+      },
+      {
+        "text": "to",
+        "start_time": 147.1061235743613,
+        "end_time": 147.24612940237228,
+        "id": "eiz72h",
+        "created_during_correction": false
+      },
+      {
+        "text": "this",
+        "start_time": 147.32613273266423,
+        "end_time": 147.6861477189781,
+        "id": "o7t3y3",
+        "created_during_correction": false
+      },
+      {
+        "text": "sick",
+        "start_time": 148.04616270529198,
+        "end_time": 148.38617685903284,
+        "id": "rn9sii",
+        "created_during_correction": false
+      },
+      {
+        "text": "beat",
+        "start_time": 148.7861935104927,
+        "end_time": 149.26621349224453,
+        "id": "dxn5f4",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "My ex- man brought his new girlfriend",
+    "start_time": 150.28625595346716,
+    "end_time": 152.82636169023723,
+    "id": "1a3jwj",
+    "words": [
+      {
+        "text": "My",
+        "start_time": 150.28625595346716,
+        "end_time": 150.60626927463503,
+        "id": "2v6urg",
+        "created_during_correction": false
+      },
+      {
+        "text": "ex-",
+        "start_time": 150.726274270073,
+        "end_time": 151.02628675866788,
+        "id": "wla5ce",
+        "created_during_correction": false
+      },
+      {
+        "text": "man",
+        "start_time": 151.06628842381386,
+        "end_time": 151.34630007983577,
+        "id": "yqbbg6",
+        "created_during_correction": false
+      },
+      {
+        "text": "brought",
+        "start_time": 151.38630174498175,
+        "end_time": 151.58631007071168,
+        "id": "tn8auo",
+        "created_during_correction": false
+      },
+      {
+        "text": "his",
+        "start_time": 151.60631090328468,
+        "end_time": 151.74631673129562,
+        "id": "cwymgv",
+        "created_during_correction": false
+      },
+      {
+        "text": "new",
+        "start_time": 151.8063192290146,
+        "end_time": 152.0663300524635,
+        "id": "yjq4kz",
+        "created_during_correction": false
+      },
+      {
+        "text": "girlfriend",
+        "start_time": 152.1263325501825,
+        "end_time": 152.82636169023723,
+        "id": "czs991",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "She's like, \"Oh my God\"",
+    "start_time": 152.8663633553832,
+    "end_time": 154.44642912864964,
+    "id": "ldirnz",
+    "words": [
+      {
+        "text": "She's",
+        "start_time": 152.8663633553832,
+        "end_time": 153.06637168111314,
+        "id": "7xsxkm",
+        "created_during_correction": false
+      },
+      {
+        "text": "like,",
+        "start_time": 153.10637334625912,
+        "end_time": 153.24637917427006,
+        "id": "6g0oxm",
+        "created_during_correction": false
+      },
+      {
+        "text": "\"Oh",
+        "start_time": 153.32638250456205,
+        "end_time": 153.64639582572994,
+        "id": "2be2u8",
+        "created_during_correction": false
+      },
+      {
+        "text": "my",
+        "start_time": 153.68639749087592,
+        "end_time": 153.9864099794708,
+        "id": "xsu1rk",
+        "created_during_correction": false
+      },
+      {
+        "text": "God\"",
+        "start_time": 154.0464124771898,
+        "end_time": 154.44642912864964,
+        "id": "mrqoct",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "But I'm just gonna shake",
+    "start_time": 154.48643079379562,
+    "end_time": 155.74648324589415,
+    "id": "y2f79i",
+    "words": [
+      {
+        "text": "But",
+        "start_time": 154.48643079379562,
+        "end_time": 154.66643828695257,
+        "id": "3ekbbg",
+        "created_during_correction": false
+      },
+      {
+        "text": "I'm",
+        "start_time": 154.8064441149635,
+        "end_time": 154.94644994297445,
+        "id": "uhasty",
+        "created_during_correction": false
+      },
+      {
+        "text": "just",
+        "start_time": 154.98645160812043,
+        "end_time": 155.14645826870438,
+        "id": "be5tw1",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 155.18645993385036,
+        "end_time": 155.46647158987227,
+        "id": "elwht8",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 155.50647325501825,
+        "end_time": 155.74648324589415,
+        "id": "gv08wm",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And to the fella over there with the hella good hair",
+    "start_time": 155.76648407846716,
+    "end_time": 158.886613959854,
+    "id": "ncgb5q",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 155.76648407846716,
+        "end_time": 155.86648824133212,
+        "id": "je063q",
+        "created_during_correction": false
+      },
+      {
+        "text": "to",
+        "start_time": 155.9264907390511,
+        "end_time": 156.06649656706205,
+        "id": "8kygtl",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 156.08649739963505,
+        "end_time": 156.206502395073,
+        "id": "vy5l80",
+        "created_during_correction": false
+      },
+      {
+        "text": "fella",
+        "start_time": 156.28650572536498,
+        "end_time": 156.62651987910584,
+        "id": "t3qur7",
+        "created_during_correction": false
+      },
+      {
+        "text": "over",
+        "start_time": 156.68652237682483,
+        "end_time": 157.0065356979927,
+        "id": "faq5yf",
+        "created_during_correction": false
+      },
+      {
+        "text": "there",
+        "start_time": 157.0465373631387,
+        "end_time": 157.38655151687956,
+        "id": "uwajrq",
+        "created_during_correction": false
+      },
+      {
+        "text": "with",
+        "start_time": 157.40655234945257,
+        "end_time": 157.5465581774635,
+        "id": "wcdvv2",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 157.5865598426095,
+        "end_time": 157.72656567062043,
+        "id": "b7nvkf",
+        "created_during_correction": false
+      },
+      {
+        "text": "hella",
+        "start_time": 157.7665673357664,
+        "end_time": 158.14658315465329,
+        "id": "7ztrrc",
+        "created_during_correction": false
+      },
+      {
+        "text": "good",
+        "start_time": 158.18658481979926,
+        "end_time": 158.50659814096716,
+        "id": "6ulvz8",
+        "created_during_correction": false
+      },
+      {
+        "text": "hair",
+        "start_time": 158.56660063868614,
+        "end_time": 158.886613959854,
+        "id": "h20lu4",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Won't you come on over, baby? We can shake, shake, shake",
+    "start_time": 158.906614792427,
+    "end_time": 162.5067646555657,
+    "id": "rbyach",
+    "words": [
+      {
+        "text": "Won't",
+        "start_time": 158.906614792427,
+        "end_time": 159.08662228558396,
+        "id": "zvtg6j",
+        "created_during_correction": false
+      },
+      {
+        "text": "you",
+        "start_time": 159.10662311815693,
+        "end_time": 159.2266281135949,
+        "id": "r24kdm",
+        "created_during_correction": false
+      },
+      {
+        "text": "come",
+        "start_time": 159.28663061131388,
+        "end_time": 159.4866389370438,
+        "id": "kptz1r",
+        "created_during_correction": false
+      },
+      {
+        "text": "on",
+        "start_time": 159.50663976961678,
+        "end_time": 159.62664476505475,
+        "id": "51avh6",
+        "created_during_correction": false
+      },
+      {
+        "text": "over,",
+        "start_time": 159.66664643020073,
+        "end_time": 159.98665975136862,
+        "id": "x8qmrr",
+        "created_during_correction": false
+      },
+      {
+        "text": "baby?",
+        "start_time": 160.0466622490876,
+        "end_time": 160.3266739051095,
+        "id": "uf6gue",
+        "created_during_correction": false
+      },
+      {
+        "text": "We",
+        "start_time": 160.38667640282847,
+        "end_time": 160.54668306341242,
+        "id": "sszixy",
+        "created_during_correction": false
+      },
+      {
+        "text": "can",
+        "start_time": 160.5866847285584,
+        "end_time": 160.70668972399636,
+        "id": "3rypg4",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 160.76669222171532,
+        "end_time": 161.1267072080292,
+        "id": "rohsmd",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 161.36671719890512,
+        "end_time": 161.706731352646,
+        "id": "pypxxg",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 161.9067396783759,
+        "end_time": 162.5067646555657,
+        "id": "whjxz7",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Yeah, oh",
+    "start_time": 163.62681127965328,
+    "end_time": 164.92686539689782,
+    "id": "dn563r",
+    "words": [
+      {
+        "text": "Yeah,",
+        "start_time": 163.62681127965328,
+        "end_time": 164.40684375,
+        "id": "s2wv9r",
+        "created_during_correction": false
+      },
+      {
+        "text": "oh",
+        "start_time": 164.466846247719,
+        "end_time": 164.92686539689782,
+        "id": "kmqxlp",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "'Cause the players gonna play, play, play, play, play",
+    "start_time": 164.9668670620438,
+    "end_time": 167.90698945027373,
+    "id": "f321sr",
+    "words": [
+      {
+        "text": "'Cause",
+        "start_time": 164.9668670620438,
+        "end_time": 165.12687372262775,
+        "id": "mm98pz",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 165.14687455520072,
+        "end_time": 165.28688038321167,
+        "id": "hv2d3x",
+        "created_during_correction": false
+      },
+      {
+        "text": "players",
+        "start_time": 165.30688121578467,
+        "end_time": 165.68689703467155,
+        "id": "z7kvo0",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 165.72689869981753,
+        "end_time": 166.0269111884124,
+        "id": "b6klek",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 166.0869136861314,
+        "end_time": 166.42692783987226,
+        "id": "wfaxkw",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 166.46692950501824,
+        "end_time": 166.80694365875914,
+        "id": "16880t",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 166.8269444913321,
+        "end_time": 167.16695864507298,
+        "id": "fuex3y",
+        "created_during_correction": false
+      },
+      {
+        "text": "play,",
+        "start_time": 167.206960310219,
+        "end_time": 167.54697446395986,
+        "id": "jezas2",
+        "created_during_correction": false
+      },
+      {
+        "text": "play",
+        "start_time": 167.58697612910584,
+        "end_time": 167.90698945027373,
+        "id": "d74n7n",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And the haters gonna hate, hate, hate, hate, hate",
+    "start_time": 167.98699278056569,
+    "end_time": 171.30713098768248,
+    "id": "ey28my",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 167.98699278056569,
+        "end_time": 168.10699777600365,
+        "id": "m54ja1",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 168.14699944114963,
+        "end_time": 168.2670044365876,
+        "id": "glrm7k",
+        "created_during_correction": false
+      },
+      {
+        "text": "haters",
+        "start_time": 168.32700693430658,
+        "end_time": 168.70702275319343,
+        "id": "3se93p",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 168.72702358576643,
+        "end_time": 169.0470369069343,
+        "id": "3cd4du",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 169.0870385720803,
+        "end_time": 169.42705272582117,
+        "id": "n4dtqj",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 169.46705439096715,
+        "end_time": 169.78706771213504,
+        "id": "ezboeu",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 169.82706937728102,
+        "end_time": 170.1270818658759,
+        "id": "3qrj74",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate,",
+        "start_time": 170.1670835310219,
+        "end_time": 170.52709851733576,
+        "id": "1z4qtp",
+        "created_during_correction": false
+      },
+      {
+        "text": "hate",
+        "start_time": 170.58710101505474,
+        "end_time": 171.30713098768248,
+        "id": "u8vn18",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I'm just gonna shake, shake, shake, shake, shake",
+    "start_time": 171.34713265282846,
+    "end_time": 173.94724088731752,
+    "id": "3u5u5h",
+    "words": [
+      {
+        "text": "I'm",
+        "start_time": 171.34713265282846,
+        "end_time": 171.44713681569343,
+        "id": "6kcbnb",
+        "created_during_correction": false
+      },
+      {
+        "text": "just",
+        "start_time": 171.4871384808394,
+        "end_time": 171.64714514142335,
+        "id": "1twej6",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 171.72714847171534,
+        "end_time": 172.00716012773722,
+        "id": "mnfeda",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 172.02716096031023,
+        "end_time": 172.3671751140511,
+        "id": "qje9y8",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 172.3871759466241,
+        "end_time": 172.74719093293797,
+        "id": "0xso63",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 172.78719259808395,
+        "end_time": 173.12720675182482,
+        "id": "u0p788",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 173.14720758439782,
+        "end_time": 173.5072225707117,
+        "id": "4brwc3",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 173.52722340328467,
+        "end_time": 173.94724088731752,
+        "id": "b2w3bv",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I shake it off, I shake it off",
+    "start_time": 174.12724838047444,
+    "end_time": 176.38734246122263,
+    "id": "sgk5tq",
+    "words": [
+      {
+        "text": "I",
+        "start_time": 174.12724838047444,
+        "end_time": 174.2272525433394,
+        "id": "xvg6h7",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 174.2672542084854,
+        "end_time": 174.50726419936132,
+        "id": "orut1d",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 174.5472658645073,
+        "end_time": 174.64727002737226,
+        "id": "90uq9d",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 174.70727252509124,
+        "end_time": 175.02728584625913,
+        "id": "77e7ky",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 175.22729417198906,
+        "end_time": 175.347299167427,
+        "id": "yfx1mz",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 175.387300832573,
+        "end_time": 175.6473116560219,
+        "id": "i6dyek",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 175.6873133211679,
+        "end_time": 175.74731581888688,
+        "id": "0laaeo",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 175.78731748403285,
+        "end_time": 176.38734246122263,
+        "id": "vpvi8d",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Heartbreakers gonna break, break, break, break, break",
+    "start_time": 176.4273441263686,
+    "end_time": 179.90748899406935,
+    "id": "ten8ok",
+    "words": [
+      {
+        "text": "Heartbreakers",
+        "start_time": 176.4273441263686,
+        "end_time": 177.66739574589417,
+        "id": "58pxz5",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 177.70739741104015,
+        "end_time": 178.00740989963504,
+        "id": "7nqx54",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 178.04741156478102,
+        "end_time": 178.3674248859489,
+        "id": "o20x28",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 178.4074265510949,
+        "end_time": 178.74744070483575,
+        "id": "1wetbi",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 178.78744236998176,
+        "end_time": 179.12745652372263,
+        "id": "5cqmtw",
+        "created_during_correction": false
+      },
+      {
+        "text": "break,",
+        "start_time": 179.1674581888686,
+        "end_time": 179.54747400775548,
+        "id": "z4d5ri",
+        "created_during_correction": false
+      },
+      {
+        "text": "break",
+        "start_time": 179.56747484032846,
+        "end_time": 179.90748899406935,
+        "id": "rkjwfx",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "And the fakers gonna fake, fake, fake, fake",
+    "start_time": 179.9874923243613,
+    "end_time": 183.24762803375913,
+    "id": "obaesz",
+    "words": [
+      {
+        "text": "And",
+        "start_time": 179.9874923243613,
+        "end_time": 180.10749731979928,
+        "id": "cjmmuy",
+        "created_during_correction": false
+      },
+      {
+        "text": "the",
+        "start_time": 180.14749898494526,
+        "end_time": 180.2875048129562,
+        "id": "0kum3s",
+        "created_during_correction": false
+      },
+      {
+        "text": "fakers",
+        "start_time": 180.32750647810218,
+        "end_time": 180.66752063184308,
+        "id": "a7ztrf",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 180.72752312956206,
+        "end_time": 180.98753395301094,
+        "id": "zn2l60",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 181.06753728330293,
+        "end_time": 181.4075514370438,
+        "id": "ehf44e",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 181.44755310218977,
+        "end_time": 182.38759223312044,
+        "id": "00navt",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake,",
+        "start_time": 182.40759306569342,
+        "end_time": 182.90761388001826,
+        "id": "7kt2cc",
+        "created_during_correction": false
+      },
+      {
+        "text": "fake",
+        "start_time": 182.92761471259124,
+        "end_time": 183.24762803375913,
+        "id": "rcz59t",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I'm just gonna shake, shake, shake, shake",
+    "start_time": 183.3076305314781,
+    "end_time": 185.94774043111315,
+    "id": "d9xgfw",
+    "words": [
+      {
+        "text": "I'm",
+        "start_time": 183.3076305314781,
+        "end_time": 183.42763552691605,
+        "id": "g5q3ej",
+        "created_during_correction": false
+      },
+      {
+        "text": "just",
+        "start_time": 183.46763719206206,
+        "end_time": 183.66764551779198,
+        "id": "bn075v",
+        "created_during_correction": false
+      },
+      {
+        "text": "gonna",
+        "start_time": 183.70764718293796,
+        "end_time": 184.36767465784672,
+        "id": "pmxhqv",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 184.3876754904197,
+        "end_time": 184.74769047673357,
+        "id": "q0rhwb",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 184.78769214187957,
+        "end_time": 185.10770546304744,
+        "id": "dtvg4f",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake,",
+        "start_time": 185.14770712819345,
+        "end_time": 185.5077221145073,
+        "id": "g1vr5d",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 185.5277229470803,
+        "end_time": 185.94774043111315,
+        "id": "55bmee",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I shake it off, I shake it off",
+    "start_time": 186.12774792427007,
+    "end_time": 188.34784033987228,
+    "id": "jag0d8",
+    "words": [
+      {
+        "text": "I",
+        "start_time": 186.12774792427007,
+        "end_time": 186.22775208713503,
+        "id": "h85ldg",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 186.267753752281,
+        "end_time": 186.50776374315694,
+        "id": "7t62mo",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 186.56776624087593,
+        "end_time": 186.68777123631386,
+        "id": "qdc0mq",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 186.70777206888687,
+        "end_time": 187.06778705520074,
+        "id": "nbnw9e",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 187.24779454835766,
+        "end_time": 187.34779871122262,
+        "id": "wc7cvm",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 187.3878003763686,
+        "end_time": 187.62781036724454,
+        "id": "tex8am",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 187.68781286496352,
+        "end_time": 187.82781869297446,
+        "id": "e1swkc",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 187.88782119069344,
+        "end_time": 188.34784033987228,
+        "id": "rn8pbc",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Shake it off, I shake it off",
+    "start_time": 189.26787863822992,
+    "end_time": 191.14795690009123,
+    "id": "9ffzr8",
+    "words": [
+      {
+        "text": "Shake",
+        "start_time": 189.26787863822992,
+        "end_time": 189.52788946167883,
+        "id": "zg1u8h",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 189.56789112682483,
+        "end_time": 189.6278936245438,
+        "id": "2yryrj",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 189.70789695483577,
+        "end_time": 190.1279144388686,
+        "id": "x67wzf",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 190.26792026687957,
+        "end_time": 190.36792442974453,
+        "id": "2gabyl",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 190.4079260948905,
+        "end_time": 190.62793525319344,
+        "id": "yf2izo",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 190.66793691833942,
+        "end_time": 190.76794108120438,
+        "id": "8yck56",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 190.82794357892337,
+        "end_time": 191.14795690009123,
+        "id": "1fgb1e",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 191.38796689096716,
+    "end_time": 194.16808261861314,
+    "id": "9mjgbk",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 191.38796689096716,
+        "end_time": 191.56797438412408,
+        "id": "ydtlfw",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 191.767982709854,
+        "end_time": 191.92798937043796,
+        "id": "jlg1pi",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 192.1079968635949,
+        "end_time": 192.22800185903284,
+        "id": "pep0tr",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 192.26800352417882,
+        "end_time": 192.50801351505476,
+        "id": "q4r2g4",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 192.54801518020074,
+        "end_time": 192.6280185104927,
+        "id": "fzdb7f",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 192.68802100821168,
+        "end_time": 193.02803516195254,
+        "id": "om2xjq",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 193.24804432025547,
+        "end_time": 193.36804931569344,
+        "id": "g8o7a5",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 193.38805014826642,
+        "end_time": 193.62806013914235,
+        "id": "2mvvt1",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 193.66806180428833,
+        "end_time": 193.7680659671533,
+        "id": "w1g7p7",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 193.82806846487227,
+        "end_time": 194.16808261861314,
+        "id": "lfctaq",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 194.38809177691607,
+    "end_time": 197.308213332573,
+    "id": "6e3be3",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 194.38809177691607,
+        "end_time": 194.72810593065694,
+        "id": "ofezq6",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 194.8081092609489,
+        "end_time": 195.00811758667882,
+        "id": "l0xukb",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 195.10812174954378,
+        "end_time": 195.22812674498175,
+        "id": "8r5hpk",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 195.26812841012773,
+        "end_time": 195.50813840100366,
+        "id": "5kdxko",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 195.54814006614964,
+        "end_time": 195.60814256386863,
+        "id": "4q2xfz",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 195.7081467267336,
+        "end_time": 196.1281642107664,
+        "id": "v3bnd5",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 196.26817003877738,
+        "end_time": 196.38817503421532,
+        "id": "zwmuw8",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 196.40817586678833,
+        "end_time": 196.62818502509126,
+        "id": "xalndw",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 196.66818669023723,
+        "end_time": 196.7681908531022,
+        "id": "w7lkl0",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 196.82819335082118,
+        "end_time": 197.308213332573,
+        "id": "mt0aco",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 197.38821666286498,
+    "end_time": 200.34833988366788,
+    "id": "58dd6l",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 197.38821666286498,
+        "end_time": 197.5682241560219,
+        "id": "sf04ur",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 197.76823248175182,
+        "end_time": 197.92823914233577,
+        "id": "k0rgdx",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 198.1082466354927,
+        "end_time": 198.22825163093066,
+        "id": "07maoj",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 198.26825329607664,
+        "end_time": 198.50826328695257,
+        "id": "0jzl76",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 198.54826495209855,
+        "end_time": 198.6482691149635,
+        "id": "jwfxue",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 198.72827244525547,
+        "end_time": 198.98828326870438,
+        "id": "9gzt0o",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 199.22829325958028,
+        "end_time": 199.34829825501825,
+        "id": "vvg4vj",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 199.38829992016423,
+        "end_time": 199.60830907846716,
+        "id": "c2th6c",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 199.64831074361314,
+        "end_time": 199.7483149064781,
+        "id": "q8c9vz",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 199.8283182367701,
+        "end_time": 200.34833988366788,
+        "id": "vvwcy4",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "Shake it off, I shake it off",
+    "start_time": 201.26837818202554,
+    "end_time": 203.16845727645986,
+    "id": "zmhuhl",
+    "words": [
+      {
+        "text": "Shake",
+        "start_time": 201.26837818202554,
+        "end_time": 201.50838817290145,
+        "id": "es31re",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 201.54838983804746,
+        "end_time": 201.64839400091242,
+        "id": "zrxtyg",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 201.6883956660584,
+        "end_time": 202.04841065237227,
+        "id": "6oeg26",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 202.2684198106752,
+        "end_time": 202.36842397354016,
+        "id": "tzr10t",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 202.40842563868614,
+        "end_time": 202.64843562956204,
+        "id": "9qxzeh",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 202.68843729470802,
+        "end_time": 202.768440625,
+        "id": "a1t9em",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 202.82844312271897,
+        "end_time": 203.16845727645986,
+        "id": "7h0c84",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 203.38846643476276,
+    "end_time": 206.10857966468978,
+    "id": "0cp0xk",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 203.38846643476276,
+        "end_time": 203.5684739279197,
+        "id": "w3hho4",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 203.76848225364964,
+        "end_time": 203.92848891423358,
+        "id": "3wsvv3",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 204.1084964073905,
+        "end_time": 204.24850223540147,
+        "id": "6sbrq8",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 204.26850306797445,
+        "end_time": 204.50851305885035,
+        "id": "2aux3r",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 204.54851472399636,
+        "end_time": 204.62851805428832,
+        "id": "thjvzi",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 204.6885205520073,
+        "end_time": 205.02853470574817,
+        "id": "jcc59m",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 205.2485438640511,
+        "end_time": 205.36854885948904,
+        "id": "59xrl5",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 205.40855052463505,
+        "end_time": 205.62855968293795,
+        "id": "4e5xbr",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 205.66856134808395,
+        "end_time": 205.76856551094892,
+        "id": "l9hw70",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 205.82856800866787,
+        "end_time": 206.10857966468978,
+        "id": "5km9z7",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "(You got to)",
+    "start_time": 206.1285804972628,
+    "end_time": 206.94861463275546,
+    "id": "840jqb",
+    "words": [
+      {
+        "text": "(You",
+        "start_time": 206.1285804972628,
+        "end_time": 206.3485896555657,
+        "id": "3nolud",
+        "created_during_correction": false
+      },
+      {
+        "text": "got",
+        "start_time": 206.38859132071167,
+        "end_time": 206.72860547445256,
+        "id": "p44ng5",
+        "created_during_correction": false
+      },
+      {
+        "text": "to)",
+        "start_time": 206.74860630702554,
+        "end_time": 206.94861463275546,
+        "id": "zuedk9",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 206.96861546532847,
+    "end_time": 209.16870704835767,
+    "id": "oqqcce",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 206.96861546532847,
+        "end_time": 206.98861629790147,
+        "id": "5b3kg9",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 207.04861879562043,
+        "end_time": 207.08862046076644,
+        "id": "cevj19",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 207.1486229584854,
+        "end_time": 207.22862628877738,
+        "id": "nzlhyb",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 207.26862795392336,
+        "end_time": 207.50863794479926,
+        "id": "jonikl",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 207.54863960994527,
+        "end_time": 207.62864294023723,
+        "id": "j0ixso",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 207.6886454379562,
+        "end_time": 208.0086587591241,
+        "id": "tmqg27",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 208.26866958257298,
+        "end_time": 208.36867374543795,
+        "id": "lbevaw",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 208.40867541058395,
+        "end_time": 208.62868456888685,
+        "id": "a0ru80",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 208.66868623403286,
+        "end_time": 208.74868956432482,
+        "id": "tz4499",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 208.8086920620438,
+        "end_time": 209.16870704835767,
+        "id": "8tnszx",
+        "created_during_correction": false
+      }
+    ]
+  },
+  {
+    "text": "I- I- I shake it off, I shake it off",
+    "start_time": 209.38871620666058,
+    "end_time": 212.56884858576643,
+    "id": "n3uf1k",
+    "words": [
+      {
+        "text": "I-",
+        "start_time": 209.38871620666058,
+        "end_time": 209.56872369981753,
+        "id": "5v2oip",
+        "created_during_correction": false
+      },
+      {
+        "text": "I-",
+        "start_time": 209.76873202554745,
+        "end_time": 209.9287386861314,
+        "id": "4ru19q",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 210.10874617928832,
+        "end_time": 210.24875200729926,
+        "id": "af1eoq",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 210.26875283987226,
+        "end_time": 210.50876283074817,
+        "id": "opwo5w",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 210.54876449589418,
+        "end_time": 210.64876865875914,
+        "id": "lmni6z",
+        "created_during_correction": false
+      },
+      {
+        "text": "off,",
+        "start_time": 210.68877032390512,
+        "end_time": 210.9887828125,
+        "id": "qd2b17",
+        "created_during_correction": false
+      },
+      {
+        "text": "I",
+        "start_time": 211.2287928033759,
+        "end_time": 211.34879779881388,
+        "id": "zchurz",
+        "created_during_correction": false
+      },
+      {
+        "text": "shake",
+        "start_time": 211.38879946395986,
+        "end_time": 211.60880862226279,
+        "id": "lqsqck",
+        "created_during_correction": false
+      },
+      {
+        "text": "it",
+        "start_time": 211.64881028740876,
+        "end_time": 211.74881445027373,
+        "id": "lsrh3w",
+        "created_during_correction": false
+      },
+      {
+        "text": "off",
+        "start_time": 211.8088169479927,
+        "end_time": 212.56884858576643,
+        "id": "hz4l73",
+        "created_during_correction": false
+      }
+    ]
+  }
+]
