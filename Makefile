@@ -1,7 +1,7 @@
 # Makefile for karaoke-gen project
 # Run `make help` to see available commands
 
-.PHONY: help install install-backend install-frontend build-frontend dev-install test test-unit test-backend test-e2e test-frontend test-all lint clean emulators-start emulators-stop
+.PHONY: help install install-backend install-frontend build-frontend dev-install test test-unit test-backend test-e2e test-frontend test-all lint clean emulators-start emulators-stop eval-custom-lyrics
 
 # Per-stage timeout in seconds (default: 10 minutes)
 # Prevents hangs from stale dev servers, broken emulators, etc.
@@ -132,4 +132,8 @@ clean:
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	rm -rf htmlcov/ .coverage coverage.xml 2>/dev/null || true
 	@echo "Cleaned up temporary files"
+
+.PHONY: eval-custom-lyrics
+eval-custom-lyrics:
+	cd backend && poetry run python -m backend.eval.custom_lyrics.run
 
