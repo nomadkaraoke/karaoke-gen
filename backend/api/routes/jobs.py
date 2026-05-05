@@ -536,6 +536,7 @@ _SUMMARY_STATE_DATA_KEYS = {
     'audio_progress', 'lyrics_progress',
     'audio_complete', 'lyrics_complete',
     'backing_vocals_analysis', 'visibility_change_in_progress',
+    'render_pending_capacity',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']

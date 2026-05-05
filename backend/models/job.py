@@ -68,6 +68,7 @@ class JobStatus(str, Enum):
 
     # Stage 5.5: Render video with corrected lyrics (post-review)
     RENDERING_VIDEO = "rendering_video"          # Using OutputGenerator to create with_vocals.mkv
+    RENDER_PENDING_CAPACITY = "render_pending_capacity"  # Waiting for GCE encoding capacity (auto-retry)
 
     # Stage 6: Instrumental already selected (during combined review)
     # Note: AWAITING_INSTRUMENTAL_SELECTION kept for DB compatibility with historical jobs only
@@ -135,10 +136,27 @@ STATE_TRANSITIONS = {
     # AWAITING_REVIEW can go directly to REVIEW_COMPLETE (quick review) or to IN_REVIEW (editing)
     JobStatus.AWAITING_REVIEW: [JobStatus.IN_REVIEW, JobStatus.REVIEW_COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED],
     JobStatus.IN_REVIEW: [JobStatus.REVIEW_COMPLETE, JobStatus.AWAITING_REVIEW, JobStatus.FAILED],
-    JobStatus.REVIEW_COMPLETE: [JobStatus.RENDERING_VIDEO, JobStatus.PREP_COMPLETE, JobStatus.FAILED],  # PREP_COMPLETE for prep-only jobs
+    JobStatus.REVIEW_COMPLETE: [
+        JobStatus.RENDERING_VIDEO,
+        JobStatus.PREP_COMPLETE,            # for prep-only jobs
+        JobStatus.RENDER_PENDING_CAPACITY,  # GCE capacity exhausted before render started
+        JobStatus.FAILED,
+    ],
 
     # Video rendering (post-review) - instrumental was already selected during combined review
-    JobStatus.RENDERING_VIDEO: [JobStatus.INSTRUMENTAL_SELECTED, JobStatus.PREP_COMPLETE, JobStatus.FAILED],
+    # RENDER_PENDING_CAPACITY = parked when GCE encoding capacity is exhausted; auto-retried by scheduler.
+    JobStatus.RENDERING_VIDEO: [
+        JobStatus.INSTRUMENTAL_SELECTED,
+        JobStatus.PREP_COMPLETE,
+        JobStatus.RENDER_PENDING_CAPACITY,
+        JobStatus.FAILED,
+    ],
+    JobStatus.RENDER_PENDING_CAPACITY: [
+        JobStatus.RENDERING_VIDEO,   # auto-retry succeeded, picked up again
+        JobStatus.REVIEW_COMPLETE,   # admin / scheduler resets to re-trigger render
+        JobStatus.FAILED,            # exceeded max wait or operator gave up
+        JobStatus.CANCELLED,         # user cancelled while waiting
+    ],
 
     # AWAITING_INSTRUMENTAL_SELECTION is LEGACY - kept for historical jobs in DB
     # New jobs never enter this state; they go directly to INSTRUMENTAL_SELECTED after render
@@ -166,6 +184,7 @@ STATE_TRANSITIONS = {
         JobStatus.REVIEW_COMPLETE,        # Retry from render stage
         JobStatus.LYRICS_COMPLETE,        # Retry from screens generation
         JobStatus.AWAITING_REVIEW,        # Retry from combined review
+        JobStatus.RENDER_PENDING_CAPACITY,  # Operator parks a stale-failed job for auto-retry
     ],
     JobStatus.CANCELLED: [
         JobStatus.DOWNLOADING,            # Retry from beginning (if input audio exists)

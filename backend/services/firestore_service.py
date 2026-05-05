@@ -188,6 +188,7 @@ class FirestoreService:
         'state_data.audio_progress', 'state_data.lyrics_progress',
         'state_data.audio_complete', 'state_data.lyrics_complete',
         'state_data.backing_vocals_analysis', 'state_data.visibility_change_in_progress',
+        'state_data.render_pending_capacity',
         'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
         'processing_metadata',
     ]

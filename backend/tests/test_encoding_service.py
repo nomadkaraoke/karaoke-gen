@@ -238,6 +238,55 @@ class TestRequestWithRetry:
             with pytest.raises(aiohttp.ClientConnectorError):
                 await encoding_service.submit_encoding_job("j1", "gs://in", "gs://out", {})
 
+    @pytest.mark.asyncio
+    async def test_request_aborts_on_capacity_error_from_warmup(self, encoding_service):
+        """When the warmup raises a capacity error, abort retries immediately.
+
+        Hammering the HTTP endpoint another 7 times costs ~7 min of wall clock
+        and produces no useful information — the VM literally cannot start.
+        The capacity error must surface to the worker so the job can be parked.
+        """
+        from backend.services.encoding_errors import EncodingWorkerCapacityError
+
+        # Make ClientSession() raise synchronously when entered, so the very
+        # first attempt fails with TimeoutError without needing to mock the
+        # full aiohttp request lifecycle.
+        class TimingOutSession:
+            async def __aenter__(self):
+                raise asyncio.TimeoutError()
+            async def __aexit__(self, *a):
+                return False
+
+        async def warmup_raises_capacity(job_id):
+            raise EncodingWorkerCapacityError(
+                "ZONE_RESOURCE_POOL_EXHAUSTED",
+                vm_name="encoding-worker-b",
+                zone="us-central1-c",
+                code="ZONE_RESOURCE_POOL_EXHAUSTED",
+            )
+
+        with patch("aiohttp.ClientSession", return_value=TimingOutSession()), \
+             patch.object(
+                 encoding_service,
+                 "_warmup_encoding_worker_fallback",
+                 side_effect=warmup_raises_capacity,
+             ) as warmup_mock, \
+             patch("asyncio.sleep", new_callable=AsyncMock):
+
+            with pytest.raises(EncodingWorkerCapacityError):
+                await encoding_service._request_with_retry(
+                    method="POST",
+                    url="http://1.2.3.4:8080/encode",
+                    headers={},
+                    json_payload={},
+                    timeout=1.0,
+                    job_id="cap-test",
+                )
+
+        # Warmup is invoked exactly once (after the first failure) and its
+        # capacity error short-circuits the retry loop.
+        assert warmup_mock.await_count == 1
+
 
 class TestWarmupFallback:
     """Tests for _warmup_encoding_worker_fallback() in the retry loop."""
@@ -263,14 +312,40 @@ class TestWarmupFallback:
         await encoding_service._warmup_encoding_worker_fallback("test-job")
 
     @pytest.mark.asyncio
-    async def test_warmup_fallback_swallows_exceptions(self, encoding_service):
-        """Warmup fallback never raises — failures are logged but non-fatal."""
+    async def test_warmup_fallback_swallows_unexpected_exceptions(self, encoding_service):
+        """Generic warmup failures (e.g. transient Compute API blips) are logged but non-fatal.
+
+        Capacity errors are an exception — they propagate so the caller can park
+        the job for auto-retry. See `test_warmup_fallback_propagates_capacity_error`.
+        """
         mock_manager = MagicMock()
         mock_manager.ensure_primary_running.side_effect = Exception("Compute API down")
         encoding_service._worker_manager = mock_manager
 
         # Should not raise
         await encoding_service._warmup_encoding_worker_fallback("test-job")
+
+    @pytest.mark.asyncio
+    async def test_warmup_fallback_propagates_capacity_error(self, encoding_service):
+        """Capacity errors must propagate so the job can be parked for auto-retry.
+
+        Without this, a ZONE_RESOURCE_POOL_EXHAUSTED hides behind the cold-start
+        timeout and surfaces 7+ minutes later as a useless `TimeoutError`.
+        """
+        from backend.services.encoding_errors import EncodingWorkerCapacityError
+
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.side_effect = EncodingWorkerCapacityError(
+            "VM encoding-worker-b could not be started in us-central1-c: "
+            "ZONE_RESOURCE_POOL_EXHAUSTED — out of capacity",
+            vm_name="encoding-worker-b",
+            zone="us-central1-c",
+            code="ZONE_RESOURCE_POOL_EXHAUSTED",
+        )
+        encoding_service._worker_manager = mock_manager
+
+        with pytest.raises(EncodingWorkerCapacityError):
+            await encoding_service._warmup_encoding_worker_fallback("test-job")
 
     @pytest.mark.asyncio
     async def test_warmup_skips_readiness_wait_when_vm_already_running(self, encoding_service):

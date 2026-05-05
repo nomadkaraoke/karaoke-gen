@@ -41,6 +41,10 @@ from backend.config import get_settings
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 from backend.services.encoding_service import get_encoding_service
+from backend.services.encoding_errors import (
+    EncodingWorkerCapacityError,
+    EncodingWorkerStartError,
+)
 
 # Import from lyrics_transcriber (submodule)
 from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
@@ -528,12 +532,74 @@ async def process_render_video(job_id: str) -> bool:
                         job_manager.update_state_data(job_id, 'render_progress', {'stage': 'complete'})
                         return True
             
+    except EncodingWorkerCapacityError as e:
+        duration = time.time() - start_time
+        job_log.warning(
+            f"GCE encoding capacity unavailable, parking job for auto-retry: {e}"
+        )
+        logger.warning(
+            f"[job:{job_id}] WORKER_END worker=render-video status=pending_capacity "
+            f"duration={duration:.1f}s code={e.code} zone={e.zone}"
+        )
+        _park_job_for_capacity_retry(job_manager, job_id, e)
+        return False
     except Exception as e:
         duration = time.time() - start_time
-        job_log.error(f"Video render failed: {e}")
-        logger.error(f"[job:{job_id}] WORKER_END worker=render-video status=error duration={duration:.1f}s error={e}")
-        job_manager.fail_job(job_id, f"Video render failed: {str(e)}")
+        # Use repr() so empty-string exceptions still produce a useful message;
+        # f"{e}" silently produced "" for bare TimeoutError() instances and
+        # users saw blank failure messages.
+        error_text = str(e) or repr(e)
+        job_log.error(f"Video render failed: {error_text}")
+        logger.error(
+            f"[job:{job_id}] WORKER_END worker=render-video status=error "
+            f"duration={duration:.1f}s error={error_text}"
+        )
+        job_manager.fail_job(job_id, f"Video render failed: {error_text}")
         return False
+
+
+def _park_job_for_capacity_retry(
+    job_manager: JobManager,
+    job_id: str,
+    error: EncodingWorkerCapacityError,
+) -> None:
+    """Transition a job to RENDER_PENDING_CAPACITY for auto-retry by the scheduler.
+
+    The user-facing message tells the user this is temporary and will retry
+    automatically — no action needed. Auto-retry is driven by the
+    /api/internal/retry-pending-render-jobs endpoint, fired every 5 min by
+    Cloud Scheduler.
+    """
+    from datetime import datetime, UTC
+
+    now = datetime.now(UTC).isoformat()
+    job = job_manager.get_job(job_id)
+    existing = (job.state_data or {}).get('render_pending_capacity', {}) if job else {}
+
+    pending_meta = {
+        'first_seen_at': existing.get('first_seen_at') or now,
+        'last_attempt_at': now,
+        'attempt_count': int(existing.get('attempt_count', 0)) + 1,
+        'last_code': error.code or '',
+        'last_zone': error.zone or '',
+        'last_vm': error.vm_name or '',
+    }
+
+    job_manager.update_state_data(job_id, 'render_pending_capacity', pending_meta)
+
+    user_message = (
+        "Encoding capacity is temporarily unavailable. Your job will retry "
+        "automatically — no action needed. Most jobs recover within 5–30 minutes."
+    )
+
+    job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.RENDER_PENDING_CAPACITY,
+        progress=70,
+        message=user_message,
+        timeline_metadata={'code': error.code, 'zone': error.zone, 'vm': error.vm_name},
+        raise_on_invalid=False,
+    )
 
 
 def _extract_gcs_path(url: str) -> str:

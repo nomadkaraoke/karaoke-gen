@@ -18,6 +18,10 @@ from backend.services.encoding_worker_manager import (
     CONFIG_DOCUMENT,
     ENCODING_WORKER_PORT,
 )
+from backend.services.encoding_errors import (
+    EncodingWorkerCapacityError,
+    EncodingWorkerStartError,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -231,12 +235,21 @@ class TestVMLifecycle:
         mock_instance.status = "TERMINATED"
         mock_compute.get.return_value = mock_instance
 
+        # Successful start: operation has no error_code/error_message and
+        # .result() returns without raising.
+        op = MagicMock()
+        op.error_code = ""
+        op.error_message = ""
+        op.result.return_value = None
+        mock_compute.start.return_value = op
+
         manager.start_vm("encoding-worker-blue")
         mock_compute.start.assert_called_once_with(
             project="nomadkaraoke",
             zone="us-central1-c",
             instance="encoding-worker-blue",
         )
+        op.result.assert_called_once()
 
     def test_start_vm_skips_if_already_running(self, manager, mock_compute):
         mock_instance = MagicMock()
@@ -272,6 +285,12 @@ class TestVMLifecycle:
         mock_instance.status = "TERMINATED"
         mock_compute.get.return_value = mock_instance
 
+        op = MagicMock()
+        op.error_code = ""
+        op.error_message = ""
+        op.result.return_value = None
+        mock_compute.start.return_value = op
+
         with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 3, 24, 15, 0, 0, tzinfo=UTC)
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -281,6 +300,7 @@ class TestVMLifecycle:
         assert result["vm_name"] == "encoding-worker-blue"
         assert result["primary_url"] == "http://10.128.0.50:8080"
         mock_compute.start.assert_called_once()
+        op.result.assert_called_once()
 
     def test_ensure_primary_running_already_running(self, manager, mock_db, mock_compute):
         """When primary is already running, should not start and still update activity."""
@@ -329,6 +349,89 @@ class TestVMLifecycle:
 
         manager.stop_vm("encoding-worker-blue")
         mock_compute.stop.assert_not_called()
+
+    # ------------------------------------------------------------------
+    # Operation-result inspection (capacity / start error classification)
+    # ------------------------------------------------------------------
+
+    def test_start_vm_raises_capacity_error_when_zone_exhausted(self, manager, mock_compute):
+        """start_vm must surface ZONE_RESOURCE_POOL_EXHAUSTED as a typed exception.
+
+        Without this, the GCE error stays hidden behind a fire-and-forget call
+        and the readiness gate eventually times out with no useful message.
+        """
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op = MagicMock()
+        op.error_code = "ZONE_RESOURCE_POOL_EXHAUSTED"
+        op.error_message = "The zone does not have enough resources available"
+        op.result.return_value = None
+        mock_compute.start.return_value = op
+
+        with pytest.raises(EncodingWorkerCapacityError) as exc_info:
+            manager.start_vm("encoding-worker-blue")
+
+        assert exc_info.value.code == "ZONE_RESOURCE_POOL_EXHAUSTED"
+        assert exc_info.value.vm_name == "encoding-worker-blue"
+        assert exc_info.value.zone == "us-central1-c"
+        assert "ZONE_RESOURCE_POOL_EXHAUSTED" in str(exc_info.value)
+
+    def test_start_vm_raises_generic_start_error_for_other_codes(self, manager, mock_compute):
+        """start_vm raises EncodingWorkerStartError for non-capacity GCE errors."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op = MagicMock()
+        op.error_code = "RESOURCE_NOT_READY"
+        op.error_message = "VM is in transition"
+        op.result.return_value = None
+        mock_compute.start.return_value = op
+
+        with pytest.raises(EncodingWorkerStartError) as exc_info:
+            manager.start_vm("encoding-worker-blue")
+
+        assert not isinstance(exc_info.value, EncodingWorkerCapacityError)
+        assert exc_info.value.code == "RESOURCE_NOT_READY"
+
+    def test_start_vm_raises_when_operation_result_throws(self, manager, mock_compute):
+        """If operation.result() raises (e.g. timeout), surface as a start error."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op = MagicMock()
+        op.error_code = ""
+        op.error_message = ""
+        op.result.side_effect = TimeoutError("operation timed out")
+        mock_compute.start.return_value = op
+
+        with pytest.raises(EncodingWorkerStartError) as exc_info:
+            manager.start_vm("encoding-worker-blue")
+
+        assert "timed out" in str(exc_info.value).lower() or "operation" in str(exc_info.value).lower()
+
+    def test_ensure_primary_running_raises_capacity_error(
+        self, manager, mock_db, mock_compute
+    ):
+        """ensure_primary_running propagates capacity errors so callers can react."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op = MagicMock()
+        op.error_code = "ZONE_RESOURCE_POOL_EXHAUSTED"
+        op.error_message = "out of capacity"
+        op.result.return_value = None
+        mock_compute.start.return_value = op
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            with pytest.raises(EncodingWorkerCapacityError):
+                manager.ensure_primary_running()
 
 
 # ---------------------------------------------------------------------------

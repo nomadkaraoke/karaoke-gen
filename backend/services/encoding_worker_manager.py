@@ -29,13 +29,24 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, UTC
-from typing import Optional
+from typing import Any, Optional
 
 import aiohttp
 
 from google.cloud import firestore
 
+from backend.services.encoding_errors import (
+    EncodingWorkerCapacityError,
+    EncodingWorkerStartError,
+    classify_gce_error,
+)
+
 logger = logging.getLogger(__name__)
+
+# How long to wait for a compute.instances.start operation to settle. The GCE
+# operation itself is fast (1-2s) — we just need to know whether it succeeded
+# or returned an immediate error like ZONE_RESOURCE_POOL_EXHAUSTED.
+START_OPERATION_TIMEOUT_SECONDS = 30.0
 
 CONFIG_COLLECTION = "config"
 CONFIG_DOCUMENT = "encoding-worker"
@@ -176,19 +187,28 @@ class EncodingWorkerManager:
     def start_vm(self, vm_name: str) -> None:
         """Start a VM if it is not already running or starting.
 
-        Fire-and-forget: returns immediately. Caller should poll get_vm_status
-        if they need to wait for the VM to be fully RUNNING.
+        Waits for the start operation to complete and raises a typed error if
+        GCE rejects the request (e.g. ZONE_RESOURCE_POOL_EXHAUSTED). Caller
+        should still poll get_vm_status / wait_for_worker_ready before
+        dispatching work — operation success only means GCE accepted the start,
+        not that the VM has finished booting.
+
+        Raises:
+            EncodingWorkerCapacityError: zone is out of capacity for the
+                machine type. Retry from a different zone or after a wait.
+            EncodingWorkerStartError: any other start failure.
         """
         status = self.get_vm_status(vm_name)
         if status in ("RUNNING", "STAGING"):
             logger.info("VM %s is already %s, skipping start", vm_name, status)
             return
         logger.info("Starting VM %s (current status: %s)", vm_name, status)
-        self._compute.start(
+        operation = self._compute.start(
             project=self._project_id,
             zone=self._zone,
             instance=vm_name,
         )
+        self._wait_for_compute_operation(operation, vm_name=vm_name, zone=self._zone)
 
     def stop_vm(self, vm_name: str) -> None:
         """Stop a VM if it is not already stopped or stopping."""
@@ -206,13 +226,20 @@ class EncodingWorkerManager:
     def ensure_primary_running(self) -> dict:
         """Ensure the primary encoding worker VM is running.
 
-        Reads config, starts primary VM if stopped, and updates activity timestamp.
+        Reads config, starts primary VM if stopped, and updates activity
+        timestamp. Waits for the start operation to settle so that capacity
+        errors surface immediately instead of being hidden behind a 120s
+        readiness wait.
 
         Returns:
             dict with keys:
                 - started (bool): True if VM was started, False if already running
                 - vm_name (str): Name of the primary VM
                 - primary_url (str): URL of the primary encoding worker
+
+        Raises:
+            EncodingWorkerCapacityError: zone is exhausted for the machine type.
+            EncodingWorkerStartError: any other start failure.
         """
         config = self.get_config()
         vm_name = config.primary_vm
@@ -222,11 +249,12 @@ class EncodingWorkerManager:
 
         if status not in ("RUNNING", "STAGING"):
             logger.info("Primary VM %s is %s, starting it", vm_name, status)
-            self._compute.start(
+            operation = self._compute.start(
                 project=self._project_id,
                 zone=self._zone,
                 instance=vm_name,
             )
+            self._wait_for_compute_operation(operation, vm_name=vm_name, zone=self._zone)
             started = True
         else:
             logger.info("Primary VM %s is already %s", vm_name, status)
@@ -238,6 +266,51 @@ class EncodingWorkerManager:
             "vm_name": vm_name,
             "primary_url": config.primary_url,
         }
+
+    # ------------------------------------------------------------------
+    # Compute operation helpers
+    # ------------------------------------------------------------------
+
+    def _wait_for_compute_operation(
+        self,
+        operation: Any,
+        *,
+        vm_name: str,
+        zone: str,
+        timeout: float = START_OPERATION_TIMEOUT_SECONDS,
+    ) -> None:
+        """Block on a compute v1 ExtendedOperation; raise typed exceptions on error.
+
+        google.cloud.compute_v1 returns an ExtendedOperation. Calling .result()
+        blocks until done; successful operations return None, failures raise.
+        Some failure modes set .error_code/.error_message on the operation
+        without raising (depending on SDK version), so we check both paths.
+        """
+        result_exc: Optional[BaseException] = None
+        try:
+            if hasattr(operation, "result"):
+                operation.result(timeout=timeout)
+        except Exception as e:  # noqa: BLE001 — we re-raise as a typed error below
+            result_exc = e
+
+        code = (getattr(operation, "error_code", "") or "")
+        message = (getattr(operation, "error_message", "") or "")
+
+        if not code and result_exc is None:
+            return  # Success.
+
+        if not code and result_exc is not None:
+            # Operation raised but did not set error_code (e.g. timeout, transport
+            # failure). Fall back to the raised exception text.
+            raise EncodingWorkerStartError(
+                f"VM {vm_name} start operation failed in {zone}: {result_exc}",
+                vm_name=vm_name,
+                zone=zone,
+                code="",
+            ) from result_exc
+
+        # error_code populated — classify it.
+        raise classify_gce_error(code, message, vm_name=vm_name, zone=zone) from result_exc
 
     # ------------------------------------------------------------------
     # Task 3: cold-start readiness gate

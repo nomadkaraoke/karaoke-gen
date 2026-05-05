@@ -23,6 +23,10 @@ from typing import Optional, Dict, Any
 import aiohttp
 
 from backend.config import get_settings
+from backend.services.encoding_errors import (
+    EncodingWorkerCapacityError,
+    EncodingWorkerStartError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -140,11 +144,22 @@ class EncodingService:
 
         If the worker_manager is not set (e.g. dev mode with static URL), this
         is a no-op.
+
+        Raises:
+            EncodingWorkerCapacityError: GCE could not allocate capacity (e.g.
+                ZONE_RESOURCE_POOL_EXHAUSTED). Caller should bail out of any
+                retry loop — no point hammering an HTTP endpoint that will
+                never come up — and surface the error to the job.
         """
         if not self._worker_manager:
             return
         try:
             result = self._worker_manager.ensure_primary_running()
+        except EncodingWorkerCapacityError:
+            # Capacity exhausted — surface to caller so the job can be parked
+            # in a recoverable state instead of failing with a misleading
+            # "connection timeout" message.
+            raise
         except Exception as e:
             logger.warning(
                 f"[job:{job_id}] Encoding worker warmup fallback failed (non-fatal): "
@@ -240,7 +255,16 @@ class EncodingService:
             except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError, asyncio.TimeoutError) as e:
                 last_exception = e
                 if attempt == 0:
-                    await self._warmup_encoding_worker_fallback(job_id)
+                    try:
+                        await self._warmup_encoding_worker_fallback(job_id)
+                    except EncodingWorkerCapacityError as cap_err:
+                        # Zone is out of capacity — no point retrying the HTTP
+                        # call 7 more times to a VM that will never come up.
+                        logger.error(
+                            f"[job:{job_id}] Encoding worker capacity exhausted, "
+                            f"aborting retries: {cap_err}"
+                        )
+                        raise cap_err from e
                 if attempt < MAX_RETRIES:
                     logger.warning(
                         f"[job:{job_id}] GCE worker connection failed "
