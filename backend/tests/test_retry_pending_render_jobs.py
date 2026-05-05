@@ -16,13 +16,37 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.api.dependencies import require_admin
 from backend.main import app
 from backend.models.job import JobStatus
+from backend.services.auth_service import AuthResult, UserType
 
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    """TestClient with admin auth explicitly stubbed.
+
+    The repo-wide autouse fixture in conftest.py sets these overrides too,
+    but other tests (test_anti_abuse.py, test_resend_magic_link.py) call
+    `app.dependency_overrides.clear()` in their teardown which can wipe the
+    autouse setup before our tests run. Re-establish the override here so
+    these tests are insensitive to ordering.
+    """
+    async def fake_admin():
+        return AuthResult(
+            is_valid=True,
+            user_type=UserType.ADMIN,
+            remaining_uses=999,
+            message="test admin",
+            is_admin=True,
+            user_email="test@example.com",
+        )
+
+    app.dependency_overrides[require_admin] = fake_admin
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(require_admin, None)
 
 
 def _make_doc(job_id, *, first_seen, attempt_count=1, status=None):

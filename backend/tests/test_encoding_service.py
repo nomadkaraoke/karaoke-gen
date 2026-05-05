@@ -590,6 +590,7 @@ class TestDynamicURLResolution:
         mock_manager = MagicMock()
         mock_manager.get_config.return_value = MagicMock(
             primary_url="http://34.1.2.3:8080",
+            active_url="http://34.1.2.3:8080",
         )
         service = EncodingService()
         service._initialized = True
@@ -605,6 +606,7 @@ class TestDynamicURLResolution:
         mock_manager = MagicMock()
         mock_manager.get_config.return_value = MagicMock(
             primary_url="http://34.1.2.3:8080",
+            active_url="http://34.1.2.3:8080",
         )
         service = EncodingService()
         service._initialized = True
@@ -620,6 +622,7 @@ class TestDynamicURLResolution:
         mock_manager = MagicMock()
         mock_manager.get_config.return_value = MagicMock(
             primary_url="http://34.1.2.3:8080",
+            active_url="http://34.1.2.3:8080",
         )
         service = EncodingService()
         service._initialized = True

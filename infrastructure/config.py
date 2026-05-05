@@ -134,6 +134,15 @@ class EncodingWorkerConfig:
     FUNCTION_MEMORY = "512M"  # Increased from 256M — OOM with gRPC/Firestore/Compute client libs
     FUNCTION_TIMEOUT = 120  # 2 minutes
 
+    # Capacity-resilience fallback VMs in alternate zones.
+    # c4d-highcpu-32 is available in us-central1-a / -b / -c / -f, so when -c
+    # is exhausted the manager can fall back to -a or -f. These VMs are
+    # provisioned stopped (cost: ~$10/mo each for the boot disk) and only
+    # started by the application when the primary zone rejects capacity.
+    FALLBACK_VM_NAMES = ["encoding-worker-fallback-a", "encoding-worker-fallback-f"]
+    FALLBACK_IP_NAMES = ["encoding-worker-fallback-ip-a", "encoding-worker-fallback-ip-f"]
+    FALLBACK_ZONE_SUFFIXES = ["a", "f"]  # zones {REGION}-{suffix}
+
 
 class ErrorMonitorConfig:
     """Configuration for the error monitor Cloud Run Job."""

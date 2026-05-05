@@ -73,6 +73,85 @@ def create_encoding_worker_vms(
     return vms
 
 
+def create_encoding_worker_fallback_ips() -> list[compute.Address]:
+    """Create static IPs for the multi-zone capacity-fallback VMs.
+
+    These IPs live in alternate zones (e.g. us-central1-a, -f) to provide
+    zone-level resilience when the primary zone is out of c4d-highcpu-32
+    capacity (ZONE_RESOURCE_POOL_EXHAUSTED).
+    """
+    ips = []
+    for ip_name, zone_suffix in zip(
+        EncodingWorkerConfig.FALLBACK_IP_NAMES,
+        EncodingWorkerConfig.FALLBACK_ZONE_SUFFIXES,
+    ):
+        ip = compute.Address(
+            ip_name,
+            name=ip_name,
+            region=REGION,
+            address_type="EXTERNAL",
+            description=f"Static external IP for {ip_name} (zone-fallback)",
+        )
+        ips.append(ip)
+    return ips
+
+
+def create_encoding_worker_fallback_vms(
+    ips: list[compute.Address],
+    service_account: serviceaccount.Account,
+) -> list[compute.Instance]:
+    """Create capacity-fallback encoding worker VMs in alternate zones.
+
+    Provisioned stopped — they're only started by the application when
+    the primary zone (us-central1-c) rejects starts with
+    ZONE_RESOURCE_POOL_EXHAUSTED. Cost when stopped is just the boot disk
+    (~$10/mo for 100GB hyperdisk-balanced).
+    """
+    startup_script = read_script("encoding_worker.sh")
+    custom_image = f"projects/{PROJECT_ID}/global/images/family/encoding-worker"
+
+    vms = []
+    for vm_name, ip, zone_suffix in zip(
+        EncodingWorkerConfig.FALLBACK_VM_NAMES,
+        ips,
+        EncodingWorkerConfig.FALLBACK_ZONE_SUFFIXES,
+    ):
+        zone = f"{REGION}-{zone_suffix}"
+        vm = compute.Instance(
+            vm_name,
+            name=vm_name,
+            machine_type=MachineTypes.ENCODING_WORKER,
+            zone=zone,
+            boot_disk=compute.InstanceBootDiskArgs(
+                initialize_params=compute.InstanceBootDiskInitializeParamsArgs(
+                    image=custom_image,
+                    size=DiskSizes.ENCODING_WORKER,
+                    type="hyperdisk-balanced",
+                ),
+            ),
+            network_interfaces=[compute.InstanceNetworkInterfaceArgs(
+                network="default",
+                access_configs=[compute.InstanceNetworkInterfaceAccessConfigArgs(
+                    nat_ip=ip.address,
+                )],
+            )],
+            service_account=compute.InstanceServiceAccountArgs(
+                email=service_account.email,
+                scopes=["cloud-platform"],
+            ),
+            metadata_startup_script=startup_script,
+            tags=["encoding-worker"],
+            allow_stopping_for_update=True,
+            advanced_machine_features=compute.InstanceAdvancedMachineFeaturesArgs(
+                threads_per_core=2,
+            ),
+            # Pulumi default is "running" — we want fallbacks stopped at create.
+            desired_status="TERMINATED",
+        )
+        vms.append(vm)
+    return vms
+
+
 def create_encoding_worker_firewall() -> compute.Firewall:
     """Create firewall rules for encoding worker VMs.
 

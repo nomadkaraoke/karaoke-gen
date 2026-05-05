@@ -69,6 +69,14 @@ class EncodingWorkerConfig:
     last_activity_at: Optional[str]
     deploy_in_progress: bool
     deploy_in_progress_since: Optional[str]
+    # Optional capacity-fallback override: when ensure_any_running falls back
+    # to a non-primary VM (e.g. due to ZONE_RESOURCE_POOL_EXHAUSTED), these
+    # fields point at the active fallback so requests target the right VM.
+    # Cleared when the primary becomes healthy again.
+    active_override_vm: Optional[str] = None
+    active_override_ip: Optional[str] = None
+    active_override_zone: Optional[str] = None
+    active_override_set_at: Optional[str] = None
 
     @property
     def primary_url(self) -> str:
@@ -77,6 +85,37 @@ class EncodingWorkerConfig:
     @property
     def secondary_url(self) -> str:
         return f"http://{self.secondary_ip}:{ENCODING_WORKER_PORT}"
+
+    @property
+    def active_url(self) -> str:
+        """URL the encoding service should target right now.
+
+        Returns the capacity-fallback override if set, otherwise the primary
+        URL. The override mechanism lets us route around a zone that's
+        temporarily out of c4d-highcpu-32 capacity without rewriting the
+        blue-green primary/secondary tracking.
+        """
+        if self.active_override_ip:
+            return f"http://{self.active_override_ip}:{ENCODING_WORKER_PORT}"
+        return self.primary_url
+
+
+@dataclass
+class EncodingWorkerCandidate:
+    """A VM that ensure_any_running may try to start.
+
+    Carries everything needed to talk to the worker: VM name + zone (so the
+    GCE compute client targets the right zone) and external IP (so successful
+    starts can be persisted as the active URL override).
+    """
+
+    vm_name: str
+    zone: str
+    ip: str
+
+    @property
+    def url(self) -> str:
+        return f"http://{self.ip}:{ENCODING_WORKER_PORT}"
 
 
 class EncodingWorkerManager:
@@ -118,6 +157,10 @@ class EncodingWorkerManager:
             last_activity_at=data.get("last_activity_at"),
             deploy_in_progress=data.get("deploy_in_progress", False),
             deploy_in_progress_since=data.get("deploy_in_progress_since"),
+            active_override_vm=data.get("active_override_vm"),
+            active_override_ip=data.get("active_override_ip"),
+            active_override_zone=data.get("active_override_zone"),
+            active_override_set_at=data.get("active_override_set_at"),
         )
 
     def update_activity(self) -> None:
@@ -175,16 +218,19 @@ class EncodingWorkerManager:
     # VM lifecycle operations (Task 2)
     # ------------------------------------------------------------------
 
-    def get_vm_status(self, vm_name: str) -> str:
-        """Get the current status of a GCE VM (e.g. RUNNING, TERMINATED, STAGING)."""
+    def get_vm_status(self, vm_name: str, zone: Optional[str] = None) -> str:
+        """Get the current status of a GCE VM (e.g. RUNNING, TERMINATED, STAGING).
+
+        Pass `zone` for fallback VMs that live in alternate zones.
+        """
         instance = self._compute.get(
             project=self._project_id,
-            zone=self._zone,
+            zone=zone or self._zone,
             instance=vm_name,
         )
         return instance.status
 
-    def start_vm(self, vm_name: str) -> None:
+    def start_vm(self, vm_name: str, zone: Optional[str] = None) -> None:
         """Start a VM if it is not already running or starting.
 
         Waits for the start operation to complete and raises a typed error if
@@ -193,33 +239,40 @@ class EncodingWorkerManager:
         dispatching work — operation success only means GCE accepted the start,
         not that the VM has finished booting.
 
+        Args:
+            vm_name: VM to start.
+            zone: Override the manager's default zone. Required when starting
+                capacity-fallback VMs in alternate zones.
+
         Raises:
             EncodingWorkerCapacityError: zone is out of capacity for the
                 machine type. Retry from a different zone or after a wait.
             EncodingWorkerStartError: any other start failure.
         """
-        status = self.get_vm_status(vm_name)
+        target_zone = zone or self._zone
+        status = self.get_vm_status(vm_name, zone=target_zone)
         if status in ("RUNNING", "STAGING"):
             logger.info("VM %s is already %s, skipping start", vm_name, status)
             return
-        logger.info("Starting VM %s (current status: %s)", vm_name, status)
+        logger.info("Starting VM %s in zone %s (current status: %s)", vm_name, target_zone, status)
         operation = self._compute.start(
             project=self._project_id,
-            zone=self._zone,
+            zone=target_zone,
             instance=vm_name,
         )
-        self._wait_for_compute_operation(operation, vm_name=vm_name, zone=self._zone)
+        self._wait_for_compute_operation(operation, vm_name=vm_name, zone=target_zone)
 
-    def stop_vm(self, vm_name: str) -> None:
+    def stop_vm(self, vm_name: str, zone: Optional[str] = None) -> None:
         """Stop a VM if it is not already stopped or stopping."""
-        status = self.get_vm_status(vm_name)
+        target_zone = zone or self._zone
+        status = self.get_vm_status(vm_name, zone=target_zone)
         if status in ("TERMINATED", "STOPPING"):
             logger.info("VM %s is already %s, skipping stop", vm_name, status)
             return
-        logger.info("Stopping VM %s (current status: %s)", vm_name, status)
+        logger.info("Stopping VM %s in zone %s (current status: %s)", vm_name, target_zone, status)
         self._compute.stop(
             project=self._project_id,
-            zone=self._zone,
+            zone=target_zone,
             instance=vm_name,
         )
 
@@ -266,6 +319,112 @@ class EncodingWorkerManager:
             "vm_name": vm_name,
             "primary_url": config.primary_url,
         }
+
+    def ensure_any_running(self, candidates: list) -> dict:
+        """Start the first candidate VM that GCE accepts; raise if all are exhausted.
+
+        Iterates `candidates` in order, attempting to start each one. A
+        capacity error (ZONE_RESOURCE_POOL_EXHAUSTED, etc.) on candidate N
+        triggers a try of candidate N+1. Other start failures abort the
+        whole call.
+
+        On fallback success (a non-first candidate started), persists the
+        fallback's URL as `active_override_*` in Firestore so subsequent
+        encoding requests target the right VM. The first candidate (the
+        primary) succeeding clears any stale override.
+
+        Args:
+            candidates: List of EncodingWorkerCandidate, ordered by preference.
+                Typically [primary, secondary, *fallbacks_in_alt_zones].
+
+        Returns:
+            dict {started, vm_name, zone, primary_url, fell_back}
+                fell_back is True iff the chosen VM is not the first candidate.
+
+        Raises:
+            EncodingWorkerCapacityError: all candidates rejected with
+                capacity errors.
+            EncodingWorkerStartError: any non-capacity start failure.
+            ValueError: empty candidate list.
+        """
+        if not candidates:
+            raise ValueError("ensure_any_running requires at least one candidate")
+
+        last_capacity_error: Optional[EncodingWorkerCapacityError] = None
+        for index, candidate in enumerate(candidates):
+            try:
+                status = self.get_vm_status(candidate.vm_name, zone=candidate.zone)
+                started = False
+                if status not in ("RUNNING", "STAGING"):
+                    logger.info(
+                        "Trying candidate %d/%d: VM %s in %s (status %s)",
+                        index + 1, len(candidates), candidate.vm_name,
+                        candidate.zone, status,
+                    )
+                    self.start_vm(candidate.vm_name, zone=candidate.zone)
+                    started = True
+
+                self.update_activity()
+                fell_back = index > 0
+                if fell_back:
+                    self._set_active_override(candidate)
+                else:
+                    self._clear_active_override()
+
+                return {
+                    "started": started,
+                    "vm_name": candidate.vm_name,
+                    "zone": candidate.zone,
+                    "primary_url": candidate.url,
+                    "fell_back": fell_back,
+                }
+            except EncodingWorkerCapacityError as cap_err:
+                logger.warning(
+                    "Candidate %s in %s exhausted (%s), trying next zone",
+                    candidate.vm_name, candidate.zone, cap_err.code,
+                )
+                last_capacity_error = cap_err
+                continue
+            # Non-capacity start errors should NOT silently fall through —
+            # they indicate something genuinely broken (bad image, wrong SA, etc.)
+            # and trying another zone won't help.
+
+        # Every candidate exhausted.
+        assert last_capacity_error is not None
+        raise last_capacity_error
+
+    def _set_active_override(self, candidate) -> None:
+        """Record a fallback VM as the active worker URL in Firestore."""
+        now = datetime.now(UTC).isoformat()
+        self._doc_ref().update({
+            "active_override_vm": candidate.vm_name,
+            "active_override_ip": candidate.ip,
+            "active_override_zone": candidate.zone,
+            "active_override_set_at": now,
+        })
+        logger.info(
+            "Set active_override to %s in %s (capacity fallback)",
+            candidate.vm_name, candidate.zone,
+        )
+
+    def _clear_active_override(self) -> None:
+        """Clear active_override fields (primary is healthy again).
+
+        Idempotent: safe to call when no override is currently set.
+        """
+        snapshot = self._doc_ref().get()
+        if not snapshot.exists:
+            return
+        data = snapshot.to_dict() or {}
+        if not data.get("active_override_vm"):
+            return  # nothing to clear
+        self._doc_ref().update({
+            "active_override_vm": None,
+            "active_override_ip": None,
+            "active_override_zone": None,
+            "active_override_set_at": None,
+        })
+        logger.info("Cleared active_override (primary is healthy again)")
 
     # ------------------------------------------------------------------
     # Compute operation helpers

@@ -79,7 +79,11 @@ class EncodingService:
         self._worker_manager = manager
 
     def _get_worker_url(self) -> str:
-        """Get the current primary worker URL from Firestore (with TTL cache).
+        """Get the current worker URL from Firestore (with TTL cache).
+
+        Returns config.active_url, which is normally the primary URL but
+        switches to the capacity-fallback override when a primary-zone
+        outage caused us to start a fallback VM in another zone.
 
         Falls back to static URL from config if worker_manager is not set.
         """
@@ -89,7 +93,7 @@ class EncodingService:
 
         if self._worker_manager:
             config = self._worker_manager.get_config()
-            self._cached_url = config.primary_url
+            self._cached_url = config.active_url
             self._url_cached_at = now
             return self._cached_url
 
@@ -97,6 +101,69 @@ class EncodingService:
         if not self._initialized:
             self._load_credentials()
         return self._url
+
+    def _invalidate_cached_url(self) -> None:
+        """Force the next _get_worker_url() to re-read from Firestore.
+
+        Called after the worker manager updates active_override (e.g. on
+        capacity fallback) so the in-flight request loop picks up the new URL.
+        """
+        self._cached_url = None
+        self._url_cached_at = 0.0
+
+    def _build_worker_candidates(self) -> list:
+        """Build the ordered candidate list for ensure_any_running.
+
+        Reads optional fallback VMs from settings (env var
+        ENCODING_WORKER_FALLBACK_VMS, JSON list of {vm, zone, ip}). Returns
+        an empty list when no worker manager / no configured fallbacks —
+        caller falls back to the single-VM ensure_primary_running path.
+        """
+        if not self._worker_manager:
+            return []
+        try:
+            config = self._worker_manager.get_config()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Could not read worker config for candidates: {_format_exception(e)}")
+            return []
+
+        from backend.services.encoding_worker_manager import EncodingWorkerCandidate
+
+        # Primary always goes first. Single-zone deployments stop here.
+        candidates = [
+            EncodingWorkerCandidate(
+                vm_name=config.primary_vm,
+                zone=self._worker_manager._zone,
+                ip=config.primary_ip,
+            )
+        ]
+
+        # Optional capacity-fallback VMs in alternate zones, configured via
+        # env var. Schema: '[{"vm":"encoding-worker-fallback-a","zone":"us-central1-a","ip":"34.x.x.x"}, ...]'
+        # The list is empty by default; user populates after `pulumi up`
+        # provisions the fallback VMs.
+        import json as _json
+        raw = self.settings.encoding_worker_fallback_vms
+        if not raw:
+            return candidates
+        try:
+            parsed = _json.loads(raw)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
+            return candidates
+
+        for item in parsed:
+            try:
+                candidates.append(EncodingWorkerCandidate(
+                    vm_name=item["vm"],
+                    zone=item["zone"],
+                    ip=item["ip"],
+                ))
+            except (KeyError, TypeError) as e:
+                logger.warning(f"Skipping malformed fallback candidate {item}: {e}")
+                continue
+
+        return candidates
 
     def _load_credentials(self):
         """Load encoding worker URL and API key from config/secrets."""
@@ -153,12 +220,23 @@ class EncodingService:
         """
         if not self._worker_manager:
             return
+
+        candidates = self._build_worker_candidates()
         try:
-            result = self._worker_manager.ensure_primary_running()
+            if candidates and len(candidates) > 1:
+                # Multi-zone path: try primary, then fallbacks in alt zones.
+                result = self._worker_manager.ensure_any_running(candidates)
+                # If we fell back, the worker manager just persisted the
+                # active_override URL — invalidate our cache so the next
+                # request hits the right VM.
+                if result.get("fell_back"):
+                    self._invalidate_cached_url()
+            else:
+                result = self._worker_manager.ensure_primary_running()
         except EncodingWorkerCapacityError:
-            # Capacity exhausted — surface to caller so the job can be parked
-            # in a recoverable state instead of failing with a misleading
-            # "connection timeout" message.
+            # Every candidate exhausted (or single-zone primary exhausted).
+            # Surface to caller so the job can be parked in a recoverable
+            # state instead of failing with a misleading "connection timeout".
             raise
         except Exception as e:
             logger.warning(

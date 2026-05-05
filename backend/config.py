@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     encoding_worker_url: Optional[str] = os.getenv("ENCODING_WORKER_URL")  # e.g., http://136.119.50.148:8080
     encoding_worker_api_key: Optional[str] = os.getenv("ENCODING_WORKER_API_KEY")
 
+    # Optional capacity-fallback VMs in alternate zones. JSON list of objects:
+    #   '[{"vm":"encoding-worker-fallback-a","zone":"us-central1-a","ip":"34.x.x.x"}]'
+    # Empty by default. After `pulumi up` provisions the fallback VMs (Phase 3
+    # of the capacity-resilience plan), populate this var with their public
+    # IPs to enable multi-zone failover when us-central1-c is exhausted.
+    encoding_worker_fallback_vms: Optional[str] = os.getenv("ENCODING_WORKER_FALLBACK_VMS")
+
     # GCE Preview Encoding (for faster preview video generation)
     # When enabled, preview video encoding during lyrics review is offloaded to the GCE worker.
     # This reduces preview generation time from 60+ seconds to ~15-20 seconds.

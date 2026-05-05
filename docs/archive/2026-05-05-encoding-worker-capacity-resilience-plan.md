@@ -178,6 +178,26 @@ Investigation of two failed jobs found:
 - Phase 2 ships as a second PR after Phase 1 is in prod (because Phase 2 depends on the new `RENDER_PENDING_CAPACITY` state existing in prod data)
 - Phase 3 ships as a separate PR — touches IaC; requires `pulumi up` and one-time provisioning. Higher blast radius. Sequenced after Phase 2
 
+## Operational notes for Phase 3
+
+After this PR merges:
+
+1. Run `pulumi up` from `infrastructure/`. This provisions:
+   - `encoding-worker-fallback-a` (us-central1-a) + static IP `encoding-worker-fallback-ip-a`
+   - `encoding-worker-fallback-f` (us-central1-f) + static IP `encoding-worker-fallback-ip-f`
+   - Both VMs created in TERMINATED state. Cost when idle: ~$10/mo each (boot disk only).
+2. Capture the Pulumi-output IPs (`encoding_worker_fallback_a_ip`, `encoding_worker_fallback_f_ip`).
+3. Add an env var to the `karaoke-backend` Cloud Run service:
+   ```
+   ENCODING_WORKER_FALLBACK_VMS=[
+     {"vm":"encoding-worker-fallback-a","zone":"us-central1-a","ip":"<ip-a>"},
+     {"vm":"encoding-worker-fallback-f","zone":"us-central1-f","ip":"<ip-f>"}
+   ]
+   ```
+   (single-line JSON; brackets shown above for clarity).
+4. Verify the encoding-worker custom image (`projects/nomadkaraoke/global/images/family/encoding-worker`) is up to date so the fallback VMs run the same code as primary. Future deploys will need to update fallback VMs too — track this in the deploy script as a follow-up.
+5. Until the env var is set the application uses single-zone behavior (Phase 1+2 only). The fallback VMs are inert until configured.
+
 ## Open questions (will use best judgment for these)
 
 - Should the user be allowed to cancel a `RENDER_PENDING_CAPACITY` job? **Yes** — same UX as cancelling any other in-progress job; treat the state as "in progress, blocked" not "stuck".
