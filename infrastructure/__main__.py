@@ -426,6 +426,32 @@ recover_stuck_downloads_scheduler = cloudscheduler.Job(
     ),
 )
 
+# Cloud Scheduler job to auto-retry render jobs parked on GCE capacity exhaustion.
+# When us-central1-c is out of c4d-highcpu-32 capacity, the render worker now
+# parks the job in RENDER_PENDING_CAPACITY (instead of failing it) and this
+# scheduler retries up to 1 job per tick until it succeeds or hits the 24h
+# permanent-failure timeout.
+retry_pending_render_jobs_scheduler = cloudscheduler.Job(
+    "retry-pending-render-jobs-scheduler",
+    name="retry-pending-render-jobs",
+    description="Auto-retry render jobs parked on GCE encoding capacity exhaustion",
+    region=REGION,
+    schedule="*/5 * * * *",  # Every 5 minutes
+    time_zone="America/Los_Angeles",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/retry-pending-render-jobs",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Divebar Mirror (Phase 1) ====================
 # Index diveBar Karaoke Google Drive files into BigQuery for search
 

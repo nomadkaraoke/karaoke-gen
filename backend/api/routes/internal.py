@@ -576,6 +576,145 @@ async def trigger_gdrive_validation_endpoint(
         return {"status": "error", "message": str(e)}
 
 
+@router.post("/retry-pending-render-jobs")
+async def retry_pending_render_jobs(
+    http_request: Request,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """
+    Auto-retry jobs parked in RENDER_PENDING_CAPACITY.
+
+    Called every 5 minutes by Cloud Scheduler. When the GCE encoding worker
+    can't be started because the zone is exhausted, the render worker parks
+    the job in this state instead of failing it. This endpoint re-attempts
+    the render — when GCE has capacity, the start succeeds and the job
+    completes normally.
+
+    Strategy:
+      - Process up to MAX_PER_TICK jobs (the GCE worker is single-tenant per
+        render, so spinning up many in parallel just collides on the same VM)
+      - Pick the oldest first (longest waiter gets fairness)
+      - Time out jobs that have been waiting longer than MAX_WAIT_SECONDS;
+        transition them to FAILED with a clear permanent-failure message
+      - For each remaining job: clear error state, reset to REVIEW_COMPLETE,
+        kick off the render worker again
+    """
+    from datetime import datetime, UTC, timedelta
+    from google.cloud.firestore_v1 import FieldFilter
+    from backend.services.worker_service import get_worker_service
+    from backend.models.job import JobStatus
+
+    # Long enough to ride out a sustained capacity outage but short enough
+    # that an op gets paged about it before the user sees a "still pending"
+    # job >24h old.
+    MAX_WAIT_SECONDS = 24 * 60 * 60  # 24h
+    MAX_PER_TICK = 1                  # one render at a time on the GCE worker
+
+    extract_trace_context(dict(http_request.headers))
+    add_span_attribute("operation", "retry_pending_render_jobs")
+    logger.info("RETRY_PENDING_RENDER_JOBS starting")
+
+    job_manager = JobManager()
+    worker_service = get_worker_service()
+
+    jobs_ref = job_manager.firestore.db.collection("jobs")
+    pending_query = (
+        jobs_ref
+        .where(filter=FieldFilter("status", "==", JobStatus.RENDER_PENDING_CAPACITY.value))
+        .order_by("updated_at")  # oldest first
+        .limit(MAX_PER_TICK + 5)  # small headroom in case timeouts skip past some
+    )
+
+    now = datetime.now(UTC)
+    timed_out = []
+    retried = []
+    skipped = 0
+
+    for doc in pending_query.stream():
+        job_data = doc.to_dict()
+        job_id = job_data.get("job_id", doc.id)
+
+        sd = job_data.get("state_data") or {}
+        pending_meta = sd.get("render_pending_capacity") or {}
+        first_seen = pending_meta.get("first_seen_at")
+
+        # Permanent-failure timeout
+        if first_seen:
+            try:
+                first_seen_dt = datetime.fromisoformat(first_seen)
+                age = now - first_seen_dt
+            except (ValueError, TypeError):
+                age = timedelta(0)
+            if age.total_seconds() > MAX_WAIT_SECONDS:
+                permanent_msg = (
+                    "Encoding capacity remained unavailable after "
+                    f"{int(age.total_seconds() // 3600)}h of automatic retries. "
+                    "Please retry manually or contact support."
+                )
+                logger.error(
+                    f"[job:{job_id}] Capacity wait exceeded {MAX_WAIT_SECONDS}s — failing permanently"
+                )
+                job_manager.fail_job(job_id, permanent_msg, error_details={
+                    "stage": "render_video",
+                    "permanent_capacity_timeout": True,
+                    "first_seen_at": first_seen,
+                    "attempts": pending_meta.get("attempt_count", 0),
+                })
+                timed_out.append(job_id)
+                continue
+
+        if len(retried) >= MAX_PER_TICK:
+            skipped += 1
+            continue
+
+        # Clear error state and reset render progress for idempotency.
+        # render_pending_capacity meta is preserved so the next failure (if any)
+        # increments the existing attempt counter.
+        job_manager.update_job(job_id, {
+            "error_message": None,
+            "error_details": None,
+        })
+        job_manager.update_state_data(job_id, "render_progress", {"stage": "pending"})
+
+        if not job_manager.transition_to_state(
+            job_id=job_id,
+            new_status=JobStatus.REVIEW_COMPLETE,
+            progress=70,
+            message="Auto-retrying video render — encoding capacity check",
+            raise_on_invalid=False,
+        ):
+            logger.warning(f"[job:{job_id}] Could not transition to REVIEW_COMPLETE for retry")
+            continue
+
+        try:
+            await worker_service.trigger_render_video_worker(job_id)
+            retried.append(job_id)
+            logger.info(f"[job:{job_id}] Auto-retry triggered")
+        except Exception as e:
+            logger.error(f"[job:{job_id}] Failed to trigger render worker: {e}")
+            # Job remains in REVIEW_COMPLETE — next tick will pick it up if it
+            # falls back to RENDER_PENDING_CAPACITY again.
+
+    add_span_event("retry_complete", {
+        "retried": len(retried),
+        "timed_out": len(timed_out),
+        "skipped": skipped,
+    })
+    logger.info(
+        f"RETRY_PENDING_RENDER_JOBS complete: retried={len(retried)} "
+        f"timed_out={len(timed_out)} skipped={skipped}"
+    )
+
+    return {
+        "status": "success",
+        "retried_jobs": retried,
+        "retried_count": len(retried),
+        "timed_out_jobs": timed_out,
+        "timed_out_count": len(timed_out),
+        "skipped_for_next_tick": skipped,
+    }
+
+
 @router.post("/recover-stuck-jobs")
 async def recover_stuck_jobs(
     http_request: Request,
