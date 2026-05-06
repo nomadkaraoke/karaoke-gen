@@ -678,15 +678,15 @@ pulumi.export("encoding_worker_b_ip", encoding_worker_ips[1].address)
 pulumi.export("encoding_worker_a_url", encoding_worker_ips[0].address.apply(lambda ip: f"http://{ip}:8080"))
 pulumi.export("encoding_worker_b_url", encoding_worker_ips[1].address.apply(lambda ip: f"http://{ip}:8080"))
 
-# Capacity-fallback VM exports (us-central1-a, -f)
+# Capacity-fallback VM exports (us-central1-a, -b)
 pulumi.export("encoding_worker_fallback_a_ip", encoding_worker_fallback_ips[0].address)
-pulumi.export("encoding_worker_fallback_f_ip", encoding_worker_fallback_ips[1].address)
+pulumi.export("encoding_worker_fallback_b_ip", encoding_worker_fallback_ips[1].address)
 pulumi.export(
     "encoding_worker_fallback_a_url",
     encoding_worker_fallback_ips[0].address.apply(lambda ip: f"http://{ip}:8080"),
 )
 pulumi.export(
-    "encoding_worker_fallback_f_url",
+    "encoding_worker_fallback_b_url",
     encoding_worker_fallback_ips[1].address.apply(lambda ip: f"http://{ip}:8080"),
 )
 pulumi.export("encoding_worker_service_account", encoding_worker_sa.email)

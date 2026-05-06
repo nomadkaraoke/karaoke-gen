@@ -135,13 +135,17 @@ class EncodingWorkerConfig:
     FUNCTION_TIMEOUT = 120  # 2 minutes
 
     # Capacity-resilience fallback VMs in alternate zones.
-    # c4d-highcpu-32 is available in us-central1-a / -b / -c / -f, so when -c
-    # is exhausted the manager can fall back to -a or -f. These VMs are
+    # c4d-highcpu-32 is available in us-central1-a / -b / -c / -f. When the
+    # primary zone (-c) is exhausted, the manager falls back to -a or -b.
+    # us-central1-f was originally selected for the second fallback, but
+    # provisioning consistently failed there with ZONE_RESOURCE_POOL_EXHAUSTED
+    # at create time (2026-05-06) — capacity is too tight in -f for it to be
+    # useful as a fallback. -b has reliable capacity. These VMs are
     # provisioned stopped (cost: ~$10/mo each for the boot disk) and only
     # started by the application when the primary zone rejects capacity.
-    FALLBACK_VM_NAMES = ["encoding-worker-fallback-a", "encoding-worker-fallback-f"]
-    FALLBACK_IP_NAMES = ["encoding-worker-fallback-ip-a", "encoding-worker-fallback-ip-f"]
-    FALLBACK_ZONE_SUFFIXES = ["a", "f"]  # zones {REGION}-{suffix}
+    FALLBACK_VM_NAMES = ["encoding-worker-fallback-a", "encoding-worker-fallback-b"]
+    FALLBACK_IP_NAMES = ["encoding-worker-fallback-ip-a", "encoding-worker-fallback-ip-b"]
+    FALLBACK_ZONE_SUFFIXES = ["a", "b"]  # zones {REGION}-{suffix}
 
 
 class ErrorMonitorConfig:

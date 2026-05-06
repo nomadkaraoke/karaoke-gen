@@ -139,9 +139,9 @@ Investigation of two failed jobs found:
   ```python
   VM_NAMES = ["encoding-worker-a", "encoding-worker-b"]
   IP_NAMES = ["encoding-worker-ip-a", "encoding-worker-ip-b"]
-  FALLBACK_VM_NAMES = ["encoding-worker-fallback-a", "encoding-worker-fallback-f"]
-  FALLBACK_IP_NAMES = ["encoding-worker-fallback-ip-a", "encoding-worker-fallback-ip-f"]
-  FALLBACK_ZONES = [f"{REGION}-a", f"{REGION}-f"]
+  FALLBACK_VM_NAMES = ["encoding-worker-fallback-a", "encoding-worker-fallback-b"]
+  FALLBACK_IP_NAMES = ["encoding-worker-fallback-ip-a", "encoding-worker-fallback-ip-b"]
+  FALLBACK_ZONES = [f"{REGION}-a", f"{REGION}-b"]
   ```
 
 `infrastructure/compute/encoding_worker_vm.py`
@@ -184,14 +184,19 @@ After this PR merges:
 
 1. Run `pulumi up` from `infrastructure/`. This provisions:
    - `encoding-worker-fallback-a` (us-central1-a) + static IP `encoding-worker-fallback-ip-a`
-   - `encoding-worker-fallback-f` (us-central1-f) + static IP `encoding-worker-fallback-ip-f`
+   - `encoding-worker-fallback-b` (us-central1-b) + static IP `encoding-worker-fallback-ip-b`
    - Both VMs created in TERMINATED state. Cost when idle: ~$10/mo each (boot disk only).
-2. Capture the Pulumi-output IPs (`encoding_worker_fallback_a_ip`, `encoding_worker_fallback_f_ip`).
+
+   Note (2026-05-06): the second fallback was originally targeted at
+   us-central1-f but provisioning failed there with
+   `ZONE_RESOURCE_POOL_EXHAUSTED` at create time on multiple attempts —
+   capacity in -f is too tight for it to be useful. -b is reliable.
+2. Capture the Pulumi-output IPs (`encoding_worker_fallback_a_ip`, `encoding_worker_fallback_b_ip`).
 3. Add an env var to the `karaoke-backend` Cloud Run service:
    ```
    ENCODING_WORKER_FALLBACK_VMS=[
      {"vm":"encoding-worker-fallback-a","zone":"us-central1-a","ip":"<ip-a>"},
-     {"vm":"encoding-worker-fallback-f","zone":"us-central1-f","ip":"<ip-f>"}
+     {"vm":"encoding-worker-fallback-b","zone":"us-central1-b","ip":"<ip-b>"}
    ]
    ```
    (single-line JSON; brackets shown above for clarity).
