@@ -256,6 +256,12 @@ class EncodingService:
                 await self._worker_manager.wait_for_worker_ready(
                     result["vm_name"],
                     f"{result['primary_url']}/health",
+                    # Pass the candidate's zone — without this, multi-zone
+                    # fallback successfully starts a VM in (e.g.) us-central1-a
+                    # but readiness wait looks for it in the manager's default
+                    # zone (us-central1-c), gets 404, gives up, and the next
+                    # request hits a still-booting VM and times out.
+                    zone=result.get("zone"),
                 )
                 logger.info(
                     f"[job:{job_id}] Cold-started VM {result['vm_name']} is now ready"

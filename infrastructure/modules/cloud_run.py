@@ -492,6 +492,20 @@ def create_video_encoding_job(
                                     ),
                                 ),
                             ),
+                            # Multi-zone capacity-fallback VMs (JSON list).
+                            # Without this, the encoding worker manager only
+                            # tries the primary zone — when -c is exhausted
+                            # the job fails. Cloud Run Service has the same
+                            # secret mounted; the Cloud Run Job needed it too.
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENCODING_WORKER_FALLBACK_VMS",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/encoding-worker-fallback-vms",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
                             # Core configuration
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="ENVIRONMENT",

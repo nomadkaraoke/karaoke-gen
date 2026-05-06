@@ -73,9 +73,14 @@ def _make_doc(job_id, *, first_seen, attempt_count=1, status=None):
 
 
 def _patch_endpoint_dependencies(stream_docs, *, transition_returns=True):
-    """Common patch context for the retry endpoint internals."""
+    """Common patch context for the retry endpoint internals.
+
+    Endpoint streams via where().limit().stream() and sorts in Python — no
+    server-side order_by (would require a composite Firestore index that
+    doesn't exist).
+    """
     mock_jm = MagicMock()
-    mock_jm.firestore.db.collection.return_value.where.return_value.order_by.return_value.limit.return_value.stream.return_value = (
+    mock_jm.firestore.db.collection.return_value.where.return_value.limit.return_value.stream.return_value = (
         iter(stream_docs)
     )
     mock_jm.transition_to_state.return_value = transition_returns

@@ -317,6 +317,7 @@ class EncodingWorkerManager:
         return {
             "started": started,
             "vm_name": vm_name,
+            "zone": self._zone,
             "primary_url": config.primary_url,
         }
 
@@ -500,6 +501,7 @@ class EncodingWorkerManager:
         vm_name: str,
         health_url: str,
         *,
+        zone: Optional[str] = None,
         vm_timeout: float = 120.0,
         health_timeout: float = 180.0,
         poll_interval: float = 5.0,
@@ -520,6 +522,11 @@ class EncodingWorkerManager:
             vm_name: Name of the GCE VM to poll.
             health_url: Full URL of the worker /health endpoint
                 (e.g. "http://10.0.0.1:8080/health").
+            zone: Override the manager's default zone. Required when waiting on
+                capacity-fallback VMs that live in alternate zones — without
+                this override the status poll hits the wrong zone and 404s
+                ("instance not found"), the readiness wait gives up, and the
+                next request hits a VM that hasn't finished booting.
             vm_timeout: Max seconds to wait for VM RUNNING.
             health_timeout: Max seconds to wait for /health 200.
             poll_interval: Seconds between polls in either phase.
@@ -533,7 +540,7 @@ class EncodingWorkerManager:
         last_status = None
         last_log = 0.0
         while loop.time() < deadline:
-            last_status = self.get_vm_status(vm_name)
+            last_status = self.get_vm_status(vm_name, zone=zone)
             if last_status == "RUNNING":
                 logger.info("VM %s reached RUNNING", vm_name)
                 break

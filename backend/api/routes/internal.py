@@ -618,11 +618,14 @@ async def retry_pending_render_jobs(
     worker_service = get_worker_service()
 
     jobs_ref = job_manager.firestore.db.collection("jobs")
+    # Filter by status only — sorting by updated_at server-side would require
+    # a composite Firestore index that we don't have. The pending-capacity
+    # population is small (handful of jobs at most), so streaming and
+    # sorting in Python is cheap and avoids the index ceremony.
     pending_query = (
         jobs_ref
         .where(filter=FieldFilter("status", "==", JobStatus.RENDER_PENDING_CAPACITY.value))
-        .order_by("updated_at")  # oldest first
-        .limit(MAX_PER_TICK + 5)  # small headroom in case timeouts skip past some
+        .limit(50)  # cap defensively in case the queue ever grows
     )
 
     now = datetime.now(UTC)
@@ -630,7 +633,22 @@ async def retry_pending_render_jobs(
     retried = []
     skipped = 0
 
-    for doc in pending_query.stream():
+    # Materialize and sort by first_seen_at (oldest waiter first). Falls back
+    # to updated_at, then doc id, when meta is missing.
+    pending_docs = list(pending_query.stream())
+
+    def _sort_key(doc):
+        data = doc.to_dict() or {}
+        meta = (data.get("state_data") or {}).get("render_pending_capacity") or {}
+        first_seen = meta.get("first_seen_at") or ""
+        updated = data.get("updated_at")
+        # Firestore returns a datetime; isoformat sorts correctly within the same TZ.
+        updated_str = updated.isoformat() if hasattr(updated, "isoformat") else str(updated or "")
+        return (first_seen, updated_str, doc.id)
+
+    pending_docs.sort(key=_sort_key)
+
+    for doc in pending_docs:
         job_data = doc.to_dict()
         job_id = job_data.get("job_id", doc.id)
 

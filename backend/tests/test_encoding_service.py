@@ -373,10 +373,13 @@ class TestWarmupFallback:
 
         await encoding_service._warmup_encoding_worker_fallback("test-job")
 
-        mock_manager.wait_for_worker_ready.assert_awaited_once_with(
-            "encoding-worker-a",
-            "http://1.2.3.4:8080/health",
-        )
+        mock_manager.wait_for_worker_ready.assert_awaited_once()
+        call = mock_manager.wait_for_worker_ready.call_args
+        assert call.args[0] == "encoding-worker-a"
+        assert call.args[1] == "http://1.2.3.4:8080/health"
+        # zone is passed (None for single-zone path; capacity-fallback paths
+        # pass the candidate's zone — see test_falls_through_on_generic_start_error_too)
+        assert "zone" in call.kwargs
 
     @pytest.mark.asyncio
     async def test_warmup_swallows_readiness_timeout(self, encoding_service):
