@@ -288,6 +288,7 @@ class EncodingService:
         json_payload: Optional[Dict[str, Any]] = None,
         timeout: float = 30.0,
         job_id: str = "unknown",
+        path: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Make an HTTP request with retry logic for transient failures.
@@ -297,11 +298,18 @@ class EncodingService:
 
         Args:
             method: HTTP method (GET, POST)
-            url: Request URL
+            url: Initial request URL (used for the first attempt)
             headers: Request headers
             json_payload: JSON body for POST requests
             timeout: Request timeout in seconds
             job_id: Job ID for logging
+            path: Endpoint path (e.g. "/render-video"). When set, retry attempts
+                AFTER the warmup runs re-resolve the URL via _get_worker_url() +
+                path. This is what lets multi-zone fallback take effect mid-loop:
+                the warmup may set a new active_override (e.g. switching to a
+                fallback VM in another zone) and invalidate the URL cache; the
+                next retry then targets the freshly-routed URL instead of the
+                original primary which is dead.
 
         Returns:
             Dict with keys:
@@ -316,8 +324,22 @@ class EncodingService:
         """
         last_exception = None
         backoff = INITIAL_BACKOFF_SECONDS
+        warmup_ran = False
 
         for attempt in range(MAX_RETRIES + 1):
+            # Re-resolve URL on retries after the warmup has fired, so that any
+            # active_override change made by the warmup actually takes effect.
+            # Without this, all 8 retry attempts hammer the original (dead)
+            # URL even though the warmup successfully routed to a fallback VM.
+            if path and warmup_ran and self._worker_manager is not None:
+                resolved = f"{self._get_worker_url()}{path}"
+                if resolved != url:
+                    logger.info(
+                        f"[job:{job_id}] Re-resolved encoding URL after warmup: "
+                        f"{url} -> {resolved}"
+                    )
+                    url = resolved
+
             try:
                 async with aiohttp.ClientSession() as session:
                     if method.upper() == "POST":
@@ -344,6 +366,7 @@ class EncodingService:
                 if attempt == 0:
                     try:
                         await self._warmup_encoding_worker_fallback(job_id)
+                        warmup_ran = True
                     except EncodingWorkerStartError as start_err:
                         # No VM could be started — capacity exhaustion or
                         # transient backend errors (e.g. 503). Hammering the
@@ -398,7 +421,8 @@ class EncodingService:
         if not self.is_configured:
             raise RuntimeError("Encoding service not configured")
 
-        url = f"{self._get_worker_url()}/encode"
+        path = "/encode"
+        url = f"{self._get_worker_url()}{path}"
         headers = {"X-API-Key": self._api_key, "Content-Type": "application/json"}
         payload = {
             "job_id": job_id,
@@ -416,6 +440,7 @@ class EncodingService:
             json_payload=payload,
             timeout=30.0,
             job_id=job_id,
+            path=path,
         )
 
         if resp["status"] == 401:
@@ -459,7 +484,8 @@ class EncodingService:
         if not self.is_configured:
             raise RuntimeError("Encoding service not configured")
 
-        url = f"{self._get_worker_url()}/status/{job_id}"
+        path = f"/status/{job_id}"
+        url = f"{self._get_worker_url()}{path}"
         headers = {"X-API-Key": self._api_key}
 
         resp = await self._request_with_retry(
@@ -468,6 +494,7 @@ class EncodingService:
             headers=headers,
             timeout=30.0,
             job_id=job_id,
+            path=path,
         )
 
         if resp["status"] == 401:
@@ -647,7 +674,8 @@ class EncodingService:
         if not self.is_configured:
             raise RuntimeError("Encoding service not configured")
 
-        url = f"{self._get_worker_url()}/encode-preview"
+        path = "/encode-preview"
+        url = f"{self._get_worker_url()}{path}"
         headers = {"X-API-Key": self._api_key, "Content-Type": "application/json"}
         payload = {
             "job_id": job_id,
@@ -670,6 +698,7 @@ class EncodingService:
             json_payload=payload,
             timeout=30.0,
             job_id=job_id,
+            path=path,
         )
 
         if resp["status"] == 401:
@@ -765,7 +794,8 @@ class EncodingService:
         if not self.is_configured:
             raise RuntimeError("Encoding service not configured")
 
-        url = f"{self._get_worker_url()}/render-video"
+        path = "/render-video"
+        url = f"{self._get_worker_url()}{path}"
         headers = {"X-API-Key": self._api_key, "Content-Type": "application/json"}
         payload = {"job_id": job_id, **render_config}
 
@@ -778,6 +808,7 @@ class EncodingService:
             json_payload=payload,
             timeout=30.0,
             job_id=job_id,
+            path=path,
         )
 
         if resp["status"] == 401:

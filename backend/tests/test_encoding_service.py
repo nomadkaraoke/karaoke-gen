@@ -210,7 +210,7 @@ class TestRequestWithRetry:
 
         original_request = encoding_service._request_with_retry
 
-        async def mock_request_with_retry(method, url, headers, json_payload=None, timeout=30.0, job_id="unknown"):
+        async def mock_request_with_retry(method, url, headers, json_payload=None, timeout=30.0, job_id="unknown", path=None):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
@@ -286,6 +286,87 @@ class TestRequestWithRetry:
         # Warmup is invoked exactly once (after the first failure) and its
         # capacity error short-circuits the retry loop.
         assert warmup_mock.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_url_reresolves_after_warmup_so_fallback_takes_effect(self, encoding_service):
+        """After warmup updates active_override, retry attempts must hit the new URL.
+
+        Regression guard for the bug seen on job fae3eadc 2026-05-06: warmup
+        successfully routed to fallback-a in us-central1-a (set the active_
+        override, invalidated the URL cache), but the retry loop kept hitting
+        the original primary URL it captured before the loop started, all 8
+        attempts timed out, and the render worker failed the job hard with
+        TimeoutError() instead of letting the (working) fallback handle it.
+        """
+        attempts_seen_urls = []
+
+        # Sequence of URLs returned by _get_worker_url():
+        #   first call (used to build initial url): primary (dead)
+        #   subsequent calls (after warmup invalidated cache): fallback (live)
+        url_sequence = iter([
+            "http://primary.dead:8080",
+            "http://fallback.live:8080",
+            "http://fallback.live:8080",
+            "http://fallback.live:8080",
+        ])
+
+        # Track which URLs the loop actually hits
+        class FailingThenOkSession:
+            def __init__(self, url):
+                self.url = url
+            async def __aenter__(self):
+                attempts_seen_urls.append(self.url)
+                if "primary.dead" in self.url:
+                    raise asyncio.TimeoutError()
+                # On fallback URL, return a fake successful response
+                resp = AsyncMock()
+                resp.status = 200
+                resp.json = AsyncMock(return_value={"ok": True})
+                resp.text = AsyncMock(return_value="ok")
+                return resp
+            async def __aexit__(self, *a):
+                return False
+
+        class FakeSession:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *a):
+                return False
+            def post(self, url, **kwargs):
+                return FailingThenOkSession(url)
+
+        async def warmup_noop(job_id):
+            return None  # represents successful warmup that updated override
+
+        # Re-resolve only fires when worker_manager is wired (production mode).
+        encoding_service._worker_manager = MagicMock()
+
+        with patch.object(encoding_service, "_get_worker_url", side_effect=lambda: next(url_sequence)), \
+             patch("aiohttp.ClientSession", return_value=FakeSession()), \
+             patch.object(
+                 encoding_service,
+                 "_warmup_encoding_worker_fallback",
+                 side_effect=warmup_noop,
+             ), \
+             patch("asyncio.sleep", new_callable=AsyncMock):
+
+            initial_url = encoding_service._get_worker_url() + "/render-video"
+            result = await encoding_service._request_with_retry(
+                method="POST",
+                url=initial_url,
+                headers={},
+                json_payload={"job_id": "test"},
+                timeout=1.0,
+                job_id="test",
+                path="/render-video",
+            )
+
+        # First attempt hits primary (fails). Second attempt re-resolves URL
+        # post-warmup and hits fallback (succeeds).
+        assert result["status"] == 200
+        assert len(attempts_seen_urls) == 2
+        assert "primary.dead" in attempts_seen_urls[0]
+        assert "fallback.live" in attempts_seen_urls[1]
 
 
 class TestWarmupFallback:
