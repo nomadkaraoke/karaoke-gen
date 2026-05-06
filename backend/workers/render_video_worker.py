@@ -30,6 +30,7 @@ import os
 import tempfile
 import time
 import json
+from datetime import datetime, UTC
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
@@ -175,13 +176,18 @@ async def process_render_video(job_id: str) -> bool:
                         }
 
                     def progress_callback(progress: int):
+                        # Update progress in place — the job is already in
+                        # RENDERING_VIDEO when this fires, and going through
+                        # transition_to_state would (1) reject the same-state
+                        # transition with an InvalidStateTransitionError that
+                        # gets logged via the error monitor, and (2) flood the
+                        # timeline with redundant "transitioned" events for
+                        # every tick.
                         scaled = 75 + int(progress * 0.07)  # Map 0-100 to 75-82
-                        job_manager.transition_to_state(
-                            job_id=job_id,
-                            new_status=JobStatus.RENDERING_VIDEO,
-                            progress=scaled,
-                            message=f"Rendering video ({progress}%)"
-                        )
+                        job_manager.update_job(job_id, {
+                            'progress': scaled,
+                            'updated_at': datetime.now(UTC),
+                        })
 
                     with job_span("gce-render-video", job_id) as render_span:
                         render_start = time.time()
@@ -532,14 +538,20 @@ async def process_render_video(job_id: str) -> bool:
                         job_manager.update_state_data(job_id, 'render_progress', {'stage': 'complete'})
                         return True
             
-    except EncodingWorkerCapacityError as e:
+    except EncodingWorkerStartError as e:
+        # Catches both EncodingWorkerCapacityError (zone exhausted) and
+        # generic EncodingWorkerStartError (e.g. 503 SERVICE_UNAVAILABLE from
+        # the GCE backend) — both are transient and the auto-retry scheduler
+        # should handle them. Hard-failing here would lose the job.
         duration = time.time() - start_time
+        is_capacity = isinstance(e, EncodingWorkerCapacityError)
+        reason = "capacity exhausted" if is_capacity else "VM start failed (transient)"
         job_log.warning(
-            f"GCE encoding capacity unavailable, parking job for auto-retry: {e}"
+            f"GCE encoding worker {reason}, parking job for auto-retry: {e}"
         )
         logger.warning(
             f"[job:{job_id}] WORKER_END worker=render-video status=pending_capacity "
-            f"duration={duration:.1f}s code={e.code} zone={e.zone}"
+            f"duration={duration:.1f}s code={e.code} zone={e.zone} kind={'capacity' if is_capacity else 'start_error'}"
         )
         _park_job_for_capacity_retry(job_manager, job_id, e)
         return False
@@ -561,7 +573,7 @@ async def process_render_video(job_id: str) -> bool:
 def _park_job_for_capacity_retry(
     job_manager: JobManager,
     job_id: str,
-    error: EncodingWorkerCapacityError,
+    error: EncodingWorkerStartError,
 ) -> None:
     """Transition a job to RENDER_PENDING_CAPACITY for auto-retry by the scheduler.
 
@@ -570,8 +582,6 @@ def _park_job_for_capacity_retry(
     /api/internal/retry-pending-render-jobs endpoint, fired every 5 min by
     Cloud Scheduler.
     """
-    from datetime import datetime, UTC
-
     now = datetime.now(UTC).isoformat()
     job = job_manager.get_job(job_id)
     existing = (job.state_data or {}).get('render_pending_capacity', {}) if job else {}

@@ -191,3 +191,49 @@ async def test_non_capacity_exception_still_fails_with_clear_message():
     # Empty f"{e}" produced "Video render failed: " — must not happen anymore.
     assert fail_message != "Video render failed: "
     assert "TimeoutError" in fail_message or fail_message.strip().endswith(":") is False
+
+
+@pytest.mark.asyncio
+async def test_generic_start_error_also_parks_for_retry():
+    """503 SERVICE_UNAVAILABLE (generic start error, not capacity) must also park, not fail.
+
+    Observed in prod 2026-05-06: GCE returned 503 SERVICE_UNAVAILABLE from
+    instances.start. The original render worker only caught capacity errors,
+    so the 503 fell through to fail_job, losing the job. The fix broadens
+    the catch to EncodingWorkerStartError (parent class).
+    """
+    from backend.workers import render_video_worker as rvw
+    from backend.services.encoding_errors import EncodingWorkerStartError
+
+    start_error = EncodingWorkerStartError(
+        "VM encoding-worker-b start failed in us-central1-c: 503 — SERVICE UNAVAILABLE",
+        vm_name="encoding-worker-b",
+        zone="us-central1-c",
+        code="503",
+    )
+
+    mock_job_manager = MagicMock()
+    mock_job_manager.get_job.return_value = _build_minimal_job()
+    mock_job_manager.transition_to_state.return_value = True
+
+    mock_encoding_service = MagicMock()
+    mock_encoding_service.is_enabled = True
+    mock_encoding_service.render_video_on_gce = AsyncMock(side_effect=start_error)
+
+    with patch.object(rvw, "JobManager", return_value=mock_job_manager), \
+         patch.object(rvw, "StorageService"), \
+         patch.object(rvw, "get_settings"), \
+         patch.object(rvw, "create_job_logger", return_value=MagicMock()), \
+         patch.object(rvw, "setup_job_logging", return_value=MagicMock()), \
+         patch.object(rvw, "validate_worker_can_run", return_value=None), \
+         patch.object(rvw, "get_encoding_service", return_value=mock_encoding_service):
+
+        result = await rvw.process_render_video("test-job-id")
+
+    assert result is False
+    mock_job_manager.fail_job.assert_not_called()
+    transitions = mock_job_manager.transition_to_state.call_args_list
+    assert any(
+        c.kwargs.get("new_status") == JobStatus.RENDER_PENDING_CAPACITY
+        for c in transitions
+    ), "Worker must park on generic start error, not fail hard"

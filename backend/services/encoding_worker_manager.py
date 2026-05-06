@@ -350,7 +350,14 @@ class EncodingWorkerManager:
         if not candidates:
             raise ValueError("ensure_any_running requires at least one candidate")
 
+        # Track the last error so we can raise something representative if
+        # every candidate fails. Capacity errors are preferred (they're more
+        # actionable for the user-facing message) but generic start errors
+        # also trigger fallback — observed failure modes include 503
+        # SERVICE_UNAVAILABLE from the GCE backend, which behaves like
+        # capacity exhaustion (transient, retry on a different VM/zone helps).
         last_capacity_error: Optional[EncodingWorkerCapacityError] = None
+        last_start_error: Optional[EncodingWorkerStartError] = None
         for index, candidate in enumerate(candidates):
             try:
                 status = self.get_vm_status(candidate.vm_name, zone=candidate.zone)
@@ -380,18 +387,31 @@ class EncodingWorkerManager:
                 }
             except EncodingWorkerCapacityError as cap_err:
                 logger.warning(
-                    "Candidate %s in %s exhausted (%s), trying next zone",
+                    "Candidate %s in %s exhausted (%s), trying next candidate",
                     candidate.vm_name, candidate.zone, cap_err.code,
                 )
                 last_capacity_error = cap_err
+                last_start_error = cap_err
                 continue
-            # Non-capacity start errors should NOT silently fall through —
-            # they indicate something genuinely broken (bad image, wrong SA, etc.)
-            # and trying another zone won't help.
+            except EncodingWorkerStartError as start_err:
+                # Other start failures (e.g. 503 SERVICE_UNAVAILABLE from the
+                # GCE backend) are also transient — try the next candidate
+                # rather than giving up. If all candidates fail with these
+                # generic errors and no candidate hit a capacity error, we
+                # surface the last generic error.
+                logger.warning(
+                    "Candidate %s in %s start failed (%s), trying next candidate",
+                    candidate.vm_name, candidate.zone, start_err.code or "no-code",
+                )
+                last_start_error = start_err
+                continue
 
-        # Every candidate exhausted.
-        assert last_capacity_error is not None
-        raise last_capacity_error
+        # Every candidate failed. Prefer raising the capacity error if any
+        # candidate hit one (more actionable for the caller / user message).
+        if last_capacity_error is not None:
+            raise last_capacity_error
+        assert last_start_error is not None
+        raise last_start_error
 
     def _set_active_override(self, candidate) -> None:
         """Record a fallback VM as the active worker URL in Firestore."""

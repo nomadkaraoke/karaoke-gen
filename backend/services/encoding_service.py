@@ -233,10 +233,13 @@ class EncodingService:
                     self._invalidate_cached_url()
             else:
                 result = self._worker_manager.ensure_primary_running()
-        except EncodingWorkerCapacityError:
-            # Every candidate exhausted (or single-zone primary exhausted).
-            # Surface to caller so the job can be parked in a recoverable
-            # state instead of failing with a misleading "connection timeout".
+        except EncodingWorkerStartError:
+            # Every candidate exhausted (or single-zone primary failed) — both
+            # capacity errors and other start failures (e.g. 503
+            # SERVICE_UNAVAILABLE from the GCE backend) are transient and the
+            # render worker should park the job for retry rather than hard-fail
+            # with a misleading "connection timeout" message. EncodingWorker
+            # CapacityError subclasses StartError, so this catches both.
             raise
         except Exception as e:
             logger.warning(
@@ -335,14 +338,17 @@ class EncodingService:
                 if attempt == 0:
                     try:
                         await self._warmup_encoding_worker_fallback(job_id)
-                    except EncodingWorkerCapacityError as cap_err:
-                        # Zone is out of capacity — no point retrying the HTTP
-                        # call 7 more times to a VM that will never come up.
+                    except EncodingWorkerStartError as start_err:
+                        # No VM could be started — capacity exhaustion or
+                        # transient backend errors (e.g. 503). Hammering the
+                        # HTTP endpoint 7 more times won't help; surface the
+                        # typed error so the render worker can park the job
+                        # for auto-retry rather than fail hard.
                         logger.error(
-                            f"[job:{job_id}] Encoding worker capacity exhausted, "
-                            f"aborting retries: {cap_err}"
+                            f"[job:{job_id}] Encoding worker start failed, "
+                            f"aborting retries: {start_err}"
                         )
-                        raise cap_err from e
+                        raise start_err from e
                 if attempt < MAX_RETRIES:
                     logger.warning(
                         f"[job:{job_id}] GCE worker connection failed "

@@ -542,6 +542,21 @@ _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']
 
 
+def _has_title_screen(file_urls: Dict[str, Any]) -> bool:
+    """Return True if a title screen image (jpg or png) was generated.
+
+    Used by the /retry endpoint to decide whether to resume from the render
+    stage or rewind further. The actual screen URLs live under format-specific
+    keys (`title_jpg`, `title_png`) rather than a bare `title` key, so a
+    naive `screens.get('title')` check produced false-negatives and forced
+    completed-review jobs back to AWAITING_REVIEW.
+    """
+    screens = file_urls.get('screens') or {}
+    if not isinstance(screens, dict):
+        return False
+    return any(k == 'title' or k.startswith('title_') for k in screens)
+
+
 def _prune_state_data(data: Dict[str, Any]) -> Dict[str, Any]:
     """Strip state_data down to dashboard-required keys."""
     sd = data.get('state_data')
@@ -1759,7 +1774,7 @@ async def retry_job(
         # Review completion is proven by instrumental_selection in state_data
         # (set only when user submits the review endpoint)
         elif (file_urls.get('lyrics', {}).get('corrections') and
-              file_urls.get('screens', {}).get('title') and
+              _has_title_screen(file_urls) and
               state_data.get('instrumental_selection')):
 
             logger.info(f"Job {job_id}: Has corrections, screens, and completed review — retrying from render stage")
@@ -1796,7 +1811,7 @@ async def retry_job(
         # If we have corrections and screens but review was NOT completed,
         # return to awaiting_review so the user can review lyrics
         elif (file_urls.get('lyrics', {}).get('corrections') and
-              file_urls.get('screens', {}).get('title')):
+              _has_title_screen(file_urls)):
 
             logger.info(f"Job {job_id}: Has corrections and screens but review not completed — returning to review")
 

@@ -543,6 +543,92 @@ class TestEnsureAnyRunning:
         # All three were attempted before giving up.
         assert mock_compute.start.call_count == 3
 
+    def test_falls_through_on_generic_start_error_too(self, manager, mock_db, mock_compute):
+        """Non-capacity start errors (e.g. 503 SERVICE_UNAVAILABLE) also trigger fallback.
+
+        Observed in prod 2026-05-06: GCE returned 503 from instances.start
+        for the primary VM. The original ensure_any_running only fell through
+        on EncodingWorkerCapacityError, so the 503 short-circuited multi-zone
+        failover. Broaden to catch the parent class.
+        """
+        from backend.services.encoding_errors import EncodingWorkerStartError
+
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        # First start: 503 SERVICE_UNAVAILABLE (generic start error). Second: succeeds.
+        op_503 = MagicMock()
+        op_503.error_code = "503"
+        op_503.error_message = "SERVICE UNAVAILABLE"
+        op_503.result.return_value = None
+        mock_compute.start.side_effect = [op_503, _ok_op()]
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 6, 17, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["fell_back"] is True
+        assert result["vm_name"] == "fb-a"
+        assert mock_compute.start.call_count == 2
+
+    def test_raises_last_start_error_when_no_capacity_errors(self, manager, mock_db, mock_compute):
+        """If every candidate fails with generic start errors (no capacity), surface the last one."""
+        from backend.services.encoding_errors import (
+            EncodingWorkerCapacityError, EncodingWorkerStartError,
+        )
+
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op_503 = MagicMock()
+        op_503.error_code = "503"
+        op_503.error_message = "SERVICE UNAVAILABLE"
+        op_503.result.return_value = None
+        mock_compute.start.side_effect = [op_503, op_503]
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+
+        with pytest.raises(EncodingWorkerStartError) as exc_info:
+            manager.ensure_any_running(candidates)
+        # Should NOT be a capacity error — there were none in this scenario.
+        assert not isinstance(exc_info.value, EncodingWorkerCapacityError)
+        assert mock_compute.start.call_count == 2
+
+    def test_prefers_capacity_error_when_mixed_failures(self, manager, mock_db, mock_compute):
+        """When some candidates hit capacity and others hit generic errors, prefer raising
+        the capacity error — it's more actionable for the user-facing message."""
+        from backend.services.encoding_errors import EncodingWorkerCapacityError
+
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op_503 = MagicMock()
+        op_503.error_code = "503"
+        op_503.error_message = "SERVICE UNAVAILABLE"
+        op_503.result.return_value = None
+        # First: capacity. Second: 503.
+        mock_compute.start.side_effect = [_capacity_op(), op_503]
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+
+        with pytest.raises(EncodingWorkerCapacityError):
+            manager.ensure_any_running(candidates)
+
     def test_clears_override_when_primary_succeeds(self, manager, mock_db, mock_compute):
         """When the primary starts successfully, any stale active_override is cleared."""
         mock_instance = MagicMock()

@@ -41,8 +41,20 @@ if [ -z "$ENCODING_API_KEY" ]; then
     echo "Service will start but may reject requests"
 fi
 
-# Write environment file for systemd
-echo "ENCODING_API_KEY=${ENCODING_API_KEY}" > "${WORKER_DIR}/env"
+# Write environment file for systemd.
+#
+# GCE_METADATA_MTLS_MODE=none forces HTTP metadata server access on port 80.
+# google-auth >=2.40 uses mTLS over HTTPS (port 443) by default if
+# /run/google-mds-mtls/ certs exist on the VM, which is the case on newer
+# GCE images. The mTLS handshake has been observed to fail with
+# `SSL CERTIFICATE_VERIFY_FAILED` on freshly-provisioned encoding-worker-
+# fallback-* VMs (2026-05-06), preventing the worker from refreshing its
+# service-account token. Forcing the standard HTTP path avoids the issue
+# entirely while still using the GCE metadata server for auth.
+cat > "${WORKER_DIR}/env" <<EOF
+ENCODING_API_KEY=${ENCODING_API_KEY}
+GCE_METADATA_MTLS_MODE=none
+EOF
 chmod 600 "${WORKER_DIR}/env"
 
 # 2. Download expected version manifest
