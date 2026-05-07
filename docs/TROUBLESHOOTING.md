@@ -259,9 +259,11 @@ Look for these markers:
 
 **Symptoms:** Status frozen at `rendering_video` (progress 75%) for >30 minutes. No `WORKER_END worker=render-video` log entry exists. Last log is mid-retry like *"GCE worker connection failed (attempt 7/8)"*.
 
-**Cause:** The Cloud Run instance handling the render task was killed (autoscaler scaled down, OOM, or revision rollover) before the retry loop completed and could write a failure state. Cloud Tasks may have re-dispatched but landed somewhere unexpected.
+**Cause:** The Cloud Run instance handling the render task was killed (autoscaler scaled down, OOM, or revision rollover) before the retry loop completed and could write a failure state.
 
-**Recovery:** manually transition to `review_complete` and re-trigger the render. The instrumental selection in `state_data` is preserved so no user re-work is needed:
+**Mitigation in place since v0.174.4:** The FastAPI shutdown hook now waits up to 480s for the render worker to finish, then parks any still-active render jobs in `RENDER_PENDING_CAPACITY` (last_code: `WORKER_SHUTDOWN`) before exit. The `/api/internal/retry-pending-render-jobs` Cloud Scheduler job picks them up within 5 minutes. Jobs should now self-recover. If you see `WORKER_END worker=render-video status=shutdown_parked` in logs, that's the new graceful-shutdown path.
+
+**Recovery (only if a job somehow still gets stuck — e.g. SIGKILL hit before park completed):** manually transition to `review_complete` and re-trigger the render. The instrumental selection in `state_data` is preserved so no user re-work is needed:
 
 ```bash
 ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
@@ -282,8 +284,6 @@ curl -X POST https://api.nomadkaraoke.com/api/internal/workers/render-video \
   -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
   -d "{\"job_id\":\"$JID\"}"
 ```
-
-This is a known hardening opportunity — the render worker should write a failure state on SIGTERM so Cloud Tasks can retry cleanly. See `docs/archive/2026-05-05-encoding-worker-capacity-resilience-plan.md`.
 
 ---
 

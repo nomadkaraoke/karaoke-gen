@@ -75,11 +75,11 @@ Render fails → typed error classification
   └─ Other Exception → repr(e) fallback so message is informative → fail_job
 ```
 
-## Hardening opportunities (not yet shipped)
+## Hardening opportunities
 
-These came up during the session but weren't blocking; documenting for the next round.
+The 3 items below were identified during the May 5–6 session. Status updated as each ships.
 
-1. **Render worker doesn't handle SIGTERM gracefully.** When Cloud Run autoscales an instance down mid-render, the task is killed without writing a failure state. The job sits at `rendering_video` indefinitely until an operator manually retries. Workaround in `docs/TROUBLESHOOTING.md`. Fix would add a SIGTERM handler that sets `failed`/`render_pending_capacity` before exit, and ideally signals Cloud Tasks for retry.
+1. **Render worker doesn't handle SIGTERM gracefully.** ✅ **Shipped in v0.174.4** — render worker registers with `worker_registry`; FastAPI shutdown waits up to 480s, then calls `park_active_render_jobs_for_shutdown()` which transitions any still-active render jobs to `RENDER_PENDING_CAPACITY` (last_code: `WORKER_SHUTDOWN`) before exit. Auto-retry scheduler picks them up within 5 min. Reduced wait from 600s → 480s leaves 120s for cleanup before SIGKILL.
 2. **Encoding worker loses in-memory job state on systemctl restart.** Observed once on `693c2254` — submit job to fallback-a, worker restarts (deploy or crash), poll for status returns `not found`. Workaround: retry the job (usually succeeds). Fix: persist job state to GCS or Firestore.
 3. **Concurrent renders against a single fallback VM cause `Connection reset by peer`.** Observed when 7 retries triggered in parallel against fallback-a. The encoding worker is single-tenant per render and can't queue HTTP-level. Workaround: trigger sequentially. Fix: add a submission queue/throttle in `EncodingService`.
 

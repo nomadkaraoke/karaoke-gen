@@ -103,18 +103,37 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown - wait for any active workers to complete before terminating
-    # This prevents Cloud Run from killing workers mid-processing
+    # This prevents Cloud Run from killing workers mid-processing.
+    #
+    # Cloud Run gen2 default termination grace period is 600s. We wait up to
+    # 480s, leaving ~120s for the cleanup pass below to write Firestore state
+    # before SIGKILL. Without that headroom, render jobs that miss the wait
+    # would sit in `rendering_video` forever waiting for an operator.
     logger.info("Shutdown requested, checking for active workers...")
     if worker_registry.has_active_workers():
         active = worker_registry.get_active_workers()
         logger.info(f"Active workers found: {active}")
-        logger.info("Waiting for workers to complete (timeout: 600s)...")
-        completed = await worker_registry.wait_for_completion(timeout=600)  # 10 min max
+        logger.info("Waiting for workers to complete (timeout: 480s)...")
+        completed = await worker_registry.wait_for_completion(timeout=480)
         if not completed:
             logger.error(
                 "Shutdown timeout - some workers may not have completed cleanly. "
                 f"Remaining workers: {worker_registry.get_active_workers()}"
             )
+
+        # Park any still-active render jobs so the auto-retry scheduler can
+        # recover them. Safe to call unconditionally — it's a no-op if nothing
+        # render-related is in flight.
+        try:
+            from backend.workers.render_video_worker import park_active_render_jobs_for_shutdown
+            parked = park_active_render_jobs_for_shutdown()
+            if parked:
+                logger.warning(
+                    f"Parked {parked} in-flight render job(s) for auto-retry "
+                    f"due to shutdown"
+                )
+        except Exception as exc:
+            logger.error(f"Render-job shutdown park failed: {exc!r}")
     else:
         logger.info("No active workers, proceeding with shutdown")
 

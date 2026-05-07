@@ -39,6 +39,7 @@ from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
 from backend.config import get_settings
+from backend.workers.registry import worker_registry
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 from backend.services.encoding_service import get_encoding_service
@@ -46,6 +47,12 @@ from backend.services.encoding_errors import (
     EncodingWorkerCapacityError,
     EncodingWorkerStartError,
 )
+
+
+# Sentinel exception code used when the render worker is parked because Cloud
+# Run is shutting the container down mid-render. Distinct from real GCE
+# capacity codes so log filters can tell them apart.
+RENDER_WORKER_SHUTDOWN_CODE = "WORKER_SHUTDOWN"
 
 # Import from lyrics_transcriber (submodule)
 from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
@@ -91,12 +98,17 @@ async def process_render_video(job_id: str) -> bool:
     
     # Create job logger for remote debugging FIRST
     job_log = create_job_logger(job_id, "render_video")
-    
+
     # Log with structured markers for easy Cloud Logging queries
     logger.info(f"[job:{job_id}] WORKER_START worker=render-video")
     job_log.info("=== RENDER VIDEO WORKER STARTED ===")
     job_log.info(f"Job ID: {job_id}")
-    
+
+    # Register with worker registry so the FastAPI shutdown hook can wait for
+    # this worker AND, if Cloud Run forces termination, park the job in
+    # RENDER_PENDING_CAPACITY for the auto-retry scheduler to recover.
+    await worker_registry.register(job_id, "render-video")
+
     # Set up log capture for OutputGenerator
     log_handler = setup_job_logging(job_id, "render_video", *RENDER_VIDEO_WORKER_LOGGERS)
     job_log.info(f"Log handler attached for {len(RENDER_VIDEO_WORKER_LOGGERS)} loggers")
@@ -568,6 +580,11 @@ async def process_render_video(job_id: str) -> bool:
         )
         job_manager.fail_job(job_id, f"Video render failed: {error_text}")
         return False
+    finally:
+        # Always unregister — if we don't, the shutdown hook will think this
+        # render is still in flight and try to park the (already-completed)
+        # job, which would produce a no-op transition + warning log spam.
+        await worker_registry.unregister(job_id, "render-video")
 
 
 def _park_job_for_capacity_retry(
@@ -627,6 +644,71 @@ def _extract_gcs_path(url: str) -> str:
         parts = path.split('/', 1)
         return parts[1] if len(parts) > 1 else path
     return url
+
+
+def park_active_render_jobs_for_shutdown() -> int:
+    """Park any in-flight render jobs in RENDER_PENDING_CAPACITY before exit.
+
+    Called by the FastAPI shutdown hook when Cloud Run is forcing the container
+    down (autoscaling, deploy, preemption) and one or more render workers
+    didn't finish in time. Without this, jobs sit at `rendering_video`
+    indefinitely until an operator manually retries.
+
+    Parking transitions the job to RENDER_PENDING_CAPACITY, which the
+    `/api/internal/retry-pending-render-jobs` Cloud Scheduler job picks up
+    every 5 minutes.
+
+    Only jobs currently in the RENDERING_VIDEO state are parked — if the
+    worker completed concurrently (or the job was already moved past this
+    stage by some other code path) we leave it alone.
+
+    Returns the number of jobs parked.
+    """
+    active = worker_registry.get_active_workers()
+    render_job_ids = [
+        job_id for job_id, worker_types in active.items()
+        if "render-video" in worker_types
+    ]
+    if not render_job_ids:
+        return 0
+
+    job_manager = JobManager()
+    parked = 0
+
+    for job_id in render_job_ids:
+        try:
+            job = job_manager.get_job(job_id)
+            if not job:
+                logger.warning(f"[job:{job_id}] Cannot park for shutdown: job not found")
+                continue
+            if job.status != JobStatus.RENDERING_VIDEO:
+                # Worker completed or job moved past this stage between the
+                # active-set snapshot and our park attempt — nothing to do.
+                logger.info(
+                    f"[job:{job_id}] Skipping shutdown park: status is "
+                    f"{job.status} (not RENDERING_VIDEO)"
+                )
+                continue
+
+            shutdown_marker = EncodingWorkerStartError(
+                "Render worker terminated by Cloud Run shutdown — auto-retry will resume",
+                code=RENDER_WORKER_SHUTDOWN_CODE,
+                vm_name="",
+                zone="",
+            )
+            _park_job_for_capacity_retry(job_manager, job_id, shutdown_marker)
+            parked += 1
+            logger.warning(
+                f"[job:{job_id}] WORKER_END worker=render-video status=shutdown_parked"
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            # Don't let one failed park block the others; we have a tight
+            # deadline before SIGKILL.
+            logger.error(
+                f"[job:{job_id}] Failed to park for shutdown: {exc!r}"
+            )
+
+    return parked
 
 
 # For compatibility with worker service
