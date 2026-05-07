@@ -143,6 +143,45 @@ When two sequential human review steps can be combined into one, do it. We origi
 
 ## Common Gotchas
 
+### Encoding Worker Capacity Resilience (May 2026)
+
+**The 7 traps we hit, in order of discovery:**
+
+1. **GCP `compute.instances.start` is fire-and-forget by default.** When the call returns, that doesn't mean the VM started — `ZONE_RESOURCE_POOL_EXHAUSTED` and `503 SERVICE_UNAVAILABLE` are returned in the operation result, not as exceptions. Always inspect `operation.error_code` after the call. Originally caused two real-user job failures with empty error messages because the readiness gate just timed out on a VM that had never started. Fix in `EncodingWorkerManager.start_vm` (PR #748).
+
+2. **`f"...{e}"` produces empty string for bare `TimeoutError()`** (and any exception with no args). Users saw `"Video render failed: "` for 7+ minutes of retries. Always use `str(e) or repr(e)` as the fallback when surfacing exception messages to humans.
+
+3. **`compute.instances.start` returns `503 SERVICE_UNAVAILABLE` for transient backend stress, not just capacity.** Initial fix only classified `ZONE_RESOURCE_POOL_EXHAUSTED` as transient/recoverable; `503` got the generic `EncodingWorkerStartError` and never triggered multi-zone fallback. Either treat the `EncodingWorkerStartError` parent class as fallback-worthy (what we did, PR #750) or expand the capacity error code list.
+
+4. **GCE `c4d-highcpu-32` capacity in `us-central1-f` is unreliable enough to be useless as a fallback.** Provisioning failed there at create time on multiple attempts (the very thing the fallback is meant to mitigate). `-a` and `-b` are stable. (PR #749)
+
+5. **`google-auth ≥ 2.40` uses mTLS-over-HTTPS for the GCE metadata server when `/run/google-mds-mtls/` certs exist on the VM.** Newer GCE images ship those certs; the mTLS handshake then fails with `SSL CERTIFICATE_VERIFY_FAILED` on freshly-provisioned VMs. The worker can't refresh its SA token, all GCS reads/writes break. Fix: set `GCE_METADATA_MTLS_MODE=none` in the systemd EnvironmentFile to force HTTP-on-port-80 metadata access. (PR #750)
+
+6. **Composite Firestore index needed for `where(status) + order_by(updated_at)`.** Don't compose those server-side without the composite index. For small result sets just stream and sort in Python — matches the existing `recover-stuck-jobs` pattern. (PR #751)
+
+7. **`_request_with_retry` captured the URL once before the retry loop.** When the warmup-fallback updated the active URL override (e.g., switching from a dead primary to a live fallback), the retry loop kept hitting the original (dead) URL for all 8 attempts. Fix: thread the relative `path` through and re-resolve `_get_worker_url() + path` on retries after warmup has fired. (PR #752)
+
+**Architecture summary (post-fixes):**
+- 4 GCE encoding workers: 2 primaries in `us-central1-c` (blue-green) + 2 capacity fallbacks in `us-central1-a` and `us-central1-b`. All idle by default; started on demand.
+- `EncodingWorkerCandidate` list iterated in `ensure_any_running` — primary first, fallbacks in declared order. Capacity errors fall through to next candidate; non-capacity start errors also fall through (broadened in PR #750).
+- New `RENDER_PENDING_CAPACITY` job state for transient infra failures — different from `FAILED` (which is for unrecoverable bugs).
+- Cloud Scheduler fires `/api/internal/retry-pending-render-jobs` every 5 min; 24h hard timeout per job.
+- `EncodingWorkerConfig.active_url` returns the override URL when set, else primary. `_get_worker_url()` consults this with a 30s TTL cache.
+- Both Cloud Run service AND Cloud Run Job (video-encoding-job) need `ENCODING_WORKER_FALLBACK_VMS` env — they each instantiate their own `EncodingService`.
+
+**Files to know:**
+- `backend/services/encoding_worker_manager.py` — multi-zone iteration, active-override mgmt
+- `backend/services/encoding_errors.py` — typed exception hierarchy + capacity-error code set
+- `backend/services/encoding_service.py::_request_with_retry` — URL re-resolve on retries
+- `backend/services/encoding_service.py::_warmup_encoding_worker_fallback` — first-failure → start VM → invalidate URL cache
+- `backend/workers/render_video_worker.py::_park_job_for_capacity_retry` — transition to `RENDER_PENDING_CAPACITY`
+- `backend/api/routes/internal.py::retry_pending_render_jobs` — Cloud Scheduler entry point
+- `infrastructure/encoding-worker/startup.sh` — `GCE_METADATA_MTLS_MODE=none` is set here
+- `infrastructure/compute/encoding_worker_vm.py` — fallback VM IaC
+- `docs/archive/2026-05-05-encoding-worker-capacity-resilience-plan.md` — original 3-phase plan
+
+**See also:** TROUBLESHOOTING.md sections "Job stuck in `render_pending_capacity`", "Job failed: Video render failed: TimeoutError()", "Job stuck in `rendering_video` for hours".
+
 ### Firestore Timezone-Aware vs Naive Datetime Comparison (Apr 2026)
 **What happened**: First instance — `_build_user_public()` compared `referral_discount_expires_at` (from Firestore, timezone-aware) with `datetime.utcnow()` (naive), causing `TypeError: can't compare offset-naive and offset-aware datetimes`. This crashed the `verify_magic_link` endpoint, **blocking ALL logins for referred users** in production.
 

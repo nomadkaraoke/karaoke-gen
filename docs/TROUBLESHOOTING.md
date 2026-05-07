@@ -193,6 +193,100 @@ gcloud compute instances describe encoding-worker-a \
 
 ---
 
+## Job stuck in `render_pending_capacity`
+
+**Symptoms:** Job status is `render_pending_capacity` (introduced 2026-05-05). User-facing message says *"Encoding capacity is temporarily unavailable. Your job will retry automatically — no action needed."*
+
+**Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM (primary in `us-central1-c`, plus capacity fallbacks in `-a` and `-b`). The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
+
+**Check how many retries have run:**
+```bash
+python3 -c "
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+d = firestore.Client(project='nomadkaraoke').collection('jobs').document('JOB_ID').get().to_dict()
+print((d.get('state_data') or {}).get('render_pending_capacity'))
+"
+```
+
+**Force an immediate retry** (Cloud Scheduler runs every 5 min, but you can poke it manually):
+```bash
+ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+curl -X POST https://api.nomadkaraoke.com/api/internal/retry-pending-render-jobs \
+  -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
+**Verify GCE has any capacity right now:**
+```bash
+# If this returns ZONE_RESOURCE_POOL_EXHAUSTED across all 4 zones, just wait
+for ZONE in us-central1-a us-central1-b us-central1-c us-central1-f; do
+  gcloud compute instances describe "encoding-worker-fallback-${ZONE##*-}" \
+    --zone=$ZONE --project=nomadkaraoke --format='value(status)' 2>/dev/null \
+    && echo "  ↑ in $ZONE"
+done
+```
+
+**Configuration knobs:** `MAX_PER_TICK = 1` and `MAX_WAIT_SECONDS = 24*3600` constants in `backend/api/routes/internal.py::retry_pending_render_jobs`.
+
+---
+
+## Job failed: "Video render failed: TimeoutError()"
+
+**Background:** This was the original signature of the 2026-05-05 capacity bug — empty exception message because `f"...{e}"` produced empty string for bare `TimeoutError()`. **As of 0.174.x the empty-message version should not happen** (we use `repr(e)` as fallback). If you see this exact form on a job after 2026-05-06, the render worker hit a `TimeoutError` *not* preceded by a typed `EncodingWorkerStartError` — most likely the URL re-resolve isn't engaging or a Cloud Run instance was killed mid-flight.
+
+**Check what the render actually saw:**
+```bash
+gcloud logging read \
+  "jsonPayload.message=~\"JOB_ID\" AND timestamp>=\"YYYY-MM-DDTHH:MM:SSZ\"" \
+  --project=nomadkaraoke --limit=50 --format='value(timestamp,jsonPayload.message)'
+```
+
+Look for these markers:
+- `Submitting render-video job to GCE worker: http://X.X.X.X:8080/render-video` — initial URL
+- `Trying candidate N/3: VM ... in us-central1-X` — multi-zone iteration starting
+- `Set active_override to ...` — fallback engaged
+- `Re-resolved encoding URL after warmup: A -> B` — added in 0.174.3, confirms the URL is updating between retries
+- `WORKER_END worker=render-video status=pending_capacity` — happy parking path
+- `WORKER_END worker=render-video status=error` — failed instead of parked (bug)
+
+**Most likely cause if no `Re-resolved` log appeared:** The job was rendered on a pre-0.174.3 revision. Just retry — the new revision is now serving.
+
+**Recovery:** retry the job via the admin endpoint or `/retry-pending-render-jobs`. The system is self-healing as long as at least one zone has capacity.
+
+---
+
+## Job stuck in `rendering_video` for hours (no failure log)
+
+**Symptoms:** Status frozen at `rendering_video` (progress 75%) for >30 minutes. No `WORKER_END worker=render-video` log entry exists. Last log is mid-retry like *"GCE worker connection failed (attempt 7/8)"*.
+
+**Cause:** The Cloud Run instance handling the render task was killed (autoscaler scaled down, OOM, or revision rollover) before the retry loop completed and could write a failure state. Cloud Tasks may have re-dispatched but landed somewhere unexpected.
+
+**Recovery:** manually transition to `review_complete` and re-trigger the render. The instrumental selection in `state_data` is preserved so no user re-work is needed:
+
+```bash
+ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+JID=YOUR_JOB_ID
+python3 << EOF
+import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'
+from google.cloud import firestore
+from datetime import datetime, UTC
+db = firestore.Client(project='nomadkaraoke')
+now = datetime.now(UTC)
+db.collection('jobs').document('$JID').update({
+    'status': 'review_complete', 'progress': 70, 'updated_at': now,
+    'error_message': None, 'error_details': None,
+    'state_data.render_progress': {'stage': 'pending'},
+})
+EOF
+curl -X POST https://api.nomadkaraoke.com/api/internal/workers/render-video \
+  -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d "{\"job_id\":\"$JID\"}"
+```
+
+This is a known hardening opportunity — the render worker should write a failure state on SIGTERM so Cloud Tasks can retry cleanly. See `docs/archive/2026-05-05-encoding-worker-capacity-resilience-plan.md`.
+
+---
+
 ## Deploy stuck in progress (`deploy_in_progress: true`)
 
 **Symptoms:** CI deploys fail immediately with "deploy already in progress". The flag in Firestore was never cleared after a previous failed deploy.
