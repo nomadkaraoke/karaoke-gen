@@ -196,17 +196,25 @@ def test_mark_orphans_failed_on_startup_returns_zero_when_clean():
     assert jobs == {}
 
 
-def test_persister_disabled_when_firestore_import_fails():
-    """If google-cloud-firestore can't be imported (e.g. local dev without
-    creds), the persister must silently disable instead of breaking the
-    worker. All ops become no-ops."""
-    with patch(
-        "google.cloud.firestore.Client",
-        side_effect=Exception("no creds"),
-    ):
-        persister = JobStatePersister(vm_name="x")
-        # First touch triggers init — should disable, not raise
-        assert persister.enabled is False
-        # All ops safe to call
-        persister.save({"job_id": "abc", "status": "running"})
-        assert persister.load_active_jobs() == {}
+def test_persister_disabled_when_firestore_client_construction_fails(monkeypatch):
+    """If Firestore client construction raises (e.g. local dev without creds,
+    or IAM not yet applied in production), the persister must silently
+    disable instead of breaking the worker. All ops become no-ops.
+
+    Patch via the actual `google.cloud.firestore` module attribute that
+    persistence._get_client() resolves at runtime — patching by string
+    path is unreliable across CI environments where the import order can
+    differ.
+    """
+    import google.cloud.firestore as fs_module
+    monkeypatch.setattr(
+        fs_module, "Client",
+        MagicMock(side_effect=Exception("no creds")),
+    )
+
+    persister = JobStatePersister(vm_name="x")
+    # First touch triggers init — should disable, not raise
+    assert persister.enabled is False
+    # All ops safe to call (no-ops)
+    persister.save({"job_id": "abc", "status": "running"})
+    assert persister.load_active_jobs() == {}
