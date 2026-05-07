@@ -196,10 +196,57 @@ def test_mark_orphans_failed_on_startup_returns_zero_when_clean():
     assert jobs == {}
 
 
+def test_persister_self_disables_on_permission_denied():
+    """When IAM hasn't been applied yet, the first save() call hits
+    PermissionDenied. The persister must log ONCE and disable, not log a
+    warning per save (which would spam during normal job processing
+    while waiting for the operator to run `pulumi up`).
+    """
+    class FakePermissionDenied(Exception):
+        """Stand-in matched by name in _looks_like_auth_error — avoids
+        importing google.api_core just for the type."""
+
+    FakePermissionDenied.__name__ = "PermissionDenied"
+
+    save_count = 0
+    client = MagicMock()
+
+    def collection_factory(name):
+        coll = MagicMock()
+
+        def document(doc_id):
+            nonlocal save_count
+            doc = MagicMock()
+
+            def set(data):
+                nonlocal save_count
+                save_count += 1
+                raise FakePermissionDenied("missing roles/datastore.user")
+
+            doc.set.side_effect = set
+            return doc
+
+        coll.document.side_effect = document
+        return coll
+
+    client.collection.side_effect = collection_factory
+    persister = JobStatePersister(vm_name="x", client=client)
+
+    # First save triggers PermissionDenied → persister disables itself
+    persister.save({"job_id": "a", "status": "running"})
+    assert save_count == 1
+    assert persister.enabled is False
+
+    # Subsequent saves are no-ops — must NOT hit Firestore again
+    persister.save({"job_id": "b", "status": "running"})
+    persister.save({"job_id": "c", "status": "running"})
+    assert save_count == 1
+
+
 def test_persister_disabled_when_firestore_client_construction_fails(monkeypatch):
-    """If Firestore client construction raises (e.g. local dev without creds,
-    or IAM not yet applied in production), the persister must silently
-    disable instead of breaking the worker. All ops become no-ops.
+    """If Firestore client construction raises (e.g. local dev without creds),
+    the persister must silently disable instead of breaking the worker.
+    All ops become no-ops.
 
     Patch via the actual `google.cloud.firestore` module attribute that
     persistence._get_client() resolves at runtime — patching by string

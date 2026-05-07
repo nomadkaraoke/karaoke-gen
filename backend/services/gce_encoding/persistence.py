@@ -132,6 +132,11 @@ class JobStatePersister:
         Adds `vm_name`, `updated_at`, and `expires_at` (TTL) fields. Never
         raises — Firestore failures are logged and swallowed because
         encoding is the source of truth and persistence is best-effort.
+
+        On the first PermissionDenied (typically: IAM not yet applied for
+        the encoding worker SA), self-disables to avoid logging a warning
+        on every save call. Caller can re-enable by re-instantiating after
+        IAM lands.
         """
         client = self._get_client()
         if client is None:
@@ -149,10 +154,36 @@ class JobStatePersister:
             }
             client.collection(self.collection).document(job_id).set(doc)
         except Exception as exc:
+            # If this is a permanent auth failure (IAM not applied yet),
+            # log once and self-disable so we don't spam ERROR per save.
+            # Other transient errors are logged at WARNING per occurrence.
+            if self._looks_like_auth_error(exc):
+                if self._enabled is not False:  # only log on transition
+                    logger.warning(
+                        "JobStatePersister disabling: Firestore auth failed "
+                        "(likely IAM not yet applied to encoding-worker-sa: "
+                        "needs roles/datastore.user). Subsequent saves will "
+                        "be no-ops. Error: %r",
+                        exc,
+                    )
+                self._enabled = False
+                self._client = None
+                return
             logger.warning(
                 "[job:%s] Failed to persist job state to Firestore: %r",
                 job_id, exc,
             )
+
+    @staticmethod
+    def _looks_like_auth_error(exc: BaseException) -> bool:
+        """Heuristic — google.api_core.exceptions.PermissionDenied or 403/401."""
+        type_name = type(exc).__name__
+        if type_name in ("PermissionDenied", "Unauthenticated", "Forbidden"):
+            return True
+        msg = str(exc).lower()
+        return any(s in msg for s in ("permission_denied", "permissiondenied",
+                                      "403", "401", "unauthenticated",
+                                      "missing or insufficient permissions"))
 
     def load_active_jobs(self) -> dict[str, dict]:
         """Return any non-terminal jobs persisted for this VM.
@@ -160,6 +191,8 @@ class JobStatePersister:
         Used at startup to recover state from before the restart. Terminal
         jobs (complete/failed) are also persisted but not returned here —
         their docs serve only post-restart status polls.
+
+        Self-disables on auth errors (same pattern as save).
         """
         client = self._get_client()
         if client is None:
@@ -181,6 +214,16 @@ class JobStatePersister:
                 recovered[doc_snapshot.id] = data
             return recovered
         except Exception as exc:
+            if self._looks_like_auth_error(exc):
+                if self._enabled is not False:
+                    logger.warning(
+                        "JobStatePersister disabling: Firestore auth failed "
+                        "during load_active_jobs (likely IAM not applied). "
+                        "Error: %r", exc,
+                    )
+                self._enabled = False
+                self._client = None
+                return {}
             logger.warning(
                 "JobStatePersister.load_active_jobs failed: %r", exc,
             )
