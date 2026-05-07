@@ -17,8 +17,10 @@ Usage:
 
 import asyncio
 import logging
+import os
 import time
-from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
+from typing import Optional, Dict, Any, AsyncIterator
 
 import aiohttp
 
@@ -29,6 +31,21 @@ from backend.services.encoding_errors import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Per-URL submission throttle. The encoding worker has a ThreadPoolExecutor
+# of 4 workers (gce_encoding/main.py). Submitting more concurrent jobs than
+# that to a single VM caused `Connection reset by peer` errors on the 5th+
+# job during the May 6 fallback storm — 7 jobs simultaneously hammered
+# fallback-a after the primary failed.
+#
+# Limit to 3 concurrent renders per URL per Cloud Run instance, leaving 1
+# worker thread for status polls / preview / health checks. With multiple
+# Cloud Run instances this is not a global cap (would require a distributed
+# lock) but it caps each instance's contribution to the storm — empirically
+# enough to prevent the failure mode.
+_DEFAULT_SUBMISSION_CONCURRENCY = int(
+    os.environ.get("ENCODING_SUBMISSION_CONCURRENCY", "3")
+)
 
 # Retry configuration for handling transient failures (e.g., worker restarts during deployments).
 #
@@ -74,6 +91,14 @@ class EncodingService:
         self._url_cached_at = 0
         self._URL_CACHE_TTL = 30  # seconds
 
+        # Per-URL submission semaphores. Lazily created on first use so we
+        # don't bind to the wrong event loop at import time. Bound at
+        # _DEFAULT_SUBMISSION_CONCURRENCY to keep concurrent renders per
+        # worker VM under the worker's own ThreadPool capacity.
+        self._url_semaphores: Dict[str, asyncio.Semaphore] = {}
+        self._url_semaphores_lock: Optional[asyncio.Lock] = None
+        self._submission_concurrency = _DEFAULT_SUBMISSION_CONCURRENCY
+
     def set_worker_manager(self, manager):
         """Set the worker manager for dynamic URL resolution from Firestore."""
         self._worker_manager = manager
@@ -110,6 +135,42 @@ class EncodingService:
         """
         self._cached_url = None
         self._url_cached_at = 0.0
+
+    @asynccontextmanager
+    async def _submission_slot(self, url: str, job_id: str) -> AsyncIterator[None]:
+        """Bound the number of concurrent renders/encodes per worker URL.
+
+        The encoding worker has 4 thread-pool workers; submitting 7+ at once
+        causes `Connection reset by peer` mid-encode (observed during the
+        May 6 fallback storm). This semaphore caps each Cloud Run instance's
+        concurrent submissions per URL at `_submission_concurrency`,
+        leaving headroom for status polls and previews.
+
+        Captures the URL at entry — if the worker manager swaps active_url
+        mid-operation (capacity fallback) we keep the original slot. The
+        slot count for the new URL will be slightly understated until the
+        next submission, which is acceptable: the fallback path is rare,
+        and the goal is preventing the orchestrator-side thundering herd.
+        """
+        # Lazily create the per-loop lock so we bind to the right event loop
+        if self._url_semaphores_lock is None:
+            self._url_semaphores_lock = asyncio.Lock()
+
+        async with self._url_semaphores_lock:
+            sem = self._url_semaphores.get(url)
+            if sem is None:
+                sem = asyncio.Semaphore(self._submission_concurrency)
+                self._url_semaphores[url] = sem
+
+        # Brief log only when we actually have to wait — keeps the happy
+        # path quiet but surfaces contention during a fallback storm.
+        if sem.locked():
+            logger.info(
+                f"[job:{job_id}] Waiting for encoding submission slot "
+                f"(url={url}, in_flight>={self._submission_concurrency})"
+            )
+        async with sem:
+            yield
 
     def _build_worker_candidates(self) -> list:
         """Build the ordered candidate list for ensure_any_running.
@@ -609,7 +670,10 @@ class EncodingService:
         """
         Submit encoding job and wait for completion.
 
-        This is a convenience method that combines submit + wait.
+        This is a convenience method that combines submit + wait. The
+        submission is bounded by a per-URL semaphore so concurrent renders
+        from the same Cloud Run instance can't overwhelm a single worker
+        VM (see `_submission_slot`).
 
         Args:
             job_id: Unique job identifier
@@ -623,23 +687,33 @@ class EncodingService:
         """
         config = encoding_config or {"formats": ["mp4_4k", "mp4_720p"]}
 
-        # Submit the job
-        submit_result = await self.submit_encoding_job(job_id, input_gcs_path, output_gcs_path, config)
+        # Resolve URL up front so the semaphore is keyed by the actual
+        # target VM (matters when capacity fallback is active — see
+        # _submission_slot for the URL-change semantics).
+        target_url = self._get_worker_url()
 
-        # If cached, return immediately — encoding already done
-        submit_status = submit_result.get("status")
-        if submit_status == "cached":
-            logger.info(f"[job:{job_id}] Encoding already cached, returning immediately")
-            return {"status": "complete", "output_files": submit_result.get("output_files")}
+        async with self._submission_slot(target_url, job_id):
+            # Submit the job
+            submit_result = await self.submit_encoding_job(
+                job_id, input_gcs_path, output_gcs_path, config,
+            )
 
-        # If in_progress, another request is encoding it — just wait for that
-        if submit_status == "in_progress":
-            logger.info(f"[job:{job_id}] Encoding already in progress, joining poll")
+            # If cached, return immediately — encoding already done
+            submit_status = submit_result.get("status")
+            if submit_status == "cached":
+                logger.info(f"[job:{job_id}] Encoding already cached, returning immediately")
+                return {"status": "complete", "output_files": submit_result.get("output_files")}
 
-        # Wait for completion
-        return await self.wait_for_completion(
-            job_id, progress_callback=progress_callback
-        )
+            # If in_progress, another request is encoding it — just wait for that
+            if submit_status == "in_progress":
+                logger.info(f"[job:{job_id}] Encoding already in progress, joining poll")
+
+            # Wait for completion (still holding the slot — the worker is
+            # actually doing CPU work for `job_id` until poll returns
+            # complete/failed).
+            return await self.wait_for_completion(
+                job_id, progress_callback=progress_callback
+            )
 
     async def submit_preview_encoding_job(
         self,
@@ -850,7 +924,10 @@ class EncodingService:
         """
         Submit render-video job and wait for completion.
 
-        This is a convenience method that combines submit + wait.
+        This is a convenience method that combines submit + wait. The
+        submission is bounded by a per-URL semaphore so concurrent renders
+        from the same Cloud Run instance can't overwhelm a single worker
+        VM (see `_submission_slot`).
 
         Args:
             job_id: Unique job identifier
@@ -860,27 +937,36 @@ class EncodingService:
         Returns:
             Final job status with output files and metadata
         """
-        # Submit the job
-        submit_result = await self.submit_render_video_job(job_id, render_config)
+        # Resolve URL up front so the semaphore is keyed by the actual
+        # target VM. If capacity fallback later swaps active_url, the slot
+        # accounting is slightly off for that operation but the new
+        # submissions land on the right counter.
+        target_url = self._get_worker_url()
 
-        # If cached, return immediately — rendering already done
-        submit_status = submit_result.get("status")
-        if submit_status == "cached":
-            logger.info(f"[job:{job_id}] Render-video already cached, returning immediately")
-            return {
-                "status": "complete",
-                "output_files": submit_result.get("output_files"),
-                "metadata": submit_result.get("metadata"),
-            }
+        async with self._submission_slot(target_url, job_id):
+            # Submit the job
+            submit_result = await self.submit_render_video_job(job_id, render_config)
 
-        # If in_progress, another request is rendering it — just wait for that
-        if submit_status == "in_progress":
-            logger.info(f"[job:{job_id}] Render-video already in progress, joining poll")
+            # If cached, return immediately — rendering already done
+            submit_status = submit_result.get("status")
+            if submit_status == "cached":
+                logger.info(f"[job:{job_id}] Render-video already cached, returning immediately")
+                return {
+                    "status": "complete",
+                    "output_files": submit_result.get("output_files"),
+                    "metadata": submit_result.get("metadata"),
+                }
 
-        # Wait for completion
-        return await self.wait_for_completion(
-            job_id, progress_callback=progress_callback
-        )
+            # If in_progress, another request is rendering it — just wait for that
+            if submit_status == "in_progress":
+                logger.info(f"[job:{job_id}] Render-video already in progress, joining poll")
+
+            # Wait for completion (still holding the slot — the worker is
+            # actively rendering for `job_id` until poll returns
+            # complete/failed).
+            return await self.wait_for_completion(
+                job_id, progress_callback=progress_callback
+            )
 
     async def health_check(self) -> Dict[str, Any]:
         """
