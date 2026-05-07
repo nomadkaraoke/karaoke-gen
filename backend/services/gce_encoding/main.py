@@ -11,6 +11,7 @@ import sys
 import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -19,10 +20,48 @@ from google.cloud import storage
 from packaging.version import Version
 from pydantic import BaseModel
 
+from .persistence import JobStatePersister
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Encoding Worker", version="1.0.0")
+
+# Job tracking — process-local dict, mirrored to Firestore via `persister`
+# so polls after a worker restart return the *last known* status instead of
+# 404. Hot path stays in-memory; persistence is best-effort.
+jobs: dict[str, dict] = {}
+executor = ThreadPoolExecutor(max_workers=4)  # 4 parallel encoding jobs
+
+# Persister is initialized lazily — see persistence.py — so import-time
+# stays free of GCP creds. Tests can monkey-patch this attribute.
+persister = JobStatePersister()
+
+
+def _persist(job_id: str) -> None:
+    """Mirror a job's current state to Firestore (best-effort, never raises)."""
+    state = jobs.get(job_id)
+    if state is not None:
+        persister.save(state)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: read back any in-progress jobs from Firestore. They were
+    # interrupted by the restart that brought us here — their work_dir is
+    # gone, so mark them failed with the restart code so polls return a
+    # clear failure instead of 404.
+    try:
+        marked = persister.mark_orphans_failed_on_startup(jobs)
+        if marked:
+            logger.warning(
+                "Marked %d orphaned encoding job(s) failed on startup", marked,
+            )
+    except Exception as exc:
+        logger.error("Encoding worker startup orphan-recovery failed: %r", exc)
+    yield
+
+
+app = FastAPI(title="Encoding Worker", version="1.0.0", lifespan=lifespan)
 
 # API key authentication
 API_KEY = os.environ.get("ENCODING_API_KEY", "")
@@ -36,10 +75,6 @@ async def verify_api_key(x_api_key: str = Header(None)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return True
-
-# Job tracking
-jobs: dict[str, dict] = {}
-executor = ThreadPoolExecutor(max_workers=4)  # 4 parallel encoding jobs
 
 # GCS client
 storage_client = storage.Client()
@@ -213,6 +248,7 @@ def run_preview_encoding(job_id: str, work_dir: Path, request: "EncodePreviewReq
     # Run FFmpeg encoding for preview video (480x270, fast settings)
     jobs[job_id]["status"] = "running"
     jobs[job_id]["progress"] = 10
+    _persist(job_id)
 
     try:
         # Download input files
@@ -309,6 +345,7 @@ def run_preview_encoding(job_id: str, work_dir: Path, request: "EncodePreviewReq
         logger.error(f"Preview encoding failed: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _persist(job_id)
         raise
 
 
@@ -324,6 +361,7 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
     """
     jobs[job_id]["status"] = "running"
     jobs[job_id]["progress"] = 5
+    _persist(job_id)
 
     try:
         # Import from installed karaoke-gen wheel
@@ -490,12 +528,14 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
         logger.error(error_msg)
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = error_msg
+        _persist(job_id)
         raise RuntimeError(error_msg) from e
 
     except Exception as e:
         logger.error(f"[job:{job_id}] Render video failed: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _persist(job_id)
         raise
 
 
@@ -617,6 +657,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
     '''
     jobs[job_id]["status"] = "running"
     jobs[job_id]["progress"] = 10
+    _persist(job_id)
 
     try:
         # Import LocalEncodingService from installed wheel (required, no fallback)
@@ -803,12 +844,14 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         logger.error(error_msg)
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = error_msg
+        _persist(job_id)
         raise RuntimeError(error_msg) from e
 
     except Exception as e:
         logger.error(f"Encoding failed: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _persist(job_id)
         raise
 
 
@@ -871,12 +914,14 @@ async def process_job(job_id: str, request: EncodeRequest):
 
             jobs[job_id]["status"] = "complete"
             jobs[job_id]["progress"] = 100
+            _persist(job_id)
             logger.info(f"Job {job_id} complete")
 
     except Exception as e:
         logger.error(f"Job {job_id} failed: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _persist(job_id)
 
 
 async def process_preview_job(job_id: str, request: EncodePreviewRequest):
@@ -899,12 +944,14 @@ async def process_preview_job(job_id: str, request: EncodePreviewRequest):
 
             jobs[job_id]["status"] = "complete"
             jobs[job_id]["progress"] = 100
+            _persist(job_id)
             logger.info(f"Preview job {job_id} complete")
 
     except Exception as e:
         logger.error(f"Preview job {job_id} failed: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _persist(job_id)
 
 
 async def process_render_video_job(job_id: str, request: RenderVideoRequest):
@@ -929,12 +976,14 @@ async def process_render_video_job(job_id: str, request: RenderVideoRequest):
 
             jobs[job_id]["status"] = "complete"
             jobs[job_id]["progress"] = 100
+            _persist(job_id)
             logger.info(f"Render video job {job_id} complete")
 
     except Exception as e:
         logger.error(f"Render video job {job_id} failed: {e}")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _persist(job_id)
 
 
 @app.post("/encode-preview")
@@ -962,6 +1011,7 @@ async def submit_preview_encode_job(request: EncodePreviewRequest, background_ta
         "error": None,
         "output_files": None,
     }
+    _persist(job_id)
 
     background_tasks.add_task(process_preview_job, job_id, request)
 
@@ -993,6 +1043,7 @@ async def submit_render_video_job(request: RenderVideoRequest, background_tasks:
         "output_files": None,
         "metadata": None,
     }
+    _persist(job_id)
 
     background_tasks.add_task(process_render_video_job, job_id, request)
 
@@ -1024,6 +1075,7 @@ async def submit_encode_job(request: EncodeRequest, background_tasks: Background
         "error": None,
         "output_files": None,
     }
+    _persist(job_id)
 
     background_tasks.add_task(process_job, job_id, request)
 

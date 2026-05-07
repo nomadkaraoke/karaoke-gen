@@ -41,6 +41,16 @@ if [ -z "$ENCODING_API_KEY" ]; then
     echo "Service will start but may reject requests"
 fi
 
+# Read this VM's GCE instance name so the encoding worker can tag its
+# Firestore-persisted job state with vm_name. This lets each VM only see
+# its own jobs at startup (different fallback VMs have separate state).
+# Falls back to the OS hostname (which on GCE is the instance name anyway)
+# if the metadata server isn't reachable for any reason.
+VM_NAME=$(curl -s --connect-timeout 2 -H "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/name" 2>/dev/null \
+    || hostname)
+echo "VM name: ${VM_NAME}"
+
 # Write environment file for systemd.
 #
 # GCE_METADATA_MTLS_MODE=none forces HTTP metadata server access on port 80.
@@ -54,6 +64,7 @@ fi
 cat > "${WORKER_DIR}/env" <<EOF
 ENCODING_API_KEY=${ENCODING_API_KEY}
 GCE_METADATA_MTLS_MODE=none
+ENCODING_WORKER_VM_NAME=${VM_NAME}
 EOF
 chmod 600 "${WORKER_DIR}/env"
 

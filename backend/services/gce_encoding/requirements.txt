@@ -8,6 +8,10 @@ uvicorn>=0.27.0
 # GCS client
 google-cloud-storage>=2.14.0
 
+# Firestore client - persists job state across systemd restarts so polls
+# survive a worker restart instead of returning 404. See persistence.py.
+google-cloud-firestore>=2.14.0
+
 # Async utilities (optional, for future improvements)
 aiofiles>=23.2.0
 aiohttp>=3.9.0

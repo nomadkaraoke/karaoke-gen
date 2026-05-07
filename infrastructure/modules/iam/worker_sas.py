@@ -65,6 +65,16 @@ def grant_encoding_worker_permissions(
         member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
+    # Datastore User - read/write `encoding_worker_jobs` collection so per-VM
+    # job state survives a systemd restart (so polls return last-known status
+    # instead of 404). See backend/services/gce_encoding/persistence.py.
+    bindings["firestore_access"] = gcp.projects.IAMMember(
+        "encoding-worker-firestore-access",
+        project=PROJECT_ID,
+        role="roles/datastore.user",
+        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     return bindings
 
 
