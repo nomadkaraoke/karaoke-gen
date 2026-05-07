@@ -1,19 +1,29 @@
 """
 Encoding Worker Idle Shutdown Cloud Function.
 
-Triggered by Cloud Scheduler every 5 minutes. Checks both encoding worker
-VMs (a/b) and stops any that are idle.
+Triggered by Cloud Scheduler every 5 minutes. Checks all encoding worker
+VMs (primary, secondary, AND multi-zone fallbacks) and stops any that
+are idle. Without checking the fallbacks, a fallback VM started during a
+capacity event could be left running indefinitely after the event clears
+— observed 2026-05-07 with `encoding-worker-fallback-a` running 13+ hours
+idle (~$15 cost) because the previous version of this function only
+iterated primary/secondary in the default zone.
 
 Idle criteria (all must be true to stop a VM):
 - No active encoding jobs (from /health endpoint active_jobs)
 - No recent user activity (from Firestore last_activity_at > 15 min)
-  - Only applies to primary VM; secondary always stops if no active jobs
+  - Only applies to the *currently routed* VM: `active_override_vm` if
+    set, else primary. Secondary and non-active fallbacks always stop on
+    idle so they don't leak after a capacity event.
 - No deploy in progress (from Firestore deploy_in_progress flag)
 
 Environment variables:
 - GCP_PROJECT: GCP project ID (default: nomadkaraoke)
-- GCP_ZONE: Zone where VMs are located (default: us-central1-c)
+- GCP_ZONE: Default zone for primary/secondary (default: us-central1-c)
 - IDLE_TIMEOUT_MINUTES: Minutes of inactivity before shutdown (default: 15)
+- ENCODING_WORKER_FALLBACK_VMS: JSON list of {vm, zone, ip} for fallback
+  VMs in alternate zones. Same secret the backend uses for multi-zone
+  failover. Empty/missing → no fallbacks checked.
 """
 
 import json
@@ -51,20 +61,20 @@ def get_firestore_client():
     return _firestore_client
 
 
-def get_vm_status(vm_name):
+def get_vm_status(vm_name, zone=ZONE):
     client = get_compute_client()
     try:
-        instance = client.get(project=PROJECT_ID, zone=ZONE, instance=vm_name)
+        instance = client.get(project=PROJECT_ID, zone=zone, instance=vm_name)
         return instance.status
     except Exception as e:
-        logger.error(f"Failed to get status for {vm_name}: {e}")
+        logger.error(f"Failed to get status for {vm_name} in {zone}: {e}")
         return "UNKNOWN"
 
 
-def get_vm_ip(vm_name):
+def get_vm_ip(vm_name, zone=ZONE):
     client = get_compute_client()
     try:
-        instance = client.get(project=PROJECT_ID, zone=ZONE, instance=vm_name)
+        instance = client.get(project=PROJECT_ID, zone=zone, instance=vm_name)
         for iface in instance.network_interfaces:
             for access in iface.access_configs:
                 if access.nat_i_p:
@@ -84,10 +94,36 @@ def check_active_jobs(vm_ip):
     return 0
 
 
-def stop_vm(vm_name):
+def stop_vm(vm_name, zone=ZONE):
     client = get_compute_client()
-    logger.info(f"Stopping idle VM: {vm_name}")
-    client.stop(project=PROJECT_ID, zone=ZONE, instance=vm_name)
+    logger.info(f"Stopping idle VM: {vm_name} in {zone}")
+    client.stop(project=PROJECT_ID, zone=zone, instance=vm_name)
+
+
+def _parse_fallback_vms():
+    """Return list of (vm_name, zone) tuples from ENCODING_WORKER_FALLBACK_VMS env.
+
+    Schema mirrors the backend: JSON list of {"vm","zone","ip"}. Returns
+    empty list when missing or malformed (worst case: we don't check
+    fallbacks, primary/secondary still get checked).
+    """
+    raw = os.environ.get("ENCODING_WORKER_FALLBACK_VMS", "")
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, TypeError) as exc:
+        logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {exc}")
+        return []
+
+    fallbacks = []
+    for item in parsed:
+        try:
+            fallbacks.append((item["vm"], item["zone"]))
+        except (KeyError, TypeError) as exc:
+            logger.warning(f"Skipping malformed fallback entry {item}: {exc}")
+            continue
+    return fallbacks
 
 
 @functions_framework.http
@@ -130,19 +166,33 @@ def idle_shutdown(request):
         activity_time = datetime.fromisoformat(last_activity)
         has_recent_activity = activity_time > idle_cutoff
 
-    # Check each VM individually
+    # The currently-routed VM gets keep-alive-on-recent-activity treatment:
+    # capacity-fallback override wins, else primary. Secondary and non-active
+    # fallbacks always stop when idle so we don't leak them after a capacity
+    # event clears.
     primary_vm = config.get("primary_vm")
+    active_override_vm = config.get("active_override_vm")
+    active_vm = active_override_vm or primary_vm
+
+    # Build the full candidate list: primary + secondary in default zone,
+    # plus each multi-zone fallback in its own zone.
+    candidates = [
+        (primary_vm, ZONE),
+        (config.get("secondary_vm"), ZONE),
+    ]
+    candidates.extend(_parse_fallback_vms())
+
     results = {}
-    for vm_name in [primary_vm, config.get("secondary_vm")]:
+    for vm_name, vm_zone in candidates:
         if not vm_name:
             continue
 
-        status = get_vm_status(vm_name)
+        status = get_vm_status(vm_name, vm_zone)
         if status != "RUNNING":
             results[vm_name] = f"already_{status.lower()}"
             continue
 
-        vm_ip = get_vm_ip(vm_name)
+        vm_ip = get_vm_ip(vm_name, vm_zone)
         if vm_ip:
             active_jobs = check_active_jobs(vm_ip)
             if active_jobs > 0:
@@ -150,13 +200,14 @@ def idle_shutdown(request):
                 logger.info(f"{vm_name} has {active_jobs} active jobs, keeping alive")
                 continue
 
-        # Recent activity keeps PRIMARY alive only (not secondary)
-        if vm_name == primary_vm and has_recent_activity:
+        # Only the currently-routed VM (primary, or active_override fallback)
+        # gets the keep-alive treatment. Other VMs stop on idle.
+        if vm_name == active_vm and has_recent_activity:
             results[vm_name] = "active_session"
-            logger.info(f"{vm_name} (primary) kept alive due to recent activity")
+            logger.info(f"{vm_name} (active) kept alive due to recent activity")
             continue
 
-        stop_vm(vm_name)
+        stop_vm(vm_name, vm_zone)
         results[vm_name] = "stopped"
 
     return json.dumps({"status": "checked", "results": results}), 200

@@ -237,3 +237,206 @@ class TestIdleShutdown:
         # Both should be stopped since no activity recorded
         assert result["results"]["encoding-worker-a"] == "stopped"
         assert result["results"]["encoding-worker-b"] == "stopped"
+
+
+# Helper for the fallback-aware fixtures below — fallbacks live in alternate
+# zones, so the mock compute client needs to dispatch get() by zone.
+def _zone_dispatching_get(instances_by_vm):
+    """Return a side_effect that returns the right mock per-VM lookup."""
+
+    def fake_get(project, zone, instance):
+        try:
+            return instances_by_vm[instance]
+        except KeyError as e:  # noqa: BLE001
+            raise Exception(f"unexpected instance lookup: {instance}") from e
+
+    return fake_get
+
+
+class TestFallbackVms:
+    """Tests for multi-zone fallback VM handling.
+
+    Without these checks, fallback VMs left running after a capacity event
+    leak indefinitely (observed 2026-05-07: fallback-a ran 13+ hours idle).
+    """
+
+    @pytest.fixture
+    def fallback_env(self, monkeypatch):
+        """Set ENCODING_WORKER_FALLBACK_VMS env var with two fallbacks."""
+        monkeypatch.setenv(
+            "ENCODING_WORKER_FALLBACK_VMS",
+            json.dumps([
+                {"vm": "encoding-worker-fallback-a", "zone": "us-central1-a", "ip": "1.1.1.1"},
+                {"vm": "encoding-worker-fallback-b", "zone": "us-central1-b", "ip": "2.2.2.2"},
+            ]),
+        )
+
+    def test_idle_fallback_gets_stopped(self, mock_compute, mock_firestore, fallback_env):
+        """A fallback VM that's RUNNING but idle (no jobs, not active) must be stopped.
+        This is the bug the fix addresses — previously fallbacks were never checked."""
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        config = _make_config(last_activity_at=recent)
+        _setup_firestore(mock_firestore, config)
+
+        # Primary RUNNING with recent activity → kept alive
+        # Secondary TERMINATED → already_terminated
+        # Fallback-a RUNNING but idle (active_override is None) → MUST stop
+        # Fallback-b TERMINATED → already_terminated
+        instances = {
+            "encoding-worker-a": _make_instance(status="RUNNING", ip="1.2.3.4"),
+            "encoding-worker-b": _make_instance(status="TERMINATED"),
+            "encoding-worker-fallback-a": _make_instance(status="RUNNING", ip="1.1.1.1"),
+            "encoding-worker-fallback-b": _make_instance(status="TERMINATED"),
+        }
+        mock_compute.get.side_effect = _zone_dispatching_get(instances)
+
+        with patch("main.check_active_jobs", return_value=0):
+            response, status_code = main.idle_shutdown(MagicMock())
+
+        result = json.loads(response)
+        assert result["results"]["encoding-worker-a"] == "active_session"
+        assert result["results"]["encoding-worker-b"] == "already_terminated"
+        assert result["results"]["encoding-worker-fallback-a"] == "stopped"
+        assert result["results"]["encoding-worker-fallback-b"] == "already_terminated"
+
+        # The fallback stop must target its own zone, not the default
+        stop_calls = mock_compute.stop.call_args_list
+        assert len(stop_calls) == 1
+        assert stop_calls[0].kwargs["instance"] == "encoding-worker-fallback-a"
+        assert stop_calls[0].kwargs["zone"] == "us-central1-a"
+
+    def test_active_override_fallback_kept_alive_on_recent_activity(
+        self, mock_compute, mock_firestore, fallback_env,
+    ):
+        """When a capacity-fallback override is set, that fallback is the
+        currently-routed VM and gets the keep-alive treatment (matching
+        what primary normally gets). Primary should still stop on idle."""
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        config = {
+            **_make_config(last_activity_at=recent),
+            "active_override_vm": "encoding-worker-fallback-a",
+        }
+        _setup_firestore(mock_firestore, config)
+
+        instances = {
+            "encoding-worker-a": _make_instance(status="RUNNING", ip="1.2.3.4"),
+            "encoding-worker-b": _make_instance(status="TERMINATED"),
+            "encoding-worker-fallback-a": _make_instance(status="RUNNING", ip="1.1.1.1"),
+            "encoding-worker-fallback-b": _make_instance(status="TERMINATED"),
+        }
+        mock_compute.get.side_effect = _zone_dispatching_get(instances)
+
+        with patch("main.check_active_jobs", return_value=0):
+            response, status_code = main.idle_shutdown(MagicMock())
+
+        result = json.loads(response)
+        # Primary now gets stopped because fallback is the active VM
+        assert result["results"]["encoding-worker-a"] == "stopped"
+        # Fallback-a is the currently-routed VM, kept alive on recent activity
+        assert result["results"]["encoding-worker-fallback-a"] == "active_session"
+
+    def test_fallback_with_active_jobs_kept_alive(
+        self, mock_compute, mock_firestore, fallback_env,
+    ):
+        """Fallback VM mid-encoding (active_jobs>0) must NOT be stopped —
+        the encoding job would die mid-run."""
+        old = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        config = _make_config(last_activity_at=old)
+        _setup_firestore(mock_firestore, config)
+
+        instances = {
+            "encoding-worker-a": _make_instance(status="TERMINATED"),
+            "encoding-worker-b": _make_instance(status="TERMINATED"),
+            "encoding-worker-fallback-a": _make_instance(status="RUNNING", ip="1.1.1.1"),
+            "encoding-worker-fallback-b": _make_instance(status="TERMINATED"),
+        }
+        mock_compute.get.side_effect = _zone_dispatching_get(instances)
+
+        with patch("main.check_active_jobs", return_value=3):
+            response, status_code = main.idle_shutdown(MagicMock())
+
+        result = json.loads(response)
+        assert result["results"]["encoding-worker-fallback-a"] == "active_jobs=3"
+        mock_compute.stop.assert_not_called()
+
+    def test_no_fallback_env_var_falls_back_to_primary_secondary_only(
+        self, mock_compute, mock_firestore, monkeypatch,
+    ):
+        """If ENCODING_WORKER_FALLBACK_VMS is missing, function still works
+        for primary/secondary — no crash, no fallback iteration."""
+        monkeypatch.delenv("ENCODING_WORKER_FALLBACK_VMS", raising=False)
+        old = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        config = _make_config(last_activity_at=old)
+        _setup_firestore(mock_firestore, config)
+
+        instance = _make_instance(status="RUNNING", ip="1.2.3.4")
+        mock_compute.get.return_value = instance
+
+        with patch("main.check_active_jobs", return_value=0):
+            response, status_code = main.idle_shutdown(MagicMock())
+
+        result = json.loads(response)
+        assert "encoding-worker-a" in result["results"]
+        assert "encoding-worker-b" in result["results"]
+        assert "encoding-worker-fallback-a" not in result["results"]
+
+    def test_malformed_fallback_env_doesnt_crash(
+        self, mock_compute, mock_firestore, monkeypatch,
+    ):
+        """Bad JSON in fallback env must NOT prevent primary/secondary
+        idle-shutdown from running. The cost of malformed env is just no
+        fallback checking, not a broken function."""
+        monkeypatch.setenv("ENCODING_WORKER_FALLBACK_VMS", "not json {{{")
+        old = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        config = _make_config(last_activity_at=old)
+        _setup_firestore(mock_firestore, config)
+
+        instance = _make_instance(status="RUNNING", ip="1.2.3.4")
+        mock_compute.get.return_value = instance
+
+        with patch("main.check_active_jobs", return_value=0):
+            response, status_code = main.idle_shutdown(MagicMock())
+
+        result = json.loads(response)
+        assert result["status"] == "checked"
+        assert "encoding-worker-a" in result["results"]
+
+
+class TestParseFallbackVms:
+    """Direct unit tests for the _parse_fallback_vms helper."""
+
+    def test_returns_empty_when_env_missing(self, monkeypatch):
+        monkeypatch.delenv("ENCODING_WORKER_FALLBACK_VMS", raising=False)
+        assert main._parse_fallback_vms() == []
+
+    def test_returns_empty_on_malformed_json(self, monkeypatch):
+        monkeypatch.setenv("ENCODING_WORKER_FALLBACK_VMS", "not json")
+        assert main._parse_fallback_vms() == []
+
+    def test_returns_tuples_of_vm_zone(self, monkeypatch):
+        monkeypatch.setenv(
+            "ENCODING_WORKER_FALLBACK_VMS",
+            json.dumps([
+                {"vm": "fb-a", "zone": "us-central1-a", "ip": "1.1.1.1"},
+                {"vm": "fb-b", "zone": "us-central1-b", "ip": "2.2.2.2"},
+            ]),
+        )
+        assert main._parse_fallback_vms() == [
+            ("fb-a", "us-central1-a"),
+            ("fb-b", "us-central1-b"),
+        ]
+
+    def test_skips_malformed_entries(self, monkeypatch):
+        """Entries missing required keys are skipped, valid entries kept."""
+        monkeypatch.setenv(
+            "ENCODING_WORKER_FALLBACK_VMS",
+            json.dumps([
+                {"vm": "fb-a", "zone": "us-central1-a"},  # ok, missing ip is fine
+                {"vm": "fb-no-zone"},  # malformed: no zone
+                {"vm": "fb-c", "zone": "us-central1-c"},  # ok
+            ]),
+        )
+        assert main._parse_fallback_vms() == [
+            ("fb-a", "us-central1-a"),
+            ("fb-c", "us-central1-c"),
+        ]

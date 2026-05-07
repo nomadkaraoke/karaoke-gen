@@ -54,6 +54,18 @@ def grant_idle_shutdown_permissions(service_account):
         member=service_account.email.apply(lambda e: f"serviceAccount:{e}"),
     )
 
+    # The function reads the multi-zone fallback list from Secret Manager
+    # (same secret the backend uses) so it knows which fallback VMs to
+    # check during idle-sweep. Without this, fallbacks left running after
+    # a capacity event leak indefinitely.
+    bindings["fallback_secret"] = gcp.secretmanager.SecretIamMember(
+        "idle-shutdown-fallback-secret",
+        project=PROJECT_ID,
+        secret_id="encoding-worker-fallback-vms",
+        role="roles/secretmanager.secretAccessor",
+        member=service_account.email.apply(lambda e: f"serviceAccount:{e}"),
+    )
+
     return bindings
 
 
@@ -101,6 +113,17 @@ def create_idle_shutdown_resources():
                 "GCP_ZONE": ENCODING_WORKER_ZONE,
                 "IDLE_TIMEOUT_MINUTES": str(EncodingWorkerConfig.IDLE_TIMEOUT_MINUTES),
             },
+            # Multi-zone fallback list — same secret as the backend uses for
+            # capacity failover. Function reads this to know which fallback
+            # VMs to check during idle-sweep.
+            secret_environment_variables=[
+                gcp.cloudfunctionsv2.FunctionServiceConfigSecretEnvironmentVariableArgs(
+                    key="ENCODING_WORKER_FALLBACK_VMS",
+                    project_id=PROJECT_ID,
+                    secret="encoding-worker-fallback-vms",
+                    version="latest",
+                ),
+            ],
         ),
         opts=pulumi.ResourceOptions(
             depends_on=list(perms.values()),
