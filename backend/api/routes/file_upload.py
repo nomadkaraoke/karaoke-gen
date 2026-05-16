@@ -1635,6 +1635,13 @@ async def create_job_from_url(
                     detail = "This YouTube video is private and cannot be downloaded."
                 elif availability.get("is_removed"):
                     detail = "This YouTube video has been removed and cannot be downloaded."
+                elif availability.get("is_bot_blocked"):
+                    detail = (
+                        "We're temporarily unable to access YouTube to download this video — "
+                        "YouTube is asking our server to verify it's not a bot. "
+                        "Please try again in a few minutes, or use Audio Search to find this song "
+                        "from another source."
+                    )
                 elif availability.get("is_age_restricted"):
                     detail = "This YouTube video is age-restricted and cannot be downloaded."
                 else:
