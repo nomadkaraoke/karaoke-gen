@@ -408,24 +408,27 @@ def create_ephemeral_runner(labels: Iterable[str], pat: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _list_ephemeral_vms_in_zone(zone: str) -> list[compute_v1.Instance]:
+def _list_all_ephemeral_vms() -> list[tuple[str, compute_v1.Instance]]:
+    """Return (zone, instance) for every ephemeral runner VM in the project.
+
+    Uses ``aggregatedList`` so the cleanup pass picks up VMs in any zone —
+    not just the currently-configured primary/fallback. Without this,
+    reconfiguring ``GCP_ZONE`` or ``GCP_FALLBACK_ZONE`` would orphan any VMs
+    still running in the old zones.
+    """
     client = get_compute_client()
-    request = compute_v1.ListInstancesRequest(
+    request = compute_v1.AggregatedListInstancesRequest(
         project=PROJECT_ID,
-        zone=zone,
         filter=f'labels.purpose="{VM_PURPOSE_LABEL}"',
     )
-    return list(client.list(request=request))
-
-
-def _list_all_ephemeral_vms() -> list[tuple[str, compute_v1.Instance]]:
-    """Return (zone, instance) for every ephemeral runner VM across known zones."""
     pairs: list[tuple[str, compute_v1.Instance]] = []
-    zones = {PRIMARY_ZONE}
-    if FALLBACK_ZONE:
-        zones.add(FALLBACK_ZONE)
-    for zone in zones:
-        for instance in _list_ephemeral_vms_in_zone(zone):
+    for zone_path, scoped in client.aggregated_list(request=request):
+        # zone_path is like "zones/us-central1-a"; aggregated_list also yields
+        # "global" / "regions/..." entries that don't contain instances.
+        if not zone_path.startswith("zones/"):
+            continue
+        zone = zone_path.removeprefix("zones/")
+        for instance in getattr(scoped, "instances", []) or []:
             pairs.append((zone, instance))
     return pairs
 

@@ -218,6 +218,20 @@ start them.
 
 Savings realised: ~$220/mo (7×200GB pd-ssd at $32/mo each).
 
+## Follow-ups (not in initial PR)
+
+* **Dedicated image-builder service account.** The build workflow currently
+  uses the `github-actions-deployer@` SA (broad CI/CD perms). Best practice
+  is a separate `gha-runner-image-builder@` SA with only `artifactregistry.reader`
+  + `logging.logWriter`. The build VM doesn't need write perms anywhere
+  — `gcloud compute images create` is invoked from the GHA runner, not the
+  VM. Adds 1 SA + 2 IAM bindings + a new repo secret.
+* **OIDC token verification for the scheduler entry point.** The function
+  currently checks `Authorization: Bearer <jwt>` is present and non-trivially
+  long, which keeps random callers out but doesn't cryptographically verify
+  the token. Adding full verification needs `google-auth` in the function's
+  requirements.txt and a one-time JWKS fetch; defer until we observe abuse.
+
 ## Known gotchas
 
 * **claude-readonly ADC blocks Pulumi storage writes.** The workspace's

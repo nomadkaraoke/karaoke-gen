@@ -246,9 +246,10 @@ if [[ -x "$RUNNER_DIR/bin/installdependencies.sh" ]]; then
     "$RUNNER_DIR/bin/installdependencies.sh"
 fi
 
-# Drop a symlink that the runtime startup script expects.
-mkdir -p /opt/actions-runner
-ln -sfn "$RUNNER_DIR" /opt/actions-runner-link
+# Convenience symlink so external tooling (runbooks, ad-hoc SSH) can refer to
+# the runner installation by a stable path. The startup script in ephemeral.py
+# cds to $RUNNER_DIR directly and doesn't rely on this.
+ln -sfn "$RUNNER_DIR" /opt/actions-runner
 
 # ==================== Docker base-image pre-pull (build variant only) ====================
 if [[ "$VARIANT" == "build" ]]; then

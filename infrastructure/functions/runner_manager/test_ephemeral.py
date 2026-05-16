@@ -36,6 +36,12 @@ for proto in (
 sys.modules.setdefault("google.cloud", MagicMock(name="google.cloud"))
 sys.modules["google.cloud.compute_v1"] = _compute_stub
 
+# Stub the rest of main.py's runtime deps so we can import it without the
+# Cloud Function runtime installed locally.
+for mod_name in ("functions_framework", "google.cloud.secretmanager", "flask"):
+    sys.modules.setdefault(mod_name, MagicMock(name=mod_name))
+sys.modules["functions_framework"].http = lambda f: f
+
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -315,3 +321,61 @@ class TestStartupScript:
         assert "config.sh" not in ep.STARTUP_SCRIPT
         # Should pull the JIT config from instance metadata
         assert "metadata.google.internal" in ep.STARTUP_SCRIPT
+
+
+class TestSchedulerAuthGate:
+    """The scheduler entry point in main.py must reject unauthenticated callers."""
+
+    def _import_main(self, **env):
+        for mod in ("main", "ephemeral"):
+            sys.modules.pop(mod, None)
+        base_env = {
+            "RUNNER_MODE": env.pop("RUNNER_MODE", "ephemeral"),
+            "GCP_PROJECT": "test-project",
+            "GCP_ZONE": "us-central1-a",
+            "GCP_FALLBACK_ZONE": "us-east4-c",
+            "GITHUB_ORG": "test-org",
+            "RUNNER_NAMES": "runner-1,runner-2",
+            **env,
+        }
+        with patch.dict(os.environ, base_env, clear=False):
+            import main
+
+            main._compute_client = None
+            main._secret_client = None
+            main._webhook_secret = "test-secret"
+            main._github_pat = "ghp_test"
+            return main
+
+    def _request(self, *, action, headers=None):
+        req = MagicMock()
+        req.args = {"action": action} if action else {}
+        req.args = MagicMock(get=lambda key, default=None: ({"action": action} if action else {}).get(key, default))
+        req.headers = MagicMock(get=lambda key, default=None: (headers or {}).get(key, default))
+        return req
+
+    def test_scheduler_without_bearer_token_returns_403(self):
+        main = self._import_main()
+        req = self._request(action="check_idle", headers={})
+        body, status = main.handle_request(req)
+        assert status == 403
+
+    def test_scheduler_with_short_bearer_token_returns_403(self):
+        main = self._import_main()
+        # "Bearer x" is too short to be a real JWT — defense against trivial spoof.
+        req = self._request(action="check_idle", headers={"Authorization": "Bearer x"})
+        body, status = main.handle_request(req)
+        assert status == 403
+
+    def test_scheduler_with_bearer_token_dispatches(self):
+        main = self._import_main(RUNNER_MODE="legacy")
+        req = self._request(
+            action="check_idle",
+            headers={"Authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImFiYwoxMjM"},
+        )
+        # Patch the legacy implementation to confirm we reached it.
+        with patch.object(main, "check_and_stop_idle_runners", return_value={"stopped": [], "kept": []}) as fn:
+            result = main.handle_request(req)
+        fn.assert_called_once()
+        # response shape: (body, status, headers)
+        assert result[1] == 200

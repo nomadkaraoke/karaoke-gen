@@ -481,6 +481,21 @@ def _handle_workflow_job_queued(labels: list[str]) -> tuple[str, int, dict]:
     return json.dumps(result), 200, {"Content-Type": "application/json"}
 
 
+def _looks_like_oidc_request(request: Request) -> bool:
+    """Cheap auth gate for the scheduler entry point.
+
+    The Cloud Scheduler job is configured with an OIDC token and sends
+    ``Authorization: Bearer <jwt>`` on every call; an external caller hitting
+    the public function URL without credentials does not. We don't verify the
+    JWT signature here (would need google-auth), but requiring a Bearer header
+    is enough to keep random internet callers out of the scheduler path —
+    which now performs destructive actions (VM deletions, runner
+    de-registrations) when RUNNER_MODE=ephemeral.
+    """
+    auth = request.headers.get("Authorization", "")
+    return auth.startswith("Bearer ") and len(auth) > len("Bearer ") + 20
+
+
 @functions_framework.http
 def handle_request(request: Request):
     """
@@ -490,9 +505,14 @@ def handle_request(request: Request):
     1. Cloud Scheduler triggers (action=check_idle parameter)
     2. GitHub webhook events (workflow_job.queued/completed)
     """
-    # Check if this is a scheduler trigger (idle check / orphan cleanup)
+    # Check if this is a scheduler trigger (idle check / orphan cleanup).
+    # In ephemeral mode the orphan-cleanup pass deletes VMs and de-registers
+    # runners — never let an unauthenticated caller reach it.
     action = request.args.get("action")
     if action in ("check_idle", "cleanup_orphans"):
+        if not _looks_like_oidc_request(request):
+            print(f"Scheduler action {action!r} rejected: missing Bearer token")
+            return "Forbidden", 403
         return _handle_scheduler_tick()
 
     # Otherwise, this should be a GitHub webhook
