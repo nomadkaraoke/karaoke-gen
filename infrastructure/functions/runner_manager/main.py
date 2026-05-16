@@ -1,20 +1,26 @@
 """
 GitHub Actions Runner Manager Cloud Function.
 
-Handles two types of triggers:
-1. GitHub Webhook (workflow_job.queued) - Starts runner VMs when CI jobs are queued
-2. Cloud Scheduler (every 15 min) - Stops idle runner VMs after IDLE_TIMEOUT_HOURS
+Two operating modes, selected by ``RUNNER_MODE``:
 
-Runner VMs are tracked by name via the RUNNER_NAMES environment variable, which is
-set by Pulumi from the list of all runner instance names.
+* ``legacy`` (default) — starts/stops the fixed pool of long-lived runner VMs
+  managed by Pulumi. Webhook ``workflow_job.queued`` starts them; Cloud
+  Scheduler ``check_idle`` stops them after ``IDLE_TIMEOUT_HOURS``.
 
-Environment variables:
+* ``ephemeral`` — creates a fresh single-use GCE VM per webhook via JIT
+  registration; orphan cleanup tears down whatever's left at each scheduler
+  tick. Implemented in ``ephemeral.py``.
+
+Environment variables (legacy):
 - GCP_PROJECT: GCP project ID
 - GCP_ZONE: Default zone where runner VMs are located
 - WEBHOOK_SECRET_NAME: Secret Manager secret name for webhook verification
 - RUNNER_PAT_SECRET_NAME: Secret Manager secret name for GitHub PAT
 - IDLE_TIMEOUT_HOURS: Hours of inactivity before stopping runners (default: 1)
 - RUNNER_NAMES: Comma-separated list of runner VM names to manage
+- GPU_RUNNER_NAMES: Subset of RUNNER_NAMES started only on ``gpu`` jobs
+
+Environment variables (ephemeral): see ``ephemeral.py``.
 """
 
 import hashlib
@@ -35,6 +41,10 @@ ZONE = os.environ.get("GCP_ZONE", "us-central1-a")
 WEBHOOK_SECRET_NAME = os.environ.get("WEBHOOK_SECRET_NAME", "github-webhook-secret")
 RUNNER_PAT_SECRET_NAME = os.environ.get("RUNNER_PAT_SECRET_NAME", "github-runner-pat")
 IDLE_TIMEOUT_HOURS = float(os.environ.get("IDLE_TIMEOUT_HOURS", "1"))
+RUNNER_MODE = os.environ.get("RUNNER_MODE", "legacy").lower()
+if RUNNER_MODE not in ("legacy", "ephemeral"):
+    print(f"WARNING: unknown RUNNER_MODE={RUNNER_MODE!r}, defaulting to 'legacy'")
+    RUNNER_MODE = "legacy"
 RUNNER_NAMES = os.environ.get(
     "RUNNER_NAMES",
     "github-runner-1,github-runner-2,github-runner-3,github-build-runner",
@@ -438,6 +448,39 @@ def check_and_stop_idle_runners() -> dict:
     return result
 
 
+def _handle_scheduler_tick() -> tuple[str, int, dict]:
+    """Run the idle-check (legacy) or orphan-cleanup (ephemeral) pass."""
+    if RUNNER_MODE == "ephemeral":
+        from ephemeral import cleanup_orphans
+
+        print("Scheduler trigger: ephemeral mode orphan cleanup")
+        result = cleanup_orphans(get_github_pat())
+    else:
+        print("Scheduler trigger: legacy idle check")
+        result = check_and_stop_idle_runners()
+    return json.dumps(result), 200, {"Content-Type": "application/json"}
+
+
+def _handle_workflow_job_queued(labels: list[str]) -> tuple[str, int, dict]:
+    """Dispatch a queued workflow job to the right runner backend."""
+    if RUNNER_MODE == "ephemeral":
+        from ephemeral import create_ephemeral_runner
+
+        try:
+            result = create_ephemeral_runner(labels, get_github_pat())
+            return json.dumps(result), 200, {"Content-Type": "application/json"}
+        except Exception as exc:  # noqa: BLE001
+            # Returning 503 keeps the queued job around for the next webhook
+            # (action=in_progress / cancelled) and for orphan-cleanup retries.
+            print(f"create_ephemeral_runner failed: {exc!r}")
+            return json.dumps({"error": str(exc)}), 503, {"Content-Type": "application/json"}
+
+    needs_gpu = "gpu" in labels
+    print(f"Legacy: starting pool runners (gpu={'yes' if needs_gpu else 'no'})")
+    result = start_runners(include_gpu=needs_gpu)
+    return json.dumps(result), 200, {"Content-Type": "application/json"}
+
+
 @functions_framework.http
 def handle_request(request: Request):
     """
@@ -447,12 +490,10 @@ def handle_request(request: Request):
     1. Cloud Scheduler triggers (action=check_idle parameter)
     2. GitHub webhook events (workflow_job.queued/completed)
     """
-    # Check if this is a scheduler trigger (idle check)
+    # Check if this is a scheduler trigger (idle check / orphan cleanup)
     action = request.args.get("action")
-    if action == "check_idle":
-        print("Scheduler trigger: checking for idle runners")
-        result = check_and_stop_idle_runners()
-        return json.dumps(result), 200, {"Content-Type": "application/json"}
+    if action in ("check_idle", "cleanup_orphans"):
+        return _handle_scheduler_tick()
 
     # Otherwise, this should be a GitHub webhook
     # Verify the webhook signature
@@ -480,7 +521,7 @@ def handle_request(request: Request):
     job = payload.get("workflow_job", {})
     labels = job.get("labels", [])
 
-    print(f"Received workflow_job.{action} event")
+    print(f"Received workflow_job.{action} event (mode={RUNNER_MODE})")
     print(f"Job labels: {labels}")
 
     # Check if this job requires our self-hosted runners
@@ -490,17 +531,15 @@ def handle_request(request: Request):
 
     # Handle different actions
     if action == "queued":
-        # Job is queued - ensure runners are started.
-        # Only start GPU runners if the job explicitly requests the "gpu" label.
-        needs_gpu = "gpu" in labels
-        print(f"Job queued - starting runners (gpu={'yes' if needs_gpu else 'no'})")
-        result = start_runners(include_gpu=needs_gpu)
-        return json.dumps(result), 200, {"Content-Type": "application/json"}
+        return _handle_workflow_job_queued(labels)
 
-    elif action == "completed":
-        # Job completed — update last-activity on the specific runner that ran it.
-        # Only update the specific runner to avoid fingerprint conflicts from
-        # concurrent webhook calls trying to update all instances simultaneously.
+    if action == "completed":
+        if RUNNER_MODE == "ephemeral":
+            # Ephemeral runners self-shutdown via --jitconfig + startup-script
+            # trap; nothing to record here. Orphan cleanup handles stragglers.
+            return "OK - ephemeral runner self-cleans", 200
+
+        # Legacy: refresh last-activity on the specific runner that ran the job.
         runner_name = job.get("runner_name", "")
         if runner_name:
             print(f"Job completed on {runner_name} - updating activity timestamp")

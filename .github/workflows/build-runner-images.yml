@@ -1,0 +1,238 @@
+name: Build GHA Runner Images
+
+# Produces three custom GCE images used by the ephemeral GitHub Actions runner
+# dispatcher: gha-runner-general, gha-runner-build, gha-runner-gpu.
+#
+# Flow per variant:
+#   1. Create a temporary build VM from debian-cloud/debian-12 with
+#      infrastructure/scripts/runner-image-provision.sh as metadata-startup-script.
+#   2. Poll for /opt/runner-image-ready via gcloud ssh (survives kernel-upgrade reboots).
+#   3. Stop the VM, snapshot its boot disk to a new image in the `gha-runner-<variant>`
+#      image family with name gha-runner-<variant>-<timestamp>.
+#   4. Delete the build VM (boot disk auto-deletes).
+#   5. Deprecate older images in the family, keeping the newest 3 ACTIVE.
+
+on:
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: 'Comma-separated variants to build (general,build,gpu) or "all"'
+        required: false
+        default: 'all'
+      skip_prune:
+        description: 'Skip deprecation of old images (debugging)'
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    # Monthly on the 1st at 02:00 UTC
+    - cron: '0 2 1 * *'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT: nomadkaraoke
+  BUILD_REGION: us-central1
+  BUILD_ZONE: us-central1-a
+  BASE_IMAGE: projects/debian-cloud/global/images/family/debian-12
+  KEEP_IMAGES_PER_FAMILY: 3
+
+jobs:
+  resolve-matrix:
+    name: Resolve variant matrix
+    runs-on: ubuntu-latest
+    outputs:
+      variants: ${{ steps.resolve.outputs.variants }}
+    steps:
+      - id: resolve
+        run: |
+          requested='${{ github.event.inputs.variants || 'all' }}'
+          if [[ "$requested" == "all" || -z "$requested" ]]; then
+            echo 'variants=["general","build","gpu"]' >> "$GITHUB_OUTPUT"
+          else
+            json="$(echo "$requested" | tr ',' '\n' | jq -R . | jq -sc .)"
+            echo "variants=$json" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build ${{ matrix.variant }} image
+    needs: resolve-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.resolve-matrix.outputs.variants) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Resolve build parameters
+        id: params
+        run: |
+          variant='${{ matrix.variant }}'
+          ts="$(date -u +%Y%m%d-%H%M%S)"
+          name="gha-runner-${variant}-${ts}"
+          family="gha-runner-${variant}"
+          vm="gha-image-build-${variant}-${ts}"
+
+          case "$variant" in
+            general|build)
+              machine="n2-standard-8"
+              disk_size="50"
+              accel=""
+              ;;
+            gpu)
+              # Build with a T4 attached so DKMS module is built and validated
+              # against the kernel that ships in the image.
+              machine="n1-standard-4"
+              disk_size="200"
+              accel="--maintenance-policy=TERMINATE --accelerator=type=nvidia-tesla-t4,count=1"
+              ;;
+            *)
+              echo "Unknown variant: $variant" >&2
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "name=$name"
+            echo "family=$family"
+            echo "vm=$vm"
+            echo "machine=$machine"
+            echo "disk_size=$disk_size"
+            echo "accel=$accel"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create build VM
+        run: |
+          set -euo pipefail
+          gcloud compute instances create '${{ steps.params.outputs.vm }}' \
+            --project='${{ env.GCP_PROJECT }}' \
+            --zone='${{ env.BUILD_ZONE }}' \
+            --machine-type='${{ steps.params.outputs.machine }}' \
+            --image='${{ env.BASE_IMAGE }}' \
+            --boot-disk-size='${{ steps.params.outputs.disk_size }}GB' \
+            --boot-disk-type=pd-balanced \
+            --boot-disk-auto-delete \
+            --service-account="${{ secrets.GCP_SERVICE_ACCOUNT }}" \
+            --scopes=https://www.googleapis.com/auth/cloud-platform \
+            --metadata=enable-oslogin=TRUE,image-variant='${{ matrix.variant }}' \
+            --metadata-from-file=startup-script=infrastructure/scripts/runner-image-provision.sh \
+            --labels=purpose=gha-runner-image-builder,variant='${{ matrix.variant }}' \
+            ${{ steps.params.outputs.accel }}
+
+      - name: Wait for provisioning to complete
+        env:
+          VM: ${{ steps.params.outputs.vm }}
+          ZONE: ${{ env.BUILD_ZONE }}
+          PROJECT: ${{ env.GCP_PROJECT }}
+        run: |
+          set -euo pipefail
+          # Provisioning includes 14GB model download for GPU variant — be patient.
+          # The provision script writes /opt/runner-image-ready when complete.
+          # Tolerate transient SSH failures during the kernel-upgrade reboot.
+          deadline=$(( $(date +%s) + 75 * 60 ))
+          attempt=0
+          while (( $(date +%s) < deadline )); do
+            attempt=$((attempt+1))
+            if gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
+                --tunnel-through-iap --quiet \
+                --command='test -f /opt/runner-image-ready' 2>/dev/null; then
+              echo "Image ready (attempt $attempt)"
+              gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
+                --tunnel-through-iap --quiet \
+                --command='cat /opt/runner-image-ready /opt/runner-image-variant'
+              exit 0
+            fi
+            echo "Attempt $attempt: not ready yet, sleeping 30s..."
+            sleep 30
+          done
+          echo "Timed out waiting for /opt/runner-image-ready" >&2
+          gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
+            --tunnel-through-iap --quiet \
+            --command='tail -200 /var/log/runner-image-provision.log' || true
+          exit 1
+
+      - name: Stop build VM
+        env:
+          VM: ${{ steps.params.outputs.vm }}
+          ZONE: ${{ env.BUILD_ZONE }}
+          PROJECT: ${{ env.GCP_PROJECT }}
+        run: |
+          set -euo pipefail
+          gcloud compute instances stop "$VM" --zone="$ZONE" --project="$PROJECT" --quiet
+          # Belt-and-suspenders wait for TERMINATED.
+          for _ in $(seq 1 60); do
+            status=$(gcloud compute instances describe "$VM" --zone="$ZONE" --project="$PROJECT" --format='value(status)')
+            [[ "$status" == "TERMINATED" ]] && break
+            sleep 5
+          done
+
+      - name: Create image
+        env:
+          VM: ${{ steps.params.outputs.vm }}
+          ZONE: ${{ env.BUILD_ZONE }}
+          PROJECT: ${{ env.GCP_PROJECT }}
+          IMAGE: ${{ steps.params.outputs.name }}
+          FAMILY: ${{ steps.params.outputs.family }}
+        run: |
+          set -euo pipefail
+          # Capture the boot disk before VM deletion releases it.
+          disk=$(gcloud compute instances describe "$VM" --zone="$ZONE" --project="$PROJECT" \
+            --format='value(disks[0].source.scope(disks).segment(1))')
+          gcloud compute images create "$IMAGE" \
+            --project="$PROJECT" \
+            --source-disk="$disk" \
+            --source-disk-zone="$ZONE" \
+            --family="$FAMILY" \
+            --description="GHA ephemeral runner image (${{ matrix.variant }}) built ${{ github.run_id }}" \
+            --labels=purpose=gha-ephemeral-runner,variant=${{ matrix.variant }},built-by=gha
+          echo "Created $IMAGE in family $FAMILY"
+
+      - name: Delete build VM
+        if: always()
+        env:
+          VM: ${{ steps.params.outputs.vm }}
+          ZONE: ${{ env.BUILD_ZONE }}
+          PROJECT: ${{ env.GCP_PROJECT }}
+        run: |
+          gcloud compute instances delete "$VM" --zone="$ZONE" --project="$PROJECT" --quiet || true
+
+      - name: Deprecate old images (keep newest ${{ env.KEEP_IMAGES_PER_FAMILY }})
+        if: ${{ github.event.inputs.skip_prune != 'true' }}
+        env:
+          PROJECT: ${{ env.GCP_PROJECT }}
+          FAMILY: ${{ steps.params.outputs.family }}
+          KEEP: ${{ env.KEEP_IMAGES_PER_FAMILY }}
+        run: |
+          set -euo pipefail
+          # List ACTIVE images in this family, newest first, skip the top $KEEP.
+          to_deprecate=$(gcloud compute images list \
+            --project="$PROJECT" \
+            --filter="family=$FAMILY AND status=READY AND -deprecated.state:*" \
+            --sort-by='~creationTimestamp' \
+            --format='value(name)' | tail -n +$((KEEP+1)))
+          if [[ -z "$to_deprecate" ]]; then
+            echo "Nothing to deprecate."
+            exit 0
+          fi
+          for img in $to_deprecate; do
+            echo "Deprecating $img"
+            gcloud compute images deprecate "$img" \
+              --project="$PROJECT" \
+              --state=DEPRECATED \
+              --replacement="projects/$PROJECT/global/images/family/$FAMILY"
+          done

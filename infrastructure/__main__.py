@@ -195,6 +195,9 @@ error_monitor_resources = error_monitor_module.create_error_monitor(
 # Alert policies
 alert_policies = monitoring.create_alert_policies()
 
+# Ephemeral GHA-runner dispatcher: log-based metrics + alerts
+runner_observability = monitoring.create_ephemeral_runner_observability()
+
 # ==================== Cloud Function: GDrive Validator ====================
 
 # Cloud Storage bucket for function source code

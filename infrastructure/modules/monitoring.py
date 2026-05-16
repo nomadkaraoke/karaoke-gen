@@ -7,6 +7,8 @@ Manages alert policies for proactive monitoring and incident response.
 import pulumi
 import pulumi_gcp as gcp
 
+from config import PROJECT_ID
+
 
 def create_alert_policies() -> dict[str, gcp.monitoring.AlertPolicy]:
     """
@@ -157,3 +159,158 @@ def create_alert_policies() -> dict[str, gcp.monitoring.AlertPolicy]:
     )
 
     return alerts
+
+
+def create_ephemeral_runner_observability() -> dict:
+    """Log-based metrics + alerts for the ephemeral GHA runner dispatcher.
+
+    Adds two alerts that are useful during the Phase 3 soak and afterward:
+
+    1. Dispatcher VM-create failures (the dispatcher returns 503 + logs
+       ``create_ephemeral_runner failed`` — any occurrence in 10 min fires).
+    2. Long-running ephemeral runner VMs (uptime > 2 h on instances labelled
+       ``purpose=gha-ephemeral-runner`` — catches hung jobs or cleanup bugs).
+    """
+    resources: dict = {}
+
+    # ---- Log-based metric: dispatch failures -------------------------------
+    resources["dispatch_failure_metric"] = gcp.logging.Metric(
+        "runner-dispatcher-failures",
+        name="runner_dispatcher/create_failures",
+        description="Counts create_ephemeral_runner failures (any zone)",
+        # Function logs include the function name; runner-manager covers both
+        # legacy + ephemeral entry points.
+        filter=(
+            'resource.type="cloud_run_revision" '
+            'AND resource.labels.service_name="github-runner-manager" '
+            'AND textPayload:"create_ephemeral_runner failed"'
+        ),
+        metric_descriptor=gcp.logging.MetricMetricDescriptorArgs(
+            metric_kind="DELTA",
+            value_type="INT64",
+            unit="1",
+            display_name="Runner dispatcher create failures",
+        ),
+    )
+
+    # ---- Log-based metric: orphan kills (visibility, not alerting) ---------
+    resources["orphan_kill_metric"] = gcp.logging.Metric(
+        "runner-dispatcher-orphan-kills",
+        name="runner_dispatcher/orphan_kills",
+        description="Counts orphan VMs deleted by the dispatcher cleanup pass",
+        filter=(
+            'resource.type="cloud_run_revision" '
+            'AND resource.labels.service_name="github-runner-manager" '
+            'AND textPayload:"age=" AND textPayload:"deleting"'
+        ),
+        metric_descriptor=gcp.logging.MetricMetricDescriptorArgs(
+            metric_kind="DELTA",
+            value_type="INT64",
+            unit="1",
+            display_name="Runner dispatcher orphan-VM deletions",
+        ),
+    )
+
+    # ---- Alert: any dispatcher create failure in last 10 minutes -----------
+    resources["dispatch_failure_alert"] = gcp.monitoring.AlertPolicy(
+        "runner-dispatcher-failures-alert",
+        display_name="GHA Runner Dispatcher - Create Failures",
+        combiner="OR",
+        conditions=[
+            gcp.monitoring.AlertPolicyConditionArgs(
+                display_name="Any create_ephemeral_runner failure",
+                condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
+                    filter=(
+                        'metric.type="logging.googleapis.com/user/runner_dispatcher/create_failures" '
+                        'AND resource.type="cloud_run_revision"'
+                    ),
+                    comparison="COMPARISON_GT",
+                    threshold_value=0,
+                    duration="0s",
+                    aggregations=[
+                        gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
+                            alignment_period="600s",
+                            per_series_aligner="ALIGN_SUM",
+                            cross_series_reducer="REDUCE_SUM",
+                        ),
+                    ],
+                    trigger=gcp.monitoring.AlertPolicyConditionConditionThresholdTriggerArgs(
+                        count=1,
+                    ),
+                ),
+            ),
+        ],
+        alert_strategy=gcp.monitoring.AlertPolicyAlertStrategyArgs(
+            auto_close="3600s",
+        ),
+        documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
+            content=(
+                "Ephemeral runner dispatcher failed to create a VM.\n\n"
+                "Likely causes:\n"
+                "- GCE quota exhausted (CPU or NVIDIA_T4_GPUS in us-central1)\n"
+                "- GitHub JIT mint API rate-limited or PAT expired\n"
+                "- Image family deprecated/missing (gha-runner-{general,build,gpu})\n"
+                "- Both primary and fallback zones exhausted\n\n"
+                "Logs: filter `resource.labels.service_name=\"github-runner-manager\"` "
+                "in Cloud Logging for `create_ephemeral_runner failed`.\n\n"
+                "Rollback: `pulumi config set karaoke-gen-infrastructure:runnerMode legacy && pulumi up`"
+            ),
+            mime_type="text/markdown",
+        ),
+        enabled=True,
+        opts=pulumi.ResourceOptions(depends_on=[resources["dispatch_failure_metric"]]),
+    )
+
+    # ---- Alert: ephemeral VM uptime > 2h -----------------------------------
+    # `compute.googleapis.com/instance/uptime_total` is a cumulative count of
+    # seconds the VM has been up. We alert when it exceeds 7200s for VMs
+    # carrying the ephemeral-runner purpose label.
+    resources["long_lived_vm_alert"] = gcp.monitoring.AlertPolicy(
+        "runner-dispatcher-long-lived-vm-alert",
+        display_name="GHA Runner Dispatcher - VM Alive > 2h",
+        combiner="OR",
+        conditions=[
+            gcp.monitoring.AlertPolicyConditionArgs(
+                display_name="Ephemeral runner VM uptime > 2h",
+                condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
+                    filter=(
+                        'metric.type="compute.googleapis.com/instance/uptime_total" '
+                        'AND resource.type="gce_instance" '
+                        'AND metadata.user_labels.purpose="gha-ephemeral-runner"'
+                    ),
+                    comparison="COMPARISON_GT",
+                    threshold_value=7200,
+                    duration="300s",
+                    aggregations=[
+                        gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
+                            alignment_period="300s",
+                            per_series_aligner="ALIGN_MAX",
+                            cross_series_reducer="REDUCE_MAX",
+                            group_by_fields=["resource.labels.instance_id"],
+                        ),
+                    ],
+                    trigger=gcp.monitoring.AlertPolicyConditionConditionThresholdTriggerArgs(
+                        count=1,
+                    ),
+                ),
+            ),
+        ],
+        alert_strategy=gcp.monitoring.AlertPolicyAlertStrategyArgs(
+            auto_close="3600s",
+        ),
+        documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
+            content=(
+                "An ephemeral GHA runner VM has been alive for more than 2 hours.\n"
+                "Orphan-cleanup should kill VMs at that threshold — if this fires,\n"
+                "the cleanup pass is broken or the VM is escaping it.\n\n"
+                "Investigate:\n"
+                "1. `gcloud compute instances list --filter=labels.purpose=gha-ephemeral-runner`\n"
+                "2. Check Cloud Function logs for the cleanup pass\n"
+                "3. Manually delete: `gcloud compute instances delete <name> --zone=<zone>`"
+            ),
+            mime_type="text/markdown",
+        ),
+        enabled=True,
+    )
+
+    return resources
