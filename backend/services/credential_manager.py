@@ -22,6 +22,30 @@ from backend.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _destroy_old_secret_versions(client, secret_path: str, keep: int = 5) -> None:
+    """Destroy ENABLED secret versions beyond the newest `keep`.
+
+    OAuth credential secrets are rewritten on every refresh, which would
+    otherwise accumulate hundreds of versions and cost ~$0.06/version/month
+    in replica storage. Only the newest version is read (`versions/latest`),
+    so older versions are dead weight.
+    """
+    try:
+        versions = list(client.list_secret_versions(request={"parent": secret_path}))
+        enabled = [
+            v for v in versions
+            if v.state == v.State.ENABLED  # type: ignore[attr-defined]
+        ]
+        enabled.sort(key=lambda v: v.create_time, reverse=True)
+        for v in enabled[keep:]:
+            try:
+                client.destroy_secret_version(request={"name": v.name})
+            except Exception as e:
+                logger.warning(f"Failed to destroy {v.name}: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to prune old secret versions for {secret_path}: {e}")
+
+
 class CredentialStatus(str, Enum):
     """Status of OAuth credentials."""
     VALID = "valid"
@@ -329,7 +353,9 @@ class CredentialManager:
                 parent=secret_path,
                 payload={"data": json.dumps(updated_data).encode("utf-8")}
             )
-            
+
+            _destroy_old_secret_versions(client, secret_path, keep=5)
+
             logger.info(f"Updated {secret_name} with refreshed token")
             return True
             
@@ -421,19 +447,21 @@ class CredentialManager:
         """Update stored Dropbox credentials."""
         try:
             from google.cloud import secretmanager
-            
+
             client = secretmanager.SecretManagerServiceClient()
             project_id = self.settings.google_cloud_project
             secret_path = f"projects/{project_id}/secrets/{self.DROPBOX_SECRET}"
-            
+
             client.add_secret_version(
                 parent=secret_path,
                 payload={"data": json.dumps(creds).encode("utf-8")}
             )
-            
+
+            _destroy_old_secret_versions(client, secret_path, keep=5)
+
             logger.info("Updated Dropbox credentials with refreshed token")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to update Dropbox credentials: {e}")
             return False
