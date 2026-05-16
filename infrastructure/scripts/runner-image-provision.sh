@@ -11,9 +11,27 @@
 
 set -euo pipefail
 
+# Redirect ALL output to the log file BEFORE any other work so even the
+# earliest failures leave a trace. The previous version put the variant
+# check *before* this redirect, which meant an empty VARIANT exited silently
+# with no log file at all — the build VM just sat idle while the GHA
+# workflow polling loop timed out.
+mkdir -p /var/log
+exec > >(tee /var/log/runner-image-provision.log) 2>&1
+
+# Resolve the variant in priority order:
+#   1. positional arg (interactive runs / tests)
+#   2. RUNNER_IMAGE_VARIANT env var
+#   3. GCE instance metadata key `image-variant` (workflow sets this)
 VARIANT="${1:-${RUNNER_IMAGE_VARIANT:-}}"
 if [[ -z "$VARIANT" ]]; then
-    echo "ERROR: variant must be provided as \$1 or RUNNER_IMAGE_VARIANT env var" >&2
+    VARIANT=$(curl -sf -H "Metadata-Flavor: Google" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/image-variant" \
+        2>/dev/null || true)
+fi
+
+if [[ -z "$VARIANT" ]]; then
+    echo "ERROR: variant must be provided as \$1, \$RUNNER_IMAGE_VARIANT, or instance metadata 'image-variant'" >&2
     echo "Valid variants: general | build | gpu" >&2
     exit 2
 fi
@@ -23,7 +41,6 @@ case "$VARIANT" in
     *) echo "ERROR: unknown variant '$VARIANT'" >&2; exit 2 ;;
 esac
 
-exec > >(tee /var/log/runner-image-provision.log) 2>&1
 echo "=== Runner image provision: variant=$VARIANT, started $(date -u +%FT%TZ) ==="
 
 export DEBIAN_FRONTEND=noninteractive
