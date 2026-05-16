@@ -195,6 +195,12 @@ def create_cloud_function(
                 storage_source=gcp.cloudfunctionsv2.FunctionBuildConfigSourceStorageSourceArgs(
                     bucket=bucket.name,
                     object=source_archive.name,
+                    # Pin to the current generation so Pulumi treats the source
+                    # bundle being replaced (new code commit) as a diff on the
+                    # Function itself, forcing a redeploy. Without this, the
+                    # bucket-object replaces in place and the live function
+                    # keeps serving the previous staged copy.
+                    generation=source_archive.generation,
                 ),
             ),
         ),

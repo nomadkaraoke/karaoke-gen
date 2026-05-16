@@ -234,6 +234,17 @@ Savings realised: ~$220/mo (7×200GB pd-ssd at $32/mo each).
 
 ## Known gotchas
 
+* **Source-bundle replacement doesn't auto-redeploy the Cloud Function** (fixed
+  forward, but worth knowing). The original code uploaded a new source bundle
+  via `BucketObject` replace, but the `cloudfunctionsv2.Function` resource
+  pointed at the bucket+name without pinning a generation, so Pulumi saw no
+  diff on the Function and the live function kept serving the previously
+  staged copy. Fixed by adding `generation=source_archive.generation` to the
+  Function's `storage_source`. If you ever see a Pulumi apply complete cleanly
+  but the live function still serving old code, run
+  `gcloud functions deploy github-runner-manager --gen2 --region=us-central1
+  --project=nomadkaraoke --source=gs://nomadkaraoke-runner-manager-source/runner-manager-source.zip
+  --runtime=python312 --entry-point=handle_request --quiet`.
 * **claude-readonly ADC blocks Pulumi storage writes.** The workspace's
   `GOOGLE_APPLICATION_CREDENTIALS` points at a read-only SA. Pulumi 403s on
   `storage.objects.create` when re-uploading the function source bundle.
