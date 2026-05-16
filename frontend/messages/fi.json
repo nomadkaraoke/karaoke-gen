@@ -595,7 +595,9 @@
     "retryFailed": "Uudelleenyritys epäonnistui",
     "deleteFailed": "Poistaminen epäonnistui",
     "jobRetryStarted": "Työn uudelleenyritys aloitettu",
-    "jobRetryStartedDesc": "Työtä yritetään uudelleen. Päivitetään tilaa..."
+    "jobRetryStartedDesc": "Työtä yritetään uudelleen. Päivitetään tilaa...",
+    "retryingAutomatically": "Yritetään uudelleen automaattisesti…",
+    "retryingAutomaticallyTooltip": "Havaittiin tilapäinen virhe — järjestelmä yrittää uudelleen ilman käyttäjän toimia."
   },
   "jobSubmission": {
     "search": "Hae",

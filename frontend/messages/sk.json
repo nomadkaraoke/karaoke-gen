@@ -595,7 +595,9 @@
     "retryFailed": "Opakovanie zlyhalo",
     "deleteFailed": "Vymazanie zlyhalo",
     "jobRetryStarted": "Opakovanie úlohy spustené",
-    "jobRetryStartedDesc": "Úloha sa opakuje. Obnovuje sa stav..."
+    "jobRetryStartedDesc": "Úloha sa opakuje. Obnovuje sa stav...",
+    "retryingAutomatically": "Automaticky sa opakuje pokus…",
+    "retryingAutomaticallyTooltip": "Zistila sa dočasná chyba — systém opakuje pokus bez tvojho zásahu."
   },
   "jobSubmission": {
     "search": "Hľadať",

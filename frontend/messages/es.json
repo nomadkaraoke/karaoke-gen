@@ -595,7 +595,9 @@
     "retryFailed": "Error al reintentar",
     "deleteFailed": "Error al eliminar",
     "jobRetryStarted": "Reintento de trabajo iniciado",
-    "jobRetryStartedDesc": "El trabajo se está reintentando. Actualizando estado..."
+    "jobRetryStartedDesc": "El trabajo se está reintentando. Actualizando estado...",
+    "retryingAutomatically": "Reintentando automáticamente…",
+    "retryingAutomaticallyTooltip": "Se detectó un fallo temporal — el sistema está reintentando sin acción por tu parte."
   },
   "jobSubmission": {
     "search": "Buscar",

@@ -595,7 +595,9 @@
     "retryFailed": "Tekrar deneme başarısız oldu",
     "deleteFailed": "Silme başarısız oldu",
     "jobRetryStarted": "İş tekrar denemesi başlatıldı",
-    "jobRetryStartedDesc": "İş tekrar deneniyor. Durum yenileniyor..."
+    "jobRetryStartedDesc": "İş tekrar deneniyor. Durum yenileniyor...",
+    "retryingAutomatically": "Otomatik olarak yeniden deneniyor…",
+    "retryingAutomaticallyTooltip": "Geçici bir hata algılandı — sistem senin müdahalen olmadan yeniden deniyor."
   },
   "jobSubmission": {
     "search": "Ara",

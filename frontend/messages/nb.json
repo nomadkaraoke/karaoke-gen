@@ -595,7 +595,9 @@
     "retryFailed": "Nytt forsøk mislyktes",
     "deleteFailed": "Sletting mislyktes",
     "jobRetryStarted": "Nytt forsøk på jobb startet",
-    "jobRetryStartedDesc": "Jobben prøves på nytt. Oppdaterer status..."
+    "jobRetryStartedDesc": "Jobben prøves på nytt. Oppdaterer status...",
+    "retryingAutomatically": "Prøver på nytt automatisk…",
+    "retryingAutomaticallyTooltip": "En midlertidig feil ble oppdaget — systemet prøver på nytt uten at du trenger å gjøre noe."
   },
   "jobSubmission": {
     "search": "Søk",

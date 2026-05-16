@@ -595,7 +595,9 @@
     "retryFailed": "Помилка повторної спроби",
     "deleteFailed": "Помилка видалення",
     "jobRetryStarted": "Повторну спробу завдання розпочато",
-    "jobRetryStartedDesc": "Завдання повторюється. Оновлення статусу..."
+    "jobRetryStartedDesc": "Завдання повторюється. Оновлення статусу...",
+    "retryingAutomatically": "Автоматична повторна спроба…",
+    "retryingAutomaticallyTooltip": "Виявлено тимчасовий збій — система повторює спробу без втручання користувача."
   },
   "jobSubmission": {
     "search": "Пошук",

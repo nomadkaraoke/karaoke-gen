@@ -595,7 +595,9 @@
     "retryFailed": "Nabigo ang pagsubok muli",
     "deleteFailed": "Nabigo ang pagtanggal",
     "jobRetryStarted": "Nagsimula na ang pagsubok muli sa job",
-    "jobRetryStartedDesc": "Sinusubukan muli ang job. Nire-refresh ang status..."
+    "jobRetryStartedDesc": "Sinusubukan muli ang job. Nire-refresh ang status...",
+    "retryingAutomatically": "Awtomatikong sinusubukang muli…",
+    "retryingAutomaticallyTooltip": "May natukoy na panandaliang aberya — sinusubukang muli ng system nang walang kailangang aksyon mula sa user."
   },
   "jobSubmission": {
     "search": "Hanapin",

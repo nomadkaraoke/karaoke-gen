@@ -12,15 +12,69 @@ from backend.models.job import Job, JobStatus
 
 class TestJobsRouteHelpers:
     """Tests for helper functions in jobs.py routes."""
-    
+
     def test_jobs_router_structure(self):
         """Test jobs router has expected structure."""
         from backend.api.routes.jobs import router
         assert router is not None
-        
+
         # Check that common route patterns exist
         route_paths = [route.path for route in router.routes]
         assert any('/jobs' in p or 'jobs' in str(p) for p in route_paths)
+
+
+class TestIsAutoRetryPending:
+    """Tests for the _is_auto_retry_pending helper used by /retry."""
+
+    def _now(self, offset_seconds=0):
+        from datetime import timedelta, timezone
+        return (datetime.now(timezone.utc) + timedelta(seconds=offset_seconds)).isoformat()
+
+    def test_returns_false_for_missing_state_data(self):
+        from backend.api.routes.jobs import _is_auto_retry_pending
+        assert _is_auto_retry_pending(None) is False
+        assert _is_auto_retry_pending({}) is False
+
+    def test_returns_false_when_no_retry_pending_field(self):
+        from backend.api.routes.jobs import _is_auto_retry_pending
+        assert _is_auto_retry_pending({'other_field': 'x'}) is False
+
+    def test_returns_true_when_pending_not_expired(self):
+        from backend.api.routes.jobs import _is_auto_retry_pending
+        state_data = {'cloud_run_retry_pending': {
+            'expires_at': self._now(60),
+            'expected_attempt': 1,
+        }}
+        assert _is_auto_retry_pending(state_data) is True
+
+    def test_returns_false_when_pending_expired(self):
+        from backend.api.routes.jobs import _is_auto_retry_pending
+        state_data = {'cloud_run_retry_pending': {
+            'expires_at': self._now(-60),
+            'expected_attempt': 1,
+        }}
+        assert _is_auto_retry_pending(state_data) is False
+
+    def test_returns_false_for_malformed_expires_at(self):
+        from backend.api.routes.jobs import _is_auto_retry_pending
+        assert _is_auto_retry_pending({'cloud_run_retry_pending': {'expires_at': 'not-a-date'}}) is False
+        assert _is_auto_retry_pending({'cloud_run_retry_pending': {'expires_at': None}}) is False
+        assert _is_auto_retry_pending({'cloud_run_retry_pending': 'not-a-dict'}) is False
+
+
+class TestSummaryFieldPathsIncludesRetryPending:
+    """Regression: cloud_run_retry_pending must be projected so the dashboard
+    can render the 'Retrying automatically' state. Per MEMORY note, the
+    Firestore projection AND the Python prune allowlist must both include it.
+    """
+
+    def test_firestore_projection_includes_retry_pending(self):
+        from backend.services.firestore_service import FirestoreService
+        assert 'state_data.cloud_run_retry_pending' in FirestoreService.SUMMARY_FIELD_PATHS
+
+    def test_summary_prune_allows_retry_pending(self):
+        from backend.api.routes.jobs import _SUMMARY_STATE_DATA_KEYS
+        assert 'cloud_run_retry_pending' in _SUMMARY_STATE_DATA_KEYS
 
 
 class TestJobStatusTransitions:

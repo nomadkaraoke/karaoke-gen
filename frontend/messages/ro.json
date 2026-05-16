@@ -595,7 +595,9 @@
     "retryFailed": "Reîncercarea a eșuat",
     "deleteFailed": "Ștergerea a eșuat",
     "jobRetryStarted": "Reîncercarea jobului a început",
-    "jobRetryStartedDesc": "Jobul este reîncercat. Se reîmprospătează statusul..."
+    "jobRetryStartedDesc": "Jobul este reîncercat. Se reîmprospătează statusul...",
+    "retryingAutomatically": "Se reîncearcă automat…",
+    "retryingAutomaticallyTooltip": "A fost detectată o eroare temporară — sistemul reîncearcă fără intervenția ta."
   },
   "jobSubmission": {
     "search": "Caută",

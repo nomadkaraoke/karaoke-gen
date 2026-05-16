@@ -595,7 +595,9 @@
     "retryFailed": "再試行に失敗しました",
     "deleteFailed": "削除に失敗しました",
     "jobRetryStarted": "ジョブの再試行が開始されました",
-    "jobRetryStartedDesc": "ジョブを再試行しています。ステータスを更新中..."
+    "jobRetryStartedDesc": "ジョブを再試行しています。ステータスを更新中...",
+    "retryingAutomatically": "自動的に再試行しています…",
+    "retryingAutomaticallyTooltip": "一時的なエラーが検出されました。システムが自動的に再試行しています。"
   },
   "jobSubmission": {
     "search": "検索",

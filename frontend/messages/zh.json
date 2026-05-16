@@ -595,7 +595,9 @@
     "retryFailed": "重试失败",
     "deleteFailed": "删除失败",
     "jobRetryStarted": "任务重试已开始",
-    "jobRetryStartedDesc": "任务正在重试。正在刷新状态..."
+    "jobRetryStartedDesc": "任务正在重试。正在刷新状态...",
+    "retryingAutomatically": "正在自动重试…",
+    "retryingAutomaticallyTooltip": "检测到暂时性故障 — 系统正在重试，无需用户操作。"
   },
   "jobSubmission": {
     "search": "搜索",

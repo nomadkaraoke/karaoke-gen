@@ -595,7 +595,9 @@
     "retryFailed": "Thử lại thất bại",
     "deleteFailed": "Xóa thất bại",
     "jobRetryStarted": "Đã bắt đầu thử lại công việc",
-    "jobRetryStartedDesc": "Công việc đang được thử lại. Đang làm mới trạng thái..."
+    "jobRetryStartedDesc": "Công việc đang được thử lại. Đang làm mới trạng thái...",
+    "retryingAutomatically": "Đang tự động thử lại…",
+    "retryingAutomaticallyTooltip": "Đã phát hiện lỗi tạm thời — hệ thống đang thử lại mà không cần bạn thao tác."
   },
   "jobSubmission": {
     "search": "Tìm kiếm",

@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, JobStep } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, isAutoRetryPending, JobStep } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -558,3 +558,37 @@ describe('sortJobsByDate', () => {
 
 // Note: getDisplayJobs was removed — filtering is now handled server-side
 // via the status and search query parameters on GET /api/jobs
+
+
+describe('isAutoRetryPending', () => {
+  function nowOffset(seconds: number) {
+    return new Date(Date.now() + seconds * 1000).toISOString();
+  }
+
+  it('returns false when state_data is missing', () => {
+    expect(isAutoRetryPending({ state_data: undefined })).toBe(false);
+  });
+
+  it('returns false when state_data has no retry-pending field', () => {
+    expect(isAutoRetryPending({ state_data: { foo: 'bar' } })).toBe(false);
+  });
+
+  it('returns true when expires_at is in the future', () => {
+    const job = {
+      state_data: { cloud_run_retry_pending: { expires_at: nowOffset(60), expected_attempt: 1 } },
+    };
+    expect(isAutoRetryPending(job)).toBe(true);
+  });
+
+  it('returns false when expires_at is in the past', () => {
+    const job = {
+      state_data: { cloud_run_retry_pending: { expires_at: nowOffset(-60), expected_attempt: 1 } },
+    };
+    expect(isAutoRetryPending(job)).toBe(false);
+  });
+
+  it('returns false for malformed expires_at', () => {
+    expect(isAutoRetryPending({ state_data: { cloud_run_retry_pending: { expires_at: 'not-a-date' } } })).toBe(false);
+    expect(isAutoRetryPending({ state_data: { cloud_run_retry_pending: {} } })).toBe(false);
+  });
+});

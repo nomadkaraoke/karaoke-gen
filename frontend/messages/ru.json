@@ -595,7 +595,9 @@
     "retryFailed": "Не удалось повторить",
     "deleteFailed": "Не удалось удалить",
     "jobRetryStarted": "Повтор задачи начат",
-    "jobRetryStartedDesc": "Задача повторяется. Обновление статуса..."
+    "jobRetryStartedDesc": "Задача повторяется. Обновление статуса...",
+    "retryingAutomatically": "Автоматическая повторная попытка…",
+    "retryingAutomaticallyTooltip": "Обнаружен временный сбой — система повторяет попытку без участия пользователя."
   },
   "jobSubmission": {
     "search": "Поиск",

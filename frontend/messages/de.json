@@ -595,7 +595,9 @@
     "retryFailed": "Wiederholen fehlgeschlagen",
     "deleteFailed": "Löschen fehlgeschlagen",
     "jobRetryStarted": "Auftragswiederholung gestartet",
-    "jobRetryStartedDesc": "Der Auftrag wird wiederholt. Status wird aktualisiert..."
+    "jobRetryStartedDesc": "Der Auftrag wird wiederholt. Status wird aktualisiert...",
+    "retryingAutomatically": "Wird automatisch erneut versucht…",
+    "retryingAutomaticallyTooltip": "Ein vorübergehender Fehler wurde erkannt — das System versucht es ohne dein Zutun erneut."
   },
   "jobSubmission": {
     "search": "Suche",

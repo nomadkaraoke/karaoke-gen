@@ -595,7 +595,9 @@
     "retryFailed": "फिर से कोशिश करना विफल रहा",
     "deleteFailed": "डिलीट करना विफल रहा",
     "jobRetryStarted": "जॉब फिर से शुरू किया गया",
-    "jobRetryStartedDesc": "जॉब फिर से शुरू किया जा रहा है। स्टेटस रिफ्रेश हो रहा है..."
+    "jobRetryStartedDesc": "जॉब फिर से शुरू किया जा रहा है। स्टेटस रिफ्रेश हो रहा है...",
+    "retryingAutomatically": "अपने आप दोबारा कोशिश की जा रही है…",
+    "retryingAutomaticallyTooltip": "एक अस्थायी खराबी का पता चला है — सिस्टम तुम्हारे कुछ किए बिना ही दोबारा कोशिश कर रहा है।"
   },
   "jobSubmission": {
     "search": "सर्च करो",

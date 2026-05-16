@@ -22,6 +22,7 @@ import mimetypes
 import os
 import shutil
 import tempfile
+from datetime import datetime, timedelta, timezone
 
 from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
@@ -32,6 +33,99 @@ from backend.services.audio_search_service import DownloadError
 
 
 logger = logging.getLogger(__name__)
+
+
+# Must match max_retries on the audio-download-job in infrastructure/modules/cloud_run.py.
+# When CLOUD_RUN_TASK_ATTEMPT < MAX_RETRIES, Cloud Run will retry on failure.
+CLOUD_RUN_MAX_RETRIES = 2
+
+# How long the "retry pending" marker is valid for after we record it.
+# Generous enough to cover Cloud Run's retry delay (~75s) + provisioning (~75s)
+# plus a buffer for slow starts. After this window the UI falls back to the
+# normal Retry button so users aren't stuck waiting forever.
+RETRY_PENDING_WINDOW = timedelta(minutes=3)
+
+
+# Statuses indicating the download has already completed for this job.
+# When the worker is invoked with one of these statuses, it has been re-run
+# (e.g. Cloud Run Job auto-retry of a successful task) and must return
+# successfully without re-downloading — re-downloading races with downstream
+# workers and breaks the state machine (see job 8a9c74ff post-mortem).
+DOWNLOAD_ALREADY_DONE_STATUSES = frozenset({
+    JobStatus.DOWNLOADING,
+    JobStatus.AWAITING_AUDIO_EDIT,
+    JobStatus.IN_AUDIO_EDIT,
+    JobStatus.AUDIO_EDIT_COMPLETE,
+    JobStatus.AUDIO_COMPLETE,
+    JobStatus.TRANSCRIBING,
+    JobStatus.CORRECTING,
+    JobStatus.LYRICS_COMPLETE,
+    JobStatus.GENERATING_SCREENS,
+    JobStatus.APPLYING_PADDING,
+    JobStatus.AWAITING_REVIEW,
+    JobStatus.IN_REVIEW,
+    JobStatus.REVIEW_COMPLETE,
+    JobStatus.RENDERING_VIDEO,
+    JobStatus.RENDER_PENDING_CAPACITY,
+    JobStatus.AWAITING_INSTRUMENTAL_SELECTION,
+    JobStatus.INSTRUMENTAL_SELECTED,
+    JobStatus.GENERATING_VIDEO,
+    JobStatus.ENCODING,
+    JobStatus.PACKAGING,
+    JobStatus.UPLOADING,
+    JobStatus.NOTIFYING,
+    JobStatus.COMPLETE,
+    JobStatus.PREP_COMPLETE,
+    JobStatus.CANCELLED,
+})
+
+
+def _current_task_attempt() -> int:
+    """Read CLOUD_RUN_TASK_ATTEMPT env var injected by Cloud Run Jobs.
+
+    Returns 0 outside of Cloud Run Jobs (e.g. unit tests, local invocations).
+    """
+    try:
+        return int(os.environ.get("CLOUD_RUN_TASK_ATTEMPT", "0"))
+    except ValueError:
+        return 0
+
+
+def _mark_retry_pending_if_attempts_remain(job_manager: JobManager, job_id: str) -> None:
+    """If Cloud Run will auto-retry this failed task, record that on the job.
+
+    The UI and /retry endpoint use this to avoid showing a Retry button (and
+    refusing manual retries) while an automatic retry is still in flight.
+
+    On the FINAL attempt (no retry coming), explicitly clear any marker left
+    by an earlier attempt. Otherwise the marker from attempt N persists for
+    its full TTL after attempt N+1 also fails — blocking the user from
+    clicking Retry for up to RETRY_PENDING_WINDOW after the job actually
+    failed permanently.
+    """
+    attempt = _current_task_attempt()
+    if attempt >= CLOUD_RUN_MAX_RETRIES:
+        job_manager.update_state_data(job_id, 'cloud_run_retry_pending', None)
+        return
+    expires_at = datetime.now(timezone.utc) + RETRY_PENDING_WINDOW
+    job_manager.update_state_data(job_id, 'cloud_run_retry_pending', {
+        'expires_at': expires_at.isoformat(),
+        'expected_attempt': attempt + 1,
+    })
+
+
+def _clear_retry_pending_and_error(job_manager: JobManager, job_id: str) -> None:
+    """Clear retry-pending marker and stale error fields after a successful run.
+
+    Called once the download has succeeded so the dashboard stops displaying
+    a transient failure message and the retry button (where shown elsewhere)
+    no longer wrongly suggests action is required.
+    """
+    job_manager.update_state_data(job_id, 'cloud_run_retry_pending', None)
+    job_manager.update_job(job_id, {
+        'error_message': None,
+        'error_details': {},
+    })
 
 
 def _extract_gcs_path(filepath: str) -> str:
@@ -71,6 +165,17 @@ async def process_audio_download(job_id: str) -> bool:
         if not job:
             logger.error(f"[job:{job_id}] Job not found")
             return False
+
+        # Idempotency guard: if the download is already done (status is past
+        # DOWNLOADING_AUDIO), return success without re-running. This handles
+        # Cloud Run Job auto-retries of a successful task — re-downloading
+        # would double-trigger downstream workers and break state transitions.
+        if job.status in DOWNLOAD_ALREADY_DONE_STATUSES:
+            logger.info(
+                f"[job:{job_id}] Download already complete (status={job.status}), "
+                f"skipping re-run"
+            )
+            return True
 
         # Validate job is in correct state
         if job.status not in (JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED):
@@ -127,6 +232,10 @@ async def process_audio_download(job_id: str) -> bool:
             'filename': filename,
         })
 
+        # Download succeeded — clear any stale retry-pending marker and
+        # previous error so the UI stops showing a resolved failure.
+        _clear_retry_pending_and_error(job_manager, job_id)
+
         # Transition from DOWNLOADING_AUDIO to DOWNLOADING
         job_manager.transition_to_state(
             job_id=job_id,
@@ -181,10 +290,12 @@ async def process_audio_download(job_id: str) -> bool:
 
     except (DownloadError, FlacfetchServiceError) as e:
         logger.error(f"[job:{job_id}] Download failed: {e}")
+        _mark_retry_pending_if_attempts_remain(job_manager, job_id)
         job_manager.fail_job(job_id, f"Audio download failed: {e}")
         return False
     except Exception as e:
         logger.error(f"[job:{job_id}] Download failed: {e}", exc_info=True)
+        _mark_retry_pending_if_attempts_remain(job_manager, job_id)
         job_manager.fail_job(job_id, f"Audio download failed: {e}")
         return False
 

@@ -595,7 +595,9 @@
     "retryFailed": "Gagal cuba lagi",
     "deleteFailed": "Gagal padam",
     "jobRetryStarted": "Cuba lagi kerja bermula",
-    "jobRetryStartedDesc": "Kerja sedang dicuba lagi. Menyegar semula status..."
+    "jobRetryStartedDesc": "Kerja sedang dicuba lagi. Menyegar semula status...",
+    "retryingAutomatically": "Mencuba semula secara automatik…",
+    "retryingAutomaticallyTooltip": "Kegagalan sementara telah dikesan — sistem sedang mencuba semula tanpa tindakan pengguna."
   },
   "jobSubmission": {
     "search": "Cari",

@@ -595,7 +595,9 @@
     "retryFailed": "Nuovo tentativo fallito",
     "deleteFailed": "Eliminazione fallita",
     "jobRetryStarted": "Nuovo tentativo del lavoro avviato",
-    "jobRetryStartedDesc": "Il lavoro è in fase di nuovo tentativo. Aggiornamento dello stato..."
+    "jobRetryStartedDesc": "Il lavoro è in fase di nuovo tentativo. Aggiornamento dello stato...",
+    "retryingAutomatically": "Nuovo tentativo automatico…",
+    "retryingAutomaticallyTooltip": "È stato rilevato un errore temporaneo — il sistema sta riprovando senza l'intervento dell'utente."
   },
   "jobSubmission": {
     "search": "Cerca",

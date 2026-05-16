@@ -395,9 +395,16 @@ class JobManager:
         valid_transitions = STATE_TRANSITIONS.get(current_status, [])
 
         if new_status not in valid_transitions:
+            # Normalise both sides to their string values so the message reads
+            # 'downloading -> downloading' rather than the misleading
+            # 'downloading -> JobStatus.DOWNLOADING'. The asymmetry exists
+            # because Job.status is deserialised with use_enum_values=True
+            # (plain str) while new_status is typically an enum at call time.
+            from_value = current_status.value if hasattr(current_status, 'value') else str(current_status)
+            to_value = new_status.value if hasattr(new_status, 'value') else str(new_status)
             error_msg = (
                 f"Invalid state transition for job {job_id}: "
-                f"{current_status} -> {new_status}. "
+                f"{from_value} -> {to_value}. "
                 f"Valid transitions: {[s.value for s in valid_transitions]}"
             )
             logger.error(error_msg)
@@ -406,8 +413,8 @@ class JobManager:
                 raise InvalidStateTransitionError(
                     message=error_msg,
                     job_id=job_id,
-                    from_status=current_status,
-                    to_status=new_status.value if hasattr(new_status, 'value') else str(new_status),
+                    from_status=from_value,
+                    to_status=to_value,
                     valid_transitions=[s.value for s in valid_transitions]
                 )
             return False

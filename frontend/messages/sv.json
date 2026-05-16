@@ -595,7 +595,9 @@
     "retryFailed": "Försök igen misslyckades",
     "deleteFailed": "Borttagning misslyckades",
     "jobRetryStarted": "Jobbförsök startat",
-    "jobRetryStartedDesc": "Jobbet försöks igen. Uppdaterar status..."
+    "jobRetryStartedDesc": "Jobbet försöks igen. Uppdaterar status...",
+    "retryingAutomatically": "Försöker igen automatiskt…",
+    "retryingAutomaticallyTooltip": "Ett tillfälligt fel upptäcktes — systemet försöker igen utan att du behöver göra något."
   },
   "jobSubmission": {
     "search": "Sök",
