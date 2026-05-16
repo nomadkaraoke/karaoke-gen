@@ -701,6 +701,33 @@ class TestTransitionToStateRaisesBehavior:
         error = exc_info.value
         assert error.job_id == "test123"
 
+    def test_invalid_transition_message_uses_consistent_status_names(
+        self, job_manager, mock_firestore_service
+    ):
+        """The error message must render both states using their string values.
+
+        Regression: previously rendered 'downloading -> JobStatus.DOWNLOADING'
+        because current_status was deserialized as str (use_enum_values=True)
+        while new_status remained an enum. This made debugging confusing.
+        """
+        mock_firestore_service.get_job.return_value = Job(
+            job_id="test123",
+            status=JobStatus.DOWNLOADING,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC)
+        )
+
+        with pytest.raises(InvalidStateTransitionError) as exc_info:
+            job_manager.transition_to_state("test123", JobStatus.DOWNLOADING)
+
+        message = str(exc_info.value)
+        assert "downloading -> downloading" in message, (
+            f"Expected 'downloading -> downloading' in message, got: {message}"
+        )
+        assert "JobStatus." not in message, (
+            f"Expected no 'JobStatus.' prefix in message, got: {message}"
+        )
+
     def test_invalid_transition_returns_false_when_not_raising(self, job_manager, mock_firestore_service):
         """Test that invalid transition returns False when raise_on_invalid=False."""
         mock_firestore_service.get_job.return_value = Job(

@@ -147,6 +147,47 @@ class TestProcessAudioDownload:
             assert "Download timed out" in mock_jm.fail_job.call_args[0][1]
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", [
+        JobStatus.DOWNLOADING,
+        JobStatus.AWAITING_AUDIO_EDIT,
+        JobStatus.AUDIO_COMPLETE,
+        JobStatus.TRANSCRIBING,
+        JobStatus.GENERATING_SCREENS,
+        JobStatus.AWAITING_REVIEW,
+        JobStatus.RENDERING_VIDEO,
+        JobStatus.COMPLETE,
+    ])
+    async def test_skips_when_download_already_done(self, status):
+        """If status is past DOWNLOADING_AUDIO, the download must not be re-run.
+
+        This prevents Cloud Run Job retries of a successful execution from
+        re-downloading, double-transitioning state, and double-triggering
+        downstream workers (see job 8a9c74ff).
+        """
+        job = _make_job(status=status)
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory:
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm_cls.return_value = mock_jm
+
+            mock_ws = AsyncMock()
+            mock_ws_factory.return_value = mock_ws
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True, f"Expected idempotent success when status={status.value}"
+            mock_dl.assert_not_awaited()
+            mock_jm.transition_to_state.assert_not_called()
+            mock_jm.fail_job.assert_not_called()
+            mock_ws.trigger_audio_worker.assert_not_awaited()
+            mock_ws.trigger_lyrics_worker.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_uses_state_data_selection_when_available(self):
         """Should prefer state_data search results over job-level params."""
         job = _make_job(

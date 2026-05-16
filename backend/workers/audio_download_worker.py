@@ -34,6 +34,40 @@ from backend.services.audio_search_service import DownloadError
 logger = logging.getLogger(__name__)
 
 
+# Statuses indicating the download has already completed for this job.
+# When the worker is invoked with one of these statuses, it has been re-run
+# (e.g. Cloud Run Job auto-retry of a successful task) and must return
+# successfully without re-downloading — re-downloading races with downstream
+# workers and breaks the state machine (see job 8a9c74ff post-mortem).
+DOWNLOAD_ALREADY_DONE_STATUSES = frozenset({
+    JobStatus.DOWNLOADING,
+    JobStatus.AWAITING_AUDIO_EDIT,
+    JobStatus.IN_AUDIO_EDIT,
+    JobStatus.AUDIO_EDIT_COMPLETE,
+    JobStatus.AUDIO_COMPLETE,
+    JobStatus.TRANSCRIBING,
+    JobStatus.CORRECTING,
+    JobStatus.LYRICS_COMPLETE,
+    JobStatus.GENERATING_SCREENS,
+    JobStatus.APPLYING_PADDING,
+    JobStatus.AWAITING_REVIEW,
+    JobStatus.IN_REVIEW,
+    JobStatus.REVIEW_COMPLETE,
+    JobStatus.RENDERING_VIDEO,
+    JobStatus.RENDER_PENDING_CAPACITY,
+    JobStatus.AWAITING_INSTRUMENTAL_SELECTION,
+    JobStatus.INSTRUMENTAL_SELECTED,
+    JobStatus.GENERATING_VIDEO,
+    JobStatus.ENCODING,
+    JobStatus.PACKAGING,
+    JobStatus.UPLOADING,
+    JobStatus.NOTIFYING,
+    JobStatus.COMPLETE,
+    JobStatus.PREP_COMPLETE,
+    JobStatus.CANCELLED,
+})
+
+
 def _extract_gcs_path(filepath: str) -> str:
     """Extract relative GCS path from a full gs:// URL or path."""
     bucket_prefix = "gs://karaoke-gen-storage-nomadkaraoke/"
@@ -71,6 +105,17 @@ async def process_audio_download(job_id: str) -> bool:
         if not job:
             logger.error(f"[job:{job_id}] Job not found")
             return False
+
+        # Idempotency guard: if the download is already done (status is past
+        # DOWNLOADING_AUDIO), return success without re-running. This handles
+        # Cloud Run Job auto-retries of a successful task — re-downloading
+        # would double-trigger downstream workers and break state transitions.
+        if job.status in DOWNLOAD_ALREADY_DONE_STATUSES:
+            logger.info(
+                f"[job:{job_id}] Download already complete (status={job.status}), "
+                f"skipping re-run"
+            )
+            return True
 
         # Validate job is in correct state
         if job.status not in (JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED):
