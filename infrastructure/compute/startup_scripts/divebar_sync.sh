@@ -8,7 +8,7 @@
 # Logs: journalctl -u divebar-sync -f
 #       OR: /var/log/divebar-sync.log
 
-set -euo pipefail
+set -uo pipefail
 
 LOG_FILE="/var/log/divebar-sync.log"
 REPO_DIR="/opt/nomad/divebar-sync"
@@ -17,6 +17,12 @@ SCRIPT="infrastructure/scripts/divebar_file_sync.py"
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG_FILE"
 }
+
+# Guarantee shutdown on ANY exit path (success, error, signal).
+# Without this, a crashed sync (e.g. Python OOM, segfault) leaves the VM
+# running 24/7 — previously cost ~$15/mo of idle compute. shutdown -h +1
+# gives systemd 1min to flush logs before halt.
+trap 'log "=== Exit code $?; shutting down VM ==="; shutdown -h +1' EXIT
 
 log "=== Divebar file sync starting ==="
 
@@ -48,11 +54,10 @@ pip3 install -q --break-system-packages 'google-auth<2.28' google-api-python-cli
 export GCE_METADATA_HOST="169.254.169.254"
 export GOOGLE_CLOUD_PROJECT="nomadkaraoke"
 
-# Run the sync
+# Run the sync. `|| true` ensures the pipeline never blocks the EXIT trap
+# (which is what guarantees shutdown). The exit code from python is logged
+# by the trap.
 log "Starting file sync (workers=4)..."
-python3 "$SCRIPT" --workers 4 2>&1 | tee -a "$LOG_FILE"
+python3 "$SCRIPT" --workers 4 2>&1 | tee -a "$LOG_FILE" || true
 
-log "=== Divebar file sync script exited ==="
-
-log "Shutting down VM after sync completion..."
-shutdown -h now
+log "=== Divebar file sync script finished ==="

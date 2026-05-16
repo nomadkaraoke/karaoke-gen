@@ -11,6 +11,7 @@ from backend.services.credential_manager import (
     CredentialStatus,
     CredentialCheckResult,
     DeviceAuthInfo,
+    _destroy_old_secret_versions,
     get_credential_manager,
 )
 
@@ -369,9 +370,102 @@ class TestAuthRoutes:
 
 class TestFileUploadCredentialValidation:
     """Tests for credential validation in file upload."""
-    
+
     def test_credential_manager_imported(self):
         """Test that credential manager is imported in file upload."""
         from backend.api.routes.file_upload import get_credential_manager, CredentialStatus
         assert get_credential_manager is not None
         assert CredentialStatus is not None
+
+
+class TestDestroyOldSecretVersions:
+    """Tests for _destroy_old_secret_versions helper."""
+
+    def _make_version(self, name, state, create_time):
+        v = MagicMock()
+        v.name = name
+        v.state = state
+        v.create_time = create_time
+        return v
+
+    def test_destroys_versions_beyond_keep_count(self):
+        """Keep newest N, destroy the rest."""
+        client = MagicMock()
+        enabled = MagicMock()
+        # State enum lookup on the version (v.State.ENABLED) — make .State.ENABLED a sentinel
+        # and match it on each version's `.state` field.
+        State = MagicMock()
+        State.ENABLED = "ENABLED"
+
+        def mk(name, ts):
+            v = MagicMock()
+            v.name = name
+            v.state = State.ENABLED
+            v.State = State  # so v.state == v.State.ENABLED resolves correctly
+            v.create_time = ts
+            return v
+
+        # 7 versions, oldest → newest by create_time
+        versions = [mk(f"v{i}", i) for i in range(7)]
+        client.list_secret_versions.return_value = versions
+
+        _destroy_old_secret_versions(client, "projects/p/secrets/s", keep=3)
+
+        # Should destroy 4 oldest (v0..v3); keep v4, v5, v6
+        destroyed_names = [
+            c.kwargs["request"]["name"]
+            for c in client.destroy_secret_version.call_args_list
+        ]
+        assert sorted(destroyed_names) == ["v0", "v1", "v2", "v3"]
+
+    def test_swallows_list_errors(self):
+        """List failure must not raise — refresh path must keep working."""
+        client = MagicMock()
+        client.list_secret_versions.side_effect = RuntimeError("boom")
+        _destroy_old_secret_versions(client, "projects/p/secrets/s", keep=5)
+        client.destroy_secret_version.assert_not_called()
+
+    def test_swallows_per_version_destroy_errors(self):
+        """One bad destroy doesn't abort the rest."""
+        client = MagicMock()
+        State = MagicMock()
+        State.ENABLED = "ENABLED"
+
+        def mk(name, ts):
+            v = MagicMock()
+            v.name = name
+            v.state = State.ENABLED
+            v.State = State
+            v.create_time = ts
+            return v
+
+        versions = [mk(f"v{i}", i) for i in range(7)]
+        client.list_secret_versions.return_value = versions
+        # First destroy fails, rest succeed
+        client.destroy_secret_version.side_effect = [
+            RuntimeError("nope"), None, None, None,
+        ]
+
+        _destroy_old_secret_versions(client, "projects/p/secrets/s", keep=3)
+        # All 4 destroy calls attempted despite first failing
+        assert client.destroy_secret_version.call_count == 4
+
+    def test_does_nothing_when_below_keep_count(self):
+        """If fewer than `keep` enabled versions exist, destroy nothing."""
+        client = MagicMock()
+        State = MagicMock()
+        State.ENABLED = "ENABLED"
+
+        def mk(name, ts):
+            v = MagicMock()
+            v.name = name
+            v.state = State.ENABLED
+            v.State = State
+            v.create_time = ts
+            return v
+
+        versions = [mk(f"v{i}", i) for i in range(3)]
+        client.list_secret_versions.return_value = versions
+
+        _destroy_old_secret_versions(client, "projects/p/secrets/s", keep=5)
+        client.destroy_secret_version.assert_not_called()
