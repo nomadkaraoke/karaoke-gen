@@ -140,30 +140,42 @@ jobs:
           ZONE: ${{ env.BUILD_ZONE }}
           PROJECT: ${{ env.GCP_PROJECT }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Provisioning includes 14GB model download for GPU variant — be patient.
           # The provision script writes /opt/runner-image-ready when complete.
           # Tolerate transient SSH failures during the kernel-upgrade reboot.
+          #
+          # Don't trust `gcloud compute ssh --command='test -f ...'` exit codes
+          # alone: under IAP tunnel load they can return 0 even when the remote
+          # command failed (witnessed 2026-05-16 — false-positive at 4 min on a
+          # provisioner that takes 25+ min). Instead, `cat` the marker file and
+          # check that the output is a non-empty ISO-8601 timestamp written by
+          # the provisioner's final step.
           deadline=$(( $(date +%s) + 75 * 60 ))
           attempt=0
           while (( $(date +%s) < deadline )); do
             attempt=$((attempt+1))
-            if gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
-                --tunnel-through-iap --quiet \
-                --command='test -f /opt/runner-image-ready' 2>/dev/null; then
-              echo "Image ready (attempt $attempt)"
-              gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
-                --tunnel-through-iap --quiet \
-                --command='cat /opt/runner-image-ready /opt/runner-image-variant'
+            output=$(gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
+              --tunnel-through-iap --quiet \
+              --command='cat /opt/runner-image-ready /opt/runner-image-variant 2>/dev/null' \
+              2>/dev/null || true)
+            # Only the provisioner's final lines write to these files. A real
+            # ready signal starts with a 4-digit year (ISO-8601). Empty output
+            # means either the file doesn't exist yet or the SSH tunnel dropped.
+            if [[ "$output" =~ ^[0-9]{4}- ]]; then
+              echo "Image ready (attempt $attempt):"
+              echo "$output"
               exit 0
             fi
             echo "Attempt $attempt: not ready yet, sleeping 30s..."
             sleep 30
           done
           echo "Timed out waiting for /opt/runner-image-ready" >&2
+          # Diagnostic — must NEVER fail the step (transient IAP errors here
+          # would otherwise hide the real timeout reason).
           gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
             --tunnel-through-iap --quiet \
-            --command='tail -200 /var/log/runner-image-provision.log' || true
+            --command='tail -200 /var/log/runner-image-provision.log' 2>&1 || true
           exit 1
 
       - name: Stop build VM
