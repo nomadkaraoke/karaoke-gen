@@ -189,6 +189,7 @@ class FirestoreService:
         'state_data.audio_complete', 'state_data.lyrics_complete',
         'state_data.backing_vocals_analysis', 'state_data.visibility_change_in_progress',
         'state_data.render_pending_capacity',
+        'state_data.cloud_run_retry_pending',
         'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
         'processing_metadata',
     ]

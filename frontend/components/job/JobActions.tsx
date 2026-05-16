@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from 'next-intl'
 import { Job, api } from "@/lib/api"
+import { isAutoRetryPending } from "@/lib/job-status"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -22,7 +23,10 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
   const { toast } = useToast()
   const { fetchUser } = useAuth()
 
-  const canRetry = job.status === "failed"
+  const autoRetryPending = isAutoRetryPending(job)
+  // Hide the manual Retry button while a Cloud Run Job auto-retry is in flight —
+  // otherwise the user races the system and creates a parallel execution.
+  const canRetry = job.status === "failed" && !autoRetryPending
   const canDelete = !["complete", "failed", "prep_complete"].includes(job.status)
 
   async function handleRetry() {
@@ -95,12 +99,23 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
   }
 
   // Don't render anything if no actions are available
-  if (!canDelete && !canRetry) {
+  if (!canDelete && !canRetry && !autoRetryPending) {
     return null
   }
 
   return (
     <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+      {/* Auto-retry indicator (failed jobs whose Cloud Run Job is auto-retrying) */}
+      {autoRetryPending && (
+        <span
+          className="inline-flex items-center gap-1.5 text-xs text-amber-400"
+          title={t('retryingAutomaticallyTooltip')}
+        >
+          <Loader2 className="w-3 h-3 animate-spin" />
+          {t('retryingAutomatically')}
+        </span>
+      )}
+
       {/* Delete button (red) */}
       {canDelete && (
         <Button

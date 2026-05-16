@@ -100,6 +100,38 @@ describe('JobActions', () => {
 
       expect(screen.queryByText('Retry')).not.toBeInTheDocument()
     })
+
+    it('shows "Retrying automatically..." instead of retry button when auto-retry is pending', () => {
+      const futureExpiry = new Date(Date.now() + 60 * 1000).toISOString()
+      const failedAutoRetryJob = {
+        ...baseJob,
+        status: 'failed',
+        state_data: {
+          cloud_run_retry_pending: { expires_at: futureExpiry, expected_attempt: 1 },
+        },
+      } as Job
+
+      render(<JobActions job={failedAutoRetryJob} onRefresh={mockOnRefresh} />)
+
+      expect(screen.queryByText('Retry')).not.toBeInTheDocument()
+      expect(screen.getByText(/Retrying automatically/)).toBeInTheDocument()
+    })
+
+    it('shows retry button once auto-retry window has expired', () => {
+      const pastExpiry = new Date(Date.now() - 60 * 1000).toISOString()
+      const failedExpiredRetryJob = {
+        ...baseJob,
+        status: 'failed',
+        state_data: {
+          cloud_run_retry_pending: { expires_at: pastExpiry, expected_attempt: 1 },
+        },
+      } as Job
+
+      render(<JobActions job={failedExpiredRetryJob} onRefresh={mockOnRefresh} />)
+
+      expect(screen.getByText('Retry')).toBeInTheDocument()
+      expect(screen.queryByText(/Retrying automatically/)).not.toBeInTheDocument()
+    })
   })
 
   describe('Delete button visibility', () => {

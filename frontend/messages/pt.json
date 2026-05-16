@@ -595,7 +595,9 @@
     "retryFailed": "Falha ao tentar novamente",
     "deleteFailed": "Falha ao excluir",
     "jobRetryStarted": "Nova tentativa de trabalho iniciada",
-    "jobRetryStartedDesc": "O trabalho está sendo tentado novamente. Atualizando status..."
+    "jobRetryStartedDesc": "O trabalho está sendo tentado novamente. Atualizando status...",
+    "retryingAutomatically": "Tentando novamente automaticamente…",
+    "retryingAutomaticallyTooltip": "Uma falha temporária foi detectada — o sistema está tentando novamente sem ação do usuário."
   },
   "jobSubmission": {
     "search": "Pesquisar",

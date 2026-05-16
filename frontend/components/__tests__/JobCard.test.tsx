@@ -77,6 +77,20 @@ describe('JobCard', () => {
     expect(screen.getByText('Something went wrong')).toBeInTheDocument()
   })
 
+  it('hides stale error message on completed jobs', () => {
+    // Regression: a transient failure (e.g. Cloud Run auto-retried download)
+    // leaves error_message populated even after the job completes. We must
+    // not alarm users about a resolved issue.
+    const completedWithStaleError = {
+      ...mockJob,
+      status: 'complete',
+      error_message: 'Audio download failed: transient timeout',
+    }
+    render(<JobCard job={completedWithStaleError} onRefresh={mockOnRefresh} />)
+
+    expect(screen.queryByText(/Audio download failed/)).not.toBeInTheDocument()
+  })
+
   // Note: Orange border for interactive jobs removed - uses default slate border now
 
   it('applies green border for complete jobs', () => {

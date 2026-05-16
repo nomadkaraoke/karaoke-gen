@@ -595,7 +595,9 @@
     "retryFailed": "Opnieuw proberen mislukt",
     "deleteFailed": "Verwijderen mislukt",
     "jobRetryStarted": "Taak opnieuw proberen gestart",
-    "jobRetryStartedDesc": "De taak wordt opnieuw geprobeerd. Status vernieuwen..."
+    "jobRetryStartedDesc": "De taak wordt opnieuw geprobeerd. Status vernieuwen...",
+    "retryingAutomatically": "Automatisch opnieuw proberen…",
+    "retryingAutomaticallyTooltip": "Er is een tijdelijke fout gedetecteerd — het systeem probeert het opnieuw zonder dat je iets hoeft te doen."
   },
   "jobSubmission": {
     "search": "Zoeken",

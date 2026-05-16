@@ -199,8 +199,11 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
       {/* Progress bar for active jobs */}
       <ProgressBar job={job} />
 
-      {/* Error message if any */}
-      {job.error_message && (
+      {/* Error message — only shown when the job is actually in a failed
+          state. Completed jobs may carry a stale error_message from a transient
+          failure that was auto-retried; we don't want to alarm users about
+          resolved issues. */}
+      {job.error_message && !isComplete && (
         <div className="mt-2 text-xs text-red-400 bg-red-500/10 rounded p-2 break-words">
           {job.error_message}
         </div>

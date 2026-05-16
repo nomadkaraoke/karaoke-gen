@@ -595,7 +595,9 @@
     "retryFailed": "Ponovni pokušaj nije uspio",
     "deleteFailed": "Brisanje nije uspjelo",
     "jobRetryStarted": "Ponovni pokušaj posla pokrenut",
-    "jobRetryStartedDesc": "Posao se ponovno pokušava. Osvježavanje statusa..."
+    "jobRetryStartedDesc": "Posao se ponovno pokušava. Osvježavanje statusa...",
+    "retryingAutomatically": "Automatski ponovni pokušaj…",
+    "retryingAutomaticallyTooltip": "Otkrivena je privremena pogreška — sustav ponovno pokušava bez tvoje intervencije."
   },
   "jobSubmission": {
     "search": "Pretraži",

@@ -595,7 +595,9 @@
     "retryFailed": "Opakování selhalo",
     "deleteFailed": "Smazání selhalo",
     "jobRetryStarted": "Opakování úlohy spuštěno",
-    "jobRetryStartedDesc": "Úloha se opakuje. Obnovování stavu..."
+    "jobRetryStartedDesc": "Úloha se opakuje. Obnovování stavu...",
+    "retryingAutomatically": "Automaticky se opakuje…",
+    "retryingAutomaticallyTooltip": "Byla zjištěna dočasná chyba — systém opakuje akci bez nutnosti tvého zásahu."
   },
   "jobSubmission": {
     "search": "Hledat",

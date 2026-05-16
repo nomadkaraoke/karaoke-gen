@@ -595,7 +595,9 @@
     "retryFailed": "การลองใหม่ล้มเหลว",
     "deleteFailed": "การลบล้มเหลว",
     "jobRetryStarted": "เริ่มลองงานใหม่แล้ว",
-    "jobRetryStartedDesc": "กำลังลองงานใหม่ กำลังรีเฟรชสถานะ..."
+    "jobRetryStartedDesc": "กำลังลองงานใหม่ กำลังรีเฟรชสถานะ...",
+    "retryingAutomatically": "กำลังลองใหม่อัตโนมัติ…",
+    "retryingAutomaticallyTooltip": "ตรวจพบข้อผิดพลาดชั่วคราว — ระบบกำลังลองใหม่อีกครั้งโดยที่คุณไม่ต้องดำเนินการใดๆ"
   },
   "jobSubmission": {
     "search": "ค้นหา",

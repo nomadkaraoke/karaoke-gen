@@ -595,7 +595,9 @@
     "retryFailed": "ניסיון חוזר נכשל",
     "deleteFailed": "מחיקה נכשלה",
     "jobRetryStarted": "ניסיון חוזר לעבודה התחיל",
-    "jobRetryStartedDesc": "העבודה מנוסה שוב. מרענן סטטוס..."
+    "jobRetryStartedDesc": "העבודה מנוסה שוב. מרענן סטטוס...",
+    "retryingAutomatically": "מנסה שוב באופן אוטומטי…",
+    "retryingAutomaticallyTooltip": "זוהתה תקלה זמנית — המערכת מנסה שוב ללא צורך בפעולה מצד המשתמש."
   },
   "jobSubmission": {
     "search": "חיפוש",

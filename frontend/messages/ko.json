@@ -595,7 +595,9 @@
     "retryFailed": "다시 시도 실패",
     "deleteFailed": "삭제 실패",
     "jobRetryStarted": "작업 다시 시도 시작됨",
-    "jobRetryStartedDesc": "작업을 다시 시도하는 중입니다. 상태를 새로고침합니다..."
+    "jobRetryStartedDesc": "작업을 다시 시도하는 중입니다. 상태를 새로고침합니다...",
+    "retryingAutomatically": "자동으로 재시도 중…",
+    "retryingAutomaticallyTooltip": "일시적인 오류가 감지되었습니다 — 시스템이 사용자 개입 없이 재시도 중입니다."
   },
   "jobSubmission": {
     "search": "검색",

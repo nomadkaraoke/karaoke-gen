@@ -595,7 +595,9 @@
     "retryFailed": "فشلت إعادة المحاولة",
     "deleteFailed": "فشل الحذف",
     "jobRetryStarted": "بدأت إعادة محاولة المهمة",
-    "jobRetryStartedDesc": "تتم إعادة محاولة المهمة. جاري تحديث الحالة..."
+    "jobRetryStartedDesc": "تتم إعادة محاولة المهمة. جاري تحديث الحالة...",
+    "retryingAutomatically": "جاري إعادة المحاولة تلقائياً...",
+    "retryingAutomaticallyTooltip": "تم اكتشاف فشل مؤقت — يقوم النظام بإعادة المحاولة دون تدخل من المستخدم."
   },
   "jobSubmission": {
     "search": "بحث",

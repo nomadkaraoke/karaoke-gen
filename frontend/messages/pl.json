@@ -595,7 +595,9 @@
     "retryFailed": "Ponowienie nie powiodło się",
     "deleteFailed": "Usunięcie nie powiodło się",
     "jobRetryStarted": "Rozpoczęto ponawianie zadania",
-    "jobRetryStartedDesc": "Zadanie jest ponawiane. Odświeżanie statusu..."
+    "jobRetryStartedDesc": "Zadanie jest ponawiane. Odświeżanie statusu...",
+    "retryingAutomatically": "Automatyczne ponawianie…",
+    "retryingAutomaticallyTooltip": "Wykryto przejściowy błąd — system ponawia próbę bez ingerencji użytkownika."
   },
   "jobSubmission": {
     "search": "Szukaj",

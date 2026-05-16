@@ -595,7 +595,9 @@
     "retryFailed": "Échec de la nouvelle tentative",
     "deleteFailed": "Échec de la suppression",
     "jobRetryStarted": "Nouvelle tentative du projet démarrée",
-    "jobRetryStartedDesc": "Le projet est en cours de relance. Actualisation du statut..."
+    "jobRetryStartedDesc": "Le projet est en cours de relance. Actualisation du statut...",
+    "retryingAutomatically": "Nouvelle tentative automatique…",
+    "retryingAutomaticallyTooltip": "Une erreur temporaire a été détectée — le système réessaie sans intervention de ta part."
   },
   "jobSubmission": {
     "search": "Rechercher",

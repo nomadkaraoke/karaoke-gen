@@ -595,7 +595,9 @@
     "retryFailed": "El reintent ha fallat",
     "deleteFailed": "La supressió ha fallat",
     "jobRetryStarted": "S'ha iniciat el reintent del treball",
-    "jobRetryStartedDesc": "S'està reintentant el treball. Actualitzant l'estat..."
+    "jobRetryStartedDesc": "S'està reintentant el treball. Actualitzant l'estat...",
+    "retryingAutomatically": "Reintentant automàticament…",
+    "retryingAutomaticallyTooltip": "S'ha detectat un error temporal — el sistema ho està reintentant sense intervenció de l'usuari."
   },
   "jobSubmission": {
     "search": "Cerca",

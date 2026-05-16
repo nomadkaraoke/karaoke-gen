@@ -595,7 +595,9 @@
     "retryFailed": "Újrapróbálkozás sikertelen",
     "deleteFailed": "Törlés sikertelen",
     "jobRetryStarted": "Projekt újrapróbálkozása elindítva",
-    "jobRetryStartedDesc": "A projekt újrapróbálkozása folyamatban van. Állapot frissítése..."
+    "jobRetryStartedDesc": "A projekt újrapróbálkozása folyamatban van. Állapot frissítése...",
+    "retryingAutomatically": "Automatikus újrapróbálkozás…",
+    "retryingAutomaticallyTooltip": "Átmeneti hibát észleltünk — a rendszer felhasználói beavatkozás nélkül újrapróbálkozik."
   },
   "jobSubmission": {
     "search": "Keresés",

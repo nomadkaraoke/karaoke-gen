@@ -595,7 +595,9 @@
     "retryFailed": "Retry failed",
     "deleteFailed": "Delete failed",
     "jobRetryStarted": "Job retry started",
-    "jobRetryStartedDesc": "The job is being retried. Refreshing status..."
+    "jobRetryStartedDesc": "The job is being retried. Refreshing status...",
+    "retryingAutomatically": "Retrying automatically…",
+    "retryingAutomaticallyTooltip": "A transient failure was detected — the system is retrying without user action."
   },
   "jobSubmission": {
     "search": "Search",

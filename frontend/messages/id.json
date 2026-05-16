@@ -595,7 +595,9 @@
     "retryFailed": "Coba lagi gagal",
     "deleteFailed": "Hapus gagal",
     "jobRetryStarted": "Mencoba ulang proyek",
-    "jobRetryStartedDesc": "Proyek sedang dicoba lagi. Menyegarkan status..."
+    "jobRetryStartedDesc": "Proyek sedang dicoba lagi. Menyegarkan status...",
+    "retryingAutomatically": "Mencoba lagi secara otomatis…",
+    "retryingAutomaticallyTooltip": "Terdeteksi kegagalan sementara — sistem sedang mencoba lagi tanpa tindakan pengguna."
   },
   "jobSubmission": {
     "search": "Cari",

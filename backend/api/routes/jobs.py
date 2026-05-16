@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile, File
 
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.utils.request_helpers import get_client_ip
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -537,9 +537,34 @@ _SUMMARY_STATE_DATA_KEYS = {
     'audio_complete', 'lyrics_complete',
     'backing_vocals_analysis', 'visibility_change_in_progress',
     'render_pending_capacity',
+    'cloud_run_retry_pending',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']
+
+
+def _is_auto_retry_pending(state_data: Optional[Dict[str, Any]]) -> bool:
+    """Return True if a Cloud Run Job auto-retry is currently expected.
+
+    The audio-download worker records `state_data.cloud_run_retry_pending`
+    with an `expires_at` when it fails and another task attempt is coming.
+    The /retry endpoint uses this to refuse starting a parallel execution,
+    and the UI uses the projected field to show a "Retrying automatically..."
+    indicator instead of a Retry button.
+    """
+    pending = (state_data or {}).get('cloud_run_retry_pending')
+    if not isinstance(pending, dict):
+        return False
+    expires_at_str = pending.get('expires_at')
+    if not expires_at_str:
+        return False
+    try:
+        expires_at = datetime.fromisoformat(str(expires_at_str).replace('Z', '+00:00'))
+    except (ValueError, AttributeError):
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at > datetime.now(timezone.utc)
 
 
 def _has_title_screen(file_urls: Dict[str, Any]) -> bool:
@@ -1721,6 +1746,15 @@ async def retry_job(
         raise HTTPException(
             status_code=400,
             detail=t(locale, "jobs.notCompleted", status=job.status)
+        )
+
+    # Refuse if a Cloud Run Job auto-retry is already coming for this job.
+    # Otherwise the manual retry races with the automatic one and produces
+    # duplicate downloads and downstream worker triggers (see job 8a9c74ff).
+    if _is_auto_retry_pending(job.state_data):
+        raise HTTPException(
+            status_code=409,
+            detail="An automatic retry is already in progress. Please wait a few minutes."
         )
 
     try:

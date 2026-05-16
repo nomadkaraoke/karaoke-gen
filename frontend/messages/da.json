@@ -595,7 +595,9 @@
     "retryFailed": "Prøv igen mislykkedes",
     "deleteFailed": "Sletning mislykkedes",
     "jobRetryStarted": "Jobforsøg startet",
-    "jobRetryStartedDesc": "Jobbet forsøges igen. Opdaterer status..."
+    "jobRetryStartedDesc": "Jobbet forsøges igen. Opdaterer status...",
+    "retryingAutomatically": "Prøver igen automatisk…",
+    "retryingAutomaticallyTooltip": "Der blev registreret en midlertidig fejl — systemet prøver igen, uden at du behøver at foretage dig noget."
   },
   "jobSubmission": {
     "search": "Søg",

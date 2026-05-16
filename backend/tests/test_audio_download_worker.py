@@ -4,6 +4,7 @@ Tests for the audio download worker.
 Tests the standalone worker that downloads audio from various sources
 (YouTube, Spotify, RED/OPS) and triggers processing workers.
 """
+import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, UTC
@@ -117,7 +118,7 @@ class TestProcessAudioDownload:
             result = await process_audio_download("test-job-123")
 
             assert result is True
-            mock_jm.update_job.assert_called_once_with("test-job-123", {
+            mock_jm.update_job.assert_any_call("test-job-123", {
                 'input_media_gcs_path': "uploads/test-job-123/audio/song.mp3",
                 'filename': "song.mp3",
             })
@@ -222,6 +223,117 @@ class TestProcessAudioDownload:
             call_kwargs = mock_dl.call_args[1]
             assert call_kwargs['source_name'] == 'Spotify'
             assert call_kwargs['source_id'] == 'spotify123'
+
+
+class TestCloudRunRetryPending:
+    """Tests for the cloud_run_retry_pending signal set on fail_job.
+
+    Cloud Run Job auto-retries failed task attempts. When the worker fails
+    on attempt N and N < max_retries, the worker must mark the job so the
+    UI can show "Retrying automatically..." instead of a Retry button, and
+    so the /retry endpoint refuses to start a second parallel execution.
+    """
+
+    @pytest.mark.asyncio
+    async def test_marks_retry_pending_when_attempts_remain(self):
+        """Failure on attempt 0 (with attempts 1,2 still possible) marks retry pending."""
+        job = _make_job()
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch.dict(os.environ, {"CLOUD_RUN_TASK_ATTEMPT": "0"}, clear=False):
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.side_effect = DownloadError("Download timed out")
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is False
+            # state_data.cloud_run_retry_pending should be set before fail_job
+            update_calls = [c for c in mock_jm.update_state_data.call_args_list
+                            if c.args[1] == 'cloud_run_retry_pending']
+            assert len(update_calls) == 1, "Expected exactly one cloud_run_retry_pending update"
+            pending = update_calls[0].args[2]
+            assert pending['expected_attempt'] == 1
+            assert 'expires_at' in pending
+            mock_jm.fail_job.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_does_not_mark_retry_pending_on_final_attempt(self):
+        """Failure on the last attempt (no retry coming) must not mark retry pending."""
+        job = _make_job()
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch.dict(os.environ, {"CLOUD_RUN_TASK_ATTEMPT": "2"}, clear=False):
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.side_effect = DownloadError("Download timed out")
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is False
+            pending_updates = [c for c in mock_jm.update_state_data.call_args_list
+                               if c.args[1] == 'cloud_run_retry_pending']
+            assert pending_updates == [], (
+                "Final attempt must not mark retry pending — no retry is coming"
+            )
+            mock_jm.fail_job.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_clears_retry_pending_and_error_on_success(self):
+        """Successful download clears any stale retry-pending flag and error message."""
+        job = _make_job(
+            error_message="Audio download failed: previous attempt timeout",
+            state_data={'cloud_run_retry_pending': {'expires_at': '2026-05-16T16:00:00Z', 'expected_attempt': 1}},
+        )
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory:
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+
+            mock_ws = AsyncMock()
+            mock_ws_factory.return_value = mock_ws
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            # Look at update_job calls to find the error-clearing one
+            error_clear_calls = [
+                c for c in mock_jm.update_job.call_args_list
+                if isinstance(c.args[1], dict)
+                and c.args[1].get('error_message') is None
+                and 'error_details' in c.args[1]
+            ]
+            assert len(error_clear_calls) >= 1, (
+                f"Expected an update_job call clearing error_message; got: "
+                f"{mock_jm.update_job.call_args_list}"
+            )
+            # Look for cloud_run_retry_pending being cleared (set to None)
+            pending_clears = [
+                c for c in mock_jm.update_state_data.call_args_list
+                if c.args[1] == 'cloud_run_retry_pending' and c.args[2] is None
+            ]
+            assert len(pending_clears) == 1, (
+                f"Expected cloud_run_retry_pending to be cleared; got state_data updates: "
+                f"{mock_jm.update_state_data.call_args_list}"
+            )
 
 
 class TestAudioEditPreGeneration:

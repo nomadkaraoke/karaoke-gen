@@ -7,6 +7,24 @@
 
 import type { Job } from "./api";
 
+/**
+ * Returns true if a Cloud Run Job auto-retry is currently expected for this job.
+ *
+ * Backed by `state_data.cloud_run_retry_pending.expires_at` written by the
+ * audio-download worker when it fails on a non-final task attempt. Used to
+ * show "Retrying automatically..." instead of a Retry button so users don't
+ * race the system by clicking Retry during the auto-retry window.
+ */
+export function isAutoRetryPending(job: Pick<Job, 'state_data'>): boolean {
+  const pending = job.state_data?.cloud_run_retry_pending as
+    | { expires_at?: string }
+    | undefined;
+  if (!pending?.expires_at) return false;
+  const expiresAt = Date.parse(pending.expires_at);
+  if (Number.isNaN(expiresAt)) return false;
+  return expiresAt > Date.now();
+}
+
 export interface JobStep {
   step: number;
   total: number;
