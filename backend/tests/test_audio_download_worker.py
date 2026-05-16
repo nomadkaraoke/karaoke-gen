@@ -263,8 +263,12 @@ class TestCloudRunRetryPending:
             mock_jm.fail_job.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_does_not_mark_retry_pending_on_final_attempt(self):
-        """Failure on the last attempt (no retry coming) must not mark retry pending."""
+    async def test_clears_stale_retry_pending_on_final_attempt(self):
+        """Failure on the final attempt must clear any marker left by an
+        earlier attempt — otherwise the UI shows "Retrying automatically..."
+        for the marker's full TTL after the job has actually failed
+        permanently, blocking the user from clicking Retry.
+        """
         job = _make_job()
 
         with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
@@ -281,10 +285,19 @@ class TestCloudRunRetryPending:
             result = await process_audio_download("test-job-123")
 
             assert result is False
-            pending_updates = [c for c in mock_jm.update_state_data.call_args_list
-                               if c.args[1] == 'cloud_run_retry_pending']
-            assert pending_updates == [], (
-                "Final attempt must not mark retry pending — no retry is coming"
+            # Final attempt must NOT write a new pending dict, but MUST clear
+            # any stale marker (set to None).
+            pending_writes = [
+                c for c in mock_jm.update_state_data.call_args_list
+                if c.args[1] == 'cloud_run_retry_pending' and c.args[2] is not None
+            ]
+            pending_clears = [
+                c for c in mock_jm.update_state_data.call_args_list
+                if c.args[1] == 'cloud_run_retry_pending' and c.args[2] is None
+            ]
+            assert pending_writes == [], "Final attempt must not write a new pending marker"
+            assert len(pending_clears) == 1, (
+                f"Final attempt must clear stale marker; got: {mock_jm.update_state_data.call_args_list}"
             )
             mock_jm.fail_job.assert_called_once()
 

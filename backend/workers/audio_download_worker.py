@@ -96,9 +96,16 @@ def _mark_retry_pending_if_attempts_remain(job_manager: JobManager, job_id: str)
 
     The UI and /retry endpoint use this to avoid showing a Retry button (and
     refusing manual retries) while an automatic retry is still in flight.
+
+    On the FINAL attempt (no retry coming), explicitly clear any marker left
+    by an earlier attempt. Otherwise the marker from attempt N persists for
+    its full TTL after attempt N+1 also fails — blocking the user from
+    clicking Retry for up to RETRY_PENDING_WINDOW after the job actually
+    failed permanently.
     """
     attempt = _current_task_attempt()
     if attempt >= CLOUD_RUN_MAX_RETRIES:
+        job_manager.update_state_data(job_id, 'cloud_run_retry_pending', None)
         return
     expires_at = datetime.now(timezone.utc) + RETRY_PENDING_WINDOW
     job_manager.update_state_data(job_id, 'cloud_run_retry_pending', {
