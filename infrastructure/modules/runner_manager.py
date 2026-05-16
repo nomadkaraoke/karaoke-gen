@@ -40,6 +40,20 @@ from config import (
 )
 
 
+# Read at module load — controls dispatcher behaviour.
+# Set via: pulumi config set karaoke-backend:runnerMode ephemeral
+_pulumi_config = pulumi.Config()
+RUNNER_MODE = _pulumi_config.get("runnerMode", "legacy")
+if RUNNER_MODE not in ("legacy", "ephemeral"):
+    raise ValueError(
+        f"karaoke-backend:runnerMode must be 'legacy' or 'ephemeral', got {RUNNER_MODE!r}"
+    )
+
+# Optional fallback zone for ephemeral GPU runners when the primary zone is
+# exhausted. Default us-east4-c — uses ephemeral external IPs (no NAT there).
+RUNNER_FALLBACK_ZONE = _pulumi_config.get("runnerFallbackZone", "us-east4-c")
+
+
 def create_runner_manager_service_account() -> gcp.serviceaccount.Account:
     """Create service account for the runner manager Cloud Function."""
     return gcp.serviceaccount.Account(
@@ -140,15 +154,24 @@ def create_cloud_function(
     permissions: dict,
     runner_names: list[pulumi.Output] | None = None,
     gpu_runner_names: list[pulumi.Output] | None = None,
+    runner_service_account: gcp.serviceaccount.Account | None = None,
 ) -> gcp.cloudfunctionsv2.Function:
     """Create the Cloud Function (Gen2) for runner management."""
     env_vars = {
         "GCP_PROJECT": PROJECT_ID,
         "GCP_ZONE": ZONE,
+        "GCP_FALLBACK_ZONE": RUNNER_FALLBACK_ZONE,
         "WEBHOOK_SECRET_NAME": SecretNames.GITHUB_WEBHOOK_SECRET,
         "RUNNER_PAT_SECRET_NAME": SecretNames.GITHUB_RUNNER_PAT,
         "IDLE_TIMEOUT_HOURS": str(RunnerManagerConfig.IDLE_TIMEOUT_HOURS),
+        "RUNNER_MODE": RUNNER_MODE,
+        "GITHUB_ORG": "nomadkaraoke",
     }
+
+    # Service account used by ephemeral VMs at runtime (gcloud auth + secret reads).
+    # Required when RUNNER_MODE=ephemeral; harmless otherwise.
+    if runner_service_account is not None:
+        env_vars["RUNNER_SERVICE_ACCOUNT"] = runner_service_account.email
 
     if runner_names:
         env_vars["RUNNER_NAMES"] = pulumi.Output.all(*runner_names).apply(
@@ -172,6 +195,12 @@ def create_cloud_function(
                 storage_source=gcp.cloudfunctionsv2.FunctionBuildConfigSourceStorageSourceArgs(
                     bucket=bucket.name,
                     object=source_archive.name,
+                    # Pin to the current generation so Pulumi treats the source
+                    # bundle being replaced (new code commit) as a diff on the
+                    # Function itself, forcing a redeploy. Without this, the
+                    # bucket-object replaces in place and the live function
+                    # keeps serving the previous staged copy.
+                    generation=source_archive.generation,
                 ),
             ),
         ),
@@ -308,6 +337,7 @@ def create_runner_manager_resources(
         permissions,
         runner_names,
         gpu_runner_names,
+        runner_service_account=runner_service_account,
     )
 
     # Allow unauthenticated invocation (GitHub webhooks)
