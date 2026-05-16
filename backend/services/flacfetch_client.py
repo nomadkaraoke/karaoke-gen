@@ -680,7 +680,8 @@ class FlacfetchClient:
 
         Returns:
             Dict with keys: available, video_id, title, error,
-            is_geo_restricted, is_age_restricted, is_private, is_removed
+            is_geo_restricted, is_age_restricted, is_private, is_removed,
+            is_bot_blocked
 
         Raises:
             FlacfetchServiceError: On request failure
