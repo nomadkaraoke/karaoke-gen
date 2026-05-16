@@ -98,6 +98,17 @@ The audio separator started as a separate Cloud Run Service called via HTTP from
 
 Similarly, **baking models into Docker images requires downloading each model individually** — `Separator(ensemble_preset=...).load_model()` with no args doesn't trigger downloads. Use `sep.load_model(model_filename)` for each model file in the preset.
 
+### Cloud Run Job Workers Must Be Idempotent on Retry-Triggered State (May 2026)
+
+Cloud Run Jobs with `max_retries > 0` retry failed task attempts automatically (~75s delay). If a user clicks Retry in the UI during that window, the API spins up a *second* execution that races the first one's auto-retry. Both write to the same job state and trigger duplicate downstream workers (we saw double L4 GPU separation runs on job 8a9c74ff).
+
+Defenses applied to `audio-download-job` and reusable elsewhere:
+- **Worker idempotency**: short-circuit (return success) when the job's status is already past the worker's responsibility — don't re-do the work. The "fall through if download params exist" guard is the trap; it produces silent duplicate work.
+- **Retry-pending marker**: when the worker fails and `CLOUD_RUN_TASK_ATTEMPT < max_retries`, write `state_data.cloud_run_retry_pending = { expires_at }`. The `/retry` endpoint refuses (409) while this is active, and the UI shows "Retrying automatically..." instead of a Retry button. Clear the marker on success.
+- **Error message hygiene**: clear `error_message`/`error_details` on successful recovery so the dashboard doesn't display resolved transient failures on completed jobs.
+
+`Job.status` is deserialised as a plain `str` (Pydantic `use_enum_values=True`), but worker code typically uses the `JobStatus` enum. Mixing the two in f-strings produces confusing messages like `downloading -> JobStatus.DOWNLOADING`. Always normalise to `.value` in user-facing messages.
+
 ---
 
 ## Architecture Decisions
