@@ -179,8 +179,13 @@ jobs:
             # Failure marker
             if echo "$console" | grep -qE 'runner-image-provision FAILED'; then
               echo
-              echo "### Provisioner reported FAILURE — full failure block:" >&2
-              echo "$console" | grep -A 5 'runner-image-provision FAILED' | tail -20 >&2
+              echo "### Provisioner reported FAILURE — failure block + 40 lines of preceding context:" >&2
+              # -B 40: include 40 lines BEFORE the marker (where the actual
+              # error output of the failing command lives — python tracebacks,
+              # apt errors, curl messages, etc).
+              # -A 5: include the variant/line/cmd metadata lines after the marker.
+              echo "$console" | grep -B 40 -A 5 'runner-image-provision FAILED' \
+                | tail -80 >&2
               exit 1
             fi
             sleep 30
@@ -217,12 +222,19 @@ jobs:
           FAMILY: ${{ steps.params.outputs.family }}
         run: |
           set -euo pipefail
-          # Capture the boot disk before VM deletion releases it.
-          disk=$(gcloud compute instances describe "$VM" --zone="$ZONE" --project="$PROJECT" \
-            --format='value(disks[0].source.scope(disks).segment(1))')
+          # The "Create build VM" step doesn't pass --device-name or
+          # --boot-disk-name, so GCE auto-names the boot disk after the
+          # instance. We rely on that here instead of extracting the name
+          # via a format expression — the previous
+          # `disks[0].source.scope(disks).segment(1)` selector silently
+          # returned empty and gcloud rejected the call with
+          # "You cannot specify [--source-disk-zone] unless you are
+          # specifying [--source-disk]".
+          DISK="$VM"
+          echo "Creating image $IMAGE in family $FAMILY from disk $DISK in $ZONE..."
           gcloud compute images create "$IMAGE" \
             --project="$PROJECT" \
-            --source-disk="$disk" \
+            --source-disk="$DISK" \
             --source-disk-zone="$ZONE" \
             --family="$FAMILY" \
             --description="GHA ephemeral runner image (${{ matrix.variant }}) built ${{ github.run_id }}" \
