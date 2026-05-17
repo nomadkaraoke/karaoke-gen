@@ -1,5 +1,8 @@
 """
 FastAPI application entry point for karaoke generation backend.
+
+(Trivial comment touch to trigger backend CI on ephemeral runners after
+ the 2026-05-17 dispatcher e2 fix; safe to remove on next backend edit.)
 """
 import logging
 from contextlib import asynccontextmanager

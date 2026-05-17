@@ -283,12 +283,13 @@ def _build_instance(
         ]
     )
 
-    scheduling = compute_v1.Scheduling(
-        automatic_restart=False,
-        # GPU VMs cannot live-migrate; everyone uses TERMINATE for simplicity.
-        on_host_maintenance="TERMINATE",
-        preemptible=False,
-    )
+    # GPU VMs cannot live-migrate, so they must use TERMINATE. e2 machine types
+    # reject TERMINATE unless preemptible, so we leave on_host_maintenance unset
+    # (GCE defaults to MIGRATE) for the non-GPU e2 families.
+    scheduling_kwargs = {"automatic_restart": False, "preemptible": False}
+    if family.has_gpu:
+        scheduling_kwargs["on_host_maintenance"] = "TERMINATE"
+    scheduling = compute_v1.Scheduling(**scheduling_kwargs)
 
     instance = compute_v1.Instance(
         name=name,

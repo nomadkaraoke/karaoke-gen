@@ -205,6 +205,40 @@ class TestCreateEphemeralRunner:
         assert compute_client.insert.call_count == 1
 
 
+class TestSchedulingPerFamily:
+    """e2 instances reject on_host_maintenance=TERMINATE unless preemptible.
+
+    Regression test for the 2026-05-17 cutover bug: dispatcher set TERMINATE
+    unconditionally, causing every general/build VM create to fail with
+    `BadRequest('e2 instances do not support onHostMaintenance=TERMINATE
+    unless they are preemptible.')`.
+    """
+
+    def _build_for(self, family_name):
+        ep = _fresh_module()
+        ep._build_instance(
+            name=f"gha-{family_name}-test",
+            family=ep.FAMILIES[family_name],
+            zone="us-central1-a",
+            jit_config="JIT",
+            image_self_link="projects/p/global/images/family/x",
+            use_external_ip=False,
+        )
+        return _compute_stub.Scheduling.call_args.kwargs
+
+    def test_e2_general_omits_terminate(self):
+        kwargs = self._build_for("general")
+        assert "on_host_maintenance" not in kwargs
+
+    def test_e2_build_omits_terminate(self):
+        kwargs = self._build_for("build")
+        assert "on_host_maintenance" not in kwargs
+
+    def test_gpu_keeps_terminate(self):
+        kwargs = self._build_for("gpu")
+        assert kwargs.get("on_host_maintenance") == "TERMINATE"
+
+
 def _make_instance(name, age_minutes, zone="us-central1-a"):
     inst = MagicMock()
     inst.name = name
