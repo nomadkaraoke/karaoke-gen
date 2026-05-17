@@ -79,6 +79,27 @@ ck "starting variant=$VARIANT"
 
 export DEBIAN_FRONTEND=noninteractive
 
+# ==================== Pacify apt-daily race ====================
+# Fresh Debian VMs auto-start `apt-daily.service` / `apt-daily-upgrade.service`
+# in the background. These hold /var/lib/apt/lists/lock and /var/lib/dpkg/lock,
+# and any concurrent `apt-get` (especially the GHA runner's own
+# installdependencies.sh later in this script) fails with:
+#   E: Could not get lock /var/lib/apt/lists/lock. It is held by process N (apt-get)
+# Disable the timers + services up front, then wait for any in-flight apt run
+# to release its locks. Without this we hit a race ~30% of the time.
+ck "phase: pacify apt-daily"
+systemctl stop apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
+systemctl disable apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
+systemctl mask apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
+# Wait for any apt-get already in flight to release its lock (up to 2 min).
+for i in $(seq 1 60); do
+    if ! fuser /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock 2>/dev/null; then
+        break
+    fi
+    echo "  apt locked by another process, waiting 2s..."
+    sleep 2
+done
+
 # ==================== Network ====================
 ck "phase: network (apt IPv4)"
 # Cloud NAT doesn't support IPv6 — force apt to IPv4 to avoid hangs.
