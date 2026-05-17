@@ -176,25 +176,31 @@ fi
 ck "phase: python 3.13"
 if [[ "$VARIANT" == "gpu" ]]; then
     PYTHON_PREFIX="/opt/python-3.13"
+    # Build Python 3.13.2 from source. Two notes:
+    #   - 3.13.2 fixes the install-time ensurepip regression that crashed
+    #     3.13.0 with FileNotFoundError on a missing _WHEEL_PKG_DIR when
+    #     `make install` ran `./python -m ensurepip --root=/`. With 3.13.2
+    #     we can use the standard `--with-ensurepip=install` path and skip
+    #     a separate pip-bootstrap step (get-pip.py was itself crashing on
+    #     the freshly-built binary).
+    #   - We drop `--enable-optimizations`. PGO runs the full Python test
+    #     suite and any transient test failure (e.g. flaky network test)
+    #     can leave a half-functional binary. We don't need PGO speedups
+    #     for what an image-build VM does.
+    PY_VERSION="3.13.2"
     if [[ ! -f "$PYTHON_PREFIX/bin/python3.13" ]]; then
-        echo "Building Python 3.13 from source"
+        echo "Building Python ${PY_VERSION} from source"
         apt-get install -y make zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
             wget llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev liblzma-dev
         cd /tmp
-        curl -sSL https://www.python.org/ftp/python/3.13.0/Python-3.13.0.tgz -o Python-3.13.0.tgz
-        tar xzf Python-3.13.0.tgz
-        cd Python-3.13.0
-        # `--with-ensurepip=install` triggers a Python 3.13.0 regression where
-        # `make install` runs `./python -m ensurepip --root=/`, which crashes
-        # with FileNotFoundError on a missing _WHEEL_PKG_DIR. Build without
-        # ensurepip, then bootstrap pip via get-pip.py.
-        ./configure --prefix="$PYTHON_PREFIX" --enable-optimizations --with-ensurepip=no
+        curl -sSL "https://www.python.org/ftp/python/${PY_VERSION}/Python-${PY_VERSION}.tgz" \
+            -o "Python-${PY_VERSION}.tgz"
+        tar xzf "Python-${PY_VERSION}.tgz"
+        cd "Python-${PY_VERSION}"
+        ./configure --prefix="$PYTHON_PREFIX" --with-ensurepip=install
         make -j"$(nproc)"
         make install
-        rm -rf /tmp/Python-3.13.0*
-
-        # Bootstrap pip manually (since --with-ensurepip=no skipped it).
-        curl -sSL https://bootstrap.pypa.io/get-pip.py | "$PYTHON_PREFIX/bin/python3.13"
+        rm -rf "/tmp/Python-${PY_VERSION}"*
 
         ln -sf "$PYTHON_PREFIX/bin/python3.13" /usr/local/bin/python3.13
         ln -sf "$PYTHON_PREFIX/bin/python3" /usr/local/bin/python3
