@@ -145,11 +145,18 @@ if [[ "$VARIANT" == "gpu" ]]; then
         curl -sSL https://www.python.org/ftp/python/3.13.0/Python-3.13.0.tgz -o Python-3.13.0.tgz
         tar xzf Python-3.13.0.tgz
         cd Python-3.13.0
-        ./configure --prefix="$PYTHON_PREFIX" --enable-optimizations --with-ensurepip=install
+        # `--with-ensurepip=install` triggers a Python 3.13.0 regression where
+        # `make install` runs `./python -m ensurepip --root=/`, which crashes
+        # with FileNotFoundError on a missing _WHEEL_PKG_DIR. Build without
+        # ensurepip, then bootstrap pip via get-pip.py.
+        ./configure --prefix="$PYTHON_PREFIX" --enable-optimizations --with-ensurepip=no
         make -j"$(nproc)"
         make install
         rm -rf /tmp/Python-3.13.0*
-        "$PYTHON_PREFIX/bin/python3.13" -m ensurepip --upgrade
+
+        # Bootstrap pip manually (since --with-ensurepip=no skipped it).
+        curl -sSL https://bootstrap.pypa.io/get-pip.py | "$PYTHON_PREFIX/bin/python3.13"
+
         ln -sf "$PYTHON_PREFIX/bin/python3.13" /usr/local/bin/python3.13
         ln -sf "$PYTHON_PREFIX/bin/python3" /usr/local/bin/python3
         ln -sf "$PYTHON_PREFIX/bin/pip3" /usr/local/bin/pip3
