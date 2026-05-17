@@ -283,6 +283,16 @@ if [[ "$VARIANT" != "gpu" ]]; then
     usermod -aG docker runner
 fi
 
+# Many CI workflows install OS packages with `sudo apt-get …`. The legacy
+# GHA runner VMs had passwordless sudo for the runner user; without it,
+# steps like `sudo apt-get install -y google-cloud-cli-firestore-emulator`
+# in backend-emulator-tests fail with "a terminal is required to read the
+# password". Match the legacy behaviour.
+mkdir -p /etc/sudoers.d
+echo "runner ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/runner
+chmod 0440 /etc/sudoers.d/runner
+visudo -cf /etc/sudoers.d/runner
+
 # ==================== GitHub Actions runner binary ====================
 ck "phase: github actions runner binary"
 RUNNER_VERSION="2.332.0"

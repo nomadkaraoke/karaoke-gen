@@ -77,7 +77,9 @@ FAMILIES: dict[str, FamilySpec] = {
     "gpu": FamilySpec(
         name="gpu",
         machine_type="n1-standard-4",
-        disk_size_gb=150,
+        # GPU image bakes ~14GB of audio-separator models and is built on a
+        # 200GB boot disk, so the disk we create here must be >= 200GB.
+        disk_size_gb=200,
         image_family="gha-runner-gpu",
         extra_runner_labels=("x64", "gcp", "gpu"),
         has_gpu=True,
