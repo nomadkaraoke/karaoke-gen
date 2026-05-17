@@ -11,13 +11,47 @@
 
 set -euo pipefail
 
-# Redirect ALL output to the log file BEFORE any other work so even the
-# earliest failures leave a trace. The previous version put the variant
-# check *before* this redirect, which meant an empty VARIANT exited silently
-# with no log file at all — the build VM just sat idle while the GHA
-# workflow polling loop timed out.
+# Redirect ALL output to BOTH the on-VM log file AND the GCE serial console.
+# The serial console is readable via `gcloud compute instances
+# get-serial-port-output` with no SSH/IAP dependency, which is the only
+# diagnostic channel that has worked reliably for us when IAP tunnel issues
+# break SSH. Without this, a script crash mid-provision is invisible until
+# someone can get a working SSH session, which can take many retries.
 mkdir -p /var/log
-exec > >(tee /var/log/runner-image-provision.log) 2>&1
+# /dev/ttyS0 is the GCE serial console (read via `gcloud compute instances
+# get-serial-port-output --port=1`). Use a single tee with multiple targets
+# so a failure on one (e.g. ttyS0 unwritable in some test env) doesn't break
+# the other; tee will print an error and continue with the remaining files.
+exec > >(tee /var/log/runner-image-provision.log /dev/ttyS0 2>/dev/null) 2>&1
+
+# ERR trap: print the failed command and line number to stdout (which is
+# also serial-console-routed) so any non-zero exit leaves a clear marker.
+on_err() {
+    local rc=$?
+    local line=${BASH_LINENO[0]:-?}
+    local cmd="${BASH_COMMAND:-?}"
+    echo
+    echo "########################################################################"
+    echo "### runner-image-provision FAILED"
+    echo "###   exit=$rc  line=$line  cmd=$cmd"
+    echo "###   variant=${VARIANT:-?}  ts=$(date -u +%FT%TZ)"
+    echo "########################################################################"
+    # Drop a marker on disk so the GHA workflow can `gcloud compute scp`
+    # this back if SSH happens to work — but the serial console output
+    # above is the primary diagnostic.
+    printf '{"variant":"%s","rc":%d,"line":%s,"cmd":"%s","ts":"%s"}\n' \
+        "${VARIANT:-unknown}" "$rc" "$line" "${cmd//\"/\\\"}" "$(date -u +%FT%TZ)" \
+        > /opt/runner-image-failed 2>/dev/null || true
+}
+trap on_err ERR
+
+# Phase checkpoint helper — prominent on serial console.
+ck() {
+    echo
+    echo "================================================================"
+    echo "### runner-image: $*  ($(date -u +%FT%TZ))"
+    echo "================================================================"
+}
 
 # Resolve the variant in priority order:
 #   1. positional arg (interactive runs / tests)
@@ -41,11 +75,12 @@ case "$VARIANT" in
     *) echo "ERROR: unknown variant '$VARIANT'" >&2; exit 2 ;;
 esac
 
-echo "=== Runner image provision: variant=$VARIANT, started $(date -u +%FT%TZ) ==="
+ck "starting variant=$VARIANT"
 
 export DEBIAN_FRONTEND=noninteractive
 
 # ==================== Network ====================
+ck "phase: network (apt IPv4)"
 # Cloud NAT doesn't support IPv6 — force apt to IPv4 to avoid hangs.
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
@@ -67,6 +102,7 @@ retry() {
 }
 
 # ==================== Base packages (all variants) ====================
+ck "phase: apt base packages"
 apt-get update
 apt-get install -y \
     curl git jq unzip \
@@ -75,6 +111,7 @@ apt-get install -y \
 
 # ==================== Variant: GPU — kernel + NVIDIA + CUDA ====================
 if [[ "$VARIANT" == "gpu" ]]; then
+    ck "phase: gpu kernel + nvidia + cuda"
     RUNNING_KERNEL="$(uname -r)"
     REBOOT_FLAG="/var/lib/gpu-image-kernel-upgraded"
     echo "Running kernel: $RUNNING_KERNEL"
@@ -119,6 +156,7 @@ fi
 
 # ==================== Docker (general + build only) ====================
 if [[ "$VARIANT" != "gpu" ]]; then
+    ck "phase: docker"
     if ! command -v docker &>/dev/null; then
         echo "Installing Docker"
         install_gpg_key \
@@ -135,6 +173,7 @@ fi
 # ==================== Python 3.13 ====================
 # General/build: pyenv (consistent with current setup)
 # GPU: compile from source (pyenv unreliable on Debian 12 with CUDA installed)
+ck "phase: python 3.13"
 if [[ "$VARIANT" == "gpu" ]]; then
     PYTHON_PREFIX="/opt/python-3.13"
     if [[ ! -f "$PYTHON_PREFIX/bin/python3.13" ]]; then
@@ -184,6 +223,7 @@ fi
 
 # ==================== Node.js 20 + Java 21 (general/build only) ====================
 if [[ "$VARIANT" != "gpu" ]]; then
+    ck "phase: node 20 + java 21"
     if ! command -v node &>/dev/null || ! node --version | grep -q "^v20"; then
         echo "Installing Node.js 20"
         retry curl -fsSL --retry 3 --retry-delay 5 https://deb.nodesource.com/setup_20.x -o /tmp/nodesource.sh
@@ -205,6 +245,7 @@ if [[ "$VARIANT" != "gpu" ]]; then
 fi
 
 # ==================== FFmpeg (all variants) ====================
+ck "phase: ffmpeg"
 if [[ "$VARIANT" == "gpu" ]]; then
     apt-get install -y ffmpeg libsamplerate0 libsamplerate-dev
 else
@@ -212,6 +253,7 @@ else
 fi
 
 # ==================== Poetry + gcloud (all variants) ====================
+ck "phase: poetry + gcloud"
 if ! command -v poetry &>/dev/null; then
     echo "Installing Poetry"
     if [[ "$VARIANT" == "gpu" ]]; then
@@ -241,12 +283,14 @@ if ! command -v gcloud &>/dev/null; then
 fi
 
 # ==================== Runner user ====================
+ck "phase: runner user"
 useradd -m -s /bin/bash runner 2>/dev/null || true
 if [[ "$VARIANT" != "gpu" ]]; then
     usermod -aG docker runner
 fi
 
 # ==================== GitHub Actions runner binary ====================
+ck "phase: github actions runner binary"
 RUNNER_VERSION="2.332.0"
 RUNNER_DIR="/home/runner/actions-runner"
 mkdir -p "$RUNNER_DIR"
@@ -277,6 +321,7 @@ ln -sfn "$RUNNER_DIR" /opt/actions-runner
 
 # ==================== Docker base-image pre-pull (build variant only) ====================
 if [[ "$VARIANT" == "build" ]]; then
+    ck "phase: docker base-image pre-pull"
     echo "Pre-pulling Docker base images for deploy-backend"
     systemctl start docker
     # Image-build VM uses the gha-runner-image-builder@ SA which has artifactregistry.reader.
@@ -290,6 +335,7 @@ fi
 # ==================== Audio-separator models (GPU only) ====================
 # ~14GB of model weights baked into the image so jobs don't re-download.
 if [[ "$VARIANT" == "gpu" ]]; then
+    ck "phase: audio-separator models (~14GB)"
     MODEL_DIR="/opt/audio-separator-models"
     mkdir -p "$MODEL_DIR"
     BASE_URL="https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models"
@@ -373,6 +419,7 @@ if [[ "$VARIANT" == "gpu" ]]; then
 fi
 
 # ==================== Tool cache for setup-python action ====================
+ck "phase: tool cache for setup-python"
 # setup-python@v5 looks for prebuilt Python in $RUNNER_TOOL_CACHE/Python/<ver>/x64
 TOOL_CACHE="/home/runner/actions-runner/_work/_tool"
 mkdir -p "$TOOL_CACHE/Python/3.13.0/x64"
@@ -406,7 +453,7 @@ EOF
 fi
 
 # ==================== Cleanup before imaging ====================
-echo "Cleaning apt caches and journal logs to shrink image"
+ck "phase: cleanup before imaging"
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 journalctl --vacuum-time=1s 2>/dev/null || true
@@ -414,8 +461,10 @@ journalctl --vacuum-time=1s 2>/dev/null || true
 # Remove SSH host keys — regenerated on first boot of cloned VMs
 rm -f /etc/ssh/ssh_host_*
 
-# Mark image ready (the workflow polls for this file via gcloud ssh)
+# Mark image ready (the workflow polls for this file via gcloud ssh, but
+# the primary completion signal is now the "READY" line on the serial
+# console below).
 date -u +%FT%TZ > /opt/runner-image-ready
 echo "$VARIANT" > /opt/runner-image-variant
 
-echo "=== Runner image provision complete: variant=$VARIANT, finished $(date -u +%FT%TZ) ==="
+ck "READY: variant=$VARIANT  ts=$(date -u +%FT%TZ)"

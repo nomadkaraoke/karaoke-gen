@@ -141,41 +141,56 @@ jobs:
           PROJECT: ${{ env.GCP_PROJECT }}
         run: |
           set -uo pipefail
-          # Provisioning includes 14GB model download for GPU variant — be patient.
-          # The provision script writes /opt/runner-image-ready when complete.
-          # Tolerate transient SSH failures during the kernel-upgrade reboot.
+          # Read the serial console — NOT SSH — to detect completion.
           #
-          # Don't trust `gcloud compute ssh --command='test -f ...'` exit codes
-          # alone: under IAP tunnel load they can return 0 even when the remote
-          # command failed (witnessed 2026-05-16 — false-positive at 4 min on a
-          # provisioner that takes 25+ min). Instead, `cat` the marker file and
-          # check that the output is a non-empty ISO-8601 timestamp written by
-          # the provisioner's final step.
+          # The provisioner script tees its full output to /dev/ttyS0 (the GCE
+          # serial console). `gcloud compute instances get-serial-port-output`
+          # returns the full console buffer with zero SSH/IAP dependency. This
+          # makes the wait robust against the IAP tunnel issues that previously
+          # caused both false-positive readiness and false-negative timeouts.
+          #
+          # The script writes one of two distinctive marker lines:
+          #   "### runner-image: READY: ..."    — successful completion
+          #   "### runner-image-provision FAILED ..."  — fatal error (with line+rc)
+          #
+          # We also stream live progress to the GHA log so the operator can
+          # see what's happening without leaving the run page.
           deadline=$(( $(date +%s) + 75 * 60 ))
+          last_size=0
           attempt=0
           while (( $(date +%s) < deadline )); do
             attempt=$((attempt+1))
-            output=$(gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
-              --tunnel-through-iap --quiet \
-              --command='cat /opt/runner-image-ready /opt/runner-image-variant 2>/dev/null' \
-              2>/dev/null || true)
-            # Only the provisioner's final lines write to these files. A real
-            # ready signal starts with a 4-digit year (ISO-8601). Empty output
-            # means either the file doesn't exist yet or the SSH tunnel dropped.
-            if [[ "$output" =~ ^[0-9]{4}- ]]; then
-              echo "Image ready (attempt $attempt):"
-              echo "$output"
+            console=$(gcloud compute instances get-serial-port-output "$VM" \
+              --zone="$ZONE" --project="$PROJECT" --port=1 2>/dev/null || true)
+            cur_size=${#console}
+            # Stream new provisioner lines (filter syslog noise).
+            if (( cur_size > last_size )); then
+              echo "$console" | tail -c +$((last_size+1)) \
+                | grep -E "runner-image|### |Attempt " || true
+              last_size=$cur_size
+            fi
+            # Success marker
+            if echo "$console" | grep -qE 'runner-image: READY:'; then
+              echo
+              echo "### Image ready (attempt $attempt)"
+              echo "$console" | grep -E 'runner-image: READY:' | tail -1
               exit 0
             fi
-            echo "Attempt $attempt: not ready yet, sleeping 30s..."
+            # Failure marker
+            if echo "$console" | grep -qE 'runner-image-provision FAILED'; then
+              echo
+              echo "### Provisioner reported FAILURE — full failure block:" >&2
+              echo "$console" | grep -A 5 'runner-image-provision FAILED' | tail -20 >&2
+              exit 1
+            fi
             sleep 30
           done
-          echo "Timed out waiting for /opt/runner-image-ready" >&2
-          # Diagnostic — must NEVER fail the step (transient IAP errors here
-          # would otherwise hide the real timeout reason).
-          gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
-            --tunnel-through-iap --quiet \
-            --command='tail -200 /var/log/runner-image-provision.log' 2>&1 || true
+          echo
+          echo "### Timed out waiting for READY marker after 75 minutes" >&2
+          echo "### Last serial console output (tail):" >&2
+          gcloud compute instances get-serial-port-output "$VM" \
+            --zone="$ZONE" --project="$PROJECT" --port=1 2>/dev/null \
+            | grep -E "runner-image|### " | tail -50 >&2 || true
           exit 1
 
       - name: Stop build VM
