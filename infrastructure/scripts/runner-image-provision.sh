@@ -171,61 +171,31 @@ if [[ "$VARIANT" != "gpu" ]]; then
 fi
 
 # ==================== Python 3.13 ====================
-# General/build: pyenv (consistent with current setup)
-# GPU: compile from source (pyenv unreliable on Debian 12 with CUDA installed)
+# Use pyenv for ALL variants. Compiling Python 3.13 from source by hand
+# proved fragile (3.13.0 hit an install-time ensurepip bug; 3.13.2 without
+# --enable-optimizations produced a broken _socket extension that crashed
+# any urllib-using script with `SystemError: error return without exception
+# set`). pyenv has been hardened against these issues over many releases.
 ck "phase: python 3.13"
-if [[ "$VARIANT" == "gpu" ]]; then
-    PYTHON_PREFIX="/opt/python-3.13"
-    # Build Python 3.13.2 from source. Two notes:
-    #   - 3.13.2 fixes the install-time ensurepip regression that crashed
-    #     3.13.0 with FileNotFoundError on a missing _WHEEL_PKG_DIR when
-    #     `make install` ran `./python -m ensurepip --root=/`. With 3.13.2
-    #     we can use the standard `--with-ensurepip=install` path and skip
-    #     a separate pip-bootstrap step (get-pip.py was itself crashing on
-    #     the freshly-built binary).
-    #   - We drop `--enable-optimizations`. PGO runs the full Python test
-    #     suite and any transient test failure (e.g. flaky network test)
-    #     can leave a half-functional binary. We don't need PGO speedups
-    #     for what an image-build VM does.
-    PY_VERSION="3.13.2"
-    if [[ ! -f "$PYTHON_PREFIX/bin/python3.13" ]]; then
-        echo "Building Python ${PY_VERSION} from source"
-        apt-get install -y make zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-            wget llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev liblzma-dev
-        cd /tmp
-        curl -sSL "https://www.python.org/ftp/python/${PY_VERSION}/Python-${PY_VERSION}.tgz" \
-            -o "Python-${PY_VERSION}.tgz"
-        tar xzf "Python-${PY_VERSION}.tgz"
-        cd "Python-${PY_VERSION}"
-        ./configure --prefix="$PYTHON_PREFIX" --with-ensurepip=install
-        make -j"$(nproc)"
-        make install
-        rm -rf "/tmp/Python-${PY_VERSION}"*
-
-        ln -sf "$PYTHON_PREFIX/bin/python3.13" /usr/local/bin/python3.13
-        ln -sf "$PYTHON_PREFIX/bin/python3" /usr/local/bin/python3
-        ln -sf "$PYTHON_PREFIX/bin/pip3" /usr/local/bin/pip3
-    fi
-else
-    if [[ ! -f /opt/pyenv/versions/3.13.0/bin/python3.13 ]]; then
-        echo "Installing Python 3.13 via pyenv"
-        apt-get install -y make zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-            wget llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev liblzma-dev
-        [[ -d /opt/pyenv ]] || { export PYENV_ROOT=/opt/pyenv; curl https://pyenv.run | bash; }
-        export PATH="/opt/pyenv/bin:$PATH"
-        eval "$(/opt/pyenv/bin/pyenv init -)"
-        /opt/pyenv/bin/pyenv install 3.13.0
-        /opt/pyenv/bin/pyenv global 3.13.0
-        ln -sf /opt/pyenv/shims/python3.13 /usr/local/bin/python3.13
-        ln -sf /opt/pyenv/shims/python3 /usr/local/bin/python3
-        ln -sf /opt/pyenv/shims/pip3 /usr/local/bin/pip3
-    fi
-    cat > /etc/profile.d/pyenv.sh <<'EOF'
+if [[ ! -f /opt/pyenv/versions/3.13.0/bin/python3.13 ]]; then
+    echo "Installing Python 3.13 via pyenv"
+    apt-get install -y make zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
+        wget llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev liblzma-dev
+    [[ -d /opt/pyenv ]] || { export PYENV_ROOT=/opt/pyenv; curl https://pyenv.run | bash; }
+    export PATH="/opt/pyenv/bin:$PATH"
+    eval "$(/opt/pyenv/bin/pyenv init -)"
+    /opt/pyenv/bin/pyenv install 3.13.0
+    /opt/pyenv/bin/pyenv global 3.13.0
+    ln -sf /opt/pyenv/shims/python3.13 /usr/local/bin/python3.13
+    ln -sf /opt/pyenv/shims/python3 /usr/local/bin/python3
+    ln -sf /opt/pyenv/shims/pip3 /usr/local/bin/pip3
+fi
+PYTHON_PREFIX="/opt/pyenv/versions/3.13.0"
+cat > /etc/profile.d/pyenv.sh <<'EOF'
 export PYENV_ROOT=/opt/pyenv
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 EOF
-fi
 
 # ==================== Node.js 20 + Java 21 (general/build only) ====================
 if [[ "$VARIANT" != "gpu" ]]; then
@@ -262,15 +232,12 @@ fi
 ck "phase: poetry + gcloud"
 if ! command -v poetry &>/dev/null; then
     echo "Installing Poetry"
-    if [[ "$VARIANT" == "gpu" ]]; then
-        # Install to /opt/poetry so the runner user can access it (default ~/.local is /root)
-        export POETRY_HOME="/opt/poetry"
-        curl -sSL https://install.python-poetry.org | python3 -
-        ln -sf /opt/poetry/bin/poetry /usr/local/bin/poetry
-    else
-        curl -sSL https://install.python-poetry.org | python3 -
-        ln -sf /root/.local/bin/poetry /usr/local/bin/poetry
-    fi
+    # Install to /opt/poetry on every variant so the runner user can access
+    # poetry's binaries — /root/.local is mode 700 and shimming through there
+    # works only for jobs that run as root (we now have a runner user).
+    export POETRY_HOME="/opt/poetry"
+    curl -sSL https://install.python-poetry.org | python3 -
+    ln -sf /opt/poetry/bin/poetry /usr/local/bin/poetry
 fi
 
 if ! command -v gcloud &>/dev/null; then
@@ -429,13 +396,8 @@ ck "phase: tool cache for setup-python"
 # setup-python@v5 looks for prebuilt Python in $RUNNER_TOOL_CACHE/Python/<ver>/x64
 TOOL_CACHE="/home/runner/actions-runner/_work/_tool"
 mkdir -p "$TOOL_CACHE/Python/3.13.0/x64"
-if [[ "$VARIANT" == "gpu" ]]; then
-    PY_SRC="/opt/python-3.13"
-else
-    PY_SRC="/opt/pyenv/versions/3.13.0"
-fi
-if [[ -d "$PY_SRC" && ! -f "$TOOL_CACHE/Python/3.13.0/x64.complete" ]]; then
-    cp -r "$PY_SRC"/* "$TOOL_CACHE/Python/3.13.0/x64/"
+if [[ -d "$PYTHON_PREFIX" && ! -f "$TOOL_CACHE/Python/3.13.0/x64.complete" ]]; then
+    cp -r "$PYTHON_PREFIX"/* "$TOOL_CACHE/Python/3.13.0/x64/"
     (cd "$TOOL_CACHE/Python/3.13.0/x64/bin"; [[ -f python ]] || ln -s python3.13 python; [[ -f python3 ]] || ln -s python3.13 python3)
     touch "$TOOL_CACHE/Python/3.13.0/x64.complete"
 fi
