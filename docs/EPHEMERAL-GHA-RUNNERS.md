@@ -4,6 +4,166 @@ Operational runbook for the create-on-demand GHA runner dispatcher. Replaces
 the previous fixed pool of 7 long-lived VMs with single-use ephemeral VMs to
 eliminate ~$230/mo of always-billed pd-ssd boot disks.
 
+## STATUS — 2026-05-17
+
+**Cutover live.** `RUNNER_MODE=ephemeral` deployed on the `github-runner-manager`
+Cloud Function at 2026-05-17T04:56Z. Scheduler tick at 04:57:06 confirmed
+routing to "ephemeral mode orphan cleanup" with no errors. The 7 legacy
+runner VMs are still provisioned and in `TERMINATED` state — they cost only
+their pd-ssd boot disks (~$32/mo each = ~$224/mo) until Phase 4 deletes them
+after the 1-week soak.
+
+**Current images** (use `--image-family=gha-runner-<variant>` — GCE auto-selects newest):
+
+| Family | Latest image | Built |
+|---|---|---|
+| `gha-runner-general` | `gha-runner-general-20260517-040403` | 04:04 UTC |
+| `gha-runner-build` | `gha-runner-build-20260517-043133` | 04:31 UTC |
+| `gha-runner-gpu` | `gha-runner-gpu-20260517-033723` | 03:37 UTC |
+
+Old images (pre-poetry-fix) still in the families but auto-superseded.
+
+**PRs landed this session:** #765 (core), #766 (variant resolution), #767 (serial-console wait), #768 (gpu python — superseded), #769 (visibility), #770 (image-create + python 3.13.2 — superseded), #771 (gpu pyenv unification), #772 (apt-daily race).
+
+### Self-serve status check
+
+Paste this anytime to see the full picture:
+
+```bash
+echo "=== $(date -u +%FT%TZ) ===" && \
+echo && echo "--- Active workflow runs ---" && \
+gh run list --workflow=build-runner-images.yml --limit=3 && \
+echo && echo "--- Live VMs (build + smoke + ephemeral runners) ---" && \
+gcloud compute instances list --project=nomadkaraoke \
+  --filter='labels.purpose=gha-runner-image-builder OR labels.purpose=gha-runner-smoke OR labels.purpose=gha-ephemeral-runner' \
+  --format='table(name,status,creationTimestamp.date(),labels.purpose,labels.family)' && \
+echo && echo "--- READY images ---" && \
+gcloud compute images list --project=nomadkaraoke \
+  --filter='family~"^gha-runner-(general|build|gpu)$" AND status=READY' \
+  --format='table(name,family,creationTimestamp.date())' && \
+echo && echo "--- Dispatcher mode + recent log lines ---" && \
+gcloud functions describe github-runner-manager --gen2 --region=us-central1 \
+  --project=nomadkaraoke --format='value(serviceConfig.environmentVariables.RUNNER_MODE)' && \
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="github-runner-manager"' \
+  --project=nomadkaraoke --limit=10 --format='value(timestamp,textPayload)' --freshness=30m
+```
+
+To **watch the live console of any VM** (no SSH, works always):
+
+```bash
+gcloud compute instances get-serial-port-output <vm-name> \
+  --zone=us-central1-a --project=nomadkaraoke --port=1 \
+  | grep -E "runner-image|SMOKE-|###" | tail -50
+```
+
+## ⏰ Followups (1 week from cutover — 2026-05-24)
+
+If the dispatcher has been creating ephemeral VMs successfully and the
+monitoring alerts haven't fired, proceed with Phase 4 decommission:
+
+**1. Confirm no issues during the soak.** Run the status check above plus:
+```bash
+# Count successful ephemeral VM dispatches (should be ≥ number of CI runs in past week)
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="github-runner-manager" AND textPayload:"Dispatched ephemeral runner"' \
+  --project=nomadkaraoke --freshness=7d --format='value(timestamp)' | wc -l
+
+# Check the 2 alert policies weren't firing
+gcloud alpha monitoring policies list --project=nomadkaraoke \
+  --filter='displayName:"GHA Runner Dispatcher"' --format='value(displayName,enabled)'
+
+# Verify no long-lived ephemeral VMs
+gcloud compute instances list --project=nomadkaraoke \
+  --filter='labels.purpose=gha-ephemeral-runner' --format='table(name,status,creationTimestamp.date())'
+```
+
+**2. If everything looks clean, proceed with Phase 4** (delete the 7 legacy
+VMs and their pd-ssd boot disks — this is what unlocks the ~$220/mo saving):
+
+```bash
+cd karaoke-gen/infrastructure
+# Edit infrastructure/config.py:
+#   NUM_GITHUB_RUNNERS = 0
+#   NUM_GPU_RUNNERS = 0
+# Edit infrastructure/__main__.py: comment out / remove the three calls
+#   github_runners.create_github_runners(...)
+#   github_runners.create_build_runner(...)
+#   github_runners.create_gpu_runners(...)
+# Edit infrastructure/modules/runner_manager.py: remove the idle-check scheduler
+#   (no longer needed once ephemeral is the only mode).
+# Edit infrastructure/functions/runner_manager/main.py: remove the legacy
+#   start_runners / check_and_stop_idle_runners code paths and the
+#   RUNNER_MODE branching (keep webhook signature verification).
+pulumi up   # destructive — requires admin@ creds (claude-readonly blocks compute.instances.delete)
+
+# Verify legacy VMs and disks are gone
+gcloud compute instances list --filter="name~'github-(runner|gpu|build)'" --project=nomadkaraoke   # expect empty
+gcloud compute disks list --filter="users:'github-'" --project=nomadkaraoke   # expect empty
+```
+
+**3. If issues emerged during the soak, roll back instead:**
+```bash
+cd karaoke-gen/infrastructure
+unset GOOGLE_APPLICATION_CREDENTIALS   # use admin@ creds, not claude-readonly
+pulumi config set karaoke-gen-infrastructure:runnerMode legacy
+pulumi up --target 'urn:pulumi:prod::karaoke-gen-infrastructure::gcp:cloudfunctionsv2/function:Function::runner-manager-function'
+```
+Legacy VMs are still in Pulumi state and `TERMINATED`; the next workflow_job webhook will start them.
+
+## Iteration-cost lessons learned from this session
+
+Hard-won insights for the next person debugging GCE image builds:
+
+1. **Always stream the provisioner log to /dev/ttyS0 (GCE serial console).**
+   It's readable via `gcloud compute instances get-serial-port-output --port=1`
+   with zero SSH/IAP dependency. SSH-over-IAP turned out to be wildly
+   unreliable from a residential network — multiple iterations failed silently
+   because I couldn't see what was happening on the build VM. Solved by
+   `exec > >(tee /var/log/X.log /dev/ttyS0 2>/dev/null) 2>&1` at the top of the
+   script + an ERR trap that writes `### FAILED rc=N line=L cmd=...` to the
+   same channel. Wait steps poll the serial console for the marker, NOT SSH.
+
+2. **`gcloud compute ssh --command='test -f /file'` can lie under IAP load.**
+   Witnessed: false-positive marker detected at 4 min on a 25-min provisioner
+   because the SSH session closed before the remote command completed but the
+   exit code defaulted to 0. Trust **file content** (e.g., regex `^[0-9]{4}-`
+   against an ISO timestamp), not exit codes alone.
+
+3. **`gh run watch` aggressively polls the GitHub API and rate-limits quickly.**
+   Use `gcloud`-based polling (image presence, VM presence) for waits whenever
+   possible — they don't hit GitHub's quota.
+
+4. **Compiling Python from source on Debian 12 is fragile.** Python 3.13.0 has
+   an install-time ensurepip regression (`FileNotFoundError` on
+   `_WHEEL_PKG_DIR`). 3.13.2 fixes that but produces a broken `_socket` C
+   extension when `--enable-optimizations` is off. **Use pyenv for all variants
+   instead** — pyenv's build wrapper has hardening that the raw `make install`
+   path lacks.
+
+5. **Fresh Debian VMs have an apt-daily race.** `apt-daily.service` and
+   `apt-daily-upgrade.service` auto-start ~30s into boot and hold
+   `/var/lib/apt/lists/lock` + `/var/lib/dpkg/lock` for several minutes. Any
+   concurrent `apt-get` (especially `installdependencies.sh`) fails with
+   `E: Could not get lock`. **Stop+disable+mask both timers early in the
+   script**, then wait for the lock before doing anything apt-related.
+
+6. **Don't auto-name boot disks then try to extract the name via a format
+   selector.** I used `--format='value(disks[0].source.scope(disks).segment(1))'`
+   which silently returned empty in one run and broke `gcloud compute images
+   create --source-disk=`. The VM name == boot disk name by default; use it
+   directly.
+
+7. **Pulumi's `cloudfunctionsv2.Function` won't redeploy on source-bundle
+   change unless you pin the generation.** Replacing the `BucketObject` updates
+   GCS but doesn't trigger the function. Add
+   `generation=source_archive.generation` to `storage_source` so Pulumi sees
+   the change as a Function diff and redeploys.
+
+8. **Smoke-test as the actual production user.** Earlier smoke tests SSH'd as
+   the OS-login user, hit "permission denied" on the runner directory + docker
+   socket, and falsely reported failures. Production runs `sudo -u runner
+   ./run.sh ...`, so the smoke test must verify tools-as-runner. The v2 smoke
+   test uses startup-script + `sudo -iu runner` for this.
+
 ## High-level architecture
 
 ```
