@@ -451,6 +451,32 @@ def _vm_age_minutes(instance: compute_v1.Instance) -> float:
     return (datetime.now(timezone.utc) - created).total_seconds() / 60
 
 
+# Serial output captured before delete is capped — long boot logs from
+# multiple failed VMs could blow up Cloud Logging volume otherwise.
+_SERIAL_TAIL_BYTES = 50_000
+
+
+def _log_serial_tail(zone: str, name: str) -> None:
+    """Fetch and print the tail of the VM's serial console.
+
+    Called only when we're about to delete a VM that never registered as a
+    GHA runner — gives us a one-shot look at why STARTUP_SCRIPT failed
+    (`./run.sh --jitconfig` exit reason, network errors, etc.) without
+    requiring an Ops Agent on the image.
+    """
+    try:
+        out = get_compute_client().get_serial_port_output(
+            project=PROJECT_ID, zone=zone, instance=name, port=1
+        )
+        contents = out.contents or ""
+        tail = contents[-_SERIAL_TAIL_BYTES:]
+        print(f"--- serial console (last {len(tail)} bytes) for {name} ---")
+        print(tail)
+        print(f"--- end serial console for {name} ---")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Could not fetch serial output for {name}: {exc!r}")
+
+
 def _delete_vm(zone: str, name: str) -> tuple[str, str]:
     try:
         get_compute_client().delete(project=PROJECT_ID, zone=zone, instance=name)
@@ -498,6 +524,10 @@ def cleanup_orphans(pat: str) -> dict:
             print(
                 f"{instance.name}: age={age:.1f}min, no GHA runner registration — deleting"
             )
+            # Capture serial console output before deletion — the boot disk
+            # is auto-delete, so this is the only chance to see why
+            # STARTUP_SCRIPT exited without registering.
+            _log_serial_tail(zone, instance.name)
             to_delete.append((zone, instance.name))
         else:
             result["kept_vms"].append(instance.name)
