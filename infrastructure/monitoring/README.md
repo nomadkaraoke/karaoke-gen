@@ -154,8 +154,20 @@ curl -sS -X POST -d '{}' \
   "https://monitoring.googleapis.com/v3/projects/nomadkaraoke/notificationChannels/${CHANNEL_ID}:sendVerificationCode"
 ```
 
-The verification email arrives within a minute or two. Click the link, then
-confirm:
+The email arrives within a minute or two. Subject is something like
+"Verify your email address for Google Cloud Alerting" and the body contains
+a code in the form `G-NNNNNN` plus a clickable link. Either path completes
+the verification — clicking the link is simplest, or POST the code to
+`:verify`:
+
+```bash
+curl -sS -X POST -d '{"code":"G-NNNNNN"}' \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  "https://monitoring.googleapis.com/v3/projects/nomadkaraoke/notificationChannels/${CHANNEL_ID}:verify"
+```
+
+Confirm afterwards:
 
 ```bash
 curl -sS -H "Authorization: Bearer $(gcloud auth print-access-token)" \
@@ -163,10 +175,10 @@ curl -sS -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   | python3 -c "import json,sys; print(json.load(sys.stdin).get('verificationStatus','(missing)'))"
 ```
 
-Expected output: `VERIFIED`. Until then, `gcloud alpha monitoring channels list
---format='table(...,verificationStatus,...)'` returns an empty
-`verificationStatus` column (which is itself a tell — verified channels
-populate the field).
+Expected output: `VERIFIED`. Until that's true, `gcloud alpha monitoring
+channels list --format='table(...,verificationStatus,...)'` returns an
+empty `verificationStatus` column (which is itself a tell — verified
+channels populate the field).
 
 ### Adding a second channel (e.g. Discord)
 
