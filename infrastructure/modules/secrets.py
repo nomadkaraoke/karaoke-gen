@@ -27,11 +27,6 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         "stripe-secret-key",
         "stripe-webhook-secret",
         "postmark-server-token",
-        # DEPRECATED: SendGrid was retired 2026-05. Kept in Pulumi state so the
-        # GCP Secret + versions are not destroyed by an unrelated `pulumi up`.
-        # Delete manually with `gcloud secrets delete sendgrid-api-key` once
-        # nothing references it, then remove this entry.
-        "sendgrid-api-key",
 
         # Observability (Langfuse for LLM tracing)
         "langfuse-public-key",
