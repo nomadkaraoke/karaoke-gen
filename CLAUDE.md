@@ -102,8 +102,10 @@ See `docs/TESTING.md` § "Ad-Hoc Production Debugging" for full details.
 - All user-facing strings live in `frontend/messages/{locale}.json` (33 locales), NOT in components
 - Backend strings live in `backend/translations/{locale}.json` (currently 3 locales: en, es, de)
 - Components use `useTranslations('namespace')` from next-intl
-- Pages are under `frontend/src/app/[locale]/` — locale-aware routing
-- Admin pages (under `/admin/`, `/app/`) use DefaultIntlProvider (English-only, excluded from i18n)
+- Pages are under `frontend/app/[locale]/` — locale-aware routing (customer-facing: `/`, `/app/*`, `/order/*`, `/auth/*`, `/payment/*`, `/r/*`)
+- Non-locale routes at those same paths (e.g. `frontend/app/app/jobs/[[...slug]]/page.tsx`) are `<LocaleRedirect />` shims that redirect into `[locale]` — they are NOT English-only surfaces
+- The `/app/jobs/#/{id}/review`, `/instrumental`, and `/audio-edit` review UIs are fully multilingual (components under `components/lyrics-review/`, `components/instrumental-review/`, `components/audio-editor/` use `useTranslations` heavily)
+- Only `/admin/*` is English-only — it has no `[locale]/admin` counterpart and inherits `DefaultIntlProvider` from the root layout
 - Internal links use `Link` from `@/i18n/routing` (locale-aware)
 - After adding/changing English strings: `python frontend/scripts/translate.py --messages-dir frontend/messages --target all`
 - Translation uses Gemini 3.1 Pro via Vertex AI with GCS cache for efficiency
