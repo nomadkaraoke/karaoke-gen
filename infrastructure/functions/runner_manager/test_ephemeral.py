@@ -315,10 +315,15 @@ class TestCleanupOrphans:
 
         with self._patch_listing(ep, vms), patch.object(
             ep, "list_org_runners", return_value=runners
-        ), patch.object(ep, "_delete_vm", return_value=("gha-general-stuck", "deleted")):
+        ), patch.object(
+            ep, "_delete_vm", return_value=("gha-general-stuck", "deleted")
+        ), patch.object(ep, "_log_serial_tail") as serial_mock:
             result = ep.cleanup_orphans("ghp_test")
 
         assert "gha-general-stuck" in result["deleted_vms"]
+        # Registration-failure deletes must capture serial output so we can
+        # diagnose why STARTUP_SCRIPT exited without registering.
+        serial_mock.assert_called_once_with("us-central1-a", "gha-general-stuck")
 
     def test_deletes_hung_vm_even_when_registered(self):
         ep = _fresh_module()
@@ -327,10 +332,15 @@ class TestCleanupOrphans:
 
         with self._patch_listing(ep, vms), patch.object(
             ep, "list_org_runners", return_value=runners
-        ), patch.object(ep, "_delete_vm", return_value=("gha-general-hung", "deleted")):
+        ), patch.object(
+            ep, "_delete_vm", return_value=("gha-general-hung", "deleted")
+        ), patch.object(ep, "_log_serial_tail") as serial_mock:
             result = ep.cleanup_orphans("ghp_test")
 
         assert "gha-general-hung" in result["deleted_vms"]
+        # Hung-after-registration is a different failure mode; serial dump
+        # would mostly be runner job output, which is already in GHA logs.
+        serial_mock.assert_not_called()
 
     def test_keeps_active_running_vm(self):
         ep = _fresh_module()
@@ -374,11 +384,42 @@ class TestCleanupOrphans:
             ep, "list_org_runners", return_value=runners
         ), patch.object(
             ep, "_delete_vm", return_value=("gha-general-stuck", "delete_failed")
-        ):
+        ), patch.object(ep, "_log_serial_tail"):
             result = ep.cleanup_orphans("ghp_test")
 
         assert "gha-general-stuck" in result["delete_failed"]
         assert "gha-general-stuck" not in result["deleted_vms"]
+
+
+class TestLogSerialTail:
+    """Serial console capture is best-effort and must never block the delete."""
+
+    def test_prints_tail_of_serial_output(self, capsys):
+        ep = _fresh_module()
+        long_log = "x" * 200_000  # bigger than the 50_000-byte cap
+        fake_output = MagicMock(contents=long_log)
+        fake_client = MagicMock()
+        fake_client.get_serial_port_output.return_value = fake_output
+
+        with patch.object(ep, "get_compute_client", return_value=fake_client):
+            ep._log_serial_tail("us-central1-a", "gha-gpu-abc")
+
+        captured = capsys.readouterr().out
+        assert "serial console (last 50000 bytes) for gha-gpu-abc" in captured
+        assert "end serial console for gha-gpu-abc" in captured
+        # Tail was truncated, not the full log
+        assert len(captured) < 200_000
+
+    def test_swallows_fetch_errors(self, capsys):
+        ep = _fresh_module()
+        fake_client = MagicMock()
+        fake_client.get_serial_port_output.side_effect = Exception("permission denied")
+
+        with patch.object(ep, "get_compute_client", return_value=fake_client):
+            # Must not raise — cleanup path depends on this being best-effort
+            ep._log_serial_tail("us-central1-a", "gha-gpu-xyz")
+
+        assert "Could not fetch serial output for gha-gpu-xyz" in capsys.readouterr().out
 
 
 class TestStartupScript:
