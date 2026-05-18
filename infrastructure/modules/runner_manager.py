@@ -1,23 +1,21 @@
 """
-GitHub Actions Runner Manager - Auto-start and auto-stop self-hosted runners.
+GitHub Actions Runner Manager - Ephemeral runner dispatcher.
 
-Creates infrastructure to automatically manage runner lifecycle:
-1. Cloud Function (Gen2) - Handles GitHub webhooks and idle checks
-2. Cloud Scheduler - Triggers idle checks every 15 minutes
-3. IAM bindings - Permissions to start/stop Compute Engine instances
+Creates the infrastructure that turns a `workflow_job.queued` GitHub webhook
+into a single-use GCE VM via JIT registration, plus a scheduled orphan-cleanup
+pass:
 
-Architecture:
-- GitHub sends workflow_job webhooks to the Cloud Function
-- When a job is queued, the function starts any TERMINATED runner VMs
-- Cloud Scheduler triggers idle checks every 15 minutes
-- If no jobs are pending and runners have been idle, they're stopped
+1. Cloud Function (Gen2) — webhook entry point + scheduler entry point
+2. Cloud Scheduler — invokes the cleanup pass every 15 minutes
+3. IAM bindings — permissions to create/delete Compute Engine instances and
+   read the webhook secret + GitHub PAT from Secret Manager
 
-Manual Setup Required:
-1. Create a webhook secret:
+Manual setup required (one-time):
+1. Create the webhook secret:
    python -c "import secrets; print(secrets.token_hex(32))" | \
      gcloud secrets versions add github-webhook-secret --data-file=-
 
-2. Configure GitHub org webhook at:
+2. Configure the GitHub org webhook at:
    https://github.com/organizations/nomadkaraoke/settings/hooks
    - Payload URL: <Cloud Function URL from pulumi output>
    - Content type: application/json
@@ -40,17 +38,9 @@ from config import (
 )
 
 
-# Read at module load — controls dispatcher behaviour.
-# Set via: pulumi config set karaoke-backend:runnerMode ephemeral
-_pulumi_config = pulumi.Config()
-RUNNER_MODE = _pulumi_config.get("runnerMode", "legacy")
-if RUNNER_MODE not in ("legacy", "ephemeral"):
-    raise ValueError(
-        f"karaoke-backend:runnerMode must be 'legacy' or 'ephemeral', got {RUNNER_MODE!r}"
-    )
-
 # Optional fallback zone for ephemeral GPU runners when the primary zone is
 # exhausted. Default us-east4-c — uses ephemeral external IPs (no NAT there).
+_pulumi_config = pulumi.Config()
 RUNNER_FALLBACK_ZONE = _pulumi_config.get("runnerFallbackZone", "us-east4-c")
 
 
@@ -152,8 +142,6 @@ def create_cloud_function(
     bucket: gcp.storage.Bucket,
     source_archive: gcp.storage.BucketObject,
     permissions: dict,
-    runner_names: list[pulumi.Output] | None = None,
-    gpu_runner_names: list[pulumi.Output] | None = None,
     runner_service_account: gcp.serviceaccount.Account | None = None,
 ) -> gcp.cloudfunctionsv2.Function:
     """Create the Cloud Function (Gen2) for runner management."""
@@ -163,25 +151,12 @@ def create_cloud_function(
         "GCP_FALLBACK_ZONE": RUNNER_FALLBACK_ZONE,
         "WEBHOOK_SECRET_NAME": SecretNames.GITHUB_WEBHOOK_SECRET,
         "RUNNER_PAT_SECRET_NAME": SecretNames.GITHUB_RUNNER_PAT,
-        "IDLE_TIMEOUT_HOURS": str(RunnerManagerConfig.IDLE_TIMEOUT_HOURS),
-        "RUNNER_MODE": RUNNER_MODE,
         "GITHUB_ORG": "nomadkaraoke",
     }
 
     # Service account used by ephemeral VMs at runtime (gcloud auth + secret reads).
-    # Required when RUNNER_MODE=ephemeral; harmless otherwise.
     if runner_service_account is not None:
         env_vars["RUNNER_SERVICE_ACCOUNT"] = runner_service_account.email
-
-    if runner_names:
-        env_vars["RUNNER_NAMES"] = pulumi.Output.all(*runner_names).apply(
-            lambda names: ",".join(names)
-        )
-
-    if gpu_runner_names:
-        env_vars["GPU_RUNNER_NAMES"] = pulumi.Output.all(*gpu_runner_names).apply(
-            lambda names: ",".join(names)
-        )
 
     return gcp.cloudfunctionsv2.Function(
         "runner-manager-function",
@@ -266,11 +241,17 @@ def create_idle_check_scheduler(
     scheduler_sa: gcp.serviceaccount.Account,
     function: gcp.cloudfunctionsv2.Function,
 ) -> gcp.cloudscheduler.Job:
-    """Create Cloud Scheduler job for idle runner checks."""
+    """Create the Cloud Scheduler job that drives the orphan-cleanup pass.
+
+    The resource name + ``?action=check_idle`` query parameter are preserved
+    from the original legacy-mode behaviour so Pulumi doesn't recreate the job
+    (and so the Cloud Function keeps routing the request). The function now
+    interprets every scheduler tick as an orphan-cleanup invocation.
+    """
     return gcp.cloudscheduler.Job(
         "runner-manager-idle-check",
         name="runner-manager-idle-check",
-        description="Triggers idle check for GitHub Actions runners every 15 minutes",
+        description="Triggers orphan-cleanup pass for ephemeral GHA runner VMs every 15 minutes",
         schedule=RunnerManagerConfig.IDLE_CHECK_SCHEDULE,
         time_zone="UTC",
         region=REGION,
@@ -296,8 +277,6 @@ def create_idle_check_scheduler(
 def create_runner_manager_resources(
     webhook_secret: gcp.secretmanager.Secret,
     pat_secret: gcp.secretmanager.Secret,
-    runner_names: list[pulumi.Output] | None = None,
-    gpu_runner_names: list[pulumi.Output] | None = None,
     runner_service_account: gcp.serviceaccount.Account | None = None,
 ) -> dict:
     """
@@ -306,8 +285,6 @@ def create_runner_manager_resources(
     Args:
         webhook_secret: The webhook secret for signature verification.
         pat_secret: The GitHub PAT secret for API calls.
-        runner_names: List of Pulumi Output VM names for the runner manager to track.
-        gpu_runner_names: Subset of runner_names that are GPU runners (started only for GPU jobs).
         runner_service_account: The SA that runner VMs run as (for IAM binding).
 
     Returns:
@@ -335,8 +312,6 @@ def create_runner_manager_resources(
         bucket,
         source_archive,
         permissions,
-        runner_names,
-        gpu_runner_names,
         runner_service_account=runner_service_account,
     )
 

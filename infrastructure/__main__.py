@@ -560,8 +560,6 @@ github_runners_router, github_runners_nat = github_runners.create_cloud_nat()
 runner_manager_resources = runner_manager.create_runner_manager_resources(
     all_secrets["github-webhook-secret"],
     all_secrets["github-runner-pat"],
-    runner_names=[],
-    gpu_runner_names=[],
     runner_service_account=github_runner_sa,
 )
 
