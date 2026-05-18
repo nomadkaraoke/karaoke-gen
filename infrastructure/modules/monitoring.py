@@ -253,7 +253,10 @@ def create_ephemeral_runner_observability() -> dict:
                 "- Both primary and fallback zones exhausted\n\n"
                 "Logs: filter `resource.labels.service_name=\"github-runner-manager\"` "
                 "in Cloud Logging for `create_ephemeral_runner failed`.\n\n"
-                "Rollback: `pulumi config set karaoke-gen-infrastructure:runnerMode legacy && pulumi up`"
+                "Rollback: not possible from this alert — Phase 4 deleted the "
+                "legacy long-lived VMs (PR #780). Recovery requires either "
+                "fixing the failure mode or recreating the legacy pool from "
+                "git history."
             ),
             mime_type="text/markdown",
         ),

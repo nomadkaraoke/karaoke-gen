@@ -103,13 +103,13 @@ GDRIVE_FOLDER_ID = "1laRKAyxo0v817SstfM5XkpbWiNKNAMSX"
 
 
 class RunnerManagerConfig:
-    """Configuration for GitHub runner auto-start/stop management."""
-    # Auto-scales runners: starts on CI demand, stops after idle timeout
+    """Configuration for the ephemeral GHA runner dispatcher Cloud Function."""
 
     FUNCTION_NAME = "github-runner-manager"
     FUNCTION_MEMORY = "512M"  # Increased from 256M due to memory usage
     FUNCTION_TIMEOUT = 300  # 5 minutes
-    IDLE_TIMEOUT_HOURS = 0.25  # 15 minutes — solo dev, runners stop at next scheduler check
+    # Scheduler cadence for the orphan-cleanup pass (reconciles ephemeral VMs
+    # against org-runner registrations, deletes stragglers).
     IDLE_CHECK_SCHEDULE = "*/15 * * * *"  # Every 15 minutes
 
 

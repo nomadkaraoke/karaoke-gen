@@ -364,12 +364,10 @@ class TestSchedulerAuthGate:
         for mod in ("main", "ephemeral"):
             sys.modules.pop(mod, None)
         base_env = {
-            "RUNNER_MODE": env.pop("RUNNER_MODE", "ephemeral"),
             "GCP_PROJECT": "test-project",
             "GCP_ZONE": "us-central1-a",
             "GCP_FALLBACK_ZONE": "us-east4-c",
             "GITHUB_ORG": "test-org",
-            "RUNNER_NAMES": "runner-1,runner-2",
             **env,
         }
         with patch.dict(os.environ, base_env, clear=False):
@@ -401,14 +399,18 @@ class TestSchedulerAuthGate:
         body, status = main.handle_request(req)
         assert status == 403
 
-    def test_scheduler_with_bearer_token_dispatches(self):
-        main = self._import_main(RUNNER_MODE="legacy")
+    def test_scheduler_with_bearer_token_dispatches_orphan_cleanup(self):
+        main = self._import_main()
         req = self._request(
             action="check_idle",
             headers={"Authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImFiYwoxMjM"},
         )
-        # Patch the legacy implementation to confirm we reached it.
-        with patch.object(main, "check_and_stop_idle_runners", return_value={"stopped": [], "kept": []}) as fn:
+        # The scheduler tick now always routes to orphan cleanup — verify
+        # ephemeral.cleanup_orphans is the call target. Patching by import
+        # path because main imports ephemeral lazily inside the handler.
+        import ephemeral
+
+        with patch.object(ephemeral, "cleanup_orphans", return_value={"deleted_vms": [], "kept_vms": []}) as fn:
             result = main.handle_request(req)
         fn.assert_called_once()
         # response shape: (body, status, headers)
