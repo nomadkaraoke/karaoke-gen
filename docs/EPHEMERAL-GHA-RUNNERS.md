@@ -344,7 +344,7 @@ After apply, `RUNNER_MODE` is still `legacy` — no behavioural change yet.
 
 4. Monitor the new alert policies for a week before Phase 4:
    - `GHA Runner Dispatcher - Create Failures` (any failure = page)
-   - `GHA Runner Dispatcher - VM Alive > 2h` (orphan cleanup didn't work)
+   - `GHA Runner Dispatcher - VM Alive > 2h30m` (orphan cleanup didn't work)
 
 **Rollback:** `pulumi config set karaoke-gen-infrastructure:runnerMode legacy && pulumi up --target ...:runner-manager-function`.
 Legacy VMs are still in Pulumi state; the next workflow_job webhook will

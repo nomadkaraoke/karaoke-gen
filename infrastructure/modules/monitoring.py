@@ -223,7 +223,7 @@ def create_ephemeral_runner_observability(
 
     1. Dispatcher VM-create failures (the dispatcher returns 503 + logs
        ``create_ephemeral_runner failed`` — any occurrence in 10 min fires).
-    2. Long-running ephemeral runner VMs (uptime > 2 h on instances labelled
+    2. Long-running ephemeral runner VMs (uptime > 2h30m on instances labelled
        ``purpose=gha-ephemeral-runner`` — catches hung jobs or cleanup bugs).
     """
     notification_channels = _channel_names(channels)
@@ -321,17 +321,24 @@ def create_ephemeral_runner_observability(
         opts=pulumi.ResourceOptions(depends_on=[resources["dispatch_failure_metric"]]),
     )
 
-    # ---- Alert: ephemeral VM uptime > 2h -----------------------------------
+    # ---- Alert: ephemeral VM uptime > 2h30m --------------------------------
     # `compute.googleapis.com/instance/uptime_total` is a cumulative count of
-    # seconds the VM has been up. We alert when it exceeds 7200s for VMs
-    # carrying the ephemeral-runner purpose label.
+    # seconds the VM has been up. The orphan-cleanup pass kills VMs at
+    # MAX_VM_LIFETIME_MINUTES=120 on a 15-min scheduler tick, so worst-case
+    # lifetime is ~135min. ALIGN_MAX over a 5-min window plus the 300s
+    # duration means a threshold of exactly 7200s fires on every normal
+    # cleanup (the window containing the pre-delete sample still reports
+    # max>threshold for 5min after the VM is gone). Threshold set to 9000s
+    # (150min = worst-case + 15min buffer) so this alert only fires when
+    # cleanup is genuinely broken, not on routine cleanups that land within
+    # the expected window.
     resources["long_lived_vm_alert"] = gcp.monitoring.AlertPolicy(
         "runner-dispatcher-long-lived-vm-alert",
-        display_name="GHA Runner Dispatcher - VM Alive > 2h",
+        display_name="GHA Runner Dispatcher - VM Alive > 2h30m",
         combiner="OR",
         conditions=[
             gcp.monitoring.AlertPolicyConditionArgs(
-                display_name="Ephemeral runner VM uptime > 2h",
+                display_name="Ephemeral runner VM uptime > 2h30m",
                 condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
                     filter=(
                         'metric.type="compute.googleapis.com/instance/uptime_total" '
@@ -339,7 +346,7 @@ def create_ephemeral_runner_observability(
                         'AND metadata.user_labels.purpose="gha-ephemeral-runner"'
                     ),
                     comparison="COMPARISON_GT",
-                    threshold_value=7200,
+                    threshold_value=9000,
                     duration="300s",
                     aggregations=[
                         gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
@@ -356,13 +363,15 @@ def create_ephemeral_runner_observability(
             ),
         ],
         alert_strategy=gcp.monitoring.AlertPolicyAlertStrategyArgs(
-            auto_close="3600s",
+            auto_close="600s",
         ),
         documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
             content=(
-                "An ephemeral GHA runner VM has been alive for more than 2 hours.\n"
-                "Orphan-cleanup should kill VMs at that threshold — if this fires,\n"
-                "the cleanup pass is broken or the VM is escaping it.\n\n"
+                "An ephemeral GHA runner VM has been alive for more than 2h30m.\n"
+                "Orphan-cleanup should kill VMs at MAX_VM_LIFETIME_MINUTES (120)\n"
+                "on a 15-min scheduler tick — worst-case lifetime is ~135min.\n"
+                "If this alert fires, the cleanup pass is broken or the VM is\n"
+                "escaping it.\n\n"
                 "Investigate:\n"
                 "1. `gcloud compute instances list --filter=labels.purpose=gha-ephemeral-runner`\n"
                 "2. Check Cloud Function logs for the cleanup pass\n"
