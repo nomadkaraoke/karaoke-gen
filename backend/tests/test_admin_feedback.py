@@ -319,7 +319,7 @@ class TestSubmitFeedbackEmailIntegration:
 
         # Email service throws an exception
         mock_email_svc = Mock()
-        mock_email_svc.send_feedback_notification.side_effect = Exception("SendGrid down")
+        mock_email_svc.send_feedback_notification.side_effect = Exception("Postmark down")
         mock_get_email.return_value = mock_email_svc
 
         mock_user_svc = Mock()

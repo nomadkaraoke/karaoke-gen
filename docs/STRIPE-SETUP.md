@@ -83,19 +83,20 @@ Without this setting, checkout sessions will only show basic payment methods (ca
 
 The CI workflow (`.github/workflows/ci.yml`) automatically injects these secrets during deployment. No manual `gcloud` commands needed - just add the secret values to Secret Manager (step 2) and the next backend deployment will pick them up.
 
-## 5. Configure Email Service (SendGrid)
+## 5. Configure Email Service (Postmark)
 
 For sending magic link and purchase confirmation emails:
 
-1. Sign up for SendGrid: https://sendgrid.com
-2. Create an API key with "Mail Send" permissions
-3. Store it in Secret Manager (secret container created by Pulumi):
+1. Sign up for Postmark: https://postmarkapp.com
+2. Verify a sender signature or domain for `nomadkaraoke.com`
+3. Create a server and copy its Server API Token
+4. Store it in Secret Manager (secret container created by Pulumi):
 
 ```bash
-echo -n "SG.your_sendgrid_api_key" | gcloud secrets versions add sendgrid-api-key --data-file=-
+echo -n "your_postmark_server_token" | gcloud secrets versions add postmark-server-token --data-file=-
 ```
 
-4. The environment variables are configured in the Cloud Run deployment. Defaults:
+5. The environment variables are configured in the Cloud Run deployment. Defaults:
    - `EMAIL_FROM=gen@nomadkaraoke.com`
    - `EMAIL_FROM_NAME=Nomad Karaoke`
 
@@ -182,9 +183,9 @@ curl https://api.nomadkaraoke.com/api/users/admin/users \
 
 ### Email Not Sending
 
-1. Verify SendGrid API key is valid
-2. Check sender email is verified in SendGrid
-3. Review SendGrid activity logs
+1. Verify Postmark server token is valid
+2. Check sender email/domain is verified in Postmark
+3. Review Postmark activity logs (Messages → Outbound) for suppressions or hard bounces
 
 ## Security Considerations
 

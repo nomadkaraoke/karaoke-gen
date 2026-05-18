@@ -38,7 +38,7 @@ The validator checks:
 │ gcloud functions │              │             │
 │ call (manual)    │─────────→    ▼             ▼
 └──────────────────┘       ┌───────────┐ ┌────────────┐
-                           │ SendGrid  │ │ Pushbullet │
+                           │ Postmark  │ │ Pushbullet │
                            │ (primary) │ │ (fallback) │
                            └───────────┘ └────────────┘
 ```
@@ -55,7 +55,7 @@ The validator checks:
 
 Notifications are sent via **both** channels (belt + suspenders):
 
-1. **SendGrid email** (primary) - Sent to `gen@nomadkaraoke.com`. Provides a persistent, searchable record.
+1. **Postmark email** (primary) - Sent to `gen@nomadkaraoke.com`. Provides a persistent, searchable record.
 2. **Pushbullet** (fallback) - Push notification for immediate visibility.
 
 Notifications are sent when:
@@ -95,7 +95,7 @@ Notifications are sent when:
 
 | Secret | Source | Description |
 |--------|--------|-------------|
-| `SENDGRID_API_KEY` | `sendgrid-api-key:latest` | SendGrid API key for email |
+| `POSTMARK_SERVER_TOKEN` | `postmark-server-token:latest` | Postmark server token for email |
 | `PUSHBULLET_API_KEY` | `pushbullet-api-key:latest` | Pushbullet API key for push notifications |
 
 ### Secrets (Backend / Cloud Run)
@@ -158,15 +158,15 @@ Note: `deploy.sh` deploys the source code. Pulumi manages the infrastructure (en
 
 ### Email Not Received
 
-1. Check Cloud Function logs for SendGrid errors:
+1. Check Cloud Function logs for Postmark errors:
    ```bash
    gcloud functions logs read gdrive-validator --region=us-central1 --limit=20
    ```
-2. Verify the SendGrid API key is set:
+2. Verify the Postmark server token is set:
    ```bash
-   gcloud secrets versions access latest --secret=sendgrid-api-key --project=nomadkaraoke | head -c 10
+   gcloud secrets versions access latest --secret=postmark-server-token --project=nomadkaraoke | head -c 10
    ```
-3. Check SendGrid dashboard for delivery status
+3. Check Postmark dashboard (Messages → Outbound) for delivery status
 4. Pushbullet should still work as fallback
 
 ### Post-Job Trigger Not Firing

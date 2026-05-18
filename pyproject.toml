@@ -100,7 +100,6 @@ python-dotenv = ">=1.0.0"
 pydub = ">=0.25.1"
 # Payment and email services
 stripe = "^14.1.0"
-sendgrid = ">=6.10.0"
 email-validator = ">=2.0.0"  # For Pydantic EmailStr validation
 # Web Push notifications
 pywebpush = ">=2.0.0"

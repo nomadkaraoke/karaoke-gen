@@ -193,7 +193,7 @@ LyricsTranscriber                 LyricsTranscriber
 | Genius | Reference lyrics | Yes |
 | Flacfetch | Audio downloads (YouTube, torrents) | Recommended* |
 | YouTube API | Video upload | Optional |
-| SendGrid | Email notifications | Optional |
+| Postmark | Email notifications | Optional |
 | Cloud Tasks | Delayed task scheduling (idle reminders, YouTube queue) | Optional |
 | Cloud Scheduler | Hourly YouTube upload queue processing | Optional |
 | Cloud Monitoring | Cross-reference YouTube API quota consumption from GCP metrics | Optional |
@@ -326,7 +326,7 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 | `local_encoding_service.py` | FFmpeg encoding (Cloud Run) |
 | `encoding_interface.py` | Abstract interface + GCE backend |
 | `video_worker_orchestrator.py` | Stage coordination |
-| `email_service.py` | SendGrid email delivery with CC support |
+| `email_service.py` | Postmark email delivery with CC support |
 | `template_service.py` | GCS-backed email templates |
 | `job_notification_service.py` | Email orchestration (completion, reminders) |
 | `audio_transcoding_service.py` | Transcode FLAC → OGG Opus for review UI playback |
@@ -615,6 +615,6 @@ The frontend's `TenantProvider` reads `window.__TENANT_CONFIG__` on startup (no 
 - **Secrets**: Google Secret Manager
 - **Task Queues**: Cloud Tasks (idle reminders, YouTube upload queue)
 - **Scheduling**: Cloud Scheduler (hourly YouTube queue processing)
-- **Email**: SendGrid
+- **Email**: Postmark
 - **IaC**: Pulumi
 - **CI/CD**: GitHub Actions

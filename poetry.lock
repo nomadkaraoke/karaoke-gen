@@ -4741,7 +4741,7 @@ files = [
 numpy = [
     {version = ">=2.1.0", markers = "python_version >= \"3.13\""},
     {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
-    {version = ">=1.23.3", markers = "python_version >= \"3.11\""},
+    {version = ">=1.23.3", markers = "python_version == \"3.11\""},
     {version = ">=1.21.2", markers = "python_version >= \"3.10\""},
 ]
 
@@ -7395,18 +7395,6 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
-name = "python-http-client"
-version = "3.3.7"
-description = "HTTP REST client, simplified for Python"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-groups = ["main"]
-files = [
-    {file = "python_http_client-3.3.7-py3-none-any.whl", hash = "sha256:ad371d2bbedc6ea15c26179c6222a78bc9308d272435ddf1d5c84f068f249a36"},
-    {file = "python_http_client-3.3.7.tar.gz", hash = "sha256:bf841ee45262747e00dec7ee9971dfb8c7d83083f5713596488d67739170cea0"},
-]
-
-[[package]]
 name = "python-levenshtein"
 version = "0.27.3"
 description = "Python extension for computing string edit distances and similarities."
@@ -8313,27 +8301,6 @@ files = [
 [package.dependencies]
 cryptography = ">=2.0"
 jeepney = ">=0.6"
-
-[[package]]
-name = "sendgrid"
-version = "6.12.5"
-description = "Twilio SendGrid library for Python"
-optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
-groups = ["main"]
-files = [
-    {file = "sendgrid-6.12.5-py3-none-any.whl", hash = "sha256:96f92cc91634bf552fdb766b904bbb53968018da7ae41fdac4d1090dc0311ca8"},
-    {file = "sendgrid-6.12.5.tar.gz", hash = "sha256:ea9aae30cd55c332e266bccd11185159482edfc07c149b6cd15cf08869fabdb7"},
-]
-
-[package.dependencies]
-cryptography = ">=45.0.6"
-python-http-client = ">=3.2.1"
-werkzeug = [
-    {version = ">=2.3.5", markers = "python_version >= \"3.12\""},
-    {version = ">=2.2.0", markers = "python_version == \"3.11\""},
-    {version = ">=1.0.0", markers = "python_version >= \"3.9\""},
-]
 
 [[package]]
 name = "setuptools"
@@ -10075,24 +10042,6 @@ files = [
 ]
 
 [[package]]
-name = "werkzeug"
-version = "3.1.4"
-description = "The comprehensive WSGI web application library."
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "werkzeug-3.1.4-py3-none-any.whl", hash = "sha256:2ad50fb9ed09cc3af22c54698351027ace879a0b60a3b5edf5730b2f7d876905"},
-    {file = "werkzeug-3.1.4.tar.gz", hash = "sha256:cd3cd98b1b92dc3b7b3995038826c68097dcb16f9baa63abe35f20eafeb9fe5e"},
-]
-
-[package.dependencies]
-markupsafe = ">=2.1.1"
-
-[package.extras]
-watchdog = ["watchdog (>=2.3)"]
-
-[[package]]
 name = "whisper-timestamped"
 version = "1.15.9"
 description = "Multi-lingual Automatic Speech Recognition (ASR) based on Whisper models, with accurate word timestamps, access to language detection confidence, several options for Voice Activity Detection (VAD), and more."
@@ -10767,4 +10716,4 @@ local-whisper = ["whisper-timestamped"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "5b68ae86ac7827a599e83ba6462212f9cf7f4ecdbd6687dd542ec930e5fe4ff5"
+content-hash = "12d73833198d94b95f682e0e424485d6a82698021e1a05b33a27e91cd53bdc90"
