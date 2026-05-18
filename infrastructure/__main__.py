@@ -192,11 +192,16 @@ error_monitor_resources = error_monitor_module.create_error_monitor(
 
 # ==================== Monitoring ====================
 
+# Notification channels — every alert policy attaches all of these. Without
+# this step alerts fire into the void (verified 2026-05-17: three runner-
+# dispatcher create failures went undelivered for 14h).
+notification_channels = monitoring.create_notification_channels()
+
 # Alert policies
-alert_policies = monitoring.create_alert_policies()
+alert_policies = monitoring.create_alert_policies(notification_channels)
 
 # Ephemeral GHA-runner dispatcher: log-based metrics + alerts
-runner_observability = monitoring.create_ephemeral_runner_observability()
+runner_observability = monitoring.create_ephemeral_runner_observability(notification_channels)
 
 # ==================== Cloud Function: GDrive Validator ====================
 

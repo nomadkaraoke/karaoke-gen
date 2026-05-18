@@ -1,7 +1,12 @@
 """
 Cloud Monitoring resources.
 
-Manages alert policies for proactive monitoring and incident response.
+Manages alert policies for proactive monitoring and incident response. Every
+alert policy attaches the notification channel(s) created by
+``create_notification_channels`` — without that, a firing alert resolves into
+the void (verified on 2026-05-17: three ephemeral-dispatcher create failures
+fired the create-failures alert correctly, but the project had zero
+notification channels attached, so nobody got paged for 14 hours).
 """
 
 import pulumi
@@ -10,13 +15,57 @@ import pulumi_gcp as gcp
 from config import PROJECT_ID
 
 
-def create_alert_policies() -> dict[str, gcp.monitoring.AlertPolicy]:
+# Email address that receives all monitoring alerts. Cloud Monitoring delivers
+# a one-time confirmation link to this address when the channel is created;
+# the channel stays in PENDING state until verified.
+_ALERT_EMAIL = "andrew@beveridge.uk"
+
+
+def create_notification_channels() -> dict[str, gcp.monitoring.NotificationChannel]:
+    """Create the notification channels attached to every alert policy.
+
+    Returns a dict so callers can pass selected channels to specific policies
+    in the future (e.g. critical-only routing). Today every policy uses
+    ``channels["email"]``.
+
+    Swapping email for Discord later: Discord supports Slack-compatible
+    webhooks at ``<discord_webhook_url>/slack``. Add a second channel with
+    ``type_="slack"`` and ``sensitive_labels={"auth_token": <url>}``; reference
+    it in the policies that should page Discord. Keep email as the durable
+    fallback.
+    """
+    channels: dict[str, gcp.monitoring.NotificationChannel] = {}
+    channels["email"] = gcp.monitoring.NotificationChannel(
+        "alerts-email",
+        display_name="Andrew (email)",
+        type="email",
+        labels={"email_address": _ALERT_EMAIL},
+        description="Primary alert channel for Cloud Monitoring policies.",
+        enabled=True,
+    )
+    return channels
+
+
+def _channel_names(channels: dict[str, gcp.monitoring.NotificationChannel]) -> list[pulumi.Output[str]]:
+    """Return the .name Outputs of every channel (the form AlertPolicy wants)."""
+    return [ch.name for ch in channels.values()]
+
+
+def create_alert_policies(
+    channels: dict[str, gcp.monitoring.NotificationChannel],
+) -> dict[str, gcp.monitoring.AlertPolicy]:
     """
     Create all Cloud Monitoring alert policies.
+
+    Args:
+        channels: Notification channels to attach (from
+            :func:`create_notification_channels`). All policies get every
+            channel.
 
     Returns:
         dict: Dictionary mapping alert names to AlertPolicy resources.
     """
+    notification_channels = _channel_names(channels)
     alerts = {}
 
     # Alert: High Error Rate (>10% of requests returning errors)
@@ -53,6 +102,7 @@ def create_alert_policies() -> dict[str, gcp.monitoring.AlertPolicy]:
             mime_type="text/markdown",
         ),
         enabled=True,
+        notification_channels=notification_channels,
     )
 
     # Alert: Cloud Tasks Queue Backlog (tasks piling up)
@@ -89,6 +139,7 @@ def create_alert_policies() -> dict[str, gcp.monitoring.AlertPolicy]:
             mime_type="text/markdown",
         ),
         enabled=True,
+        notification_channels=notification_channels,
     )
 
     # Alert: High Memory Utilization (workers may be crashing)
@@ -125,6 +176,7 @@ def create_alert_policies() -> dict[str, gcp.monitoring.AlertPolicy]:
             mime_type="text/markdown",
         ),
         enabled=True,
+        notification_channels=notification_channels,
     )
 
     # Alert: Cloud Run Service Unavailable
@@ -156,12 +208,15 @@ def create_alert_policies() -> dict[str, gcp.monitoring.AlertPolicy]:
             mime_type="text/markdown",
         ),
         enabled=True,
+        notification_channels=notification_channels,
     )
 
     return alerts
 
 
-def create_ephemeral_runner_observability() -> dict:
+def create_ephemeral_runner_observability(
+    channels: dict[str, gcp.monitoring.NotificationChannel],
+) -> dict:
     """Log-based metrics + alerts for the ephemeral GHA runner dispatcher.
 
     Adds two alerts that are useful during the Phase 3 soak and afterward:
@@ -171,6 +226,7 @@ def create_ephemeral_runner_observability() -> dict:
     2. Long-running ephemeral runner VMs (uptime > 2 h on instances labelled
        ``purpose=gha-ephemeral-runner`` — catches hung jobs or cleanup bugs).
     """
+    notification_channels = _channel_names(channels)
     resources: dict = {}
 
     # ---- Log-based metric: dispatch failures -------------------------------
@@ -258,6 +314,7 @@ def create_ephemeral_runner_observability() -> dict:
             mime_type="text/markdown",
         ),
         enabled=True,
+        notification_channels=notification_channels,
         opts=pulumi.ResourceOptions(depends_on=[resources["dispatch_failure_metric"]]),
     )
 
@@ -311,6 +368,7 @@ def create_ephemeral_runner_observability() -> dict:
             mime_type="text/markdown",
         ),
         enabled=True,
+        notification_channels=notification_channels,
     )
 
     return resources

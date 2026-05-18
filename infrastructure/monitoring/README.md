@@ -121,31 +121,52 @@ Alert policies are defined in `infrastructure/__main__.py` as Pulumi resources:
 - **Severity**: Critical
 - **Auto-close**: 10 minutes after resolution
 
-## Adding Notification Channels
+## Notification Channels
 
-To receive alerts, you need to create notification channels:
+Notification channels are managed as Pulumi IaC in
+[`infrastructure/modules/monitoring.py`](../modules/monitoring.py) — see
+`create_notification_channels()` and the `notification_channels=...` arg
+attached to every alert policy.
 
-### Discord Webhook
+**Current channel:** one email channel (`alerts-email`) delivering to the
+project owner. Cloud Monitoring puts new email channels in PENDING state and
+sends a one-time confirmation link to the address; the channel stays inactive
+until the link is clicked.
 
-1. Go to Cloud Console → Monitoring → Alerting → Notification channels
-2. Click "Add New" → Webhook
-3. Enter your Discord webhook URL
-4. Save and note the channel ID
+If alerts seem to be firing but not delivering, check:
 
-Then update the alert policies in `__main__.py`:
-
-```python
-error_rate_alert = gcp.monitoring.AlertPolicy(
-    # ...existing config...
-    notification_channels=[discord_webhook_channel.name],
-)
+```bash
+gcloud alpha monitoring channels list --project=nomadkaraoke \
+  --format='table(displayName,type,verificationStatus,enabled)'
 ```
 
-### Email
+`verificationStatus=VERIFIED` is the active state.
 
-1. Go to Cloud Console → Monitoring → Alerting → Notification channels
-2. Click "Add New" → Email
-3. Enter email addresses to notify
+### Adding a second channel (e.g. Discord)
+
+Discord supports Slack-compatible webhooks: append `/slack` to a Discord
+webhook URL and Discord parses Slack-formatted payloads. To add a Discord
+channel alongside email:
+
+1. Create a webhook in Discord (Server settings → Integrations → Webhooks).
+2. Store the URL in Secret Manager (the project already has
+   `discord-alert-webhook` for the error-monitor service).
+3. In `monitoring.py`, add a second entry to `create_notification_channels()`:
+
+   ```python
+   channels["discord"] = gcp.monitoring.NotificationChannel(
+       "alerts-discord",
+       display_name="Alerts (Discord)",
+       type="slack",
+       sensitive_labels=gcp.monitoring.NotificationChannelSensitiveLabelsArgs(
+           auth_token=discord_webhook_url + "/slack",
+       ),
+       enabled=True,
+   )
+   ```
+
+4. `pulumi up`. All alert policies pick up the new channel automatically
+   because they iterate `channels.values()`.
 
 ## Log-Based Metrics
 
