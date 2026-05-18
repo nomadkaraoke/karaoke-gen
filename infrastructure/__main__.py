@@ -553,40 +553,21 @@ backend_compute_perms = worker_sas.grant_backend_compute_permissions(backend_ser
 encoding_worker_idle_resources = encoding_worker_manager.create_idle_shutdown_resources()
 
 # GitHub Runners (CI/CD self-hosted runners)
-# Create Cloud NAT for outbound internet access (no external IPs needed)
+# Phase 4 (2026-05-17): the 7 long-lived github-runner-*/github-build-runner/
+# github-gpu-runner-* VMs and their always-billed 200GB pd-ssd boot disks were
+# decommissioned. The dispatcher now creates a fresh ephemeral VM per queued
+# job via JIT registration (RUNNER_MODE=ephemeral, see runner_manager Cloud
+# Function + ephemeral.py). The Cloud NAT below stays — ephemeral VMs use it
+# for outbound traffic with no external IPs.
 github_runners_router, github_runners_nat = github_runners.create_cloud_nat()
 
-# Create runner VMs (Spot instances for 60-91% cost savings)
-github_runner_vms = github_runners.create_github_runners(
-    github_runner_sa, all_secrets["github-runner-pat"], github_runners_nat
-)
-
-# Create dedicated build runner (on-demand, for Docker deploys)
-github_build_runner = github_runners.create_build_runner(
-    github_runner_sa, all_secrets["github-runner-pat"], github_runners_nat
-)
-
-# Create GPU runners (spot, for audio-separator integration tests)
-github_gpu_runner_vms = github_runners.create_gpu_runners(
-    github_runner_sa, all_secrets["github-runner-pat"], github_runners_nat
-)
-
-# All runner VM names for the runner manager to track
-all_runner_names = (
-    [vm.name for vm in github_runner_vms]
-    + [github_build_runner.name]
-    + [vm.name for vm in github_gpu_runner_vms]
-)
-
-# GPU runner names (only started when job requests "gpu" label)
-gpu_runner_names = [vm.name for vm in github_gpu_runner_vms]
-
-# Create runner manager (auto-start/stop VMs based on CI activity)
+# Create runner manager (webhook → ephemeral VM dispatch; scheduler → orphan
+# cleanup). No fixed VM pool to track anymore.
 runner_manager_resources = runner_manager.create_runner_manager_resources(
     all_secrets["github-webhook-secret"],
     all_secrets["github-runner-pat"],
-    all_runner_names,
-    gpu_runner_names=gpu_runner_names,
+    runner_names=[],
+    gpu_runner_names=[],
     runner_service_account=github_runner_sa,
 )
 
@@ -697,9 +678,6 @@ pulumi.export("encoding_worker_a_name", encoding_worker_instances[0].name)
 pulumi.export("encoding_worker_b_name", encoding_worker_instances[1].name)
 
 # GitHub runners
-pulumi.export("github_runner_vm_names", [vm.name for vm in github_runner_vms])
-pulumi.export("github_build_runner_name", github_build_runner.name)
-pulumi.export("github_gpu_runner_names", [vm.name for vm in github_gpu_runner_vms])
 pulumi.export("github_runner_service_account", github_runner_sa.email)
 pulumi.export("github_runners_nat", github_runners_nat.name)
 
