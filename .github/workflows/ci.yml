@@ -652,7 +652,17 @@ jobs:
           java-version: "21"
 
       - name: Install Firestore emulator
-        run: sudo apt-get install -y google-cloud-cli-firestore-emulator
+        run: |
+          # Ensure Google Cloud SDK apt source is present (ephemeral runner images
+          # may not ship it pre-installed). Idempotent.
+          if ! grep -rq "packages.cloud.google.com" /etc/apt/sources.list.d/ 2>/dev/null; then
+            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+              sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+            curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+              sudo gpg --dearmor --yes -o /usr/share/keyrings/cloud.google.gpg
+          fi
+          sudo apt-get update -y
+          sudo apt-get install -y google-cloud-cli-firestore-emulator
 
       - name: Install dependencies
         run: poetry install
