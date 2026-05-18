@@ -363,7 +363,8 @@ def create_ephemeral_runner_observability(
             ),
         ],
         alert_strategy=gcp.monitoring.AlertPolicyAlertStrategyArgs(
-            auto_close="600s",
+            # GCP minimum is 30 minutes — anything lower returns 400.
+            auto_close="1800s",
         ),
         documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
             content=(
