@@ -2,12 +2,10 @@
 Email service for sending transactional emails.
 
 Supports multiple providers:
-- Postmark (production default — better Yahoo/AOL deliverability)
-- SendGrid (legacy fallback, retained during cutover)
+- Postmark (production)
 - Console logging (for development/testing)
 
-Provider selection: EMAIL_PROVIDER env var (postmark|sendgrid). Defaults to
-postmark when both keys are present.
+Provider selection: POSTMARK_SERVER_TOKEN env var enables Postmark.
 """
 import html
 import logging
@@ -121,91 +119,6 @@ class PreviewEmailProvider(EmailProvider):
         return self.last_html
 
 
-class SendGridEmailProvider(EmailProvider):
-    """
-    SendGrid email provider for production.
-
-    Requires SENDGRID_API_KEY environment variable.
-    """
-
-    def __init__(self, api_key: str, from_email: str, from_name: str = "Nomad Karaoke"):
-        self.api_key = api_key
-        self.from_email = from_email
-        self.from_name = from_name
-
-    def send_email(
-        self,
-        to_email: str,
-        subject: str,
-        html_content: str,
-        text_content: Optional[str] = None,
-        cc_emails: Optional[List[str]] = None,
-        bcc_emails: Optional[List[str]] = None,
-        from_email_override: Optional[str] = None,
-    ) -> bool:
-        try:
-            # Import here to avoid requiring sendgrid in all environments
-            from sendgrid import SendGridAPIClient
-            from sendgrid.helpers.mail import Mail, Email, To, Content, Cc, Bcc
-
-            sg = SendGridAPIClient(api_key=self.api_key)
-
-            # Use override sender if provided (for multi-tenant)
-            sender_email = from_email_override or self.from_email
-
-            message = Mail(
-                from_email=Email(sender_email, self.from_name),
-                to_emails=To(to_email),
-                subject=subject,
-                html_content=Content("text/html", html_content)
-            )
-
-            # Add CC recipients if provided (deduplicated and normalized)
-            if cc_emails:
-                # Normalize emails (lowercase, strip whitespace) and deduplicate
-                seen = set()
-                unique_cc_emails = []
-                for cc_email in cc_emails:
-                    normalized = cc_email.strip().lower()
-                    if normalized and normalized not in seen:
-                        seen.add(normalized)
-                        unique_cc_emails.append(cc_email.strip())
-
-                for cc_email in unique_cc_emails:
-                    message.add_cc(Cc(cc_email))
-
-            # Add BCC recipients if provided (deduplicated and normalized)
-            if bcc_emails:
-                seen = set()
-                unique_bcc_emails = []
-                for bcc_email in bcc_emails:
-                    normalized = bcc_email.strip().lower()
-                    if normalized and normalized not in seen:
-                        seen.add(normalized)
-                        unique_bcc_emails.append(bcc_email.strip())
-
-                for bcc_email in unique_bcc_emails:
-                    message.add_bcc(Bcc(bcc_email))
-
-            if text_content:
-                message.add_content(Content("text/plain", text_content))
-
-            response = sg.send(message)
-
-            if response.status_code >= 200 and response.status_code < 300:
-                cc_info = f" (CC: {', '.join(cc_emails)})" if cc_emails else ""
-                bcc_info = f" (BCC: {', '.join(bcc_emails)})" if bcc_emails else ""
-                logger.info(f"Email sent to {to_email}{cc_info}{bcc_info} via SendGrid")
-                return True
-            else:
-                logger.error(f"SendGrid returned status {response.status_code}")
-                return False
-
-        except Exception:
-            logger.exception("Failed to send email via SendGrid")
-            return False
-
-
 class PostmarkEmailProvider(EmailProvider):
     """
     Postmark email provider for production.
@@ -315,48 +228,25 @@ class EmailService:
         self.buy_url = os.getenv("BUY_URL", self.frontend_url)
 
     def _get_provider(self) -> EmailProvider:
-        """
-        Get the configured email provider.
+        """Get the configured email provider.
 
-        Selection rules:
-        - EMAIL_PROVIDER=postmark → Postmark (requires POSTMARK_SERVER_TOKEN)
-        - EMAIL_PROVIDER=sendgrid → SendGrid (requires SENDGRID_API_KEY)
-        - Unset/auto → Postmark if its token is set, else SendGrid if its key is set, else console
+        Postmark is used when POSTMARK_SERVER_TOKEN is set; otherwise falls
+        back to console logging (dev/test).
         """
-        provider_name = (os.getenv("EMAIL_PROVIDER") or "").strip().lower()
         postmark_token = os.getenv("POSTMARK_SERVER_TOKEN")
-        sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
         from_email = os.getenv("EMAIL_FROM", "gen@nomadkaraoke.com")
         from_name = os.getenv("EMAIL_FROM_NAME", "Nomad Karaoke")
 
-        if provider_name == "postmark":
-            if not postmark_token:
-                logger.error("EMAIL_PROVIDER=postmark but POSTMARK_SERVER_TOKEN is not set; falling back to console")
-                return ConsoleEmailProvider()
+        if postmark_token:
             logger.info("Using Postmark email provider")
             return PostmarkEmailProvider(postmark_token, from_email, from_name)
-
-        if provider_name == "sendgrid":
-            if not sendgrid_api_key:
-                logger.error("EMAIL_PROVIDER=sendgrid but SENDGRID_API_KEY is not set; falling back to console")
-                return ConsoleEmailProvider()
-            logger.info("Using SendGrid email provider")
-            return SendGridEmailProvider(sendgrid_api_key, from_email, from_name)
-
-        # Auto-detect: prefer Postmark when both keys are present
-        if postmark_token:
-            logger.info("Using Postmark email provider (auto-detected)")
-            return PostmarkEmailProvider(postmark_token, from_email, from_name)
-        if sendgrid_api_key:
-            logger.info("Using SendGrid email provider (auto-detected)")
-            return SendGridEmailProvider(sendgrid_api_key, from_email, from_name)
 
         logger.warning("No email provider configured, using console logging")
         return ConsoleEmailProvider()
 
     def is_configured(self) -> bool:
         """Check if a real email provider is configured (not just console logging)."""
-        return isinstance(self.provider, (SendGridEmailProvider, PostmarkEmailProvider))
+        return isinstance(self.provider, PostmarkEmailProvider)
 
     def send_magic_link(
         self,

@@ -192,7 +192,7 @@ Commercial producers pay for API access or custom integration to generate tracks
 - **Lyrics Transcription**: AudioShake API
 - **AI Correction**: Vertex AI (Gemini 3 Flash)
 - **Payments**: Stripe
-- **Email**: SendGrid
+- **Email**: Postmark
 - **IaC**: Pulumi
 - **CI/CD**: GitHub Actions (self-hosted runner on GCP)
 

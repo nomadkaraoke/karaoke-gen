@@ -11,7 +11,6 @@ from backend.services.email_service import (
     EmailService,
     EmailProvider,
     ConsoleEmailProvider,
-    SendGridEmailProvider,
     PostmarkEmailProvider,
     get_email_service,
 )
@@ -57,101 +56,6 @@ class TestConsoleEmailProvider:
         )
 
         assert result is True
-
-
-class TestSendGridEmailProvider:
-    """Tests for SendGrid email provider."""
-
-    def test_send_email_success(self):
-        """Test successful email sending via SendGrid."""
-        provider = SendGridEmailProvider(
-            api_key="test-api-key",
-            from_email="from@example.com",
-            from_name="Test Sender",
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 202
-
-        # Patch at the sendgrid module level since it's imported inline
-        with patch('sendgrid.SendGridAPIClient') as mock_sg:
-            mock_client = Mock()
-            mock_client.send.return_value = mock_response
-            mock_sg.return_value = mock_client
-
-            result = provider.send_email(
-                to_email="user@example.com",
-                subject="Test Subject",
-                html_content="<p>Test</p>",
-            )
-
-        assert result is True
-        mock_client.send.assert_called_once()
-
-    def test_send_email_with_cc(self):
-        """Test email sending with CC via SendGrid."""
-        provider = SendGridEmailProvider(
-            api_key="test-api-key",
-            from_email="from@example.com",
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 202
-
-        with patch('sendgrid.SendGridAPIClient') as mock_sg:
-            mock_client = Mock()
-            mock_client.send.return_value = mock_response
-            mock_sg.return_value = mock_client
-
-            result = provider.send_email(
-                to_email="user@example.com",
-                subject="Test Subject",
-                html_content="<p>Test</p>",
-                cc_emails=["cc@example.com"],
-            )
-
-        assert result is True
-
-    def test_send_email_failure_status(self):
-        """Test email sending failure due to bad status."""
-        provider = SendGridEmailProvider(
-            api_key="test-api-key",
-            from_email="from@example.com",
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 400
-
-        with patch('sendgrid.SendGridAPIClient') as mock_sg:
-            mock_client = Mock()
-            mock_client.send.return_value = mock_response
-            mock_sg.return_value = mock_client
-
-            result = provider.send_email(
-                to_email="user@example.com",
-                subject="Test Subject",
-                html_content="<p>Test</p>",
-            )
-
-        assert result is False
-
-    def test_send_email_exception(self):
-        """Test email sending exception handling."""
-        provider = SendGridEmailProvider(
-            api_key="test-api-key",
-            from_email="from@example.com",
-        )
-
-        with patch('sendgrid.SendGridAPIClient') as mock_sg:
-            mock_sg.return_value.send.side_effect = Exception("API error")
-
-            result = provider.send_email(
-                to_email="user@example.com",
-                subject="Test Subject",
-                html_content="<p>Test</p>",
-            )
-
-        assert result is False
 
 
 class TestPostmarkEmailProvider:
@@ -272,45 +176,18 @@ class TestEmailServiceProviderSelection:
 
     @pytest.fixture(autouse=True)
     def _clear_env(self, monkeypatch):
-        for var in ("EMAIL_PROVIDER", "POSTMARK_SERVER_TOKEN", "SENDGRID_API_KEY"):
-            monkeypatch.delenv(var, raising=False)
+        monkeypatch.delenv("POSTMARK_SERVER_TOKEN", raising=False)
 
-    def test_explicit_postmark_uses_postmark(self, monkeypatch):
-        monkeypatch.setenv("EMAIL_PROVIDER", "postmark")
+    def test_postmark_when_token_set(self, monkeypatch):
         monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "pm-token")
-        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
         svc = EmailService()
         assert isinstance(svc.provider, PostmarkEmailProvider)
         assert svc.is_configured() is True
 
-    def test_explicit_sendgrid_uses_sendgrid(self, monkeypatch):
-        monkeypatch.setenv("EMAIL_PROVIDER", "sendgrid")
-        monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "pm-token")
-        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
-        svc = EmailService()
-        assert isinstance(svc.provider, SendGridEmailProvider)
-
-    def test_explicit_postmark_without_token_falls_back_to_console(self, monkeypatch):
-        monkeypatch.setenv("EMAIL_PROVIDER", "postmark")
-        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
+    def test_console_when_no_token(self, monkeypatch):
         svc = EmailService()
         assert isinstance(svc.provider, ConsoleEmailProvider)
         assert svc.is_configured() is False
-
-    def test_auto_prefers_postmark_when_both_keys_set(self, monkeypatch):
-        monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "pm-token")
-        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
-        svc = EmailService()
-        assert isinstance(svc.provider, PostmarkEmailProvider)
-
-    def test_auto_falls_back_to_sendgrid_when_only_sendgrid_set(self, monkeypatch):
-        monkeypatch.setenv("SENDGRID_API_KEY", "sg-key")
-        svc = EmailService()
-        assert isinstance(svc.provider, SendGridEmailProvider)
-
-    def test_auto_uses_console_when_no_keys(self, monkeypatch):
-        svc = EmailService()
-        assert isinstance(svc.provider, ConsoleEmailProvider)
 
 
 class TestEmailServiceJobCompletion:
@@ -554,29 +431,27 @@ class TestEmailServiceActionReminder:
 class TestEmailServiceConfiguration:
     """Tests for email service configuration."""
 
-    def test_uses_sendgrid_when_configured(self):
-        """Test that SendGrid is used when API key is set."""
-        with patch.dict('os.environ', {'SENDGRID_API_KEY': 'test-key'}):
+    def test_uses_postmark_when_configured(self):
+        """Test that Postmark is used when server token is set."""
+        with patch.dict('os.environ', {'POSTMARK_SERVER_TOKEN': 'test-token'}):
             service = EmailService()
-            assert isinstance(service.provider, SendGridEmailProvider)
+            assert isinstance(service.provider, PostmarkEmailProvider)
 
     def test_uses_console_when_not_configured(self):
-        """Test that console is used when no API key."""
-        with patch.dict('os.environ', {}, clear=True):
-            # Remove SENDGRID_API_KEY if it exists
-            import os
-            original = os.environ.pop('SENDGRID_API_KEY', None)
-            try:
-                service = EmailService()
-                assert isinstance(service.provider, ConsoleEmailProvider)
-            finally:
-                if original:
-                    os.environ['SENDGRID_API_KEY'] = original
+        """Test that console is used when no token."""
+        import os
+        original = os.environ.pop('POSTMARK_SERVER_TOKEN', None)
+        try:
+            service = EmailService()
+            assert isinstance(service.provider, ConsoleEmailProvider)
+        finally:
+            if original:
+                os.environ['POSTMARK_SERVER_TOKEN'] = original
 
-    def test_is_configured_true_for_sendgrid(self):
-        """Test is_configured returns True for SendGrid."""
+    def test_is_configured_true_for_postmark(self):
+        """Test is_configured returns True for Postmark."""
         service = EmailService()
-        service.provider = SendGridEmailProvider("key", "from@example.com")
+        service.provider = PostmarkEmailProvider("token", "from@example.com")
         assert service.is_configured() is True
 
     def test_is_configured_false_for_console(self):
@@ -619,38 +494,6 @@ class TestCCFunctionality:
 
         # Check that CC was logged
         assert "cc1@example.com" in caplog.text or "CC:" in caplog.text
-
-    def test_sendgrid_provider_adds_cc_recipients(self):
-        """Test that SendGrid provider adds CC recipients to message."""
-        provider = SendGridEmailProvider(
-            api_key="test-api-key",
-            from_email="from@example.com",
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 202
-
-        # Patch at sendgrid module level since imports are inline
-        with patch('sendgrid.SendGridAPIClient') as mock_sg:
-            mock_client = Mock()
-            mock_client.send.return_value = mock_response
-            mock_sg.return_value = mock_client
-
-            # We need to capture the Mail object
-            with patch('sendgrid.helpers.mail.Mail') as mock_mail_class:
-                mock_mail = MagicMock()
-                mock_mail_class.return_value = mock_mail
-
-                provider.send_email(
-                    to_email="user@example.com",
-                    subject="Test",
-                    html_content="<p>Test</p>",
-                    cc_emails=["cc@example.com"],
-                )
-
-                # Verify add_cc was called
-                mock_mail.add_cc.assert_called()
-
 
 class TestMadeForYouOrderConfirmation:
     """Tests for send_made_for_you_order_confirmation method."""

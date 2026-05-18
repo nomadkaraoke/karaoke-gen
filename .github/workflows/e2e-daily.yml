@@ -317,10 +317,10 @@ jobs:
         if: github.event_name == 'schedule'
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: smtp.sendgrid.net
+          server_address: smtp.postmarkapp.com
           server_port: 587
-          username: apikey
-          password: ${{ secrets.SENDGRID_API_KEY }}
+          username: ${{ secrets.POSTMARK_SERVER_TOKEN }}
+          password: ${{ secrets.POSTMARK_SERVER_TOKEN }}
           subject: "E2E Daily Test ${{ needs.e2e-happy-path.result == 'success' && 'PASSED' || 'FAILED' }} - Run #${{ github.run_number }}"
           to: andrew@nomadkaraoke.com
           from: "Karaoke Gen CI <noreply@nomadkaraoke.com>"
