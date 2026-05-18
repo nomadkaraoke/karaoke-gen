@@ -239,6 +239,43 @@ class TestSchedulingPerFamily:
         assert kwargs.get("on_host_maintenance") == "TERMINATE"
 
 
+class TestSecureBootPerFamily:
+    """Secure Boot blocks unsigned DKMS-built NVIDIA modules.
+
+    With Secure Boot on, the kernel is in lockdown=integrity mode and rejects
+    unsigned modules ("Key was rejected by service"). The NVIDIA kernel module
+    we install from the upstream CUDA repo is built by DKMS and unsigned, so
+    Secure Boot must be off on GPU VMs. Non-GPU families don't have this
+    constraint and keep Secure Boot on for defense in depth.
+    """
+
+    def _build_for(self, family_name):
+        ep = _fresh_module()
+        ep._build_instance(
+            name=f"gha-{family_name}-test",
+            family=ep.FAMILIES[family_name],
+            zone="us-central1-a",
+            jit_config="JIT",
+            image_self_link="projects/p/global/images/family/x",
+            use_external_ip=False,
+        )
+        return _compute_stub.ShieldedInstanceConfig.call_args.kwargs
+
+    def test_general_has_secure_boot_on(self):
+        assert self._build_for("general")["enable_secure_boot"] is True
+
+    def test_build_has_secure_boot_on(self):
+        assert self._build_for("build")["enable_secure_boot"] is True
+
+    def test_gpu_has_secure_boot_off(self):
+        assert self._build_for("gpu")["enable_secure_boot"] is False
+
+    def test_vtpm_and_integrity_stay_on_for_gpu(self):
+        kwargs = self._build_for("gpu")
+        assert kwargs["enable_vtpm"] is True
+        assert kwargs["enable_integrity_monitoring"] is True
+
+
 def _make_instance(name, age_minutes, zone="us-central1-a"):
     inst = MagicMock()
     inst.name = name

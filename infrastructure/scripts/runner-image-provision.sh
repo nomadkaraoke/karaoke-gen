@@ -173,6 +173,96 @@ if [[ "$VARIANT" == "gpu" ]]; then
         apt-get update
         apt-get install -y cuda-drivers cuda-toolkit-12-4
     fi
+
+    # ============== Boot-time NVIDIA module load / DKMS rebuild ==============
+    # The NVIDIA kernel module installed above only loads cleanly when (a) the
+    # baked .ko matches the running kernel and (b) udev / something else
+    # actually modprobes it. Neither is guaranteed on ephemeral VMs:
+    #
+    #   1. `apt-get install cuda-drivers` can pull in a newer kernel image
+    #      (linux-image-cloud-amd64 is a meta-package). The build VM keeps
+    #      running the kernel it booted with, so DKMS builds nvidia.ko for
+    #      *that* kernel — but a fresh VM from this image boots whichever
+    #      kernel GRUB picks (usually the newest installed), leading to a
+    #      module-not-found mismatch. Confirmed on gha-runner-gpu-20260517:
+    #      image baked nvidia.ko for 6.1.0-47, fresh VMs boot 6.1.0-48.
+    #   2. There's no udev rule or modules-load.d entry that asks the kernel
+    #      to load nvidia at boot, so even when the .ko exists for the running
+    #      kernel nothing triggers a modprobe — nvidia-persistenced just fails
+    #      with "Failed to query NVIDIA devices" because /dev/nvidia* never
+    #      gets created.
+    #
+    # Fix: bake a systemd unit that runs at every boot, before
+    # nvidia-persistenced and the GCE startup-script. It checks for the
+    # running-kernel .ko, runs `dkms autoinstall` if missing (installing
+    # matching headers first), then modprobes. Legacy long-lived GPU runners
+    # had this logic in their startup-script; ephemeral VMs need it baked
+    # into the image.
+    ck "phase: gpu boot-time modprobe systemd unit"
+
+    install -m 0755 /dev/stdin /usr/local/sbin/gha-gpu-modprobe <<'GPU_MODPROBE_SCRIPT'
+#!/bin/bash
+# Build (if needed) and load NVIDIA kernel modules.
+# Idempotent — fast no-op when nvidia is already loaded.
+set -eu
+export DEBIAN_FRONTEND=noninteractive
+
+if lsmod | grep -q '^nvidia '; then
+    echo "[gha-gpu-modprobe] nvidia already loaded"
+    exit 0
+fi
+
+KR="$(uname -r)"
+DKMS_KO="/lib/modules/${KR}/updates/dkms/nvidia.ko"
+
+if [[ ! -f "$DKMS_KO" ]]; then
+    echo "[gha-gpu-modprobe] nvidia.ko missing for ${KR}; rebuilding via DKMS"
+    if ! dpkg -s "linux-headers-${KR}" >/dev/null 2>&1; then
+        echo "[gha-gpu-modprobe] installing linux-headers-${KR}"
+        apt-get update -qq
+        apt-get install -y --no-upgrade "linux-headers-${KR}"
+    fi
+    dkms autoinstall -k "${KR}"
+fi
+
+echo "[gha-gpu-modprobe] modprobing nvidia kernel modules"
+modprobe nvidia
+modprobe nvidia_uvm
+modprobe nvidia_drm
+
+echo "[gha-gpu-modprobe] verifying with nvidia-smi"
+nvidia-smi >/dev/null
+echo "[gha-gpu-modprobe] OK"
+GPU_MODPROBE_SCRIPT
+
+    install -m 0644 /dev/stdin /etc/systemd/system/gha-gpu-modprobe.service <<'GPU_MODPROBE_UNIT'
+[Unit]
+Description=Build (if needed) and load NVIDIA kernel modules at boot
+DefaultDependencies=yes
+After=network-online.target
+Wants=network-online.target
+Before=nvidia-persistenced.service google-startup-scripts.service
+ConditionPathExists=/usr/local/sbin/gha-gpu-modprobe
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/gha-gpu-modprobe
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
+GPU_MODPROBE_UNIT
+
+    # systemctl enable creates the symlink in /etc/systemd/system/multi-user.target.wants/.
+    # Falling back to a direct symlink keeps this idempotent if systemd's daemon
+    # bus isn't reachable mid-image-build (rare, but observed once on a slow
+    # build VM).
+    systemctl enable gha-gpu-modprobe.service 2>/dev/null \
+        || ln -sf /etc/systemd/system/gha-gpu-modprobe.service \
+                  /etc/systemd/system/multi-user.target.wants/gha-gpu-modprobe.service
 fi
 
 # ==================== Docker (general + build only) ====================

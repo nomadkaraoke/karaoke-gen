@@ -312,8 +312,16 @@ def _build_instance(
             "managed-by": "runner-dispatcher",
         },
         tags=compute_v1.Tags(items=["gha-runner", "github-runner"]),
+        # Secure Boot is incompatible with GPU VMs: the NVIDIA kernel module is
+        # built locally via DKMS (from the upstream CUDA repo, not Debian's
+        # signed nvidia-driver) and is therefore unsigned. With Secure Boot on,
+        # the kernel is in lockdown=integrity mode and rejects unsigned modules
+        # ("Key was rejected by service"), so /dev/nvidia* never appears and
+        # nvidia-persistenced fails. Legacy GPU runners ran without Secure Boot
+        # for the same reason. Keep it on for general/build where there's no
+        # unsigned-module requirement.
         shielded_instance_config=compute_v1.ShieldedInstanceConfig(
-            enable_secure_boot=True,
+            enable_secure_boot=not family.has_gpu,
             enable_vtpm=True,
             enable_integrity_monitoring=True,
         ),
