@@ -10,6 +10,7 @@ import logging
 from fastapi import APIRouter, Depends
 from backend.api.dependencies import require_admin
 from backend.services.encoding_worker_manager import EncodingWorkerManager
+from backend.services.encoding_errors import EncodingWorkerStartError
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,18 @@ async def warmup_encoding_worker(
         if result["started"]:
             logger.info(f"Started encoding worker VM: {result['vm_name']}")
         return result
+    except EncodingWorkerStartError as e:
+        # The primary VM couldn't start (capacity exhaustion or a transient
+        # 503 SERVICE_UNAVAILABLE from the GCE backend). This is NOT fatal:
+        # the encoding flow's own warmup (ensure_any_running) falls back to
+        # the alternate-zone workers, so the job still completes. Log at
+        # WARNING so it doesn't trip the production error monitor and page us
+        # for self-healing capacity events.
+        logger.warning(
+            f"Primary encoding worker warmup failed ({e}); "
+            f"encoding will fall back to an alternate-zone worker"
+        )
+        return {"started": False, "error": str(e)}
     except Exception as e:
         logger.error(f"Failed to warm up encoding worker: {e}")
         return {"started": False, "error": str(e)}
