@@ -163,7 +163,9 @@ usermod -aG docker runner
 # ==================== GitHub Actions Runner ====================
 # This section ALWAYS runs — it handles version upgrades and re-registration
 echo "Setting up GitHub Actions Runner..."
-RUNNER_VERSION="2.332.0"
+# Keep current with actions/runner releases — GitHub deprecates old versions
+# (HTTP 403 on broker poll). See runner-image-provision.sh for the full note.
+RUNNER_VERSION="2.334.0"
 RUNNER_DIR="/home/runner/actions-runner"
 
 mkdir -p $RUNNER_DIR

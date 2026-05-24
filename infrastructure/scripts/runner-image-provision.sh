@@ -384,8 +384,14 @@ chmod 0440 /etc/sudoers.d/runner
 visudo -cf /etc/sudoers.d/runner
 
 # ==================== GitHub Actions runner binary ====================
+# Keep current with actions/runner releases. GitHub deprecates older runner
+# versions and returns HTTP 403 ("deprecated and cannot receive messages") on
+# the broker poll — and ephemeral/JIT runners run with disableUpdate, so they
+# CANNOT self-update. A stale pin silently breaks every ephemeral runner: it
+# registers, gets rejected, and self-halts, leaving CI jobs queued forever.
+# When bumping, check https://github.com/actions/runner/releases/latest.
 ck "phase: github actions runner binary"
-RUNNER_VERSION="2.332.0"
+RUNNER_VERSION="2.334.0"
 RUNNER_DIR="/home/runner/actions-runner"
 mkdir -p "$RUNNER_DIR"
 
