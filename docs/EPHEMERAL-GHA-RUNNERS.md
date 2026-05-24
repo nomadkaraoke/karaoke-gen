@@ -394,6 +394,24 @@ Savings realised: ~$220/mo (7×200GB pd-ssd at $32/mo each).
 
 ## Known gotchas
 
+* **A stale baked runner version silently kills every ephemeral runner** (incident
+  2026-05-24). GitHub deprecates older `actions/runner` versions and returns
+  **HTTP 403 on the broker poll** (`"Runner version vX.Y.Z is deprecated and
+  cannot receive messages"`). Ephemeral/JIT runners run with `disableUpdate`, so
+  they CANNOT self-update — the runner registers, gets rejected, the listener
+  exits "no retry needed", and the EXIT-trap halts the VM. Net effect: VMs
+  dispatch and boot fine, but **CI jobs sit `queued` forever** and each leaves a
+  zombie `offline` JIT registration in the org runner list. **Diagnosis:** read a
+  failed VM's `/home/runner/actions-runner/_diag/Runner_*.log` for the 403. (Note:
+  serial console is unavailable once a VM self-halts, so capture logs by setting a
+  dump startup-script and starting the stopped VM.) **Fix:** bump `RUNNER_VERSION`
+  in `infrastructure/scripts/runner-image-provision.sh` (and legacy
+  `compute/startup_scripts/github_runner.sh`) to the current release from
+  <https://github.com/actions/runner/releases/latest>, then re-run
+  `build-runner-images.yml` (workflow_dispatch — runs on GitHub-hosted runners, so
+  it's not blocked by the broken self-hosted ones). The monthly rebuild cron
+  (`0 2 1 * *`) is too slow vs. GitHub's deprecation pace — consider resolving
+  "latest" at build time and/or alerting on deprecation 403s.
 * **Source-bundle replacement doesn't auto-redeploy the Cloud Function** (fixed
   forward, but worth knowing). The original code uploaded a new source bundle
   via `BucketObject` replace, but the `cloudfunctionsv2.Function` resource
