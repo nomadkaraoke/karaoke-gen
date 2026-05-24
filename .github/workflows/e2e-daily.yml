@@ -83,6 +83,7 @@ jobs:
             -d '{"domain": "inbox.testmail.app"}' || echo "Warning: allowlist may already exist"
 
       - name: Run Credit Purchase Test
+        id: run_test
         working-directory: frontend
         env:
           TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
@@ -102,16 +103,18 @@ jobs:
             --reporter=list \
             --timeout=600000 \
             2>&1 | tee test-output-payment.log
+          # Capture Playwright's real exit code, not tee's (0) — the
+          # authoritative pass/fail signal. See Stage 2 for rationale.
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
         continue-on-error: true
 
       - name: Check test result
         id: test_result
-        working-directory: frontend
         run: |
-          if grep -q "CREDIT PURCHASE TEST PASSED" test-output-payment.log; then
-            echo "result=success" >> $GITHUB_OUTPUT
+          if [ "${{ steps.run_test.outputs.exit_code }}" = "0" ]; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
           else
-            echo "result=failure" >> $GITHUB_OUTPUT
+            echo "result=failure" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract session token
@@ -209,6 +212,7 @@ jobs:
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
       - name: Run Happy Path Test
+        id: run_test
         working-directory: frontend
         env:
           TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
@@ -234,16 +238,20 @@ jobs:
             --reporter=list \
             --timeout=3600000 \
             2>&1 | tee test-output-happy-path.log
+          # Capture Playwright's real exit code, not tee's (0). This is the
+          # authoritative pass/fail signal — grepping the log for "failed" is
+          # fragile because benign retry warnings (e.g. "goto attempt 1/3
+          # failed") contain that substring and produce false alarms.
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
         continue-on-error: true
 
       - name: Check test result
         id: test_result
-        working-directory: frontend
         run: |
-          if grep -q "passed" test-output-happy-path.log && ! grep -q "failed" test-output-happy-path.log; then
-            echo "result=success" >> $GITHUB_OUTPUT
+          if [ "${{ steps.run_test.outputs.exit_code }}" = "0" ]; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
           else
-            echo "result=failure" >> $GITHUB_OUTPUT
+            echo "result=failure" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload test artifacts
