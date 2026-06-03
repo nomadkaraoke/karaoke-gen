@@ -1569,7 +1569,7 @@ Regenerates title and end screen videos using the **current** artist/title metad
 
 Requirements:
 - Job must have audio and lyrics processing complete
-- Job must be in an allowed state: `complete`, `failed`, `awaiting_review`, `awaiting_instrumental_selection`, `instrumental_selected`, `prep_complete`
+- Job must be in an allowed state: `complete`, `failed`, `awaiting_review`, `in_review`, `awaiting_instrumental_selection`, `instrumental_selected`, `prep_complete`
 
 The endpoint:
 1. Deletes existing screen files from GCS

@@ -2049,6 +2049,7 @@ REGENERATE_SCREENS_ALLOWED_STATES = {
     "complete",
     "failed",
     "awaiting_review",
+    "in_review",  # User opened the review UI but hasn't submitted yet
     "awaiting_instrumental_selection",
     "instrumental_selected",
     "prep_complete",
