@@ -2,9 +2,9 @@
  * Tests for AdminJobActions component
  */
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AdminJobActions } from '../job/AdminJobActions'
-import { Job } from '@/lib/api'
+import { Job, adminApi } from '@/lib/api'
 
 // Mock the API module
 jest.mock('@/lib/api', () => ({
@@ -17,6 +17,14 @@ jest.mock('@/lib/api', () => ({
     deleteJob: jest.fn(),
   }
 }))
+
+// Mock the toast hook so we can assert on what gets shown to the user
+const mockToast = jest.fn()
+jest.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}))
+
+const mockAdminApi = adminApi as jest.Mocked<typeof adminApi>
 
 describe('AdminJobActions', () => {
   const mockOnRefresh = jest.fn()
@@ -33,6 +41,12 @@ describe('AdminJobActions', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    // Auto-confirm the native confirm() dialogs the component uses
+    jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   it('renders all admin action buttons', () => {
@@ -56,6 +70,45 @@ describe('AdminJobActions', () => {
     render(<AdminJobActions job={mockJob} onRefresh={mockOnRefresh} />)
 
     expect(screen.getByText('Reset:')).toBeInTheDocument()
+  })
+
+  it('shows a useful error toast when regenerate screens fails', async () => {
+    mockAdminApi.regenerateScreens.mockRejectedValue(
+      new Error("Cannot regenerate screens for job in 'in_review' state.")
+    )
+
+    render(<AdminJobActions job={mockJob} onRefresh={mockOnRefresh} />)
+    fireEvent.click(screen.getByText('Regen Screens'))
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Regenerate Screens Failed',
+          description: "Cannot regenerate screens for job in 'in_review' state.",
+          variant: 'destructive',
+        })
+      )
+    })
+    // A failed action must not silently report success / refresh
+    expect(mockOnRefresh).not.toHaveBeenCalled()
+  })
+
+  it('falls back to a human-readable error when the failure has no message', async () => {
+    mockAdminApi.regenerateScreens.mockRejectedValue(new Error(''))
+
+    render(<AdminJobActions job={mockJob} onRefresh={mockOnRefresh} />)
+    fireEvent.click(screen.getByText('Regen Screens'))
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Regenerate Screens Failed',
+          variant: 'destructive',
+        })
+      )
+    })
+    const { description } = mockToast.mock.calls[0][0]
+    expect(description).toContain('check the job logs')
   })
 
   it('stops event propagation on click', () => {

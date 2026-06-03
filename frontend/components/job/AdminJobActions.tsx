@@ -27,7 +27,8 @@ export function AdminJobActions({ job, onRefresh }: AdminJobActionsProps) {
   async function handleAction(
     actionKey: string,
     action: () => Promise<void>,
-    confirmMessage: string
+    confirmMessage: string,
+    label: string
   ) {
     if (!confirm(confirmMessage)) return
     setLoading(actionKey)
@@ -36,8 +37,8 @@ export function AdminJobActions({ job, onRefresh }: AdminJobActionsProps) {
       onRefresh()
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error?.message || `Failed to ${actionKey}`,
+        title: `${label} Failed`,
+        description: error?.message || `${label} failed. Please try again or check the job logs.`,
         variant: "destructive",
       })
     } finally {
@@ -49,13 +50,13 @@ export function AdminJobActions({ job, onRefresh }: AdminJobActionsProps) {
     handleAction(`reset-${targetState}`, async () => {
       await adminApi.resetJob(job.job_id, targetState)
       toast({ title: "Job Reset", description: `Reset to ${label}` })
-    }, `Reset this job to "${label}"?`)
+    }, `Reset this job to "${label}"?`, "Job Reset")
 
   const handleDeleteOutputs = () =>
     handleAction("del-outputs", async () => {
       await adminApi.deleteJobOutputs(job.job_id)
       toast({ title: "Outputs Deleted", description: "Distribution files removed" })
-    }, "Delete all output files (YouTube, Dropbox, GDrive)?")
+    }, "Delete all output files (YouTube, Dropbox, GDrive)?", "Delete Outputs")
 
   const handleRegenScreens = () =>
     handleAction("regen-screens", async () => {
@@ -65,7 +66,7 @@ export function AdminJobActions({ job, onRefresh }: AdminJobActionsProps) {
       } else {
         toast({ title: "Regen Failed", description: result.error || result.message, variant: "destructive" })
       }
-    }, "Regenerate title/end screens with current metadata?")
+    }, "Regenerate title/end screens with current metadata?", "Regenerate Screens")
 
   const handleFullRestart = () =>
     handleAction("full-restart", async () => {
@@ -74,7 +75,7 @@ export function AdminJobActions({ job, onRefresh }: AdminJobActionsProps) {
         delete_outputs: true,
       })
       toast({ title: "Job Restarted", description: result.message })
-    }, "Fully restart this job? (preserves audio stems)")
+    }, "Fully restart this job? (preserves audio stems)", "Full Restart")
 
   const handleAudioSearch = () =>
     handleAction("audio-search", async () => {
@@ -82,13 +83,13 @@ export function AdminJobActions({ job, onRefresh }: AdminJobActionsProps) {
         source_type: "audio_search",
       })
       toast({ title: "Audio Source Changed", description: result.message })
-    }, "Switch this job to audio search mode?")
+    }, "Switch this job to audio search mode?", "Audio Source Change")
 
   const handleDeleteJob = () =>
     handleAction("delete", async () => {
       await adminApi.deleteJob(job.job_id)
       toast({ title: "Job Deleted", description: "Job permanently deleted" })
-    }, "Permanently delete this job and all files? This cannot be undone.")
+    }, "Permanently delete this job and all files? This cannot be undone.", "Delete Job")
 
   const isLoading = (key: string) => loading === key
 

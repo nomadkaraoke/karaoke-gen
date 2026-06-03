@@ -464,8 +464,8 @@ function AdminJobsPageContent() {
       loadLogs(selectedJobId)
     } catch (err: any) {
       toast({
-        title: "Error",
-        description: err.message || "Failed to regenerate screens",
+        title: "Screen Regeneration Failed",
+        description: err?.message || "Failed to regenerate screens. Please try again or check the job logs.",
         variant: "destructive",
       })
     } finally {
