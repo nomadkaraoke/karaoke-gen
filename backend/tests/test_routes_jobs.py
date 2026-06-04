@@ -992,3 +992,186 @@ class TestCorrectionsDuetFlag:
         s3 = CorrectionsSubmission(**base)
         assert s3.is_duet is None
 
+
+class TestCorrectionsFirestoreDocSize:
+    """Regression tests for the Firestore 1MB doc-size limit on corrections save.
+
+    Prod incident (job 9a12cf0f, "Van - Mashup"): saving corrections for a long
+    song wrote ~1.8MB of segment arrays into the job document, exceeding
+    Firestore's 1MB/document hard limit. The fix stores only a lightweight
+    summary (corrected_segment_count) in state_data.corrected_lyrics; the full
+    corrections are preserved in GCS (corrections_updated.json).
+    """
+
+    import json as _json
+
+    @pytest.fixture
+    def mock_job(self):
+        job = MagicMock(spec=Job)
+        job.job_id = "job-bigcorrections"
+        job.status = JobStatus.AWAITING_REVIEW
+        job.state_data = {}
+        return job
+
+    def _big_corrections(self, n_segments=422):
+        """Build a corrections payload mimicking a long song (>1MB raw)."""
+        def _segment(i):
+            return {
+                "id": f"seg-{i}",
+                "text": "the quick brown fox jumps over the lazy dog " * 4,
+                "start_time": float(i),
+                "end_time": float(i) + 1.0,
+                "words": [
+                    {"id": f"w-{i}-{j}", "text": "word", "start_time": float(j),
+                     "end_time": float(j) + 0.2, "confidence": 0.9}
+                    for j in range(12)
+                ],
+            }
+        segments = [_segment(i) for i in range(n_segments)]
+        return {
+            "lines": [],
+            "metadata": {"source": "test"},
+            "corrected_segments": segments,
+            "original_segments": segments,
+            "resized_segments": segments,
+            "reference_lyrics": {},
+        }
+
+    def _call_submit_corrections(self, mock_job, corrections, mock_jm, mock_st):
+        import asyncio
+        from backend.api.routes.jobs import submit_corrections
+        from backend.models.requests import CorrectionsSubmission
+
+        submission = CorrectionsSubmission(corrections=corrections)
+
+        mock_jm.get_job.return_value = mock_job
+        mock_jm.update_state_data.return_value = None
+        mock_jm.transition_to_state.return_value = True
+        mock_st.upload_json.return_value = None
+
+        mock_request = MagicMock()
+        mock_request.headers = {}
+
+        async def _run():
+            return await submit_corrections(
+                job_id=mock_job.job_id,
+                submission=submission,
+                http_request=mock_request,
+                background_tasks=MagicMock(),
+                auth_result=MagicMock(user_email="t@t.com", role="job_owner", job_id=mock_job.job_id),
+            )
+
+        # StorageService is imported inside the endpoint, so patch it at the source module.
+        with patch("backend.api.routes.jobs.job_manager", mock_jm), \
+             patch("backend.api.routes.jobs._check_job_ownership", return_value=True), \
+             patch("backend.api.routes.jobs.get_locale_from_request", return_value="en"), \
+             patch("backend.services.storage_service.StorageService", return_value=mock_st):
+            return asyncio.run(_run())
+
+    def _corrected_lyrics_payload(self, mock_jm):
+        calls = [c for c in mock_jm.update_state_data.call_args_list
+                 if c.args[1] == "corrected_lyrics"]
+        assert len(calls) == 1, "corrected_lyrics should be written exactly once"
+        return calls[0].args[2]
+
+    def test_corrections_save_stores_only_small_summary(self, mock_job):
+        """The corrected_lyrics written to Firestore must be a small summary,
+        not the multi-MB segment arrays."""
+        mock_jm, mock_st = MagicMock(), MagicMock()
+        corrections = self._big_corrections(n_segments=422)
+
+        # Sanity: the raw payload is genuinely over the 1MB Firestore limit.
+        assert len(self._json.dumps(corrections).encode("utf-8")) > 1_048_576
+
+        result = self._call_submit_corrections(mock_job, corrections, mock_jm, mock_st)
+        assert result["status"] == "success"
+
+        payload = self._corrected_lyrics_payload(mock_jm)
+        # No heavy arrays must be present.
+        for heavy in ("corrected_segments", "original_segments", "resized_segments",
+                      "reference_lyrics", "lines"):
+            assert heavy not in payload, f"{heavy} must not be stored in Firestore"
+        # Summary stays comfortably small.
+        assert len(self._json.dumps(payload).encode("utf-8")) < 1024
+
+    def test_corrections_summary_records_segment_count(self, mock_job):
+        """The summary must record the corrected segment count for the guard."""
+        mock_jm, mock_st = MagicMock(), MagicMock()
+        corrections = self._big_corrections(n_segments=37)
+
+        self._call_submit_corrections(mock_job, corrections, mock_jm, mock_st)
+        payload = self._corrected_lyrics_payload(mock_jm)
+        assert payload["corrected_segment_count"] == 37
+
+    def test_corrections_full_payload_still_saved_to_gcs(self, mock_job):
+        """The full corrections (with arrays) must still be uploaded to GCS."""
+        mock_jm, mock_st = MagicMock(), MagicMock()
+        corrections = self._big_corrections(n_segments=10)
+
+        self._call_submit_corrections(mock_job, corrections, mock_jm, mock_st)
+
+        upload_calls = mock_st.upload_json.call_args_list
+        assert len(upload_calls) == 1
+        path, data = upload_calls[0].args[0], upload_calls[0].args[1]
+        assert path.endswith("corrections_updated.json")
+        assert len(data["corrected_segments"]) == 10
+
+
+class TestCompleteReviewSegmentGuard:
+    """The complete-review 0-segment guard must read the corrected_lyrics summary
+    (new shape) and still work for legacy jobs that stored the full dict."""
+
+    def _make_job(self, segment_count, corrected_lyrics):
+        job = MagicMock(spec=Job)
+        job.job_id = "job-guard"
+        job.status = JobStatus.IN_REVIEW
+        job.state_data = {
+            "lyrics_metadata": {"segment_count": segment_count},
+            "corrected_lyrics": corrected_lyrics,
+        }
+        return job
+
+    def _call_complete_review(self, job):
+        import asyncio
+        from backend.api.routes.jobs import complete_review
+
+        mock_jm = MagicMock()
+        mock_jm.get_job.return_value = job
+        mock_request = MagicMock()
+        mock_request.headers = {}
+
+        async def _run():
+            return await complete_review(
+                job_id=job.job_id,
+                body=None,
+                request=mock_request,
+                background_tasks=MagicMock(),
+                auth_result=MagicMock(user_email="t@t.com", role="job_owner", job_id=job.job_id),
+            )
+
+        with patch("backend.api.routes.jobs.job_manager", mock_jm), \
+             patch("backend.api.routes.jobs._check_job_ownership", return_value=True), \
+             patch("backend.api.routes.jobs.get_locale_from_request", return_value="en"), \
+             patch("backend.api.routes.jobs.worker_service", MagicMock()):
+            return asyncio.run(_run())
+
+    def test_guard_blocks_when_no_segments_summary_shape(self):
+        """0 transcription segments AND 0 corrected segments -> 400."""
+        from fastapi import HTTPException
+        job = self._make_job(0, {"corrected_segment_count": 0})
+        with pytest.raises(HTTPException) as exc:
+            self._call_complete_review(job)
+        assert exc.value.status_code == 400
+
+    def test_guard_allows_when_summary_has_segments(self):
+        """0 transcription segments but corrections have segments -> allowed."""
+        job = self._make_job(0, {"corrected_segment_count": 5})
+        result = self._call_complete_review(job)
+        assert result["status"] == "success"
+
+    def test_guard_allows_legacy_full_dict_shape(self):
+        """Legacy jobs stored full dict with corrected_segments list -> still allowed."""
+        job = self._make_job(0, {"corrected_segments": [{"id": "a"}, {"id": "b"}]})
+        result = self._call_complete_review(job)
+        assert result["status"] == "success"
+

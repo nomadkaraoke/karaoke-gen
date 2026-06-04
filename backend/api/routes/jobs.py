@@ -1036,14 +1036,23 @@ async def submit_corrections(
         )
     
     try:
-        # Strip reference_lyrics from Firestore save to avoid exceeding 1MB document
-        # limit. reference_lyrics can be very large (e.g. Genius fetching non-lyrics
-        # content like screenplays). The full data is preserved in the GCS upload below.
-        corrections_for_firestore = {
-            k: v for k, v in submission.corrections.items()
-            if k != 'reference_lyrics'
+        # Persist ONLY a lightweight summary of the corrections to Firestore —
+        # never the full segment arrays. The complete corrections JSON
+        # (corrected_segments, original_segments, resized_segments, etc.) can be
+        # several MB for long songs (e.g. a 30+ minute mashup with hundreds of
+        # segments) and would blow past Firestore's 1MB per-document hard limit,
+        # failing the save with a 400. (An earlier fix stripped only
+        # reference_lyrics, but the segment arrays are the real bulk.) The full
+        # data is preserved in the GCS upload below (corrections_updated.json),
+        # which the render worker reads. The only in-Firestore consumer is the
+        # complete-review 0-segment guard, which just needs the segment count.
+        corrected_segments = submission.corrections.get('corrected_segments')
+        corrected_lyrics_summary = {
+            'corrected_segment_count': (
+                len(corrected_segments) if isinstance(corrected_segments, list) else 0
+            ),
         }
-        job_manager.update_state_data(job_id, 'corrected_lyrics', corrections_for_firestore)
+        job_manager.update_state_data(job_id, 'corrected_lyrics', corrected_lyrics_summary)
         if submission.user_notes:
             job_manager.update_state_data(job_id, 'review_notes', submission.user_notes)
 
@@ -1399,10 +1408,15 @@ async def complete_review(
     lyrics_metadata = state_data.get('lyrics_metadata')
     if lyrics_metadata is not None:
         segment_count = lyrics_metadata.get('segment_count', 0)
-        corrected_lyrics = state_data.get('corrected_lyrics', {})
-        corrected_segments = corrected_lyrics.get('corrected_segments', [])
+        corrected_lyrics = state_data.get('corrected_lyrics') or {}
+        # corrected_lyrics now stores a lightweight summary
+        # ({'corrected_segment_count': N}). Fall back to the legacy shape (full
+        # dict with a corrected_segments list) for jobs saved before that change.
+        corrected_segment_count = corrected_lyrics.get('corrected_segment_count')
+        if corrected_segment_count is None:
+            corrected_segment_count = len(corrected_lyrics.get('corrected_segments') or [])
 
-        if segment_count == 0 and len(corrected_segments) == 0:
+        if segment_count == 0 and corrected_segment_count == 0:
             raise HTTPException(
                 status_code=400,
                 detail=t(locale, "jobs.noLyricsDetected")

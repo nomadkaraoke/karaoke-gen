@@ -504,6 +504,53 @@ class TestTranscriptionTimeout:
         assert "timed out" in error_message.lower()
 
 
+class TestDurationScaledTranscriptionTimeout:
+    """Tests for compute_transcription_timeout.
+
+    Prod incident (job 9a12cf0f, "Van - Mashup"): a ~32-minute mashup
+    (1957s audio) hit the fixed 1200s transcription timeout and flapped to
+    'failed' on attempts where AudioShake was slow, even though a healthy run
+    transcribes it in ~438s. The timeout is now scaled by audio duration,
+    bounded by [floor, cap], where the cap stays under the Cloud Run Job task
+    timeout so we surface a clean RuntimeError before the platform hard-kills.
+    """
+
+    def _settings(self, floor=1200, cap=1700, per_sec=1.0):
+        s = MagicMock()
+        s.transcription_timeout_floor_seconds = floor
+        s.transcription_timeout_cap_seconds = cap
+        s.transcription_timeout_per_audio_second = per_sec
+        return s
+
+    def test_short_song_uses_floor(self):
+        from backend.workers.lyrics_worker import compute_transcription_timeout
+        # 3-minute song -> stays at the floor.
+        assert compute_transcription_timeout(180, self._settings()) == 1200
+
+    def test_long_mashup_scales_up_to_cap(self):
+        from backend.workers.lyrics_worker import compute_transcription_timeout
+        # 32-minute mashup (1957s) -> scaled value capped at 1700.
+        assert compute_transcription_timeout(1957, self._settings()) == 1700
+
+    def test_mid_length_scales_between_floor_and_cap(self):
+        from backend.workers.lyrics_worker import compute_transcription_timeout
+        # 1500s audio, 1.0x -> 1500 (between floor 1200 and cap 1700).
+        assert compute_transcription_timeout(1500, self._settings()) == 1500
+
+    def test_unknown_duration_falls_back_to_floor(self):
+        from backend.workers.lyrics_worker import compute_transcription_timeout
+        assert compute_transcription_timeout(None, self._settings()) == 1200
+        assert compute_transcription_timeout(0, self._settings()) == 1200
+        assert compute_transcription_timeout(-5, self._settings()) == 1200
+
+    def test_cap_never_exceeds_cloud_run_task_timeout(self):
+        """The default cap must stay safely under the 1800s Cloud Run Job task timeout."""
+        from backend.config import Settings
+        s = Settings()
+        assert s.transcription_timeout_cap_seconds <= 1700
+        assert s.transcription_timeout_floor_seconds == 1200
+
+
 class TestJobOwnershipFiltering:
     """
     Additional tests for job ownership and filtering.

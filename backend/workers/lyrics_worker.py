@@ -61,6 +61,50 @@ TRANSCRIPTION_TIMEOUT_SECONDS = 1200
 DEFAULT_AGENTIC_TIMEOUT_SECONDS = 180
 
 
+def probe_audio_duration_seconds(audio_path: str) -> Optional[float]:
+    """Return the audio duration in seconds via ffprobe, or None on failure.
+
+    Used to scale the transcription timeout for long inputs. Non-fatal: any
+    failure returns None and the caller falls back to the floor timeout.
+    """
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "quiet", "-print_format", "json",
+                "-show_format", audio_path,
+            ],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            return None
+        fmt = json.loads(result.stdout).get("format", {})
+        duration = float(fmt.get("duration", 0) or 0)
+        return duration if duration > 0 else None
+    except Exception:
+        return None
+
+
+def compute_transcription_timeout(audio_duration_seconds: Optional[float], settings=None) -> int:
+    """Compute the outer transcription timeout, scaled by audio duration.
+
+    Long inputs (e.g. 30+ minute mashups) legitimately take longer to
+    transcribe, so we scale the safety-net timeout with audio length while
+    bounding it to [floor, cap]. The cap stays below the Cloud Run Job task
+    timeout so we raise a clean RuntimeError before the platform hard-kills the
+    task. When the duration is unknown (probe failed), fall back to the floor.
+    """
+    if settings is None:
+        settings = get_settings()
+    floor = settings.transcription_timeout_floor_seconds
+    cap = settings.transcription_timeout_cap_seconds
+    if not audio_duration_seconds or audio_duration_seconds <= 0:
+        return floor
+    scaled = int(audio_duration_seconds * settings.transcription_timeout_per_audio_second)
+    return max(floor, min(cap, scaled))
+
+
 def _configure_agentic_ai():
     """Configure environment variables for agentic AI correction.
 
@@ -365,6 +409,18 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                             f"Agentic AI enabled with {timeout_seconds}s timeout"
                         )
 
+                    # Scale the outer (safety-net) timeout by audio duration so long
+                    # inputs (e.g. 30+ minute mashups) aren't killed prematurely. A
+                    # fixed 1200s cap previously flapped long tracks to 'failed' even
+                    # when AudioShake would have finished. Bounded by [floor, cap]
+                    # (cap stays under the Cloud Run Job task timeout).
+                    audio_duration_seconds = probe_audio_duration_seconds(audio_path)
+                    outer_timeout = compute_transcription_timeout(audio_duration_seconds, settings)
+                    job_log.info(
+                        f"Transcription timeout set to {outer_timeout}s "
+                        f"(audio duration: {audio_duration_seconds}s)"
+                    )
+
                     # Run transcription in thread pool
                     # When agentic AI is enabled, wrap with outer timeout as safety net
                     # Inner deadline check in corrector.py will break out of gap loop gracefully
@@ -387,7 +443,6 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                             # The inner deadline check in corrector.py handles the 3-minute
                             # correction limit gracefully by returning partial results.
                             # This outer timeout is a safety net for completely hung LLM calls.
-                            outer_timeout = TRANSCRIPTION_TIMEOUT_SECONDS  # Same as non-agentic
                             try:
                                 result = await asyncio.wait_for(
                                     transcription_coro,
@@ -404,14 +459,14 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                                     f"Lyrics transcription timed out after {outer_timeout}s"
                                 ) from None
                         else:
-                            # Non-agentic mode: use general timeout (10 minutes)
+                            # Non-agentic mode: use the same duration-scaled timeout.
                             try:
                                 result = await asyncio.wait_for(
                                     transcription_coro,
-                                    timeout=TRANSCRIPTION_TIMEOUT_SECONDS
+                                    timeout=outer_timeout
                                 )
                             except asyncio.TimeoutError:
-                                raise Exception(f"Transcription timed out after {TRANSCRIPTION_TIMEOUT_SECONDS} seconds")
+                                raise Exception(f"Transcription timed out after {outer_timeout} seconds")
 
                     trans_duration = time.time() - trans_start
                     trans_span.set_attribute("duration_seconds", trans_duration)
