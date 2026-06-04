@@ -191,10 +191,39 @@ class SegmentResizer:
                 segments.append(self._create_segment_from_words(line, line_words, singer=singer))
                 current_pos += len(line) + 1  # +1 for the space between lines
 
-        # If we have any remaining words, create a final segment with them
+        # If we have any remaining words (word-to-line matching desynced — e.g. a
+        # punctuation mark attached to a word token straddled a split boundary),
+        # pack them into lines that still respect max_line_length instead of one
+        # unbounded segment. An over-length line wraps at render time and overlaps
+        # the slot below it, so the length guarantee must hold here too.
         if words_to_process:
-            remaining_text = " ".join(self._clean_text(w.text) for w in words_to_process)
-            segments.append(self._create_segment_from_words(remaining_text, words_to_process, singer=singer))
+            segments.extend(self._pack_words_into_lines(words_to_process, singer=singer))
+
+        return segments
+
+    def _pack_words_into_lines(self, words: List[Word], singer: Optional[int] = None) -> List[LyricsSegment]:
+        """Greedily group words into segments no longer than max_line_length.
+
+        Works directly on word tokens (not re-matched text) so it cannot desync.
+        A single word longer than the limit is emitted on its own line.
+        """
+        segments: List[LyricsSegment] = []
+        current_words: List[Word] = []
+        current_text = ""
+
+        for word in words:
+            word_text = self._clean_text(word.text)
+            candidate = f"{current_text} {word_text}".strip() if current_text else word_text
+            if current_words and len(candidate) > self.max_line_length:
+                segments.append(self._create_segment_from_words(current_text, current_words, singer=singer))
+                current_words = [word]
+                current_text = word_text
+            else:
+                current_words.append(word)
+                current_text = candidate
+
+        if current_words:
+            segments.append(self._create_segment_from_words(current_text, current_words, singer=singer))
 
         return segments
 
@@ -398,9 +427,13 @@ class SegmentResizer:
 
         # Priority 2: Major clause breaks (semicolons, dashes)
         major_breaks = []
-        for punct in [";", " - "]:
-            for match in re.finditer(re.escape(punct), line):
-                major_breaks.append(match.start())  # Position before the punctuation
+        # A semicolon is attached to the preceding word token (e.g. "around;"),
+        # so break *after* it — otherwise the split line ends with "around" while
+        # the word is "around;", desyncing word-to-line matching downstream.
+        for match in re.finditer(re.escape(";"), line):
+            major_breaks.append(match.start() + 1)  # Position after the semicolon
+        for match in re.finditer(re.escape(" - "), line):
+            major_breaks.append(match.start())  # Position before the dash
         break_points.append(major_breaks)
 
         # Priority 3: Comma breaks, typically marking natural pauses
