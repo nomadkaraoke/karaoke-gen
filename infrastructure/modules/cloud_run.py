@@ -107,6 +107,13 @@ def create_lyrics_transcription_job(
                                 name="ENVIRONMENT",
                                 value="production",
                             ),
+                            # Cap the duration-scaled transcription timeout below the
+                            # task `timeout` above so the worker raises a clean
+                            # RuntimeError before Cloud Run hard-kills the task.
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="TRANSCRIPTION_TIMEOUT_CAP_SECONDS",
+                                value="2700",
+                            ),
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="GCP_REGION",
                                 value=REGION,
@@ -153,7 +160,7 @@ def create_lyrics_transcription_job(
                     )
                 ],
                 service_account=service_account.email,
-                timeout="1800s",  # 30 minutes max per task
+                timeout="3000s",  # 50 minutes max per task (long mashups can take 30+ min to transcribe)
                 max_retries=2,
             ),
         ),

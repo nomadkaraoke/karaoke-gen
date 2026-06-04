@@ -343,7 +343,14 @@ class TestCreateCustomInstrumentalEndpoint:
 
 
 class TestSubmitCorrectionsReferenceLyricsStripping:
-    """Tests for reference_lyrics being stripped from Firestore save in submit_corrections."""
+    """Tests for the corrections Firestore save in submit_corrections.
+
+    Originally this only stripped reference_lyrics, but a long mashup
+    (prod job 9a12cf0f) showed the segment arrays are the real bulk and still
+    blew past Firestore's 1MB limit. submit_corrections now persists ONLY a
+    lightweight summary (corrected_segment_count) to Firestore; the full
+    corrections (all arrays + reference_lyrics) are preserved in GCS.
+    """
 
     def _make_corrections_payload(self, extra_keys=None):
         """Build a valid corrections payload that passes CorrectionsSubmission validation.
@@ -358,16 +365,18 @@ class TestSubmitCorrectionsReferenceLyricsStripping:
             data.update(extra_keys)
         return data
 
-    def test_reference_lyrics_stripped_from_firestore_save(
+    def test_only_summary_saved_to_firestore(
         self, review_job, mock_job_manager, mock_worker_service, patched_client, auth_headers
     ):
-        """Verify reference_lyrics is excluded from Firestore state_data update."""
+        """Firestore state_data must hold only the summary — no heavy arrays."""
         mock_job_manager.get_job.return_value = review_job
 
         mock_storage = MagicMock()
 
         corrections_data = self._make_corrections_payload(extra_keys={
-            "corrected_segments": [{"text": "hello"}],
+            "corrected_segments": [{"text": "hello"}, {"text": "world"}],
+            "original_segments": [{"text": "hello"}, {"text": "world"}],
+            "resized_segments": [{"text": "hello"}, {"text": "world"}],
             "reference_lyrics": {
                 "genius": "Very long lyrics content..." * 1000,
             },
@@ -383,15 +392,14 @@ class TestSubmitCorrectionsReferenceLyricsStripping:
 
         assert response.status_code == 200
 
-        # Check update_state_data was called with data that does NOT contain reference_lyrics
+        # The corrected_lyrics state_data write must be a small summary only.
         state_data_call = mock_job_manager.update_state_data.call_args_list[0]
+        assert state_data_call[0][1] == "corrected_lyrics"
         saved_data = state_data_call[0][2]  # Third positional arg is the data dict
-        assert "reference_lyrics" not in saved_data
-
-        # Check preserved keys are still present
-        assert "lines" in saved_data
-        assert "metadata" in saved_data
-        assert "corrected_segments" in saved_data
+        for heavy in ("reference_lyrics", "lines", "corrected_segments",
+                      "original_segments", "resized_segments"):
+            assert heavy not in saved_data, f"{heavy} must not be stored in Firestore"
+        assert saved_data["corrected_segment_count"] == 2
 
     def test_full_corrections_saved_to_gcs(
         self, review_job, mock_job_manager, mock_worker_service, patched_client, auth_headers
@@ -445,11 +453,12 @@ class TestSubmitCorrectionsReferenceLyricsStripping:
 
         assert response.status_code == 200
 
-        # State data should have all keys (no reference_lyrics to strip)
+        # State data holds only the summary, even when reference_lyrics is absent.
         state_data_call = mock_job_manager.update_state_data.call_args_list[0]
+        assert state_data_call[0][1] == "corrected_lyrics"
         saved_data = state_data_call[0][2]
-        assert "lines" in saved_data
-        assert "metadata" in saved_data
+        assert saved_data == {"corrected_segment_count": 1}
+        assert "lines" not in saved_data
         assert "reference_lyrics" not in saved_data
 
 

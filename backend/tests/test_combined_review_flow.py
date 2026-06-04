@@ -100,7 +100,7 @@ class TestGetCorrectionDataReturnsUpdatedCorrections:
 
             # Call the endpoint (synchronously for testing)
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 get_correction_data("test-job-123", ("user@test.com", "job_owner"))
             )
 
@@ -136,7 +136,7 @@ class TestGetCorrectionDataReturnsUpdatedCorrections:
 
             # Call the endpoint
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 get_correction_data("test-job-123", ("user@test.com", "job_owner"))
             )
 
@@ -172,7 +172,7 @@ class TestGetCorrectionDataReturnsUpdatedCorrections:
 
             # Call the endpoint
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 get_correction_data("test-job-123", ("user@test.com", "job_owner"))
             )
 
@@ -214,7 +214,7 @@ class TestGetCorrectionDataReturnsUpdatedCorrections:
             storage.generate_signed_url.return_value = "https://signed-url.com"
 
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 get_correction_data("test-job-123", ("user@test.com", "job_owner"))
             )
 

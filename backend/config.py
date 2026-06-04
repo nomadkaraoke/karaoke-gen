@@ -61,6 +61,17 @@ class Settings(BaseSettings):
     # use uncorrected transcription - human review will fix any issues.
     agentic_correction_timeout_seconds: int = int(os.getenv("AGENTIC_CORRECTION_TIMEOUT_SECONDS", "180"))
 
+    # Lyrics transcription outer (safety-net) timeout, scaled by audio duration.
+    # Long inputs (e.g. 30+ minute mashups) legitimately take longer to transcribe,
+    # so the timeout = clamp(floor, duration * per_audio_second, cap). The cap must
+    # stay under the Cloud Run Job task timeout so we surface a clean RuntimeError
+    # before the platform hard-kills the task. The lyrics-transcription-job sets the
+    # task timeout to 3000s and overrides this cap to 2700s via env; the 1700s
+    # default here is the safe value if that env is ever unset (under an 1800s task).
+    transcription_timeout_floor_seconds: int = int(os.getenv("TRANSCRIPTION_TIMEOUT_FLOOR_SECONDS", "1200"))
+    transcription_timeout_cap_seconds: int = int(os.getenv("TRANSCRIPTION_TIMEOUT_CAP_SECONDS", "1700"))
+    transcription_timeout_per_audio_second: float = float(os.getenv("TRANSCRIPTION_TIMEOUT_PER_AUDIO_SECOND", "1.0"))
+
     # AI Credit Evaluation (anti-abuse gating for free credits)
     # When enabled, welcome and feedback credit grants are evaluated by Gemini
     # before granting. Fail-open: if evaluation fails, credits are granted anyway.
