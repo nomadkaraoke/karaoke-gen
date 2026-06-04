@@ -22,8 +22,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
-from starlette.background import BackgroundTask
+from fastapi.responses import RedirectResponse
 
 from backend.models.job import JobStatus
 from backend.models.review_session import ReviewSession, ReviewSessionSummary
@@ -1125,9 +1124,19 @@ async def get_preview_video(
     preview_hash: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
-    """Stream the generated preview video."""
+    """Serve the generated preview video via a signed GCS URL redirect.
+
+    We redirect to a signed URL rather than proxying the bytes through Cloud
+    Run because Cloud Run caps response bodies at 32 MiB. Long songs (e.g. a
+    30+ minute mashup) produce a 360p preview larger than that, which the proxy
+    path truncated mid-stream — the response started as 206 but the client
+    received a 500, so the browser reported "no supported format". The signed
+    URL lets the browser fetch the mp4 directly from GCS (with byte-range
+    support intact), bypassing the limit entirely. Mirrors the audio-review
+    endpoint above.
+    """
     storage = StorageService()
-    
+
     # Check in-memory cache first
     preview_gcs_path = None
     if job_id in _preview_videos and preview_hash in _preview_videos[job_id]:
@@ -1137,30 +1146,14 @@ async def get_preview_video(
         preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
         if not storage.file_exists(preview_gcs_path):
             raise HTTPException(status_code=404, detail=t("en", "review.previewVideoNotFound"))
-    
+
     try:
-        # Download to temp file and stream
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-            tmp_path = tmp.name
-        
-        storage.download_file(preview_gcs_path, tmp_path)
-        
-        logger.info(f"Job {job_id}: Streaming preview video {preview_hash}")
-        
-        return FileResponse(
-            tmp_path,
-            media_type="video/mp4",
-            filename=f"preview_{preview_hash}.mp4",
-            headers={
-                "Accept-Ranges": "bytes",
-                "Content-Disposition": "inline",
-                "Cache-Control": "no-cache",
-            },
-            background=BackgroundTask(os.unlink, tmp_path),
-        )
-        
+        signed_url = storage.generate_signed_url(preview_gcs_path, expiration_minutes=120)
+        logger.info(f"Job {job_id}: Redirecting to signed URL for preview video {preview_hash}")
+        return RedirectResponse(url=signed_url, status_code=302)
+
     except Exception as e:
-        logger.error(f"Job {job_id}: Error streaming preview video: {e}", exc_info=True)
+        logger.error(f"Job {job_id}: Error serving preview video: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=t("en", "review.previewVideoStreamError", error=str(e)))
 
 
