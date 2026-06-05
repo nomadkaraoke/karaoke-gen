@@ -582,7 +582,8 @@
     "autoAccept": "S'acceptarà automàticament",
     "autoSelect": "Se seleccionarà automàticament",
     "willAutoSelectFirst": "Se seleccionarà automàticament el primer",
-    "noOutputsAvailable": "Encara no hi ha sortides disponibles"
+    "noOutputsAvailable": "Encara no hi ha sortides disponibles",
+    "confirmCost": "Confirmar cost"
   },
   "jobActions": {
     "delete": "Suprimeix",

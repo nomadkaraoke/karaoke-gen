@@ -582,7 +582,8 @@
     "autoAccept": "Vil automatisk acceptere",
     "autoSelect": "Vil automatisk vælge",
     "willAutoSelectFirst": "Vil automatisk vælge første",
-    "noOutputsAvailable": "Ingen outputs tilgængelige endnu"
+    "noOutputsAvailable": "Ingen outputs tilgængelige endnu",
+    "confirmCost": "Bekræft pris"
   },
   "jobActions": {
     "delete": "Slet",

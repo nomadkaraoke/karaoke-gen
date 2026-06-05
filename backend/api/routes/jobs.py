@@ -572,6 +572,10 @@ _SUMMARY_STATE_DATA_KEYS = {
     'backing_vocals_analysis', 'visibility_change_in_progress',
     'render_pending_capacity',
     'cloud_run_retry_pending',
+    'credits_charged',
+    'pending_additional_credits',
+    'duration_actual_seconds',
+    'duration_confirm_reason',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']

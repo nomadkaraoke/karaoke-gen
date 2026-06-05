@@ -582,7 +582,8 @@
     "autoAccept": "Vil automatisk godta",
     "autoSelect": "Vil automatisk velge",
     "willAutoSelectFirst": "Vil automatisk velge første",
-    "noOutputsAvailable": "Ingen utdata tilgjengelig ennå"
+    "noOutputsAvailable": "Ingen utdata tilgjengelig ennå",
+    "confirmCost": "Bekreft kostnad"
   },
   "jobActions": {
     "delete": "Slett",

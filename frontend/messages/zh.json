@@ -582,7 +582,8 @@
     "autoAccept": "将自动接受",
     "autoSelect": "将自动选择",
     "willAutoSelectFirst": "将自动选择第一个",
-    "noOutputsAvailable": "暂无可用输出"
+    "noOutputsAvailable": "暂无可用输出",
+    "confirmCost": "确认费用"
   },
   "jobActions": {
     "delete": "删除",

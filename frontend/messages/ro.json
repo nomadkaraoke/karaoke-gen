@@ -582,7 +582,8 @@
     "autoAccept": "Se va accepta automat",
     "autoSelect": "Se va selecta automat",
     "willAutoSelectFirst": "Se va selecta automat primul",
-    "noOutputsAvailable": "Niciun rezultat disponibil încă"
+    "noOutputsAvailable": "Niciun rezultat disponibil încă",
+    "confirmCost": "Confirmă costul"
   },
   "jobActions": {
     "delete": "Șterge",

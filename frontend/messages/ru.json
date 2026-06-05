@@ -582,7 +582,8 @@
     "autoAccept": "Будет автоматически принято",
     "autoSelect": "Будет автоматически выбрано",
     "willAutoSelectFirst": "Будет автоматически выбрано первое",
-    "noOutputsAvailable": "Пока нет доступных результатов"
+    "noOutputsAvailable": "Пока нет доступных результатов",
+    "confirmCost": "Подтвердить стоимость"
   },
   "jobActions": {
     "delete": "Удалить",

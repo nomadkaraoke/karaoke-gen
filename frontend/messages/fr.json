@@ -582,7 +582,8 @@
     "autoAccept": "Acceptera automatiquement",
     "autoSelect": "Sélectionnera automatiquement",
     "willAutoSelectFirst": "Sélectionnera automatiquement le premier",
-    "noOutputsAvailable": "Aucune sortie disponible pour le moment"
+    "noOutputsAvailable": "Aucune sortie disponible pour le moment",
+    "confirmCost": "Confirmer le coût"
   },
   "jobActions": {
     "delete": "Supprimer",

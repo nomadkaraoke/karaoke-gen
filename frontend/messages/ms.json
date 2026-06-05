@@ -582,7 +582,8 @@
     "autoAccept": "Akan terima automatik",
     "autoSelect": "Akan pilih automatik",
     "willAutoSelectFirst": "Akan pilih automatik yang pertama",
-    "noOutputsAvailable": "Tiada output tersedia lagi"
+    "noOutputsAvailable": "Tiada output tersedia lagi",
+    "confirmCost": "Sahkan Kos"
   },
   "jobActions": {
     "delete": "Padam",

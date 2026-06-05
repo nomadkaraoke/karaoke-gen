@@ -582,7 +582,8 @@
     "autoAccept": "Otomatik kabul edecek",
     "autoSelect": "Otomatik seçecek",
     "willAutoSelectFirst": "İlkini otomatik seçecek",
-    "noOutputsAvailable": "Henüz çıktı yok"
+    "noOutputsAvailable": "Henüz çıktı yok",
+    "confirmCost": "Ücreti Onayla"
   },
   "jobActions": {
     "delete": "Sil",

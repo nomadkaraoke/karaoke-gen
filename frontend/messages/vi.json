@@ -582,7 +582,8 @@
     "autoAccept": "Sẽ tự động chấp nhận",
     "autoSelect": "Sẽ tự động chọn",
     "willAutoSelectFirst": "Sẽ tự động chọn đầu tiên",
-    "noOutputsAvailable": "Chưa có đầu ra nào"
+    "noOutputsAvailable": "Chưa có đầu ra nào",
+    "confirmCost": "Xác nhận chi phí"
   },
   "jobActions": {
     "delete": "Xóa",

@@ -582,7 +582,8 @@
     "autoAccept": "Automatski će prihvatiti",
     "autoSelect": "Automatski će odabrati",
     "willAutoSelectFirst": "Automatski će odabrati prvo",
-    "noOutputsAvailable": "Još nema dostupnih izlaza"
+    "noOutputsAvailable": "Još nema dostupnih izlaza",
+    "confirmCost": "Potvrdi cijenu"
   },
   "jobActions": {
     "delete": "Izbriši",

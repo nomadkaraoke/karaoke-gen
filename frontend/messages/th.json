@@ -582,7 +582,8 @@
     "autoAccept": "จะยอมรับอัตโนมัติ",
     "autoSelect": "จะเลือกอัตโนมัติ",
     "willAutoSelectFirst": "จะเลือกอันแรกอัตโนมัติ",
-    "noOutputsAvailable": "ยังไม่มีผลลัพธ์ที่พร้อมใช้งาน"
+    "noOutputsAvailable": "ยังไม่มีผลลัพธ์ที่พร้อมใช้งาน",
+    "confirmCost": "ยืนยันค่าใช้จ่าย"
   },
   "jobActions": {
     "delete": "ลบ",

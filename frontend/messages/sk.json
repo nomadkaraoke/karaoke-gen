@@ -582,7 +582,8 @@
     "autoAccept": "Automaticky prijme",
     "autoSelect": "Automaticky vyberie",
     "willAutoSelectFirst": "Automaticky vyberie prvé",
-    "noOutputsAvailable": "Zatiaľ nie sú k dispozícii žiadne výstupy"
+    "noOutputsAvailable": "Zatiaľ nie sú k dispozícii žiadne výstupy",
+    "confirmCost": "Potvrdiť cenu"
   },
   "jobActions": {
     "delete": "Vymazať",

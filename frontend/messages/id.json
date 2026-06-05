@@ -582,7 +582,8 @@
     "autoAccept": "Akan menerima otomatis",
     "autoSelect": "Akan memilih otomatis",
     "willAutoSelectFirst": "Akan memilih otomatis yang pertama",
-    "noOutputsAvailable": "Belum ada output yang tersedia"
+    "noOutputsAvailable": "Belum ada output yang tersedia",
+    "confirmCost": "Konfirmasi Biaya"
   },
   "jobActions": {
     "delete": "Hapus",

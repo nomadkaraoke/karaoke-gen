@@ -582,7 +582,8 @@
     "autoAccept": "Kommer att auto-acceptera",
     "autoSelect": "Kommer att auto-välja",
     "willAutoSelectFirst": "Kommer att auto-välja första",
-    "noOutputsAvailable": "Inga utdata tillgängliga ännu"
+    "noOutputsAvailable": "Inga utdata tillgängliga ännu",
+    "confirmCost": "Bekräfta kostnad"
   },
   "jobActions": {
     "delete": "Ta bort",

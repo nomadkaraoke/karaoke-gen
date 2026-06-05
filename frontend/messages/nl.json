@@ -582,7 +582,8 @@
     "autoAccept": "Zal automatisch accepteren",
     "autoSelect": "Zal automatisch selecteren",
     "willAutoSelectFirst": "Zal automatisch de eerste selecteren",
-    "noOutputsAvailable": "Nog geen outputs beschikbaar"
+    "noOutputsAvailable": "Nog geen outputs beschikbaar",
+    "confirmCost": "Kosten bevestigen"
   },
   "jobActions": {
     "delete": "Verwijderen",

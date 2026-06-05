@@ -582,7 +582,8 @@
     "autoAccept": "יאשר אוטומטית",
     "autoSelect": "יבחר אוטומטית",
     "willAutoSelectFirst": "יבחר אוטומטית ראשון",
-    "noOutputsAvailable": "אין פלטים זמינים עדיין"
+    "noOutputsAvailable": "אין פלטים זמינים עדיין",
+    "confirmCost": "אישור עלות"
   },
   "jobActions": {
     "delete": "מחק",

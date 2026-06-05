@@ -582,7 +582,8 @@
     "autoAccept": "Automatikusan elfogadja",
     "autoSelect": "Automatikusan kiválasztja",
     "willAutoSelectFirst": "Automatikusan kiválasztja az elsőt",
-    "noOutputsAvailable": "Még nincsenek elérhető kimenetek"
+    "noOutputsAvailable": "Még nincsenek elérhető kimenetek",
+    "confirmCost": "Költség megerősítése"
   },
   "jobActions": {
     "delete": "Törlés",

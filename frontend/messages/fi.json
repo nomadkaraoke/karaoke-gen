@@ -582,7 +582,8 @@
     "autoAccept": "Hyväksyy automaattisesti",
     "autoSelect": "Valitsee automaattisesti",
     "willAutoSelectFirst": "Valitsee automaattisesti ensimmäisen",
-    "noOutputsAvailable": "Ei tulosteita vielä saatavilla"
+    "noOutputsAvailable": "Ei tulosteita vielä saatavilla",
+    "confirmCost": "Vahvista hinta"
   },
   "jobActions": {
     "delete": "Poista",

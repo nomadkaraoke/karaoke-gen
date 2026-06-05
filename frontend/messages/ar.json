@@ -582,7 +582,8 @@
     "autoAccept": "سيتم القبول التلقائي",
     "autoSelect": "سيتم التحديد التلقائي",
     "willAutoSelectFirst": "سيتم التحديد التلقائي للأول",
-    "noOutputsAvailable": "لا توجد مخرجات متاحة بعد"
+    "noOutputsAvailable": "لا توجد مخرجات متاحة بعد",
+    "confirmCost": "تأكيد التكلفة"
   },
   "jobActions": {
     "delete": "حذف",

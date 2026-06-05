@@ -582,7 +582,8 @@
     "autoAccept": "अपने आप एक्सेप्ट करेगा",
     "autoSelect": "अपने आप सिलेक्ट करेगा",
     "willAutoSelectFirst": "अपने आप पहला सिलेक्ट करेगा",
-    "noOutputsAvailable": "अभी तक कोई आउटपुट उपलब्ध नहीं है"
+    "noOutputsAvailable": "अभी तक कोई आउटपुट उपलब्ध नहीं है",
+    "confirmCost": "लागत की पुष्टि करो"
   },
   "jobActions": {
     "delete": "डिलीट करो",

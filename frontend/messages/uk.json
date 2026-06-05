@@ -582,7 +582,8 @@
     "autoAccept": "Буде автоматично прийнято",
     "autoSelect": "Буде автоматично вибрано",
     "willAutoSelectFirst": "Буде автоматично вибрано перше",
-    "noOutputsAvailable": "Результати поки недоступні"
+    "noOutputsAvailable": "Результати поки недоступні",
+    "confirmCost": "Підтвердити вартість"
   },
   "jobActions": {
     "delete": "Видалити",

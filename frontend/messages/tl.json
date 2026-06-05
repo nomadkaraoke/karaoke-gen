@@ -582,7 +582,8 @@
     "autoAccept": "Awtomatikong tatanggapin",
     "autoSelect": "Awtomatikong pipili",
     "willAutoSelectFirst": "Awtomatikong pipiliin ang una",
-    "noOutputsAvailable": "Wala pang available na outputs"
+    "noOutputsAvailable": "Wala pang available na outputs",
+    "confirmCost": "Kumpirmahin ang Halaga"
   },
   "jobActions": {
     "delete": "Tanggalin",
