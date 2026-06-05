@@ -571,7 +571,8 @@
     "transcribing": "Transkrypcja",
     "correcting": "Poprawianie",
     "lyricsDone": "Tekst gotowy",
-    "lyrics": "Tekst"
+    "lyrics": "Tekst",
+    "confirmDurationCost": "Potwierdź koszt"
   },
   "jobCard": {
     "actionNeeded": "Wymagane działanie",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Odświeżymy stronę i załadujemy najnowszy kod.",
     "updateNow": "Zaktualizuj teraz",
     "retry": "Spróbuj ponownie"
+  },
+  "pricing": {
+    "balance": "Masz {balance} kredytów",
+    "buyCredits": "Kup kredyty",
+    "confirm": "Potwierdź i rozpocznij",
+    "confirmTitle": "Potwierdź generowanie karaoke",
+    "creditsForDuration": "{minutes} min · {credits} kredytów",
+    "estimatedLabel": "Szacunkowo — ostateczny koszt zostanie potwierdzony po pobraniu",
+    "reconcileTitle": "Ta piosenka jest dłuższa, niż oczekiwano",
+    "cancel": "Anuluj"
   }
 }

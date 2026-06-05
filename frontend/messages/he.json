@@ -571,7 +571,8 @@
     "transcribing": "מתמלל",
     "correcting": "מתקן",
     "lyricsDone": "מילים הושלמו",
-    "lyrics": "מילים"
+    "lyrics": "מילים",
+    "confirmDurationCost": "אישור עלות"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "נרענן את העמוד ונטען את הקוד העדכני ביותר.",
     "updateNow": "עדכון עכשיו",
     "retry": "נסה שוב"
+  },
+  "pricing": {
+    "balance": "יש לך {balance} קרדיטים",
+    "buyCredits": "רכישת קרדיטים",
+    "confirm": "אישור והתחלה",
+    "confirmTitle": "אישור יצירת הקריוקי שלך",
+    "creditsForDuration": "{minutes} דק' · {credits} קרדיטים",
+    "estimatedLabel": "משוער — העלות הסופית תאושר לאחר ההורדה",
+    "reconcileTitle": "השיר הזה ארוך מהצפוי",
+    "cancel": "ביטול"
   }
 }

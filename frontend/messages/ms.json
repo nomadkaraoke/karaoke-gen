@@ -571,7 +571,8 @@
     "transcribing": "Mentranskripsi",
     "correcting": "Membetulkan",
     "lyricsDone": "Lirik selesai",
-    "lyrics": "Lirik"
+    "lyrics": "Lirik",
+    "confirmDurationCost": "Sahkan kos"
   },
   "jobCard": {
     "actionNeeded": "Tindakan diperlukan",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Kami akan memuat semula halaman dan memuatkan kod terkini.",
     "updateNow": "Kemas kini sekarang",
     "retry": "Cuba lagi"
+  },
+  "pricing": {
+    "balance": "Anda mempunyai {balance} kredit",
+    "buyCredits": "Beli kredit",
+    "confirm": "Sahkan & mula",
+    "confirmTitle": "Sahkan tugasan karaoke anda",
+    "creditsForDuration": "{minutes} min · {credits} kredit",
+    "estimatedLabel": "Anggaran — kos akhir disahkan selepas muat turun",
+    "reconcileTitle": "Lagu ini lebih panjang daripada yang dijangkakan",
+    "cancel": "Batal"
   }
 }

@@ -571,7 +571,8 @@
     "transcribing": "文字起こし中",
     "correcting": "修正中",
     "lyricsDone": "歌詞完了",
-    "lyrics": "歌詞"
+    "lyrics": "歌詞",
+    "confirmDurationCost": "料金を確認"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "ページを更新して最新のコードを読み込みます。",
     "updateNow": "今すぐ更新",
     "retry": "もう一度試す"
+  },
+  "pricing": {
+    "balance": "現在{balance}クレジットお持ちです",
+    "buyCredits": "クレジットを購入",
+    "confirm": "確認して開始",
+    "confirmTitle": "カラオケジョブの確認",
+    "creditsForDuration": "{minutes}分 · {credits}クレジット",
+    "estimatedLabel": "目安 — 最終的な料金はダウンロード後に確定します",
+    "reconcileTitle": "この曲は想定より長くなっています",
+    "cancel": "キャンセル"
   }
 }

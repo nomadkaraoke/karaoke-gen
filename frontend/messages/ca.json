@@ -571,7 +571,8 @@
     "transcribing": "Transcrivint",
     "correcting": "Corregint",
     "lyricsDone": "Lletres fetes",
-    "lyrics": "Lletres"
+    "lyrics": "Lletres",
+    "confirmDurationCost": "Confirma el cost"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Actualitzarem la pàgina i carregarem el codi més recent.",
     "updateNow": "Actualitza ara",
     "retry": "Torna-ho a provar"
+  },
+  "pricing": {
+    "balance": "Tens {balance} crèdits",
+    "buyCredits": "Compra crèdits",
+    "confirm": "Confirma i comença",
+    "confirmTitle": "Confirma la teva tasca de karaoke",
+    "creditsForDuration": "{minutes} min · {credits} crèdits",
+    "estimatedLabel": "Aproximat — el cost final es confirmarà després de la descàrrega",
+    "reconcileTitle": "Aquesta cançó és més llarga del que s'esperava",
+    "cancel": "Cancel·la"
   }
 }

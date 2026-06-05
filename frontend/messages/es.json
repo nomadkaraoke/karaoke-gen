@@ -571,7 +571,8 @@
     "transcribing": "Transcribiendo",
     "correcting": "Corrigiendo",
     "lyricsDone": "Letras terminadas",
-    "lyrics": "Letras"
+    "lyrics": "Letras",
+    "confirmDurationCost": "Confirmar costo"
   },
   "jobCard": {
     "actionNeeded": "Acción necesaria",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Actualizaremos la página y cargaremos el código más reciente.",
     "updateNow": "Actualizar ahora",
     "retry": "Intentar de nuevo"
+  },
+  "pricing": {
+    "balance": "Tienes {balance} créditos",
+    "buyCredits": "Comprar créditos",
+    "confirm": "Confirmar y empezar",
+    "confirmTitle": "Confirma tu trabajo de karaoke",
+    "creditsForDuration": "{minutes} min · {credits} créditos",
+    "estimatedLabel": "Estimado — el costo final se confirmará después de la descarga",
+    "reconcileTitle": "Esta canción es más larga de lo esperado",
+    "cancel": "Cancelar"
   }
 }

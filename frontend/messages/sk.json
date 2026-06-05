@@ -571,7 +571,8 @@
     "transcribing": "Prepisuje sa",
     "correcting": "Opravuje sa",
     "lyricsDone": "Text hotový",
-    "lyrics": "Text"
+    "lyrics": "Text",
+    "confirmDurationCost": "Potvrdiť cenu"
   },
   "jobCard": {
     "actionNeeded": "Vyžaduje sa akcia",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Obnovíme stránku a načítame najnovší kód.",
     "updateNow": "Aktualizovať teraz",
     "retry": "Skúsiť znova"
+  },
+  "pricing": {
+    "balance": "Máš {balance} kreditov",
+    "buyCredits": "Kúpiť kredity",
+    "confirm": "Potvrdiť a začať",
+    "confirmTitle": "Potvrď svoju karaoke úlohu",
+    "creditsForDuration": "{minutes} min · {credits} kreditov",
+    "estimatedLabel": "Odhadované — konečná cena bude potvrdená po stiahnutí",
+    "reconcileTitle": "Táto pieseň je dlhšia, ako sa očakávalo",
+    "cancel": "Zrušiť"
   }
 }

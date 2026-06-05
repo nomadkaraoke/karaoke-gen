@@ -571,7 +571,8 @@
     "transcribing": "Transkriberer",
     "correcting": "Korrigerer",
     "lyricsDone": "Tekst ferdig",
-    "lyrics": "Tekst"
+    "lyrics": "Tekst",
+    "confirmDurationCost": "Bekreft pris"
   },
   "jobCard": {
     "actionNeeded": "Handling kreves",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Vi oppdaterer siden og laster inn den nyeste koden.",
     "updateNow": "Oppdater nå",
     "retry": "Prøv igjen"
+  },
+  "pricing": {
+    "balance": "Du har {balance} kreditter",
+    "buyCredits": "Kjøp kreditter",
+    "confirm": "Bekreft og start",
+    "confirmTitle": "Bekreft karaokejobben din",
+    "creditsForDuration": "{minutes} min · {credits} kreditter",
+    "estimatedLabel": "Estimert — endelig pris bekreftes etter nedlasting",
+    "reconcileTitle": "Denne sangen er lengre enn forventet",
+    "cancel": "Avbryt"
   }
 }

@@ -571,7 +571,8 @@
     "transcribing": "Transcriberen",
     "correcting": "Corrigeren",
     "lyricsDone": "Songteksten klaar",
-    "lyrics": "Songteksten"
+    "lyrics": "Songteksten",
+    "confirmDurationCost": "Kosten bevestigen"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "We vernieuwen de pagina en laden de nieuwste code.",
     "updateNow": "Nu updaten",
     "retry": "Probeer opnieuw"
+  },
+  "pricing": {
+    "balance": "Je hebt {balance} credits",
+    "buyCredits": "Credits kopen",
+    "confirm": "Bevestig & start",
+    "confirmTitle": "Bevestig je karaoke-opdracht",
+    "creditsForDuration": "{minutes} min · {credits} credits",
+    "estimatedLabel": "Geschat — definitieve kosten worden na downloaden bevestigd",
+    "reconcileTitle": "Dit nummer is langer dan verwacht",
+    "cancel": "Annuleren"
   }
 }

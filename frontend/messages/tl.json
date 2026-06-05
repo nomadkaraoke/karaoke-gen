@@ -571,7 +571,8 @@
     "transcribing": "Tina-transcribe",
     "correcting": "Itinatama",
     "lyricsDone": "Tapos na ang lyrics",
-    "lyrics": "Lyrics"
+    "lyrics": "Lyrics",
+    "confirmDurationCost": "Kumpirmahin ang halaga"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Ire-refresh namin ang page at ilo-load ang pinakabagong code.",
     "updateNow": "I-update ngayon",
     "retry": "Subukan muli"
+  },
+  "pricing": {
+    "balance": "Mayroon kang {balance} credits",
+    "buyCredits": "Bumili ng credits",
+    "confirm": "Kumpirmahin at simulan",
+    "confirmTitle": "Kumpirmahin ang iyong karaoke job",
+    "creditsForDuration": "{minutes} min · {credits} credits",
+    "estimatedLabel": "Tantiya — kukumpirmahin ang pinal na halaga pagkatapos ma-download",
+    "reconcileTitle": "Mas mahaba ang kantang ito kaysa sa inaasahan",
+    "cancel": "Kanselahin"
   }
 }

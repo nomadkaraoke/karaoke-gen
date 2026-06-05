@@ -571,7 +571,8 @@
     "transcribing": "Se transcrie",
     "correcting": "Se corectează",
     "lyricsDone": "Versuri terminate",
-    "lyrics": "Versuri"
+    "lyrics": "Versuri",
+    "confirmDurationCost": "Confirmă costul"
   },
   "jobCard": {
     "actionNeeded": "Acțiune necesară",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Vom reîncărca pagina și vom folosi cel mai recent cod.",
     "updateNow": "Actualizează acum",
     "retry": "Încearcă din nou"
+  },
+  "pricing": {
+    "balance": "Ai {balance} credite",
+    "buyCredits": "Cumpără credite",
+    "confirm": "Confirmă și începe",
+    "confirmTitle": "Confirmă-ți proiectul de karaoke",
+    "creditsForDuration": "{minutes} min · {credits} credite",
+    "estimatedLabel": "Estimat — costul final va fi confirmat după descărcare",
+    "reconcileTitle": "Această melodie este mai lungă decât era de așteptat",
+    "cancel": "Anulează"
   }
 }

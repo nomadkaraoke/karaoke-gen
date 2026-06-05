@@ -571,7 +571,8 @@
     "transcribing": "กำลังถอดเสียง",
     "correcting": "กำลังแก้ไข",
     "lyricsDone": "เนื้อเพลงเสร็จสิ้น",
-    "lyrics": "เนื้อเพลง"
+    "lyrics": "เนื้อเพลง",
+    "confirmDurationCost": "ยืนยันค่าใช้จ่าย"
   },
   "jobCard": {
     "actionNeeded": "ต้องการการดำเนินการ",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "เราจะรีเฟรชหน้าเว็บและโหลดโค้ดล่าสุด",
     "updateNow": "อัปเดตตอนนี้",
     "retry": "ลองอีกครั้ง"
+  },
+  "pricing": {
+    "balance": "คุณมี {balance} เครดิต",
+    "buyCredits": "ซื้อเครดิต",
+    "confirm": "ยืนยันและเริ่ม",
+    "confirmTitle": "ยืนยันการทำคาราโอเกะของคุณ",
+    "creditsForDuration": "{minutes} นาที · {credits} เครดิต",
+    "estimatedLabel": "โดยประมาณ — จะยืนยันค่าใช้จ่ายจริงหลังดาวน์โหลด",
+    "reconcileTitle": "เพลงนี้ยาวกว่าที่คาดไว้",
+    "cancel": "ยกเลิก"
   }
 }

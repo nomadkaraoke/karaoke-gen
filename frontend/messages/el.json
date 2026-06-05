@@ -571,7 +571,8 @@
     "transcribing": "Απομαγνητοφώνηση",
     "correcting": "Διόρθωση",
     "lyricsDone": "Οι στίχοι ολοκληρώθηκαν",
-    "lyrics": "Στίχοι"
+    "lyrics": "Στίχοι",
+    "confirmDurationCost": "Επιβεβαίωση κόστους"
   },
   "jobCard": {
     "actionNeeded": "Απαιτείται ενέργεια",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Θα ανανεώσουμε τη σελίδα και θα φορτώσουμε τον πιο πρόσφατο κώδικα.",
     "updateNow": "Ενημέρωση τώρα",
     "retry": "Δοκίμασε ξανά"
+  },
+  "pricing": {
+    "balance": "Έχεις {balance} μονάδες",
+    "buyCredits": "Αγορά μονάδων",
+    "confirm": "Επιβεβαίωση & έναρξη",
+    "confirmTitle": "Επιβεβαίωσε την εργασία καραόκε σου",
+    "creditsForDuration": "{minutes} λεπτά · {credits} μονάδες",
+    "estimatedLabel": "Εκτιμώμενο — το τελικό κόστος επιβεβαιώνεται μετά τη λήψη",
+    "reconcileTitle": "Αυτό το τραγούδι διαρκεί περισσότερο από το αναμενόμενο",
+    "cancel": "Ακύρωση"
   }
 }

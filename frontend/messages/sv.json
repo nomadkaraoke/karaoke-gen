@@ -571,7 +571,8 @@
     "transcribing": "Transkriberar",
     "correcting": "Korrigerar",
     "lyricsDone": "Text klar",
-    "lyrics": "Text"
+    "lyrics": "Text",
+    "confirmDurationCost": "Bekräfta kostnad"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Vi uppdaterar sidan och laddar in den senaste koden.",
     "updateNow": "Uppdatera nu",
     "retry": "Försök igen"
+  },
+  "pricing": {
+    "balance": "Du har {balance} krediter",
+    "buyCredits": "Köp krediter",
+    "confirm": "Bekräfta & starta",
+    "confirmTitle": "Bekräfta ditt karaokejobb",
+    "creditsForDuration": "{minutes} min · {credits} krediter",
+    "estimatedLabel": "Preliminärt — slutgiltig kostnad bekräftas efter nedladdning",
+    "reconcileTitle": "Den här låten är längre än förväntat",
+    "cancel": "Avbryt"
   }
 }

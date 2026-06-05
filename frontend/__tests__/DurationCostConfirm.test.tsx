@@ -4,9 +4,8 @@
  * Tests for DurationCostConfirm modal.
  *
  * next-intl is globally mocked in jest.setup.js to read from messages/en.json.
- * Since the 'pricing' namespace is not yet in en.json, useTranslations('pricing')
- * returns key names as-is (e.g. t('confirm') → 'confirm'). Tests use these key
- * names as the expected rendered text.
+ * The 'pricing' namespace exists in en.json, so useTranslations('pricing') returns
+ * real English strings with ICU param interpolation (e.g. t('confirm') → 'Confirm & start').
  *
  * The component uses the shared Radix Dialog primitive (via @/components/ui/dialog),
  * so the dialog is rendered in a portal. Use screen.getByRole('dialog') to find it.
@@ -43,19 +42,17 @@ describe('DurationCostConfirm', () => {
 
   it('renders duration in minutes (905s → 16 minutes visible in text)', () => {
     render(<DurationCostConfirm {...baseProps} />)
-    // t('creditsForDuration', {minutes: 16, credits: 2}) returns the key 'creditsForDuration'
-    // but we also verify the minutes number appears somewhere in the rendered output
-    // The mock interpolates params into the key value; since there is no en.json pricing key,
-    // the mock falls back to returning the key name. We at least verify the dialog renders.
-    const dialog = screen.getByRole('dialog')
-    expect(dialog).toBeInTheDocument()
+    // t('creditsForDuration', {minutes: 16, credits: 2}) → "16 min · 2 credits"
+    // The jest.setup.js mock reads from en.json and interpolates ICU params.
+    expect(screen.getByText(/16 min/)).toBeInTheDocument()
+    expect(screen.getByText(/2 credits/)).toBeInTheDocument()
   })
 
   it('shows Confirm button when balance >= credits and calls onConfirm when clicked', () => {
     const onConfirm = jest.fn()
     render(<DurationCostConfirm {...baseProps} balance={5} credits={2} onConfirm={onConfirm} />)
-    // key 'confirm' is returned as-is by mock since pricing namespace not in en.json yet
-    const confirmBtn = screen.getByRole('button', { name: /confirm/i })
+    // t('confirm') → "Confirm & start"
+    const confirmBtn = screen.getByRole('button', { name: /confirm & start/i })
     expect(confirmBtn).toBeInTheDocument()
     fireEvent.click(confirmBtn)
     expect(onConfirm).toHaveBeenCalledTimes(1)
@@ -63,7 +60,8 @@ describe('DurationCostConfirm', () => {
 
   it('does NOT show Buy Credits button when balance >= credits', () => {
     render(<DurationCostConfirm {...baseProps} balance={5} credits={2} />)
-    expect(screen.queryByRole('button', { name: /buyCredits/i })).not.toBeInTheDocument()
+    // t('buyCredits') → "Buy credits"
+    expect(screen.queryByRole('button', { name: /buy credits/i })).not.toBeInTheDocument()
   })
 
   it('shows Buy Credits button when balance < credits and calls onBuyCredits when clicked', () => {
@@ -76,8 +74,8 @@ describe('DurationCostConfirm', () => {
         onBuyCredits={onBuyCredits}
       />
     )
-    // key 'buyCredits' is returned as-is by mock
-    const buyBtn = screen.getByRole('button', { name: /buyCredits/i })
+    // t('buyCredits') → "Buy credits"
+    const buyBtn = screen.getByRole('button', { name: /buy credits/i })
     expect(buyBtn).toBeInTheDocument()
     fireEvent.click(buyBtn)
     expect(onBuyCredits).toHaveBeenCalledTimes(1)
@@ -85,47 +83,48 @@ describe('DurationCostConfirm', () => {
 
   it('does NOT show Confirm button when balance < credits', () => {
     render(<DurationCostConfirm {...baseProps} balance={1} credits={2} />)
-    expect(screen.queryByRole('button', { name: /^confirm$/i })).not.toBeInTheDocument()
+    // t('confirm') → "Confirm & start" — should not be present
+    expect(screen.queryByRole('button', { name: /confirm & start/i })).not.toBeInTheDocument()
   })
 
   it('calls onClose when cancel button is clicked', () => {
     const onClose = jest.fn()
     render(<DurationCostConfirm {...baseProps} onClose={onClose} />)
-    // key 'cancel' returned as-is
-    const cancelBtn = screen.getByRole('button', { name: /cancel/i })
+    // t('cancel') → "Cancel"
+    const cancelBtn = screen.getByRole('button', { name: /^cancel$/i })
     fireEvent.click(cancelBtn)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('uses reconcile title copy when reconcile=true', () => {
     render(<DurationCostConfirm {...baseProps} reconcile={true} />)
-    // key 'reconcileTitle' returned as-is from mock
-    expect(screen.getByText('reconcileTitle')).toBeInTheDocument()
-    expect(screen.queryByText('confirmTitle')).not.toBeInTheDocument()
+    // t('reconcileTitle') → "This song is longer than expected"
+    expect(screen.getByText('This song is longer than expected')).toBeInTheDocument()
+    expect(screen.queryByText('Confirm your karaoke job')).not.toBeInTheDocument()
   })
 
   it('uses confirm title copy when reconcile=false (default)', () => {
     render(<DurationCostConfirm {...baseProps} reconcile={false} />)
-    // key 'confirmTitle' returned as-is from mock
-    expect(screen.getByText('confirmTitle')).toBeInTheDocument()
-    expect(screen.queryByText('reconcileTitle')).not.toBeInTheDocument()
+    // t('confirmTitle') → "Confirm your karaoke job"
+    expect(screen.getByText('Confirm your karaoke job')).toBeInTheDocument()
+    expect(screen.queryByText('This song is longer than expected')).not.toBeInTheDocument()
   })
 
   it('shows estimated label when estimated=true', () => {
     render(<DurationCostConfirm {...baseProps} estimated={true} />)
-    // key 'estimatedLabel' returned as-is
-    expect(screen.getByText('estimatedLabel')).toBeInTheDocument()
+    // t('estimatedLabel') → "Estimated — final cost confirmed after download"
+    expect(screen.getByText('Estimated — final cost confirmed after download')).toBeInTheDocument()
   })
 
   it('does not show estimated label when estimated=false (default)', () => {
     render(<DurationCostConfirm {...baseProps} estimated={false} />)
-    expect(screen.queryByText('estimatedLabel')).not.toBeInTheDocument()
+    expect(screen.queryByText('Estimated — final cost confirmed after download')).not.toBeInTheDocument()
   })
 
   it('shows Confirm (not Buy Credits) when balance === credits (boundary)', () => {
     render(<DurationCostConfirm {...baseProps} balance={2} credits={2} />)
-    expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /buyCredits/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /confirm & start/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /buy credits/i })).not.toBeInTheDocument()
   })
 
   it('Buy Credits button is disabled when onBuyCredits is not provided', () => {
@@ -138,7 +137,8 @@ describe('DurationCostConfirm', () => {
         credits={2}
       />
     )
-    const buyBtn = screen.getByRole('button', { name: /buyCredits/i })
+    // t('buyCredits') → "Buy credits"
+    const buyBtn = screen.getByRole('button', { name: /buy credits/i })
     expect(buyBtn).toBeDisabled()
   })
 })

@@ -571,7 +571,8 @@
     "transcribing": "转录中",
     "correcting": "校对中",
     "lyricsDone": "歌词完成",
-    "lyrics": "歌词"
+    "lyrics": "歌词",
+    "confirmDurationCost": "确认费用"
   },
   "jobCard": {
     "actionNeeded": "需要操作",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "我们将刷新页面并加载最新代码。",
     "updateNow": "立即更新",
     "retry": "重试"
+  },
+  "pricing": {
+    "balance": "您有 {balance} 点数",
+    "buyCredits": "购买点数",
+    "confirm": "确认并开始",
+    "confirmTitle": "确认您的卡拉OK任务",
+    "creditsForDuration": "{minutes} 分钟 · {credits} 点数",
+    "estimatedLabel": "预估 — 最终费用将在下载后确认",
+    "reconcileTitle": "这首歌比预期的要长",
+    "cancel": "取消"
   }
 }

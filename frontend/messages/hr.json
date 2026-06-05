@@ -571,7 +571,8 @@
     "transcribing": "Transkribiranje",
     "correcting": "Ispravljanje",
     "lyricsDone": "Tekst gotov",
-    "lyrics": "Tekst"
+    "lyrics": "Tekst",
+    "confirmDurationCost": "Potvrdi cijenu"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",
@@ -1488,5 +1489,15 @@
     "updateAvailableSubtitle": "Osvježit ćemo stranicu i učitati najnoviji kod.",
     "updateNow": "Ažuriraj sada",
     "retry": "Pokušaj ponovno"
+  },
+  "pricing": {
+    "balance": "Imaš {balance} kredita",
+    "buyCredits": "Kupi kredite",
+    "confirm": "Potvrdi i započni",
+    "confirmTitle": "Potvrdi svoj karaoke zadatak",
+    "creditsForDuration": "{minutes} min · {credits} kredita",
+    "estimatedLabel": "Procijenjeno — konačna cijena potvrđuje se nakon preuzimanja",
+    "reconcileTitle": "Ova pjesma je duža od očekivanog",
+    "cancel": "Odustani"
   }
 }
