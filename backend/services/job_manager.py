@@ -551,13 +551,15 @@ class JobManager:
                 self._send_push_notification(job, "complete")
 
             # Idle reminder scheduling for blocking states
-            elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.AWAITING_AUDIO_EDIT]:
+            elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.AWAITING_AUDIO_EDIT, JobStatus.AWAITING_DURATION_CONFIRM]:
                 self._schedule_idle_reminder(job, new_status)
                 # Send push notification for blocking states
                 if new_status == JobStatus.AWAITING_AUDIO_EDIT:
                     action_type = "audio_edit"
                 elif new_status == JobStatus.AWAITING_REVIEW:
                     action_type = "lyrics"
+                elif new_status == JobStatus.AWAITING_DURATION_CONFIRM:
+                    action_type = "duration_confirm"
                 else:
                     action_type = "instrumental"
                 self._send_push_notification(job, action_type)
@@ -637,7 +639,9 @@ class JobManager:
         Schedule an idle reminder for a blocking state.
 
         Records the timestamp when the blocking state was entered and
-        schedules a Cloud Tasks task for 5 minutes later.
+        schedules a Cloud Tasks task after a state-specific delay:
+        - AWAITING_DURATION_CONFIRM: 15 minutes (900s) — user needs to confirm extra cost
+        - All other blocking states: default delay (IDLE_REMINDER_DELAY_SECONDS)
         """
         import asyncio
         import threading
@@ -650,6 +654,8 @@ class JobManager:
                 action_type = "audio_edit"
             elif new_status == JobStatus.AWAITING_REVIEW:
                 action_type = "lyrics"
+            elif new_status == JobStatus.AWAITING_DURATION_CONFIRM:
+                action_type = "duration_confirm"
             else:
                 action_type = "instrumental"
 
@@ -665,12 +671,19 @@ class JobManager:
                 'state_data': {**existing_state_data, **state_data_update}
             })
 
-            # Schedule the idle reminder check via worker service (5 min delay)
+            # Schedule the idle reminder check via worker service.
+            # Duration-confirm uses 15-min delay; other states use the default.
             from backend.services.worker_service import get_worker_service
+
+            # Capture action_type for the closure
+            _action_type = action_type
 
             async def schedule_reminder():
                 worker_service = get_worker_service()
-                await worker_service.schedule_idle_reminder(job.job_id)
+                if _action_type == "duration_confirm":
+                    await worker_service.schedule_idle_reminder(job.job_id, delay_seconds=900)
+                else:
+                    await worker_service.schedule_idle_reminder(job.job_id)
 
             # Try to get existing event loop, create new one if none exists
             try:
