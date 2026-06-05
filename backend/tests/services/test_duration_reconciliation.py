@@ -51,11 +51,35 @@ def test_longer_pauses_for_reconfirm():
 
 def test_over_limit_refunds_all_and_cancels():
     jm, us, probe = _ctx(actual_seconds=4000, credits_charged=2)  # >60min
+
+    # Track call order via a parent mock
+    parent = MagicMock()
+    parent.attach_mock(jm.update_job, "update_job")
+    parent.attach_mock(jm.cancel_job, "cancel_job")
+
     result = reconcile_duration("job1", jm, us, probe)
     assert result.action == "cancel"
+
+    # Full refund called exactly once with the right amount
     us.add_credits.assert_called_once()
     _, kwargs = us.add_credits.call_args
     assert kwargs.get("amount") == 2  # full refund
+
+    # Suppression flag must be set BEFORE cancel_job so cancel_job's built-in
+    # _refund_credit_for_job guard sees credit_refunded=True and skips.
+    calls = parent.mock_calls
+    update_suppression = next(
+        (c for c in calls
+         if c[0] == "update_job" and len(c[1]) >= 2 and isinstance(c[1][1], dict) and c[1][1].get("credit_refunded") is True),
+        None,
+    )
+    assert update_suppression is not None, "update_job({'credit_refunded': True}) was never called"
+    cancel_idx = next(i for i, c in enumerate(calls) if c[0] == "cancel_job")
+    suppress_idx = calls.index(update_suppression)
+    assert suppress_idx < cancel_idx, (
+        "update_job(credit_refunded=True) must be called BEFORE cancel_job"
+    )
+
     jm.cancel_job.assert_called_once()
 
 

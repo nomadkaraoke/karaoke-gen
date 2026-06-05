@@ -46,6 +46,7 @@ def reconcile_duration(
         if credits_charged > 0:
             user_service.add_credits(job.user_email, amount=credits_charged,
                                      reason="duration_over_limit_refund", job_id=job_id)
+            job_manager.update_job(job_id, {"credit_refunded": True})  # suppress cancel_job's built-in 1-credit refund (we already refunded the full charge)
         job_manager.cancel_job(job_id, reason="Input audio exceeds the 60-minute limit")
         if email_service:
             email_service.send_duration_confirm_expired(job)
