@@ -1,9 +1,10 @@
 """
 Stale review processor.
 
-Detects jobs stuck in review (awaiting_review / in_review) and takes action:
+Detects jobs stuck in review (awaiting_review / in_review) or awaiting duration
+confirmation (awaiting_duration_confirm) and takes action:
 - 24h: sends a gentle reminder email with expiry warning
-- 48h: auto-cancels the job and refunds the user's credit
+- 48h: auto-cancels the job and refunds the user's credits
 
 Called by Cloud Scheduler via an internal endpoint (hourly).
 """
@@ -23,13 +24,28 @@ logger = logging.getLogger(__name__)
 REVIEW_REMINDER_HOURS = 24
 REVIEW_EXPIRY_HOURS = 48
 
+# Statuses treated as "review" states (1-credit refund via cancel_job)
+_REVIEW_STATUSES = {JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW}
+
+# Statuses treated as "duration confirm" states (credits_charged refund)
+_DURATION_CONFIRM_STATUSES = {JobStatus.AWAITING_DURATION_CONFIRM}
+
 
 async def process_stale_reviews() -> Dict[str, Any]:
     """
-    Query for stale review jobs and take action.
+    Query for stale review / duration-confirm jobs and take action.
 
-    - Jobs in review for >= 48h are auto-cancelled with credit refund
-    - Jobs in review for >= 24h (but < 48h) get a reminder email
+    - Jobs in these states for >= 48h are auto-cancelled with credit refund
+    - Jobs in these states for >= 24h (but < 48h) get a reminder email
+
+    Review states (AWAITING_REVIEW, IN_REVIEW):
+        - 24h reminder: send_review_reminder
+        - 48h expiry: cancel_job (auto-refunds 1 credit) + send_review_expired
+
+    Duration-confirm state (AWAITING_DURATION_CONFIRM):
+        - 24h reminder: send_duration_confirm_reminder
+        - 48h expiry: add_credits(credits_charged) + cancel_job + send_duration_confirm_expired
+          The full credits_charged amount (not flat 1) is refunded.
 
     Excludes made-for-you and tenant jobs.
 
@@ -44,9 +60,9 @@ async def process_stale_reviews() -> Dict[str, Any]:
     jobs_expired = 0
     errors = []
 
-    # Query for jobs in both blocking review states
+    # Query for jobs in all blocking states
     stale_jobs = []
-    for status in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
+    for status in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW, JobStatus.AWAITING_DURATION_CONFIRM]:
         try:
             jobs = firestore.list_jobs(status=status, limit=500)
             stale_jobs.extend(jobs)
@@ -97,48 +113,122 @@ async def process_stale_reviews() -> Dict[str, Any]:
 
             hours_elapsed = (now - blocking_entered_at).total_seconds() / 3600
 
-            if hours_elapsed >= REVIEW_EXPIRY_HOURS:
-                # Auto-expire: cancel job (which refunds credit)
-                logger.info(
-                    f"Job {job.job_id}: review stale for {hours_elapsed:.1f}h (>={REVIEW_EXPIRY_HOURS}h), "
-                    f"auto-expiring"
-                )
-                cancelled = job_manager.cancel_job(
-                    job.job_id,
-                    reason="Review not completed within 48 hours"
-                )
-                if cancelled:
-                    jobs_expired += 1
+            is_duration_confirm = job.status in _DURATION_CONFIRM_STATUSES
 
-                    # Send expiry notification email
-                    if job.user_email:
+            if hours_elapsed >= REVIEW_EXPIRY_HOURS:
+                if is_duration_confirm:
+                    # Duration-confirm expiry: refund full credits_charged, then cancel.
+                    # Check idempotency flag first.
+                    if state_data.get('duration_confirm_expiry_processed'):
+                        continue
+
+                    logger.info(
+                        f"Job {job.job_id}: duration-confirm stale for {hours_elapsed:.1f}h "
+                        f"(>={REVIEW_EXPIRY_HOURS}h), auto-expiring with credits_charged refund"
+                    )
+
+                    credits_charged = state_data.get('credits_charged', 0) or 0
+                    credits_refunded = 0
+
+                    # Refund the full charged amount (not flat 1) BEFORE cancelling.
+                    # We also mark credit_refunded=True on the job first so that
+                    # cancel_job's built-in _refund_credit_for_job skips its 1-credit
+                    # refund and we don't double-charge the user.
+                    if credits_charged > 0 and job.user_email:
                         try:
                             from backend.services.user_service import get_user_service
                             user_service = get_user_service()
-                            credits_balance = user_service.check_credits(job.user_email)
-
-                            # Look up user locale for email
-                            user_locale = "en"
-                            try:
-                                user = user_service.get_user(job.user_email)
-                                if user and user.locale:
-                                    user_locale = user.locale
-                            except Exception:
-                                pass
-
-                            email_service.send_review_expired(
-                                to_email=job.user_email,
-                                artist=job.artist,
-                                title=job.title,
-                                credits_balance=credits_balance,
-                                locale=user_locale,
+                            ok, _, _ = user_service.add_credits(
+                                job.user_email,
+                                amount=credits_charged,
+                                reason="duration_confirm_expired",
+                                job_id=job.job_id,
                             )
-                        except Exception as email_err:
+                            if ok:
+                                credits_refunded = credits_charged
+                                # Prevent cancel_job's internal 1-credit refund
+                                firestore.update_job(job.job_id, {'credit_refunded': True})
+                        except Exception as refund_err:
                             logger.error(
-                                f"Job {job.job_id}: failed to send expiry email: {email_err}"
+                                f"Job {job.job_id}: failed to refund {credits_charged} credits: {refund_err}"
                             )
+
+                    # Set idempotency flag so re-runs skip this job
+                    try:
+                        firestore.update_job(job.job_id, {
+                            'state_data.duration_confirm_expiry_processed': True,
+                            'state_data.duration_confirm_expiry_processed_at': datetime.now(timezone.utc).isoformat(),
+                        })
+                    except Exception as flag_err:
+                        logger.error(
+                            f"Job {job.job_id}: failed to set duration_confirm_expiry_processed: {flag_err}"
+                        )
+
+                    cancelled = job_manager.cancel_job(
+                        job.job_id,
+                        reason="Duration confirmation not completed within 48 hours",
+                    )
+                    if cancelled:
+                        jobs_expired += 1
+
+                        if job.user_email:
+                            try:
+                                email_service.send_duration_confirm_expired(
+                                    to_email=job.user_email,
+                                    artist=job.artist,
+                                    title=job.title,
+                                    credits_refunded=credits_refunded,
+                                    locale="en",
+                                )
+                            except Exception as email_err:
+                                logger.error(
+                                    f"Job {job.job_id}: failed to send duration_confirm_expired email: {email_err}"
+                                )
+                    else:
+                        logger.warning(f"Job {job.job_id}: cancel_job returned False")
+
                 else:
-                    logger.warning(f"Job {job.job_id}: cancel_job returned False")
+                    # Review-state expiry: cancel job (auto-refunds 1 credit via cancel_job)
+                    logger.info(
+                        f"Job {job.job_id}: review stale for {hours_elapsed:.1f}h (>={REVIEW_EXPIRY_HOURS}h), "
+                        f"auto-expiring"
+                    )
+                    cancelled = job_manager.cancel_job(
+                        job.job_id,
+                        reason="Review not completed within 48 hours"
+                    )
+                    if cancelled:
+                        jobs_expired += 1
+
+                        # Send expiry notification email
+                        if job.user_email:
+                            try:
+                                from backend.services.user_service import get_user_service
+                                user_service = get_user_service()
+                                credits_balance = user_service.check_credits(job.user_email)
+
+                                # Look up user locale for email
+                                user_locale = "en"
+                                try:
+                                    user = user_service.get_user(job.user_email)
+                                    if user and user.locale:
+                                        user_locale = user.locale
+                                except Exception:
+                                    pass
+
+                                email_service.send_review_expired(
+                                    to_email=job.user_email,
+                                    artist=job.artist,
+                                    title=job.title,
+                                    credits_balance=credits_balance,
+                                    locale=user_locale,
+                                )
+                            except Exception as email_err:
+                                logger.error(
+                                    f"Job {job.job_id}: failed to send expiry email: {email_err}"
+                                )
+                    else:
+                        logger.warning(f"Job {job.job_id}: cancel_job returned False")
 
             elif hours_elapsed >= REVIEW_REMINDER_HOURS:
                 # Check if expiry reminder was already sent
@@ -146,11 +236,11 @@ async def process_stale_reviews() -> Dict[str, Any]:
                     continue
 
                 logger.info(
-                    f"Job {job.job_id}: review stale for {hours_elapsed:.1f}h (>={REVIEW_REMINDER_HOURS}h), "
+                    f"Job {job.job_id}: stale for {hours_elapsed:.1f}h (>={REVIEW_REMINDER_HOURS}h), "
                     f"sending reminder"
                 )
 
-                # Send reminder email
+                # Send reminder email (different email per status)
                 if job.user_email:
                     try:
                         # Look up user locale for email
@@ -164,13 +254,22 @@ async def process_stale_reviews() -> Dict[str, Any]:
                         except Exception:
                             pass
 
-                        email_service.send_review_reminder(
-                            to_email=job.user_email,
-                            artist=job.artist,
-                            title=job.title,
-                            job_id=job.job_id,
-                            locale=user_locale,
-                        )
+                        if is_duration_confirm:
+                            email_service.send_duration_confirm_reminder(
+                                to_email=job.user_email,
+                                job_id=job.job_id,
+                                artist=job.artist,
+                                title=job.title,
+                                locale=user_locale,
+                            )
+                        else:
+                            email_service.send_review_reminder(
+                                to_email=job.user_email,
+                                artist=job.artist,
+                                title=job.title,
+                                job_id=job.job_id,
+                                locale=user_locale,
+                            )
                     except Exception as email_err:
                         logger.error(
                             f"Job {job.job_id}: failed to send reminder email: {email_err}"

@@ -1350,6 +1350,114 @@ class EmailService:
             text_content=text_content,
         )
 
+    def send_duration_confirm_expired(
+        self,
+        to_email: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        credits_refunded: int = 0,
+        locale: str = "en",
+    ) -> bool:
+        """
+        Send duration-confirm expiry notification email.
+
+        Sent when a job is auto-cancelled after 48 hours in AWAITING_DURATION_CONFIRM
+        (the user never confirmed the extra cost). Informs the user that the job was
+        cancelled and their credits have been refunded.
+
+        Args:
+            to_email: User's email address
+            artist: Artist name for subject line
+            title: Song title for subject line
+            credits_refunded: Number of credits that were refunded
+
+        Returns:
+            True if email was sent successfully
+        """
+        if artist and title:
+            subject = f"Your karaoke job was cancelled — cost not confirmed in time ({artist} - {title})"
+        else:
+            subject = "Your karaoke job was cancelled — cost not confirmed in time"
+
+        extra_styles = """
+        .info-box {
+            background-color: #f0f9ff;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .credit-badge {
+            display: inline-block;
+            background-color: #22c55e;
+            color: #ffffff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        .create-btn {
+            display: inline-block;
+            background-color: #ff7acc;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 16px 0;
+        }
+"""
+
+        song_name = f" for <strong>{html.escape(artist)} - {html.escape(title)}</strong>" if artist and title else ""
+        song_name_text = f" for {artist} - {title}" if artist and title else ""
+        credits_word = "credit" if credits_refunded == 1 else "credits"
+
+        refund_notice_html = (
+            f"<p>We've refunded <span class=\"credit-badge\">{credits_refunded} {credits_word}</span> "
+            f"to your account.</p>"
+            if credits_refunded > 0
+            else "<p>Your account has been updated.</p>"
+        )
+        refund_notice_text = (
+            f"We've refunded {credits_refunded} {credits_word} to your account."
+            if credits_refunded > 0
+            else "Your account has been updated."
+        )
+
+        content = f"""
+    <div class="info-box">
+        Your karaoke job{song_name} was automatically cancelled because the extra cost
+        was not confirmed within 48 hours.
+    </div>
+
+    {refund_notice_html}
+
+    <p>You can start a new job at any time — your credits are ready to use.</p>
+
+    <p style="text-align: center;">
+        <a href="{html.escape(self.frontend_url)}/app" class="create-btn">Create a new job</a>
+    </p>
+
+    <p>If you have any questions, just reply to this email — we're happy to help.</p>
+"""
+
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
+
+        text_content = (
+            f"Your karaoke job{song_name_text} was automatically cancelled because the extra "
+            f"cost was not confirmed within 48 hours.\n\n"
+            f"{refund_notice_text}\n\n"
+            f"You can start a new job at any time: {self.frontend_url}/app\n\n"
+            f"If you have any questions, just reply to this email — we're happy to help."
+        )
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
     def send_youtube_upload_complete(
         self,
         to_email: str,
