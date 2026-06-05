@@ -1044,7 +1044,8 @@ class UserService:
         email: str,
         job_id: str,
         amount: int = 1,
-        reason: str = "job_creation"
+        reason: str = "job_creation",
+        count_as_job_creation: bool = True,
     ) -> Tuple[bool, int, str]:
         """
         Atomically deduct N credits from a user account (all-or-nothing).
@@ -1054,8 +1055,12 @@ class UserService:
         Args:
             email: User email address.
             job_id: Job ID associated with the deduction.
-            amount: Number of credits to deduct (must be > 0).
+            amount: Number of credits to deduct (default: 1, must be > 0).
             reason: Reason for the deduction (default: "job_creation").
+            count_as_job_creation: When True (default), increments
+                ``total_jobs_created`` by 1. Pass False when deducting
+                *additional* credits for an already-existing job (e.g. the
+                reconcile/top-up path) so the counter is not double-counted.
 
         Returns:
             (success, remaining_credits, message)
@@ -1097,17 +1102,19 @@ class UserService:
 
                 # Calculate new values
                 new_balance = current_credits - amount
-                total_jobs = user_data.get('total_jobs_created', 0) + 1
 
-                # Update atomically within transaction
-                transaction.update(doc_ref, {
+                update_payload = {
                     'credits': new_balance,
                     'credit_transactions': transactions,
-                    'total_jobs_created': total_jobs,
-                    'updated_at': datetime.utcnow()
-                })
+                    'updated_at': datetime.utcnow(),
+                }
+                if count_as_job_creation:
+                    update_payload['total_jobs_created'] = user_data.get('total_jobs_created', 0) + 1
 
-                return True, new_balance, f"Credit deducted. {new_balance} remaining"
+                # Update atomically within transaction
+                transaction.update(doc_ref, update_payload)
+
+                return True, new_balance, f"Deducted {amount} credit(s). {new_balance} remaining"
 
             # Execute the transaction
             fs_transaction = self.db.transaction()
