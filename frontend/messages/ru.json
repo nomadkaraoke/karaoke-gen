@@ -733,7 +733,8 @@
     "availability": "доступность",
     "views": "{count} просмотров",
     "moreVersions": "Еще +{count}",
-    "select": "Выбрать"
+    "select": "Выбрать",
+    "creditCost": "{credits} кредитов"
   },
   "audioEditor": {
     "loading": "Загрузка аудиоредактора...",

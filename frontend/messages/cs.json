@@ -733,7 +733,8 @@
     "availability": "dostupnost",
     "views": "{count} zhlédnutí",
     "moreVersions": "+{count} dalších",
-    "select": "Vybrat"
+    "select": "Vybrat",
+    "creditCost": "{credits} kreditů"
   },
   "audioEditor": {
     "loading": "Načítání editoru zvuku...",

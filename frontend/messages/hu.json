@@ -733,7 +733,8 @@
     "availability": "elérhetőség",
     "views": "{count} megtekintés",
     "moreVersions": "+{count} további",
-    "select": "Kiválasztás"
+    "select": "Kiválasztás",
+    "creditCost": "{credits} kredit"
   },
   "audioEditor": {
     "loading": "Hangszerkesztő betöltése...",

@@ -733,7 +733,8 @@
     "availability": "अवेलेबिलिटी",
     "views": "{count} व्यूज़",
     "moreVersions": "+{count} और",
-    "select": "चुनो"
+    "select": "चुनो",
+    "creditCost": "{credits} क्रेडिट"
   },
   "audioEditor": {
     "loading": "ऑडियो एडिटर लोड हो रहा है...",

@@ -733,7 +733,8 @@
     "availability": "dostupnost",
     "views": "{count} pregleda",
     "moreVersions": "+{count} više",
-    "select": "Odaberi"
+    "select": "Odaberi",
+    "creditCost": "{credits} kredita"
   },
   "audioEditor": {
     "loading": "Učitavanje audio uređivača...",

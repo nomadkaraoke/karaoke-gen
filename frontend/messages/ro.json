@@ -733,7 +733,8 @@
     "availability": "disponibilitate",
     "views": "{count} vizualizări",
     "moreVersions": "+{count} mai multe",
-    "select": "Selectează"
+    "select": "Selectează",
+    "creditCost": "{credits} credite"
   },
   "audioEditor": {
     "loading": "Se încarcă editorul audio...",

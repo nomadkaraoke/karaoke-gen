@@ -733,7 +733,8 @@
     "availability": "tilgængelighed",
     "views": "{count} visninger",
     "moreVersions": "+{count} mere",
-    "select": "Vælg"
+    "select": "Vælg",
+    "creditCost": "{credits} kreditter"
   },
   "audioEditor": {
     "loading": "Indlæser lydredigeringsprogram...",

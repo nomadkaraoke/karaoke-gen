@@ -733,7 +733,8 @@
     "availability": "זמינות",
     "views": "{count} צפיות",
     "moreVersions": "+{count} נוספים",
-    "select": "בחר"
+    "select": "בחר",
+    "creditCost": "{credits} קרדיטים"
   },
   "audioEditor": {
     "loading": "טוען עורך אודיו...",

@@ -733,7 +733,8 @@
     "availability": "tilgjengelighet",
     "views": "{count} visninger",
     "moreVersions": "+{count} flere",
-    "select": "Velg"
+    "select": "Velg",
+    "creditCost": "{credits} kreditter"
   },
   "audioEditor": {
     "loading": "Laster inn lydredigering...",

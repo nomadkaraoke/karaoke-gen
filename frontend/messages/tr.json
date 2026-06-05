@@ -733,7 +733,8 @@
     "availability": "kullanılabilirlik",
     "views": "{count} görüntülenme",
     "moreVersions": "+{count} daha",
-    "select": "Seç"
+    "select": "Seç",
+    "creditCost": "{credits} kredi"
   },
   "audioEditor": {
     "loading": "Ses düzenleyici yükleniyor...",

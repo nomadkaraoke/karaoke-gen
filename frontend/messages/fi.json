@@ -733,7 +733,8 @@
     "availability": "saatavuus",
     "views": "{count} katselukertaa",
     "moreVersions": "+{count} muuta",
-    "select": "Valitse"
+    "select": "Valitse",
+    "creditCost": "{credits} krediittiä"
   },
   "audioEditor": {
     "loading": "Ladataan äänieditoria...",

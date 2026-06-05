@@ -733,7 +733,8 @@
     "availability": "tillgänglighet",
     "views": "{count} visningar",
     "moreVersions": "+{count} fler",
-    "select": "Välj"
+    "select": "Välj",
+    "creditCost": "{credits} krediter"
   },
   "audioEditor": {
     "loading": "Laddar ljudredigerare...",

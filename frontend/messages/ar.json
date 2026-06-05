@@ -733,7 +733,8 @@
     "availability": "التوفر",
     "views": "{count} مشاهدات",
     "moreVersions": "+{count} المزيد",
-    "select": "تحديد"
+    "select": "تحديد",
+    "creditCost": "{credits} رصيد"
   },
   "audioEditor": {
     "loading": "جاري تحميل محرر الصوت...",

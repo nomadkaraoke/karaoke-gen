@@ -733,7 +733,8 @@
     "availability": "Verfügbarkeit",
     "views": "{count} Aufrufe",
     "moreVersions": "+{count} weitere",
-    "select": "Auswählen"
+    "select": "Auswählen",
+    "creditCost": "{credits} Guthaben"
   },
   "audioEditor": {
     "loading": "Lade Audio-Editor...",

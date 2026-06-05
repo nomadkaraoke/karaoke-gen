@@ -733,7 +733,8 @@
     "availability": "beschikbaarheid",
     "views": "{count} weergaven",
     "moreVersions": "+{count} meer",
-    "select": "Selecteren"
+    "select": "Selecteren",
+    "creditCost": "{credits} credits"
   },
   "audioEditor": {
     "loading": "Audio-editor laden...",

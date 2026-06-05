@@ -733,7 +733,8 @@
     "availability": "가용성",
     "views": "조회수 {count}회",
     "moreVersions": "+{count}개 더 보기",
-    "select": "선택"
+    "select": "선택",
+    "creditCost": "{credits} 크레딧"
   },
   "audioEditor": {
     "loading": "오디오 편집기 불러오는 중...",

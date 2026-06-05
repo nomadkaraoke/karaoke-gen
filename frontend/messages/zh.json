@@ -733,7 +733,8 @@
     "availability": "可用性",
     "views": "{count} 次观看",
     "moreVersions": "还有 {count} 个",
-    "select": "选择"
+    "select": "选择",
+    "creditCost": "{credits} 积分"
   },
   "audioEditor": {
     "loading": "正在加载音频编辑器...",

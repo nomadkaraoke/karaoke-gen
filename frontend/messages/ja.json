@@ -733,7 +733,8 @@
     "availability": "可用性",
     "views": "{count} 回視聴",
     "moreVersions": "他 {count} 件",
-    "select": "選択"
+    "select": "選択",
+    "creditCost": "{credits} クレジット"
   },
   "audioEditor": {
     "loading": "オーディオエディタを読み込み中...",

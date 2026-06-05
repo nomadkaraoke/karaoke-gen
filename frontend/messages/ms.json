@@ -733,7 +733,8 @@
     "availability": "ketersediaan",
     "views": "{count} tontonan",
     "moreVersions": "+{count} lagi",
-    "select": "Pilih"
+    "select": "Pilih",
+    "creditCost": "{credits} kredit"
   },
   "audioEditor": {
     "loading": "Memuatkan editor audio...",

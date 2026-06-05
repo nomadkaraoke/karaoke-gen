@@ -733,7 +733,8 @@
     "availability": "доступність",
     "views": "{count} переглядів",
     "moreVersions": "+ще {count}",
-    "select": "Вибрати"
+    "select": "Вибрати",
+    "creditCost": "{credits} кредитів"
   },
   "audioEditor": {
     "loading": "Завантаження аудіоредактора...",

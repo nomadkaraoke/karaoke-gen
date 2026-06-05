@@ -733,7 +733,8 @@
     "availability": "availability",
     "views": "{count} views",
     "moreVersions": "+{count} pa",
-    "select": "Piliin"
+    "select": "Piliin",
+    "creditCost": "{credits} credits"
   },
   "audioEditor": {
     "loading": "Nilo-load ang audio editor...",

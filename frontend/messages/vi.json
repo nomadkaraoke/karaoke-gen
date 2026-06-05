@@ -733,7 +733,8 @@
     "availability": "khả năng khả dụng",
     "views": "{count} lượt xem",
     "moreVersions": "+{count} phiên bản khác",
-    "select": "Chọn"
+    "select": "Chọn",
+    "creditCost": "{credits} credit"
   },
   "audioEditor": {
     "loading": "Đang tải trình chỉnh sửa âm thanh...",

@@ -733,7 +733,8 @@
     "availability": "διαθεσιμότητα",
     "views": "{count} προβολές",
     "moreVersions": "+{count} ακόμα",
-    "select": "Επιλογή"
+    "select": "Επιλογή",
+    "creditCost": "{credits} μονάδες"
   },
   "audioEditor": {
     "loading": "Φόρτωση επεξεργαστή ήχου...",
