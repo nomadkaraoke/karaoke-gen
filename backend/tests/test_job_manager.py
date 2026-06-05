@@ -825,7 +825,8 @@ class TestStartJobProcessing:
             input_media_gcs_path="gs://bucket/audio.mp3"
         )
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock()
             mock_worker.trigger_lyrics_worker = AsyncMock()
@@ -865,7 +866,8 @@ class TestStartJobProcessing:
             # Simulate some work
             call_order.append(('lyrics_end', datetime.now()))
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock(side_effect=track_audio)
             mock_worker.trigger_lyrics_worker = AsyncMock(side_effect=track_lyrics)
@@ -894,7 +896,8 @@ class TestStartJobProcessing:
             existing_instrumental_gcs_path="uploads/test123/audio/existing_instrumental.mp3"
         )
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock()
             mock_worker.trigger_lyrics_worker = AsyncMock()
@@ -933,7 +936,8 @@ class TestStartJobProcessing:
             existing_instrumental_gcs_path=None  # No existing instrumental
         )
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock()
             mock_worker.trigger_lyrics_worker = AsyncMock()

@@ -17,6 +17,7 @@ from backend.config import settings
 from backend.exceptions import InvalidStateTransitionError, InsufficientCreditsError
 from backend.models.job import Job, JobStatus, JobCreate, STATE_TRANSITIONS
 from backend.models.worker_log import WorkerLogEntry
+from backend.services.duration_reconciliation import reconcile_and_maybe_pause
 from backend.services.firestore_service import FirestoreService
 from backend.services.storage_service import StorageService
 
@@ -1011,6 +1012,14 @@ class JobManager:
             progress=progress,
             message=message
         )
+
+        # Reconcile credit charge against actual audio duration before triggering workers.
+        # Probes input_media_gcs_path (already set by the upload handler) via ffprobe.
+        # Returns True when the job is paused (AWAITING_DURATION_CONFIRM) or cancelled,
+        # in which case we must NOT start downstream workers.
+        if await reconcile_and_maybe_pause(job_id):
+            logger.info(f"Job {job_id}: Paused for duration confirmation (or cancelled); workers not started")
+            return
 
         # Check if audio separation can be skipped
         # Jobs with an existing instrumental (e.g. tenant uploads) don't need
