@@ -36,6 +36,15 @@ def reconcile_duration(
     state = dict(job.state_data or {})
     credits_charged = int(state.get("credits_charged", 1))
 
+    # Short-circuit for admin / payment-bypassed jobs: measure duration for
+    # observability but do NOT pause, charge, refund, or cancel regardless of
+    # how long the audio turns out to be.
+    if state.get("payment_bypassed"):
+        if actual is not None:
+            job_manager.update_job(job_id, {"state_data.duration_actual_seconds": actual})
+        logger.info("Job %s: payment_bypassed=True, skipping reconcile (actual=%s s)", job_id, actual)
+        return ReconcileResult(action="proceed", actual_seconds=actual)
+
     if actual is None:
         logger.warning("Job %s: duration probe returned None; proceeding without reconcile", job_id)
         return ReconcileResult(action="proceed", actual_seconds=None)
@@ -49,7 +58,12 @@ def reconcile_duration(
             job_manager.update_job(job_id, {"credit_refunded": True})  # suppress cancel_job's built-in 1-credit refund (we already refunded the full charge)
         job_manager.cancel_job(job_id, reason="Input audio exceeds the 60-minute limit")
         if email_service:
-            email_service.send_duration_confirm_expired(job)
+            email_service.send_duration_confirm_expired(
+                to_email=job.user_email,
+                artist=getattr(job, "artist", None),
+                title=getattr(job, "title", None),
+                credits_refunded=credits_charged,
+            )
         return ReconcileResult(action="cancel", actual_seconds=actual)
 
     required = duration_to_credits(actual)
@@ -117,13 +131,13 @@ async def reconcile_and_maybe_pause(job_id: str) -> bool:
     from backend.services.job_manager import JobManager
     from backend.services.user_service import get_user_service
     from backend.services.storage_service import StorageService
+    from backend.services.email_service import get_email_service
 
     job_manager = JobManager()
     user_service = get_user_service()
     storage = StorageService()
     # JobManager/StorageService have no singleton accessor; instantiate directly (matches audio_download_worker).
-    # TODO(task15): pass email_service once send_duration_confirm_expired exists
-    email_service = None
+    email_service = get_email_service()
 
     result = await asyncio.get_running_loop().run_in_executor(
         None,

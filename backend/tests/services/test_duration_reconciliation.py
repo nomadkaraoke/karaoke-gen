@@ -1,14 +1,19 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 from backend.services.duration_reconciliation import reconcile_duration, ReconcileResult
 
 
-def _job(credits_charged=2, gcs="gs://b/audio.flac", email="u@test.com"):
+def _job(credits_charged=2, gcs="gs://b/audio.flac", email="u@test.com", payment_bypassed=False):
     job = MagicMock()
     job.id = "job1"
     job.user_email = email
+    job.artist = "Test Artist"
+    job.title = "Test Song"
     job.input_media_gcs_path = gcs
-    job.state_data = {"credits_charged": credits_charged}
+    state = {"credits_charged": credits_charged}
+    if payment_bypassed:
+        state["payment_bypassed"] = True
+    job.state_data = state
     return job
 
 
@@ -89,3 +94,76 @@ def test_probe_none_proceeds_without_charge_change():
     assert result.action == "proceed"
     us.add_credits.assert_not_called()
     us.deduct_credits.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Bug 1 regression: payment_bypassed jobs must never pause/charge/refund/cancel
+# ---------------------------------------------------------------------------
+
+def _bypassed_job(actual_seconds, credits_charged=0):
+    """Return (job_manager, user_service, probe) for a payment-bypassed job."""
+    job = _job(credits_charged=credits_charged, payment_bypassed=True)
+    job_manager = MagicMock()
+    job_manager.get_job.return_value = job
+    user_service = MagicMock()
+    user_service.add_credits.return_value = (True, 99, "ok")
+    probe = MagicMock(return_value=actual_seconds)
+    return job_manager, user_service, probe
+
+
+def test_payment_bypassed_long_duration_proceeds_without_pause():
+    """Bug 1: admin/payment-bypassed job whose duration exceeds estimate must NOT pause."""
+    jm, us, probe = _bypassed_job(actual_seconds=1800, credits_charged=0)  # 30min -> would be +3 credits
+    result = reconcile_duration("job1", jm, us, probe)
+    assert result.action == "proceed", (
+        f"payment_bypassed job must proceed, got {result.action!r}"
+    )
+    jm.transition_to_state.assert_not_called()
+    us.add_credits.assert_not_called()
+    us.deduct_credits.assert_not_called()
+
+
+def test_payment_bypassed_over_limit_proceeds_without_cancel():
+    """Bug 1: payment-bypassed job >60min must NOT be cancelled (admin bypass)."""
+    jm, us, probe = _bypassed_job(actual_seconds=4000, credits_charged=0)  # >60min
+    result = reconcile_duration("job1", jm, us, probe)
+    assert result.action == "proceed", (
+        f"payment_bypassed job >60min must proceed, got {result.action!r}"
+    )
+    jm.cancel_job.assert_not_called()
+    us.add_credits.assert_not_called()
+
+
+def test_payment_bypassed_short_duration_proceeds_without_refund():
+    """Bug 1: payment-bypassed job shorter than estimate must NOT trigger a credits refund."""
+    jm, us, probe = _bypassed_job(actual_seconds=300, credits_charged=0)  # 5min
+    result = reconcile_duration("job1", jm, us, probe)
+    assert result.action == "proceed"
+    us.add_credits.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Bug 2 regression: over-limit cancellation email called with correct kwargs
+# ---------------------------------------------------------------------------
+
+def test_over_limit_sends_email_with_correct_kwargs():
+    """Bug 2: over-limit cancel must call email_service with named kwargs, not positional job arg."""
+    jm, us, probe = _ctx(actual_seconds=4000, credits_charged=2)  # >60min
+    email_service = MagicMock()
+    email_service.send_duration_confirm_expired.return_value = True
+
+    result = reconcile_duration("job1", jm, us, probe, email_service=email_service)
+    assert result.action == "cancel"
+
+    email_service.send_duration_confirm_expired.assert_called_once()
+    _, kwargs = email_service.send_duration_confirm_expired.call_args
+    assert kwargs.get("to_email") == "u@test.com", f"Expected to_email=u@test.com, got {kwargs}"
+    assert kwargs.get("credits_refunded") == 2, f"Expected credits_refunded=2, got {kwargs}"
+
+
+def test_over_limit_no_email_when_email_service_is_none():
+    """Bug 2: when email_service is None, no crash on over-limit path."""
+    jm, us, probe = _ctx(actual_seconds=4000, credits_charged=2)
+    # Should not raise
+    result = reconcile_duration("job1", jm, us, probe, email_service=None)
+    assert result.action == "cancel"

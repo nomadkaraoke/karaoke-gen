@@ -128,8 +128,15 @@ class JobManager:
                 "is_admin": is_admin,
                 "created_from": job_create.request_metadata.get("created_from", "unknown"),
             },
-            # Record how many credits were charged for this job (authoritative running total)
-            state_data={"credits_charged": credits_to_charge},
+            # Record how many credits were charged for this job (authoritative running total).
+            # When charging is bypassed (admin / no user_email), set credits_charged=0 and
+            # payment_bypassed=True so duration reconciliation short-circuits without pausing,
+            # charging, or refunding.
+            state_data=(
+                {"credits_charged": 0, "payment_bypassed": True}
+                if (is_admin or not job_create.user_email)
+                else {"credits_charged": credits_to_charge}
+            ),
         )
 
         self.firestore.create_job(job)
