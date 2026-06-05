@@ -57,7 +57,7 @@ class JobManager:
             ValueError: If theme_id is not provided (all jobs require a theme)
         """
         # Check credits (skip for admins)
-        credits_to_charge = getattr(job_create, 'credits', 1)
+        credits_to_charge = job_create.credits
         if job_create.user_email and not is_admin:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()

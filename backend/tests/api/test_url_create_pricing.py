@@ -240,22 +240,37 @@ class TestURLCreatePricing:
 
     def test_duration_estimate_stored_on_job(self, patched_app):
         """
-        When duration_seconds is provided, the job should have
-        duration_estimate_seconds and duration_estimate_source stored.
+        When duration_seconds is provided, the handler must call FirestoreService.update_job
+        with state_data.duration_estimate_seconds and state_data.duration_estimate_source.
         """
+        from unittest.mock import patch as _patch
+
         client, jm, ws, ts, us = patched_app
         jm.create_job.return_value = _pending_job(credits_charged=2)
 
-        resp = _post_url_job(client, duration_seconds=905, acknowledged_credits=2)
+        with _patch("backend.services.firestore_service.FirestoreService.update_job") as mock_update:
+            resp = _post_url_job(client, duration_seconds=905, acknowledged_credits=2)
 
         assert resp.status_code == 200, resp.text
-        # The route should call update_job (or pass it via JobCreate state_data)
-        # so duration_estimate_* fields are persisted. We verify create_job was
-        # called with a JobCreate that carries the duration estimate.
-        job_create_arg = jm.create_job.call_args[0][0]
-        # The handler should set state_data on JobCreate or call update_job
-        # after creation. Check it was called at all with the right credits.
-        assert job_create_arg.credits == 2
+
+        # update_job must have been called at least once
+        assert mock_update.called, "FirestoreService.update_job was never called"
+
+        # Collect every update_payload passed across all calls
+        all_payloads: dict = {}
+        for call in mock_update.call_args_list:
+            # call[0] = positional args: (job_id, payload)
+            payload = call[0][1] if len(call[0]) >= 2 else call[1].get("updates", {})
+            all_payloads.update(payload)
+
+        assert all_payloads.get("state_data.duration_estimate_seconds") == 905, (
+            f"Expected state_data.duration_estimate_seconds=905 in update_job payload, "
+            f"got: {all_payloads}"
+        )
+        assert all_payloads.get("state_data.duration_estimate_source") == "youtube_metadata", (
+            f"Expected state_data.duration_estimate_source='youtube_metadata' in update_job payload, "
+            f"got: {all_payloads}"
+        )
 
     def test_no_duration_duration_estimate_source_unknown(self, patched_app):
         """Without duration_seconds, duration_estimate_source defaults to 'unknown'."""

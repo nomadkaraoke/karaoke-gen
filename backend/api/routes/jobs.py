@@ -166,17 +166,14 @@ async def create_job(
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
 
-        # Persist duration estimate fields alongside credits_charged on the job document.
-        if initial_state_data:
-            update_payload = {
-                f"state_data.{k}": v for k, v in initial_state_data.items()
-            }
-            FirestoreService().update_job(job.job_id, update_payload)
-
-        # Store client IP on job for anti-abuse correlation
+        # Persist duration estimate fields and creation_ip in a single Firestore write.
+        update_payload = {
+            f"state_data.{k}": v for k, v in initial_state_data.items()
+        }
         creation_ip = get_client_ip(http_request)
         if creation_ip:
-            FirestoreService().update_job(job.job_id, {"creation_ip": creation_ip})
+            update_payload["creation_ip"] = creation_ip
+        FirestoreService().update_job(job.job_id, update_payload)
 
         # Trace attributes for observability
         add_span_attribute("job_id", job.job_id)
