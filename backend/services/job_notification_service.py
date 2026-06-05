@@ -353,8 +353,7 @@ class JobNotificationService:
             duration_seconds = state_data.get("duration_actual_seconds")
 
             confirm_url = (
-                f"{self.frontend_url}{get_locale_prefix(user_locale)}"
-                f"/app/jobs#/{job_id}/review"
+                f"{self.frontend_url}{get_locale_prefix(user_locale)}/app"
             )
 
             success = self.email_service.send_duration_confirm_reminder(

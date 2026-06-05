@@ -385,6 +385,77 @@ class TestGetCompletionMessage:
         assert call_kwargs.get('artist') is None
 
 
+class TestDurationConfirmReminderEmail:
+    """Tests for send_duration_confirm_reminder CTA URL."""
+
+    @pytest.mark.asyncio
+    async def test_confirm_url_points_to_dashboard_not_review(self):
+        """
+        The CTA URL in the duration-confirm reminder must point to /app (the
+        dashboard where the confirm banner appears), NOT to /review (which renders
+        an error because the job is not yet in a review state).
+        """
+        from unittest.mock import MagicMock
+
+        service = JobNotificationService()
+        service.frontend_url = "https://gen.nomadkaraoke.com"
+        service.email_service = Mock()
+        service.email_service.send_duration_confirm_reminder = Mock(return_value=True)
+
+        mock_job = MagicMock()
+        mock_job.job_id = "job-dur-999"
+        mock_job.user_email = "user@example.com"
+        mock_job.artist = "Test Artist"
+        mock_job.title = "Test Song"
+        mock_job.state_data = {
+            "pending_additional_credits": 3,
+            "duration_actual_seconds": 1200,
+        }
+
+        with patch('backend.services.job_notification_service.ENABLE_AUTO_EMAILS', True), \
+             patch.object(service, '_get_user_locale', return_value='en'):
+            await service.send_duration_confirm_reminder(mock_job)
+
+        call_kwargs = service.email_service.send_duration_confirm_reminder.call_args.kwargs
+        confirm_url = call_kwargs.get("confirm_url")
+
+        # Must end with /app — the dashboard — NOT /review
+        assert confirm_url is not None, "confirm_url was not passed to email_service"
+        assert confirm_url.endswith("/app"), (
+            f"confirm_url should end with /app (dashboard), got: {confirm_url!r}"
+        )
+        assert "/review" not in confirm_url, (
+            f"confirm_url must NOT contain /review (wrong state), got: {confirm_url!r}"
+        )
+        assert confirm_url == "https://gen.nomadkaraoke.com/en/app"
+
+    @pytest.mark.asyncio
+    async def test_confirm_url_uses_user_locale_prefix(self):
+        """The confirm_url should respect the user's locale (e.g. /de/app for German)."""
+        from unittest.mock import MagicMock
+
+        service = JobNotificationService()
+        service.frontend_url = "https://gen.nomadkaraoke.com"
+        service.email_service = Mock()
+        service.email_service.send_duration_confirm_reminder = Mock(return_value=True)
+
+        mock_job = MagicMock()
+        mock_job.job_id = "job-dur-de"
+        mock_job.user_email = "user@example.com"
+        mock_job.artist = "Test Artist"
+        mock_job.title = "Test Song"
+        mock_job.state_data = {}
+
+        with patch('backend.services.job_notification_service.ENABLE_AUTO_EMAILS', True), \
+             patch.object(service, '_get_user_locale', return_value='de'):
+            await service.send_duration_confirm_reminder(mock_job)
+
+        call_kwargs = service.email_service.send_duration_confirm_reminder.call_args.kwargs
+        confirm_url = call_kwargs.get("confirm_url")
+
+        assert confirm_url == "https://gen.nomadkaraoke.com/de/app"
+
+
 class TestGlobalInstance:
     """Tests for global instance management."""
 
