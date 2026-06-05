@@ -234,6 +234,32 @@ describe("useDurationConfirm", () => {
     expect(onConfirmSuccess).not.toHaveBeenCalled()
   })
 
+  it("handleConfirm while already confirming does NOT call api.confirmDuration a second time", async () => {
+    // Arrange: confirmDuration never resolves so the hook stays in 'confirming' phase
+    let resolveFirst!: (job: Job) => void
+    const firstCallPromise = new Promise<Job>((res) => { resolveFirst = res })
+    mockConfirmDuration.mockReturnValueOnce(firstCallPromise)
+
+    const job = makeJob()
+    const { result } = renderTestHook()
+
+    act(() => { result.current.openForJob(job) })
+
+    // Trigger first confirm — hook transitions to 'confirming', awaits the promise
+    act(() => { void result.current.handleConfirm() })
+    expect(result.current.modalState.phase).toBe("confirming")
+
+    // Second call while in 'confirming' phase should be a no-op
+    await act(async () => { await result.current.handleConfirm() })
+
+    // The API must have been called exactly once
+    expect(mockConfirmDuration).toHaveBeenCalledTimes(1)
+
+    // Clean up: let the first promise resolve so React state settles
+    const updatedJob = makeJob({ status: "pending" })
+    await act(async () => { resolveFirst(updatedJob) })
+  })
+
   it("handleBuyCredits transitions to buy_credits phase when in open state", () => {
     const job = makeJob()
     const { result } = renderTestHook()

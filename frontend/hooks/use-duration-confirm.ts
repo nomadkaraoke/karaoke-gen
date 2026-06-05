@@ -68,7 +68,7 @@ export function useDurationConfirm({ onConfirmSuccess, onNeedRefresh }: UseDurat
   }, [])
 
   const handleConfirm = useCallback(async () => {
-    if (modalState.phase !== "open" && modalState.phase !== "confirming") return
+    if (modalState.phase !== "open") return
     const { jobId, data } = modalState
 
     setModalState({ phase: "confirming", jobId, data })
