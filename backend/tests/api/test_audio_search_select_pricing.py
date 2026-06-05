@@ -447,3 +447,127 @@ class TestSelectPricingAcknowledgedCreditsMismatch:
         resp = _post_select(client, acknowledged_credits=3)
 
         assert resp.status_code == 200, resp.text
+
+
+class TestSelectPricingIdempotencyGuard:
+    """
+    When select_charge_applied=True is already set in state_data, a repeated /select
+    call must NOT deduct any credits, regardless of what owed would compute to.
+    """
+
+    def _job_already_charged(self) -> Job:
+        """Job that has already had its delta charge applied (select_charge_applied=True)."""
+        return _awaiting_selection_job(
+            credits_charged=3,
+            search_results=[
+                {
+                    "title": "Long Song",
+                    "artist": "Artist",
+                    "provider": "RED",
+                    "quality": "FLAC",
+                    "source_id": "abc999",
+                    "target_file": "long.flac",
+                    "url": "",
+                    # duration=1500 → target_total=3; without guard, owed=3-3=0.
+                    # But seed credits_charged=3 so owed is already 0 here.
+                    # Use duration=1500 to confirm that even if recalculated it stays 0.
+                    "duration": 1500,
+                }
+            ],
+        )
+
+    def _job_already_charged_would_owe(self) -> Job:
+        """
+        Job with select_charge_applied=True but credits_charged still at 1,
+        meaning WITHOUT the guard the code would try to charge 2 more credits.
+        This proves the guard short-circuits based on the flag, not the math.
+        """
+        job = _awaiting_selection_job(
+            credits_charged=1,
+            search_results=[
+                {
+                    "title": "Long Song",
+                    "artist": "Artist",
+                    "provider": "RED",
+                    "quality": "FLAC",
+                    "source_id": "abc999",
+                    "target_file": "long.flac",
+                    "url": "",
+                    "duration": 1500,  # would owe 2 credits without guard
+                }
+            ],
+        )
+        # Inject the flag that marks the charge as already applied
+        job.state_data["select_charge_applied"] = True
+        return job
+
+    def test_reselect_does_not_double_charge(self, patched_app):
+        """
+        Job with select_charge_applied=True and credits_charged=1, duration=1500
+        (owed=2 without guard) → deduct_credits must NOT be called.
+        """
+        client, jm, us, ws = patched_app
+        jm.get_job.return_value = self._job_already_charged_would_owe()
+
+        resp = _post_select(client)
+
+        assert resp.status_code == 200, resp.text
+        us.deduct_credits.assert_not_called()
+
+    def test_reselect_does_not_change_credits_charged(self, patched_app):
+        """
+        When the guard fires, update_job must NOT include a credits_charged update.
+        """
+        client, jm, us, ws = patched_app
+        jm.get_job.return_value = self._job_already_charged_would_owe()
+
+        _post_select(client)
+
+        # Collect all update_job calls
+        all_payloads: dict = {}
+        for call in jm.update_job.call_args_list:
+            args, kwargs = call
+            payload = args[1] if len(args) >= 2 else kwargs.get("updates", {})
+            if isinstance(payload, dict):
+                all_payloads.update(payload)
+
+        assert "state_data.credits_charged" not in all_payloads, (
+            f"credits_charged must not be updated on repeat select; got: {all_payloads}"
+        )
+
+    def test_first_select_sets_flag(self, patched_app):
+        """
+        A first-time /select (select_charge_applied absent) must write
+        select_charge_applied=True into the update_job payload.
+        """
+        client, jm, us, ws = patched_app
+        # Use a job WITHOUT the flag set
+        jm.get_job.return_value = _awaiting_selection_job(
+            credits_charged=1,
+            search_results=[
+                {
+                    "title": "Long Song",
+                    "artist": "Artist",
+                    "provider": "RED",
+                    "quality": "FLAC",
+                    "source_id": "abc999",
+                    "target_file": "long.flac",
+                    "url": "",
+                    "duration": 1500,
+                }
+            ],
+        )
+
+        resp = _post_select(client)
+        assert resp.status_code == 200, resp.text
+
+        all_payloads: dict = {}
+        for call in jm.update_job.call_args_list:
+            args, kwargs = call
+            payload = args[1] if len(args) >= 2 else kwargs.get("updates", {})
+            if isinstance(payload, dict):
+                all_payloads.update(payload)
+
+        assert all_payloads.get("state_data.select_charge_applied") is True, (
+            f"Expected select_charge_applied=True in update_job payload; got: {all_payloads}"
+        )

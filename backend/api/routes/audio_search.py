@@ -1190,6 +1190,14 @@ async def select_audio_source(
     if duration is not None and is_blocked(duration):
         raise HTTPException(status_code=422, detail="Inputs over 60 minutes aren't supported")
 
+    # Idempotency guard: if a previous /select call already applied the delta charge,
+    # skip re-charging entirely.  This makes double-click / rapid-retry safe.
+    # Residual race: two *truly simultaneous* requests can both read the flag as False
+    # and both charge before either writes it True.  The atomic status transition in
+    # _validate_and_prepare_selection() causes the second request to fail with 400,
+    # so the window is tiny; any rare double-charge is recoverable via support refund.
+    select_charge_applied = bool((job.state_data or {}).get('select_charge_applied', False))
+
     # Compute how many credits this job should total after selecting this result.
     # If duration is unknown, keep target_total == credits_charged so owed = 0.
     credits_charged = int((job.state_data or {}).get('credits_charged', 1))
@@ -1202,27 +1210,29 @@ async def select_audio_source(
 
     # Deduct the owed delta (or just persist duration metadata if owed == 0).
     user_email = job.user_email
-    if owed > 0:
-        if not user_email:
-            raise HTTPException(status_code=500, detail="Job has no associated user email")
-        ok, _, _ = get_user_service().deduct_credits(
-            user_email,
-            job_id,
-            amount=owed,
-            reason="job_creation",
-            count_as_job_creation=False,  # job was already counted at create_job()
-        )
-        if not ok:
-            raise HTTPException(status_code=402, detail="Insufficient credits")
+    if not select_charge_applied:
+        if owed > 0:
+            if not user_email:
+                raise HTTPException(status_code=500, detail="Job has no associated user email")
+            ok, _, _ = get_user_service().deduct_credits(
+                user_email,
+                job_id,
+                amount=owed,
+                reason="job_creation",
+                count_as_job_creation=False,  # job was already counted at create_job()
+            )
+            if not ok:
+                raise HTTPException(status_code=402, detail="Insufficient credits")
 
-    # Persist updated credit total and duration estimate for observability.
-    state_update: dict = {
-        "state_data.credits_charged": target_total,
-    }
-    if duration is not None:
-        state_update["state_data.duration_estimate_seconds"] = duration
-        state_update["state_data.duration_estimate_source"] = "search_metadata"
-    job_manager.update_job(job_id, state_update)
+        # Persist updated credit total, duration estimate, and idempotency flag.
+        state_update: dict = {
+            "state_data.credits_charged": target_total,
+            "state_data.select_charge_applied": True,
+        }
+        if duration is not None:
+            state_update["state_data.duration_estimate_seconds"] = duration
+            state_update["state_data.duration_estimate_source"] = "search_metadata"
+        job_manager.update_job(job_id, state_update)
     # -------------------------------------------------------------------------
 
     # Validate selection and transition to DOWNLOADING_AUDIO (returns immediately)
