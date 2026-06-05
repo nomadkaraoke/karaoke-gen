@@ -4,6 +4,9 @@ Called at the convergence point immediately before the separation+transcription
 workers are triggered (post-edit if an edit occurred). The probe callable returns
 the duration in seconds of `job.input_media_gcs_path` (the to-be-processed audio).
 """
+import asyncio
+import json
+import subprocess
 from dataclasses import dataclass
 from typing import Callable, Optional
 import logging
@@ -72,3 +75,63 @@ def reconcile_duration(
         message=f"This turned out longer than estimated — {delta} more credit(s) needed",
     )
     return ReconcileResult(action="pause", pending_additional_credits=delta, actual_seconds=actual)
+
+
+# --- Pipeline wiring (impure: uses singletons + ffprobe) ---
+
+def _ffprobe_seconds(job, storage) -> Optional[float]:
+    """Header-only ffprobe of job.input_media_gcs_path via a signed URL.
+
+    Mirrors the async _get_audio_duration_ffprobe_signed helper in
+    backend/api/routes/jobs.py, but as a sync function suitable for use
+    in run_in_executor.
+    """
+    gcs_path = getattr(job, "input_media_gcs_path", None)
+    if not gcs_path:
+        return None
+    try:
+        signed_url = storage.generate_signed_url(gcs_path, expiration_minutes=5)
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", signed_url],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            return None
+        return float(json.loads(result.stdout)["format"]["duration"])
+    except Exception as e:
+        logger.warning("Job %s: ffprobe duration failed: %s", getattr(job, "id", "?"), e)
+        return None
+
+
+async def reconcile_and_maybe_pause(job_id: str) -> bool:
+    """Resolve real singletons, probe duration, run reconcile_duration, return True if blocked.
+
+    Returns True when the job has been paused (AWAITING_DURATION_CONFIRM) or cancelled,
+    meaning the caller must NOT trigger downstream workers.
+    Returns False when the job should proceed normally.
+
+    Designed for the no-edit convergence point in audio_download_worker.py.
+    """
+    # Import at function scope to avoid circular imports.
+    from backend.services.job_manager import JobManager
+    from backend.services.user_service import get_user_service
+    from backend.services.storage_service import StorageService
+
+    job_manager = JobManager()
+    user_service = get_user_service()
+    storage = StorageService()
+    # TODO(task15): pass email_service once send_duration_confirm_expired exists
+    email_service = None
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None,
+        lambda: reconcile_duration(
+            job_id,
+            job_manager,
+            user_service,
+            lambda job: _ffprobe_seconds(job, storage),
+            email_service,
+        ),
+    )
+    return result.action in ("pause", "cancel")
