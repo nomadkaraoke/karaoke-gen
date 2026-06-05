@@ -338,7 +338,9 @@ class JobManager:
         if delete_files and job and job.output_files:
             for gcs_path in job.output_files.values():
                 try:
-                    self.storage.delete_file(gcs_path)
+                    # ignore_missing: a job being deleted whose recorded file is
+                    # already gone is not an error, just skip it quietly.
+                    self.storage.delete_file(gcs_path, ignore_missing=True)
                 except Exception as e:
                     logger.error(f"Error deleting file {gcs_path}: {e}")
 
