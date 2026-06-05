@@ -45,6 +45,8 @@ from backend.exceptions import InsufficientCreditsError
 from backend.services.firestore_service import FirestoreService, log_to_job
 from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityResponse
 from backend.services.user_service import get_user_service
+from backend.services.youtube_download_service import get_youtube_download_service
+from backend.services.pricing import duration_to_credits, is_blocked
 from pydantic import BaseModel, Field, validator
 
 
@@ -2726,3 +2728,41 @@ async def confirm_duration(
         # Should not happen, but be safe.
         return {"job_id": job_id, "status": "confirmed"}
     return updated_job
+
+
+# ---------------------------------------------------------------------------
+# POST /jobs/estimate — URL duration probe
+# ---------------------------------------------------------------------------
+
+
+class EstimateRequest(BaseModel):
+    url: str
+
+
+@router.post("/estimate")
+async def estimate_duration(
+    body: EstimateRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Probe a URL to estimate its duration and compute the credit cost,
+    WITHOUT creating a job or downloading any audio.
+
+    Returns duration_seconds (or None if unknown), source, credits, and
+    whether the duration exceeds the supported ceiling (blocked).
+    """
+    info = await get_youtube_download_service().check_availability(body.url)
+    seconds = (info or {}).get("duration")
+    if seconds is None:
+        return {
+            "duration_seconds": None,
+            "source": "unknown",
+            "credits": 1,
+            "blocked": False,
+        }
+    return {
+        "duration_seconds": seconds,
+        "source": "youtube_metadata",
+        "credits": duration_to_credits(seconds),
+        "blocked": is_blocked(seconds),
+    }
