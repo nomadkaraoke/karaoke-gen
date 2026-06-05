@@ -31,3 +31,13 @@ def test_is_blocked(seconds, blocked):
 def test_constants():
     assert SECONDS_PER_CREDIT_TIER == 600
     assert DURATION_CREDIT_BLOCK_SECONDS == 3600
+
+
+def test_duration_to_credits_handles_none_and_negative():
+    assert duration_to_credits(None) == 1
+    assert duration_to_credits(-5) == 1
+
+
+def test_is_blocked_handles_none_and_negative():
+    assert is_blocked(None) is False
+    assert is_blocked(-5) is False
