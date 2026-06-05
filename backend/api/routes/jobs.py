@@ -44,6 +44,8 @@ from backend.utils.test_data import is_test_email
 from backend.exceptions import InsufficientCreditsError
 from backend.services.firestore_service import FirestoreService, log_to_job
 from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityResponse
+from backend.services.user_service import get_user_service
+from backend.services.pricing import duration_to_credits
 from pydantic import BaseModel, Field, validator
 
 
@@ -2561,3 +2563,150 @@ async def change_visibility(
     except Exception as e:
         logger.error(f"Error changing visibility for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to change visibility: {str(e)}")
+
+
+# =============================================================================
+# Duration Confirmation Endpoint
+# =============================================================================
+
+class ConfirmDurationRequest(BaseModel):
+    """Request body for POST /jobs/{job_id}/confirm-duration."""
+    acknowledged_credits: int
+
+
+# Keep a set of background tasks alive to prevent GC (mirrors complete_review pattern)
+_duration_confirm_tasks: set = set()
+
+
+@router.post("/{job_id}/confirm-duration")
+async def confirm_duration(
+    job_id: str,
+    body: ConfirmDurationRequest,
+    http_request: Request,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Confirm duration-based credit charge and resume job processing.
+
+    Called when a job is paused in AWAITING_DURATION_CONFIRM state.
+
+    Two reasons a job may be paused:
+    - ``reconcile``: Post-download/post-edit, actual duration costs more than
+      already charged. ``state_data.pending_additional_credits`` holds the delta.
+    - ``preflight``: Upload flow, no charge applied yet. Full cost derived from
+      ``state_data.duration_estimate_seconds``.
+
+    The caller must pass ``acknowledged_credits`` equal to the total credit cost
+    the user has agreed to pay. If the figure has changed (race condition) a 409
+    is returned so the frontend can refresh and re-show the dialog.
+    """
+    locale = get_locale_from_request(http_request)
+
+    # 1. Load job — 404 if not found or not owned by this user.
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+
+    if not _check_job_ownership(job, auth_result):
+        # Return 404 (not 403) to avoid leaking job existence to non-owners.
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+
+    # 2. Status guard.
+    if job.status != JobStatus.AWAITING_DURATION_CONFIRM:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job is not awaiting duration confirmation (status: {job.status})",
+        )
+
+    # 3. Compute owed credits and expected total.
+    state_data = job.state_data or {}
+    reason = state_data.get("duration_confirm_reason", "reconcile")
+    credits_charged = int(state_data.get("credits_charged", 0))
+
+    if reason == "reconcile":
+        owed = int(state_data.get("pending_additional_credits", 0))
+        expected_total = credits_charged + owed
+    else:
+        # preflight: nothing charged yet via duration pricing
+        duration_estimate = state_data.get("duration_estimate_seconds")
+        owed = duration_to_credits(duration_estimate)
+        expected_total = owed
+
+    # 4. Acknowledged-credits mismatch guard (figure may have changed; client refreshes).
+    if body.acknowledged_credits != expected_total:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"acknowledged_credits ({body.acknowledged_credits}) does not match "
+                f"expected total ({expected_total}). Please refresh and confirm again."
+            ),
+        )
+
+    # 5. Deduct credits if any are owed.
+    if owed > 0:
+        user_email = job.user_email
+        if not user_email:
+            raise HTTPException(status_code=500, detail="Job has no associated user email")
+
+        user_svc = get_user_service()
+        success, _remaining, _msg = user_svc.deduct_credits(
+            user_email,
+            job_id,
+            amount=owed,
+            reason="duration_confirm",
+            count_as_job_creation=False,  # job was already counted at create_job()
+        )
+        if not success:
+            raise InsufficientCreditsError(
+                message=f"Insufficient credits to confirm processing ({owed} credit(s) required).",
+                credits_available=_remaining,
+                credits_required=owed,
+            )
+
+        # Update credits_charged in state_data to reflect the new total.
+        job_manager.update_job(
+            job_id,
+            {
+                "state_data.credits_charged": credits_charged + owed,
+                "state_data.duration_confirmed": True,
+                "state_data.pending_additional_credits": 0,
+            },
+        )
+    else:
+        # owed == 0: nothing to charge, just mark confirmed.
+        job_manager.update_job(
+            job_id,
+            {
+                "state_data.duration_confirmed": True,
+                "state_data.pending_additional_credits": 0,
+            },
+        )
+
+    # 7. Resume processing: trigger both parallel workers in background.
+    # Use asyncio.create_task (mirrors complete_review in review.py) so the HTTP
+    # response returns immediately without waiting for Cloud Run job submission.
+    ws = get_worker_service()
+
+    async def _trigger_workers_after_confirm():
+        try:
+            await asyncio.gather(
+                ws.trigger_audio_worker(job_id),
+                ws.trigger_lyrics_worker(job_id),
+            )
+        except Exception as exc:
+            logger.error(f"Job {job_id}: Failed to trigger workers after duration confirm: {exc}")
+
+    task = asyncio.create_task(_trigger_workers_after_confirm())
+    _duration_confirm_tasks.add(task)
+    task.add_done_callback(_duration_confirm_tasks.discard)
+
+    logger.info(
+        f"Job {job_id}: duration confirmed (reason={reason}, owed={owed}); workers triggered"
+    )
+
+    # 8. Return the updated job.
+    updated_job = job_manager.get_job(job_id)
+    if updated_job is None:
+        # Should not happen, but be safe.
+        return {"job_id": job_id, "status": "confirmed"}
+    return updated_job
