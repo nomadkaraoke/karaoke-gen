@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDurationCost } from '@/lib/pricing'
 
 interface Props {
@@ -29,21 +30,17 @@ export function DurationCostConfirm({
 }: Props) {
   const t = useTranslations('pricing')
 
-  if (!open) return null
-
   const minutes = durationSeconds != null ? formatDurationCost(durationSeconds).minutes : null
   const canAfford = balance >= credits
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="bg-card border border-border rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">
-          {reconcile ? t('reconcileTitle') : t('confirmTitle')}
-        </h2>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="sm:max-w-md bg-card border-border" showCloseButton={false} aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle className="text-foreground">
+            {reconcile ? t('reconcileTitle') : t('confirmTitle')}
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-2 text-sm text-foreground">
           <p>
@@ -74,12 +71,12 @@ export function DurationCostConfirm({
               {t('confirm')}
             </Button>
           ) : (
-            <Button onClick={onBuyCredits}>
+            <Button onClick={onBuyCredits} disabled={!onBuyCredits}>
               {t('buyCredits')}
             </Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -7,6 +7,9 @@
  * Since the 'pricing' namespace is not yet in en.json, useTranslations('pricing')
  * returns key names as-is (e.g. t('confirm') → 'confirm'). Tests use these key
  * names as the expected rendered text.
+ *
+ * The component uses the shared Radix Dialog primitive (via @/components/ui/dialog),
+ * so the dialog is rendered in a portal. Use screen.getByRole('dialog') to find it.
  */
 
 import React from 'react'
@@ -28,9 +31,9 @@ beforeEach(() => {
 })
 
 describe('DurationCostConfirm', () => {
-  it('renders nothing when open is false', () => {
-    const { container } = render(<DurationCostConfirm {...baseProps} open={false} />)
-    expect(container.firstChild).toBeNull()
+  it('does not render dialog when open is false', () => {
+    render(<DurationCostConfirm {...baseProps} open={false} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders dialog with role="dialog" when open', () => {
@@ -117,5 +120,25 @@ describe('DurationCostConfirm', () => {
   it('does not show estimated label when estimated=false (default)', () => {
     render(<DurationCostConfirm {...baseProps} estimated={false} />)
     expect(screen.queryByText('estimatedLabel')).not.toBeInTheDocument()
+  })
+
+  it('shows Confirm (not Buy Credits) when balance === credits (boundary)', () => {
+    render(<DurationCostConfirm {...baseProps} balance={2} credits={2} />)
+    expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /buyCredits/i })).not.toBeInTheDocument()
+  })
+
+  it('Buy Credits button is disabled when onBuyCredits is not provided', () => {
+    // Omit onBuyCredits — balance < credits so the button renders but should be disabled
+    const { onBuyCredits: _omit, ...propsWithoutBuyCredits } = baseProps
+    render(
+      <DurationCostConfirm
+        {...propsWithoutBuyCredits}
+        balance={1}
+        credits={2}
+      />
+    )
+    const buyBtn = screen.getByRole('button', { name: /buyCredits/i })
+    expect(buyBtn).toBeDisabled()
   })
 })
