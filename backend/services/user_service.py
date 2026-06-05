@@ -1039,27 +1039,37 @@ class UserService:
             logger.exception(f"Error adding credits to {email}")
             return False, 0, f"Failed to add credits: {e}"
 
-    def deduct_credit(
+    def deduct_credits(
         self,
         email: str,
         job_id: str,
+        amount: int = 1,
         reason: str = "job_creation"
     ) -> Tuple[bool, int, str]:
         """
-        Deduct one credit from a user account.
+        Atomically deduct N credits from a user account (all-or-nothing).
 
         Uses Firestore transaction to prevent race conditions.
+
+        Args:
+            email: User email address.
+            job_id: Job ID associated with the deduction.
+            amount: Number of credits to deduct (must be > 0).
+            reason: Reason for the deduction (default: "job_creation").
 
         Returns:
             (success, remaining_credits, message)
         """
+        if amount <= 0:
+            return False, 0, "Deduction amount must be positive"
+
         try:
             email = email.lower()
             doc_ref = self.db.collection(USERS_COLLECTION).document(email)
 
             @firestore.transactional
             def deduct_in_transaction(transaction):
-                """Atomically check and deduct credit."""
+                """Atomically check and deduct credits."""
                 doc = doc_ref.get(transaction=transaction)
 
                 if not doc.exists:
@@ -1068,13 +1078,13 @@ class UserService:
                 user_data = doc.to_dict()
                 current_credits = user_data.get('credits', 0)
 
-                if current_credits <= 0:
-                    return False, 0, "Insufficient credits"
+                if current_credits < amount:
+                    return False, current_credits, "Insufficient credits"
 
                 # Create transaction record
                 credit_txn = CreditTransaction(
                     id=str(uuid.uuid4()),
-                    amount=-1,
+                    amount=-amount,
                     reason=reason,
                     job_id=job_id,
                 )
@@ -1086,7 +1096,7 @@ class UserService:
                 transactions.append(credit_txn.model_dump(mode='json'))
 
                 # Calculate new values
-                new_balance = current_credits - 1
+                new_balance = current_credits - amount
                 total_jobs = user_data.get('total_jobs_created', 0) + 1
 
                 # Update atomically within transaction
@@ -1104,13 +1114,30 @@ class UserService:
             success, new_balance, message = deduct_in_transaction(fs_transaction)
 
             if success:
-                logger.info(f"Deducted 1 credit from {email} for job {job_id}. Remaining: {new_balance}")
+                logger.info(f"Deducted {amount} credit(s) from {email} for job {job_id}. Remaining: {new_balance}")
 
             return success, new_balance, message
 
         except Exception as e:
-            logger.exception(f"Error deducting credit from {email}")
+            logger.exception(f"Error deducting credit(s) from {email}")
             return False, 0, f"Failed to deduct credit: {e}"
+
+    def deduct_credit(
+        self,
+        email: str,
+        job_id: str,
+        reason: str = "job_creation"
+    ) -> Tuple[bool, int, str]:
+        """
+        Deduct one credit from a user account.
+
+        Thin wrapper around deduct_credits(amount=1). Preserved for backwards
+        compatibility with all existing callers.
+
+        Returns:
+            (success, remaining_credits, message)
+        """
+        return self.deduct_credits(email, job_id, amount=1, reason=reason)
 
     def refund_credit(
         self,
