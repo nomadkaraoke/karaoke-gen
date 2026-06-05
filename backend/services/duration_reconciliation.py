@@ -120,11 +120,11 @@ async def reconcile_and_maybe_pause(job_id: str) -> bool:
     job_manager = JobManager()
     user_service = get_user_service()
     storage = StorageService()
+    # JobManager/StorageService have no singleton accessor; instantiate directly (matches audio_download_worker).
     # TODO(task15): pass email_service once send_duration_confirm_expired exists
     email_service = None
 
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
+    result = await asyncio.get_running_loop().run_in_executor(
         None,
         lambda: reconcile_duration(
             job_id,
