@@ -2682,6 +2682,22 @@ async def confirm_duration(
             },
         )
 
+    # 6. Transition job OUT of AWAITING_DURATION_CONFIRM before triggering workers.
+    #
+    # This is the idempotency guard: if a duplicate confirm POST arrives (e.g. a
+    # double-click) the status guard at step 2 will now 409 immediately, preventing
+    # a second pair of worker launches.  We transition to SEPARATING_STAGE1 —
+    # the normal next state for both the audio and lyrics parallel tracks — which is
+    # a valid transition from AWAITING_DURATION_CONFIRM per STATE_TRANSITIONS.
+    # The audio and lyrics workers update their own track states from here on, the
+    # same as the normal convergence path.
+    job_manager.transition_to_state(
+        job_id,
+        new_status=JobStatus.SEPARATING_STAGE1,
+        progress=20,
+        message="Cost confirmed, processing",
+    )
+
     # 7. Resume processing: trigger both parallel workers in background.
     # Use asyncio.create_task (mirrors complete_review in review.py) so the HTTP
     # response returns immediately without waiting for Cloud Run job submission.

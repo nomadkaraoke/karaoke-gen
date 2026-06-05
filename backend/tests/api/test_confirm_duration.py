@@ -380,6 +380,70 @@ class TestConfirmDurationPreflight:
         mock_ct.assert_called_once()
 
 
+class TestConfirmDurationIdempotency:
+    """Duplicate-confirm and owed=0 paths."""
+
+    def test_duplicate_confirm_is_rejected(self, patched_app):
+        """A second confirm POST must 409 because the job is no longer AWAITING_DURATION_CONFIRM.
+
+        After a successful confirm the endpoint calls transition_to_state →
+        SEPARATING_STAGE1.  The mock default returns True from transition_to_state;
+        what matters is that the endpoint *issued* the transition so that a
+        subsequent request (now seeing a different status) would be rejected.
+
+        We verify this by asserting that transition_to_state was called with
+        new_status=SEPARATING_STAGE1 on the first confirm — the status guard at
+        step 2 would reject a second request once the real Firestore document
+        reflects the new status.
+        """
+        client, jm, us, ws = patched_app
+        jm.get_job.return_value = _dur_confirm_job_reconcile(
+            credits_charged=2, pending_additional_credits=1
+        )
+
+        resp = _post(client, "job-dur-1", acknowledged_credits=3)
+        assert resp.status_code == 200, resp.text
+
+        # Verify the endpoint transitioned the job out of AWAITING_DURATION_CONFIRM
+        # so a duplicate confirm would hit the status guard (409).
+        jm.transition_to_state.assert_called_once()
+        call_kwargs = jm.transition_to_state.call_args[1]
+        assert call_kwargs.get("new_status") == JobStatus.SEPARATING_STAGE1, (
+            "confirm_duration must transition to SEPARATING_STAGE1 before triggering "
+            "workers so a duplicate POST is rejected by the status guard"
+        )
+
+    def test_owed_zero_path(self, patched_app):
+        """Job with pending_additional_credits=0: 200, deduct_credits NOT called,
+        duration_confirmed set, workers triggered, status transitioned out."""
+        client, jm, us, ws = patched_app
+        jm.get_job.return_value = _job(
+            job_id="job-zero",
+            status=JobStatus.AWAITING_DURATION_CONFIRM,
+            user_email="owner@example.com",
+            state_data={
+                "duration_confirm_reason": "reconcile",
+                "credits_charged": 3,
+                "pending_additional_credits": 0,
+            },
+        )
+
+        with patch("backend.api.routes.jobs.asyncio.create_task") as mock_ct:
+            mock_ct.return_value = MagicMock()
+            resp = _post(client, "job-zero", acknowledged_credits=3)
+
+        assert resp.status_code == 200, resp.text
+        # No credits should be deducted when owed == 0
+        us.deduct_credits.assert_not_called()
+        # State must still be persisted and workers triggered
+        jm.update_job.assert_called()
+        mock_ct.assert_called_once()
+        # Job must still be transitioned out of the pause state
+        jm.transition_to_state.assert_called_once()
+        call_kwargs = jm.transition_to_state.call_args[1]
+        assert call_kwargs.get("new_status") == JobStatus.SEPARATING_STAGE1
+
+
 class TestConfirmDurationErrorCases:
     """Status guard, not-found, and not-owner cases."""
 
