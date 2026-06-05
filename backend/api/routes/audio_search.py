@@ -52,6 +52,8 @@ from backend.middleware.tenant import get_tenant_config_from_request
 from backend.exceptions import InsufficientCreditsError
 from backend.services.tracing import add_span_attribute
 from backend.services.firestore_service import FirestoreService
+from backend.services.user_service import get_user_service
+from backend.services.pricing import duration_to_credits, is_blocked
 from pathlib import Path
 from backend.i18n import t, get_locale_from_request
 
@@ -228,6 +230,9 @@ class AudioSelectRequest(BaseModel):
     is_private: Optional[bool] = Field(None, description="Override privacy flag (guided flow Step 3)")
     display_artist: Optional[str] = Field(None, description="Override display artist name")
     display_title: Optional[str] = Field(None, description="Override display title")
+    # Anti-mismatch guard: client may send the expected credit total it observed.
+    # If the server's computed target_total differs, we return 409 so the UI can refresh.
+    acknowledged_credits: Optional[int] = Field(None, description="Expected total credits after this selection (anti-mismatch guard)")
 
 
 class AudioSelectResponse(BaseModel):
@@ -1173,6 +1178,52 @@ async def select_audio_source(
     search_results = job.state_data.get('audio_search_results', [])
     if not search_results:
         raise HTTPException(status_code=400, detail="No search results cached for this job")
+
+    # -------------------------------------------------------------------------
+    # Duration-based pricing: charge the DELTA before triggering any download.
+    # -------------------------------------------------------------------------
+    # The selected result may carry a duration field (seconds as int).
+    selected_result = search_results[body.selection_index] if 0 <= body.selection_index < len(search_results) else {}
+    duration = selected_result.get('duration')  # int seconds, or None
+
+    # Hard ceiling: reject inputs over 60 minutes immediately (before any state change).
+    if duration is not None and is_blocked(duration):
+        raise HTTPException(status_code=422, detail="Inputs over 60 minutes aren't supported")
+
+    # Compute how many credits this job should total after selecting this result.
+    # If duration is unknown, keep target_total == credits_charged so owed = 0.
+    credits_charged = int((job.state_data or {}).get('credits_charged', 1))
+    target_total = duration_to_credits(duration) if duration is not None else credits_charged
+    owed = max(0, target_total - credits_charged)
+
+    # Anti-mismatch guard: if the client sent an expected total, verify it still matches.
+    if body.acknowledged_credits is not None and body.acknowledged_credits != target_total:
+        raise HTTPException(status_code=409, detail="Credit figure changed; please refresh")
+
+    # Deduct the owed delta (or just persist duration metadata if owed == 0).
+    user_email = job.user_email
+    if owed > 0:
+        if not user_email:
+            raise HTTPException(status_code=500, detail="Job has no associated user email")
+        ok, _, _ = get_user_service().deduct_credits(
+            user_email,
+            job_id,
+            amount=owed,
+            reason="job_creation",
+            count_as_job_creation=False,  # job was already counted at create_job()
+        )
+        if not ok:
+            raise HTTPException(status_code=402, detail="Insufficient credits")
+
+    # Persist updated credit total and duration estimate for observability.
+    state_update: dict = {
+        "state_data.credits_charged": target_total,
+    }
+    if duration is not None:
+        state_update["state_data.duration_estimate_seconds"] = duration
+        state_update["state_data.duration_estimate_source"] = "search_metadata"
+    job_manager.update_job(job_id, state_update)
+    # -------------------------------------------------------------------------
 
     # Validate selection and transition to DOWNLOADING_AUDIO (returns immediately)
     selection_info = _validate_and_prepare_selection(
