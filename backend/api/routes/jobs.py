@@ -123,6 +123,32 @@ async def create_job(
             )
         logger.info(f"Applying default theme: {effective_theme_id}")
 
+        # Duration-based pricing: derive credit cost from known audio duration.
+        # Reject inputs that are too long before any job is created.
+        duration_seconds = request.duration_seconds
+        if duration_seconds is not None and is_blocked(duration_seconds):
+            raise HTTPException(
+                status_code=422,
+                detail="Inputs over 60 minutes aren't supported"
+            )
+        credits = duration_to_credits(duration_seconds) if duration_seconds is not None else 1
+
+        # Anti-mismatch guard: if the client told us how many credits it expects,
+        # reject early if the server's computation disagrees (avoids surprise charges).
+        if request.acknowledged_credits is not None and request.acknowledged_credits != credits:
+            raise HTTPException(
+                status_code=409,
+                detail="Credit figure changed; please refresh"
+            )
+
+        # Build initial state_data with duration estimate for observability.
+        initial_state_data: Dict[str, Any] = {}
+        if duration_seconds is not None:
+            initial_state_data["duration_estimate_seconds"] = duration_seconds
+            initial_state_data["duration_estimate_source"] = "youtube_metadata"
+        else:
+            initial_state_data["duration_estimate_source"] = "unknown"
+
         # Create job with all preferences
         job_create = JobCreate(
             url=str(request.url),
@@ -136,8 +162,16 @@ async def create_job(
             webhook_url=request.webhook_url,
             user_email=user_email,
             is_private=request.is_private or False,
+            credits=credits,
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
+
+        # Persist duration estimate fields alongside credits_charged on the job document.
+        if initial_state_data:
+            update_payload = {
+                f"state_data.{k}": v for k, v in initial_state_data.items()
+            }
+            FirestoreService().update_job(job.job_id, update_payload)
 
         # Store client IP on job for anti-abuse correlation
         creation_ip = get_client_ip(http_request)
@@ -163,7 +197,7 @@ async def create_job(
             job_id=job.job_id,
             message=t(locale, "jobs.created")
         )
-    except InsufficientCreditsError:
+    except (InsufficientCreditsError, HTTPException):
         raise
     except Exception as e:
         logger.error(f"Error creating job: {e}", exc_info=True)

@@ -57,15 +57,16 @@ class JobManager:
             ValueError: If theme_id is not provided (all jobs require a theme)
         """
         # Check credits (skip for admins)
+        credits_to_charge = getattr(job_create, 'credits', 1)
         if job_create.user_email and not is_admin:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()
-            if not user_service.has_credits(job_create.user_email):
-                credits_available = user_service.check_credits(job_create.user_email)
+            credits_available = user_service.check_credits(job_create.user_email)
+            if credits_available < credits_to_charge:
                 raise InsufficientCreditsError(
                     message="You're out of credits. Buy more to continue creating karaoke videos.",
                     credits_available=credits_available,
-                    credits_required=1,
+                    credits_required=credits_to_charge,
                 )
 
         # Enforce theme requirement - all jobs must have a theme
@@ -126,17 +127,20 @@ class JobManager:
                 "is_admin": is_admin,
                 "created_from": job_create.request_metadata.get("created_from", "unknown"),
             },
+            # Record how many credits were charged for this job (authoritative running total)
+            state_data={"credits_charged": credits_to_charge},
         )
 
         self.firestore.create_job(job)
         logger.info(f"Created new job {job_id} with status PENDING")
 
-        # Deduct credit atomically (after job is persisted so we have job_id for transaction record)
+        # Deduct credits atomically (after job is persisted so we have job_id for transaction record)
         if job_create.user_email and not is_admin:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()
-            success, _remaining, deduct_msg = user_service.deduct_credit(
-                job_create.user_email, job_id, reason="job_creation"
+            success, _remaining, deduct_msg = user_service.deduct_credits(
+                job_create.user_email, job_id, amount=credits_to_charge, reason="job_creation",
+                count_as_job_creation=True,
             )
             if not success:
                 # Deduction failed (e.g., race condition) - delete the job and raise error
@@ -148,7 +152,7 @@ class JobManager:
                 raise InsufficientCreditsError(
                     message="Failed to deduct credit. Please try again.",
                     credits_available=0,
-                    credits_required=1,
+                    credits_required=credits_to_charge,
                 )
 
         return job

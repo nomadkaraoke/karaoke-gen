@@ -606,6 +606,11 @@ class JobCreate(BaseModel):
     # Private (non-published) track mode
     is_private: bool = False                     # Private tracks: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive
 
+    # Credit pricing: how many credits to charge for this job at creation time.
+    # Search and upload jobs pass the default (1) and may top up later.
+    # URL jobs with a known duration pass ceil(duration/600) credits.
+    credits: int = 1
+
     # Request metadata (set by API endpoint from request headers)
     request_metadata: Dict[str, Any] = Field(default_factory=dict)
     """

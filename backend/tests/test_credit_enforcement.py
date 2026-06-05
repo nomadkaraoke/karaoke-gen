@@ -60,8 +60,8 @@ class TestCreditCheckOnJobCreation:
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Job creation succeeds when user has credits, and credit is deducted."""
-        mock_user_service.has_credits.return_value = True
-        mock_user_service.deduct_credit.return_value = (True, 4, "Credit deducted. 4 remaining")
+        mock_user_service.check_credits.return_value = 5  # has enough credits
+        mock_user_service.deduct_credits.return_value = (True, 4, "Credit deducted. 4 remaining")
 
         job = job_manager.create_job(
             JobCreate(artist="Test", title="Song", theme_id="nomad", user_email="user@test.com"),
@@ -69,10 +69,10 @@ class TestCreditCheckOnJobCreation:
         )
 
         assert job.status == JobStatus.PENDING
-        mock_user_service.has_credits.assert_called_once_with("user@test.com")
-        mock_user_service.deduct_credit.assert_called_once()
-        # Verify deduct_credit was called with user email, job_id, and reason
-        call_args = mock_user_service.deduct_credit.call_args
+        mock_user_service.check_credits.assert_called_once_with("user@test.com")
+        mock_user_service.deduct_credits.assert_called_once()
+        # Verify deduct_credits was called with user email
+        call_args = mock_user_service.deduct_credits.call_args
         assert call_args[0][0] == "user@test.com"
 
     def test_job_creation_fails_without_credits(
@@ -103,8 +103,8 @@ class TestCreditCheckOnJobCreation:
         )
 
         assert job.status == JobStatus.PENDING
-        mock_user_service.has_credits.assert_not_called()
-        mock_user_service.deduct_credit.assert_not_called()
+        mock_user_service.check_credits.assert_not_called()
+        mock_user_service.deduct_credits.assert_not_called()
 
     def test_job_without_user_email_skips_credit_check(
         self, job_manager, mock_firestore_service, mock_user_service
@@ -116,14 +116,14 @@ class TestCreditCheckOnJobCreation:
         )
 
         assert job.status == JobStatus.PENDING
-        mock_user_service.has_credits.assert_not_called()
+        mock_user_service.check_credits.assert_not_called()
 
     def test_deduction_failure_deletes_job_and_raises(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """If credit deduction fails after job creation, the job is deleted."""
-        mock_user_service.has_credits.return_value = True
-        mock_user_service.deduct_credit.return_value = (False, 0, "Insufficient credits")
+        mock_user_service.check_credits.return_value = 5  # passes the gate
+        mock_user_service.deduct_credits.return_value = (False, 0, "Race condition: insufficient credits")
 
         with pytest.raises(InsufficientCreditsError):
             job_manager.create_job(

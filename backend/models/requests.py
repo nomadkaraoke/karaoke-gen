@@ -20,6 +20,10 @@ class URLSubmissionRequest(BaseModel):
     user_email: Optional[str] = None
     is_private: Optional[bool] = None  # Private (non-published) track mode
 
+    # Duration-based pricing: supplied by the client from YouTube metadata
+    duration_seconds: Optional[float] = None          # Known audio duration in seconds
+    acknowledged_credits: Optional[int] = None        # Client's expected credit cost (anti-mismatch guard)
+
 
 class UploadSubmissionRequest(BaseModel):
     """Request to submit a job from an uploaded file."""
