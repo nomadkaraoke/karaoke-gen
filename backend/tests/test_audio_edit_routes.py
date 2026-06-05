@@ -449,7 +449,12 @@ class TestSubmitAudioEdit:
         mock_job_manager.get_job.return_value = audio_edit_job_with_edits
 
         with patch(PATCH_STORAGE_SVC) as MockStorage, \
-             patch(PATCH_WORKER_SVC) as mock_get_ws:
+             patch(PATCH_WORKER_SVC) as mock_get_ws, \
+             patch(
+                 "backend.api.routes.review.reconcile_and_maybe_pause",
+                 new_callable=AsyncMock,
+             ) as mock_reconcile:
+            mock_reconcile.return_value = False  # proceed normally
             mock_ws = AsyncMock()
             mock_get_ws.return_value = mock_ws
 
@@ -481,7 +486,12 @@ class TestSubmitAudioEdit:
         mock_job_manager.get_job.return_value = audio_edit_job
 
         with patch(PATCH_STORAGE_SVC) as MockStorage, \
-             patch(PATCH_WORKER_SVC) as mock_get_ws:
+             patch(PATCH_WORKER_SVC) as mock_get_ws, \
+             patch(
+                 "backend.api.routes.review.reconcile_and_maybe_pause",
+                 new_callable=AsyncMock,
+             ) as mock_reconcile:
+            mock_reconcile.return_value = False  # proceed normally
             mock_ws = AsyncMock()
             mock_get_ws.return_value = mock_ws
 
@@ -507,6 +517,55 @@ class TestSubmitAudioEdit:
         mock_job_manager.get_job.return_value = None
         resp = test_client.post("/api/review/nonexistent/audio-edit/submit", json={})
         assert resp.status_code == 404
+
+    def test_submit_paused_by_reconciliation_does_not_trigger_workers(
+        self, test_client, mock_job_manager, audio_edit_job_with_edits
+    ):
+        """When reconcile_and_maybe_pause returns True the workers must NOT be triggered."""
+        mock_job_manager.get_job.return_value = audio_edit_job_with_edits
+
+        with patch(PATCH_STORAGE_SVC), \
+             patch(PATCH_WORKER_SVC) as mock_get_ws, \
+             patch(
+                 "backend.api.routes.review.reconcile_and_maybe_pause",
+                 new_callable=AsyncMock,
+             ) as mock_reconcile:
+            mock_reconcile.return_value = True   # paused / cancelled
+            mock_ws = AsyncMock()
+            mock_get_ws.return_value = mock_ws
+
+            resp = test_client.post("/api/review/edit-job-2/audio-edit/submit", json={})
+
+            # Must be a non-error response (pause is a normal outcome, not 4xx/5xx)
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "paused"
+
+            # Workers must NOT have been triggered
+            mock_ws.trigger_audio_worker.assert_not_called()
+            mock_ws.trigger_lyrics_worker.assert_not_called()
+
+    def test_submit_reconciliation_false_triggers_workers(
+        self, test_client, mock_job_manager, audio_edit_job_with_edits
+    ):
+        """When reconcile_and_maybe_pause returns False the workers ARE triggered."""
+        mock_job_manager.get_job.return_value = audio_edit_job_with_edits
+
+        with patch(PATCH_STORAGE_SVC), \
+             patch(PATCH_WORKER_SVC) as mock_get_ws, \
+             patch(
+                 "backend.api.routes.review.reconcile_and_maybe_pause",
+                 new_callable=AsyncMock,
+             ) as mock_reconcile:
+            mock_reconcile.return_value = False  # proceed normally
+            mock_ws = AsyncMock()
+            mock_get_ws.return_value = mock_ws
+
+            resp = test_client.post("/api/review/edit-job-2/audio-edit/submit", json={})
+
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "success"
 
 
 # --- Helper function tests ---
