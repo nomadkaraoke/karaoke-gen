@@ -3,7 +3,7 @@ Tests for POST /api/jobs/{job_id}/confirm-duration endpoint.
 
 Covers:
 - reconcile path: deduct pending_additional_credits, trigger workers
-- preflight path: deduct duration_to_credits(estimate), trigger workers
+- preflight path: deduct pending_additional_credits (delta, not full cost), trigger workers
 - insufficient credits → 402
 - acknowledged_credits mismatch → 409
 - wrong status → 409
@@ -83,13 +83,15 @@ def _dur_confirm_job_reconcile(
 
 def _dur_confirm_job_preflight(
     job_id="job-dur-2",
-    duration_estimate_seconds=1500,
+    credits_charged=1,
+    pending_additional_credits=2,
     user_email="owner@example.com",
 ):
     """Job in AWAITING_DURATION_CONFIRM with reason=preflight.
 
-    duration_to_credits(1500) = ceil(1500/600) = 3 credits.
-    credits_charged=0 because the preflight flow does NOT pre-charge.
+    Delta model: create_job already charged 1 credit; the upload's duration
+    estimate (e.g. ~25 min / 3-credit song) means 2 MORE credits are owed.
+    pending_additional_credits=2, credits_charged=1, expected_total=3.
     """
     return _job(
         job_id=job_id,
@@ -97,8 +99,8 @@ def _dur_confirm_job_preflight(
         user_email=user_email,
         state_data={
             "duration_confirm_reason": "preflight",
-            "credits_charged": 0,
-            "duration_estimate_seconds": duration_estimate_seconds,
+            "credits_charged": credits_charged,
+            "pending_additional_credits": pending_additional_credits,
         },
     )
 
@@ -270,20 +272,29 @@ class TestConfirmDurationReconcile:
 
 
 class TestConfirmDurationPreflight:
-    """Preflight path: duration_estimate_seconds=1500, credits_charged=0, owed=3, expected_total=3."""
+    """Preflight path (delta model): credits_charged=1, pending_additional_credits=2, owed=2, expected_total=3.
+
+    create_job charged 1 credit at upload time; the pause-creating site computed
+    pending_additional_credits=2 as the delta for a ~25-min (3-credit) song.
+    confirm_duration deducts ONLY the delta (2), bringing credits_charged to 3.
+    """
 
     def test_preflight_returns_200(self, patched_app):
         client, jm, us, ws = patched_app
-        jm.get_job.return_value = _dur_confirm_job_preflight(duration_estimate_seconds=1500)
+        jm.get_job.return_value = _dur_confirm_job_preflight(
+            credits_charged=1, pending_additional_credits=2
+        )
 
         resp = _post(client, "job-dur-2", acknowledged_credits=3)
 
         assert resp.status_code == 200, resp.text
 
-    def test_preflight_deducts_full_cost(self, patched_app):
-        """duration_to_credits(1500) = 3; deduct 3 credits."""
+    def test_preflight_deducts_delta_only(self, patched_app):
+        """Delta model: only deduct pending_additional_credits (2), not the full cost (3)."""
         client, jm, us, ws = patched_app
-        jm.get_job.return_value = _dur_confirm_job_preflight(duration_estimate_seconds=1500)
+        jm.get_job.return_value = _dur_confirm_job_preflight(
+            credits_charged=1, pending_additional_credits=2
+        )
 
         resp = _post(client, "job-dur-2", acknowledged_credits=3)
 
@@ -291,12 +302,17 @@ class TestConfirmDurationPreflight:
         us.deduct_credits.assert_called_once()
         call_args, call_kwargs = us.deduct_credits.call_args
         amount = call_kwargs.get("amount", call_args[2] if len(call_args) > 2 else None)
-        assert amount == 3
+        assert amount == 2, (
+            "preflight must deduct the delta (pending_additional_credits=2), "
+            "not the full cost — create_job already charged 1 credit"
+        )
 
     def test_preflight_count_as_job_creation_false(self, patched_app):
         """Preflight uses count_as_job_creation=False (job was already counted at creation)."""
         client, jm, us, ws = patched_app
-        jm.get_job.return_value = _dur_confirm_job_preflight(duration_estimate_seconds=1500)
+        jm.get_job.return_value = _dur_confirm_job_preflight(
+            credits_charged=1, pending_additional_credits=2
+        )
 
         resp = _post(client, "job-dur-2", acknowledged_credits=3)
 
@@ -311,9 +327,28 @@ class TestConfirmDurationPreflight:
             "do not double-count total_jobs_created"
         )
 
+    def test_preflight_credits_charged_becomes_total(self, patched_app):
+        """After confirm, credits_charged should be updated to credits_charged + owed = 3."""
+        client, jm, us, ws = patched_app
+        jm.get_job.return_value = _dur_confirm_job_preflight(
+            credits_charged=1, pending_additional_credits=2
+        )
+
+        resp = _post(client, "job-dur-2", acknowledged_credits=3)
+
+        assert resp.status_code == 200, resp.text
+        jm.update_job.assert_called()
+        update_call_args = jm.update_job.call_args
+        update_dict = update_call_args[0][1] if update_call_args[0] else update_call_args[1]
+        assert update_dict.get("state_data.credits_charged") == 3, (
+            "credits_charged must be updated to 1 (prior) + 2 (owed) = 3"
+        )
+
     def test_preflight_insufficient_credits_returns_402(self, patched_app):
         client, jm, us, ws = patched_app
-        jm.get_job.return_value = _dur_confirm_job_preflight(duration_estimate_seconds=1500)
+        jm.get_job.return_value = _dur_confirm_job_preflight(
+            credits_charged=1, pending_additional_credits=2
+        )
         us.deduct_credits.return_value = (False, 1, "Insufficient credits")
 
         resp = _post(client, "job-dur-2", acknowledged_credits=3)
@@ -321,9 +356,11 @@ class TestConfirmDurationPreflight:
         assert resp.status_code == 402, resp.text
 
     def test_preflight_mismatch_returns_409(self, patched_app):
-        """acknowledged_credits=5 but expected 3 → 409."""
+        """acknowledged_credits=5 but expected 3 (1+2) → 409."""
         client, jm, us, ws = patched_app
-        jm.get_job.return_value = _dur_confirm_job_preflight(duration_estimate_seconds=1500)
+        jm.get_job.return_value = _dur_confirm_job_preflight(
+            credits_charged=1, pending_additional_credits=2
+        )
 
         resp = _post(client, "job-dur-2", acknowledged_credits=5)
 
@@ -331,7 +368,9 @@ class TestConfirmDurationPreflight:
 
     def test_preflight_workers_triggered(self, patched_app):
         client, jm, us, ws = patched_app
-        jm.get_job.return_value = _dur_confirm_job_preflight(duration_estimate_seconds=1500)
+        jm.get_job.return_value = _dur_confirm_job_preflight(
+            credits_charged=1, pending_additional_credits=2
+        )
 
         with patch("backend.api.routes.jobs.asyncio.create_task") as mock_ct:
             mock_ct.return_value = MagicMock()

@@ -45,7 +45,6 @@ from backend.exceptions import InsufficientCreditsError
 from backend.services.firestore_service import FirestoreService, log_to_job
 from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityResponse
 from backend.services.user_service import get_user_service
-from backend.services.pricing import duration_to_credits
 from pydantic import BaseModel, Field, validator
 
 
@@ -2619,18 +2618,19 @@ async def confirm_duration(
         )
 
     # 3. Compute owed credits and expected total.
+    #
+    # Both "reconcile" and "preflight" reasons use the same delta model:
+    # - credits_charged: total already deducted from the user's account
+    # - pending_additional_credits: exactly how many MORE credits are owed to clear the pause
+    #
+    # The pause-creating sites (reconcile engine, uploads-complete, select) are
+    # responsible for computing and storing pending_additional_credits as the delta.
+    # confirm_duration never needs to call duration_to_credits.
     state_data = job.state_data or {}
     reason = state_data.get("duration_confirm_reason", "reconcile")
     credits_charged = int(state_data.get("credits_charged", 0))
-
-    if reason == "reconcile":
-        owed = int(state_data.get("pending_additional_credits", 0))
-        expected_total = credits_charged + owed
-    else:
-        # preflight: nothing charged yet via duration pricing
-        duration_estimate = state_data.get("duration_estimate_seconds")
-        owed = duration_to_credits(duration_estimate)
-        expected_total = owed
+    owed = int(state_data.get("pending_additional_credits", 0))
+    expected_total = credits_charged + owed
 
     # 4. Acknowledged-credits mismatch guard (figure may have changed; client refreshes).
     if body.acknowledged_credits != expected_total:
