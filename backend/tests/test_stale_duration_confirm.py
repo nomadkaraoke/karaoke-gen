@@ -218,27 +218,77 @@ class TestStaleDurationConfirm:
         mock_user_service.add_credits.assert_not_called()
         mock_job_manager.cancel_job.assert_called_once()
 
-    async def test_48h_sets_expiry_idempotency_flag(
+    async def test_48h_sets_expiry_idempotency_flag_after_cancel(
         self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service
     ):
-        """The expiry idempotency flag must be set so re-runs don't double-process."""
+        """
+        The expiry idempotency flag must be set AFTER a successful cancel_job.
+
+        Ordering requirement (Bug E fix): if cancel_job fails the flag must NOT be
+        set — otherwise the job is stuck (unflagged refund but never cancelled).
+        """
         job = _make_duration_confirm_job(hours_ago=50, credits_charged=2)
         mock_firestore.list_jobs.side_effect = [[], [], [job]]
+
+        call_order = []
+
+        def record_cancel(*args, **kwargs):
+            call_order.append("cancel_job")
+            return True
+
+        def record_update(job_id, updates):
+            if isinstance(updates, dict) and updates.get('state_data.duration_confirm_expiry_processed') is True:
+                call_order.append("flag_set")
+
+        mock_job_manager.cancel_job.side_effect = record_cancel
+        mock_firestore.update_job.side_effect = record_update
 
         with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
             from backend.workers.stale_review_processor import process_stale_reviews
             await process_stale_reviews()
 
-        # Check that duration_confirm_expiry_processed=True was written
+        # Both events must have been recorded
+        assert "cancel_job" in call_order, "cancel_job was never called"
+        assert "flag_set" in call_order, (
+            "Expected update_job with state_data.duration_confirm_expiry_processed=True "
+            "to be called after cancel_job"
+        )
+
+        # Flag must come AFTER cancel
+        cancel_idx = call_order.index("cancel_job")
+        flag_idx = call_order.index("flag_set")
+        assert flag_idx > cancel_idx, (
+            f"Idempotency flag was set (pos {flag_idx}) BEFORE cancel_job (pos {cancel_idx}). "
+            "It must be set only after a successful cancel."
+        )
+
+    async def test_48h_flag_not_set_when_cancel_fails(
+        self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service
+    ):
+        """If cancel_job returns False, the idempotency flag must NOT be written."""
+        job = _make_duration_confirm_job(hours_ago=50, credits_charged=2)
+        mock_firestore.list_jobs.side_effect = [[], [], [job]]
+        mock_job_manager.cancel_job.return_value = False  # cancel fails
+
+        # Reset side_effect so update_job works normally
+        mock_firestore.update_job.side_effect = None
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            await process_stale_reviews()
+
+        # Flag must NOT be set when cancel failed
         update_calls = mock_firestore.update_job.call_args_list
         expiry_flag_calls = [
             c for c in update_calls
-            if isinstance(c.args[1] if c.args else c.kwargs.get('updates', {}), dict)
-            and c.args[1].get('state_data.duration_confirm_expiry_processed') is True
+            if isinstance(c.args[1] if len(c.args) > 1 else c.kwargs.get('updates', {}), dict)
+            and (c.args[1] if len(c.args) > 1 else c.kwargs.get('updates', {})).get(
+                'state_data.duration_confirm_expiry_processed'
+            ) is True
         ]
-        assert expiry_flag_calls, (
-            "Expected update_job with state_data.duration_confirm_expiry_processed=True. "
-            f"Actual calls: {update_calls}"
+        assert not expiry_flag_calls, (
+            "Idempotency flag must NOT be written when cancel_job returns False. "
+            f"Actual update_job calls: {update_calls}"
         )
 
     # ------------------------------------------------------------------

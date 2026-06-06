@@ -522,7 +522,13 @@ class TestSubmitAudioEdit:
         self, test_client, mock_job_manager, audio_edit_job_with_edits
     ):
         """When reconcile_and_maybe_pause returns True the workers must NOT be triggered."""
-        mock_job_manager.get_job.return_value = audio_edit_job_with_edits
+        # Reloaded job is AWAITING_DURATION_CONFIRM (paused, not cancelled)
+        paused_job = _job(
+            job_id="edit-job-2",
+            status=JobStatus.AWAITING_DURATION_CONFIRM,
+            state_data={"audio_edit_stack": [{"gcs_path": "gs://b/edit.flac"}]},
+        )
+        mock_job_manager.get_job.side_effect = [audio_edit_job_with_edits, paused_job]
 
         with patch(PATCH_STORAGE_SVC), \
              patch(PATCH_WORKER_SVC) as mock_get_ws, \
@@ -540,6 +546,44 @@ class TestSubmitAudioEdit:
             assert resp.status_code == 200
             data = resp.json()
             assert data["status"] == "paused"
+
+            # Workers must NOT have been triggered
+            mock_ws.trigger_audio_worker.assert_not_called()
+            mock_ws.trigger_lyrics_worker.assert_not_called()
+
+    def test_submit_over_limit_returns_cancelled_status(
+        self, test_client, mock_job_manager, audio_edit_job_with_edits
+    ):
+        """
+        Bug F: when reconcile_and_maybe_pause cancels the job (over-limit),
+        the response must say status='cancelled', not 'paused'.
+        """
+        # Reloaded job is CANCELLED after over-limit reconciliation
+        cancelled_job = _job(
+            job_id="edit-job-2",
+            status=JobStatus.CANCELLED,
+            state_data={"audio_edit_stack": [{"gcs_path": "gs://b/edit.flac"}]},
+        )
+        mock_job_manager.get_job.side_effect = [audio_edit_job_with_edits, cancelled_job]
+
+        with patch(PATCH_STORAGE_SVC), \
+             patch(PATCH_WORKER_SVC) as mock_get_ws, \
+             patch(
+                 "backend.api.routes.review.reconcile_and_maybe_pause",
+                 new_callable=AsyncMock,
+             ) as mock_reconcile:
+            mock_reconcile.return_value = True   # over-limit → cancelled
+            mock_ws = AsyncMock()
+            mock_get_ws.return_value = mock_ws
+
+            resp = test_client.post("/api/review/edit-job-2/audio-edit/submit", json={})
+
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "cancelled", (
+                f"Expected status='cancelled' for over-limit cancellation, got {data.get('status')!r}. "
+                "The frontend needs this to show the correct message to the user."
+            )
 
             # Workers must NOT have been triggered
             mock_ws.trigger_audio_worker.assert_not_called()

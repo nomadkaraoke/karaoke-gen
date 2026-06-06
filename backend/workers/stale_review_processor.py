@@ -153,23 +153,25 @@ async def process_stale_reviews() -> Dict[str, Any]:
                                 f"Job {job.job_id}: failed to refund {credits_charged} credits: {refund_err}"
                             )
 
-                    # Set idempotency flag so re-runs skip this job
-                    try:
-                        firestore.update_job(job.job_id, {
-                            'state_data.duration_confirm_expiry_processed': True,
-                            'state_data.duration_confirm_expiry_processed_at': datetime.now(timezone.utc).isoformat(),
-                        })
-                    except Exception as flag_err:
-                        logger.error(
-                            f"Job {job.job_id}: failed to set duration_confirm_expiry_processed: {flag_err}"
-                        )
-
                     cancelled = job_manager.cancel_job(
                         job.job_id,
                         reason="Duration confirmation not completed within 48 hours",
                     )
                     if cancelled:
                         jobs_expired += 1
+
+                        # Set idempotency flag AFTER a successful cancel so that a
+                        # cancel_job failure leaves the job un-flagged and re-processable
+                        # on the next run (the refund is idempotent via add_credits).
+                        try:
+                            firestore.update_job(job.job_id, {
+                                'state_data.duration_confirm_expiry_processed': True,
+                                'state_data.duration_confirm_expiry_processed_at': datetime.now(timezone.utc).isoformat(),
+                            })
+                        except Exception as flag_err:
+                            logger.error(
+                                f"Job {job.job_id}: failed to set duration_confirm_expiry_processed: {flag_err}"
+                            )
 
                         if job.user_email:
                             try:

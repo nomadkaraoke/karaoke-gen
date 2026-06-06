@@ -63,6 +63,7 @@ def reconcile_duration(
                 artist=getattr(job, "artist", None),
                 title=getattr(job, "title", None),
                 credits_refunded=credits_charged,
+                reason="over_limit",
             )
         return ReconcileResult(action="cancel", actual_seconds=actual)
 

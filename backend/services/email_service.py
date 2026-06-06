@@ -1221,8 +1221,13 @@ class EmailService:
             cost_detail_html = f"<p>Your karaoke job{song_name} requires a few extra credits to continue.</p>"
             cost_detail_text = f"Your karaoke job{song_name_text} requires a few extra credits to continue.\n"
 
+        # TODO(i18n): translate subject/body once duration-confirm keys are added to
+        # backend/translations/{locale}.json.  URL already uses the locale prefix.
+        locale_prefix = get_locale_prefix(locale)
         url_to_use = confirm_url or (
-            f"{self.frontend_url}/app/jobs#/{job_id}/review" if job_id else f"{self.frontend_url}/app"
+            f"{self.frontend_url}{locale_prefix}/app/jobs#/{job_id}/review"
+            if job_id
+            else f"{self.frontend_url}{locale_prefix}/app"
         )
 
         content = f"""
@@ -1357,27 +1362,39 @@ class EmailService:
         title: Optional[str] = None,
         credits_refunded: int = 0,
         locale: str = "en",
+        reason: str = "timeout",
     ) -> bool:
         """
-        Send duration-confirm expiry notification email.
+        Send duration-confirm cancellation notification email.
 
-        Sent when a job is auto-cancelled after 48 hours in AWAITING_DURATION_CONFIRM
-        (the user never confirmed the extra cost). Informs the user that the job was
-        cancelled and their credits have been refunded.
+        Two cancellation reasons are supported via the ``reason`` parameter:
+
+        - ``"timeout"`` (default): job was auto-cancelled after 48 hours in
+          AWAITING_DURATION_CONFIRM because the user never confirmed the extra cost.
+        - ``"over_limit"`` : job was immediately cancelled because the audio
+          duration exceeds the supported 60-minute ceiling.
 
         Args:
             to_email: User's email address
             artist: Artist name for subject line
             title: Song title for subject line
             credits_refunded: Number of credits that were refunded
+            locale: User locale (reserved for future i18n; currently English)
+            reason: "timeout" or "over_limit" — controls the cancellation message
 
         Returns:
             True if email was sent successfully
         """
-        if artist and title:
-            subject = f"Your karaoke job was cancelled — cost not confirmed in time ({artist} - {title})"
+        if reason == "over_limit":
+            if artist and title:
+                subject = f"Your karaoke job was cancelled — audio exceeds 60 minutes ({artist} - {title})"
+            else:
+                subject = "Your karaoke job was cancelled — audio exceeds 60 minutes"
         else:
-            subject = "Your karaoke job was cancelled — cost not confirmed in time"
+            if artist and title:
+                subject = f"Your karaoke job was cancelled — cost not confirmed in time ({artist} - {title})"
+            else:
+                subject = "Your karaoke job was cancelled — cost not confirmed in time"
 
         extra_styles = """
         .info-box {
@@ -1424,10 +1441,33 @@ class EmailService:
             else "Your account has been updated."
         )
 
+        if reason == "over_limit":
+            cancel_reason_html = (
+                f"Your karaoke job{song_name} was automatically cancelled because the audio "
+                f"exceeds the supported 60-minute limit."
+            )
+            cancel_reason_text = (
+                f"Your karaoke job{song_name_text} was automatically cancelled because the "
+                f"audio exceeds the supported 60-minute limit."
+            )
+        else:
+            cancel_reason_html = (
+                f"Your karaoke job{song_name} was automatically cancelled because the extra cost "
+                f"was not confirmed within 48 hours."
+            )
+            cancel_reason_text = (
+                f"Your karaoke job{song_name_text} was automatically cancelled because the extra "
+                f"cost was not confirmed within 48 hours."
+            )
+
+        # TODO(i18n): translate subject/body once duration-confirm keys are added to
+        # backend/translations/{locale}.json.  URL already uses the locale prefix.
+        locale_prefix = get_locale_prefix(locale)
+        app_url = f"{self.frontend_url}{locale_prefix}/app"
+
         content = f"""
     <div class="info-box">
-        Your karaoke job{song_name} was automatically cancelled because the extra cost
-        was not confirmed within 48 hours.
+        {cancel_reason_html}
     </div>
 
     {refund_notice_html}
@@ -1435,7 +1475,7 @@ class EmailService:
     <p>You can start a new job at any time — your credits are ready to use.</p>
 
     <p style="text-align: center;">
-        <a href="{html.escape(self.frontend_url)}/app" class="create-btn">Create a new job</a>
+        <a href="{html.escape(app_url)}" class="create-btn">Create a new job</a>
     </p>
 
     <p>If you have any questions, just reply to this email — we're happy to help.</p>
@@ -1444,10 +1484,9 @@ class EmailService:
         html_content = self._build_email_html(content, extra_styles, locale=locale)
 
         text_content = (
-            f"Your karaoke job{song_name_text} was automatically cancelled because the extra "
-            f"cost was not confirmed within 48 hours.\n\n"
+            f"{cancel_reason_text}\n\n"
             f"{refund_notice_text}\n\n"
-            f"You can start a new job at any time: {self.frontend_url}/app\n\n"
+            f"You can start a new job at any time: {app_url}\n\n"
             f"If you have any questions, just reply to this email — we're happy to help."
         )
 

@@ -861,9 +861,12 @@ class JobManager:
     
     def _refund_credit_for_job(self, job_id: str, job: Job, reason: str) -> bool:
         """
-        Refund one credit for a job if eligible.
+        Refund all credits charged for a job if eligible.
 
-        Skips refund if: already refunded, no user email, or admin-owned job.
+        Reads ``state_data.credits_charged`` (defaulting to 1 for legacy jobs
+        that pre-date the field) and refunds that many credits in a single
+        ``add_credits`` call.  Skips refund if: already refunded, no user
+        email, admin-owned job, or credits_charged == 0 (payment_bypassed).
         Never raises — refund failure must not block the calling operation.
 
         Returns:
@@ -883,14 +886,30 @@ class JobManager:
             if is_admin_email(job.user_email):
                 return False
 
+            # Determine how many credits to refund.  ``credits_charged`` is set
+            # at job creation (and updated on duration-confirm).  Legacy jobs
+            # that pre-date the field are guaranteed to be 1-credit jobs, so we
+            # default to 1.  payment_bypassed admin/no-email jobs have
+            # credits_charged=0 and must not be refunded.
+            state_data = job.state_data or {}
+            credits_charged = int(state_data.get("credits_charged", 1))
+
+            if credits_charged == 0:
+                # Admin / payment-bypassed job — nothing to refund.
+                logger.info(f"Job {job_id}: credits_charged=0 (payment_bypassed), skipping refund")
+                return False
+
             user_service = get_user_service()
-            refund_ok, new_balance, refund_msg = user_service.refund_credit(
-                job.user_email, job_id, reason=reason
+            refund_ok, new_balance, refund_msg = user_service.add_credits(
+                job.user_email, amount=credits_charged, reason=reason, job_id=job_id
             )
             if refund_ok:
                 # Mark job as refunded to prevent double-refund
                 self.update_job(job_id, {'credit_refunded': True})
-                logger.info(f"Refunded credit for {reason} job {job_id} to {_mask_email(job.user_email)} (balance: {new_balance})")
+                logger.info(
+                    f"Refunded {credits_charged} credit(s) for {reason} job {job_id} "
+                    f"to {_mask_email(job.user_email)} (balance: {new_balance})"
+                )
                 return True
             else:
                 logger.warning(f"Credit refund failed for job {job_id}: {refund_msg}")

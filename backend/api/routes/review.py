@@ -2188,6 +2188,15 @@ async def submit_audio_edit(
     # to point to the edited audio (jobs/{job_id}/input/edited.flac) if edits were applied.
     if await reconcile_and_maybe_pause(job_id):
         # Job paused (AWAITING_DURATION_CONFIRM) or cancelled — do not start processing.
+        # Reload to distinguish the two outcomes so the caller can surface the right message.
+        reloaded = job_manager.get_job(job_id)
+        if reloaded and reloaded.status in (JobStatus.CANCELLED, JobStatus.FAILED):
+            return {
+                "status": "cancelled",
+                "message": "Audio edit saved. Job was cancelled — audio exceeds the supported limit.",
+                "job_id": job_id,
+                "edits_applied": len(edit_stack),
+            }
         return {
             "status": "paused",
             "message": "Audio edit saved. Additional credits are required to continue processing.",

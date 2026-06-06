@@ -167,3 +167,94 @@ def test_over_limit_no_email_when_email_service_is_none():
     # Should not raise
     result = reconcile_duration("job1", jm, us, probe, email_service=None)
     assert result.action == "cancel"
+
+
+# ---------------------------------------------------------------------------
+# Bug C regression: over-limit cancel uses reason="over_limit" (not "timeout")
+# ---------------------------------------------------------------------------
+
+def test_over_limit_sends_email_with_over_limit_reason():
+    """
+    Bug C: over-limit immediate cancellation must send send_duration_confirm_expired
+    with reason='over_limit', NOT the default reason='timeout' which says
+    '48-hour expiry'.  The user sees the wrong cancellation message otherwise.
+    """
+    jm, us, probe = _ctx(actual_seconds=4000, credits_charged=2)  # >60min
+    email_service = MagicMock()
+    email_service.send_duration_confirm_expired.return_value = True
+
+    result = reconcile_duration("job1", jm, us, probe, email_service=email_service)
+    assert result.action == "cancel"
+
+    email_service.send_duration_confirm_expired.assert_called_once()
+    _, kwargs = email_service.send_duration_confirm_expired.call_args
+    assert kwargs.get("reason") == "over_limit", (
+        f"Expected reason='over_limit' for immediate over-60-min cancellation, "
+        f"got reason={kwargs.get('reason')!r}. "
+        "The user would see a misleading '48-hour expiry' message."
+    )
+
+
+def test_stale_48h_expiry_sends_email_with_timeout_reason():
+    """
+    The 48h stale path (stale_review_processor) calls send_duration_confirm_expired
+    without a reason kwarg — which defaults to 'timeout'.  This test verifies that
+    a 'timeout' reason (or no explicit reason) produces the correct timeout message
+    in send_duration_confirm_expired, guarding against accidentally using 'over_limit'.
+
+    This is a unit test of the email_service method, not the reconcile path.
+    """
+    import sys
+    sys.modules.setdefault('google.cloud.firestore', MagicMock())
+    sys.modules.setdefault('google.cloud.storage', MagicMock())
+
+    from unittest.mock import patch, MagicMock as MM2
+    with patch('backend.services.email_service.EmailService._build_email_html', return_value="html"), \
+         patch('backend.services.email_service.EmailService.provider', create=True) as mock_provider:
+
+        from backend.services.email_service import EmailService
+
+        class _FakeProvider:
+            def send_email(self, **kwargs):
+                return True
+
+        svc = EmailService.__new__(EmailService)
+        svc.frontend_url = "https://gen.nomadkaraoke.com"
+        svc.provider = _FakeProvider()
+        svc._build_email_html = lambda content, styles, locale="en": content
+
+        # Default reason (timeout) — should mention 48 hours, not 60 minutes
+        import io, contextlib
+        out = io.StringIO()
+
+        # Capture text content by monkeypatching send_email
+        sent = {}
+
+        class _CapturingProvider:
+            def send_email(self, to_email, subject, html_content, text_content):
+                sent['subject'] = subject
+                sent['text'] = text_content
+                return True
+
+        svc.provider = _CapturingProvider()
+        svc.send_duration_confirm_expired(
+            to_email="u@test.com", artist="A", title="B", credits_refunded=2
+            # no reason= → default "timeout"
+        )
+        assert "48" in sent['subject'] or "48" in sent['text'] or "not confirmed" in sent['subject'], (
+            f"Default (timeout) email should mention 48-hour expiry. subject={sent.get('subject')!r}"
+        )
+        assert "60" not in sent['subject'], (
+            f"Default (timeout) email should not say '60 minutes'. subject={sent.get('subject')!r}"
+        )
+
+        # over_limit reason — should mention 60 minutes, not 48 hours
+        svc.send_duration_confirm_expired(
+            to_email="u@test.com", artist="A", title="B", credits_refunded=2, reason="over_limit"
+        )
+        assert "60" in sent['subject'], (
+            f"over_limit email subject should mention 60 minutes. subject={sent.get('subject')!r}"
+        )
+        assert "48" not in sent['subject'] and "not confirmed" not in sent['subject'], (
+            f"over_limit email should not say '48 hours'. subject={sent.get('subject')!r}"
+        )
