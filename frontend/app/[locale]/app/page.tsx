@@ -256,7 +256,7 @@ function AppPageContent() {
         onClose={() => setShowFeedbackDialog(false)}
       />
 
-      <main className="px-4 pt-28 sm:pt-24 pb-8 space-y-6">
+      <main className="px-4 pt-4 pb-8 space-y-6">
         {/* Push notification prompt - shows once when appropriate */}
         <PushNotificationPrompt />
 

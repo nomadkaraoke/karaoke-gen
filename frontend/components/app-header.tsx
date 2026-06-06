@@ -44,7 +44,7 @@ export function AppHeader({ children }: { children?: ReactNode }) {
   useEffect(() => { setMounted(true) }, [])
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-dark-700">
+    <header className="sticky top-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-dark-700">
       {/* Desktop: single row (sm+) */}
       <div className="hidden sm:flex px-4 py-3 items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
