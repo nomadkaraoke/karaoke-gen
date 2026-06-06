@@ -4,6 +4,12 @@
 
 Free credit grants (welcome credits and feedback bonus credits) are evaluated by an AI model before being approved. This prevents multi-account abuse where users create multiple accounts to farm free karaoke generation credits.
 
+> **Per-job credit charging** (how many credits each job costs) is a separate concern documented in
+> [API.md § Credit Enforcement](API.md#credit-enforcement) and
+> [ARCHITECTURE.md § Job States](ARCHITECTURE.md#job-states). Jobs are now charged by input audio
+> duration (`max(1, ceil(minutes/10))`); inputs over 60 minutes are blocked. This document covers
+> only the AI-evaluation gate on *free* credit grants.
+
 The system is **fail-closed**: if anything goes wrong (AI error, unclear response, network issue), credits are NOT granted automatically. Instead, the admin is notified to review manually.
 
 ## How It Works

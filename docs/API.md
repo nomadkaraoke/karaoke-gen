@@ -68,6 +68,87 @@ Status values:
 
 ### Jobs
 
+#### Create Job from URL
+
+```http
+POST /api/jobs
+Content-Type: application/json
+
+{
+  "url": "https://www.youtube.com/watch?v=...",
+  "artist": "Artist Name",       // optional, auto-detected if omitted
+  "title": "Song Title",         // optional, auto-detected if omitted
+  "is_private": false,           // optional
+  "duration_seconds": 245.3,     // optional — from /api/jobs/estimate; drives pre-flight credit deduction
+  "acknowledged_credits": 1      // optional — client's expected cost; 409 if server disagrees
+}
+```
+
+Creates a job from a YouTube (or other supported) URL. Credit cost is `max(1, ceil(minutes/10))`
+(10-minute tiers). If `duration_seconds` is omitted the system deducts 1 credit as a hold and
+settles the true cost after download (see [Duration-Based Pricing](#duration-based-pricing)).
+Admin jobs bypass all credit deduction.
+
+Returns `JobResponse` (job id, status, etc.).
+
+**Errors:**
+- `402` — Insufficient credits (see [Credit Enforcement](#credit-enforcement))
+- `409` — `acknowledged_credits` does not match server-computed cost; client should refresh and re-confirm
+- `422` — Input exceeds 60-minute hard limit
+
+#### Estimate URL Duration (pre-flight)
+
+```http
+POST /api/jobs/estimate
+Content-Type: application/json
+
+{"url": "https://www.youtube.com/watch?v=..."}
+```
+
+Probes the URL (via flacfetch `/check-youtube`) **without creating a job or downloading audio**.
+Use this before `POST /api/jobs` to show the user the credit cost.
+
+Response:
+```json
+{
+  "duration_seconds": 245.3,
+  "credits": 1,
+  "blocked": false,
+  "source": "youtube_metadata"
+}
+```
+
+- `duration_seconds`: `null` if the probe fails (bot challenge, unsupported URL, etc.)
+- `source`: `"youtube_metadata"` | `"unknown"` (probe failed)
+- `blocked`: `true` when `duration_seconds > 3600` (60 min) — create will be rejected
+- `credits`: computed from `max(1, ceil(duration_seconds / 600))`; `1` when duration unknown
+
+When `duration_seconds` is `null`, warn the user that the final cost will be confirmed after
+download and create the job with a 1-credit hold.
+
+#### Confirm Duration (resume paused job)
+
+```http
+POST /api/jobs/{job_id}/confirm-duration
+Content-Type: application/json
+
+{"acknowledged_credits": 3}
+```
+
+Called when a job is paused in `AWAITING_DURATION_CONFIRM` state. Two scenarios:
+
+- **`preflight`** — upload flow: duration measured after file lands in GCS; no charge applied yet.
+  `acknowledged_credits` must equal the full cost (`pending_additional_credits` in `state_data`).
+- **`reconcile`** — post-download: actual duration costs more than was already charged.
+  `acknowledged_credits` must equal the new total (`credits_charged + pending_additional_credits`).
+
+On success, deducts the owed credits and resumes by triggering both audio and lyrics workers.
+Returns the updated job.
+
+**Errors:**
+- `402` — Insufficient credits; user should buy more and retry
+- `409` — `acknowledged_credits` doesn't match server's current figure (race/refresh); client should re-fetch the job and re-show the dialog
+
 #### Create Job with Upload
 
 ```http
@@ -700,11 +781,15 @@ POST /api/audio-search/{job_id}/select
 Content-Type: application/json
 
 {
-  "selection_index": 0
+  "selection_index": 0,
+  "acknowledged_credits": 2   // optional — anti-mismatch guard (409 if server disagrees)
 }
 ```
 
-Selects an audio source from the search results and starts processing.
+Selects an audio source from the search results and starts processing. Credits are deducted here
+based on the selected result's duration (`max(1, ceil(minutes/10))`). Torrent results display an
+"estimated" label because metadata may differ from actual audio length; the cost is reconciled
+post-download and may trigger an `AWAITING_DURATION_CONFIRM` pause if the actual duration is longer.
 
 #### Standalone Search (Guided Flow — Step 2)
 
@@ -860,6 +945,7 @@ POST /api/internal/jobs/{job_id}/trigger-video
 |-------|-------------|
 | `pending` | Created, not started |
 | `downloading` | Processing input |
+| `awaiting_duration_confirm` | **Human checkpoint** — cost confirmation required before heavy processing begins (see [Duration-Based Pricing](#duration-based-pricing)) |
 | `separating_stage1` | Audio separation (1/2) |
 | `separating_stage2` | Audio separation (2/2) |
 | `transcribing` | Lyrics transcription |
@@ -1029,24 +1115,53 @@ After payment completes via Stripe webhook:
 
 ### Credit Enforcement
 
-Credits are checked and deducted at job creation time. The flow:
+#### Duration-Based Pricing
 
-1. **Check** - `user_service.has_credits()` verifies the user has >= 1 credit
-2. **Create job** - Job is persisted to Firestore
-3. **Deduct** - `user_service.deduct_credit()` atomically deducts 1 credit (with job_id for audit trail)
-4. **Refund on failure** - If the job fails, 1 credit is automatically refunded
+Credits are charged proportionally to audio duration: `max(1, ceil(minutes / 10))` per job.
 
-Admin users bypass credit checks entirely. New users receive 1 welcome credit. Users can earn 1 additional free credit by submitting product feedback after completing 2+ jobs (see [User Feedback for Credits](#user-feedback-for-credits)).
+| Duration | Credits |
+|----------|---------|
+| 0:00 – 10:00 | 1 |
+| 10:01 – 20:00 | 2 |
+| 20:01 – 30:00 | 3 |
+| 30:01 – 40:00 | 4 |
+| 40:01 – 50:00 | 5 |
+| 50:01 – 60:00 | 6 |
+| 60:01+ | **blocked** (hard limit) |
+
+Inputs over 60 minutes are rejected at creation time (HTTP 422). The backend
+`duration_to_credits()` util (`backend/services/pricing.py`) is the single source of truth —
+the frontend mirrors the constants for display only. See
+`docs/archive/2026-06-04-long-duration-input-handling-design.md` for full design details.
+
+#### Credit Deduction Flow
+
+Credits are deducted N-atomically (not always just 1) at the earliest point duration is known:
+
+- **URL jobs**: deducted at `POST /api/jobs` using the `duration_seconds` from `/api/jobs/estimate`.
+  If duration is unknown, 1 credit is held and reconciled post-download.
+- **Audio search select**: deducted at `/api/audio-search/{job_id}/select` from the result's duration.
+- **Upload jobs**: deducted at `/api/jobs/{job_id}/confirm-duration` after ffprobe measurement.
+
+A reconciliation checkpoint runs immediately before audio separation + transcription is triggered.
+If the actual measured duration costs more than was charged, the job pauses in
+`AWAITING_DURATION_CONFIRM` for the user to pay the difference. If it costs less, a silent
+auto-refund is issued. If the actual duration exceeds 60 minutes, all charged credits are refunded
+and the job is cancelled.
+
+Admin users bypass credit checks entirely. New users receive 1 welcome credit. Users can earn 1
+additional free credit by submitting product feedback after completing 2+ jobs (see
+[User Feedback for Credits](#user-feedback-for-credits)).
 
 #### 402 Response
 
-When a user has no credits, job creation returns HTTP 402:
+When a user has insufficient credits, job creation or confirmation returns HTTP 402:
 
 ```json
 {
   "detail": "You're out of credits. Buy more to continue creating karaoke videos.",
   "credits_available": 0,
-  "credits_required": 1,
+  "credits_required": 3,
   "buy_url": "/#pricing"
 }
 ```
@@ -1787,7 +1902,9 @@ POST /api/internal/jobs/{job_id}/check-idle-reminder
 Authorization: Bearer ADMIN_TOKEN
 ```
 
-Called by Cloud Tasks 5 minutes after a job enters a blocking state (primarily `awaiting_review` for combined review). Sends a reminder email if the user is still idle and no reminder has been sent yet.
+Called by Cloud Tasks after a job enters a blocking state. Sends a reminder email if the user is still idle and no reminder has been sent yet. Handles two `action_type` cases:
+- `review_reminder` — fires 5 minutes after `awaiting_review` (combined lyrics + instrumental review)
+- `duration_confirm_reminder` — fires 15 minutes after `awaiting_duration_confirm`
 
 **Note**: With the combined review flow, users complete both lyrics review and instrumental selection in one session. The `awaiting_instrumental_selection` state is only used for finalise-only jobs.
 
@@ -1889,7 +2006,11 @@ Called by Cloud Scheduler hourly. Processes queued uploads while quota is availa
 ```http
 POST /api/internal/process-stale-reviews
 ```
-Called by Cloud Scheduler hourly. Queries for jobs in `awaiting_review` or `in_review` status, sends reminder emails at 24h, and auto-cancels with credit refund at 48h. Excludes made-for-you and tenant jobs. Returns `{status: "started", message: "..."}` immediately; processing runs in background.
+Called by Cloud Scheduler hourly. Queries for jobs in `awaiting_review`, `in_review`, or
+`awaiting_duration_confirm` status. Sends reminder emails at 24h; auto-cancels with full credit
+refund at 48h (all `credits_charged` are returned for duration-confirm expirations). Excludes
+made-for-you and tenant jobs. Returns `{status: "started", message: "..."}` immediately; processing
+runs in background.
 
 ## Referral System
 

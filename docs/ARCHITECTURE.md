@@ -114,6 +114,7 @@ hard reload; the `CrashReport` card also checks `/version.json` and shows an
 |-------|-------------|--------------|
 | `pending` | Job created | - |
 | `downloading` | Processing audio | - |
+| `awaiting_duration_confirm` | **Waiting for human** — duration-based credit cost confirmation before separation/transcription | Confirm credit charge (or buy more credits) |
 | `separating_stage1` | Audio separation stage 1 | - |
 | `separating_stage2` | Audio separation stage 2 | - |
 | `transcribing` | Lyrics transcription | - |
@@ -128,6 +129,18 @@ hard reload; the `CrashReport` card also checks `/version.json` and shows an
 | `failed` | Error occurred | - |
 
 **Note**: `awaiting_instrumental_selection` exists for backwards compatibility with historical jobs but is no longer used. Instrumental selection is now part of the combined review (`awaiting_review` → `in_review` → `review_complete`).
+
+**`awaiting_duration_confirm` details**: This state is a blocking human checkpoint inserted before
+`separating_stage1`. It is entered for two reasons (stored in `state_data.duration_confirm_reason`):
+- `preflight` — upload flow: the file was measured by ffprobe after landing in GCS; no heavy
+  processing has run yet and no credits have been charged.
+- `reconcile` — post-download or post-audio-edit: the actual measured duration costs more than
+  was already charged (`state_data.pending_additional_credits` is the delta owed).
+
+In both cases `POST /api/jobs/{id}/confirm-duration` deducts the owed credits and triggers workers.
+If the actual duration exceeds 60 min all charged credits are refunded and the job is cancelled.
+If it costs less than charged an auto-refund is issued silently. Admin/made-for-you jobs bypass
+this state entirely. See `docs/archive/2026-06-04-long-duration-input-handling-design.md`.
 
 **State Machine Robustness (Feb 2026)**: State transitions are enforced by `STATE_TRANSITIONS` in `models/job.py`. Invalid transitions raise `InvalidStateTransitionError` by default. Use `scripts/generate_state_diagram.py` to generate a Mermaid diagram of valid transitions. The `/health/job-consistency` endpoint detects jobs stuck in invalid states. See `docs/archive/2026-02-02-state-machine-robustness-plan.md` for implementation details.
 
