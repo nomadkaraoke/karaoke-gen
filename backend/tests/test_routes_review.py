@@ -1046,3 +1046,51 @@ class TestPreviewVideoDuetFlag:
                 asyncio.run(_run())
             assert exc_info.value.status_code == 400
             assert "is_duet" in exc_info.value.detail
+
+
+class TestGetPreviewVideoRedirect:
+    """get_preview_video must redirect to a signed GCS URL, not proxy the bytes.
+
+    Cloud Run caps response bodies at 32 MiB. A long song's 360p preview exceeds
+    that, so streaming it through Cloud Run (the old FileResponse path) truncated
+    mid-stream — the response started 206 but the client got a 500, and the
+    browser reported "no supported format". Serving a 302 to a signed URL lets
+    the browser fetch the mp4 directly from GCS, bypassing the limit.
+    """
+
+    def _call(self, mock_storage, job_id="job-x", preview_hash="abc123"):
+        import asyncio
+        from backend.api.routes.review import get_preview_video, _preview_videos
+        _preview_videos.clear()  # force the standard-path / file_exists branch
+        with patch("backend.api.routes.review.StorageService", return_value=mock_storage):
+            return asyncio.run(get_preview_video(
+                job_id=job_id,
+                preview_hash=preview_hash,
+                auth_info=("user@test.com", "job_owner"),
+            ))
+
+    def test_returns_302_redirect_to_signed_url(self):
+        from starlette.responses import RedirectResponse
+        mock_storage = MagicMock()
+        mock_storage.file_exists.return_value = True
+        mock_storage.generate_signed_url.return_value = "https://signed.example/preview.mp4?sig=xyz"
+
+        resp = self._call(mock_storage)
+
+        assert isinstance(resp, RedirectResponse)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "https://signed.example/preview.mp4?sig=xyz"
+        # Signed URL must be generated for the preview GCS object — never proxied.
+        mock_storage.generate_signed_url.assert_called_once()
+        assert mock_storage.generate_signed_url.call_args[0][0] == "jobs/job-x/previews/abc123.mp4"
+        mock_storage.download_file.assert_not_called()
+
+    def test_returns_404_when_preview_missing(self):
+        from fastapi import HTTPException
+        mock_storage = MagicMock()
+        mock_storage.file_exists.return_value = False
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._call(mock_storage)
+        assert exc_info.value.status_code == 404
+        mock_storage.generate_signed_url.assert_not_called()

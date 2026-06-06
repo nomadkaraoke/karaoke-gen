@@ -2132,7 +2132,7 @@ async def regenerate_screens(
         ]
         for path in screen_paths:
             try:
-                storage.delete_file(path)
+                storage.delete_file(path, ignore_missing=True)
             except Exception:
                 pass  # File may not exist
         screens_deleted = True
@@ -2287,16 +2287,16 @@ async def restart_job(
         for screen_file in ["title.mov", "title.jpg", "title.png", "end.mov", "end.jpg", "end.png"]:
             try:
                 path = f"jobs/{job_id}/screens/{screen_file}"
-                storage.delete_file(path)
-                deleted_paths.append(path)
+                if storage.delete_file(path, ignore_missing=True):
+                    deleted_paths.append(path)
             except Exception:
                 pass
         # Delete final outputs
         for output_file in ["final_4k.mp4", "final_720p.mp4", "with_vocals.mkv", "preview.mp4"]:
             try:
                 path = f"jobs/{job_id}/output/{output_file}"
-                storage.delete_file(path)
-                deleted_paths.append(path)
+                if storage.delete_file(path, ignore_missing=True):
+                    deleted_paths.append(path)
             except Exception:
                 pass
 

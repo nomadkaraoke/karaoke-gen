@@ -221,11 +221,54 @@ class TestStorageServiceDelete:
         mock_client_class.return_value = mock_client
         
         service = StorageService()
-        service.delete_file("uploads/job123/file.flac")
-        
+        result = service.delete_file("uploads/job123/file.flac")
+
         mock_bucket.blob.assert_called_once_with("uploads/job123/file.flac")
         mock_blob.delete.assert_called_once()
-    
+        assert result is True
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_delete_file_missing_raises_by_default(self, mock_settings, mock_client_class):
+        """A 404 on delete raises when ignore_missing is not set (default)."""
+        from google.cloud.exceptions import NotFound
+
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+
+        mock_blob = Mock()
+        mock_blob.delete.side_effect = NotFound("No such object")
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_client = Mock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_client_class.return_value = mock_client
+
+        service = StorageService()
+        with pytest.raises(NotFound):
+            service.delete_file("jobs/abc/screens/title.mov")
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_delete_file_missing_ignored(self, mock_settings, mock_client_class):
+        """With ignore_missing=True, a 404 is a no-op returning False (no raise)."""
+        from google.cloud.exceptions import NotFound
+
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+
+        mock_blob = Mock()
+        mock_blob.delete.side_effect = NotFound("No such object")
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_client = Mock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_client_class.return_value = mock_client
+
+        service = StorageService()
+        result = service.delete_file("jobs/abc/screens/title.mov", ignore_missing=True)
+        assert result is False
+
     @patch("backend.services.storage_service.storage.Client")
     @patch("backend.services.storage_service.settings")
     def test_delete_folder(self, mock_settings, mock_client_class):

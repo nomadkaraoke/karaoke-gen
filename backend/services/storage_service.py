@@ -7,6 +7,7 @@ import json
 from typing import Optional, BinaryIO, Any, Dict
 from pathlib import Path
 from google.cloud import storage
+from google.cloud.exceptions import NotFound
 from datetime import timedelta
 
 from backend.config import settings
@@ -123,12 +124,31 @@ class StorageService:
             logger.error(f"Error generating signed {method} URL for {blob_path}: {e}")
             raise
     
-    def delete_file(self, blob_path: str) -> None:
-        """Delete a file from GCS."""
+    def delete_file(self, blob_path: str, ignore_missing: bool = False) -> bool:
+        """Delete a file from GCS.
+
+        Args:
+            blob_path: Path of the object to delete.
+            ignore_missing: If True, a missing object (404 NotFound) is treated as a
+                successful no-op and logged at debug level instead of error. Use for
+                best-effort deletes over a template of possible paths (e.g. job
+                restart/regen) where many files legitimately never existed.
+
+        Returns:
+            True if an object was actually deleted, False if it was already absent
+            (only possible when ignore_missing=True; otherwise a missing object raises).
+        """
         try:
             blob = self.bucket.blob(blob_path)
             blob.delete()
             logger.info(f"Deleted gs://{settings.gcs_bucket_name}/{blob_path}")
+            return True
+        except NotFound:
+            if ignore_missing:
+                logger.debug(f"File already absent, skipping delete: {blob_path}")
+                return False
+            logger.error(f"Error deleting file {blob_path}: 404 object not found")
+            raise
         except Exception as e:
             logger.error(f"Error deleting file {blob_path}: {e}")
             raise
