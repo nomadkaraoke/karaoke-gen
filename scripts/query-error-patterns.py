@@ -26,6 +26,32 @@ from google.cloud.firestore_v1 import FieldFilter
 ACTIVE_STATUSES = ["new", "acknowledged", "known"]
 
 
+def _to_epoch(value: Any) -> Optional[float]:
+    """Convert a Firestore timestamp value to epoch seconds.
+
+    Handles the three shapes ``last_seen``/``first_seen`` can take:
+    - Firestore/datetime objects (have ``.timestamp()``)
+    - ISO-8601 strings (the error-monitor writes these), e.g.
+      ``'2026-06-04T18:31:59.086317+00:00'``
+    - numeric epoch seconds
+
+    Returns None if the value is missing or unparseable.
+    """
+    if value is None:
+        return None
+    if hasattr(value, "timestamp"):
+        return value.timestamp()
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value).timestamp()
+        except ValueError:
+            return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def query_error_patterns(
     status: Optional[str] = None,
     service: Optional[str] = None,
@@ -71,22 +97,13 @@ def query_error_patterns(
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         filtered = []
         for p in patterns:
-            last_seen = p.get("last_seen")
-            if last_seen is not None:
-                # Firestore Timestamps have a .timestamp() method
-                ts = last_seen.timestamp() if hasattr(last_seen, "timestamp") else float(last_seen)
-                if ts >= cutoff.timestamp():
-                    filtered.append(p)
+            ts = _to_epoch(p.get("last_seen"))
+            if ts is not None and ts >= cutoff.timestamp():
+                filtered.append(p)
         patterns = filtered
 
     # Sort by last_seen descending (most recent first)
-    def sort_key(p):
-        ls = p.get("last_seen")
-        if ls is None:
-            return 0.0
-        return ls.timestamp() if hasattr(ls, "timestamp") else float(ls)
-
-    patterns.sort(key=sort_key, reverse=True)
+    patterns.sort(key=lambda p: _to_epoch(p.get("last_seen")) or 0.0, reverse=True)
 
     if output_json:
         print(json.dumps(patterns, indent=2, default=str))

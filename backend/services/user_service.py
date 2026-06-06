@@ -900,11 +900,20 @@ class UserService:
             return False, None, "An error occurred during validation"
 
     def revoke_session(self, token: str) -> bool:
-        """Revoke a session (logout)."""
+        """Revoke a session (logout).
+
+        Idempotent: a session document that no longer exists is already
+        revoked, so a missing document is treated as success rather than an
+        error. Firestore's ``update()`` raises NotFound when the document is
+        absent (e.g. already logged out, or expired/cleaned up).
+        """
         try:
             doc_ref = self.db.collection(SESSIONS_COLLECTION).document(token)
             doc_ref.update({'is_active': False})
             logger.info("Session revoked")
+            return True
+        except google_exceptions.NotFound:
+            logger.info("Session already absent; treating revoke as success")
             return True
         except Exception:
             logger.exception("Error revoking session")
