@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Selecciona la pista instrumental",
     "selectInstrumentalBody": "\"{title}\" de {artist} necessita la selecció de la pista instrumental",
     "videoReadyTitle": "Vídeo llest!",
-    "videoReadyBody": "El teu vídeo de karaoke per a \"{title}\" de {artist} està llest per descarregar"
+    "videoReadyBody": "El teu vídeo de karaoke per a \"{title}\" de {artist} està llest per descarregar",
+    "confirmDurationTitle": "Confirma el cost de la tasca",
+    "confirmDurationBody": "\"{title}\" de {artist} necessita una confirmació de cost per continuar"
   },
   "admin": {
     "invalidDomainFormat": "Format de domini no vàlid",

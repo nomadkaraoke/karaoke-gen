@@ -248,8 +248,8 @@ class PushNotificationService:
             url = f"/app/jobs#/{job_id}/review"
             tag = f"lyrics-{job_id}"
         elif action_type == "duration_confirm":
-            notif_title = "Confirm your karaoke job cost"
-            notif_body = "Your song needs a quick cost confirmation to continue"
+            notif_title = t(locale, "pushNotifications.confirmDurationTitle")
+            notif_body = t(locale, "pushNotifications.confirmDurationBody", title=title, artist=artist)
             url = "/app"
             tag = f"duration-confirm-{job_id}"
         else:  # instrumental

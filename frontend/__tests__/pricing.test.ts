@@ -15,4 +15,9 @@ describe("pricing", () => {
   it("formats duration + cost", () => {
     expect(formatDurationCost(905)).toEqual({ minutes: 16, credits: 2 });
   });
+
+  it("formatDurationCost returns zero-minutes/1-credit for null/undefined", () => {
+    expect(formatDurationCost(null)).toEqual({ minutes: 0, credits: 1 });
+    expect(formatDurationCost(undefined)).toEqual({ minutes: 0, credits: 1 });
+  });
 });

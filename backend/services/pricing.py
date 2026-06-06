@@ -12,7 +12,7 @@ DURATION_CREDIT_BLOCK_SECONDS = 3600   # inputs longer than 60 min are not suppo
 
 def duration_to_credits(seconds: Optional[float]) -> int:
     """Credits required to process `seconds` of audio. Minimum 1."""
-    if seconds is None or seconds < 0:
+    if seconds is None or not math.isfinite(seconds) or seconds < 0:
         return 1
     return max(1, math.ceil(seconds / SECONDS_PER_CREDIT_TIER))
 

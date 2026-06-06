@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Επιλογή Instrumental",
     "selectInstrumentalBody": "Το \"{title}\" από {artist} χρειάζεται επιλογή instrumental",
     "videoReadyTitle": "Το Βίντεο Είναι Έτοιμο!",
-    "videoReadyBody": "Το καραόκε βίντεό σου για το \"{title}\" από {artist} είναι έτοιμο για λήψη"
+    "videoReadyBody": "Το καραόκε βίντεό σου για το \"{title}\" από {artist} είναι έτοιμο για λήψη",
+    "confirmDurationTitle": "Επιβεβαίωσε το κόστος εργασίας",
+    "confirmDurationBody": "Το \"{title}\" από {artist} χρειάζεται επιβεβαίωση κόστους για να συνεχίσει"
   },
   "admin": {
     "invalidDomainFormat": "Μη έγκυρη μορφή τομέα",

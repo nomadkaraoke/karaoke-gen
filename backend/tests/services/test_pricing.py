@@ -38,6 +38,19 @@ def test_duration_to_credits_handles_none_and_negative():
     assert duration_to_credits(-5) == 1
 
 
+def test_duration_to_credits_handles_non_finite():
+    """NaN and Inf from malformed metadata must not propagate into math.ceil."""
+    assert duration_to_credits(float('nan')) == 1
+    assert duration_to_credits(float('inf')) == 1
+    assert duration_to_credits(float('-inf')) == 1
+
+
 def test_is_blocked_handles_none_and_negative():
     assert is_blocked(None) is False
     assert is_blocked(-5) is False
+
+
+def test_is_blocked_non_finite():
+    """NaN should not be treated as blocked; inf exceeds the limit so it is blocked."""
+    assert is_blocked(float('nan')) is False
+    assert is_blocked(float('inf')) is True

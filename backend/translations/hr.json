@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Odaberi instrumental",
     "selectInstrumentalBody": "\"{title}\" od {artist} treba odabir instrumentala",
     "videoReadyTitle": "Video je spreman!",
-    "videoReadyBody": "Tvoj karaoke video za \"{title}\" od {artist} je spreman za preuzimanje"
+    "videoReadyBody": "Tvoj karaoke video za \"{title}\" od {artist} je spreman za preuzimanje",
+    "confirmDurationTitle": "Potvrdi trošak posla",
+    "confirmDurationBody": "\"{title}\" od {artist} zahtijeva potvrdu troška za nastavak"
   },
   "admin": {
     "invalidDomainFormat": "Nevažeći format domene",

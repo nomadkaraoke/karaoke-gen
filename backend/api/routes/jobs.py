@@ -47,7 +47,7 @@ from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityRes
 from backend.services.user_service import get_user_service
 from backend.services.youtube_download_service import get_youtube_download_service
 from backend.services.pricing import duration_to_credits, is_blocked
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, HttpUrl, validator
 
 
 logger = logging.getLogger(__name__)
@@ -2626,11 +2626,9 @@ async def confirm_duration(
 
     Called when a job is paused in AWAITING_DURATION_CONFIRM state.
 
-    Two reasons a job may be paused:
-    - ``reconcile``: Post-download/post-edit, actual duration costs more than
-      already charged. ``state_data.pending_additional_credits`` holds the delta.
-    - ``preflight``: Upload flow, no charge applied yet. Full cost derived from
-      ``state_data.duration_estimate_seconds``.
+    The only pause reason currently used is ``reconcile``: the actual measured
+    duration costs more than was already charged; ``state_data.pending_additional_credits``
+    holds the delta owed. This applies to URL, upload, and audio-search jobs alike.
 
     The caller must pass ``acknowledged_credits`` equal to the total credit cost
     the user has agreed to pay. If the figure has changed (race condition) a 409
@@ -2656,12 +2654,10 @@ async def confirm_duration(
 
     # 3. Compute owed credits and expected total.
     #
-    # Both "reconcile" and "preflight" reasons use the same delta model:
     # - credits_charged: total already deducted from the user's account
     # - pending_additional_credits: exactly how many MORE credits are owed to clear the pause
     #
-    # The pause-creating sites (reconcile engine, uploads-complete, select) are
-    # responsible for computing and storing pending_additional_credits as the delta.
+    # The reconcile engine is responsible for computing and storing pending_additional_credits.
     # confirm_duration never needs to call duration_to_credits.
     state_data = job.state_data or {}
     reason = state_data.get("duration_confirm_reason", "reconcile")
@@ -2771,7 +2767,7 @@ async def confirm_duration(
 
 
 class EstimateRequest(BaseModel):
-    url: str
+    url: HttpUrl
 
 
 @router.post("/estimate")
@@ -2786,7 +2782,7 @@ async def estimate_duration(
     Returns duration_seconds (or None if unknown), source, credits, and
     whether the duration exceeds the supported ceiling (blocked).
     """
-    info = await get_youtube_download_service().check_availability(body.url)
+    info = await get_youtube_download_service().check_availability(str(body.url))
     seconds = (info or {}).get("duration")
     if seconds is None:
         return {

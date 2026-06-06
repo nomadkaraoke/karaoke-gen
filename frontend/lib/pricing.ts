@@ -11,6 +11,7 @@ export function isBlocked(seconds: number): boolean {
   return seconds != null && seconds > DURATION_CREDIT_BLOCK_SECONDS;
 }
 
-export function formatDurationCost(seconds: number): { minutes: number; credits: number } {
+export function formatDurationCost(seconds: number | null | undefined): { minutes: number; credits: number } {
+  if (seconds == null) return { minutes: 0, credits: 1 };
   return { minutes: Math.ceil(seconds / 60), credits: durationToCredits(seconds) };
 }

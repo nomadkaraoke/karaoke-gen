@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Pumili ng Instrumental",
     "selectInstrumentalBody": "Kailangang pumili ng instrumental para sa \"{title}\" ni {artist}",
     "videoReadyTitle": "Handa na ang Video!",
-    "videoReadyBody": "Handa nang i-download ang iyong karaoke video para sa \"{title}\" ni {artist}"
+    "videoReadyBody": "Handa nang i-download ang iyong karaoke video para sa \"{title}\" ni {artist}",
+    "confirmDurationTitle": "Kumpirmahin ang gastos ng gawain",
+    "confirmDurationBody": "Kailangan ng kumpirmasyon sa gastos ng \"{title}\" ni {artist} para makapagpatuloy"
   },
   "admin": {
     "invalidDomainFormat": "Mali ang format ng domain",

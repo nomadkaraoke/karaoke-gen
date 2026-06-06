@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "تحديد المسار الموسيقي",
     "selectInstrumentalBody": "\"{title}\" للفنان {artist} تحتاج إلى تحديد المسار الموسيقي",
     "videoReadyTitle": "الفيديو جاهز!",
-    "videoReadyBody": "فيديو الكاريوكي الخاص بك لأغنية \"{title}\" للفنان {artist} جاهز للتنزيل"
+    "videoReadyBody": "فيديو الكاريوكي الخاص بك لأغنية \"{title}\" للفنان {artist} جاهز للتنزيل",
+    "confirmDurationTitle": "تأكيد تكلفة المهمة",
+    "confirmDurationBody": "تحتاج \"{title}\" للفنان {artist} إلى تأكيد التكلفة للمتابعة"
   },
   "admin": {
     "invalidDomainFormat": "تنسيق النطاق غير صالح",

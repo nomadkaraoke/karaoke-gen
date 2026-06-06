@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Seleziona la strumentale",
     "selectInstrumentalBody": "\"{title}\" di {artist} richiede la selezione della strumentale",
     "videoReadyTitle": "Video pronto!",
-    "videoReadyBody": "Il tuo video karaoke per \"{title}\" di {artist} è pronto per il download"
+    "videoReadyBody": "Il tuo video karaoke per \"{title}\" di {artist} è pronto per il download",
+    "confirmDurationTitle": "Conferma il costo del lavoro",
+    "confirmDurationBody": "\"{title}\" di {artist} richiede una conferma del costo per continuare"
   },
   "admin": {
     "invalidDomainFormat": "Formato del dominio non valido",

@@ -114,7 +114,7 @@ hard reload; the `CrashReport` card also checks `/version.json` and shows an
 |-------|-------------|--------------|
 | `pending` | Job created | - |
 | `downloading` | Processing audio | - |
-| `awaiting_duration_confirm` | **Waiting for human** — duration-based credit cost confirmation before separation/transcription | Confirm credit charge (or buy more credits) |
+| `awaiting_duration_confirm` | **Waiting for human** — duration-based credit cost confirmation before separation/transcription (see [Duration-Based Pricing](API.md#duration-based-pricing)) | Confirm credit charge (or buy more credits) |
 | `separating_stage1` | Audio separation stage 1 | - |
 | `separating_stage2` | Audio separation stage 2 | - |
 | `transcribing` | Lyrics transcription | - |
@@ -131,13 +131,13 @@ hard reload; the `CrashReport` card also checks `/version.json` and shows an
 **Note**: `awaiting_instrumental_selection` exists for backwards compatibility with historical jobs but is no longer used. Instrumental selection is now part of the combined review (`awaiting_review` → `in_review` → `review_complete`).
 
 **`awaiting_duration_confirm` details**: This state is a blocking human checkpoint inserted before
-`separating_stage1`. It is entered for two reasons (stored in `state_data.duration_confirm_reason`):
-- `preflight` — upload flow: the file was measured by ffprobe after landing in GCS; no heavy
-  processing has run yet and no credits have been charged.
-- `reconcile` — post-download or post-audio-edit: the actual measured duration costs more than
-  was already charged (`state_data.pending_additional_credits` is the delta owed).
+`separating_stage1`. It is entered when the actual measured duration costs more than was already
+charged (stored in `state_data.duration_confirm_reason` as `"reconcile"`). This applies to all
+job types (URL, upload, search): 1 credit is charged at creation; ffprobe measures the actual audio
+via a signed URL just before workers start; if the true cost exceeds the hold,
+`state_data.pending_additional_credits` records the delta owed and the job pauses here.
 
-In both cases `POST /api/jobs/{id}/confirm-duration` deducts the owed credits and triggers workers.
+`POST /api/jobs/{id}/confirm-duration` deducts the owed credits and triggers workers.
 If the actual duration exceeds 60 min all charged credits are refunded and the job is cancelled.
 If it costs less than charged an auto-refund is issued silently. Admin/made-for-you jobs bypass
 this state entirely. See `docs/archive/2026-06-04-long-duration-input-handling-design.md`.

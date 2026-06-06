@@ -80,7 +80,7 @@ Content-Type: application/json
   "title": "Song Title",         // optional, auto-detected if omitted
   "is_private": false,           // optional
   "duration_seconds": 245.3,     // optional — from /api/jobs/estimate; drives pre-flight credit deduction
-  "acknowledged_credits": 1      // optional — client's expected cost; 409 if server disagrees
+  "acknowledged_credits": 1      // optional — if provided, server validates it equals the computed cost; 409 on mismatch
 }
 ```
 
@@ -89,11 +89,15 @@ Creates a job from a YouTube (or other supported) URL. Credit cost is `max(1, ce
 settles the true cost after download (see [Duration-Based Pricing](#duration-based-pricing)).
 Admin jobs bypass all credit deduction.
 
+`acknowledged_credits` is **optional**. If provided, the server validates it equals the
+server-computed credit cost and returns 409 on mismatch (race-condition guard for the UI). If
+omitted, the server charges the computed cost without client confirmation.
+
 Returns `JobResponse` (job id, status, etc.).
 
 **Errors:**
 - `402` — Insufficient credits (see [Credit Enforcement](#credit-enforcement))
-- `409` — `acknowledged_credits` does not match server-computed cost; client should refresh and re-confirm
+- `409` — `acknowledged_credits` was provided and does not match server-computed cost; client should refresh and re-confirm
 - `422` — Input exceeds 60-minute hard limit
 
 #### Estimate URL Duration (pre-flight)
@@ -782,7 +786,7 @@ Content-Type: application/json
 
 {
   "selection_index": 0,
-  "acknowledged_credits": 2   // optional — anti-mismatch guard (409 if server disagrees)
+  "acknowledged_credits": 2   // optional — if provided, server validates it equals the computed total; 409 on mismatch
 }
 ```
 
@@ -790,6 +794,10 @@ Selects an audio source from the search results and starts processing. Credits a
 based on the selected result's duration (`max(1, ceil(minutes/10))`). Torrent results display an
 "estimated" label because metadata may differ from actual audio length; the cost is reconciled
 post-download and may trigger an `AWAITING_DURATION_CONFIRM` pause if the actual duration is longer.
+
+`acknowledged_credits` is **optional**. If provided, the server validates it equals the
+server-computed credit total and returns 409 on mismatch. If omitted, the server deducts the
+computed cost without client confirmation.
 
 #### Standalone Search (Guided Flow — Step 2)
 
@@ -1141,7 +1149,10 @@ Credits are deducted N-atomically (not always just 1) at the earliest point dura
 - **URL jobs**: deducted at `POST /api/jobs` using the `duration_seconds` from `/api/jobs/estimate`.
   If duration is unknown, 1 credit is held and reconciled post-download.
 - **Audio search select**: deducted at `/api/audio-search/{job_id}/select` from the result's duration.
-- **Upload jobs**: deducted at `/api/jobs/{job_id}/confirm-duration` after ffprobe measurement.
+- **Upload jobs**: 1 credit is charged at job creation (same as URL jobs without a known duration).
+  After the audio lands in GCS, the same reconciliation checkpoint runs: ffprobe measures the actual
+  duration; if the cost exceeds the 1-credit hold the job pauses in `AWAITING_DURATION_CONFIRM`
+  (reason `reconcile`) for the user to pay the delta; if it costs less an auto-refund is issued.
 
 A reconciliation checkpoint runs immediately before audio separation + transcription is triggered.
 If the actual measured duration costs more than was charged, the job pauses in

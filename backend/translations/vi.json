@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Chọn nhạc nền",
     "selectInstrumentalBody": "\"{title}\" của {artist} cần chọn nhạc nền",
     "videoReadyTitle": "Video đã sẵn sàng!",
-    "videoReadyBody": "Video karaoke của bạn cho bài hát \"{title}\" của {artist} đã sẵn sàng để tải xuống"
+    "videoReadyBody": "Video karaoke của bạn cho bài hát \"{title}\" của {artist} đã sẵn sàng để tải xuống",
+    "confirmDurationTitle": "Xác nhận chi phí công việc",
+    "confirmDurationBody": "\"{title}\" của {artist} cần xác nhận chi phí để tiếp tục"
   },
   "admin": {
     "invalidDomainFormat": "Định dạng tên miền không hợp lệ",

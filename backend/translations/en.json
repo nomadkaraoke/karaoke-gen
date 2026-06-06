@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Select Instrumental",
     "selectInstrumentalBody": "\"{title}\" by {artist} needs instrumental selection",
     "videoReadyTitle": "Video Ready!",
-    "videoReadyBody": "Your karaoke video for \"{title}\" by {artist} is ready to download"
+    "videoReadyBody": "Your karaoke video for \"{title}\" by {artist} is ready to download",
+    "confirmDurationTitle": "Confirm job cost",
+    "confirmDurationBody": "\"{title}\" by {artist} needs a cost confirmation to continue"
   },
   "admin": {
     "invalidDomainFormat": "Invalid domain format",

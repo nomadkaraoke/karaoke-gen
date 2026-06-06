@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Selecteer Instrumental",
     "selectInstrumentalBody": "\"{title}\" van {artist} heeft een instrumental-selectie nodig",
     "videoReadyTitle": "Video klaar!",
-    "videoReadyBody": "Je karaokevideo voor \"{title}\" van {artist} is klaar om te downloaden"
+    "videoReadyBody": "Je karaokevideo voor \"{title}\" van {artist} is klaar om te downloaden",
+    "confirmDurationTitle": "Bevestig kosten",
+    "confirmDurationBody": "Voor \"{title}\" van {artist} moet je de kosten bevestigen om door te gaan"
   },
   "admin": {
     "invalidDomainFormat": "Ongeldig domeinformaat",

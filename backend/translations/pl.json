@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Wybierz podkład",
     "selectInstrumentalBody": "\"{title}\" wykonawcy {artist} wymaga wyboru podkładu",
     "videoReadyTitle": "Wideo gotowe!",
-    "videoReadyBody": "Twoje wideo karaoke dla \"{title}\" wykonawcy {artist} jest gotowe do pobrania"
+    "videoReadyBody": "Twoje wideo karaoke dla \"{title}\" wykonawcy {artist} jest gotowe do pobrania",
+    "confirmDurationTitle": "Potwierdź koszt zadania",
+    "confirmDurationBody": "\"{title}\" wykonawcy {artist} wymaga potwierdzenia kosztów, aby kontynuować"
   },
   "admin": {
     "invalidDomainFormat": "Nieprawidłowy format domeny",

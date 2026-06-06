@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "בחירת פלייבק",
     "selectInstrumentalBody": "\"{title}\" מאת {artist} דורש בחירת פלייבק",
     "videoReadyTitle": "הווידאו מוכן!",
-    "videoReadyBody": "סרטון הקריוקי שלכם עבור \"{title}\" מאת {artist} מוכן להורדה"
+    "videoReadyBody": "סרטון הקריוקי שלכם עבור \"{title}\" מאת {artist} מוכן להורדה",
+    "confirmDurationTitle": "אישור עלות המשימה",
+    "confirmDurationBody": "\"{title}\" של {artist} דורש אישור עלות כדי להמשיך"
   },
   "admin": {
     "invalidDomainFormat": "פורמט דומיין לא חוקי",
