@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "इंस्ट्रुमेंटल चुनो",
     "selectInstrumentalBody": "{artist} के \"{title}\" के लिए इंस्ट्रुमेंटल चुनने की ज़रूरत है",
     "videoReadyTitle": "वीडियो तैयार है!",
-    "videoReadyBody": "{artist} का तुम्हारा कराओके वीडियो \"{title}\" डाउनलोड के लिए तैयार है"
+    "videoReadyBody": "{artist} का तुम्हारा कराओके वीडियो \"{title}\" डाउनलोड के लिए तैयार है",
+    "confirmDurationTitle": "जॉब की लागत की पुष्टि करो",
+    "confirmDurationBody": "जारी रखने के लिए {artist} के \"{title}\" को लागत की पुष्टि की ज़रूरत है"
   },
   "admin": {
     "invalidDomainFormat": "अमान्य डोमेन फ़ॉर्मैट",

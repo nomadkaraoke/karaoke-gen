@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Вибери інструментал",
     "selectInstrumentalBody": "\"{title}\" від {artist} потребує вибору інструменталу",
     "videoReadyTitle": "Відео готове!",
-    "videoReadyBody": "Твоє караоке-відео для \"{title}\" від {artist} готове до завантаження"
+    "videoReadyBody": "Твоє караоке-відео для \"{title}\" від {artist} готове до завантаження",
+    "confirmDurationTitle": "Підтвердь вартість завдання",
+    "confirmDurationBody": "\"{title}\" від {artist} потребує підтвердження вартості для продовження"
   },
   "admin": {
     "invalidDomainFormat": "Недійсний формат домену",

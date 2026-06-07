@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "インストゥルメンタルの選択",
     "selectInstrumentalBody": "{artist} の「{title}」のインストゥルメンタルの選択をお願いします",
     "videoReadyTitle": "動画の準備ができました！",
-    "videoReadyBody": "{artist} の「{title}」のカラオケ動画がダウンロード可能になりました"
+    "videoReadyBody": "{artist} の「{title}」のカラオケ動画がダウンロード可能になりました",
+    "confirmDurationTitle": "料金の確認",
+    "confirmDurationBody": "{artist}の「{title}」の処理を続けるには、料金の確認が必要です"
   },
   "admin": {
     "invalidDomainFormat": "無効なドメイン形式です",

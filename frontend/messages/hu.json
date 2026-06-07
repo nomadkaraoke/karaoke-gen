@@ -571,7 +571,8 @@
     "transcribing": "Átírás",
     "correcting": "Javítás",
     "lyricsDone": "Dalszöveg kész",
-    "lyrics": "Dalszöveg"
+    "lyrics": "Dalszöveg",
+    "confirmDurationCost": "Költség megerősítése"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",
@@ -582,7 +583,8 @@
     "autoAccept": "Automatikusan elfogadja",
     "autoSelect": "Automatikusan kiválasztja",
     "willAutoSelectFirst": "Automatikusan kiválasztja az elsőt",
-    "noOutputsAvailable": "Még nincsenek elérhető kimenetek"
+    "noOutputsAvailable": "Még nincsenek elérhető kimenetek",
+    "confirmCost": "Költség megerősítése"
   },
   "jobActions": {
     "delete": "Törlés",
@@ -732,7 +734,8 @@
     "availability": "elérhetőség",
     "views": "{count} megtekintés",
     "moreVersions": "+{count} további",
-    "select": "Kiválasztás"
+    "select": "Kiválasztás",
+    "creditCost": "{credits} kredit"
   },
   "audioEditor": {
     "loading": "Hangszerkesztő betöltése...",
@@ -1486,5 +1489,15 @@
     "updateAvailableSubtitle": "Frissítjük az oldalt, és betöltjük a legújabb kódot.",
     "updateNow": "Frissítés most",
     "retry": "Próbáld újra"
+  },
+  "pricing": {
+    "balance": "{balance} kredited van",
+    "buyCredits": "Kredit vásárlása",
+    "confirm": "Megerősítés és indítás",
+    "confirmTitle": "Erősítsd meg a karaoke feladatodat",
+    "creditsForDuration": "{minutes} perc · {credits} kredit",
+    "estimatedLabel": "Becsült — a végső költséget a letöltés után erősítjük meg",
+    "reconcileTitle": "Ez a dal hosszabb a vártnál",
+    "cancel": "Mégse"
   }
 }

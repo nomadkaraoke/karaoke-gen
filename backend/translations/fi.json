@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Valitse instrumentaali",
     "selectInstrumentalBody": "\"{title}\" esittäjältä {artist} vaatii instrumentaalin valintaa",
     "videoReadyTitle": "Video on valmis!",
-    "videoReadyBody": "Karaokevideosi kappaleelle \"{title}\" esittäjältä {artist} on valmis ladattavaksi"
+    "videoReadyBody": "Karaokevideosi kappaleelle \"{title}\" esittäjältä {artist} on valmis ladattavaksi",
+    "confirmDurationTitle": "Vahvista työn hinta",
+    "confirmDurationBody": "\"{title}\" esittäjältä {artist} vaatii hinnan vahvistuksen jatkamista varten"
   },
   "admin": {
     "invalidDomainFormat": "Virheellinen verkkotunnuksen muoto",

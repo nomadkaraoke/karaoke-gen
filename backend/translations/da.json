@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Vælg instrumental",
     "selectInstrumentalBody": "\"{title}\" af {artist} kræver valg af instrumental",
     "videoReadyTitle": "Videoen er klar!",
-    "videoReadyBody": "Din karaokevideo til \"{title}\" af {artist} er klar til download"
+    "videoReadyBody": "Din karaokevideo til \"{title}\" af {artist} er klar til download",
+    "confirmDurationTitle": "Bekræft opgavepris",
+    "confirmDurationBody": "\"{title}\" af {artist} kræver en prisbekræftelse for at fortsætte"
   },
   "admin": {
     "invalidDomainFormat": "Ugyldigt domæneformat",

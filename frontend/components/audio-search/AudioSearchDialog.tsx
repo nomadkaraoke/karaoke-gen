@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Loader2, Music2, ChevronDown, ChevronUp, Lightbulb } from "lucide-react"
+import { ResultCostChip } from "./ResultCostChip"
 
 // Version from pyproject.toml (single source of truth)
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0"
@@ -263,6 +264,7 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
                                     {t('views', { count: formatCount(result.view_count) })}
                                   </span>
                                 ) : null}
+                                <ResultCostChip durationSeconds={result.duration} />
                               </div>
 
                               {/* Line 2: metadata + filename */}

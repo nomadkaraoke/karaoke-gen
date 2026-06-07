@@ -571,7 +571,8 @@
     "transcribing": "Đang nhận diện",
     "correcting": "Đang sửa",
     "lyricsDone": "Lời bài hát xong",
-    "lyrics": "Lời bài hát"
+    "lyrics": "Lời bài hát",
+    "confirmDurationCost": "Xác nhận chi phí"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",
@@ -582,7 +583,8 @@
     "autoAccept": "Sẽ tự động chấp nhận",
     "autoSelect": "Sẽ tự động chọn",
     "willAutoSelectFirst": "Sẽ tự động chọn đầu tiên",
-    "noOutputsAvailable": "Chưa có đầu ra nào"
+    "noOutputsAvailable": "Chưa có đầu ra nào",
+    "confirmCost": "Xác nhận chi phí"
   },
   "jobActions": {
     "delete": "Xóa",
@@ -732,7 +734,8 @@
     "availability": "khả năng khả dụng",
     "views": "{count} lượt xem",
     "moreVersions": "+{count} phiên bản khác",
-    "select": "Chọn"
+    "select": "Chọn",
+    "creditCost": "{credits} credit"
   },
   "audioEditor": {
     "loading": "Đang tải trình chỉnh sửa âm thanh...",
@@ -1486,5 +1489,15 @@
     "updateAvailableSubtitle": "Chúng tôi sẽ làm mới trang và tải mã mới nhất.",
     "updateNow": "Cập nhật ngay",
     "retry": "Thử lại"
+  },
+  "pricing": {
+    "balance": "Bạn có {balance} credit",
+    "buyCredits": "Mua credit",
+    "confirm": "Xác nhận & bắt đầu",
+    "confirmTitle": "Xác nhận yêu cầu karaoke của bạn",
+    "creditsForDuration": "{minutes} phút · {credits} credit",
+    "estimatedLabel": "Ước tính — chi phí cuối cùng sẽ được xác nhận sau khi tải xuống",
+    "reconcileTitle": "Bài hát này dài hơn dự kiến",
+    "cancel": "Hủy"
   }
 }

@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, isAutoRetryPending, JobStep } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, isAutoRetryPending, JobStep, STATUS_CONFIG } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -458,6 +458,11 @@ describe('isNotifiableBlockingStatus', () => {
   it('handles null/undefined gracefully', () => {
     expect(isNotifiableBlockingStatus(null as unknown as string)).toBe(false);
     expect(isNotifiableBlockingStatus(undefined as unknown as string)).toBe(false);
+  });
+
+  it("awaiting_duration_confirm is blocking + notifiable", () => {
+    expect(isBlockingStatus("awaiting_duration_confirm")).toBe(true);
+    expect(isNotifiableBlockingStatus("awaiting_duration_confirm")).toBe(true);
   });
 });
 

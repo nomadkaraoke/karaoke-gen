@@ -571,7 +571,8 @@
     "transcribing": "Mentranskripsi",
     "correcting": "Memperbaiki",
     "lyricsDone": "Lirik selesai",
-    "lyrics": "Lirik"
+    "lyrics": "Lirik",
+    "confirmDurationCost": "Konfirmasi biaya"
   },
   "jobCard": {
     "actionNeeded": "Perlu tindakan",
@@ -582,7 +583,8 @@
     "autoAccept": "Akan menerima otomatis",
     "autoSelect": "Akan memilih otomatis",
     "willAutoSelectFirst": "Akan memilih otomatis yang pertama",
-    "noOutputsAvailable": "Belum ada output yang tersedia"
+    "noOutputsAvailable": "Belum ada output yang tersedia",
+    "confirmCost": "Konfirmasi Biaya"
   },
   "jobActions": {
     "delete": "Hapus",
@@ -732,7 +734,8 @@
     "availability": "ketersediaan",
     "views": "{count} tayangan",
     "moreVersions": "+{count} lainnya",
-    "select": "Pilih"
+    "select": "Pilih",
+    "creditCost": "{credits} kredit"
   },
   "audioEditor": {
     "loading": "Memuat editor audio...",
@@ -1486,5 +1489,15 @@
     "updateAvailableSubtitle": "Kami akan memuat ulang halaman dan memuat kode terbaru.",
     "updateNow": "Perbarui sekarang",
     "retry": "Coba lagi"
+  },
+  "pricing": {
+    "balance": "Anda memiliki {balance} kredit",
+    "buyCredits": "Beli kredit",
+    "confirm": "Konfirmasi & mulai",
+    "confirmTitle": "Konfirmasi pesanan karaoke Anda",
+    "creditsForDuration": "{minutes} mnt · {credits} kredit",
+    "estimatedLabel": "Estimasi — biaya akhir dikonfirmasi setelah diunduh",
+    "reconcileTitle": "Lagu ini lebih panjang dari perkiraan",
+    "cancel": "Batal"
   }
 }

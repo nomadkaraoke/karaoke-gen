@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "반주 선택",
     "selectInstrumentalBody": "{artist}의 \"{title}\" 반주 선택이 필요합니다",
     "videoReadyTitle": "비디오 준비 완료!",
-    "videoReadyBody": "{artist}의 \"{title}\" 노래방 비디오를 다운로드할 준비가 되었습니다"
+    "videoReadyBody": "{artist}의 \"{title}\" 노래방 비디오를 다운로드할 준비가 되었습니다",
+    "confirmDurationTitle": "작업 비용 확인",
+    "confirmDurationBody": "{artist}의 \"{title}\" 작업을 계속 진행하려면 비용 확인이 필요합니다"
   },
   "admin": {
     "invalidDomainFormat": "잘못된 도메인 형식",

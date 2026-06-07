@@ -362,8 +362,9 @@ async def check_idle_reminder(
     """
     Check if a job needs an idle reminder email.
 
-    This endpoint is called by a Cloud Tasks scheduled task 5 minutes after
-    a job enters AWAITING_REVIEW state.
+    This endpoint is called by a Cloud Tasks scheduled task after a job enters
+    a blocking state (AWAITING_REVIEW, AWAITING_AUDIO_EDIT, AWAITING_DURATION_CONFIRM,
+    or the legacy AWAITING_INSTRUMENTAL_SELECTION).
 
     If the job is still in the blocking state and no reminder has been sent yet,
     sends a reminder email to the user.
@@ -390,7 +391,11 @@ async def check_idle_reminder(
 
     # Check if job is still in a blocking state
     # Note: AWAITING_INSTRUMENTAL_SELECTION is LEGACY - kept for historical jobs only
-    blocking_states = [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION]
+    blocking_states = [
+        JobStatus.AWAITING_REVIEW,
+        JobStatus.AWAITING_INSTRUMENTAL_SELECTION,
+        JobStatus.AWAITING_DURATION_CONFIRM,
+    ]
     if job.status not in [s.value for s in blocking_states]:
         logger.info(f"[job:{job_id}] Job no longer in blocking state ({job.status}), skipping reminder")
         add_span_event("not_blocking", {"current_status": job.status})
@@ -424,23 +429,32 @@ async def check_idle_reminder(
     # Determine action type
     action_type = state_data.get('blocking_action_type')
     if not action_type:
-        action_type = "lyrics" if job.status == JobStatus.AWAITING_REVIEW.value else "instrumental"
+        if job.status == JobStatus.AWAITING_REVIEW.value:
+            action_type = "lyrics"
+        elif job.status == JobStatus.AWAITING_DURATION_CONFIRM.value:
+            action_type = "duration_confirm"
+        else:
+            action_type = "instrumental"
 
     # Send the reminder email
     try:
         notification_service = get_job_notification_service()
 
-        success = await notification_service.send_action_reminder_email(
-            job_id=job.job_id,
-            user_email=job.user_email,
-            action_type=action_type,
-            user_name=None,  # Could fetch from user service if needed
-            artist=job.artist,
-            title=job.title,
-            audio_hash=job.audio_hash,
-            review_token=job.review_token,
-            instrumental_token=job.instrumental_token,
-        )
+        if action_type == "duration_confirm":
+            # Duration-confirm has its own dedicated reminder method
+            success = await notification_service.send_duration_confirm_reminder(job)
+        else:
+            success = await notification_service.send_action_reminder_email(
+                job_id=job.job_id,
+                user_email=job.user_email,
+                action_type=action_type,
+                user_name=None,  # Could fetch from user service if needed
+                artist=job.artist,
+                title=job.title,
+                audio_hash=job.audio_hash,
+                review_token=job.review_token,
+                instrumental_token=job.instrumental_token,
+            )
 
         if success:
             # Mark reminder as sent (prevents duplicate sends)

@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Velg instrumental",
     "selectInstrumentalBody": "\"{title}\" av {artist} trenger valg av instrumental",
     "videoReadyTitle": "Video klar!",
-    "videoReadyBody": "Karaokevideoen din for \"{title}\" av {artist} er klar for nedlasting"
+    "videoReadyBody": "Karaokevideoen din for \"{title}\" av {artist} er klar for nedlasting",
+    "confirmDurationTitle": "Bekreft jobbkostnad",
+    "confirmDurationBody": "\"{title}\" av {artist} trenger en kostnadsbekreftelse for å fortsette"
   },
   "admin": {
     "invalidDomainFormat": "Ugyldig domeneformat",

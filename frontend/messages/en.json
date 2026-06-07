@@ -540,6 +540,7 @@
     "editAudio": "Edit audio",
     "editingAudio": "Editing audio",
     "audioEdited": "Audio edited",
+    "confirmDurationCost": "Confirm cost",
     "separatingAudio1": "Separating audio (1/2)",
     "separatingAudio2": "Separating audio (2/2)",
     "audioReadyProcessingLyrics": "Audio ready, processing lyrics",
@@ -579,6 +580,7 @@
     "editAudio": "Edit Audio",
     "selectAudio": "Select Audio",
     "selectInstrumental": "Select Instrumental",
+    "confirmCost": "Confirm Cost",
     "autoAccept": "Will auto-accept",
     "autoSelect": "Will auto-select",
     "willAutoSelectFirst": "Will auto-select first",
@@ -732,7 +734,8 @@
     "availability": "availability",
     "views": "{count} views",
     "moreVersions": "+{count} more",
-    "select": "Select"
+    "select": "Select",
+    "creditCost": "{credits} credits"
   },
   "audioEditor": {
     "loading": "Loading audio editor...",
@@ -1486,5 +1489,15 @@
     "updateAvailable": "A newer version is available — it may fix this issue.",
     "updateAvailableSubtitle": "We'll refresh the page and load the latest code.",
     "updateNow": "Update now"
+  },
+  "pricing": {
+    "confirmTitle": "Confirm your karaoke job",
+    "reconcileTitle": "This song is longer than expected",
+    "creditsForDuration": "{minutes} min · {credits} credits",
+    "estimatedLabel": "Estimated — final cost confirmed after download",
+    "balance": "You have {balance} credits",
+    "confirm": "Confirm & start",
+    "buyCredits": "Buy credits",
+    "cancel": "Cancel"
   }
 }

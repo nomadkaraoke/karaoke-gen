@@ -317,6 +317,69 @@ class JobNotificationService:
             logger.exception(f"Error sending {action_type} reminder for job {job_id}: {e}")
             return False
 
+    async def send_duration_confirm_reminder(self, job) -> bool:
+        """
+        Send a 15-minute idle reminder email for jobs awaiting duration confirmation.
+
+        Called when a job has been in AWAITING_DURATION_CONFIRM for 15 minutes and
+        the user has not yet confirmed the extra cost.
+
+        Args:
+            job: Job object with at minimum job_id, user_email, artist, title,
+                 and state_data (may contain pending_additional_credits,
+                 duration_actual_seconds).
+
+        Returns:
+            True if email was sent successfully.
+        """
+        if not ENABLE_AUTO_EMAILS:
+            logger.info(f"Auto emails disabled, skipping duration-confirm reminder for job {job.job_id}")
+            return False
+
+        user_email = getattr(job, "user_email", None)
+        if not user_email:
+            logger.warning(f"No user email for job {job.job_id}, skipping duration-confirm reminder")
+            return False
+
+        try:
+            user_locale = self._get_user_locale(user_email)
+            job_id = job.job_id
+            artist = getattr(job, "artist", None)
+            title = getattr(job, "title", None)
+            state_data = getattr(job, "state_data", None) or {}
+
+            # Extract extra-cost details from state_data (best-effort)
+            pending_credits = state_data.get("pending_additional_credits")
+            duration_seconds = state_data.get("duration_actual_seconds")
+
+            confirm_url = (
+                f"{self.frontend_url}{get_locale_prefix(user_locale)}/app"
+            )
+
+            success = self.email_service.send_duration_confirm_reminder(
+                to_email=user_email,
+                job_id=job_id,
+                artist=artist,
+                title=title,
+                pending_credits=pending_credits,
+                duration_seconds=duration_seconds,
+                confirm_url=confirm_url,
+                locale=user_locale,
+            )
+
+            if success:
+                logger.info(
+                    f"Sent duration_confirm reminder for job {job_id} to {_mask_email(user_email)}"
+                )
+            else:
+                logger.error(f"Failed to send duration_confirm reminder for job {job_id}")
+
+            return success
+
+        except Exception as e:
+            logger.exception(f"Error sending duration_confirm reminder for job {job.job_id}: {e}")
+            return False
+
     def get_completion_message(
         self,
         job_id: str,

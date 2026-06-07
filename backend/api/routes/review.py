@@ -36,6 +36,7 @@ from backend.api.dependencies import require_auth, require_review_auth
 from backend.services.auth_service import UserType
 from backend.config import get_settings
 from backend.i18n import t, get_locale_from_request
+from backend.services.duration_reconciliation import reconcile_and_maybe_pause
 
 from pydantic import BaseModel as _PydBaseModel
 from backend.services.custom_lyrics_service import (
@@ -2174,6 +2175,27 @@ async def submit_audio_edit(
         progress=18,
         message="Audio edit complete, starting processing"
     )
+
+    # Reconcile credit charge against the (possibly-edited) audio before triggering workers.
+    # reconcile_and_maybe_pause probes job.input_media_gcs_path — which was just updated above
+    # to point to the edited audio (jobs/{job_id}/input/edited.flac) if edits were applied.
+    if await reconcile_and_maybe_pause(job_id):
+        # Job paused (AWAITING_DURATION_CONFIRM) or cancelled — do not start processing.
+        # Reload to distinguish the two outcomes so the caller can surface the right message.
+        reloaded = job_manager.get_job(job_id)
+        if reloaded and reloaded.status in (JobStatus.CANCELLED, JobStatus.FAILED):
+            return {
+                "status": "cancelled",
+                "message": "Audio edit saved. Job was cancelled — audio exceeds the supported limit.",
+                "job_id": job_id,
+                "edits_applied": len(edit_stack),
+            }
+        return {
+            "status": "paused",
+            "message": "Audio edit saved. Additional credits are required to continue processing.",
+            "job_id": job_id,
+            "edits_applied": len(edit_stack),
+        }
 
     # Trigger parallel workers in background so the HTTP response returns immediately.
     # The worker triggers involve Cloud Run Job calls that can take 30+ seconds;

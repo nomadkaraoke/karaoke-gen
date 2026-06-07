@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Selectează instrumentalul",
     "selectInstrumentalBody": "\"{title}\" de {artist} necesită selectarea instrumentalului",
     "videoReadyTitle": "Videoclipul este gata!",
-    "videoReadyBody": "Videoclipul tău de karaoke pentru \"{title}\" de {artist} este gata de descărcare"
+    "videoReadyBody": "Videoclipul tău de karaoke pentru \"{title}\" de {artist} este gata de descărcare",
+    "confirmDurationTitle": "Confirmă costul lucrării",
+    "confirmDurationBody": "\"{title}\" de {artist} necesită o confirmare a costului pentru a continua"
   },
   "admin": {
     "invalidDomainFormat": "Format de domeniu invalid",

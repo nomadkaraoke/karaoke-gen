@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Sélectionner l'instrumental",
     "selectInstrumentalBody": "\"{title}\" de {artist} nécessite la sélection d'un instrumental",
     "videoReadyTitle": "Vidéo prête !",
-    "videoReadyBody": "Ta vidéo karaoké pour \"{title}\" de {artist} est prête à être téléchargée"
+    "videoReadyBody": "Ta vidéo karaoké pour \"{title}\" de {artist} est prête à être téléchargée",
+    "confirmDurationTitle": "Confirme le coût de la tâche",
+    "confirmDurationBody": "\"{title}\" de {artist} nécessite une confirmation de coût pour continuer"
   },
   "admin": {
     "invalidDomainFormat": "Format de domaine invalide",

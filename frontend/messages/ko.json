@@ -571,7 +571,8 @@
     "transcribing": "추출 중",
     "correcting": "수정 중",
     "lyricsDone": "가사 완료",
-    "lyrics": "가사"
+    "lyrics": "가사",
+    "confirmDurationCost": "비용 확인"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",
@@ -582,7 +583,8 @@
     "autoAccept": "자동 수락 예정",
     "autoSelect": "자동 선택 예정",
     "willAutoSelectFirst": "첫 번째 항목 자동 선택 예정",
-    "noOutputsAvailable": "아직 사용 가능한 출력이 없습니다"
+    "noOutputsAvailable": "아직 사용 가능한 출력이 없습니다",
+    "confirmCost": "비용 확인"
   },
   "jobActions": {
     "delete": "삭제",
@@ -732,7 +734,8 @@
     "availability": "가용성",
     "views": "조회수 {count}회",
     "moreVersions": "+{count}개 더 보기",
-    "select": "선택"
+    "select": "선택",
+    "creditCost": "{credits} 크레딧"
   },
   "audioEditor": {
     "loading": "오디오 편집기 불러오는 중...",
@@ -1486,5 +1489,15 @@
     "updateAvailableSubtitle": "페이지를 새로고침하여 최신 코드를 불러옵니다.",
     "updateNow": "지금 업데이트하기",
     "retry": "다시 시도"
+  },
+  "pricing": {
+    "balance": "{balance} 크레딧이 있습니다",
+    "buyCredits": "크레딧 구매",
+    "confirm": "확인 및 시작",
+    "confirmTitle": "가라오케 작업 확인",
+    "creditsForDuration": "{minutes}분 · {credits} 크레딧",
+    "estimatedLabel": "예상 비용 — 최종 비용은 다운로드 후 확정됩니다",
+    "reconcileTitle": "노래 길이가 예상보다 깁니다",
+    "cancel": "취소"
   }
 }

@@ -571,7 +571,8 @@
     "transcribing": "Litteroidaan",
     "correcting": "Korjataan",
     "lyricsDone": "Sanoitukset valmiit",
-    "lyrics": "Sanoitukset"
+    "lyrics": "Sanoitukset",
+    "confirmDurationCost": "Vahvista hinta"
   },
   "jobCard": {
     "actionNeeded": "Toimenpiteitä tarvitaan",
@@ -582,7 +583,8 @@
     "autoAccept": "Hyväksyy automaattisesti",
     "autoSelect": "Valitsee automaattisesti",
     "willAutoSelectFirst": "Valitsee automaattisesti ensimmäisen",
-    "noOutputsAvailable": "Ei tulosteita vielä saatavilla"
+    "noOutputsAvailable": "Ei tulosteita vielä saatavilla",
+    "confirmCost": "Vahvista hinta"
   },
   "jobActions": {
     "delete": "Poista",
@@ -732,7 +734,8 @@
     "availability": "saatavuus",
     "views": "{count} katselukertaa",
     "moreVersions": "+{count} muuta",
-    "select": "Valitse"
+    "select": "Valitse",
+    "creditCost": "{credits} krediittiä"
   },
   "audioEditor": {
     "loading": "Ladataan äänieditoria...",
@@ -1486,5 +1489,15 @@
     "updateAvailableSubtitle": "Päivitämme sivun ja lataamme uusimman koodin.",
     "updateNow": "Päivitä nyt",
     "retry": "Yritä uudelleen"
+  },
+  "pricing": {
+    "balance": "Sinulla on {balance} krediittiä",
+    "buyCredits": "Osta krediittejä",
+    "confirm": "Vahvista ja aloita",
+    "confirmTitle": "Vahvista karaoketilauksesi",
+    "creditsForDuration": "{minutes} min · {credits} krediittiä",
+    "estimatedLabel": "Arvioitu — lopullinen hinta vahvistetaan latauksen jälkeen",
+    "reconcileTitle": "Tämä kappale on odotettua pidempi",
+    "cancel": "Peruuta"
   }
 }

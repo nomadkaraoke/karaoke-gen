@@ -17,6 +17,7 @@ from backend.config import settings
 from backend.exceptions import InvalidStateTransitionError, InsufficientCreditsError
 from backend.models.job import Job, JobStatus, JobCreate, STATE_TRANSITIONS
 from backend.models.worker_log import WorkerLogEntry
+from backend.services.duration_reconciliation import reconcile_and_maybe_pause
 from backend.services.firestore_service import FirestoreService
 from backend.services.storage_service import StorageService
 
@@ -57,15 +58,16 @@ class JobManager:
             ValueError: If theme_id is not provided (all jobs require a theme)
         """
         # Check credits (skip for admins)
+        credits_to_charge = job_create.credits
         if job_create.user_email and not is_admin:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()
-            if not user_service.has_credits(job_create.user_email):
-                credits_available = user_service.check_credits(job_create.user_email)
+            credits_available = user_service.check_credits(job_create.user_email)
+            if credits_available < credits_to_charge:
                 raise InsufficientCreditsError(
                     message="You're out of credits. Buy more to continue creating karaoke videos.",
                     credits_available=credits_available,
-                    credits_required=1,
+                    credits_required=credits_to_charge,
                 )
 
         # Enforce theme requirement - all jobs must have a theme
@@ -126,17 +128,27 @@ class JobManager:
                 "is_admin": is_admin,
                 "created_from": job_create.request_metadata.get("created_from", "unknown"),
             },
+            # Record how many credits were charged for this job (authoritative running total).
+            # When charging is bypassed (admin / no user_email), set credits_charged=0 and
+            # payment_bypassed=True so duration reconciliation short-circuits without pausing,
+            # charging, or refunding.
+            state_data=(
+                {"credits_charged": 0, "payment_bypassed": True}
+                if (is_admin or not job_create.user_email)
+                else {"credits_charged": credits_to_charge}
+            ),
         )
 
         self.firestore.create_job(job)
         logger.info(f"Created new job {job_id} with status PENDING")
 
-        # Deduct credit atomically (after job is persisted so we have job_id for transaction record)
+        # Deduct credits atomically (after job is persisted so we have job_id for transaction record)
         if job_create.user_email and not is_admin:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()
-            success, _remaining, deduct_msg = user_service.deduct_credit(
-                job_create.user_email, job_id, reason="job_creation"
+            success, _remaining, deduct_msg = user_service.deduct_credits(
+                job_create.user_email, job_id, amount=credits_to_charge, reason="job_creation",
+                count_as_job_creation=True,
             )
             if not success:
                 # Deduction failed (e.g., race condition) - delete the job and raise error
@@ -148,7 +160,7 @@ class JobManager:
                 raise InsufficientCreditsError(
                     message="Failed to deduct credit. Please try again.",
                     credits_available=0,
-                    credits_required=1,
+                    credits_required=credits_to_charge,
                 )
 
         return job
@@ -548,13 +560,15 @@ class JobManager:
                 self._send_push_notification(job, "complete")
 
             # Idle reminder scheduling for blocking states
-            elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.AWAITING_AUDIO_EDIT]:
+            elif new_status in [JobStatus.AWAITING_REVIEW, JobStatus.AWAITING_INSTRUMENTAL_SELECTION, JobStatus.AWAITING_AUDIO_EDIT, JobStatus.AWAITING_DURATION_CONFIRM]:
                 self._schedule_idle_reminder(job, new_status)
                 # Send push notification for blocking states
                 if new_status == JobStatus.AWAITING_AUDIO_EDIT:
                     action_type = "audio_edit"
                 elif new_status == JobStatus.AWAITING_REVIEW:
                     action_type = "lyrics"
+                elif new_status == JobStatus.AWAITING_DURATION_CONFIRM:
+                    action_type = "duration_confirm"
                 else:
                     action_type = "instrumental"
                 self._send_push_notification(job, action_type)
@@ -634,7 +648,9 @@ class JobManager:
         Schedule an idle reminder for a blocking state.
 
         Records the timestamp when the blocking state was entered and
-        schedules a Cloud Tasks task for 5 minutes later.
+        schedules a Cloud Tasks task after a state-specific delay:
+        - AWAITING_DURATION_CONFIRM: 15 minutes (900s) — user needs to confirm extra cost
+        - All other blocking states: default delay (IDLE_REMINDER_DELAY_SECONDS)
         """
         import asyncio
         import threading
@@ -647,6 +663,8 @@ class JobManager:
                 action_type = "audio_edit"
             elif new_status == JobStatus.AWAITING_REVIEW:
                 action_type = "lyrics"
+            elif new_status == JobStatus.AWAITING_DURATION_CONFIRM:
+                action_type = "duration_confirm"
             else:
                 action_type = "instrumental"
 
@@ -662,12 +680,19 @@ class JobManager:
                 'state_data': {**existing_state_data, **state_data_update}
             })
 
-            # Schedule the idle reminder check via worker service (5 min delay)
+            # Schedule the idle reminder check via worker service.
+            # Duration-confirm uses 15-min delay; other states use the default.
             from backend.services.worker_service import get_worker_service
+
+            # Capture action_type for the closure
+            _action_type = action_type
 
             async def schedule_reminder():
                 worker_service = get_worker_service()
-                await worker_service.schedule_idle_reminder(job.job_id)
+                if _action_type == "duration_confirm":
+                    await worker_service.schedule_idle_reminder(job.job_id, delay_seconds=900)
+                else:
+                    await worker_service.schedule_idle_reminder(job.job_id)
 
             # Try to get existing event loop, create new one if none exists
             try:
@@ -838,9 +863,12 @@ class JobManager:
     
     def _refund_credit_for_job(self, job_id: str, job: Job, reason: str) -> bool:
         """
-        Refund one credit for a job if eligible.
+        Refund all credits charged for a job if eligible.
 
-        Skips refund if: already refunded, no user email, or admin-owned job.
+        Reads ``state_data.credits_charged`` (defaulting to 1 for legacy jobs
+        that pre-date the field) and refunds that many credits in a single
+        ``add_credits`` call.  Skips refund if: already refunded, no user
+        email, admin-owned job, or credits_charged == 0 (payment_bypassed).
         Never raises — refund failure must not block the calling operation.
 
         Returns:
@@ -860,14 +888,30 @@ class JobManager:
             if is_admin_email(job.user_email):
                 return False
 
+            # Determine how many credits to refund.  ``credits_charged`` is set
+            # at job creation (and updated on duration-confirm).  Legacy jobs
+            # that pre-date the field are guaranteed to be 1-credit jobs, so we
+            # default to 1.  payment_bypassed admin/no-email jobs have
+            # credits_charged=0 and must not be refunded.
+            state_data = job.state_data or {}
+            credits_charged = int(state_data.get("credits_charged", 1))
+
+            if credits_charged == 0:
+                # Admin / payment-bypassed job — nothing to refund.
+                logger.info(f"Job {job_id}: credits_charged=0 (payment_bypassed), skipping refund")
+                return False
+
             user_service = get_user_service()
-            refund_ok, new_balance, refund_msg = user_service.refund_credit(
-                job.user_email, job_id, reason=reason
+            refund_ok, new_balance, refund_msg = user_service.add_credits(
+                job.user_email, amount=credits_charged, reason=reason, job_id=job_id
             )
             if refund_ok:
                 # Mark job as refunded to prevent double-refund
                 self.update_job(job_id, {'credit_refunded': True})
-                logger.info(f"Refunded credit for {reason} job {job_id} to {_mask_email(job.user_email)} (balance: {new_balance})")
+                logger.info(
+                    f"Refunded {credits_charged} credit(s) for {reason} job {job_id} "
+                    f"to {_mask_email(job.user_email)} (balance: {new_balance})"
+                )
                 return True
             else:
                 logger.warning(f"Credit refund failed for job {job_id}: {refund_msg}")
@@ -1009,6 +1053,14 @@ class JobManager:
             progress=progress,
             message=message
         )
+
+        # Reconcile credit charge against actual audio duration before triggering workers.
+        # Probes input_media_gcs_path (already set by the upload handler) via ffprobe.
+        # Returns True when the job is paused (AWAITING_DURATION_CONFIRM) or cancelled,
+        # in which case we must NOT start downstream workers.
+        if await reconcile_and_maybe_pause(job_id):
+            logger.info(f"Job {job_id}: Paused for duration confirmation (or cancelled); workers not started")
+            return
 
         # Check if audio separation can be skipped
         # Jobs with an existing instrumental (e.g. tenant uploads) don't need

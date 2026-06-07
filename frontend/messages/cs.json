@@ -571,7 +571,8 @@
     "transcribing": "Přepisování",
     "correcting": "Opravování",
     "lyricsDone": "Text hotov",
-    "lyrics": "Text"
+    "lyrics": "Text",
+    "confirmDurationCost": "Potvrdit cenu"
   },
   "jobCard": {
     "actionNeeded": "Vyžadována akce",
@@ -582,7 +583,8 @@
     "autoAccept": "Automaticky se přijme",
     "autoSelect": "Automaticky se vybere",
     "willAutoSelectFirst": "Automaticky se vybere první",
-    "noOutputsAvailable": "Zatím nejsou k dispozici žádné výstupy"
+    "noOutputsAvailable": "Zatím nejsou k dispozici žádné výstupy",
+    "confirmCost": "Potvrdit cenu"
   },
   "jobActions": {
     "delete": "Smazat",
@@ -732,7 +734,8 @@
     "availability": "dostupnost",
     "views": "{count} zhlédnutí",
     "moreVersions": "+{count} dalších",
-    "select": "Vybrat"
+    "select": "Vybrat",
+    "creditCost": "{credits} kreditů"
   },
   "audioEditor": {
     "loading": "Načítání editoru zvuku...",
@@ -1486,5 +1489,15 @@
     "updateAvailableSubtitle": "Obnovíme stránku a načteme nejnovější kód.",
     "updateNow": "Aktualizovat nyní",
     "retry": "Zkusit znovu"
+  },
+  "pricing": {
+    "balance": "Máš {balance} kreditů",
+    "buyCredits": "Koupit kredity",
+    "confirm": "Potvrdit a začít",
+    "confirmTitle": "Potvrď vytvoření karaoke",
+    "creditsForDuration": "{minutes} min · {credits} kreditů",
+    "estimatedLabel": "Odhad — konečná cena se potvrdí po stažení",
+    "reconcileTitle": "Tato píseň je delší, než jsme čekali",
+    "cancel": "Zrušit"
   }
 }

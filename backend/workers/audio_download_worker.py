@@ -30,6 +30,7 @@ from backend.services.storage_service import StorageService
 from backend.services.worker_service import get_worker_service
 from backend.services.flacfetch_client import get_flacfetch_client, FlacfetchServiceError
 from backend.services.audio_search_service import DownloadError
+from backend.services.duration_reconciliation import reconcile_and_maybe_pause
 
 
 logger = logging.getLogger(__name__)
@@ -277,6 +278,13 @@ async def process_audio_download(job_id: str) -> bool:
             )
             logger.info(f"[job:{job_id}] Audio download complete, awaiting audio edit")
             return True
+
+        # Reconcile credit charge against actual audio duration before processing.
+        # If the audio turns out longer than estimated, the job is paused for
+        # re-confirmation (AWAITING_DURATION_CONFIRM) or cancelled; in either case
+        # we must NOT trigger downstream workers.
+        if await reconcile_and_maybe_pause(job_id):
+            return True  # paused for confirmation or cancelled; workers not started
 
         # Trigger audio separation and lyrics workers
         worker_service = get_worker_service()
