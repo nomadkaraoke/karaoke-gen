@@ -32,8 +32,7 @@ describe('ResultCostChip', () => {
   })
 
   it('renders nothing when durationSeconds is null', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { container } = render(<ResultCostChip durationSeconds={null as any} />)
+    const { container } = render(<ResultCostChip durationSeconds={null} />)
     expect(container.firstChild).toBeNull()
   })
 
