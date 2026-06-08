@@ -571,7 +571,8 @@
     "transcribing": "Trascrizione",
     "correcting": "Correzione",
     "lyricsDone": "Testo completato",
-    "lyrics": "Testo"
+    "lyrics": "Testo",
+    "confirmDurationCost": "Conferma costo"
   },
   "jobCard": {
     "actionNeeded": "Azione richiesta",
@@ -582,7 +583,8 @@
     "autoAccept": "Accetterà automaticamente",
     "autoSelect": "Selezionerà automaticamente",
     "willAutoSelectFirst": "Selezionerà automaticamente il primo",
-    "noOutputsAvailable": "Nessun output ancora disponibile"
+    "noOutputsAvailable": "Nessun output ancora disponibile",
+    "confirmCost": "Conferma costo"
   },
   "jobActions": {
     "delete": "Elimina",
@@ -732,7 +734,8 @@
     "availability": "disponibilità",
     "views": "{count} visualizzazioni",
     "moreVersions": "+{count} altre",
-    "select": "Seleziona"
+    "select": "Seleziona",
+    "creditCost": "{credits} crediti"
   },
   "audioEditor": {
     "loading": "Caricamento editor audio...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Aggiorneremo la pagina e caricheremo il codice più recente.",
     "updateNow": "Aggiorna ora",
     "retry": "Riprova"
+  },
+  "pricing": {
+    "balance": "Hai {balance} crediti",
+    "buyCredits": "Acquista crediti",
+    "confirm": "Conferma e inizia",
+    "confirmTitle": "Conferma il tuo progetto karaoke",
+    "creditsForDuration": "{minutes} min · {credits} crediti",
+    "estimatedLabel": "Stimato — costo finale confermato dopo il download",
+    "reconcileTitle": "Questa canzone è più lunga del previsto",
+    "cancel": "Annulla"
   }
 }

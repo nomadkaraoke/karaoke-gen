@@ -60,8 +60,8 @@ class TestCreditCheckOnJobCreation:
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Job creation succeeds when user has credits, and credit is deducted."""
-        mock_user_service.has_credits.return_value = True
-        mock_user_service.deduct_credit.return_value = (True, 4, "Credit deducted. 4 remaining")
+        mock_user_service.check_credits.return_value = 5  # has enough credits
+        mock_user_service.deduct_credits.return_value = (True, 4, "Credit deducted. 4 remaining")
 
         job = job_manager.create_job(
             JobCreate(artist="Test", title="Song", theme_id="nomad", user_email="user@test.com"),
@@ -69,10 +69,10 @@ class TestCreditCheckOnJobCreation:
         )
 
         assert job.status == JobStatus.PENDING
-        mock_user_service.has_credits.assert_called_once_with("user@test.com")
-        mock_user_service.deduct_credit.assert_called_once()
-        # Verify deduct_credit was called with user email, job_id, and reason
-        call_args = mock_user_service.deduct_credit.call_args
+        mock_user_service.check_credits.assert_called_once_with("user@test.com")
+        mock_user_service.deduct_credits.assert_called_once()
+        # Verify deduct_credits was called with user email
+        call_args = mock_user_service.deduct_credits.call_args
         assert call_args[0][0] == "user@test.com"
 
     def test_job_creation_fails_without_credits(
@@ -103,8 +103,8 @@ class TestCreditCheckOnJobCreation:
         )
 
         assert job.status == JobStatus.PENDING
-        mock_user_service.has_credits.assert_not_called()
-        mock_user_service.deduct_credit.assert_not_called()
+        mock_user_service.check_credits.assert_not_called()
+        mock_user_service.deduct_credits.assert_not_called()
 
     def test_job_without_user_email_skips_credit_check(
         self, job_manager, mock_firestore_service, mock_user_service
@@ -116,14 +116,14 @@ class TestCreditCheckOnJobCreation:
         )
 
         assert job.status == JobStatus.PENDING
-        mock_user_service.has_credits.assert_not_called()
+        mock_user_service.check_credits.assert_not_called()
 
     def test_deduction_failure_deletes_job_and_raises(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """If credit deduction fails after job creation, the job is deleted."""
-        mock_user_service.has_credits.return_value = True
-        mock_user_service.deduct_credit.return_value = (False, 0, "Insufficient credits")
+        mock_user_service.check_credits.return_value = 5  # passes the gate
+        mock_user_service.deduct_credits.return_value = (False, 0, "Race condition: insufficient credits")
 
         with pytest.raises(InsufficientCreditsError):
             job_manager.create_job(
@@ -137,50 +137,86 @@ class TestCreditCheckOnJobCreation:
 
 
 class TestCreditRefundOnJobFailure:
-    """Test credit refund when jobs fail."""
+    """Test credit refund when jobs fail.
+
+    _refund_credit_for_job now calls user_service.add_credits directly
+    (rather than refund_credit) so it can refund the exact credits_charged
+    amount instead of a hard-coded 1.
+    """
+
+    def _mock_job(self, credits_charged=1, credit_refunded=False, user_email="user@test.com"):
+        """Helper: build a minimal mock Job with state_data.credits_charged."""
+        job = Mock(spec=Job)
+        job.user_email = user_email
+        job.credit_refunded = credit_refunded
+        job.state_data = {"credits_charged": credits_charged}
+        return job
 
     def test_credit_refunded_on_job_failure(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
-        """Credit is refunded when a non-admin job fails."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
+        """Credit is refunded when a non-admin job fails (1-credit legacy job)."""
+        mock_job = self._mock_job(credits_charged=1)
         mock_firestore_service.get_job.return_value = mock_job
-        mock_user_service.refund_credit.return_value = (True, 1, "Refunded")
+        mock_user_service.add_credits.return_value = (True, 1, "Refunded")
 
         with patch('backend.services.auth_service.is_admin_email', return_value=False):
             result = job_manager.fail_job("job123", "Processing error")
 
         assert result is True
-        mock_user_service.refund_credit.assert_called_once_with(
-            "user@test.com", "job123", reason="job_failed"
+        mock_user_service.add_credits.assert_called_once_with(
+            "user@test.com", amount=1, reason="job_failed", job_id="job123"
         )
+
+    def test_multi_credit_job_refunds_full_amount_on_failure(
+        self, job_manager, mock_firestore_service, mock_user_service
+    ):
+        """A 4-credit long-duration job must refund 4 credits on failure, not 1."""
+        mock_job = self._mock_job(credits_charged=4)
+        mock_firestore_service.get_job.return_value = mock_job
+        mock_user_service.add_credits.return_value = (True, 6, "Refunded 4")
+
+        with patch('backend.services.auth_service.is_admin_email', return_value=False):
+            result = job_manager.fail_job("job123", "Processing error")
+
+        assert result is True
+        mock_user_service.add_credits.assert_called_once_with(
+            "user@test.com", amount=4, reason="job_failed", job_id="job123"
+        )
+
+    def test_payment_bypassed_job_skips_refund_on_failure(
+        self, job_manager, mock_firestore_service, mock_user_service
+    ):
+        """Admin / payment_bypassed jobs have credits_charged=0 — nothing to refund."""
+        mock_job = self._mock_job(credits_charged=0)
+        mock_firestore_service.get_job.return_value = mock_job
+
+        with patch('backend.services.auth_service.is_admin_email', return_value=False):
+            result = job_manager.fail_job("job123", "Processing error")
+
+        assert result is True
+        mock_user_service.add_credits.assert_not_called()
 
     def test_credit_refund_skipped_for_admin_jobs(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Credit refund is skipped for admin-owned jobs."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "admin@nomadkaraoke.com"
-        mock_job.credit_refunded = False
+        mock_job = self._mock_job(credits_charged=1, user_email="admin@nomadkaraoke.com")
         mock_firestore_service.get_job.return_value = mock_job
 
         with patch('backend.services.auth_service.is_admin_email', return_value=True):
             result = job_manager.fail_job("job123", "Processing error")
 
         assert result is True
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
     def test_refund_failure_does_not_fail_job_marking(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """If refund fails, the job is still marked as failed."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
+        mock_job = self._mock_job(credits_charged=1)
         mock_firestore_service.get_job.return_value = mock_job
-        mock_user_service.refund_credit.side_effect = Exception("Firestore error")
+        mock_user_service.add_credits.side_effect = Exception("Firestore error")
 
         with patch('backend.services.auth_service.is_admin_email', return_value=False):
             result = job_manager.fail_job("job123", "Processing error")
@@ -191,80 +227,124 @@ class TestCreditRefundOnJobFailure:
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """No refund attempted when job has no user_email."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = None
-        mock_job.credit_refunded = False
+        mock_job = self._mock_job(credits_charged=1, user_email=None)
         mock_firestore_service.get_job.return_value = mock_job
 
         result = job_manager.fail_job("job123", "Processing error")
 
         assert result is True
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
     def test_no_double_refund_when_already_refunded(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """No refund if credit_refunded is already True."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = True
+        mock_job = self._mock_job(credits_charged=1, credit_refunded=True)
         mock_firestore_service.get_job.return_value = mock_job
 
         with patch('backend.services.auth_service.is_admin_email', return_value=False):
             result = job_manager.fail_job("job123", "Processing error")
 
         assert result is True
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
 
 class TestCreditRefundOnJobCancellation:
-    """Test credit refund when jobs are cancelled."""
+    """Test credit refund when jobs are cancelled.
+
+    _refund_credit_for_job now calls user_service.add_credits directly
+    (rather than refund_credit) so it can refund the exact credits_charged
+    amount instead of a hard-coded 1.
+    """
+
+    def _mock_job(self, credits_charged=1, credit_refunded=False,
+                  user_email="user@test.com", status=None):
+        """Helper: build a minimal mock Job with state_data.credits_charged."""
+        job = Mock(spec=Job)
+        job.user_email = user_email
+        job.credit_refunded = credit_refunded
+        job.state_data = {"credits_charged": credits_charged}
+        job.status = status or JobStatus.PENDING
+        return job
 
     def test_credit_refunded_on_cancellation(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
-        """Credit is refunded when a non-admin job is cancelled."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.PENDING
+        """Credit is refunded when a non-admin job is cancelled (1-credit job)."""
+        mock_job = self._mock_job(credits_charged=1)
         mock_firestore_service.get_job.return_value = mock_job
-        mock_user_service.refund_credit.return_value = (True, 1, "Refunded")
+        mock_user_service.add_credits.return_value = (True, 1, "Refunded")
 
         with patch('backend.services.auth_service.is_admin_email', return_value=False):
             result = job_manager.cancel_job("job123", reason="User cancelled")
 
         assert result is True
-        mock_user_service.refund_credit.assert_called_once_with(
-            "user@test.com", "job123", reason="job_cancelled"
+        mock_user_service.add_credits.assert_called_once_with(
+            "user@test.com", amount=1, reason="job_cancelled", job_id="job123"
         )
+
+    def test_multi_credit_cancel_refunds_full_amount(
+        self, job_manager, mock_firestore_service, mock_user_service
+    ):
+        """A 4-credit long job cancellation must refund 4 credits, not 1."""
+        mock_job = self._mock_job(credits_charged=4)
+        mock_firestore_service.get_job.return_value = mock_job
+        mock_user_service.add_credits.return_value = (True, 6, "Refunded 4")
+
+        with patch('backend.services.auth_service.is_admin_email', return_value=False):
+            result = job_manager.cancel_job("job123", reason="User cancelled")
+
+        assert result is True
+        mock_user_service.add_credits.assert_called_once_with(
+            "user@test.com", amount=4, reason="job_cancelled", job_id="job123"
+        )
+
+    def test_cancel_guard_prevents_double_refund_when_credit_refunded(
+        self, job_manager, mock_firestore_service, mock_user_service
+    ):
+        """If credit_refunded is already True, cancel must NOT refund again."""
+        mock_job = self._mock_job(credits_charged=4, credit_refunded=True)
+        mock_firestore_service.get_job.return_value = mock_job
+
+        with patch('backend.services.auth_service.is_admin_email', return_value=False):
+            result = job_manager.cancel_job("job123")
+
+        assert result is True
+        mock_user_service.add_credits.assert_not_called()
+
+    def test_payment_bypassed_cancel_refunds_nothing(
+        self, job_manager, mock_firestore_service, mock_user_service
+    ):
+        """Admin / payment_bypassed jobs (credits_charged=0) must not be refunded on cancel."""
+        mock_job = self._mock_job(credits_charged=0)
+        mock_firestore_service.get_job.return_value = mock_job
+
+        with patch('backend.services.auth_service.is_admin_email', return_value=False):
+            result = job_manager.cancel_job("job123")
+
+        assert result is True
+        mock_user_service.add_credits.assert_not_called()
 
     def test_cancel_skips_refund_for_admin_jobs(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Credit refund is skipped when admin cancels their own job."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "admin@nomadkaraoke.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.PENDING
+        mock_job = self._mock_job(credits_charged=1, user_email="admin@nomadkaraoke.com")
         mock_firestore_service.get_job.return_value = mock_job
 
         with patch('backend.services.auth_service.is_admin_email', return_value=True):
             result = job_manager.cancel_job("job123")
 
         assert result is True
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
     def test_cancel_refund_failure_does_not_block_cancellation(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """If refund fails, the job is still cancelled."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.PENDING
+        mock_job = self._mock_job(credits_charged=1)
         mock_firestore_service.get_job.return_value = mock_job
-        mock_user_service.refund_credit.side_effect = Exception("Firestore error")
+        mock_user_service.add_credits.side_effect = Exception("Firestore error")
 
         with patch('backend.services.auth_service.is_admin_email', return_value=False):
             result = job_manager.cancel_job("job123")
@@ -275,109 +355,98 @@ class TestCreditRefundOnJobCancellation:
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """Cannot cancel a job in a terminal state."""
-        mock_job = Mock(spec=Job)
-        mock_job.status = JobStatus.COMPLETE
+        mock_job = self._mock_job(credits_charged=1, status=JobStatus.COMPLETE)
         mock_firestore_service.get_job.return_value = mock_job
 
         result = job_manager.cancel_job("job123")
 
         assert result is False
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
 
 class TestCreditRefundOnJobDeletion:
-    """Test credit refund when jobs are deleted."""
+    """Test credit refund when jobs are deleted.
+
+    _refund_credit_for_job now calls user_service.add_credits directly
+    (rather than refund_credit) so it can refund the exact credits_charged amount.
+    """
+
+    def _mock_job(self, credits_charged=1, credit_refunded=False,
+                  user_email="user@test.com", status=None):
+        job = Mock(spec=Job)
+        job.user_email = user_email
+        job.credit_refunded = credit_refunded
+        job.state_data = {"credits_charged": credits_charged}
+        job.status = status or JobStatus.PENDING
+        job.output_files = {}
+        return job
 
     def test_credit_refunded_on_delete_pending_job(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
-        """Credit is refunded when a pending job is deleted."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.PENDING
-        mock_job.output_files = {}
+        """Credit is refunded when a pending job is deleted (1-credit job)."""
+        mock_job = self._mock_job(credits_charged=1)
         mock_firestore_service.get_job.return_value = mock_job
-        mock_user_service.refund_credit.return_value = (True, 1, "Refunded")
+        mock_user_service.add_credits.return_value = (True, 1, "Refunded")
 
         with patch('backend.services.auth_service.is_admin_email', return_value=False):
             job_manager.delete_job("job123")
 
-        mock_user_service.refund_credit.assert_called_once_with(
-            "user@test.com", "job123", reason="job_deleted"
+        mock_user_service.add_credits.assert_called_once_with(
+            "user@test.com", amount=1, reason="job_deleted", job_id="job123"
         )
 
     def test_no_refund_on_delete_completed_job(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """No refund when deleting a completed job (user got their video)."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.COMPLETE
-        mock_job.output_files = {}
+        mock_job = self._mock_job(credits_charged=1, status=JobStatus.COMPLETE)
         mock_firestore_service.get_job.return_value = mock_job
 
         job_manager.delete_job("job123")
 
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
     def test_no_refund_on_delete_prep_complete_job(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """No refund when deleting a prep-complete job."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.PREP_COMPLETE
-        mock_job.output_files = {}
+        mock_job = self._mock_job(credits_charged=1, status=JobStatus.PREP_COMPLETE)
         mock_firestore_service.get_job.return_value = mock_job
 
         job_manager.delete_job("job123")
 
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
     def test_no_double_refund_on_delete_failed_job(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """No refund when deleting a failed job (already refunded on failure)."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = True
-        mock_job.status = JobStatus.FAILED
-        mock_job.output_files = {}
+        mock_job = self._mock_job(credits_charged=1, credit_refunded=True, status=JobStatus.FAILED)
         mock_firestore_service.get_job.return_value = mock_job
 
         job_manager.delete_job("job123")
 
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
     def test_no_double_refund_on_delete_cancelled_job(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """No refund when deleting a cancelled job (already refunded on cancel)."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = True
-        mock_job.status = JobStatus.CANCELLED
-        mock_job.output_files = {}
+        mock_job = self._mock_job(credits_charged=1, credit_refunded=True, status=JobStatus.CANCELLED)
         mock_firestore_service.get_job.return_value = mock_job
 
         job_manager.delete_job("job123")
 
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
     def test_delete_refund_failure_does_not_block_deletion(
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """If refund fails, the job is still deleted."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "user@test.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.PENDING
-        mock_job.output_files = {}
+        mock_job = self._mock_job(credits_charged=1)
         mock_firestore_service.get_job.return_value = mock_job
-        mock_user_service.refund_credit.side_effect = Exception("Firestore error")
+        mock_user_service.add_credits.side_effect = Exception("Firestore error")
 
         with patch('backend.services.auth_service.is_admin_email', return_value=False):
             job_manager.delete_job("job123")
@@ -389,17 +458,13 @@ class TestCreditRefundOnJobDeletion:
         self, job_manager, mock_firestore_service, mock_user_service
     ):
         """No refund when admin deletes their own job."""
-        mock_job = Mock(spec=Job)
-        mock_job.user_email = "admin@nomadkaraoke.com"
-        mock_job.credit_refunded = False
-        mock_job.status = JobStatus.PENDING
-        mock_job.output_files = {}
+        mock_job = self._mock_job(credits_charged=1, user_email="admin@nomadkaraoke.com")
         mock_firestore_service.get_job.return_value = mock_job
 
         with patch('backend.services.auth_service.is_admin_email', return_value=True):
             job_manager.delete_job("job123")
 
-        mock_user_service.refund_credit.assert_not_called()
+        mock_user_service.add_credits.assert_not_called()
 
 
 class TestWelcomeCredits:

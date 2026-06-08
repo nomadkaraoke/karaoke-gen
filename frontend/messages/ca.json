@@ -571,7 +571,8 @@
     "transcribing": "Transcrivint",
     "correcting": "Corregint",
     "lyricsDone": "Lletres fetes",
-    "lyrics": "Lletres"
+    "lyrics": "Lletres",
+    "confirmDurationCost": "Confirma el cost"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",
@@ -582,7 +583,8 @@
     "autoAccept": "S'acceptarà automàticament",
     "autoSelect": "Se seleccionarà automàticament",
     "willAutoSelectFirst": "Se seleccionarà automàticament el primer",
-    "noOutputsAvailable": "Encara no hi ha sortides disponibles"
+    "noOutputsAvailable": "Encara no hi ha sortides disponibles",
+    "confirmCost": "Confirmar cost"
   },
   "jobActions": {
     "delete": "Suprimeix",
@@ -732,7 +734,8 @@
     "availability": "disponibilitat",
     "views": "{count} visualitzacions",
     "moreVersions": "+{count} més",
-    "select": "Selecciona"
+    "select": "Selecciona",
+    "creditCost": "{credits} crèdits"
   },
   "audioEditor": {
     "loading": "Carregant l'editor d'àudio...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Actualitzarem la pàgina i carregarem el codi més recent.",
     "updateNow": "Actualitza ara",
     "retry": "Torna-ho a provar"
+  },
+  "pricing": {
+    "balance": "Tens {balance} crèdits",
+    "buyCredits": "Compra crèdits",
+    "confirm": "Confirma i comença",
+    "confirmTitle": "Confirma la teva tasca de karaoke",
+    "creditsForDuration": "{minutes} min · {credits} crèdits",
+    "estimatedLabel": "Aproximat — el cost final es confirmarà després de la descàrrega",
+    "reconcileTitle": "Aquesta cançó és més llarga del que s'esperava",
+    "cancel": "Cancel·la"
   }
 }

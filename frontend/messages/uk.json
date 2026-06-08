@@ -571,7 +571,8 @@
     "transcribing": "Транскрибування",
     "correcting": "Виправлення",
     "lyricsDone": "Текст готовий",
-    "lyrics": "Текст"
+    "lyrics": "Текст",
+    "confirmDurationCost": "Підтвердити вартість"
   },
   "jobCard": {
     "actionNeeded": "Потрібна дія",
@@ -582,7 +583,8 @@
     "autoAccept": "Буде автоматично прийнято",
     "autoSelect": "Буде автоматично вибрано",
     "willAutoSelectFirst": "Буде автоматично вибрано перше",
-    "noOutputsAvailable": "Результати поки недоступні"
+    "noOutputsAvailable": "Результати поки недоступні",
+    "confirmCost": "Підтвердити вартість"
   },
   "jobActions": {
     "delete": "Видалити",
@@ -732,7 +734,8 @@
     "availability": "доступність",
     "views": "{count} переглядів",
     "moreVersions": "+ще {count}",
-    "select": "Вибрати"
+    "select": "Вибрати",
+    "creditCost": "{credits} кредитів"
   },
   "audioEditor": {
     "loading": "Завантаження аудіоредактора...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Ми оновимо сторінку та завантажимо найновіший код.",
     "updateNow": "Оновити зараз",
     "retry": "Спробувати ще раз"
+  },
+  "pricing": {
+    "balance": "У тебе {balance} кредитів",
+    "buyCredits": "Купити кредити",
+    "confirm": "Підтвердити та почати",
+    "confirmTitle": "Підтвердь своє караоке-завдання",
+    "creditsForDuration": "{minutes} хв · {credits} кредитів",
+    "estimatedLabel": "Орієнтовно — остаточна вартість підтверджується після завантаження",
+    "reconcileTitle": "Ця пісня довша, ніж очікувалося",
+    "cancel": "Скасувати"
   }
 }

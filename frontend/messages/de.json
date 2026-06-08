@@ -571,7 +571,8 @@
     "transcribing": "Transkribiere",
     "correcting": "Korrigiere",
     "lyricsDone": "Text fertig",
-    "lyrics": "Text"
+    "lyrics": "Text",
+    "confirmDurationCost": "Kosten bestätigen"
   },
   "jobCard": {
     "actionNeeded": "Aktion erforderlich",
@@ -582,7 +583,8 @@
     "autoAccept": "Wird automatisch akzeptiert",
     "autoSelect": "Wird automatisch ausgewählt",
     "willAutoSelectFirst": "Wird automatisch das Erste auswählen",
-    "noOutputsAvailable": "Noch keine Ausgaben verfügbar"
+    "noOutputsAvailable": "Noch keine Ausgaben verfügbar",
+    "confirmCost": "Kosten bestätigen"
   },
   "jobActions": {
     "delete": "Löschen",
@@ -732,7 +734,8 @@
     "availability": "Verfügbarkeit",
     "views": "{count} Aufrufe",
     "moreVersions": "+{count} weitere",
-    "select": "Auswählen"
+    "select": "Auswählen",
+    "creditCost": "{credits} Guthaben"
   },
   "audioEditor": {
     "loading": "Lade Audio-Editor...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Wir aktualisieren die Seite und laden den neuesten Code.",
     "updateNow": "Jetzt aktualisieren",
     "retry": "Erneut versuchen"
+  },
+  "pricing": {
+    "balance": "Du hast {balance} Guthaben",
+    "buyCredits": "Guthaben kaufen",
+    "confirm": "Bestätigen & starten",
+    "confirmTitle": "Bestätige deinen Karaoke-Auftrag",
+    "creditsForDuration": "{minutes} min · {credits} Guthaben",
+    "estimatedLabel": "Geschätzt — endgültige Kosten werden nach dem Download bestätigt",
+    "reconcileTitle": "Dieser Song ist länger als erwartet",
+    "cancel": "Abbrechen"
   }
 }

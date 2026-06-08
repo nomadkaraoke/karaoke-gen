@@ -571,7 +571,8 @@
     "transcribing": "ट्रांसक्राइब हो रहा है",
     "correcting": "सही किया जा रहा है",
     "lyricsDone": "लिरिक्स हो गए",
-    "lyrics": "लिरिक्स"
+    "lyrics": "लिरिक्स",
+    "confirmDurationCost": "लागत की पुष्टि करो"
   },
   "jobCard": {
     "actionNeeded": "एक्शन की ज़रूरत है",
@@ -582,7 +583,8 @@
     "autoAccept": "अपने आप एक्सेप्ट करेगा",
     "autoSelect": "अपने आप सिलेक्ट करेगा",
     "willAutoSelectFirst": "अपने आप पहला सिलेक्ट करेगा",
-    "noOutputsAvailable": "अभी तक कोई आउटपुट उपलब्ध नहीं है"
+    "noOutputsAvailable": "अभी तक कोई आउटपुट उपलब्ध नहीं है",
+    "confirmCost": "लागत की पुष्टि करो"
   },
   "jobActions": {
     "delete": "डिलीट करो",
@@ -732,7 +734,8 @@
     "availability": "अवेलेबिलिटी",
     "views": "{count} व्यूज़",
     "moreVersions": "+{count} और",
-    "select": "चुनो"
+    "select": "चुनो",
+    "creditCost": "{credits} क्रेडिट"
   },
   "audioEditor": {
     "loading": "ऑडियो एडिटर लोड हो रहा है...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "हम पेज को रिफ्रेश करेंगे और लेटेस्ट कोड लोड करेंगे।",
     "updateNow": "अभी अपडेट करो",
     "retry": "फिर से कोशिश करो"
+  },
+  "pricing": {
+    "balance": "तुम्हारे पास {balance} क्रेडिट्स हैं",
+    "buyCredits": "क्रेडिट्स खरीदो",
+    "confirm": "पुष्टि करो और शुरू करो",
+    "confirmTitle": "अपने कराओके जॉब की पुष्टि करो",
+    "creditsForDuration": "{minutes} मिनट · {credits} क्रेडिट्स",
+    "estimatedLabel": "अनुमानित — डाउनलोड के बाद अंतिम लागत की पुष्टि की जाएगी",
+    "reconcileTitle": "यह गाना उम्मीद से लंबा है",
+    "cancel": "कैंसल"
   }
 }

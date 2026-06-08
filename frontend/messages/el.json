@@ -571,7 +571,8 @@
     "transcribing": "Απομαγνητοφώνηση",
     "correcting": "Διόρθωση",
     "lyricsDone": "Οι στίχοι ολοκληρώθηκαν",
-    "lyrics": "Στίχοι"
+    "lyrics": "Στίχοι",
+    "confirmDurationCost": "Επιβεβαίωση κόστους"
   },
   "jobCard": {
     "actionNeeded": "Απαιτείται ενέργεια",
@@ -582,7 +583,8 @@
     "autoAccept": "Θα γίνει αυτόματη αποδοχή",
     "autoSelect": "Θα γίνει αυτόματη επιλογή",
     "willAutoSelectFirst": "Θα γίνει αυτόματη επιλογή του πρώτου",
-    "noOutputsAvailable": "Δεν υπάρχουν διαθέσιμα αποτελέσματα ακόμα"
+    "noOutputsAvailable": "Δεν υπάρχουν διαθέσιμα αποτελέσματα ακόμα",
+    "confirmCost": "Επιβεβαίωση κόστους"
   },
   "jobActions": {
     "delete": "Διαγραφή",
@@ -732,7 +734,8 @@
     "availability": "διαθεσιμότητα",
     "views": "{count} προβολές",
     "moreVersions": "+{count} ακόμα",
-    "select": "Επιλογή"
+    "select": "Επιλογή",
+    "creditCost": "{credits} μονάδες"
   },
   "audioEditor": {
     "loading": "Φόρτωση επεξεργαστή ήχου...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Θα ανανεώσουμε τη σελίδα και θα φορτώσουμε τον πιο πρόσφατο κώδικα.",
     "updateNow": "Ενημέρωση τώρα",
     "retry": "Δοκίμασε ξανά"
+  },
+  "pricing": {
+    "balance": "Έχεις {balance} μονάδες",
+    "buyCredits": "Αγορά μονάδων",
+    "confirm": "Επιβεβαίωση & έναρξη",
+    "confirmTitle": "Επιβεβαίωσε την εργασία καραόκε σου",
+    "creditsForDuration": "{minutes} λεπτά · {credits} μονάδες",
+    "estimatedLabel": "Εκτιμώμενο — το τελικό κόστος επιβεβαιώνεται μετά τη λήψη",
+    "reconcileTitle": "Αυτό το τραγούδι διαρκεί περισσότερο από το αναμενόμενο",
+    "cancel": "Ακύρωση"
   }
 }

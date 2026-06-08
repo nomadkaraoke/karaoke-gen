@@ -571,7 +571,8 @@
     "transcribing": "Se transcrie",
     "correcting": "Se corectează",
     "lyricsDone": "Versuri terminate",
-    "lyrics": "Versuri"
+    "lyrics": "Versuri",
+    "confirmDurationCost": "Confirmă costul"
   },
   "jobCard": {
     "actionNeeded": "Acțiune necesară",
@@ -582,7 +583,8 @@
     "autoAccept": "Se va accepta automat",
     "autoSelect": "Se va selecta automat",
     "willAutoSelectFirst": "Se va selecta automat primul",
-    "noOutputsAvailable": "Niciun rezultat disponibil încă"
+    "noOutputsAvailable": "Niciun rezultat disponibil încă",
+    "confirmCost": "Confirmă costul"
   },
   "jobActions": {
     "delete": "Șterge",
@@ -732,7 +734,8 @@
     "availability": "disponibilitate",
     "views": "{count} vizualizări",
     "moreVersions": "+{count} mai multe",
-    "select": "Selectează"
+    "select": "Selectează",
+    "creditCost": "{credits} credite"
   },
   "audioEditor": {
     "loading": "Se încarcă editorul audio...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Vom reîncărca pagina și vom folosi cel mai recent cod.",
     "updateNow": "Actualizează acum",
     "retry": "Încearcă din nou"
+  },
+  "pricing": {
+    "balance": "Ai {balance} credite",
+    "buyCredits": "Cumpără credite",
+    "confirm": "Confirmă și începe",
+    "confirmTitle": "Confirmă-ți proiectul de karaoke",
+    "creditsForDuration": "{minutes} min · {credits} credite",
+    "estimatedLabel": "Estimat — costul final va fi confirmat după descărcare",
+    "reconcileTitle": "Această melodie este mai lungă decât era de așteptat",
+    "cancel": "Anulează"
   }
 }

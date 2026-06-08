@@ -49,7 +49,7 @@ export interface JobStep {
  * 9. Final Encoding
  * 10. Distribution / Complete
  */
-const STATUS_CONFIG: Record<
+export const STATUS_CONFIG: Record<
   string,
   { step: number; label: string; isBlocking: boolean; color: string }
 > = {
@@ -68,6 +68,9 @@ const STATUS_CONFIG: Record<
   awaiting_audio_edit: { step: 3, label: "editAudio", isBlocking: true, color: "text-amber-400" },
   in_audio_edit: { step: 3, label: "editingAudio", isBlocking: true, color: "text-blue-400" },
   audio_edit_complete: { step: 3, label: "audioEdited", isBlocking: false, color: "text-teal-400" },
+
+  // Step 3.5: Duration Pricing Confirmation (BLOCKING - user must confirm cost before heavy work)
+  awaiting_duration_confirm: { step: 3, label: "confirmDurationCost", isBlocking: true, color: "text-amber-400" },
 
   // Step 4: Parallel Processing (Audio + Lyrics)
   separating_stage1: { step: 4, label: "separatingAudio1", isBlocking: false, color: "text-purple-400" },

@@ -825,7 +825,8 @@ class TestStartJobProcessing:
             input_media_gcs_path="gs://bucket/audio.mp3"
         )
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock()
             mock_worker.trigger_lyrics_worker = AsyncMock()
@@ -865,7 +866,8 @@ class TestStartJobProcessing:
             # Simulate some work
             call_order.append(('lyrics_end', datetime.now()))
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock(side_effect=track_audio)
             mock_worker.trigger_lyrics_worker = AsyncMock(side_effect=track_lyrics)
@@ -894,7 +896,8 @@ class TestStartJobProcessing:
             existing_instrumental_gcs_path="uploads/test123/audio/existing_instrumental.mp3"
         )
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock()
             mock_worker.trigger_lyrics_worker = AsyncMock()
@@ -933,7 +936,8 @@ class TestStartJobProcessing:
             existing_instrumental_gcs_path=None  # No existing instrumental
         )
 
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker:
+        with patch('backend.services.worker_service.get_worker_service') as mock_get_worker, \
+             patch('backend.services.job_manager.reconcile_and_maybe_pause', AsyncMock(return_value=False)):
             mock_worker = Mock()
             mock_worker.trigger_audio_worker = AsyncMock()
             mock_worker.trigger_lyrics_worker = AsyncMock()
@@ -944,6 +948,44 @@ class TestStartJobProcessing:
             # Both workers should be triggered
             mock_worker.trigger_audio_worker.assert_called_once_with("test123")
             mock_worker.trigger_lyrics_worker.assert_called_once_with("test123")
+
+    @pytest.mark.asyncio
+    async def test_workers_not_triggered_when_reconcile_pauses(self, job_manager, mock_firestore_service):
+        """When reconcile_and_maybe_pause returns True, start_job_processing must NOT
+        trigger any downstream workers.
+
+        This is the caller-callee contract gap: if the ``if await
+        reconcile_and_maybe_pause(job_id): return`` guard were deleted from
+        start_job_processing, all other tests would still pass because they all
+        use return_value=False.  This test uses return_value=True so the deletion
+        would cause it to fail — proving the guard is there and effective.
+        """
+        mock_firestore_service.get_job.return_value = Job(
+            job_id="test123",
+            status=JobStatus.PENDING,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            input_media_gcs_path="gs://bucket/audio.mp3",
+        )
+
+        with patch("backend.services.worker_service.get_worker_service") as mock_get_worker, \
+             patch(
+                 "backend.services.job_manager.reconcile_and_maybe_pause",
+                 AsyncMock(return_value=True),  # job paused/cancelled
+             ) as mock_ramp:
+            mock_worker = Mock()
+            mock_worker.trigger_audio_worker = AsyncMock()
+            mock_worker.trigger_lyrics_worker = AsyncMock()
+            mock_get_worker.return_value = mock_worker
+
+            await job_manager.start_job_processing("test123")
+
+            # reconcile was called
+            mock_ramp.assert_awaited_once_with("test123")
+
+            # workers must NOT have been triggered
+            mock_worker.trigger_audio_worker.assert_not_called()
+            mock_worker.trigger_lyrics_worker.assert_not_called()
 
 
 if __name__ == "__main__":

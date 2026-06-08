@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "เลือกดนตรีบรรเลง",
     "selectInstrumentalBody": "เพลง \"{title}\" โดย {artist} รอให้คุณเลือกดนตรีบรรเลง",
     "videoReadyTitle": "วิดีโอพร้อมแล้ว!",
-    "videoReadyBody": "วิดีโอคาราโอเกะเพลง \"{title}\" โดย {artist} พร้อมให้ดาวน์โหลดแล้ว"
+    "videoReadyBody": "วิดีโอคาราโอเกะเพลง \"{title}\" โดย {artist} พร้อมให้ดาวน์โหลดแล้ว",
+    "confirmDurationTitle": "ยืนยันค่าใช้จ่ายของงาน",
+    "confirmDurationBody": "\"{title}\" โดย {artist} ต้องการการยืนยันค่าใช้จ่ายเพื่อดำเนินการต่อ"
   },
   "admin": {
     "invalidDomainFormat": "รูปแบบโดเมนไม่ถูกต้อง",

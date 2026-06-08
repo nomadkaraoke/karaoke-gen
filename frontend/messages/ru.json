@@ -571,7 +571,8 @@
     "transcribing": "Распознавание",
     "correcting": "Исправление",
     "lyricsDone": "Текст готов",
-    "lyrics": "Текст"
+    "lyrics": "Текст",
+    "confirmDurationCost": "Подтвердить стоимость"
   },
   "jobCard": {
     "actionNeeded": "Требуется действие",
@@ -582,7 +583,8 @@
     "autoAccept": "Будет автоматически принято",
     "autoSelect": "Будет автоматически выбрано",
     "willAutoSelectFirst": "Будет автоматически выбрано первое",
-    "noOutputsAvailable": "Пока нет доступных результатов"
+    "noOutputsAvailable": "Пока нет доступных результатов",
+    "confirmCost": "Подтвердить стоимость"
   },
   "jobActions": {
     "delete": "Удалить",
@@ -732,7 +734,8 @@
     "availability": "доступность",
     "views": "{count} просмотров",
     "moreVersions": "Еще +{count}",
-    "select": "Выбрать"
+    "select": "Выбрать",
+    "creditCost": "{credits} кредитов"
   },
   "audioEditor": {
     "loading": "Загрузка аудиоредактора...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Мы обновим страницу и загрузим последнюю версию кода.",
     "updateNow": "Обновить сейчас",
     "retry": "Попробовать снова"
+  },
+  "pricing": {
+    "balance": "У тебя {balance} кредитов",
+    "buyCredits": "Купить кредиты",
+    "confirm": "Подтвердить и начать",
+    "confirmTitle": "Подтверди создание караоке",
+    "creditsForDuration": "{minutes} мин · {credits} кредитов",
+    "estimatedLabel": "Ориентировочно — итоговая стоимость будет подтверждена после скачивания",
+    "reconcileTitle": "Эта песня длиннее, чем ожидалось",
+    "cancel": "Отмена"
   }
 }

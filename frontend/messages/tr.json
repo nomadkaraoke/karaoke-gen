@@ -571,7 +571,8 @@
     "transcribing": "Yazıya dökülüyor",
     "correcting": "Düzeltiliyor",
     "lyricsDone": "Sözler bitti",
-    "lyrics": "Sözler"
+    "lyrics": "Sözler",
+    "confirmDurationCost": "Maliyeti onayla"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",
@@ -582,7 +583,8 @@
     "autoAccept": "Otomatik kabul edecek",
     "autoSelect": "Otomatik seçecek",
     "willAutoSelectFirst": "İlkini otomatik seçecek",
-    "noOutputsAvailable": "Henüz çıktı yok"
+    "noOutputsAvailable": "Henüz çıktı yok",
+    "confirmCost": "Ücreti Onayla"
   },
   "jobActions": {
     "delete": "Sil",
@@ -732,7 +734,8 @@
     "availability": "kullanılabilirlik",
     "views": "{count} görüntülenme",
     "moreVersions": "+{count} daha",
-    "select": "Seç"
+    "select": "Seç",
+    "creditCost": "{credits} kredi"
   },
   "audioEditor": {
     "loading": "Ses düzenleyici yükleniyor...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Sayfayı yenileyeceğiz ve en son kodu yükleyeceğiz.",
     "updateNow": "Şimdi güncelle",
     "retry": "Tekrar dene"
+  },
+  "pricing": {
+    "balance": "{balance} kredin var",
+    "buyCredits": "Kredi satın al",
+    "confirm": "Onayla ve başlat",
+    "confirmTitle": "Karaoke işlemini onayla",
+    "creditsForDuration": "{minutes} dk · {credits} kredi",
+    "estimatedLabel": "Tahmini — nihai maliyet indirmeden sonra kesinleşir",
+    "reconcileTitle": "Bu şarkı beklenenden daha uzun",
+    "cancel": "İptal"
   }
 }

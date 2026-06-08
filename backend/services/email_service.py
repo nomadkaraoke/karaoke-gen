@@ -1120,6 +1120,148 @@ class EmailService:
             text_content=text_content,
         )
 
+    def send_duration_confirm_reminder(
+        self,
+        to_email: str,
+        job_id: Optional[str] = None,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        pending_credits: Optional[int] = None,
+        duration_seconds: Optional[int] = None,
+        confirm_url: Optional[str] = None,
+        locale: str = "en",
+    ) -> bool:
+        """
+        Send a 15-minute idle reminder email for jobs awaiting duration confirmation.
+
+        Sent when a job has been in AWAITING_DURATION_CONFIRM for 15 minutes without
+        the user confirming the extra cost.
+
+        Args:
+            to_email: User's email address
+            job_id: Job ID (used to build the confirm URL if not provided)
+            artist: Artist name for subject line
+            title: Song title for subject line
+            pending_credits: Number of additional credits required
+            duration_seconds: Actual duration of the song in seconds
+            confirm_url: Direct URL to the confirmation page
+            locale: User's locale (future: translated; currently English)
+
+        Returns:
+            True if email was sent successfully
+        """
+        if artist and title:
+            subject = f"Your karaoke job needs you to confirm the cost — {artist} - {title}"
+        else:
+            subject = "Your karaoke job needs you to confirm the cost"
+
+        extra_styles = """
+        .alert {
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .confirm-btn {
+            display: inline-block;
+            background-color: #ff7acc;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 16px 0;
+        }
+        .cost-box {
+            background-color: #f0f9ff;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+"""
+
+        song_name = (
+            f" for <strong>{html.escape(artist)} — {html.escape(title)}</strong>"
+            if artist and title
+            else ""
+        )
+        song_name_text = f" for {artist} — {title}" if artist and title else ""
+
+        # Build cost detail line (best-effort — fields may be absent for older jobs)
+        if pending_credits is not None and duration_seconds is not None:
+            duration_mins = duration_seconds // 60
+            duration_secs = duration_seconds % 60
+            duration_str = f"{duration_mins}:{duration_secs:02d}"
+            cost_detail_html = (
+                f"<p>The song{song_name} turned out to be "
+                f"<strong>{duration_str}</strong> long and requires "
+                f"<strong>{pending_credits} additional credit"
+                f"{'s' if pending_credits != 1 else ''}</strong> to process.</p>"
+            )
+            cost_detail_text = (
+                f"The song{song_name_text} turned out to be {duration_str} long and "
+                f"requires {pending_credits} additional credit"
+                f"{'s' if pending_credits != 1 else ''} to process.\n"
+            )
+        elif pending_credits is not None:
+            cost_detail_html = (
+                f"<p>Processing{song_name} requires "
+                f"<strong>{pending_credits} additional credit"
+                f"{'s' if pending_credits != 1 else ''}</strong>.</p>"
+            )
+            cost_detail_text = (
+                f"Processing{song_name_text} requires {pending_credits} additional credit"
+                f"{'s' if pending_credits != 1 else ''}.\n"
+            )
+        else:
+            cost_detail_html = f"<p>Your karaoke job{song_name} requires a few extra credits to continue.</p>"
+            cost_detail_text = f"Your karaoke job{song_name_text} requires a few extra credits to continue.\n"
+
+        # TODO(i18n): translate subject/body once duration-confirm keys are added to
+        # backend/translations/{locale}.json.  URL already uses the locale prefix.
+        locale_prefix = get_locale_prefix(locale)
+        url_to_use = confirm_url or (
+            f"{self.frontend_url}{locale_prefix}/app/jobs#/{job_id}/review"
+            if job_id
+            else f"{self.frontend_url}{locale_prefix}/app"
+        )
+
+        content = f"""
+    <div class="alert">
+        ⏰ Your job is waiting for your confirmation
+    </div>
+
+    {cost_detail_html}
+
+    <p>Please visit your job to review the cost and confirm whether to continue processing.</p>
+
+    <p style="text-align: center;">
+        <a href="{html.escape(url_to_use)}" class="confirm-btn">Confirm cost &amp; continue</a>
+    </p>
+
+    <p>If you have any questions, just reply to this email — we're happy to help.</p>
+"""
+
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
+
+        text_content = (
+            f"Your karaoke job is waiting for your confirmation.\n\n"
+            f"{cost_detail_text}\n"
+            f"Please visit your job to confirm: {url_to_use}\n\n"
+            f"If you have any questions, just reply to this email — we're happy to help."
+        )
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
     def send_review_expired(
         self,
         to_email: str,
@@ -1204,6 +1346,148 @@ class EmailService:
             f"{t(locale, 'emails.reviewExpired.refundNotice', credits_balance=credits_balance, credits_word=credits_word)}\n\n"
             f"{self.frontend_url}{get_locale_prefix(locale)}/app\n\n"
             f"{t(locale, 'emails.reviewExpired.helpOffer')}"
+        )
+
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
+    def send_duration_confirm_expired(
+        self,
+        to_email: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        credits_refunded: int = 0,
+        locale: str = "en",
+        reason: str = "timeout",
+    ) -> bool:
+        """
+        Send duration-confirm cancellation notification email.
+
+        Two cancellation reasons are supported via the ``reason`` parameter:
+
+        - ``"timeout"`` (default): job was auto-cancelled after 48 hours in
+          AWAITING_DURATION_CONFIRM because the user never confirmed the extra cost.
+        - ``"over_limit"`` : job was immediately cancelled because the audio
+          duration exceeds the supported 60-minute ceiling.
+
+        Args:
+            to_email: User's email address
+            artist: Artist name for subject line
+            title: Song title for subject line
+            credits_refunded: Number of credits that were refunded
+            locale: User locale (reserved for future i18n; currently English)
+            reason: "timeout" or "over_limit" — controls the cancellation message
+
+        Returns:
+            True if email was sent successfully
+        """
+        if reason == "over_limit":
+            if artist and title:
+                subject = f"Your karaoke job was cancelled — audio exceeds 60 minutes ({artist} - {title})"
+            else:
+                subject = "Your karaoke job was cancelled — audio exceeds 60 minutes"
+        else:
+            if artist and title:
+                subject = f"Your karaoke job was cancelled — cost not confirmed in time ({artist} - {title})"
+            else:
+                subject = "Your karaoke job was cancelled — cost not confirmed in time"
+
+        extra_styles = """
+        .info-box {
+            background-color: #f0f9ff;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .credit-badge {
+            display: inline-block;
+            background-color: #22c55e;
+            color: #ffffff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        .create-btn {
+            display: inline-block;
+            background-color: #ff7acc;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 16px 0;
+        }
+"""
+
+        song_name = f" for <strong>{html.escape(artist)} - {html.escape(title)}</strong>" if artist and title else ""
+        song_name_text = f" for {artist} - {title}" if artist and title else ""
+        credits_word = "credit" if credits_refunded == 1 else "credits"
+
+        refund_notice_html = (
+            f"<p>We've refunded <span class=\"credit-badge\">{credits_refunded} {credits_word}</span> "
+            f"to your account.</p>"
+            if credits_refunded > 0
+            else "<p>Your account has been updated.</p>"
+        )
+        refund_notice_text = (
+            f"We've refunded {credits_refunded} {credits_word} to your account."
+            if credits_refunded > 0
+            else "Your account has been updated."
+        )
+
+        if reason == "over_limit":
+            cancel_reason_html = (
+                f"Your karaoke job{song_name} was automatically cancelled because the audio "
+                f"exceeds the supported 60-minute limit."
+            )
+            cancel_reason_text = (
+                f"Your karaoke job{song_name_text} was automatically cancelled because the "
+                f"audio exceeds the supported 60-minute limit."
+            )
+        else:
+            cancel_reason_html = (
+                f"Your karaoke job{song_name} was automatically cancelled because the extra cost "
+                f"was not confirmed within 48 hours."
+            )
+            cancel_reason_text = (
+                f"Your karaoke job{song_name_text} was automatically cancelled because the extra "
+                f"cost was not confirmed within 48 hours."
+            )
+
+        # TODO(i18n): translate subject/body once duration-confirm keys are added to
+        # backend/translations/{locale}.json.  URL already uses the locale prefix.
+        locale_prefix = get_locale_prefix(locale)
+        app_url = f"{self.frontend_url}{locale_prefix}/app"
+
+        content = f"""
+    <div class="info-box">
+        {cancel_reason_html}
+    </div>
+
+    {refund_notice_html}
+
+    <p>You can start a new job at any time — your credits are ready to use.</p>
+
+    <p style="text-align: center;">
+        <a href="{html.escape(app_url)}" class="create-btn">Create a new job</a>
+    </p>
+
+    <p>If you have any questions, just reply to this email — we're happy to help.</p>
+"""
+
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
+
+        text_content = (
+            f"{cancel_reason_text}\n\n"
+            f"{refund_notice_text}\n\n"
+            f"You can start a new job at any time: {app_url}\n\n"
+            f"If you have any questions, just reply to this email — we're happy to help."
         )
 
         return self.provider.send_email(

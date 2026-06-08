@@ -1596,6 +1596,45 @@ export const api = {
     });
     return handleResponse(response);
   },
+
+  /**
+   * Estimate the credit cost for a URL before creating a job.
+   * Returns duration (may be null if unknown), credits required, whether the
+   * job is blocked (e.g. exceeds max duration), and the audio source.
+   */
+  async estimateDuration(url: string): Promise<{
+    duration_seconds: number | null;
+    credits: number;
+    blocked: boolean;
+    source: string;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/estimate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ url }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Confirm a duration-priced job after the user acknowledges the credit cost.
+   * Possible non-2xx: 402 (insufficient credits), 409 (figure changed / wrong state).
+   * Both are surfaced as ApiError with a .status property so callers can branch.
+   */
+  async confirmDuration(jobId: string, acknowledgedCredits: number): Promise<Job> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/confirm-duration`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ acknowledged_credits: acknowledgedCredits }),
+    });
+    return handleResponse<Job>(response);
+  },
 };
 
 // Types for credits/payment

@@ -77,9 +77,43 @@ class TestSummaryFieldPathsIncludesRetryPending:
         assert 'cloud_run_retry_pending' in _SUMMARY_STATE_DATA_KEYS
 
 
+class TestSummaryFieldPathsIncludesDurationPricing:
+    """Regression: duration-pricing fields must be in both SUMMARY_FIELD_PATHS
+    and _SUMMARY_STATE_DATA_KEYS so the dashboard can render the
+    awaiting_duration_confirm modal with correct cost figures.
+
+    Per project MEMORY note: mocked-job tests won't catch a missing Firestore
+    projection — this class is the authoritative regression guard.
+    """
+
+    _EXPECTED_STATE_DATA_FIELDS = [
+        'credits_charged',
+        'pending_additional_credits',
+        'duration_actual_seconds',
+        'duration_confirm_reason',
+    ]
+
+    def test_firestore_projection_includes_duration_pricing_fields(self):
+        from backend.services.firestore_service import FirestoreService
+        for field in self._EXPECTED_STATE_DATA_FIELDS:
+            path = f'state_data.{field}'
+            assert path in FirestoreService.SUMMARY_FIELD_PATHS, (
+                f"'{path}' must be in SUMMARY_FIELD_PATHS so the dashboard "
+                f"can display the duration-pricing confirm modal"
+            )
+
+    def test_summary_prune_allows_duration_pricing_keys(self):
+        from backend.api.routes.jobs import _SUMMARY_STATE_DATA_KEYS
+        for field in self._EXPECTED_STATE_DATA_FIELDS:
+            assert field in _SUMMARY_STATE_DATA_KEYS, (
+                f"'{field}' must be in _SUMMARY_STATE_DATA_KEYS so it is not "
+                f"stripped before reaching the dashboard"
+            )
+
+
 class TestJobStatusTransitions:
     """Tests for job status transition validation.
-    
+
     These test the Job model's state machine which is critical for
     preventing invalid operations.
     """

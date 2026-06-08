@@ -837,6 +837,88 @@ class TestNotificationFormatting:
             assert "download" in payload["body"].lower()
 
 
+class TestDurationConfirmNotification:
+    """Tests for send_blocking_notification with action_type='duration_confirm'."""
+
+    @pytest.mark.asyncio
+    async def test_duration_confirm_notification_title_and_body(self, push_service):
+        """send_blocking_notification formats duration_confirm notification correctly."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [{
+                "endpoint": "https://push.example.com/endpoint",
+                "keys": {"p256dh": "key", "auth": "auth"},
+                "tenant_id": None,
+            }]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        job = {
+            "job_id": "test-job-dur-001",
+            "user_email": "test@example.com",
+            "artist": "Test Artist",
+            "title": "Test Song",
+        }
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            await push_service.send_blocking_notification(job, "duration_confirm")
+
+            call_args = mock_webpush.call_args
+            import json
+            payload = json.loads(call_args[1]["data"])
+
+            # Title must indicate cost confirmation, not instrumental or lyrics
+            assert "confirm" in payload["title"].lower() or "cost" in payload["title"].lower(), (
+                f"Expected cost-confirmation title, got: {payload['title']!r}"
+            )
+            # Body must mention confirmation (not instrumental selection)
+            assert "confirm" in payload["body"].lower(), (
+                f"Expected confirmation body, got: {payload['body']!r}"
+            )
+            # URL must point to dashboard (/app), NOT to /instrumental or /review
+            assert payload["url"] == "/app", (
+                f"Expected /app deeplink for duration_confirm, got: {payload['url']!r}"
+            )
+            assert "/instrumental" not in payload["url"], (
+                "duration_confirm must NOT deeplink to /instrumental"
+            )
+            assert "/review" not in payload["url"], (
+                "duration_confirm must NOT deeplink to /review"
+            )
+
+    @pytest.mark.asyncio
+    async def test_duration_confirm_does_not_affect_instrumental(self, push_service):
+        """Instrumental branch still produces /instrumental URL after adding duration_confirm."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {
+            "push_subscriptions": [{
+                "endpoint": "https://push.example.com/endpoint",
+                "keys": {"p256dh": "key", "auth": "auth"},
+                "tenant_id": None,
+            }]
+        }
+        push_service.db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+        job = {
+            "job_id": "test-job-dur-002",
+            "user_email": "test@example.com",
+            "artist": "Test Artist",
+            "title": "Test Song",
+        }
+
+        with patch('backend.services.push_notification_service.webpush') as mock_webpush:
+            await push_service.send_blocking_notification(job, "instrumental")
+
+            call_args = mock_webpush.call_args
+            import json
+            payload = json.loads(call_args[1]["data"])
+            assert "/instrumental" in payload["url"], (
+                f"Instrumental branch must still use /instrumental URL, got: {payload['url']!r}"
+            )
+
+
 class TestSingleton:
     """Tests for singleton pattern."""
 

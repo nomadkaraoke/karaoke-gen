@@ -45,6 +45,9 @@ class JobStatus(str, Enum):
     IN_AUDIO_EDIT = "in_audio_edit"              # User is actively editing audio
     AUDIO_EDIT_COMPLETE = "audio_edit_complete"  # User submitted edited audio
 
+    # Optional: duration cost confirmation (BLOCKING) - confirm credits before heavy processing
+    AWAITING_DURATION_CONFIRM = "awaiting_duration_confirm"  # ⚠️ WAITING FOR USER - confirm duration-based cost
+
     # Stage 2a: Audio separation (parallel track 1)
     SEPARATING_STAGE1 = "separating_stage1"      # Clean instrumental separation (Modal API)
     SEPARATING_STAGE2 = "separating_stage2"      # Backing vocals separation (Modal API)
@@ -107,16 +110,23 @@ STATE_TRANSITIONS = {
     # Audio search flow (for artist+title search mode)
     JobStatus.SEARCHING_AUDIO: [JobStatus.AWAITING_AUDIO_SELECTION, JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED],
     JobStatus.AWAITING_AUDIO_SELECTION: [JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED, JobStatus.CANCELLED],
-    JobStatus.DOWNLOADING_AUDIO: [JobStatus.DOWNLOADING, JobStatus.FAILED],
+    JobStatus.DOWNLOADING_AUDIO: [JobStatus.DOWNLOADING, JobStatus.AWAITING_DURATION_CONFIRM, JobStatus.FAILED],
 
     # DOWNLOADING allows parallel processing (audio + lyrics) and then screens when both complete
     # Can also enter optional audio edit phase if requires_audio_edit flag is set
-    JobStatus.DOWNLOADING: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.AWAITING_AUDIO_EDIT, JobStatus.FAILED],
+    JobStatus.DOWNLOADING: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.AWAITING_AUDIO_EDIT, JobStatus.AWAITING_DURATION_CONFIRM, JobStatus.FAILED],
 
     # Optional audio edit phase (trim, cut, mute, join input audio before processing)
     JobStatus.AWAITING_AUDIO_EDIT: [JobStatus.IN_AUDIO_EDIT, JobStatus.AUDIO_EDIT_COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED],
     JobStatus.IN_AUDIO_EDIT: [JobStatus.AWAITING_AUDIO_EDIT, JobStatus.AUDIO_EDIT_COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED],
-    JobStatus.AUDIO_EDIT_COMPLETE: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.FAILED],
+    JobStatus.AUDIO_EDIT_COMPLETE: [JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING, JobStatus.GENERATING_SCREENS, JobStatus.AWAITING_DURATION_CONFIRM, JobStatus.FAILED],
+
+    # Duration cost confirmation (BLOCKING) - user confirms before heavy processing begins
+    JobStatus.AWAITING_DURATION_CONFIRM: [
+        JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING,
+        JobStatus.GENERATING_SCREENS, JobStatus.AWAITING_AUDIO_EDIT,
+        JobStatus.FAILED, JobStatus.CANCELLED,
+    ],
 
     # Audio separation flow
     JobStatus.SEPARATING_STAGE1: [JobStatus.SEPARATING_STAGE2, JobStatus.FAILED],
@@ -595,6 +605,11 @@ class JobCreate(BaseModel):
 
     # Private (non-published) track mode
     is_private: bool = False                     # Private tracks: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive
+
+    # Credit pricing: how many credits to charge for this job at creation time.
+    # Search and upload jobs pass the default (1) and may top up later.
+    # URL jobs with a known duration pass ceil(duration/600) credits.
+    credits: int = 1
 
     # Request metadata (set by API endpoint from request headers)
     request_metadata: Dict[str, Any] = Field(default_factory=dict)

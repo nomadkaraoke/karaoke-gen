@@ -571,7 +571,8 @@
     "transcribing": "文字起こし中",
     "correcting": "修正中",
     "lyricsDone": "歌詞完了",
-    "lyrics": "歌詞"
+    "lyrics": "歌詞",
+    "confirmDurationCost": "料金を確認"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",
@@ -582,7 +583,8 @@
     "autoAccept": "自動承認されます",
     "autoSelect": "自動選択されます",
     "willAutoSelectFirst": "最初を自動選択します",
-    "noOutputsAvailable": "まだ利用可能な出力がありません"
+    "noOutputsAvailable": "まだ利用可能な出力がありません",
+    "confirmCost": "料金を確認"
   },
   "jobActions": {
     "delete": "削除",
@@ -732,7 +734,8 @@
     "availability": "可用性",
     "views": "{count} 回視聴",
     "moreVersions": "他 {count} 件",
-    "select": "選択"
+    "select": "選択",
+    "creditCost": "{credits} クレジット"
   },
   "audioEditor": {
     "loading": "オーディオエディタを読み込み中...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "ページを更新して最新のコードを読み込みます。",
     "updateNow": "今すぐ更新",
     "retry": "もう一度試す"
+  },
+  "pricing": {
+    "balance": "現在{balance}クレジットお持ちです",
+    "buyCredits": "クレジットを購入",
+    "confirm": "確認して開始",
+    "confirmTitle": "カラオケジョブの確認",
+    "creditsForDuration": "{minutes}分 · {credits}クレジット",
+    "estimatedLabel": "目安 — 最終的な料金はダウンロード後に確定します",
+    "reconcileTitle": "この曲は想定より長くなっています",
+    "cancel": "キャンセル"
   }
 }

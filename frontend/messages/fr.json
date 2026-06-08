@@ -571,7 +571,8 @@
     "transcribing": "Transcription",
     "correcting": "Correction",
     "lyricsDone": "Paroles terminées",
-    "lyrics": "Paroles"
+    "lyrics": "Paroles",
+    "confirmDurationCost": "Confirmer le coût"
   },
   "jobCard": {
     "actionNeeded": "Action requise",
@@ -582,7 +583,8 @@
     "autoAccept": "Acceptera automatiquement",
     "autoSelect": "Sélectionnera automatiquement",
     "willAutoSelectFirst": "Sélectionnera automatiquement le premier",
-    "noOutputsAvailable": "Aucune sortie disponible pour le moment"
+    "noOutputsAvailable": "Aucune sortie disponible pour le moment",
+    "confirmCost": "Confirmer le coût"
   },
   "jobActions": {
     "delete": "Supprimer",
@@ -732,7 +734,8 @@
     "availability": "disponibilité",
     "views": "{count} vues",
     "moreVersions": "+{count} de plus",
-    "select": "Sélectionner"
+    "select": "Sélectionner",
+    "creditCost": "{credits} crédits"
   },
   "audioEditor": {
     "loading": "Chargement de l'éditeur audio...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Nous allons rafraîchir la page et charger la dernière version.",
     "updateNow": "Mettre à jour maintenant",
     "retry": "Réessayer"
+  },
+  "pricing": {
+    "balance": "Tu as {balance} crédits",
+    "buyCredits": "Acheter des crédits",
+    "confirm": "Confirmer et démarrer",
+    "confirmTitle": "Confirme ton projet karaoké",
+    "creditsForDuration": "{minutes} min · {credits} crédits",
+    "estimatedLabel": "Estimé — coût final confirmé après le téléchargement",
+    "reconcileTitle": "Cette chanson est plus longue que prévu",
+    "cancel": "Annuler"
   }
 }

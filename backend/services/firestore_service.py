@@ -190,6 +190,10 @@ class FirestoreService:
         'state_data.backing_vocals_analysis', 'state_data.visibility_change_in_progress',
         'state_data.render_pending_capacity',
         'state_data.cloud_run_retry_pending',
+        'state_data.credits_charged',
+        'state_data.pending_additional_credits',
+        'state_data.duration_actual_seconds',
+        'state_data.duration_confirm_reason',
         'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
         'processing_metadata',
     ]

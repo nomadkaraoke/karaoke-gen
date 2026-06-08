@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Enstrümantal Seç",
     "selectInstrumentalBody": "{artist} - \"{title}\" enstrümantal seçimi gerektiriyor",
     "videoReadyTitle": "Video Hazır!",
-    "videoReadyBody": "{artist} - \"{title}\" karaoke videon indirilmeye hazır"
+    "videoReadyBody": "{artist} - \"{title}\" karaoke videon indirilmeye hazır",
+    "confirmDurationTitle": "İş maliyetini onayla",
+    "confirmDurationBody": "Devam etmek için {artist} - \"{title}\" şarkısının maliyetini onaylaman gerekiyor"
   },
   "admin": {
     "invalidDomainFormat": "Geçersiz alan adı formatı",

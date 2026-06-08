@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Vyber instrumentál",
     "selectInstrumentalBody": "\"{title}\" od {artist} vyžaduje výběr instrumentálu",
     "videoReadyTitle": "Video je připraveno!",
-    "videoReadyBody": "Tvoje karaoke video pro \"{title}\" od {artist} je připraveno ke stažení"
+    "videoReadyBody": "Tvoje karaoke video pro \"{title}\" od {artist} je připraveno ke stažení",
+    "confirmDurationTitle": "Potvrď cenu úlohy",
+    "confirmDurationBody": "\"{title}\" od {artist} vyžaduje potvrzení ceny pro pokračování"
   },
   "admin": {
     "invalidDomainFormat": "Neplatný formát domény",

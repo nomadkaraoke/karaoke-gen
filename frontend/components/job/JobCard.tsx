@@ -9,8 +9,11 @@ import { JobActions } from "./JobActions"
 import { AdminJobActions } from "./AdminJobActions"
 import { OutputLinks } from "./OutputLinks"
 import { AudioSearchDialog } from "../audio-search/AudioSearchDialog"
+import { DurationCostConfirm } from "./DurationCostConfirm"
+import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 import { getJobStep, formatStepIndicator, getJobProgressPercent } from "@/lib/job-status"
 import { useAuth } from "@/lib/auth"
+import { useDurationConfirm } from "@/hooks/use-duration-confirm"
 
 /**
  * StatusIndicator component - Shows step-based progress with visual indicator
@@ -86,8 +89,16 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
   const t = useTranslations('jobCard')
   const locale = useLocale()
   const [showAudioSearch, setShowAudioSearch] = useState(false)
-  const { user } = useAuth()
+  const { user, fetchUser } = useAuth()
   const isAdmin = user?.role === 'admin'
+
+  const { modalState, openForJob, handleConfirm, handleBuyCredits, handleClose, handleBuyCreditsClose } =
+    useDurationConfirm({
+      onConfirmSuccess: () => {
+        onRefresh()
+      },
+      onNeedRefresh: onRefresh,
+    })
 
   const createdAt = new Date(job.created_at).toLocaleString()
   const isInteractive = job.status === "awaiting_review" ||
@@ -133,6 +144,18 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
         >
           {t('editAudio')}
         </a>
+      )
+    }
+
+    if (job.status === "awaiting_duration_confirm") {
+      return (
+        <Button
+          size="sm"
+          onClick={() => openForJob(job)}
+          className="text-xs h-7 px-3 bg-amber-500 hover:bg-amber-600 text-white"
+        >
+          {t('confirmCost')}
+        </Button>
       )
     }
 
@@ -234,6 +257,31 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
         onSelect={onRefresh}
         searchTitle={job.title}
       />
+
+      {/* Duration cost confirm modal — shown when job is awaiting_duration_confirm */}
+      {(modalState.phase === "open" || modalState.phase === "confirming") && (
+        <DurationCostConfirm
+          open={true}
+          durationSeconds={modalState.data.durationSeconds}
+          credits={modalState.data.totalCredits}
+          balance={user?.credits ?? 0}
+          reconcile={modalState.data.reconcile}
+          onConfirm={handleConfirm}
+          onClose={handleClose}
+          onBuyCredits={handleBuyCredits}
+        />
+      )}
+
+      {/* Buy credits dialog — opened when confirm returns 402 */}
+      {modalState.phase === "buy_credits" && (
+        <BuyCreditsDialog
+          open={true}
+          onClose={() => {
+            fetchUser() // Refresh balance after potential purchase
+            handleBuyCreditsClose()
+          }}
+        />
+      )}
     </div>
   )
 }

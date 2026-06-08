@@ -571,7 +571,8 @@
     "transcribing": "جاري التفريغ",
     "correcting": "جاري التصحيح",
     "lyricsDone": "اكتملت الكلمات",
-    "lyrics": "الكلمات"
+    "lyrics": "الكلمات",
+    "confirmDurationCost": "تأكيد التكلفة"
   },
   "jobCard": {
     "actionNeeded": "إجراء مطلوب",
@@ -582,7 +583,8 @@
     "autoAccept": "سيتم القبول التلقائي",
     "autoSelect": "سيتم التحديد التلقائي",
     "willAutoSelectFirst": "سيتم التحديد التلقائي للأول",
-    "noOutputsAvailable": "لا توجد مخرجات متاحة بعد"
+    "noOutputsAvailable": "لا توجد مخرجات متاحة بعد",
+    "confirmCost": "تأكيد التكلفة"
   },
   "jobActions": {
     "delete": "حذف",
@@ -732,7 +734,8 @@
     "availability": "التوفر",
     "views": "{count} مشاهدات",
     "moreVersions": "+{count} المزيد",
-    "select": "تحديد"
+    "select": "تحديد",
+    "creditCost": "{credits} رصيد"
   },
   "audioEditor": {
     "loading": "جاري تحميل محرر الصوت...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "سنقوم بتحديث الصفحة وتحميل أحدث كود.",
     "updateNow": "التحديث الآن",
     "retry": "حاول مرة أخرى"
+  },
+  "pricing": {
+    "balance": "لديك {balance} من الرصيد",
+    "buyCredits": "شراء رصيد",
+    "confirm": "التأكيد والبدء",
+    "confirmTitle": "تأكيد طلب الكاريوكي",
+    "creditsForDuration": "{minutes} دقيقة · {credits} رصيد",
+    "estimatedLabel": "تكلفة تقديرية — يتم تأكيد التكلفة النهائية بعد التنزيل",
+    "reconcileTitle": "هذه الأغنية أطول من المتوقع",
+    "cancel": "إلغاء"
   }
 }

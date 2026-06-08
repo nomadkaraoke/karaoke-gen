@@ -103,7 +103,9 @@ class TestProcessAudioDownload:
         with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
              patch("backend.workers.audio_download_worker.StorageService"), \
              patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
-             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory:
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.workers.audio_download_worker.reconcile_and_maybe_pause",
+                   new_callable=AsyncMock, return_value=False):
 
             mock_jm = MagicMock()
             mock_jm.get_job.return_value = job
@@ -205,7 +207,9 @@ class TestProcessAudioDownload:
         with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
              patch("backend.workers.audio_download_worker.StorageService"), \
              patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
-             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory:
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.workers.audio_download_worker.reconcile_and_maybe_pause",
+                   new_callable=AsyncMock, return_value=False):
 
             mock_jm = MagicMock()
             mock_jm.get_job.return_value = job
@@ -312,7 +316,9 @@ class TestCloudRunRetryPending:
         with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
              patch("backend.workers.audio_download_worker.StorageService"), \
              patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
-             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory:
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.workers.audio_download_worker.reconcile_and_maybe_pause",
+                   new_callable=AsyncMock, return_value=False):
 
             mock_jm = MagicMock()
             mock_jm.get_job.return_value = job
@@ -426,6 +432,188 @@ class TestAudioEditPreGeneration:
             assert result is True
             calls = mock_jm.transition_to_state.call_args_list
             assert any(c.kwargs.get('new_status') == JobStatus.AWAITING_AUDIO_EDIT for c in calls)
+
+
+class TestFfprobeSeconds:
+    """Tests for the _ffprobe_seconds helper in duration_reconciliation."""
+
+    def test_ffprobe_seconds_parses_duration(self):
+        """Should return float duration when ffprobe succeeds."""
+        from backend.services.duration_reconciliation import _ffprobe_seconds
+
+        job = MagicMock()
+        job.id = "job-abc"
+        job.input_media_gcs_path = "gs://b/a.flac"
+
+        storage = MagicMock()
+        storage.generate_signed_url.return_value = "https://signed"
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = '{"format": {"duration": "1957.8"}}'
+
+        with patch("backend.services.duration_reconciliation.subprocess.run",
+                   return_value=mock_result) as mock_run:
+            result = _ffprobe_seconds(job, storage)
+
+        assert result == 1957.8
+        storage.generate_signed_url.assert_called_once_with("gs://b/a.flac", expiration_minutes=5)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "ffprobe" in args[0]
+        assert "https://signed" in args
+
+    def test_ffprobe_seconds_returns_none_on_error(self):
+        """Should return None when ffprobe exits with non-zero returncode."""
+        from backend.services.duration_reconciliation import _ffprobe_seconds
+
+        job = MagicMock()
+        job.id = "job-abc"
+        job.input_media_gcs_path = "gs://b/a.flac"
+
+        storage = MagicMock()
+        storage.generate_signed_url.return_value = "https://signed"
+
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stderr = "No such file"
+
+        with patch("backend.services.duration_reconciliation.subprocess.run",
+                   return_value=mock_result):
+            result = _ffprobe_seconds(job, storage)
+
+        assert result is None
+
+    def test_ffprobe_seconds_returns_none_when_no_gcs_path(self):
+        """Should return None when job has no input_media_gcs_path."""
+        from backend.services.duration_reconciliation import _ffprobe_seconds
+
+        job = MagicMock()
+        job.id = "job-abc"
+        job.input_media_gcs_path = None
+
+        storage = MagicMock()
+
+        result = _ffprobe_seconds(job, storage)
+
+        assert result is None
+        storage.generate_signed_url.assert_not_called()
+
+
+class TestReconcileAndMaybePause:
+    """Tests for the reconcile_and_maybe_pause pipeline-wiring function."""
+
+    @pytest.mark.asyncio
+    async def test_returns_true_when_action_is_pause(self):
+        """Should return True (meaning: block worker) when reconcile says pause."""
+        from backend.services.duration_reconciliation import (
+            reconcile_and_maybe_pause, ReconcileResult,
+        )
+
+        # JobManager/StorageService are imported at function scope inside reconcile_and_maybe_pause,
+        # so we patch them at their source modules. get_user_service is also at source module.
+        with patch("backend.services.duration_reconciliation.reconcile_duration",
+                   return_value=ReconcileResult(action="pause", pending_additional_credits=1)), \
+             patch("backend.services.job_manager.JobManager"), \
+             patch("backend.services.user_service.get_user_service"), \
+             patch("backend.services.storage_service.StorageService"):
+            result = await reconcile_and_maybe_pause("job-xyz")
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_returns_true_when_action_is_cancel(self):
+        """Should return True (meaning: block worker) when reconcile says cancel."""
+        from backend.services.duration_reconciliation import (
+            reconcile_and_maybe_pause, ReconcileResult,
+        )
+
+        with patch("backend.services.duration_reconciliation.reconcile_duration",
+                   return_value=ReconcileResult(action="cancel")), \
+             patch("backend.services.job_manager.JobManager"), \
+             patch("backend.services.user_service.get_user_service"), \
+             patch("backend.services.storage_service.StorageService"):
+            result = await reconcile_and_maybe_pause("job-xyz")
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_returns_false_when_action_is_proceed(self):
+        """Should return False (meaning: allow workers) when reconcile says proceed."""
+        from backend.services.duration_reconciliation import (
+            reconcile_and_maybe_pause, ReconcileResult,
+        )
+
+        with patch("backend.services.duration_reconciliation.reconcile_duration",
+                   return_value=ReconcileResult(action="proceed")), \
+             patch("backend.services.job_manager.JobManager"), \
+             patch("backend.services.user_service.get_user_service"), \
+             patch("backend.services.storage_service.StorageService"):
+            result = await reconcile_and_maybe_pause("job-xyz")
+
+        assert result is False
+
+
+class TestNoEditPathRespectsPause:
+    """Tests that the no-edit path in process_audio_download respects reconcile_and_maybe_pause."""
+
+    @pytest.mark.asyncio
+    async def test_workers_not_triggered_when_paused(self):
+        """When reconcile_and_maybe_pause returns True, trigger_audio/lyrics_worker must not be called."""
+        job = _make_job(source_name="YouTube", source_id="dQw4w9WgXcQ")
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.workers.audio_download_worker.reconcile_and_maybe_pause",
+                   new_callable=AsyncMock, return_value=True) as mock_ramp:
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+
+            mock_ws = AsyncMock()
+            mock_ws_factory.return_value = mock_ws
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            mock_ramp.assert_awaited_once_with("test-job-123")
+            mock_ws.trigger_audio_worker.assert_not_awaited()
+            mock_ws.trigger_lyrics_worker.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_workers_triggered_when_not_paused(self):
+        """When reconcile_and_maybe_pause returns False, workers proceed as normal."""
+        job = _make_job(source_name="YouTube", source_id="dQw4w9WgXcQ")
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.workers.audio_download_worker.reconcile_and_maybe_pause",
+                   new_callable=AsyncMock, return_value=False) as mock_ramp:
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+
+            mock_ws = AsyncMock()
+            mock_ws_factory.return_value = mock_ws
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            mock_ramp.assert_awaited_once_with("test-job-123")
+            mock_ws.trigger_audio_worker.assert_awaited_once_with("test-job-123")
+            mock_ws.trigger_lyrics_worker.assert_awaited_once_with("test-job-123")
 
 
 class TestDownloadAudio:

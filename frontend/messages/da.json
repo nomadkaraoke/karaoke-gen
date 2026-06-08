@@ -571,7 +571,8 @@
     "transcribing": "Transskriberer",
     "correcting": "Retter",
     "lyricsDone": "Sangtekster færdige",
-    "lyrics": "Sangtekster"
+    "lyrics": "Sangtekster",
+    "confirmDurationCost": "Bekræft pris"
   },
   "jobCard": {
     "actionNeeded": "Handling påkrævet",
@@ -582,7 +583,8 @@
     "autoAccept": "Vil automatisk acceptere",
     "autoSelect": "Vil automatisk vælge",
     "willAutoSelectFirst": "Vil automatisk vælge første",
-    "noOutputsAvailable": "Ingen outputs tilgængelige endnu"
+    "noOutputsAvailable": "Ingen outputs tilgængelige endnu",
+    "confirmCost": "Bekræft pris"
   },
   "jobActions": {
     "delete": "Slet",
@@ -732,7 +734,8 @@
     "availability": "tilgængelighed",
     "views": "{count} visninger",
     "moreVersions": "+{count} mere",
-    "select": "Vælg"
+    "select": "Vælg",
+    "creditCost": "{credits} kreditter"
   },
   "audioEditor": {
     "loading": "Indlæser lydredigeringsprogram...",
@@ -1489,5 +1492,15 @@
     "updateAvailableSubtitle": "Vi genindlæser siden og henter den nyeste kode.",
     "updateNow": "Opdatér nu",
     "retry": "Prøv igen"
+  },
+  "pricing": {
+    "balance": "Du har {balance} kreditter",
+    "buyCredits": "Køb kreditter",
+    "confirm": "Bekræft og start",
+    "confirmTitle": "Bekræft din karaoke-opgave",
+    "creditsForDuration": "{minutes} min · {credits} kreditter",
+    "estimatedLabel": "Anslået — endelig pris bekræftes efter download",
+    "reconcileTitle": "Denne sang er længere end forventet",
+    "cancel": "Annuller"
   }
 }

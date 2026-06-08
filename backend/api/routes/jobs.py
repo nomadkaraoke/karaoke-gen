@@ -44,7 +44,10 @@ from backend.utils.test_data import is_test_email
 from backend.exceptions import InsufficientCreditsError
 from backend.services.firestore_service import FirestoreService, log_to_job
 from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityResponse
-from pydantic import BaseModel, Field, validator
+from backend.services.user_service import get_user_service
+from backend.services.youtube_download_service import get_youtube_download_service
+from backend.services.pricing import duration_to_credits, is_blocked
+from pydantic import BaseModel, Field, HttpUrl, validator
 
 
 logger = logging.getLogger(__name__)
@@ -120,6 +123,32 @@ async def create_job(
             )
         logger.info(f"Applying default theme: {effective_theme_id}")
 
+        # Duration-based pricing: derive credit cost from known audio duration.
+        # Reject inputs that are too long before any job is created.
+        duration_seconds = request.duration_seconds
+        if duration_seconds is not None and is_blocked(duration_seconds):
+            raise HTTPException(
+                status_code=422,
+                detail="Inputs over 60 minutes aren't supported"
+            )
+        credits = duration_to_credits(duration_seconds) if duration_seconds is not None else 1
+
+        # Anti-mismatch guard: if the client told us how many credits it expects,
+        # reject early if the server's computation disagrees (avoids surprise charges).
+        if request.acknowledged_credits is not None and request.acknowledged_credits != credits:
+            raise HTTPException(
+                status_code=409,
+                detail="Credit figure changed; please refresh"
+            )
+
+        # Build initial state_data with duration estimate for observability.
+        initial_state_data: Dict[str, Any] = {}
+        if duration_seconds is not None:
+            initial_state_data["duration_estimate_seconds"] = duration_seconds
+            initial_state_data["duration_estimate_source"] = "youtube_metadata"
+        else:
+            initial_state_data["duration_estimate_source"] = "unknown"
+
         # Create job with all preferences
         job_create = JobCreate(
             url=str(request.url),
@@ -133,13 +162,18 @@ async def create_job(
             webhook_url=request.webhook_url,
             user_email=user_email,
             is_private=request.is_private or False,
+            credits=credits,
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
 
-        # Store client IP on job for anti-abuse correlation
+        # Persist duration estimate fields and creation_ip in a single Firestore write.
+        update_payload = {
+            f"state_data.{k}": v for k, v in initial_state_data.items()
+        }
         creation_ip = get_client_ip(http_request)
         if creation_ip:
-            FirestoreService().update_job(job.job_id, {"creation_ip": creation_ip})
+            update_payload["creation_ip"] = creation_ip
+        FirestoreService().update_job(job.job_id, update_payload)
 
         # Trace attributes for observability
         add_span_attribute("job_id", job.job_id)
@@ -160,7 +194,7 @@ async def create_job(
             job_id=job.job_id,
             message=t(locale, "jobs.created")
         )
-    except InsufficientCreditsError:
+    except (InsufficientCreditsError, HTTPException):
         raise
     except Exception as e:
         logger.error(f"Error creating job: {e}", exc_info=True)
@@ -538,6 +572,10 @@ _SUMMARY_STATE_DATA_KEYS = {
     'backing_vocals_analysis', 'visibility_change_in_progress',
     'render_pending_capacity',
     'cloud_run_retry_pending',
+    'credits_charged',
+    'pending_additional_credits',
+    'duration_actual_seconds',
+    'duration_confirm_reason',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']
@@ -2561,3 +2599,201 @@ async def change_visibility(
     except Exception as e:
         logger.error(f"Error changing visibility for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to change visibility: {str(e)}")
+
+
+# =============================================================================
+# Duration Confirmation Endpoint
+# =============================================================================
+
+class ConfirmDurationRequest(BaseModel):
+    """Request body for POST /jobs/{job_id}/confirm-duration."""
+    acknowledged_credits: int
+
+
+# Keep a set of background tasks alive to prevent GC (mirrors complete_review pattern)
+_duration_confirm_tasks: set = set()
+
+
+@router.post("/{job_id}/confirm-duration")
+async def confirm_duration(
+    job_id: str,
+    body: ConfirmDurationRequest,
+    http_request: Request,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Confirm duration-based credit charge and resume job processing.
+
+    Called when a job is paused in AWAITING_DURATION_CONFIRM state.
+
+    The only pause reason currently used is ``reconcile``: the actual measured
+    duration costs more than was already charged; ``state_data.pending_additional_credits``
+    holds the delta owed. This applies to URL, upload, and audio-search jobs alike.
+
+    The caller must pass ``acknowledged_credits`` equal to the total credit cost
+    the user has agreed to pay. If the figure has changed (race condition) a 409
+    is returned so the frontend can refresh and re-show the dialog.
+    """
+    locale = get_locale_from_request(http_request)
+
+    # 1. Load job — 404 if not found or not owned by this user.
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+
+    if not _check_job_ownership(job, auth_result):
+        # Return 404 (not 403) to avoid leaking job existence to non-owners.
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+
+    # 2. Status guard.
+    if job.status != JobStatus.AWAITING_DURATION_CONFIRM:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job is not awaiting duration confirmation (status: {job.status})",
+        )
+
+    # 3. Compute owed credits and expected total.
+    #
+    # - credits_charged: total already deducted from the user's account
+    # - pending_additional_credits: exactly how many MORE credits are owed to clear the pause
+    #
+    # The reconcile engine is responsible for computing and storing pending_additional_credits.
+    # confirm_duration never needs to call duration_to_credits.
+    state_data = job.state_data or {}
+    reason = state_data.get("duration_confirm_reason", "reconcile")
+    credits_charged = int(state_data.get("credits_charged", 0))
+    owed = int(state_data.get("pending_additional_credits", 0))
+    expected_total = credits_charged + owed
+
+    # 4. Acknowledged-credits mismatch guard (figure may have changed; client refreshes).
+    if body.acknowledged_credits != expected_total:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"acknowledged_credits ({body.acknowledged_credits}) does not match "
+                f"expected total ({expected_total}). Please refresh and confirm again."
+            ),
+        )
+
+    # 5. Deduct credits if any are owed.
+    if owed > 0:
+        user_email = job.user_email
+        if not user_email:
+            raise HTTPException(status_code=500, detail="Job has no associated user email")
+
+        user_svc = get_user_service()
+        success, _remaining, _msg = user_svc.deduct_credits(
+            user_email,
+            job_id,
+            amount=owed,
+            reason="duration_confirm",
+            count_as_job_creation=False,  # job was already counted at create_job()
+        )
+        if not success:
+            raise InsufficientCreditsError(
+                message=f"Insufficient credits to confirm processing ({owed} credit(s) required).",
+                credits_available=_remaining,
+                credits_required=owed,
+            )
+
+        # Update credits_charged in state_data to reflect the new total.
+        job_manager.update_job(
+            job_id,
+            {
+                "state_data.credits_charged": credits_charged + owed,
+                "state_data.duration_confirmed": True,
+                "state_data.pending_additional_credits": 0,
+            },
+        )
+    else:
+        # owed == 0: nothing to charge, just mark confirmed.
+        job_manager.update_job(
+            job_id,
+            {
+                "state_data.duration_confirmed": True,
+                "state_data.pending_additional_credits": 0,
+            },
+        )
+
+    # 6. Transition job OUT of AWAITING_DURATION_CONFIRM before triggering workers.
+    #
+    # This is the idempotency guard: if a duplicate confirm POST arrives (e.g. a
+    # double-click) the status guard at step 2 will now 409 immediately, preventing
+    # a second pair of worker launches.  We transition to SEPARATING_STAGE1 —
+    # the normal next state for both the audio and lyrics parallel tracks — which is
+    # a valid transition from AWAITING_DURATION_CONFIRM per STATE_TRANSITIONS.
+    # The audio and lyrics workers update their own track states from here on, the
+    # same as the normal convergence path.
+    job_manager.transition_to_state(
+        job_id,
+        new_status=JobStatus.SEPARATING_STAGE1,
+        progress=20,
+        message="Cost confirmed, processing",
+    )
+
+    # 7. Resume processing: trigger both parallel workers in background.
+    # Use asyncio.create_task (mirrors complete_review in review.py) so the HTTP
+    # response returns immediately without waiting for Cloud Run job submission.
+    ws = get_worker_service()
+
+    async def _trigger_workers_after_confirm():
+        try:
+            await asyncio.gather(
+                ws.trigger_audio_worker(job_id),
+                ws.trigger_lyrics_worker(job_id),
+            )
+        except Exception as exc:
+            logger.error(f"Job {job_id}: Failed to trigger workers after duration confirm: {exc}")
+
+    task = asyncio.create_task(_trigger_workers_after_confirm())
+    _duration_confirm_tasks.add(task)
+    task.add_done_callback(_duration_confirm_tasks.discard)
+
+    logger.info(
+        f"Job {job_id}: duration confirmed (reason={reason}, owed={owed}); workers triggered"
+    )
+
+    # 8. Return the updated job.
+    updated_job = job_manager.get_job(job_id)
+    if updated_job is None:
+        # Should not happen, but be safe.
+        return {"job_id": job_id, "status": "confirmed"}
+    return updated_job
+
+
+# ---------------------------------------------------------------------------
+# POST /jobs/estimate — URL duration probe
+# ---------------------------------------------------------------------------
+
+
+class EstimateRequest(BaseModel):
+    url: HttpUrl
+
+
+@router.post("/estimate")
+async def estimate_duration(
+    body: EstimateRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Probe a URL to estimate its duration and compute the credit cost,
+    WITHOUT creating a job or downloading any audio.
+
+    Returns duration_seconds (or None if unknown), source, credits, and
+    whether the duration exceeds the supported ceiling (blocked).
+    """
+    info = await get_youtube_download_service().check_availability(str(body.url))
+    seconds = (info or {}).get("duration")
+    if seconds is None:
+        return {
+            "duration_seconds": None,
+            "source": "unknown",
+            "credits": 1,
+            "blocked": False,
+        }
+    return {
+        "duration_seconds": seconds,
+        "source": "youtube_metadata",
+        "credits": duration_to_credits(seconds),
+        "blocked": is_blocked(seconds),
+    }

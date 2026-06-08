@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Instrumentális sáv kiválasztása",
     "selectInstrumentalBody": "\"{title}\" ({artist}) instrumentális sávjának kiválasztása szükséges",
     "videoReadyTitle": "A videó kész!",
-    "videoReadyBody": "A(z) \"{title}\" ({artist}) karaoke videód készen áll a letöltésre"
+    "videoReadyBody": "A(z) \"{title}\" ({artist}) karaoke videód készen áll a letöltésre",
+    "confirmDurationTitle": "Feladat költségének jóváhagyása",
+    "confirmDurationBody": "{artist} \"{title}\" című számának folytatásához jóvá kell hagynod a költségeket."
   },
   "admin": {
     "invalidDomainFormat": "Érvénytelen domain formátum",

@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Välj instrumental",
     "selectInstrumentalBody": "\"{title}\" av {artist} kräver att du väljer instrumental",
     "videoReadyTitle": "Videon är klar!",
-    "videoReadyBody": "Din karaokevideo för \"{title}\" av {artist} är redo att laddas ner"
+    "videoReadyBody": "Din karaokevideo för \"{title}\" av {artist} är redo att laddas ner",
+    "confirmDurationTitle": "Bekräfta jobbkostnad",
+    "confirmDurationBody": "\"{title}\" av {artist} kräver att du bekräftar kostnaden för att fortsätta"
   },
   "admin": {
     "invalidDomainFormat": "Ogiltigt domänformat",

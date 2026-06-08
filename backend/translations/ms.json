@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "Pilih Instrumental",
     "selectInstrumentalBody": "\"{title}\" oleh {artist} memerlukan pemilihan instrumental",
     "videoReadyTitle": "Video Sedia!",
-    "videoReadyBody": "Video karaoke anda untuk \"{title}\" oleh {artist} sedia untuk dimuat turun"
+    "videoReadyBody": "Video karaoke anda untuk \"{title}\" oleh {artist} sedia untuk dimuat turun",
+    "confirmDurationTitle": "Sahkan kos kerja",
+    "confirmDurationBody": "\"{title}\" oleh {artist} memerlukan pengesahan kos untuk diteruskan"
   },
   "admin": {
     "invalidDomainFormat": "Format domain tidak sah",

@@ -163,7 +163,9 @@
     "selectInstrumentalTitle": "选择伴奏",
     "selectInstrumentalBody": "{artist} 的“{title}”需要选择伴奏",
     "videoReadyTitle": "视频已就绪！",
-    "videoReadyBody": "您制作的卡拉OK视频（{artist} - {title}）已准备好下载"
+    "videoReadyBody": "您制作的卡拉OK视频（{artist} - {title}）已准备好下载",
+    "confirmDurationTitle": "确认任务费用",
+    "confirmDurationBody": "{artist} 的 \"{title}\" 需要确认费用后才能继续"
   },
   "admin": {
     "invalidDomainFormat": "无效的域名格式",
