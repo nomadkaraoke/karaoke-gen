@@ -809,7 +809,10 @@
       "timingOffset": "Timingforskyvning",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Forskyv alle ordtiminger fremover eller bakover. Bruk hvis teksten vises litt tidlig eller sent i forhåndsvisningen.",
-      "playback": "Avspilling"
+      "playback": "Avspilling",
+      "audioLoadError": "Kunne ikke laste inn lyd",
+      "audioStillLoading": "Lyden laster fortsatt inn...",
+      "loadingAudio": "Laster inn lyd..."
     },
     "guidance": {
       "showTips": "Vis tips",

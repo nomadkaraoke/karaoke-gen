@@ -809,7 +809,10 @@
       "timingOffset": "Időzítés eltolása",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Tolja el az összes szó időzítését előre vagy hátra. Használd, ha a dalszöveg kissé korán vagy későn jelenik meg az előnézetben.",
-      "playback": "Lejátszás"
+      "playback": "Lejátszás",
+      "audioLoadError": "Nem sikerült betölteni a hanganyagot",
+      "audioStillLoading": "A hanganyag még töltődik...",
+      "loadingAudio": "Hanganyag betöltése..."
     },
     "guidance": {
       "showTips": "Tippek mutatása",

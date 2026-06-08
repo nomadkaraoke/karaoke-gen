@@ -809,7 +809,10 @@
       "timingOffset": "时间偏移",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "将所有单词的时间向前或向后移动。如果歌词在预览中显得稍微提前或滞后，请使用此功能。",
-      "playback": "播放"
+      "playback": "播放",
+      "audioLoadError": "无法加载音频",
+      "audioStillLoading": "音频仍在加载中...",
+      "loadingAudio": "正在加载音频..."
     },
     "guidance": {
       "showTips": "显示提示",

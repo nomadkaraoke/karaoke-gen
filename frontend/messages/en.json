@@ -809,7 +809,10 @@
       "timingOffset": "Timing Offset",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Shift all word timings forward or backward. Use if lyrics appear slightly early or late in the preview.",
-      "playback": "Playback"
+      "playback": "Playback",
+      "loadingAudio": "Loading audio...",
+      "audioStillLoading": "Audio is still loading...",
+      "audioLoadError": "Couldn't load audio"
     },
     "guidance": {
       "showTips": "Show tips",

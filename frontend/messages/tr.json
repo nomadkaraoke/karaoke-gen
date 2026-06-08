@@ -809,7 +809,10 @@
       "timingOffset": "Zamanlama Kaydırması",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Tüm kelime zamanlamalarını ileri veya geri kaydır. Sözler önizlemede biraz erken veya geç görünüyorsa kullan.",
-      "playback": "Oynatma"
+      "playback": "Oynatma",
+      "audioLoadError": "Ses yüklenemedi",
+      "audioStillLoading": "Ses hâlâ yükleniyor...",
+      "loadingAudio": "Ses yükleniyor..."
     },
     "guidance": {
       "showTips": "İpuçlarını göster",

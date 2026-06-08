@@ -14,6 +14,7 @@ import SegmentDetailsModal from './modals/SegmentDetailsModal'
 import DurationTimelineView from './DurationTimelineView'
 import SingerChip from './SingerChip'
 import { resolveSegmentSinger, hasWordOverrides } from '@/lib/lyrics-review/duet'
+import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
 import type { SingerId } from '@/lib/lyrics-review/types'
 import { cn } from '@/lib/utils'
 
@@ -43,6 +44,8 @@ export default function TranscriptionView({
   onSegmentFocus,
 }: TranscriptionViewProps) {
   const t = useTranslations('lyricsReview.transcription')
+  const tHeader = useTranslations('lyricsReview.header')
+  const { ready: audioReady } = useAudioReady()
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'text' | 'duration'>('text')
 
@@ -191,7 +194,8 @@ export default function TranscriptionView({
                         size="icon"
                         className="h-[18px] w-[18px] min-h-0 min-w-0 p-[1px]"
                         onClick={() => onPlaySegment?.(segment.start_time!)}
-                        title={t('playSegment')}
+                        disabled={!audioReady}
+                        title={audioReady ? t('playSegment') : tHeader('audioStillLoading')}
                       >
                         <Play className="h-3.5 w-3.5" />
                       </Button>

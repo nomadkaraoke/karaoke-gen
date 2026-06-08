@@ -11,6 +11,7 @@ import EditWordList from '../EditWordList'
 import EditTimelineSection from '../EditTimelineSection'
 import useManualSync from '@/hooks/useManualSync'
 import { setModalHandler } from '@/lib/lyrics-review/utils/keyboardHandlers'
+import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
 import { splitWordWithTiming, createWordsWithDistributedTiming } from '@/lib/lyrics-review/utils/wordUtils'
 
 interface EditModalProps {
@@ -52,6 +53,8 @@ export default function EditModal({
 }: EditModalProps) {
   const t = useTranslations('lyricsReview.modals.editAll')
   const tActions = useTranslations('lyricsReview.editActionBar')
+  const tHeader = useTranslations('lyricsReview.header')
+  const { ready: audioReady } = useAudioReady()
   const [editedSegment, setEditedSegment] = useState<LyricsSegment | null>(segment)
   const [isPlaying, setIsPlaying] = useState(false)
   const currentTimeRef = useRef(currentTime)
@@ -368,6 +371,8 @@ export default function EditModal({
                 size="icon"
                 className="h-8 w-8"
                 onClick={handlePlayToggle}
+                disabled={!audioReady}
+                title={audioReady ? undefined : tHeader('audioStillLoading')}
               >
                 {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </Button>

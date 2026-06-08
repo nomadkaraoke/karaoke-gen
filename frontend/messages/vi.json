@@ -809,7 +809,10 @@
       "timingOffset": "Độ lệch thời gian",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Dịch chuyển tất cả thời gian của từ về phía trước hoặc phía sau. Sử dụng nếu lời bài hát xuất hiện hơi sớm hoặc muộn trong bản xem trước.",
-      "playback": "Phát lại"
+      "playback": "Phát lại",
+      "audioLoadError": "Không thể tải âm thanh",
+      "audioStillLoading": "Âm thanh vẫn đang tải...",
+      "loadingAudio": "Đang tải âm thanh..."
     },
     "guidance": {
       "showTips": "Hiện mẹo",

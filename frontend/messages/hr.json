@@ -809,7 +809,10 @@
       "timingOffset": "Pomak tempiranja",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Pomakni sva tempiranja riječi naprijed ili natrag. Koristi ako se tekst pojavljuje malo prerano ili prekasno u pregledu.",
-      "playback": "Reprodukcija"
+      "playback": "Reprodukcija",
+      "audioLoadError": "Nije moguće učitati audio",
+      "audioStillLoading": "Audio se još uvijek učitava...",
+      "loadingAudio": "Učitavanje audija..."
     },
     "guidance": {
       "showTips": "Prikaži savjete",

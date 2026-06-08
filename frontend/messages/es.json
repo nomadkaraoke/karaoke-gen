@@ -809,7 +809,10 @@
       "timingOffset": "Desplazamiento de tiempo",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Desplaza todos los tiempos de las palabras hacia adelante o hacia atrás. Úsalo si las letras aparecen un poco antes o después en la vista previa.",
-      "playback": "Reproducción"
+      "playback": "Reproducción",
+      "audioLoadError": "No se pudo cargar el audio",
+      "audioStillLoading": "El audio aún se está cargando...",
+      "loadingAudio": "Cargando audio..."
     },
     "guidance": {
       "showTips": "Mostrar consejos",

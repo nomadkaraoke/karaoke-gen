@@ -981,6 +981,9 @@ export default function LyricsAnalyzer({
   // Play segment handler
   const handlePlaySegment = useCallback(
     (startTime: number) => {
+      // Ignore playback requests until the audio can play through. AudioPlayer's
+      // globals already no-op when not ready; this avoids even seeking early.
+      if (typeof window !== 'undefined' && !window.isAudioReady) return
       if (typeof window !== 'undefined' && window.seekAndPlayAudio) {
         const adjustedStartTime =
           timingOffsetMs !== 0 ? startTime + timingOffsetMs / 1000 : startTime

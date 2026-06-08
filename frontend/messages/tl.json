@@ -809,7 +809,10 @@
       "timingOffset": "Timing Offset",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "I-shift ang lahat ng word timing pasulong o paatras. Gamitin kung ang lyrics ay lumalabas nang medyo maaga o huli sa preview.",
-      "playback": "Playback"
+      "playback": "Playback",
+      "audioLoadError": "Hindi ma-load ang audio",
+      "audioStillLoading": "Naglo-load pa rin ang audio...",
+      "loadingAudio": "Naglo-load ang audio..."
     },
     "guidance": {
       "showTips": "Ipakita ang mga tip",

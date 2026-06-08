@@ -809,7 +809,10 @@
       "timingOffset": "ออฟเซ็ตเวลา",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "เลื่อนเวลาของคำทั้งหมดไปข้างหน้าหรือข้างหลัง ใช้หากเนื้อเพลงปรากฏเร็วหรือช้าเกินไปเล็กน้อยในตัวอย่าง",
-      "playback": "การเล่น"
+      "playback": "การเล่น",
+      "audioLoadError": "ไม่สามารถโหลดเสียงได้",
+      "audioStillLoading": "ไฟล์เสียงยังโหลดอยู่...",
+      "loadingAudio": "กำลังโหลดไฟล์เสียง..."
     },
     "guidance": {
       "showTips": "แสดงเคล็ดลับ",
