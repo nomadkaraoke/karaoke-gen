@@ -241,10 +241,10 @@ class TestYouTubeDownloadErrorHandling:
             assert "Remote download failed" in str(exc.value)
 
     @pytest.mark.asyncio
-    async def test_invalid_youtube_url_raises_clear_error(self):
+    async def test_download_without_flacfetch_raises_clear_error(self):
         """
-        When given an invalid YouTube URL (no video ID extractable),
-        should raise a clear error.
+        With no flacfetch configured, download must fail clearly (no local
+        yt-dlp fallback on Cloud Run).
         """
         from backend.services.youtube_download_service import (
             YouTubeDownloadService,
@@ -261,11 +261,11 @@ class TestYouTubeDownloadErrorHandling:
 
             with pytest.raises(YouTubeDownloadError) as exc:
                 await service.download(
-                    url="not-a-valid-youtube-url",
+                    url="https://youtu.be/abcDEF12345",
                     job_id="job123",
                 )
 
-            assert "Could not extract video ID" in str(exc.value)
+            assert "flacfetch" in str(exc.value).lower()
 
 
 class TestRemoteVsLocalDownload:
@@ -306,13 +306,20 @@ class TestRemoteVsLocalDownload:
             assert "uploads/job_test/audio/" in result
 
     @pytest.mark.asyncio
-    async def test_local_download_when_remote_not_configured(self):
+    async def test_non_youtube_url_uses_generic_url_source(self):
         """
-        When FLACFETCH_API_URL is not configured, should fall back to local.
+        A non-YouTube URL is routed through flacfetch's generic 'URL' source.
         """
+        mock_client = MagicMock()
+        mock_client.download_by_id = AsyncMock(return_value="download_123")
+        mock_client.wait_for_download = AsyncMock(return_value={
+            "status": "complete",
+            "gcs_path": "gs://bucket/uploads/job_test/audio/test.m4a",
+        })
+
         with patch(
             'backend.services.youtube_download_service.get_flacfetch_client',
-            return_value=None  # No remote client
+            return_value=mock_client
         ):
             from backend.services.youtube_download_service import (
                 YouTubeDownloadService,
@@ -321,18 +328,10 @@ class TestRemoteVsLocalDownload:
             reset_youtube_download_service()
 
             service = YouTubeDownloadService()
-            assert service.is_remote_enabled() is False
+            sc_url = "https://soundcloud.com/forss/flickermood"
+            result = await service.download(url=sc_url, job_id="job_test")
 
-            # Mock the local download to avoid actually calling yt_dlp
-            with patch.object(
-                service, '_download_local',
-                new_callable=AsyncMock,
-                return_value="uploads/job/audio/test.wav"
-            ) as mock_local:
-                result = await service.download(
-                    url="https://youtu.be/abcDEF12345",
-                    job_id="job_test",
-                )
-
-                mock_local.assert_called_once()
-                assert result == "uploads/job/audio/test.wav"
+            call_kwargs = mock_client.download_by_id.call_args.kwargs
+            assert call_kwargs["source_name"] == "URL"
+            assert call_kwargs["download_url"] == sc_url
+            assert "uploads/job_test/audio/" in result

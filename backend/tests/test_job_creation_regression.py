@@ -241,30 +241,13 @@ class TestUserEmailExtraction:
 
 class TestUrlJobWorkerSequencing:
     """
-    Issue 2: YouTube URL download race condition.
+    URL job worker triggering.
 
-    Root cause: Both audio and lyrics workers were triggered in parallel.
-    For URL jobs, lyrics worker would timeout waiting for audio to download.
-
-    These tests verify that URL jobs trigger workers sequentially.
+    URL jobs are now downloaded by the flacfetch service in create_from_url
+    BEFORE any worker runs, so `input_media_gcs_path` is already set and both
+    workers can start in parallel (no sequential audio→lyrics handoff, no local
+    yt-dlp fallback in the worker).
     """
-
-    @pytest.mark.asyncio
-    async def test_url_job_triggers_only_audio_worker_initially(self):
-        """
-        create-from-url must only trigger audio worker, not lyrics worker.
-        The audio worker will trigger lyrics after download completes.
-        """
-        from backend.api.routes.file_upload import _trigger_audio_worker_only
-
-        with patch('backend.api.routes.file_upload.worker_service') as mock_ws:
-            mock_ws.trigger_audio_worker = AsyncMock()
-            mock_ws.trigger_lyrics_worker = AsyncMock()
-
-            await _trigger_audio_worker_only("test-job-id")
-
-            mock_ws.trigger_audio_worker.assert_called_once_with("test-job-id")
-            mock_ws.trigger_lyrics_worker.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_parallel_worker_triggers_both_workers(self):
@@ -283,39 +266,6 @@ class TestUrlJobWorkerSequencing:
 
             mock_ws.trigger_audio_worker.assert_called_once_with("test-job-id")
             mock_ws.trigger_lyrics_worker.assert_called_once_with("test-job-id")
-
-    @pytest.mark.asyncio
-    async def test_audio_worker_triggers_lyrics_after_url_download(self):
-        """
-        Audio worker must trigger lyrics worker after successful URL download.
-        """
-        from backend.workers.audio_worker import _trigger_lyrics_worker_after_url_download
-
-        # Mock at the source module where it's imported from
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_ws:
-            mock_ws = Mock()
-            mock_ws.trigger_lyrics_worker = AsyncMock()
-            mock_get_ws.return_value = mock_ws
-
-            await _trigger_lyrics_worker_after_url_download("test-job-id")
-
-            mock_ws.trigger_lyrics_worker.assert_called_once_with("test-job-id")
-
-    @pytest.mark.asyncio
-    async def test_audio_worker_lyrics_trigger_handles_errors_gracefully(self):
-        """
-        If lyrics worker trigger fails, audio processing should continue.
-        """
-        from backend.workers.audio_worker import _trigger_lyrics_worker_after_url_download
-
-        # Mock at the source module where it's imported from
-        with patch('backend.services.worker_service.get_worker_service') as mock_get_ws:
-            mock_ws = Mock()
-            mock_ws.trigger_lyrics_worker = AsyncMock(side_effect=Exception("Network error"))
-            mock_get_ws.return_value = mock_ws
-
-            # Should not raise exception
-            await _trigger_lyrics_worker_after_url_download("test-job-id")
 
 
 class TestAudioSearchCacheIndependence:

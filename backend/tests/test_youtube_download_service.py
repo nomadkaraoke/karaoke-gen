@@ -4,7 +4,6 @@ Unit tests for YouTubeDownloadService.
 Tests the consolidated YouTube download service that handles all YouTube
 downloads in the cloud backend.
 """
-import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -179,43 +178,42 @@ class TestYouTubeDownloadService:
             assert "Remote download failed" in str(exc.value)
 
     # =========================================================================
-    # Local Fallback Tests
+    # Generic (non-YouTube) URL Tests
     # =========================================================================
 
     @pytest.mark.asyncio
-    async def test_download_falls_back_to_local_when_remote_disabled(self):
-        """When remote not configured, should use local yt_dlp."""
-        mock_storage = MagicMock()
-        mock_storage.upload_fileobj = MagicMock()
+    async def test_download_generic_url_uses_url_source(self):
+        """Non-YouTube URLs route through flacfetch's generic 'URL' source."""
+        mock_client = MagicMock()
+        mock_client.download_by_id = AsyncMock(return_value="download_123")
+        mock_client.wait_for_download = AsyncMock(return_value={
+            "status": "complete",
+            "gcs_path": "gs://bucket/uploads/job123/audio/Artist - Title.m4a",
+        })
 
-        mock_file_handler = MagicMock()
-        mock_file_handler.download_video = MagicMock(return_value="/tmp/test.webm")
-        mock_file_handler.convert_to_wav = MagicMock(return_value="/tmp/test.wav")
-
+        fb_url = "https://www.facebook.com/share/v/1EnC8Bi5Uq/"
         with patch(
             'backend.services.youtube_download_service.get_flacfetch_client',
-            return_value=None  # No remote client
-        ), patch(
-            'backend.services.youtube_download_service.StorageService',
-            return_value=mock_storage
-        ), patch(
-            'backend.services.youtube_download_service.YouTubeDownloadService._download_local',
-            new_callable=AsyncMock,
-            return_value="uploads/job123/audio/test.wav"
-        ) as mock_local:
+            return_value=mock_client
+        ):
             service = YouTubeDownloadService()
 
             result = await service.download(
-                url="https://youtu.be/dQw4w9WgXcQ",
+                url=fb_url,
                 job_id="job123",
+                artist="Artist",
+                title="Title",
             )
 
-            assert result == "uploads/job123/audio/test.wav"
-            mock_local.assert_called_once()
+            assert result == "uploads/job123/audio/Artist - Title.m4a"
+            call_kwargs = mock_client.download_by_id.call_args.kwargs
+            assert call_kwargs["source_name"] == "URL"
+            assert call_kwargs["download_url"] == fb_url
+            assert call_kwargs["source_id"] == fb_url
 
     @pytest.mark.asyncio
-    async def test_download_invalid_url_raises_error(self):
-        """Should raise error for URLs that can't extract video ID."""
+    async def test_download_raises_when_remote_not_configured(self):
+        """No silent local fallback: hard-fail when flacfetch isn't configured."""
         with patch(
             'backend.services.youtube_download_service.get_flacfetch_client',
             return_value=None
@@ -224,11 +222,11 @@ class TestYouTubeDownloadService:
 
             with pytest.raises(YouTubeDownloadError) as exc:
                 await service.download(
-                    url="https://vimeo.com/123456",
+                    url="https://youtu.be/dQw4w9WgXcQ",
                     job_id="job123",
                 )
 
-            assert "Could not extract video ID" in str(exc.value)
+            assert "flacfetch" in str(exc.value).lower()
 
     # =========================================================================
     # Singleton Tests

@@ -21,9 +21,7 @@ import shutil
 import tempfile
 import time
 from typing import Optional, Dict, Any
-from pathlib import Path
 
-from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
@@ -38,29 +36,6 @@ from karaoke_gen.audio_processor import AudioProcessor
 
 
 logger = logging.getLogger(__name__)
-
-
-async def _trigger_lyrics_worker_after_url_download(job_id: str) -> None:
-    """
-    Trigger lyrics worker after URL audio download completes.
-
-    For URL jobs, we use sequential triggering:
-    1. Audio worker downloads and uploads audio to GCS
-    2. Audio worker triggers lyrics worker (this function)
-    3. Both workers then proceed in parallel (audio separation + lyrics transcription)
-
-    This prevents the race condition where lyrics worker times out waiting for audio.
-    """
-    from backend.services.worker_service import get_worker_service
-
-    try:
-        worker_service = get_worker_service()
-        await worker_service.trigger_lyrics_worker(job_id)
-        logger.info(f"Job {job_id}: Triggered lyrics worker after URL download")
-    except Exception as e:
-        # Log but don't fail - audio processing can still continue
-        # The job will eventually timeout if lyrics worker doesn't run
-        logger.error(f"Job {job_id}: Failed to trigger lyrics worker: {e}")
 
 
 # Default ensemble presets — resolved by audio-separator package into models + algorithm.
@@ -78,126 +53,6 @@ DEFAULT_OTHER_MODELS = []  # Demucs 6-stem dropped — no longer separating indi
 AUDIO_WORKER_LOGGERS = [
     "karaoke_gen.audio_processor",
 ]
-
-
-async def download_from_url(url: str, temp_dir: str, artist: str, title: str, job_manager: JobManager = None, job_id: str = None) -> Optional[str]:
-    """
-    Download audio from a URL using local yt_dlp.
-
-    IMPORTANT: This is a LEGACY FALLBACK for non-YouTube URLs only!
-
-    For YouTube URLs, use YouTubeDownloadService instead, which:
-    - Uses remote flacfetch when configured (avoids Cloud Run bot detection)
-    - Has proper error handling and GCS upload
-
-    This function uses local yt_dlp and will likely FAIL for YouTube URLs
-    on Cloud Run due to bot detection (YouTube blocks Cloud Run IP ranges).
-
-    Uses the FileHandler from karaoke_gen which includes:
-    - Anti-detection options (user agent, headers, delays)
-    - Cookie support for authenticated downloads
-    - Retry logic
-
-    If artist and/or title are not provided, attempts to extract them from
-    the URL metadata.
-
-    Args:
-        url: URL to download from (NOT recommended for YouTube - use YouTubeDownloadService)
-        temp_dir: Temporary directory to save to
-        artist: Artist name for filename (can be None for auto-detection)
-        title: Song title for filename (can be None for auto-detection)
-        job_manager: Optional JobManager to update job with detected metadata
-        job_id: Optional job ID to update
-
-    Returns:
-        Path to downloaded audio file, or None if failed
-    """
-    try:
-        from karaoke_gen.file_handler import FileHandler
-        from karaoke_gen.utils import sanitize_filename
-        
-        # Create FileHandler instance
-        file_handler = FileHandler(
-            logger=logger,
-            ffmpeg_base_command="ffmpeg -hide_banner -loglevel error -nostats -y",
-            create_track_subfolders=False,
-            dry_run=False
-        )
-        
-        # Try to extract metadata if artist or title not provided
-        if not artist or not title:
-            logger.info(f"Extracting metadata from URL: {url}")
-            metadata = file_handler.extract_metadata_from_url(url)
-            
-            if metadata:
-                if not artist:
-                    artist = metadata.get('artist', 'Unknown')
-                    logger.info(f"Auto-detected artist: {artist}")
-                if not title:
-                    title = metadata.get('title', 'Unknown')
-                    logger.info(f"Auto-detected title: {title}")
-                
-                # Update job with detected metadata if job_manager provided
-                if job_manager and job_id:
-                    update_data = {}
-                    if artist:
-                        update_data['artist'] = artist
-                    if title:
-                        update_data['title'] = title
-                    if update_data:
-                        job_manager.update_job(job_id, update_data)
-                        logger.info(f"Updated job {job_id} with detected metadata")
-            else:
-                logger.warning("Could not extract metadata from URL, using defaults")
-                artist = artist or "Unknown"
-                title = title or "Unknown"
-        
-        # Create output filename (without extension)
-        safe_artist = sanitize_filename(artist) if artist else "Unknown"
-        safe_title = sanitize_filename(title) if title else "Unknown"
-        output_filename_no_extension = os.path.join(temp_dir, f"{safe_artist} - {safe_title}")
-        
-        # Get YouTube cookies from environment variable if available
-        # This helps bypass "Sign in to confirm you're not a bot" errors
-        cookies_str = os.environ.get("YOUTUBE_COOKIES")
-        if cookies_str:
-            logger.info("Using YouTube cookies for download authentication")
-        else:
-            logger.info("No YOUTUBE_COOKIES env var set - attempting download without cookies")
-        
-        # Download using FileHandler (includes anti-detection features)
-        logger.info(f"Downloading from URL: {url}")
-        downloaded_file = file_handler.download_video(
-            url=url,
-            output_filename_no_extension=output_filename_no_extension,
-            cookies_str=cookies_str
-        )
-        
-        if downloaded_file and os.path.exists(downloaded_file):
-            logger.info(f"Downloaded video: {downloaded_file}")
-            
-            # Convert to WAV for processing
-            wav_file = file_handler.convert_to_wav(
-                input_filename=downloaded_file,
-                output_filename_no_extension=output_filename_no_extension
-            )
-            
-            if wav_file and os.path.exists(wav_file):
-                logger.info(f"Converted to WAV: {wav_file}")
-                return wav_file
-            else:
-                logger.error("WAV conversion failed")
-                return None
-        else:
-            logger.error("Download failed - no file returned")
-            return None
-            
-    except ImportError as e:
-        logger.error(f"Import error: {e}. Check karaoke_gen installation.")
-        return None
-    except Exception as e:
-        logger.error(f"Failed to download from URL {url}: {e}", exc_info=True)
-        return None
 
 
 def create_audio_processor(
@@ -543,12 +398,16 @@ async def download_audio(
     job_manager_instance: JobManager = None
 ) -> Optional[str]:
     """
-    Download or fetch audio file to local temp directory.
-    
-    Handles two cases:
-    1. Uploaded file: Download from GCS using input_media_gcs_path
-    2. URL (YouTube, etc.): Download using yt-dlp or other tools
-    
+    Fetch the job's audio file from GCS to a local temp directory.
+
+    All inputs are expected to already be in GCS by the time this worker runs:
+    - Uploaded files: at input_media_gcs_path
+    - URL jobs: downloaded by the flacfetch service in create_job_from_url
+      before any worker is triggered
+
+    This worker never downloads from a URL itself (no yt-dlp on Cloud Run); a
+    URL job arriving without a GCS file is treated as an upstream bug.
+
     Args:
         job_id: Job ID
         temp_dir: Temporary directory to save to
@@ -594,55 +453,20 @@ async def download_audio(
             logger.info(f"Job {job_id}: Downloaded audio from GCS: {input_url}")
             return local_path
         
-        # Case 3: Fresh URL that needs downloading (legacy fallback)
-        # NOTE: YouTube URLs should be downloaded by YouTubeDownloadService in file_upload.py
-        # BEFORE triggering this worker. If we reach here with a YouTube URL, it means
-        # the download was not done upfront, which will likely fail due to bot detection.
+        # A URL job that reached this worker WITHOUT a pre-downloaded GCS file is
+        # an upstream bug: all URLs are downloaded by the flacfetch service in
+        # create_job_from_url before any worker runs. We never run yt-dlp on
+        # Cloud Run, so there is no local fallback — fail clearly instead.
         if job.url:
-            # Check if this is a YouTube URL that should have been handled earlier
-            is_youtube = any(domain in job.url.lower() for domain in ['youtube.com', 'youtu.be'])
-            if is_youtube:
-                logger.warning(
-                    f"Job {job_id}: YouTube URL reached download_audio() fallback. "
-                    "This may fail due to bot detection. YouTube URLs should be "
-                    "downloaded via YouTubeDownloadService before triggering workers."
-                )
-
-            logger.info(f"Job {job_id}: Downloading from URL: {job.url}")
-
-            # Use provided job_manager or create new one
-            jm = job_manager_instance or JobManager()
-
-            local_path = await download_from_url(
-                job.url,
-                temp_dir,
-                job.artist,
-                job.title,
-                job_manager=jm,
-                job_id=job_id
+            logger.error(
+                f"Job {job_id}: URL job reached the audio worker without a "
+                f"downloaded input_media_gcs_path (url={job.url}). URLs must be "
+                "fetched via the flacfetch service before processing; refusing to "
+                "download locally."
             )
+            return None
 
-            if local_path and os.path.exists(local_path):
-                # Upload to GCS and update job
-                gcs_path = f"jobs/{job_id}/input/{os.path.basename(local_path)}"
-                url = storage.upload_file(local_path, gcs_path)
-
-                # Update job with GCS path for lyrics worker
-                jm.update_job(job_id, {'input_media_gcs_path': gcs_path})
-                jm.update_file_url(job_id, 'input', 'audio', url)
-
-                logger.info(f"Job {job_id}: Downloaded and uploaded audio to GCS: {gcs_path}")
-
-                # For URL jobs, trigger lyrics worker now that audio is available
-                # This is the sequential trigger pattern - audio first, then lyrics
-                await _trigger_lyrics_worker_after_url_download(job_id)
-
-                return local_path
-            else:
-                logger.error(f"Job {job_id}: Failed to download from URL: {job.url}")
-                return None
-        
-        logger.error(f"Job {job_id}: No input source found (no GCS path, file_urls, or URL)")
+        logger.error(f"Job {job_id}: No input source found (no GCS path or file_urls)")
         return None
         
     except Exception as e:
