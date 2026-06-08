@@ -529,7 +529,11 @@
     "emailWhenReady": "Email quando pronto",
     "afterApproval": "Dopo l'approvazione, il tuo video karaoke viene renderizzato e consegnato. ~10 minuti",
     "trackProgressTenant": "Segui i progressi nell'elenco Lavori recenti.",
-    "submitAnother": "Invia un'altra traccia"
+    "submitAnother": "Invia un'altra traccia",
+    "pasteUrlButton": "Incolla un link",
+    "urlSupportedSitesHint": "Funziona con YouTube, Facebook, SoundCloud, TikTok, Vimeo e centinaia di altri siti.",
+    "urlSupportedSitesLink": "Vedi tutti i siti supportati",
+    "useThisUrl": "Usa questo URL"
   },
   "jobStatus": {
     "settingUp": "Configurazione",

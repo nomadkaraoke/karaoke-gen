@@ -529,7 +529,11 @@
     "emailWhenReady": "Email, коли готово",
     "afterApproval": "Після затвердження твоє караоке-відео рендериться та доставляється. ~10 хвилин",
     "trackProgressTenant": "Відстежуй прогрес у списку Останні завдання.",
-    "submitAnother": "Надіслати ще один трек"
+    "submitAnother": "Надіслати ще один трек",
+    "pasteUrlButton": "Вставити посилання",
+    "urlSupportedSitesHint": "Працює з YouTube, Facebook, SoundCloud, TikTok, Vimeo та сотнями інших сайтів.",
+    "urlSupportedSitesLink": "Переглянути всі підтримувані сайти",
+    "useThisUrl": "Використати це посилання"
   },
   "jobStatus": {
     "settingUp": "Налаштування",

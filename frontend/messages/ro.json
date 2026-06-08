@@ -529,7 +529,11 @@
     "emailWhenReady": "Email când este gata",
     "afterApproval": "După aprobare, videoclipul tău de karaoke este randat și livrat. ~10 minute",
     "trackProgressTenant": "Urmărește progresul în lista de Joburi recente.",
-    "submitAnother": "Trimite altă piesă"
+    "submitAnother": "Trimite altă piesă",
+    "pasteUrlButton": "Lipește un link",
+    "urlSupportedSitesHint": "Funcționează cu YouTube, Facebook, SoundCloud, TikTok, Vimeo și sute de alte site-uri.",
+    "urlSupportedSitesLink": "Vezi toate site-urile acceptate",
+    "useThisUrl": "Folosește acest URL"
   },
   "jobStatus": {
     "settingUp": "Se configurează",

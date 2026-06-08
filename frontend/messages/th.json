@@ -529,7 +529,11 @@
     "emailWhenReady": "ส่งอีเมลเมื่อพร้อม",
     "afterApproval": "หลังจากอนุมัติ วิดีโอคาราโอเกะของคุณจะถูกเรนเดอร์และจัดส่ง ~10 นาที",
     "trackProgressTenant": "ติดตามความคืบหน้าในรายการงานล่าสุด",
-    "submitAnother": "ส่งแทร็กอื่น"
+    "submitAnother": "ส่งแทร็กอื่น",
+    "pasteUrlButton": "วางลิงก์",
+    "urlSupportedSitesHint": "รองรับการใช้งานกับ YouTube, Facebook, SoundCloud, TikTok, Vimeo และเว็บไซต์อื่นๆ อีกหลายร้อยแห่ง",
+    "urlSupportedSitesLink": "ดูเว็บไซต์ที่รองรับทั้งหมด",
+    "useThisUrl": "ใช้ URL นี้"
   },
   "jobStatus": {
     "settingUp": "กำลังตั้งค่า",

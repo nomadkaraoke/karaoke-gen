@@ -529,7 +529,11 @@
     "emailWhenReady": "E-mail, až bude hotovo",
     "afterApproval": "Po schválení se tvé karaoke video vyrenderuje a doručí. ~10 minut",
     "trackProgressTenant": "Sleduj postup v seznamu Nedávné úlohy.",
-    "submitAnother": "Odeslat další stopu"
+    "submitAnother": "Odeslat další stopu",
+    "pasteUrlButton": "Vložit odkaz",
+    "urlSupportedSitesHint": "Funguje se službami YouTube, Facebook, SoundCloud, TikTok, Vimeo a stovkami dalších webů.",
+    "urlSupportedSitesLink": "Zobrazit všechny podporované weby",
+    "useThisUrl": "Použít tuto URL"
   },
   "jobStatus": {
     "settingUp": "Nastavování",

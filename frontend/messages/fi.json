@@ -529,7 +529,11 @@
     "emailWhenReady": "Sähköposti kun valmis",
     "afterApproval": "Hyväksymisen jälkeen karaokevideosi renderöidään ja toimitetaan. ~10 minuuttia",
     "trackProgressTenant": "Seuraa edistymistä Viimeisimmät työt -luettelossa.",
-    "submitAnother": "Lähetä toinen raita"
+    "submitAnother": "Lähetä toinen raita",
+    "pasteUrlButton": "Liitä linkki",
+    "urlSupportedSitesHint": "Toimii YouTuben, Facebookin, SoundCloudin, TikTokin, Vimeon ja satojen muiden sivustojen kanssa.",
+    "urlSupportedSitesLink": "Katso kaikki tuetut sivustot",
+    "useThisUrl": "Käytä tätä osoitetta"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",

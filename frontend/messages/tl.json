@@ -529,7 +529,11 @@
     "emailWhenReady": "Mag-email kapag handa na",
     "afterApproval": "Pagkatapos aprubahan, ire-render at idedeliver ang iyong karaoke video. ~10 minuto",
     "trackProgressTenant": "Subaybayan ang progreso sa listahan ng Mga Kamakailang Job.",
-    "submitAnother": "Mag-submit ng Ibang Track"
+    "submitAnother": "Mag-submit ng Ibang Track",
+    "pasteUrlButton": "Mag-paste ng link",
+    "urlSupportedSitesHint": "Gumagana sa YouTube, Facebook, SoundCloud, TikTok, Vimeo at daan-daang iba pang mga site.",
+    "urlSupportedSitesLink": "Tingnan ang lahat ng suportadong site",
+    "useThisUrl": "Gamitin ang URL na Ito"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",

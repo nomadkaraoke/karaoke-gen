@@ -529,7 +529,11 @@
     "emailWhenReady": "E-mail, når den er klar",
     "afterApproval": "Efter godkendelse renderes og leveres din karaokevideo. ~10 minutter",
     "trackProgressTenant": "Følg fremskridt i listen over seneste job.",
-    "submitAnother": "Indsend et andet nummer"
+    "submitAnother": "Indsend et andet nummer",
+    "pasteUrlButton": "Indsæt et link",
+    "urlSupportedSitesHint": "Fungerer med YouTube, Facebook, SoundCloud, TikTok, Vimeo og hundredvis af andre sider.",
+    "urlSupportedSitesLink": "Se alle understøttede sider",
+    "useThisUrl": "Brug denne URL"
   },
   "jobStatus": {
     "settingUp": "Sætter op",

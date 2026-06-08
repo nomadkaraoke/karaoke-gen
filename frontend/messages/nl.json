@@ -529,7 +529,11 @@
     "emailWhenReady": "E-mail wanneer klaar",
     "afterApproval": "Na goedkeuring wordt je karaokevideo gerenderd en geleverd. ~10 minuten",
     "trackProgressTenant": "Volg de voortgang in de Recente Taken lijst.",
-    "submitAnother": "Nog een track indienen"
+    "submitAnother": "Nog een track indienen",
+    "pasteUrlButton": "Plak een link",
+    "urlSupportedSitesHint": "Werkt met YouTube, Facebook, SoundCloud, TikTok, Vimeo en honderden andere sites.",
+    "urlSupportedSitesLink": "Bekijk alle ondersteunde sites",
+    "useThisUrl": "Gebruik deze URL"
   },
   "jobStatus": {
     "settingUp": "Instellen",

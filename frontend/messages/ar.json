@@ -529,7 +529,11 @@
     "emailWhenReady": "بريد إلكتروني عند الجاهزية",
     "afterApproval": "بعد الموافقة، يتم عرض فيديو الكاريوكي الخاص بك وتسليمه. ~10 دقائق",
     "trackProgressTenant": "تتبع التقدم في قائمة المهام الأخيرة.",
-    "submitAnother": "إرسال مسار آخر"
+    "submitAnother": "إرسال مسار آخر",
+    "pasteUrlButton": "لصق رابط",
+    "urlSupportedSitesHint": "يعمل مع YouTube و Facebook و SoundCloud و TikTok و Vimeo ومئات المواقع الأخرى.",
+    "urlSupportedSitesLink": "عرض جميع المواقع المدعومة",
+    "useThisUrl": "استخدام هذا الرابط"
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",
