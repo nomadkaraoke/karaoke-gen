@@ -806,7 +806,10 @@
       "timingOffset": "Offset Waktu",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Geser semua waktu kata maju atau mundur. Gunakan jika lirik muncul sedikit lebih awal atau terlambat di pratinjau.",
-      "playback": "Pemutaran"
+      "playback": "Pemutaran",
+      "audioLoadError": "Gagal memuat audio",
+      "audioStillLoading": "Audio masih dimuat…",
+      "loadingAudio": "Memuat audio…"
     },
     "guidance": {
       "showTips": "Tampilkan tips",

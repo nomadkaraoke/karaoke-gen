@@ -806,7 +806,10 @@
       "timingOffset": "Przesunięcie czasowe",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Przesuń wszystkie czasy słów do przodu lub do tyłu. Użyj, jeśli tekst pojawia się nieco za wcześnie lub za późno w podglądzie.",
-      "playback": "Odtwarzanie"
+      "playback": "Odtwarzanie",
+      "audioLoadError": "Nie udało się załadować audio",
+      "audioStillLoading": "Audio wciąż się ładuje…",
+      "loadingAudio": "Ładowanie audio…"
     },
     "guidance": {
       "showTips": "Pokaż wskazówki",

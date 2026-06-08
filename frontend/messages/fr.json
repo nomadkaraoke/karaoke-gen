@@ -806,7 +806,10 @@
       "timingOffset": "Décalage temporel",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Décale tous les timings des mots vers l'avant ou l'arrière. Utilise ceci si les paroles apparaissent légèrement en avance ou en retard dans l'aperçu.",
-      "playback": "Lecture"
+      "playback": "Lecture",
+      "audioLoadError": "Impossible de charger l'audio",
+      "audioStillLoading": "L'audio est toujours en cours de chargement…",
+      "loadingAudio": "Chargement de l'audio…"
     },
     "guidance": {
       "showTips": "Afficher les conseils",

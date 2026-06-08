@@ -806,7 +806,10 @@
       "timingOffset": "Offset temporale",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Sposta tutti i tempi delle parole in avanti o all'indietro. Usalo se il testo appare leggermente in anticipo o in ritardo nell'anteprima.",
-      "playback": "Riproduzione"
+      "playback": "Riproduzione",
+      "audioLoadError": "Impossibile caricare l'audio",
+      "audioStillLoading": "L'audio è ancora in caricamento…",
+      "loadingAudio": "Caricamento audio…"
     },
     "guidance": {
       "showTips": "Mostra suggerimenti",

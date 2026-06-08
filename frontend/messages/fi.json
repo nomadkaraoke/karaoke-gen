@@ -806,7 +806,10 @@
       "timingOffset": "Ajoituksen siirtymä",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Siirrä kaikkien sanojen ajoitusta eteen- tai taaksepäin. Käytä, jos sanoitukset näkyvät hieman liian aikaisin tai myöhään esikatselussa.",
-      "playback": "Toisto"
+      "playback": "Toisto",
+      "audioLoadError": "Ääntä ei voitu ladata",
+      "audioStillLoading": "Ääni latautuu edelleen…",
+      "loadingAudio": "Ladataan ääntä…"
     },
     "guidance": {
       "showTips": "Näytä vinkit",

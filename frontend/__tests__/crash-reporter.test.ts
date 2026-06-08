@@ -62,6 +62,38 @@ describe('crash-reporter.reportClientError', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('ignores benign media AbortError (DOMException)', async () => {
+    await reportClientError({
+      error: new DOMException(
+        'The fetching process for the media resource was aborted by the user agent at the user\'s request.',
+        'AbortError'
+      ),
+      source: 'unhandledrejection',
+      context: { href: 'https://gen.nomadkaraoke.com/en/app/jobs/', userAgent: 'ua' },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('ignores benign AbortError surfaced as a plain Error', async () => {
+    const err = new Error('aborted')
+    err.name = 'AbortError'
+    await reportClientError({
+      error: err,
+      source: 'window.onerror',
+      context: { href: '', userAgent: '' },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('still reports a non-abort DOMException', async () => {
+    await reportClientError({
+      error: new DOMException('nope', 'NotAllowedError'),
+      source: 'test',
+      context: { href: '', userAgent: '' },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('does not throw on fetch failure', async () => {
     fetchMock.mockRejectedValueOnce(new Error('offline'))
     await expect(

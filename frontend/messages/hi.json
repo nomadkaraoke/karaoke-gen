@@ -806,7 +806,10 @@
       "timingOffset": "टाइमिंग ऑफ़सेट",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "सभी शब्दों की टाइमिंग को आगे या पीछे शिफ्ट करो। अगर प्रीव्यू में लिरिक्स थोड़े जल्दी या देर से दिखाई देते हैं तो इसका उपयोग करो।",
-      "playback": "प्लेबैक"
+      "playback": "प्लेबैक",
+      "audioLoadError": "ऑडियो लोड नहीं हो सका",
+      "audioStillLoading": "ऑडियो अभी भी लोड हो रहा है…",
+      "loadingAudio": "ऑडियो लोड हो रहा है…"
     },
     "guidance": {
       "showTips": "टिप्स दिखाओ",

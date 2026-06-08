@@ -90,8 +90,25 @@ function signatureFor(message: string, stack: string | null, source: string): st
   return `${source}|${stack?.slice(0, 500) ?? message.slice(0, 500)}`
 }
 
+/**
+ * Benign errors that are routinely produced by the browser during normal use
+ * and carry no diagnostic value. The most common is a rejected
+ * `HTMLMediaElement.play()` promise (DOMException "AbortError") that fires when
+ * playback is interrupted by a pause / src change / unmount — e.g. clicking play
+ * on the lyrics-review audio while it is still loading. These must never reach
+ * the error monitor.
+ */
+function isBenignError(e: unknown): boolean {
+  if (e instanceof DOMException && e.name === 'AbortError') return true
+  // Some browsers surface the same media abort as a plain Error.
+  if (e instanceof Error && e.name === 'AbortError') return true
+  return false
+}
+
 export async function reportClientError(args: ReportArgs): Promise<void> {
   try {
+    if (isBenignError(args.error)) return
+
     const { message, stack } = normalizeError(args.error)
     const sig = signatureFor(message, stack, args.source)
     const now = Date.now()

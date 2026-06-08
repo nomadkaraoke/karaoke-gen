@@ -806,7 +806,10 @@
       "timingOffset": "Časový posun",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Posuň časovanie všetkých slov dopredu alebo dozadu. Použi, ak sa text v náhľade objavuje mierne skoro alebo neskoro.",
-      "playback": "Prehrávanie"
+      "playback": "Prehrávanie",
+      "audioLoadError": "Nepodarilo sa načítať audio",
+      "audioStillLoading": "Audio sa stále načítava…",
+      "loadingAudio": "Načítava sa audio…"
     },
     "guidance": {
       "showTips": "Zobraziť tipy",

@@ -806,7 +806,10 @@
       "timingOffset": "היסט תזמון",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "הזז את כל תזמוני המילים קדימה או אחורה. השתמש אם המילים מופיעות מעט מוקדם או מאוחר בתצוגה המקדימה.",
-      "playback": "השמעה"
+      "playback": "השמעה",
+      "audioLoadError": "לא הצלחנו לטעון את האודיו",
+      "audioStillLoading": "האודיו עדיין נטען…",
+      "loadingAudio": "טוען אודיו…"
     },
     "guidance": {
       "showTips": "הצג טיפים",

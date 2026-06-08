@@ -806,7 +806,10 @@
       "timingOffset": "إزاحة التوقيت",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "إزاحة جميع توقيتات الكلمات للأمام أو للخلف. استخدمه إذا ظهرت الكلمات مبكراً أو متأخراً قليلاً في المعاينة.",
-      "playback": "التشغيل"
+      "playback": "التشغيل",
+      "audioLoadError": "تعذر تحميل الصوت",
+      "audioStillLoading": "لا يزال الصوت قيد التحميل…",
+      "loadingAudio": "جارٍ تحميل الصوت…"
     },
     "guidance": {
       "showTips": "إظهار النصائح",

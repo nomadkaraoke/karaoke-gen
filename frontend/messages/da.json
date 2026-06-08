@@ -806,7 +806,10 @@
       "timingOffset": "Timingforskydning",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Forskyd alle ordtiminger frem eller tilbage. Brug, hvis sangtekster vises lidt tidligt eller sent i forhåndsvisningen.",
-      "playback": "Afspilning"
+      "playback": "Afspilning",
+      "audioLoadError": "Kunne ikke indlæse lyd",
+      "audioStillLoading": "Lyden indlæses stadig…",
+      "loadingAudio": "Indlæser lyd…"
     },
     "guidance": {
       "showTips": "Vis tips",

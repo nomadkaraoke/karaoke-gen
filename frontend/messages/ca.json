@@ -806,7 +806,10 @@
       "timingOffset": "Desplaçament de temps",
       "timingOffsetValue": "{ms}ms",
       "timingOffsetDesc": "Desplaça tots els temps de les paraules cap endavant o cap enrere. Utilitza-ho si les lletres apareixen lleugerament aviat o tard a la previsualització.",
-      "playback": "Reproducció"
+      "playback": "Reproducció",
+      "audioLoadError": "No s'ha pogut carregar l'àudio",
+      "audioStillLoading": "L'àudio encara s'està carregant…",
+      "loadingAudio": "Carregant l'àudio…"
     },
     "guidance": {
       "showTips": "Mostra els consells",
