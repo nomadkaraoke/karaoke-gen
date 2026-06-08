@@ -51,7 +51,7 @@ describe('AudioPlayer readiness gating', () => {
 
   it('shows the loading state and is not ready before canplaythrough', () => {
     renderPlayer()
-    expect(screen.getByText('Loading audio…')).toBeInTheDocument()
+    expect(screen.getByText('Loading audio...')).toBeInTheDocument()
     // No play button while loading.
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     expect(window.isAudioReady).toBe(false)
@@ -82,7 +82,7 @@ describe('AudioPlayer readiness gating', () => {
 
     fireOnAudio('canplaythrough')
 
-    expect(screen.queryByText('Loading audio…')).not.toBeInTheDocument()
+    expect(screen.queryByText('Loading audio...')).not.toBeInTheDocument()
     expect(screen.getByRole('button')).toBeInTheDocument()
     expect(onReady).toHaveBeenCalled()
     window.removeEventListener(AUDIO_READY_EVENT, onReady)
