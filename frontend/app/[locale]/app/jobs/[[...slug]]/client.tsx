@@ -389,7 +389,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
             <h1 className="text-lg font-bold">Lyrics Transcription Review</h1>
             {(job.artist || job.title) && (
               <span className="text-xs md:text-sm text-muted-foreground truncate">
-                {job.artist} {job.artist && job.title ? "-" : ""} {job.title}
+                {[job.artist, job.title].filter(Boolean).join(" - ")}
               </span>
             )}
           </div>
