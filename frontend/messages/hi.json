@@ -529,7 +529,11 @@
     "emailWhenReady": "तैयार होने पर ईमेल",
     "afterApproval": "अप्रूवल के बाद, तुम्हारा कराओके वीडियो रेंडर और डिलीवर किया जाता है। ~10 मिनट",
     "trackProgressTenant": "हाल के जॉब्स लिस्ट में प्रोग्रेस ट्रैक करो।",
-    "submitAnother": "एक और ट्रैक सबमिट करो"
+    "submitAnother": "एक और ट्रैक सबमिट करो",
+    "pasteUrlButton": "एक लिंक पेस्ट करो",
+    "urlSupportedSitesHint": "यह YouTube, Facebook, SoundCloud, TikTok, Vimeo और सैकड़ों अन्य साइटों के साथ काम करता है।",
+    "urlSupportedSitesLink": "सभी समर्थित साइटें देखो",
+    "useThisUrl": "इस URL का इस्तेमाल करो"
   },
   "jobStatus": {
     "settingUp": "सेटअप हो रहा है",

@@ -529,7 +529,11 @@
     "emailWhenReady": "E-mail, ha kész",
     "afterApproval": "A jóváhagyás után a karaoke videód renderelésre és kézbesítésre kerül. ~10 perc",
     "trackProgressTenant": "Kövesd a folyamatot a Legutóbbi projektek listában.",
-    "submitAnother": "Másik dal beküldése"
+    "submitAnother": "Másik dal beküldése",
+    "pasteUrlButton": "Illessz be egy linket",
+    "urlSupportedSitesHint": "Működik a YouTube, Facebook, SoundCloud, TikTok, Vimeo és több száz más oldallal.",
+    "urlSupportedSitesLink": "Nézd meg az összes támogatott oldalt",
+    "useThisUrl": "Használd ezt az URL-t"
   },
   "jobStatus": {
     "settingUp": "Beállítás",

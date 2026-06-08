@@ -529,7 +529,11 @@
     "emailWhenReady": "E-mel apabila sedia",
     "afterApproval": "Selepas kelulusan, video karaoke anda dirender dan dihantar. ~10 minit",
     "trackProgressTenant": "Jejaki kemajuan dalam senarai Kerja Terkini.",
-    "submitAnother": "Hantar Trek Lain"
+    "submitAnother": "Hantar Trek Lain",
+    "pasteUrlButton": "Tampal pautan",
+    "urlSupportedSitesHint": "Berfungsi dengan YouTube, Facebook, SoundCloud, TikTok, Vimeo dan beratus-ratus laman web lain.",
+    "urlSupportedSitesLink": "Lihat semua laman web yang disokong",
+    "useThisUrl": "Gunakan URL Ini"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",

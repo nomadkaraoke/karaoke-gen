@@ -529,7 +529,11 @@
     "emailWhenReady": "Gửi email khi sẵn sàng",
     "afterApproval": "Sau khi phê duyệt, video karaoke của bạn sẽ được xuất và phân phối. ~10 phút",
     "trackProgressTenant": "Theo dõi tiến trình trong danh sách Công việc gần đây.",
-    "submitAnother": "Gửi bài hát khác"
+    "submitAnother": "Gửi bài hát khác",
+    "pasteUrlButton": "Dán liên kết",
+    "urlSupportedSitesHint": "Hỗ trợ YouTube, Facebook, SoundCloud, TikTok, Vimeo và hàng trăm trang web khác.",
+    "urlSupportedSitesLink": "Xem tất cả các trang web được hỗ trợ",
+    "useThisUrl": "Sử dụng URL này"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",

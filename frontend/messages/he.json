@@ -529,7 +529,11 @@
     "emailWhenReady": "אימייל כשמוכן",
     "afterApproval": "לאחר האישור, וידאו הקריוקי שלך מרונדר ומסופק. ~10 דקות",
     "trackProgressTenant": "עקוב אחר ההתקדמות ברשימת העבודות האחרונות.",
-    "submitAnother": "שלח רצועה נוספת"
+    "submitAnother": "שלח רצועה נוספת",
+    "pasteUrlButton": "הדבקת קישור",
+    "urlSupportedSitesHint": "עובד עם YouTube, Facebook, SoundCloud, TikTok, Vimeo ומאות אתרים נוספים.",
+    "urlSupportedSitesLink": "לצפייה בכל האתרים הנתמכים",
+    "useThisUrl": "שימוש בכתובת זו"
   },
   "jobStatus": {
     "settingUp": "מגדיר",

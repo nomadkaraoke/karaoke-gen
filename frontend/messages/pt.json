@@ -529,7 +529,11 @@
     "emailWhenReady": "E-mail quando pronto",
     "afterApproval": "Após a aprovação, seu vídeo de karaokê é renderizado e entregue. ~10 minutos",
     "trackProgressTenant": "Acompanhe o progresso na lista de Trabalhos Recentes.",
-    "submitAnother": "Enviar Outra Faixa"
+    "submitAnother": "Enviar Outra Faixa",
+    "pasteUrlButton": "Cole um link",
+    "urlSupportedSitesHint": "Funciona com YouTube, Facebook, SoundCloud, TikTok, Vimeo e centenas de outros sites.",
+    "urlSupportedSitesLink": "Ver todos os sites compatíveis",
+    "useThisUrl": "Usar esta URL"
   },
   "jobStatus": {
     "settingUp": "Configurando",

@@ -529,7 +529,11 @@
     "emailWhenReady": "Hazır olduğunda e-posta",
     "afterApproval": "Onaydan sonra karaoke videon oluşturulur ve teslim edilir. ~10 dakika",
     "trackProgressTenant": "İlerlemeyi Son İşler listesinden takip et.",
-    "submitAnother": "Başka Bir Parça Gönder"
+    "submitAnother": "Başka Bir Parça Gönder",
+    "pasteUrlButton": "Bir bağlantı yapıştır",
+    "urlSupportedSitesHint": "YouTube, Facebook, SoundCloud, TikTok, Vimeo ve yüzlerce başka siteyle çalışır.",
+    "urlSupportedSitesLink": "Desteklenen tüm siteleri gör",
+    "useThisUrl": "Bu URL'yi Kullan"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",

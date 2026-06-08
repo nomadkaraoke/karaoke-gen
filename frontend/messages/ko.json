@@ -529,7 +529,11 @@
     "emailWhenReady": "준비 시 이메일 알림",
     "afterApproval": "승인 후 노래방 비디오가 렌더링되어 전달됩니다. 약 10분 소요",
     "trackProgressTenant": "최근 작업 목록에서 진행 상황을 추적하세요.",
-    "submitAnother": "다른 트랙 제출"
+    "submitAnother": "다른 트랙 제출",
+    "pasteUrlButton": "링크 붙여넣기",
+    "urlSupportedSitesHint": "YouTube, Facebook, SoundCloud, TikTok, Vimeo 등 수백 개의 사이트에서 사용할 수 있습니다.",
+    "urlSupportedSitesLink": "지원되는 모든 사이트 보기",
+    "useThisUrl": "이 URL 사용하기"
   },
   "jobStatus": {
     "settingUp": "설정 중",

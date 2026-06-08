@@ -529,7 +529,11 @@
     "emailWhenReady": "Correu electrònic quan estigui llest",
     "afterApproval": "Després de l'aprovació, el teu vídeo de karaoke es renderitza i s'entrega. ~10 minuts",
     "trackProgressTenant": "Fes un seguiment del progrés a la llista de Treballs recents.",
-    "submitAnother": "Envia una altra pista"
+    "submitAnother": "Envia una altra pista",
+    "pasteUrlButton": "Enganxa un enllaç",
+    "urlSupportedSitesHint": "Funciona amb YouTube, Facebook, SoundCloud, TikTok, Vimeo i centenars de llocs més.",
+    "urlSupportedSitesLink": "Consulta tots els llocs compatibles",
+    "useThisUrl": "Utilitza aquest URL"
   },
   "jobStatus": {
     "settingUp": "Configurant",

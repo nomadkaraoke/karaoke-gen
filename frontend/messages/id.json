@@ -529,7 +529,11 @@
     "emailWhenReady": "Email saat siap",
     "afterApproval": "Setelah persetujuan, video karaoke Anda dirender dan dikirim. ~10 menit",
     "trackProgressTenant": "Lacak kemajuan di daftar Proyek Terbaru.",
-    "submitAnother": "Kirim Track Lain"
+    "submitAnother": "Kirim Track Lain",
+    "pasteUrlButton": "Tempel tautan",
+    "urlSupportedSitesHint": "Berfungsi dengan YouTube, Facebook, SoundCloud, TikTok, Vimeo, dan ratusan situs lainnya.",
+    "urlSupportedSitesLink": "Lihat semua situs yang didukung",
+    "useThisUrl": "Gunakan URL Ini"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",

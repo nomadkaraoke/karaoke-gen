@@ -529,7 +529,11 @@
     "emailWhenReady": "准备好时发送电子邮件",
     "afterApproval": "批准后，您的卡拉OK视频将被渲染并交付。约 10 分钟",
     "trackProgressTenant": "在“最近任务”列表中跟踪进度。",
-    "submitAnother": "提交另一首曲目"
+    "submitAnother": "提交另一首曲目",
+    "pasteUrlButton": "粘贴链接",
+    "urlSupportedSitesHint": "支持 YouTube、Facebook、SoundCloud、TikTok、Vimeo 以及数百个其他网站。",
+    "urlSupportedSitesLink": "查看所有支持的网站",
+    "useThisUrl": "使用此链接"
   },
   "jobStatus": {
     "settingUp": "设置中",

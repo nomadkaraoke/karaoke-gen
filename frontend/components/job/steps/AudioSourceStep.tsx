@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { api, ApiError, CatalogTrackResult, CommunityCheckResponse } from "@/lib/api"
 import { CommunityVersionBanner } from "@/components/job/CommunityVersionBanner"
@@ -1410,6 +1411,7 @@ function FallbackSection({
   onUrlSubmit: (e: React.FormEvent) => void
   onUploadSubmit: (e: React.FormEvent) => void
 }) {
+  const t = useTranslations('jobFlow')
   const isTier3WithResults = tier === 3 && hasResults
   const largeButtons = !hasResults
   const buttonHeight = largeButtons ? 'h-12' : 'h-9'
@@ -1435,7 +1437,7 @@ function FallbackSection({
           style={{ borderColor: fallbackMode === "url" ? 'var(--brand-pink)' : 'var(--card-border)', color: 'var(--text)' }}
         >
           <Youtube className={`${iconSize} mr-1.5`} />
-          YouTube URL
+          {t('pasteUrlButton')}
         </Button>
         <Button
           variant="outline"
@@ -1464,13 +1466,25 @@ function FallbackSection({
               autoFocus
             />
           </div>
+          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            {t('urlSupportedSitesHint')}{' '}
+            <a
+              href="https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+              style={{ color: 'var(--brand-pink)' }}
+            >
+              {t('urlSupportedSitesLink')}
+            </a>
+          </p>
           <Button
             type="submit"
             size="sm"
             disabled={!youtubeUrl.trim() || noCredits}
             className="w-full bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white"
           >
-            Use This URL
+            {t('useThisUrl')}
           </Button>
         </form>
       )}

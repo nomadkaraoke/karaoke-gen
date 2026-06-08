@@ -529,7 +529,11 @@
     "emailWhenReady": "準備完了時にメールでお知らせ",
     "afterApproval": "承認後、カラオケ動画がレンダリングされ納品されます。約10分",
     "trackProgressTenant": "最近のジョブリストで進捗を追跡します。",
-    "submitAnother": "別のトラックを送信"
+    "submitAnother": "別のトラックを送信",
+    "pasteUrlButton": "リンクを貼り付ける",
+    "urlSupportedSitesHint": "YouTube、Facebook、SoundCloud、TikTok、Vimeoなど、数百ものサイトに対応しています。",
+    "urlSupportedSitesLink": "対応サイト一覧を見る",
+    "useThisUrl": "このURLを使用する"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",

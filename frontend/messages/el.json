@@ -529,7 +529,11 @@
     "emailWhenReady": "Email όταν είναι έτοιμο",
     "afterApproval": "Μετά την έγκριση, το karaoke video σου γίνεται render και παραδίδεται. ~10 λεπτά",
     "trackProgressTenant": "Παρακολούθησε την πρόοδο στη λίστα Πρόσφατες Εργασίες.",
-    "submitAnother": "Υποβολή Άλλου Κομματιού"
+    "submitAnother": "Υποβολή Άλλου Κομματιού",
+    "pasteUrlButton": "Επικόλλησε έναν σύνδεσμο",
+    "urlSupportedSitesHint": "Λειτουργεί με YouTube, Facebook, SoundCloud, TikTok, Vimeo και εκατοντάδες άλλους ιστότοπους.",
+    "urlSupportedSitesLink": "Δες όλους τους υποστηριζόμενους ιστότοπους",
+    "useThisUrl": "Χρησιμοποίησε αυτό το URL"
   },
   "jobStatus": {
     "settingUp": "Ρύθμιση",
