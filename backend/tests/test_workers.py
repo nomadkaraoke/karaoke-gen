@@ -780,61 +780,16 @@ class TestAudioWorkerModelConfiguration:
                 assert call_kwargs['other_stems_models'] == []
 
 
-class TestDownloadFromUrl:
-    """Tests for download_from_url function - URL-based audio download."""
-    
-    def test_download_from_url_function_exists(self):
-        """Test that download_from_url function exists in audio_worker."""
-        from backend.workers.audio_worker import download_from_url
-        assert callable(download_from_url)
-    
-    def test_download_from_url_signature(self):
-        """Test that download_from_url has the expected signature."""
-        import inspect
-        from backend.workers.audio_worker import download_from_url
-        
-        sig = inspect.signature(download_from_url)
-        params = list(sig.parameters.keys())
-        
-        # Should have these parameters
-        assert 'url' in params
-        assert 'temp_dir' in params
-        assert 'artist' in params
-        assert 'title' in params
-        assert 'job_manager' in params
-        assert 'job_id' in params
-    
-    def test_download_from_url_is_async(self):
-        """Test that download_from_url is an async function."""
-        import inspect
-        from backend.workers.audio_worker import download_from_url
-        
-        assert inspect.iscoroutinefunction(download_from_url)
-    
-    @pytest.mark.asyncio
-    async def test_download_from_url_returns_none_for_invalid_url(self):
-        """Test that download_from_url handles errors gracefully."""
-        from backend.workers.audio_worker import download_from_url
-        
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # This should fail gracefully (no yt-dlp in test env or invalid URL)
-            result = await download_from_url(
-                url='not-a-valid-url',
-                temp_dir=temp_dir,
-                artist='Test',
-                title='Test'
-            )
-            
-            # Should return None on error (graceful failure)
-            assert result is None
-
-
 class TestDownloadAudioWithUrl:
-    """Tests for download_audio function with URL-based jobs."""
-    
+    """Tests for download_audio: it only ever consumes a pre-downloaded GCS file.
+
+    URLs are downloaded by the flacfetch service in create_job_from_url before
+    any worker runs — the audio worker never runs yt-dlp on Cloud Run.
+    """
+
     @pytest.fixture
     def mock_job_with_url(self):
-        """Create a mock job with a URL."""
+        """A URL job that (incorrectly) reached the worker without a GCS path."""
         return Job(
             job_id="test123",
             status=JobStatus.PROCESSING,
@@ -844,7 +799,7 @@ class TestDownloadAudioWithUrl:
             title="Test Song",
             url="https://www.youtube.com/watch?v=test123"
         )
-    
+
     @pytest.fixture
     def mock_job_manager(self, mock_job_with_url):
         """Create a mock JobManager."""
@@ -852,40 +807,34 @@ class TestDownloadAudioWithUrl:
         manager.get_job.return_value = mock_job_with_url
         manager.update_job.return_value = None
         return manager
-    
+
     @pytest.fixture
     def mock_storage(self):
         """Create a mock StorageService."""
         storage = MagicMock()
         return storage
-    
+
     @pytest.mark.asyncio
-    async def test_download_audio_from_url(self, mock_job_with_url, mock_job_manager, mock_storage):
-        """Test download_audio routes to URL download when job has URL."""
-        with patch('backend.workers.audio_worker.download_from_url', return_value='/tmp/test.wav') as mock_download:
-            from backend.workers.audio_worker import download_audio
-            
-            with tempfile.TemporaryDirectory() as temp_dir:
-                result = await download_audio(
-                    "test123",
-                    temp_dir,
-                    mock_storage,
-                    mock_job_with_url,
-                    job_manager_instance=mock_job_manager
-                )
-                
-                # Should have called download_from_url
-                mock_download.assert_called_once()
-                # Check positional args
-                args = mock_download.call_args[0]
-                assert args[0] == "https://www.youtube.com/watch?v=test123"  # url
-                assert args[1] == temp_dir  # temp_dir
-                assert args[2] == "Test Artist"  # artist
-                assert args[3] == "Test Song"  # title
-    
+    async def test_download_audio_url_without_gcs_path_refuses(self, mock_job_with_url, mock_job_manager, mock_storage):
+        """A URL job with no GCS file must fail (no local yt-dlp fallback)."""
+        from backend.workers.audio_worker import download_audio
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = await download_audio(
+                "test123",
+                temp_dir,
+                mock_storage,
+                mock_job_with_url,
+                job_manager_instance=mock_job_manager
+            )
+
+            # Refuses to download locally → returns None, never touches storage
+            assert result is None
+            mock_storage.download_file.assert_not_called()
+
     @pytest.mark.asyncio
-    async def test_download_audio_from_gcs_when_no_url(self, mock_job_manager, mock_storage):
-        """Test download_audio downloads from GCS when job has no URL."""
+    async def test_download_audio_from_gcs(self, mock_job_manager, mock_storage):
+        """Test download_audio downloads from GCS when input_media_gcs_path is set."""
         mock_job_no_url = Job(
             job_id="test123",
             status=JobStatus.PROCESSING,
@@ -895,24 +844,20 @@ class TestDownloadAudioWithUrl:
             title="Test Song",
             input_media_gcs_path="uploads/test123/song.flac"
         )
-        
-        with patch('backend.workers.audio_worker.download_from_url') as mock_url_download:
-            from backend.workers.audio_worker import download_audio
-            
-            with tempfile.TemporaryDirectory() as temp_dir:
-                result = await download_audio(
-                    "test123",
-                    temp_dir,
-                    mock_storage,
-                    mock_job_no_url,
-                    job_manager_instance=mock_job_manager
-                )
-                
-                # Should NOT have called download_from_url
-                mock_url_download.assert_not_called()
-                
-                # Should have called storage.download_file
-                mock_storage.download_file.assert_called()
+
+        from backend.workers.audio_worker import download_audio
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            await download_audio(
+                "test123",
+                temp_dir,
+                mock_storage,
+                mock_job_no_url,
+                job_manager_instance=mock_job_manager
+            )
+
+            # Should have downloaded the pre-existing GCS file
+            mock_storage.download_file.assert_called()
 
 
 class TestBackingVocalsAnalysis:

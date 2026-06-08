@@ -13,16 +13,11 @@ The flow is:
 All entry points (audio search selection, direct URL submission) should use this
 service for YouTube downloads to ensure consistent behavior.
 """
-import asyncio
 import logging
-import mimetypes
-import os
 import re
-import tempfile
 from typing import Optional
 
 from .flacfetch_client import get_flacfetch_client, FlacfetchServiceError
-from .storage_service import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +49,13 @@ class YouTubeDownloadService:
 
     def __init__(self):
         self._flacfetch_client = get_flacfetch_client()
-        self._storage_service = StorageService()
 
         if self._flacfetch_client:
-            logger.info("YouTubeDownloadService using REMOTE flacfetch (recommended)")
+            logger.info("YouTubeDownloadService using REMOTE flacfetch")
         else:
             logger.warning(
-                "YouTubeDownloadService using LOCAL yt_dlp - "
-                "downloads may fail due to YouTube bot detection on Cloud Run IPs"
+                "YouTubeDownloadService: remote flacfetch NOT configured "
+                "(FLACFETCH_API_URL) - URL downloads will fail until it is set"
             )
 
     def is_remote_enabled(self) -> bool:
@@ -121,20 +115,24 @@ class YouTubeDownloadService:
         Raises:
             YouTubeDownloadError: If download fails
         """
-        video_id = self._extract_video_id(url)
-        if not video_id:
-            raise YouTubeDownloadError(f"Could not extract video ID from URL: {url}")
-
-        logger.info(f"YouTube download: video_id={video_id}, job_id={job_id}")
-
-        if self._flacfetch_client:
-            return await self._download_remote(video_id, job_id, artist, title)
-        else:
-            logger.warning(
-                "Remote flacfetch not configured. Attempting local download, "
-                "but this may fail due to YouTube bot detection on Cloud Run IPs."
+        # flacfetch is the SOLE downloader — never run yt-dlp on Cloud Run.
+        # If it isn't configured, fail loudly rather than silently falling back
+        # to a local download (which is blocked by bot detection on Cloud Run
+        # IPs anyway).
+        if not self._flacfetch_client:
+            raise YouTubeDownloadError(
+                "Remote flacfetch is not configured (FLACFETCH_API_URL). "
+                "URL downloads require the flacfetch service."
             )
-            return await self._download_local(url, job_id, artist, title)
+
+        video_id = self._extract_video_id(url)
+        if video_id:
+            logger.info(f"URL download (YouTube): video_id={video_id}, job_id={job_id}")
+            return await self._download_remote(video_id, job_id, artist, title)
+
+        # Any other yt-dlp-supported site (Facebook, SoundCloud, TikTok, ...).
+        logger.info(f"URL download (generic): url={url}, job_id={job_id}")
+        return await self._download_remote_url(url, job_id, artist, title)
 
     async def download_by_id(
         self,
@@ -265,7 +263,7 @@ class YouTubeDownloadService:
             logger.error(f"Remote YouTube download error: {e}", exc_info=True)
             raise YouTubeDownloadError(f"Remote download failed: {e}") from e
 
-    async def _download_local(
+    async def _download_remote_url(
         self,
         url: str,
         job_id: str,
@@ -273,92 +271,66 @@ class YouTubeDownloadService:
         title: Optional[str] = None,
     ) -> str:
         """
-        Download using local yt_dlp (fallback when remote not configured).
+        Download an arbitrary yt-dlp-supported URL via remote flacfetch.
 
-        Warning: This may fail on Cloud Run due to YouTube bot detection.
+        Used for non-YouTube sites (Facebook, SoundCloud, TikTok, Vimeo, ...).
+        The URL is handed to flacfetch's generic "URL" source, which downloads
+        on the VM and uploads to GCS.
         """
-        temp_dir = tempfile.mkdtemp(prefix=f"youtube_{job_id}_")
+        gcs_destination = f"uploads/{job_id}/audio/"
+
+        output_filename = None
+        if artist and title:
+            from karaoke_gen.utils import sanitize_filename
+            output_filename = f"{sanitize_filename(artist)} - {sanitize_filename(title)}"
+
+        logger.info(
+            f"Remote URL download: url={url}, "
+            f"gcs_path={gcs_destination}, filename={output_filename}"
+        )
 
         try:
-            from karaoke_gen.file_handler import FileHandler
-            from karaoke_gen.utils import sanitize_filename
-
-            # Create FileHandler
-            file_handler = FileHandler(
-                logger=logger,
-                ffmpeg_base_command="ffmpeg -hide_banner -loglevel error -nostats -y",
-                create_track_subfolders=False,
-                dry_run=False
+            download_id = await self._flacfetch_client.download_by_id(
+                source_name="URL",
+                source_id=url,
+                download_url=url,
+                output_filename=output_filename,
+                gcs_path=gcs_destination,
             )
 
-            # Build output filename
-            safe_artist = sanitize_filename(artist) if artist else "Unknown"
-            safe_title = sanitize_filename(title) if title else "Unknown"
-            output_filename_no_extension = os.path.join(
-                temp_dir, f"{safe_artist} - {safe_title}"
+            logger.info(f"Remote URL download started: {download_id}")
+
+            def log_progress(status):
+                progress = status.get("progress", 0)
+                logger.debug(f"Download progress: {progress:.1f}%")
+
+            final_status = await self._flacfetch_client.wait_for_download(
+                download_id,
+                timeout=300,
+                progress_callback=log_progress,
             )
 
-            # Get cookies from environment
-            cookies_str = os.environ.get("YOUTUBE_COOKIES")
-            if cookies_str:
-                logger.info("Using YouTube cookies for local download")
-
-            # Download
-            logger.info(f"Local YouTube download: {url}")
-            downloaded_file = file_handler.download_video(
-                url=url,
-                output_filename_no_extension=output_filename_no_extension,
-                cookies_str=cookies_str
-            )
-
-            if not downloaded_file or not os.path.exists(downloaded_file):
+            gcs_path = final_status.get("gcs_path")
+            if not gcs_path:
                 raise YouTubeDownloadError(
-                    f"Local download failed - no file returned. "
-                    "This is likely due to YouTube bot detection on Cloud Run IPs. "
-                    "Configure FLACFETCH_API_URL for remote downloads."
+                    "Remote download completed but no GCS path returned"
                 )
 
-            logger.info(f"Downloaded video: {downloaded_file}")
+            if gcs_path.startswith("gs://"):
+                parts = gcs_path.replace("gs://", "").split("/", 1)
+                if len(parts) == 2:
+                    gcs_path = parts[1]
 
-            # Convert to WAV for processing
-            wav_file = file_handler.convert_to_wav(
-                input_filename=downloaded_file,
-                output_filename_no_extension=output_filename_no_extension
-            )
-
-            if not wav_file or not os.path.exists(wav_file):
-                raise YouTubeDownloadError("WAV conversion failed")
-
-            logger.info(f"Converted to WAV: {wav_file}")
-
-            # Upload to GCS
-            filename = os.path.basename(wav_file)
-            gcs_path = f"uploads/{job_id}/audio/{filename}"
-
-            content_type, _ = mimetypes.guess_type(wav_file)
-            with open(wav_file, 'rb') as f:
-                self._storage_service.upload_fileobj(
-                    f,
-                    gcs_path,
-                    content_type=content_type or 'audio/wav'
-                )
-
-            logger.info(f"Uploaded to GCS: {gcs_path}")
+            logger.info(f"Remote URL download complete: {gcs_path}")
             return gcs_path
 
+        except FlacfetchServiceError as e:
+            raise YouTubeDownloadError(f"Remote download failed: {e}") from e
         except YouTubeDownloadError:
             raise
         except Exception as e:
-            logger.error(f"Local YouTube download error: {e}", exc_info=True)
-            raise YouTubeDownloadError(f"Local download failed: {e}") from e
-        finally:
-            # Cleanup temp directory
-            try:
-                import shutil
-                if os.path.exists(temp_dir):
-                    shutil.rmtree(temp_dir)
-            except Exception as cleanup_error:
-                logger.warning(f"Failed to cleanup temp dir: {cleanup_error}")
+            logger.error(f"Remote URL download error: {e}", exc_info=True)
+            raise YouTubeDownloadError(f"Remote download failed: {e}") from e
 
 
 # Singleton instance
