@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Verschiebe alle Wort-Timings nach vorne oder hinten. Verwende dies, wenn der Text in der Vorschau etwas zu früh oder zu spät erscheint.",
       "playback": "Wiedergabe",
       "audioLoadError": "Audio konnte nicht geladen werden",
-      "audioStillLoading": "Audio wird noch geladen…",
-      "loadingAudio": "Audio wird geladen…"
+      "audioStillLoading": "Audio wird noch geladen...",
+      "loadingAudio": "Audio wird geladen..."
     },
     "guidance": {
       "showTips": "Tipps anzeigen",

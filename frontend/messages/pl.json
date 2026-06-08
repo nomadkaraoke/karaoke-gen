@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Przesuń wszystkie czasy słów do przodu lub do tyłu. Użyj, jeśli tekst pojawia się nieco za wcześnie lub za późno w podglądzie.",
       "playback": "Odtwarzanie",
       "audioLoadError": "Nie udało się załadować audio",
-      "audioStillLoading": "Audio wciąż się ładuje…",
-      "loadingAudio": "Ładowanie audio…"
+      "audioStillLoading": "Audio wciąż się ładuje...",
+      "loadingAudio": "Ładowanie audio..."
     },
     "guidance": {
       "showTips": "Pokaż wskazówki",

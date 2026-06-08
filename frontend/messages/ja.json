@@ -808,8 +808,8 @@
       "timingOffsetDesc": "すべての単語のタイミングを前後にシフトします。プレビューで歌詞がわずかに早い、または遅い場合に使用します。",
       "playback": "再生",
       "audioLoadError": "音声を読み込めませんでした",
-      "audioStillLoading": "音声はまだ読み込み中です…",
-      "loadingAudio": "音声を読み込み中…"
+      "audioStillLoading": "音声はまだ読み込み中です...",
+      "loadingAudio": "音声を読み込み中..."
     },
     "guidance": {
       "showTips": "ヒントを表示",

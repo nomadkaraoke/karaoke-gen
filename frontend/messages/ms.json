@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Anjakkan semua pemasaan perkataan ke hadapan atau ke belakang. Gunakan jika lirik muncul sedikit awal atau lewat dalam pratonton.",
       "playback": "Main Balik",
       "audioLoadError": "Tidak dapat memuatkan audio",
-      "audioStillLoading": "Audio masih dimuatkan…",
-      "loadingAudio": "Memuatkan audio…"
+      "audioStillLoading": "Audio masih dimuatkan...",
+      "loadingAudio": "Memuatkan audio..."
     },
     "guidance": {
       "showTips": "Tunjukkan petua",

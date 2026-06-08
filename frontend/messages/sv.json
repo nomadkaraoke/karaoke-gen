@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Förskjut all ordtajming framåt eller bakåt. Använd om texten visas något tidigt eller sent i förhandsgranskningen.",
       "playback": "Uppspelning",
       "audioLoadError": "Kunde inte ladda ljudet",
-      "audioStillLoading": "Ljudet laddas fortfarande…",
-      "loadingAudio": "Laddar ljud…"
+      "audioStillLoading": "Ljudet laddas fortfarande...",
+      "loadingAudio": "Laddar ljud..."
     },
     "guidance": {
       "showTips": "Visa tips",

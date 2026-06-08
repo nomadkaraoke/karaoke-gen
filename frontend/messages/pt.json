@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Desloque todos os tempos das palavras para frente ou para trás. Use se as letras aparecerem um pouco cedo ou tarde na visualização.",
       "playback": "Reprodução",
       "audioLoadError": "Não foi possível carregar o áudio",
-      "audioStillLoading": "O áudio ainda está carregando…",
-      "loadingAudio": "Carregando áudio…"
+      "audioStillLoading": "O áudio ainda está carregando...",
+      "loadingAudio": "Carregando áudio..."
     },
     "guidance": {
       "showTips": "Mostrar dicas",

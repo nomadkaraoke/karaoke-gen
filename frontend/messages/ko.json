@@ -808,8 +808,8 @@
       "timingOffsetDesc": "모든 단어 타이밍을 앞이나 뒤로 이동합니다. 미리보기에서 가사가 약간 빠르거나 늦게 나타날 때 사용하세요.",
       "playback": "재생",
       "audioLoadError": "오디오를 불러올 수 없습니다",
-      "audioStillLoading": "아직 오디오를 불러오는 중입니다…",
-      "loadingAudio": "오디오 불러오는 중…"
+      "audioStillLoading": "아직 오디오를 불러오는 중입니다...",
+      "loadingAudio": "오디오를 불러오는 중입니다..."
     },
     "guidance": {
       "showTips": "팁 표시",

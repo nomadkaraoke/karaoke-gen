@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Posuň časování všech slov dopředu nebo dozadu. Použij, pokud se text v náhledu objevuje mírně brzy nebo pozdě.",
       "playback": "Přehrávání",
       "audioLoadError": "Nepodařilo se načíst audio",
-      "audioStillLoading": "Audio se stále načítá…",
-      "loadingAudio": "Načítání audia…"
+      "audioStillLoading": "Audio se stále načítá...",
+      "loadingAudio": "Načítání audia..."
     },
     "guidance": {
       "showTips": "Zobrazit tipy",

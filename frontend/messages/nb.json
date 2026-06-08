@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Forskyv alle ordtiminger fremover eller bakover. Bruk hvis teksten vises litt tidlig eller sent i forhåndsvisningen.",
       "playback": "Avspilling",
       "audioLoadError": "Kunne ikke laste inn lyd",
-      "audioStillLoading": "Lyden laster fortsatt inn…",
-      "loadingAudio": "Laster inn lyd…"
+      "audioStillLoading": "Lyden laster fortsatt inn...",
+      "loadingAudio": "Laster inn lyd..."
     },
     "guidance": {
       "showTips": "Vis tips",

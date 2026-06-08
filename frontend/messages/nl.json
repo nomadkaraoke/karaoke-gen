@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Verschuif alle woordtimings vooruit of achteruit. Gebruik dit als songteksten iets te vroeg of te laat verschijnen in het voorbeeld.",
       "playback": "Afspelen",
       "audioLoadError": "Kon audio niet laden",
-      "audioStillLoading": "Audio is nog aan het laden…",
-      "loadingAudio": "Audio laden…"
+      "audioStillLoading": "Audio is nog aan het laden...",
+      "loadingAudio": "Audio laden..."
     },
     "guidance": {
       "showTips": "Toon tips",

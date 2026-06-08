@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Mută toate temporizările cuvintelor înainte sau înapoi. Folosește dacă versurile apar ușor prea devreme sau prea târziu în previzualizare.",
       "playback": "Redare",
       "audioLoadError": "Nu s-a putut încărca fișierul audio",
-      "audioStillLoading": "Fișierul audio încă se încarcă…",
-      "loadingAudio": "Se încarcă fișierul audio…"
+      "audioStillLoading": "Fișierul audio încă se încarcă...",
+      "loadingAudio": "Se încarcă fișierul audio..."
     },
     "guidance": {
       "showTips": "Arată sfaturi",

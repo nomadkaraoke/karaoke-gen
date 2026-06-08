@@ -808,8 +808,8 @@
       "timingOffsetDesc": "Siirrä kaikkien sanojen ajoitusta eteen- tai taaksepäin. Käytä, jos sanoitukset näkyvät hieman liian aikaisin tai myöhään esikatselussa.",
       "playback": "Toisto",
       "audioLoadError": "Ääntä ei voitu ladata",
-      "audioStillLoading": "Ääni latautuu edelleen…",
-      "loadingAudio": "Ladataan ääntä…"
+      "audioStillLoading": "Ääni latautuu yhä...",
+      "loadingAudio": "Ladataan ääntä..."
     },
     "guidance": {
       "showTips": "Näytä vinkit",
