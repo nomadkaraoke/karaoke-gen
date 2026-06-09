@@ -1816,11 +1816,20 @@ def create_audio_fetcher(
             logger=logger,
         )
     elif api_url and not api_key:
-        if logger:
-            logger.warning("FLACFETCH_API_URL is set but FLACFETCH_API_KEY is not - falling back to local mode")
+        # Half-configured remote flacfetch is almost always a deploy/secret typo.
+        # Silently using local mode masks the misconfiguration — fail loudly so
+        # the operator fixes it. (Fallback audit 2026-06-09, Theme 1.)
+        raise AudioFetcherError(
+            "FLACFETCH_API_URL is set but FLACFETCH_API_KEY is not. Remote flacfetch "
+            "is half-configured — set both (or neither, for local mode). Refusing to "
+            "silently fall back to local mode and mask the misconfiguration."
+        )
     elif api_key and not api_url:
-        if logger:
-            logger.warning("FLACFETCH_API_KEY is set but FLACFETCH_API_URL is not - falling back to local mode")
+        raise AudioFetcherError(
+            "FLACFETCH_API_KEY is set but FLACFETCH_API_URL is not. Remote flacfetch "
+            "is half-configured — set both (or neither, for local mode). Refusing to "
+            "silently fall back to local mode and mask the misconfiguration."
+        )
     
     # Use local flacfetch library
     return FlacFetchAudioFetcher(
