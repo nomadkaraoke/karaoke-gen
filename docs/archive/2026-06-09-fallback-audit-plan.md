@@ -23,7 +23,7 @@ load-bearing graceful degradation and should stay.
 karaoke_gen core render, (5) backend routes/services/config. Findings below are
 verified against actual behaviour, not comments.
 
-> **DECISION fields are blank until Andrew answers.** Capture his words verbatim.
+> **DECISION fields capture Andrew's answers verbatim** (interview held 2026-06-09).
 
 ---
 
