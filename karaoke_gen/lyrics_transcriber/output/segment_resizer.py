@@ -63,6 +63,14 @@ class SegmentResizer:
             List of resized LyricsSegment objects
         """
         self._log_input_segments(segments)
+
+        # Guarantee valid, in-bounds word timing before doing anything else.
+        # Transcription occasionally emits words with missing/zero/negative
+        # timestamps; when a segment is later split, the derived sub-segment
+        # inherits words[0].start_time, so a bogus value (e.g. 0.0) becomes the
+        # sub-segment's start_time and corrupts downstream screen ordering.
+        segments = [self._sanitize_segment_timings(segment) for segment in segments]
+
         resized_segments: List[LyricsSegment] = []
 
         for segment_idx, segment in enumerate(segments):
@@ -122,6 +130,70 @@ class SegmentResizer:
             confidence=word.confidence if hasattr(word, "confidence") else None,
             created_during_correction=getattr(word, "created_during_correction", False),
             singer=word.singer,
+        )
+
+    def _sanitize_segment_timings(self, segment: LyricsSegment) -> LyricsSegment:
+        """Return a copy of ``segment`` whose word timings are valid and in-bounds.
+
+        A word is considered invalid if its ``start_time`` falls outside the
+        segment's ``[start_time, end_time]`` window, or if its ``end_time`` is
+        missing/before its ``start_time``/after the segment end. Only invalid
+        timings are corrected — already-valid words are left untouched — so the
+        karaoke highlight sweep is preserved wherever the source data is good.
+
+        A corrected start clamps to the later of the segment start and the
+        previous word's end (keeping words non-decreasing); a corrected end
+        clamps to ``[start, segment_end]``.
+        """
+        seg_start = segment.start_time
+        seg_end = segment.end_time if segment.end_time >= seg_start else seg_start
+
+        sanitized_words: List[Word] = []
+        prev_end = seg_start
+        changed = False
+        for word in segment.words:
+            start, end = word.start_time, word.end_time
+
+            if start is None or start < seg_start or start > seg_end:
+                start = min(max(prev_end, seg_start), seg_end)
+                changed = True
+
+            if end is None or end < start or end > seg_end:
+                end = min(max(start, end if end is not None else start), seg_end)
+                if end < start:
+                    end = start
+                changed = True
+
+            if start != word.start_time or end != word.end_time:
+                self.logger.debug(
+                    f"Sanitized word '{word.text}' timing {word.start_time}-{word.end_time} "
+                    f"-> {start}-{end} (segment {seg_start:.2f}-{seg_end:.2f})"
+                )
+                sanitized_words.append(
+                    Word(
+                        id=word.id,
+                        text=word.text,
+                        start_time=start,
+                        end_time=end,
+                        confidence=word.confidence if hasattr(word, "confidence") else None,
+                        created_during_correction=getattr(word, "created_during_correction", False),
+                        singer=word.singer,
+                    )
+                )
+            else:
+                sanitized_words.append(word)
+            prev_end = end
+
+        if not changed:
+            return segment
+
+        return LyricsSegment(
+            id=segment.id,
+            text=segment.text,
+            words=sanitized_words,
+            start_time=segment.start_time,
+            end_time=segment.end_time,
+            singer=segment.singer,
         )
 
     def _split_oversized_segment(self, segment_idx: int, segment: LyricsSegment) -> List[LyricsSegment]:
