@@ -31,6 +31,7 @@ from pathlib import Path
 from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
+from backend.services.audio_search_service import DownloadError
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.lyrics_cache_service import LyricsCacheService
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
@@ -282,9 +283,9 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 # Download audio file from GCS (waits for audio worker if URL job)
                 with job_span("download-audio", job_id) as download_span:
                     job_log.info("Downloading audio file from GCS...")
+                    # download_audio raises DownloadError with a specific reason
+                    # on failure (no silent None → generic-error fallback).
                     audio_path = await download_audio(job_id, temp_dir, storage, job, job_manager)
-                    if not audio_path:
-                        raise Exception("Failed to download audio file")
                     job_log.info(f"Audio downloaded: {os.path.basename(audio_path)}")
                     download_span.set_attribute("audio_file", os.path.basename(audio_path))
 
@@ -524,6 +525,17 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 logger.info(f"[job:{job_id}] WORKER_END worker=lyrics status=success duration={duration:.1f}s")
                 return True
         
+    except DownloadError as e:
+        duration = time.time() - start_time
+        job_log.error(f"Audio download failed: {str(e)}", exc_info=True)
+        logger.error(f"[job:{job_id}] WORKER_END worker=lyrics status=error duration={duration:.1f}s error={e}")
+        job_manager.mark_job_failed(
+            job_id=job_id,
+            error_message=f"Audio download failed: {str(e)}",
+            error_details={"stage": "download_audio", "error": str(e)}
+        )
+        return False
+
     except Exception as e:
         duration = time.time() - start_time
         job_log.error(f"Lyrics transcription failed: {str(e)}", exc_info=True)
@@ -559,13 +571,14 @@ async def download_audio(
     job,
     job_manager: JobManager,
     max_wait_seconds: int = 300
-) -> Optional[str]:
+) -> str:
     """
     Download audio file from GCS to local temp directory.
-    
-    For URL jobs, the audio worker downloads from YouTube first and uploads to GCS.
-    We wait for the input_media_gcs_path to be set by the audio worker.
-    
+
+    For URL jobs, the audio worker fetches the source via the flacfetch service
+    first and uploads it to GCS. We wait for the input_media_gcs_path to be set
+    by the audio worker.
+
     Args:
         job_id: Job ID
         temp_dir: Temporary directory for download
@@ -573,9 +586,14 @@ async def download_audio(
         job: Job object
         job_manager: JobManager instance
         max_wait_seconds: Maximum time to wait for audio worker to download
-    
+
     Returns:
-        Path to downloaded audio file, or None if failed
+        Path to the downloaded audio file.
+
+    Raises:
+        DownloadError: with a specific reason if the audio can't be obtained
+            (fail loudly with the real cause instead of returning None and
+            surfacing a generic "Failed to download audio file").
     """
     import time
     
@@ -608,20 +626,30 @@ async def download_audio(
                 # Check if audio worker failed
                 if updated_job and updated_job.status == JobStatus.FAILED:
                     logger.error(f"Job {job_id}: Audio worker failed, cannot proceed with lyrics")
-                    return None
-                
+                    raise DownloadError(
+                        "Audio worker failed before lyrics could run; cannot "
+                        "proceed without the downloaded/separated audio."
+                    )
+
                 # Wait before next poll - use asyncio.sleep to not block event loop
                 await asyncio.sleep(poll_interval)
-            
+
             logger.error(f"Job {job_id}: Timed out waiting for audio download (waited {max_wait_seconds}s)")
-            return None
-        
+            raise DownloadError(
+                f"Timed out after {max_wait_seconds}s waiting for the audio worker "
+                "to download the input audio."
+            )
+
         logger.error(f"Job {job_id}: No input_media_gcs_path found and no URL")
-        return None
-        
+        raise DownloadError(
+            "No input audio available (no input_media_gcs_path and no URL)."
+        )
+
+    except DownloadError:
+        raise
     except Exception as e:
         logger.error(f"Job {job_id}: Failed to download audio: {e}", exc_info=True)
-        return None
+        raise DownloadError(f"Failed to download audio for lyrics: {e}") from e
 
 
 async def upload_lyrics_results(
