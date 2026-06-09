@@ -228,7 +228,10 @@ class AudioSearchService:
             # source than the user expected (the 2026-06-08 incident class).
             # Fail loudly. (Fallback audit 2026-06-09, Theme 1.)
             logger.error(f"Remote flacfetch search failed (not falling back to local): {e}")
+            # Clear cached state so a later download() can't consume stale results
+            # from a previous successful search on this (singleton) instance.
             self._remote_search_id = None
+            self._cached_results = []
             raise AudioSearchError(f"Remote flacfetch search failed: {e}") from e
     
     def select_best(self, results: List[AudioSearchResult]) -> int:
