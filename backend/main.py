@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.config import settings
+from backend.config import settings, validate_production_config
 from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, rate_limits, push, catalog, encoding_worker, client_errors
 from backend.services.tracing import setup_tracing, instrument_app, get_current_trace_id
 from backend.services.structured_logging import setup_structured_logging
@@ -75,6 +75,11 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"GCS Bucket: {settings.gcs_bucket_name}")
     logger.info(f"Tracing enabled: {tracing_enabled}")
+
+    # Fail fast if required production config is missing, rather than silently
+    # running on dev defaults (wrong GCP project / GCS bucket / localhost worker
+    # URL). No-op outside production. (Fallback audit 2026-06-09, Theme 7.)
+    validate_production_config()
 
     # Preload NLP models and resources to avoid cold start delays
     # See docs/archive/2026-01-08-performance-investigation.md for background
