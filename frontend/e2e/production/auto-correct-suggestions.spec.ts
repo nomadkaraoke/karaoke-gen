@@ -62,7 +62,17 @@ test.describe('AI auto-correct suggestions (production)', () => {
 
     await openReviewPage(page)
 
+    // Generous timeout: right after a deploy the first review-page load can
+    // exceed 30s (cold Cloud Run instance + uncached correction payload).
+    // A "Saved Review Sessions" dialog may open on load (it aria-hides the
+    // rest of the app); close it without restoring before proceeding.
     const suggestBtn = page.getByRole('button', { name: /AI Suggest/i })
+    const sessionDialog = page.getByRole('dialog', { name: /Saved Review Sessions/i })
+    await expect(suggestBtn.or(sessionDialog).first()).toBeVisible({ timeout: 90_000 })
+    if (await sessionDialog.isVisible().catch(() => false)) {
+      await sessionDialog.getByRole('button', { name: /^Close$/i }).click()
+      await expect(sessionDialog).not.toBeVisible()
+    }
     await expect(suggestBtn).toBeVisible({ timeout: 30_000 })
     await suggestBtn.click()
 
