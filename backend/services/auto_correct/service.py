@@ -1,11 +1,12 @@
 """Auto-correct suggestion service: one whole-song LLM call, validated output."""
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
 from google import genai
@@ -66,6 +67,8 @@ class AutoCorrectResult:
     elapsed_seconds: float
     settings_applied: AutoCorrectSettings
     warnings: list[str] = field(default_factory=list)
+    # True when served from the per-job GCS cache (no LLM call was made).
+    cached: bool = False
 
 
 class AutoCorrectService:
@@ -110,6 +113,22 @@ class AutoCorrectService:
         )
 
         models = self._models_for(settings)
+
+        # Re-running on byte-identical input (lyrics, references, settings,
+        # models) returns the previous result instead of paying for another
+        # LLM call. Word ids are part of the key, so cached suggestions
+        # always reference words that still exist.
+        cache_path = self._cache_path(
+            job_id, models, settings, flat, reference_lyrics, artist, title
+        )
+        cached = self._cache_get(cache_path)
+        if cached is not None:
+            logger.info(
+                "auto-correct cache hit job=%s suggestions=%d", job_id,
+                len(cached.suggestions),
+            )
+            return cached
+
         t0 = time.time()
         per_model: dict[str, list[Suggestion]] = {}
         warnings: list[str] = []
@@ -151,13 +170,86 @@ class AutoCorrectService:
             "auto-correct job=%s models=%s words=%d suggestions=%d dropped_warnings=%d elapsed=%.1fs",
             job_id, model_label, len(flat), len(merged), len(warnings), elapsed,
         )
-        return AutoCorrectResult(
+        result = AutoCorrectResult(
             suggestions=merged,
             model=model_label,
             elapsed_seconds=round(elapsed, 1),
             settings_applied=settings,
             warnings=warnings,
         )
+        self._cache_put(cache_path, result)
+        return result
+
+    # ---- suggestion cache (GCS, best-effort) ----
+
+    def _get_storage(self):
+        if not hasattr(self, "_storage"):
+            from backend.services.storage_service import StorageService
+
+            self._storage = StorageService()
+        return self._storage
+
+    @staticmethod
+    def _cache_path(
+        job_id: str,
+        models: list[str],
+        settings: AutoCorrectSettings,
+        flat: list[tuple[str, str, str]],
+        reference_lyrics: dict[str, dict],
+        artist: Optional[str],
+        title: Optional[str],
+    ) -> str:
+        payload = {
+            "v": 1,
+            "models": models,
+            "settings": settings.to_dict(),
+            "words": [[word_id, text] for word_id, text, _seg in flat],
+            "references": {
+                source: [seg.get("text", "") for seg in (ref.get("segments") or [])]
+                for source, ref in sorted((reference_lyrics or {}).items())
+            },
+            "artist": artist,
+            "title": title,
+        }
+        digest = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
+        ).hexdigest()[:24]
+        return f"jobs/{job_id}/lyrics/auto_correct_cache/{digest}.json"
+
+    def _cache_get(self, path: str) -> Optional[AutoCorrectResult]:
+        """Best-effort: any storage/shape problem is a cache miss, never an error."""
+        try:
+            storage = self._get_storage()
+            if not storage.bucket.blob(path).exists():
+                return None
+            data = storage.download_json(path)
+            return AutoCorrectResult(
+                suggestions=[Suggestion(**s) for s in data["suggestions"]],
+                model=data["model"],
+                elapsed_seconds=0.0,
+                settings_applied=AutoCorrectSettings(**data["settings_applied"]),
+                warnings=list(data.get("warnings") or []),
+                cached=True,
+            )
+        except Exception:
+            logger.warning("auto-correct cache read failed for %s", path, exc_info=True)
+            return None
+
+    def _cache_put(self, path: str, result: AutoCorrectResult) -> None:
+        """Best-effort: a failed cache write never fails the request."""
+        try:
+            self._get_storage().upload_json(
+                path,
+                {
+                    "suggestions": [asdict(s) for s in result.suggestions],
+                    "model": result.model,
+                    "settings_applied": result.settings_applied.to_dict(),
+                    "warnings": result.warnings,
+                    "elapsed_seconds": result.elapsed_seconds,
+                },
+            )
+        except Exception:
+            logger.warning("auto-correct cache write failed for %s", path, exc_info=True)
 
     def _models_for(self, settings: AutoCorrectSettings) -> list[str]:
         if settings.compare_models:

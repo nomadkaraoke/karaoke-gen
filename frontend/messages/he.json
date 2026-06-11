@@ -1323,7 +1323,9 @@
       "conflictBadge": "גרסה",
       "conflictTooltip": "המודלים לא מסכימים לגבי המילים האלו — אישור גרסה אחת ידחה את האחרות.",
       "consensusBadge": "{consensus}/{total} מודלים",
-      "consensusTooltip": "הוצע על ידי: {models}"
+      "consensusTooltip": "הוצע על ידי: {models}",
+      "cachedBadge": "שמור במטמון",
+      "cachedTooltip": "שוחזר מהרצה קודמת על אותן מילים — ללא חיוב עלות AI."
     }
   },
   "instrumentalReview": {

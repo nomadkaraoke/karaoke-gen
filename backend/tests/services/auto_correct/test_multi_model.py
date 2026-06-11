@@ -55,7 +55,9 @@ def _run_compare(responses_by_model, compare_models_env="model-a;model-b",
         service.settings, "auto_correct_compare_models", compare_models_env
     ), patch.object(
         service.settings, "auto_correct_model", single_model
-    ), patch.object(service, "_call_model", side_effect=fake_call):
+    ), patch.object(service, "_cache_get", return_value=None), \
+        patch.object(service, "_cache_put"), \
+        patch.object(service, "_call_model", side_effect=fake_call):
         return service.suggest(
             job_id="job-1",
             segments=SEGMENTS,

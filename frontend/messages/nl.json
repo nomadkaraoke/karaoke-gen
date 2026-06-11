@@ -1323,7 +1323,9 @@
       "conflictBadge": "variant",
       "conflictTooltip": "De modellen zijn het niet eens over deze woorden — als je één variant accepteert, wijs je de andere af.",
       "consensusBadge": "{consensus}/{total} modellen",
-      "consensusTooltip": "Voorgesteld door: {models}"
+      "consensusTooltip": "Voorgesteld door: {models}",
+      "cachedBadge": "gecached",
+      "cachedTooltip": "Hersteld uit een eerdere verwerking van dezelfde songtekst — er zijn geen AI-kosten gemaakt."
     }
   },
   "instrumentalReview": {

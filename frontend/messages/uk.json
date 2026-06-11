@@ -1323,7 +1323,9 @@
       "conflictBadge": "варіант",
       "conflictTooltip": "Моделі розійшлися щодо цих слів — обравши один варіант, ти відхилиш інші.",
       "consensusBadge": "{consensus}/{total} моделей",
-      "consensusTooltip": "Запропоновано: {models}"
+      "consensusTooltip": "Запропоновано: {models}",
+      "cachedBadge": "кешовано",
+      "cachedTooltip": "Відновлено з попереднього запуску для цього ж тексту пісні — без витрат на ШІ."
     }
   },
   "instrumentalReview": {

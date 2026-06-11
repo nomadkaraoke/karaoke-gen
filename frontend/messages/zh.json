@@ -1323,7 +1323,9 @@
       "conflictBadge": "选项",
       "conflictTooltip": "各模型对这些词存在分歧 —— 接受其中一个选项将放弃其他选项。",
       "consensusBadge": "{consensus}/{total} 个模型",
-      "consensusTooltip": "推荐模型：{models}"
+      "consensusTooltip": "推荐模型：{models}",
+      "cachedBadge": "已缓存",
+      "cachedTooltip": "已从之前相同歌词的处理记录中恢复 —— 未产生 AI 费用。"
     }
   },
   "instrumentalReview": {

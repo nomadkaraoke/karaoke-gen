@@ -64,6 +64,8 @@ export interface AutoCorrectResponse {
   elapsed_seconds: number
   settings_applied: AutoCorrectSettings
   warnings: string[]
+  /** Served from the per-job cache — no AI cost was incurred. */
+  cached: boolean
 }
 
 export class AutoCorrectApiError extends Error {
@@ -138,5 +140,6 @@ export async function fetchAutoCorrectSuggestions(
     elapsed_seconds: data.elapsed_seconds,
     settings_applied: data.settings_applied,
     warnings: data.warnings ?? [],
+    cached: data.cached ?? false,
   }
 }

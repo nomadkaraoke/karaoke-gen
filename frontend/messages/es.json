@@ -1323,7 +1323,9 @@
       "conflictBadge": "variante",
       "conflictTooltip": "Los modelos no coinciden en estas palabras; al aceptar una variante, se rechazan las demás.",
       "consensusBadge": "{consensus}/{total} modelos",
-      "consensusTooltip": "Propuesto por: {models}"
+      "consensusTooltip": "Propuesto por: {models}",
+      "cachedBadge": "en caché",
+      "cachedTooltip": "Restaurado de una ejecución anterior con las mismas letras — no generó costos de IA."
     }
   },
   "instrumentalReview": {

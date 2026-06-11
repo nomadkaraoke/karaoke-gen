@@ -105,6 +105,7 @@ class AutoCorrectResponse(_PydBaseModel):
     elapsed_seconds: float
     settings_applied: dict
     warnings: list[str]
+    cached: bool = False
 
 
 def _get_custom_lyrics_service_dep() -> CustomLyricsService:
@@ -747,6 +748,7 @@ async def auto_correct_suggestions(
         elapsed_seconds=result.elapsed_seconds,
         settings_applied=result.settings_applied.to_dict(),
         warnings=result.warnings,
+        cached=result.cached,
     )
 
 

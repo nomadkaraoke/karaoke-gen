@@ -35,7 +35,9 @@ REFS = {"genius": {"segments": [{"text": "Sippin' on straight chlorine"}]}}
 
 def _suggest(raw_response, settings=None):
     service = AutoCorrectService()
-    with patch.object(service, "_call_model", return_value=raw_response):
+    with patch.object(service, "_call_model", return_value=raw_response), \
+         patch.object(service, "_cache_get", return_value=None), \
+         patch.object(service, "_cache_put"):
         return service.suggest(
             job_id="job-1",
             segments=SEGMENTS,

@@ -1323,7 +1323,9 @@
       "conflictBadge": "variant",
       "conflictTooltip": "Modely sa nezhodujú na týchto slovách — prijatím jedného variantu odmietneš ostatné.",
       "consensusBadge": "{consensus}/{total} modelov",
-      "consensusTooltip": "Navrhli: {models}"
+      "consensusTooltip": "Navrhli: {models}",
+      "cachedBadge": "z cache",
+      "cachedTooltip": "Obnovené z predchádzajúceho spustenia na rovnakom texte — nevznikli žiadne náklady na AI."
     }
   },
   "instrumentalReview": {

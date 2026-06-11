@@ -58,6 +58,7 @@ export default function AutoCorrectPanel({
     suggestions,
     decisions,
     model,
+    cached,
     pendingCount,
     acceptedCount,
     accept,
@@ -88,6 +89,23 @@ export default function AutoCorrectPanel({
           <Badge variant="outline" className="hidden sm:inline-flex text-xs">
             {model}
           </Badge>
+          {cached && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 text-xs border-teal-500/50 text-teal-600 dark:text-teal-400"
+                  >
+                    {t('cachedBadge')}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  {t('cachedTooltip')}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {!isReadOnly && pendingCount > 0 && (

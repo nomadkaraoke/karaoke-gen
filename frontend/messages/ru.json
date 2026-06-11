@@ -1323,7 +1323,9 @@
       "conflictBadge": "вариант",
       "conflictTooltip": "Модели расходятся во мнении насчет этих слов — приняв один вариант, ты отклонишь остальные.",
       "consensusBadge": "{consensus}/{total} моделей",
-      "consensusTooltip": "Предложено: {models}"
+      "consensusTooltip": "Предложено: {models}",
+      "cachedBadge": "кэшировано",
+      "cachedTooltip": "Восстановлено из предыдущей обработки этого же текста песни — без затрат на ИИ."
     }
   },
   "instrumentalReview": {

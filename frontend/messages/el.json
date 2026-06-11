@@ -1323,7 +1323,9 @@
       "conflictBadge": "παραλλαγή",
       "conflictTooltip": "Τα μοντέλα διαφωνούν για αυτές τις λέξεις — αν αποδεχτείς μια παραλλαγή, απορρίπτεις τις υπόλοιπες.",
       "consensusBadge": "{consensus}/{total} μοντέλα",
-      "consensusTooltip": "Προτάθηκε από: {models}"
+      "consensusTooltip": "Προτάθηκε από: {models}",
+      "cachedBadge": "προσωρινά αποθηκευμένο",
+      "cachedTooltip": "Ανακτήθηκε από προηγούμενη επεξεργασία των ίδιων στίχων — δεν υπήρξε χρέωση AI."
     }
   },
   "instrumentalReview": {

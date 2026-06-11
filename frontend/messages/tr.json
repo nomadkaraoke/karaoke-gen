@@ -1323,7 +1323,9 @@
       "conflictBadge": "varyant",
       "conflictTooltip": "Modeller bu kelimeler konusunda uyuşmuyor — bir varyantı kabul ettiğinde diğerlerini reddetmiş olursun.",
       "consensusBadge": "{consensus}/{total} model",
-      "consensusTooltip": "Öneren: {models}"
+      "consensusTooltip": "Öneren: {models}",
+      "cachedBadge": "önbellekten",
+      "cachedTooltip": "Aynı şarkı sözleriyle yapılan önceki bir işlemden geri yüklendi — yapay zeka maliyeti oluşmadı."
     }
   },
   "instrumentalReview": {

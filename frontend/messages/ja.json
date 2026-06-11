@@ -1323,7 +1323,9 @@
       "conflictBadge": "別案",
       "conflictTooltip": "モデル間でこれらの単語の認識が異なります。1つの案を採用すると、他の案は破棄されます。",
       "consensusBadge": "{consensus}/{total} モデル",
-      "consensusTooltip": "提案元: {models}"
+      "consensusTooltip": "提案元: {models}",
+      "cachedBadge": "キャッシュ済み",
+      "cachedTooltip": "同じ歌詞の過去のデータから復元されました。AIのコストは発生していません。"
     }
   },
   "instrumentalReview": {

@@ -1323,7 +1323,9 @@
       "conflictBadge": "variant",
       "conflictTooltip": "Modellerne er uenige om disse ord — hvis du accepterer én variant, afvises de andre.",
       "consensusBadge": "{consensus}/{total} modeller",
-      "consensusTooltip": "Foreslået af: {models}"
+      "consensusTooltip": "Foreslået af: {models}",
+      "cachedBadge": "cachet",
+      "cachedTooltip": "Gendannet fra en tidligere kørsel med de samme sangtekster — der påløb ingen AI-omkostninger."
     }
   },
   "instrumentalReview": {

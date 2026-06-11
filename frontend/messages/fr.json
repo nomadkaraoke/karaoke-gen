@@ -1323,7 +1323,9 @@
       "conflictBadge": "variante",
       "conflictTooltip": "Les modèles ne sont pas d'accord sur ces mots — accepter une variante rejette les autres.",
       "consensusBadge": "{consensus}/{total} modèles",
-      "consensusTooltip": "Proposé par : {models}"
+      "consensusTooltip": "Proposé par : {models}",
+      "cachedBadge": "en cache",
+      "cachedTooltip": "Restauré depuis un traitement précédent sur les mêmes paroles — aucun coût d'IA n'a été engagé."
     }
   },
   "instrumentalReview": {

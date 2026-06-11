@@ -1323,7 +1323,9 @@
       "conflictBadge": "változat",
       "conflictTooltip": "A modellek nem értenek egyet ezeknél a szavaknál — egy változat elfogadásával elutasítod a többit.",
       "consensusBadge": "{consensus}/{total} modell",
-      "consensusTooltip": "Javasolta: {models}"
+      "consensusTooltip": "Javasolta: {models}",
+      "cachedBadge": "gyorsítótárazott",
+      "cachedTooltip": "Egy korábbi, azonos dalszövegen végzett futtatásból visszaállítva — nem merült fel AI-költség."
     }
   },
   "instrumentalReview": {

@@ -1323,7 +1323,9 @@
       "conflictBadge": "varian",
       "conflictTooltip": "Model tidak bersetuju tentang perkataan ini — menerima satu varian akan menolak varian yang lain.",
       "consensusBadge": "{consensus}/{total} model",
-      "consensusTooltip": "Dicadangkan oleh: {models}"
+      "consensusTooltip": "Dicadangkan oleh: {models}",
+      "cachedBadge": "dicache",
+      "cachedTooltip": "Dipulihkan daripada proses sebelumnya untuk lirik yang sama — tiada kos AI dikenakan."
     }
   },
   "instrumentalReview": {
