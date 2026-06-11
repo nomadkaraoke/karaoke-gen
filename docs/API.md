@@ -575,8 +575,10 @@ existing corrections/complete paths.
 
 The review UI always requests the multi-model path (`compare_models: true`)
 and auto-runs once on load, so suggestions appear without a click. To make
-that load instant, the lyrics worker **proactively pre-generates and caches**
-the same multi-model run once transcription + references are ready (gated by
+that load instant, suggestions are **proactively pre-generated and cached**
+once transcription + references are ready: the lyrics worker fires an internal
+trigger (`POST /api/internal/workers/auto-correct`) that runs the same
+multi-model generation on the API service (gated by
 `AUTO_CORRECT_PROACTIVE_ENABLED`; best-effort — it never blocks or fails the
 karaoke job). Because the proactive run uses the same default settings the UI
 sends, the on-load request is normally a cache hit with no extra cost.

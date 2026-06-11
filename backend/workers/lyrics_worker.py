@@ -170,66 +170,24 @@ def create_lyrics_processor(
     )
 
 
-async def _run_proactive_auto_correct(job_id, job, storage, job_log) -> None:
-    """Pre-generate + cache AI auto-correct suggestions for the review UI.
+async def _trigger_proactive_auto_correct(job_id, job_log) -> None:
+    """Trigger proactive auto-correct generation on the API service.
 
-    Best-effort and fully isolated: gated behind a flag, bounded by a timeout,
-    and swallows every error. It must NEVER raise, fail the job, or block the
-    pipeline — downstream stages have already been triggered before this runs.
-
-    Reads the corrections.json the worker just wrote (the same data the review
-    UI loads on first open) and runs the multi-model suggest() path with default
-    settings, so the UI's on-load call is a cache hit instead of a fresh spend.
+    The actual multi-model LLM call + caching runs on the API service (which
+    has the working Anthropic key / compare-models config) — see
+    backend/workers/auto_correct_worker.py. Here we just fire the HTTP trigger
+    and await it. Best-effort and fully isolated: it must NEVER raise, fail the
+    job, or block the pipeline — downstream stages are already triggered before
+    this runs, and the service gates the work behind AUTO_CORRECT_PROACTIVE_ENABLED.
     """
-    from backend.config import get_settings
-
-    settings = get_settings()
-    if not settings.auto_correct_proactive_enabled:
-        return
-
     try:
-        from backend.services.auto_correct import get_auto_correct_service
-        from backend.services.auto_correct.settings import AutoCorrectSettings
+        from backend.services.worker_service import WorkerService
 
-        corrections_path = f"jobs/{job_id}/lyrics/corrections.json"
-        if not storage.file_exists(corrections_path):
-            job_log.info("Proactive auto-correct skipped: no corrections.json yet")
-            return
-        data = storage.download_json(corrections_path)
-        segments = data.get("corrected_segments") or data.get("segments") or []
-        reference_lyrics = data.get("reference_lyrics") or {}
-        if not segments or not reference_lyrics:
-            # No references → nothing to compare against. The reviewer can paste
-            # references in the UI and trigger auto-correct manually later.
-            job_log.info(
-                "Proactive auto-correct skipped: %d segments, %d reference sources",
-                len(segments), len(reference_lyrics),
-            )
-            return
-
-        service = get_auto_correct_service()
-        job_log.info("Proactive auto-correct: generating suggestions (multi-model)")
-        # Default settings + compare_models=True must match what the review UI
-        # sends, or the cache key won't line up and the UI pays for a fresh call.
-        result = await asyncio.wait_for(
-            asyncio.to_thread(
-                service.suggest,
-                job_id=job_id,
-                segments=segments,
-                reference_lyrics=reference_lyrics,
-                artist=getattr(job, "artist", None),
-                title=getattr(job, "title", None),
-                settings=AutoCorrectSettings(compare_models=True),
-            ),
-            timeout=180,
-        )
-        job_log.info(
-            "Proactive auto-correct done: %d suggestions cached (models=%s, %.1fs)",
-            len(result.suggestions), result.model, result.elapsed_seconds,
-        )
+        ok = await WorkerService().trigger_auto_correct(job_id)
+        job_log.info("Proactive auto-correct trigger %s", "ok" if ok else "skipped/failed")
     except Exception as e:  # noqa: BLE001 — never let auto-correct affect the job
-        job_log.warning(f"Proactive auto-correct failed (non-fatal): {e}", exc_info=True)
-        logger.warning(f"[job:{job_id}] Proactive auto-correct failed (non-fatal): {e}")
+        job_log.warning(f"Proactive auto-correct trigger failed (non-fatal): {e}")
+        logger.warning(f"[job:{job_id}] Proactive auto-correct trigger failed (non-fatal): {e}")
 
 
 async def process_lyrics_transcription(job_id: str) -> bool:
@@ -580,11 +538,12 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 job_manager.mark_lyrics_complete(job_id)
 
                 # Proactively pre-generate + cache AI auto-correct suggestions so
-                # they're ready instantly when the reviewer opens the lyrics UI.
-                # Done AFTER mark_lyrics_complete (downstream is already triggered,
-                # so this never blocks it) and fully isolated — it can never fail
-                # or delay the job beyond its own timeout.
-                await _run_proactive_auto_correct(job_id, job, storage, job_log)
+                # they're ready when the reviewer opens the lyrics UI. The work
+                # runs on the API service (it has the Anthropic key); we just fire
+                # the trigger here. Done AFTER mark_lyrics_complete (downstream is
+                # already triggered, so this never blocks it) and fully isolated —
+                # it can never fail or delay the job beyond its own timeout.
+                await _trigger_proactive_auto_correct(job_id, job_log)
 
                 duration = time.time() - start_time
                 # Store worker-level timing

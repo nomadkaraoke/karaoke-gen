@@ -410,6 +410,34 @@ class WorkerService:
     async def trigger_screens_worker(self, job_id: str) -> bool:
         """Trigger screen generation worker."""
         return await self.trigger_worker("screens", job_id)
+
+    async def trigger_auto_correct(self, job_id: str, timeout_seconds: int = 200) -> bool:
+        """Trigger proactive auto-correct generation on the API service.
+
+        Direct, awaited HTTP call (NOT Cloud Tasks): the endpoint runs the work
+        synchronously, so awaiting it keeps both the caller (lyrics job) and the
+        service instance alive until the cache is written. Best-effort — returns
+        False on any failure and never raises, so it can't affect the job.
+        """
+        if not self._base_url:
+            logger.info(f"[job:{job_id}] auto-correct trigger skipped: no service base URL")
+            return False
+        url = f"{self._base_url}/api/internal/workers/auto-correct"
+        headers = {"Content-Type": "application/json"}
+        if self._admin_token:
+            headers["X-Admin-Token"] = self._admin_token
+        # Propagate trace context so the service-side span links to this job.
+        headers = inject_trace_context(headers)
+        try:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                resp = await client.post(url, json={"job_id": job_id}, headers=headers)
+            logger.info(
+                f"[job:{job_id}] auto-correct trigger -> HTTP {resp.status_code}"
+            )
+            return resp.status_code < 400
+        except Exception as e:  # noqa: BLE001 — best-effort, never fatal
+            logger.warning(f"[job:{job_id}] auto-correct trigger failed (non-fatal): {e}")
+            return False
     
     def _warmup_encoding_worker(self, job_id: str) -> None:
         """Fire-and-forget warmup of the encoding worker VM.
