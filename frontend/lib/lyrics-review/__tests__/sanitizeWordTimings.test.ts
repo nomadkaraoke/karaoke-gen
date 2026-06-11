@@ -56,4 +56,20 @@ describe('sanitizeSegmentTimings', () => {
     expect(segment.words[0].start_time!).toBeGreaterThanOrEqual(5)
     expect(segment.words[0].end_time!).toBeGreaterThanOrEqual(segment.words[0].start_time!)
   })
+
+  it('returns segment untouched when segment bounds are null (non-finite)', () => {
+    const seg: LyricsSegment = {
+      id: 's', text: 'hello world', start_time: null, end_time: null,
+      words: [
+        { id: 'w0', text: 'hello', start_time: 3, end_time: 4 },
+        { id: 'w1', text: 'world', start_time: 4, end_time: 5 },
+      ],
+    }
+    const { segment: out, changes } = sanitizeSegmentTimings(seg)
+    expect(changes).toEqual([])
+    expect(out.words[0].start_time).toBe(3)
+    expect(out.words[0].end_time).toBe(4)
+    expect(out.words[1].start_time).toBe(4)
+    expect(out.words[1].end_time).toBe(5)
+  })
 })

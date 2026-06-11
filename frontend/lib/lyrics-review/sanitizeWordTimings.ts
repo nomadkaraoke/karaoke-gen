@@ -9,31 +9,47 @@ export interface TimingChange {
 }
 
 /**
- * Enforce the timing invariant for one segment:
- *   segment.start <= word.start <= word.end <= segment.end, non-decreasing, finite, >= 0.
+ * Clamp word timings for one segment into the segment's authoritative window.
  *
- * The segment's own start/end are treated as the authoritative window. Because the
- * editor derives segment bounds from word min/max on every edit (updateSegment), a word
- * outside the segment window only happens via corruption (e.g. a manual-sync glitch),
- * never via a legitimate extension. Returns a NEW segment plus the list of clamps applied
- * so callers can warn. A clean segment returns the same word objects and changes: [].
+ * Behaviour:
+ *   - If `segment.start_time` or `segment.end_time` is null/NaN/Infinity the segment
+ *     bounds are unknown, so the segment is returned **untouched** with `changes: []`.
+ *     (The editor derives segment bounds from word min/max on every edit; corrupted
+ *     segment bounds are a separate concern.)
+ *   - Each word's `start_time` and `end_time` are clamped into
+ *     `[segment.start_time, segment.end_time]`.
+ *   - Words whose `start_time` is missing or non-finite are placed at the previous
+ *     word's (repaired) end time, keeping repaired words in order within the window.
+ *   - `word.end_time` is forced `>= word.start_time` (after clamping).
+ *   - Already-valid in-bounds word timings are left as-is; only out-of-window or
+ *     missing values are corrected.
+ *
+ * These semantics intentionally mirror the shipped backend
+ * `SegmentResizer._sanitize_segment_timings`. Returns a NEW segment object plus the
+ * list of clamps applied so callers can warn. A clean segment returns the same word
+ * objects and `changes: []`.
  */
 export function sanitizeSegmentTimings(segment: LyricsSegment): {
   segment: LyricsSegment
   changes: TimingChange[]
 } {
+  // Guard: if segment bounds are non-finite we cannot clamp words — leave untouched.
+  if (!isFiniteNumber(segment.start_time) || !isFiniteNumber(segment.end_time)) {
+    return { segment, changes: [] }
+  }
+
   const changes: TimingChange[] = []
 
-  const segStart = isFiniteNumber(segment.start_time) ? (segment.start_time as number) : 0
-  const segEndRaw = isFiniteNumber(segment.end_time) ? (segment.end_time as number) : segStart
-  const segEnd = Math.max(segEndRaw, segStart)
+  const segStart = segment.start_time as number
+  const segEnd = Math.max(segment.end_time as number, segStart)
+
+  // Hoist clamp once — segStart/segEnd are constant for the whole segment.
+  const clamp = (v: number) => Math.min(Math.max(v, segStart), segEnd)
 
   let prevEnd = segStart
   const words: Word[] = segment.words.map((w) => {
-    const clamp = (v: number) => Math.min(Math.max(v, segStart), segEnd)
-
     const start = isFiniteNumber(w.start_time) ? (w.start_time as number) : null
-    const end = isFiniteNumber(w.end_time) ? (w.end_time as number) : null
+    const end   = isFiniteNumber(w.end_time)   ? (w.end_time   as number) : null
 
     const wantStart = start === null ? prevEnd : start
     const newStart = clamp(Math.max(wantStart, segStart))
