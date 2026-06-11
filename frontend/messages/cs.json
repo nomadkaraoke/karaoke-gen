@@ -776,7 +776,11 @@
     "undoFailed": "Krok zpět selhal",
     "redoFailed": "Krok znovu selhal",
     "restoreFailed": "Obnovení selhalo — některé úpravy možná nebyly aplikovány",
-    "submitFailed": "Odeslání selhalo"
+    "submitFailed": "Odeslání selhalo",
+    "fadeIn": "Postupné zesílení",
+    "fadeInSelection": "Postupné zesílení vybraného úseku",
+    "fadeOut": "Postupné zeslabení",
+    "fadeOutSelection": "Postupné zeslabení vybraného úseku"
   },
   "audioEditRestore": {
     "title": "Uložené relace úprav zvuku",

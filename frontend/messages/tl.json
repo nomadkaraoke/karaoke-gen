@@ -776,7 +776,11 @@
     "undoFailed": "Nabigo ang pag-undo",
     "redoFailed": "Nabigo ang pag-redo",
     "restoreFailed": "Nabigo ang pag-restore — maaaring hindi nailapat ang ilang edit",
-    "submitFailed": "Nabigo ang pag-submit"
+    "submitFailed": "Nabigo ang pag-submit",
+    "fadeIn": "Fade In",
+    "fadeInSelection": "Mag-fade in sa napiling bahagi",
+    "fadeOut": "Fade Out",
+    "fadeOutSelection": "Mag-fade out sa napiling bahagi"
   },
   "audioEditRestore": {
     "title": "Mga Naka-save na Audio Edit Session",

@@ -776,7 +776,11 @@
     "undoFailed": "Ongedaan maken mislukt",
     "redoFailed": "Opnieuw uitvoeren mislukt",
     "restoreFailed": "Herstellen mislukt — sommige bewerkingen zijn mogelijk niet toegepast",
-    "submitFailed": "Indienen mislukt"
+    "submitFailed": "Indienen mislukt",
+    "fadeIn": "Fade-in",
+    "fadeInSelection": "Fade-in over het geselecteerde gedeelte",
+    "fadeOut": "Fade-out",
+    "fadeOutSelection": "Fade-out over het geselecteerde gedeelte"
   },
   "audioEditRestore": {
     "title": "Opgeslagen Audio Bewerkingssessies",

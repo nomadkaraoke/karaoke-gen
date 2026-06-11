@@ -20,6 +20,8 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  TrendingUp,
+  TrendingDown,
   Upload,
   Check,
   ChevronDown,
@@ -614,6 +616,22 @@ export function AudioEditor({ job }: AudioEditorProps) {
     })
   }
 
+  function handleFadeIn() {
+    if (!selection) return
+    handleApply("fade_in", {
+      start_seconds: selection.startSeconds,
+      end_seconds: selection.endSeconds,
+    })
+  }
+
+  function handleFadeOut() {
+    if (!selection) return
+    handleApply("fade_out", {
+      start_seconds: selection.startSeconds,
+      end_seconds: selection.endSeconds,
+    })
+  }
+
   // ─── Join (upload) ─────────────────────────────────────────────
 
   const [showJoinDialog, setShowJoinDialog] = useState(false)
@@ -877,6 +895,19 @@ export function AudioEditor({ job }: AudioEditorProps) {
                   {t('trimStart')}
                 </Button>
               )}
+              {selection.startSeconds < 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isOperating}
+                  onClick={handleFadeIn}
+                  className="text-xs h-7"
+                  title={t('fadeInSelection')}
+                >
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  {t('fadeIn')}
+                </Button>
+              )}
               {selection.endSeconds > currentDuration - 1 && (
                 <Button
                   variant="outline"
@@ -886,6 +917,19 @@ export function AudioEditor({ job }: AudioEditorProps) {
                   className="text-xs h-7"
                 >
                   {t('trimEnd')}
+                </Button>
+              )}
+              {selection.endSeconds > currentDuration - 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isOperating}
+                  onClick={handleFadeOut}
+                  className="text-xs h-7"
+                  title={t('fadeOutSelection')}
+                >
+                  <TrendingDown className="w-3 h-3 mr-1" />
+                  {t('fadeOut')}
                 </Button>
               )}
               <Button

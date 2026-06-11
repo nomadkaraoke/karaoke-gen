@@ -776,7 +776,11 @@
     "undoFailed": "Annullamento fallito",
     "redoFailed": "Ripetizione fallita",
     "restoreFailed": "Ripristino fallito — alcune modifiche potrebbero non essere state applicate",
-    "submitFailed": "Invio fallito"
+    "submitFailed": "Invio fallito",
+    "fadeIn": "Dissolvenza in entrata",
+    "fadeInSelection": "Dissolvenza in entrata sulla regione selezionata",
+    "fadeOut": "Dissolvenza in uscita",
+    "fadeOutSelection": "Dissolvenza in uscita sulla regione selezionata"
   },
   "audioEditRestore": {
     "title": "Sessioni di modifica audio salvate",

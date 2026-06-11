@@ -776,7 +776,11 @@
     "undoFailed": "Cofanie nie powiodło się",
     "redoFailed": "Ponawianie nie powiodło się",
     "restoreFailed": "Przywracanie nie powiodło się — niektóre edycje mogły nie zostać zastosowane",
-    "submitFailed": "Przesyłanie nie powiodło się"
+    "submitFailed": "Przesyłanie nie powiodło się",
+    "fadeIn": "Płynne pogłaśnianie",
+    "fadeInSelection": "Płynnie pogłośnij zaznaczony fragment",
+    "fadeOut": "Płynne wyciszanie",
+    "fadeOutSelection": "Płynnie wycisz zaznaczony fragment"
   },
   "audioEditRestore": {
     "title": "Zapisane sesje edycji dźwięku",

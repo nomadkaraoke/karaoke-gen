@@ -776,7 +776,11 @@
     "undoFailed": "Hoàn tác thất bại",
     "redoFailed": "Làm lại thất bại",
     "restoreFailed": "Khôi phục thất bại — một số chỉnh sửa có thể chưa được áp dụng",
-    "submitFailed": "Gửi thất bại"
+    "submitFailed": "Gửi thất bại",
+    "fadeIn": "Tăng dần âm lượng",
+    "fadeInSelection": "Tăng dần âm lượng trong vùng đã chọn",
+    "fadeOut": "Giảm dần âm lượng",
+    "fadeOutSelection": "Giảm dần âm lượng trong vùng đã chọn"
   },
   "audioEditRestore": {
     "title": "Các phiên chỉnh sửa âm thanh đã lưu",

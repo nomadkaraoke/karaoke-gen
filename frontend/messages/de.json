@@ -776,7 +776,11 @@
     "undoFailed": "Rückgängig machen fehlgeschlagen",
     "redoFailed": "Wiederholen fehlgeschlagen",
     "restoreFailed": "Wiederherstellung fehlgeschlagen — einige Bearbeitungen wurden möglicherweise nicht angewendet",
-    "submitFailed": "Einreichen fehlgeschlagen"
+    "submitFailed": "Einreichen fehlgeschlagen",
+    "fadeIn": "Einblenden",
+    "fadeInSelection": "Über den ausgewählten Bereich einblenden",
+    "fadeOut": "Ausblenden",
+    "fadeOutSelection": "Über den ausgewählten Bereich ausblenden"
   },
   "audioEditRestore": {
     "title": "Gespeicherte Audiobearbeitungs-Sitzungen",

@@ -776,7 +776,11 @@
     "undoFailed": "Fortryd mislykkedes",
     "redoFailed": "Gendan mislykkedes",
     "restoreFailed": "Gendannelse mislykkedes — nogle redigeringer er muligvis ikke blevet anvendt",
-    "submitFailed": "Indsendelse mislykkedes"
+    "submitFailed": "Indsendelse mislykkedes",
+    "fadeIn": "Fade ind",
+    "fadeInSelection": "Fade ind over det valgte område",
+    "fadeOut": "Fade ud",
+    "fadeOutSelection": "Fade ud over det valgte område"
   },
   "audioEditRestore": {
     "title": "Gemte lydredigeringssessioner",

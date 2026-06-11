@@ -776,7 +776,11 @@
     "undoFailed": "Η αναίρεση απέτυχε",
     "redoFailed": "Η επανάληψη απέτυχε",
     "restoreFailed": "Η επαναφορά απέτυχε — κάποιες επεξεργασίες μπορεί να μην έχουν εφαρμοστεί",
-    "submitFailed": "Η υποβολή απέτυχε"
+    "submitFailed": "Η υποβολή απέτυχε",
+    "fadeIn": "Fade In",
+    "fadeInSelection": "Εφάρμοσε fade in στην επιλεγμένη περιοχή",
+    "fadeOut": "Fade Out",
+    "fadeOutSelection": "Εφάρμοσε fade out στην επιλεγμένη περιοχή"
   },
   "audioEditRestore": {
     "title": "Αποθηκευμένες Συνεδρίες Επεξεργασίας Ήχου",

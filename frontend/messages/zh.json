@@ -776,7 +776,11 @@
     "undoFailed": "撤销失败",
     "redoFailed": "重做失败",
     "restoreFailed": "恢复失败——某些编辑可能未应用",
-    "submitFailed": "提交失败"
+    "submitFailed": "提交失败",
+    "fadeIn": "淡入",
+    "fadeInSelection": "在选定区域淡入",
+    "fadeOut": "淡出",
+    "fadeOutSelection": "在选定区域淡出"
   },
   "audioEditRestore": {
     "title": "已保存的音频编辑会话",

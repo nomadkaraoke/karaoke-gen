@@ -776,7 +776,11 @@
     "undoFailed": "ביטול נכשל",
     "redoFailed": "ביצוע שוב נכשל",
     "restoreFailed": "שחזור נכשל — ייתכן שחלק מהעריכות לא הוחלו",
-    "submitFailed": "שליחה נכשלה"
+    "submitFailed": "שליחה נכשלה",
+    "fadeIn": "פייד אין",
+    "fadeInSelection": "החלת פייד אין על האזור הנבחר",
+    "fadeOut": "פייד אאוט",
+    "fadeOutSelection": "החלת פייד אאוט על האזור הנבחר"
   },
   "audioEditRestore": {
     "title": "הפעלות עריכת אודיו שמורות",

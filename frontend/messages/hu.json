@@ -776,7 +776,11 @@
     "undoFailed": "Visszavonás sikertelen",
     "redoFailed": "Újra sikertelen",
     "restoreFailed": "Visszaállítás sikertelen — előfordulhat, hogy néhány szerkesztés nem lett alkalmazva",
-    "submitFailed": "Beküldés sikertelen"
+    "submitFailed": "Beküldés sikertelen",
+    "fadeIn": "Felerősítés",
+    "fadeInSelection": "Felerősítés a kijelölt szakaszon",
+    "fadeOut": "Elhalkítás",
+    "fadeOutSelection": "Elhalkítás a kijelölt szakaszon"
   },
   "audioEditRestore": {
     "title": "Mentett hangszerkesztési munkamenetek",

@@ -776,7 +776,11 @@
     "undoFailed": "Anularea a eșuat",
     "redoFailed": "Refacerea a eșuat",
     "restoreFailed": "Restaurarea a eșuat — este posibil ca unele editări să nu fi fost aplicate",
-    "submitFailed": "Trimiterea a eșuat"
+    "submitFailed": "Trimiterea a eșuat",
+    "fadeIn": "Fade In",
+    "fadeInSelection": "Aplică fade in pe regiunea selectată",
+    "fadeOut": "Fade Out",
+    "fadeOutSelection": "Aplică fade out pe regiunea selectată"
   },
   "audioEditRestore": {
     "title": "Sesiuni de editare audio salvate",
