@@ -992,7 +992,9 @@
         "loadingAll": "Laddar alla ord...",
         "loadingSegment": "Laddar segment...",
         "noData": "Ingen segmentdata tillgänglig",
-        "unCorrect": "Av-korrigera"
+        "unCorrect": "Av-korrigera",
+        "timingClamped": "Tajmingen för \"{word}\" var utanför segmentet — justerades till {time}s.",
+        "timingSanitized": "Åtgärdade tajmingen för {count} ord som hamnade utanför detta segment."
       },
       "findReplace": {
         "title": "Sök och ersätt",

@@ -992,7 +992,9 @@
         "loadingAll": "טוען את כל המילים...",
         "loadingSegment": "טוען מקטע...",
         "noData": "אין נתוני מקטע זמינים",
-        "unCorrect": "בטל תיקון"
+        "unCorrect": "בטל תיקון",
+        "timingClamped": "התזמון של \"{word}\" היה מחוץ למקטע — הוצמד ל-{time} שניות.",
+        "timingSanitized": "תוקנו {count} תזמוני מילים שחרגו מהמקטע הזה."
       },
       "findReplace": {
         "title": "חפש והחלף",

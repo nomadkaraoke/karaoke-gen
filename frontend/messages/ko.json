@@ -992,7 +992,9 @@
         "loadingAll": "모든 단어 불러오는 중...",
         "loadingSegment": "세그먼트 불러오는 중...",
         "noData": "세그먼트 데이터가 없습니다",
-        "unCorrect": "수정 취소"
+        "unCorrect": "수정 취소",
+        "timingClamped": "\"{word}\" 타이밍이 구간을 벗어나 {time}초로 조정되었습니다.",
+        "timingSanitized": "이 구간을 벗어난 단어 타이밍 {count}개를 수정했습니다."
       },
       "findReplace": {
         "title": "찾기 및 바꾸기",

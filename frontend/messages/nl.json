@@ -992,7 +992,9 @@
         "loadingAll": "Alle woorden laden...",
         "loadingSegment": "Segment laden...",
         "noData": "Geen segmentgegevens beschikbaar",
-        "unCorrect": "Correctie ongedaan maken"
+        "unCorrect": "Correctie ongedaan maken",
+        "timingClamped": "\"{word}\" timing viel buiten het segment — aangepast naar {time}s.",
+        "timingSanitized": "{count} woordtiming(s) gecorrigeerd die buiten dit segment viel(en)."
       },
       "findReplace": {
         "title": "Zoeken en vervangen",

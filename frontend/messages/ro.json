@@ -992,7 +992,9 @@
         "loadingAll": "Se încarcă toate cuvintele...",
         "loadingSegment": "Se încarcă segmentul...",
         "noData": "Nu există date disponibile pentru segment",
-        "unCorrect": "Anulează corectura"
+        "unCorrect": "Anulează corectura",
+        "timingClamped": "Sincronizarea pentru \"{word}\" era în afara segmentului — a fost ajustată la {time}s.",
+        "timingSanitized": "Au fost corectate {count} sincronizări de cuvinte care se aflau în afara acestui segment."
       },
       "findReplace": {
         "title": "Caută și înlocuiește",

@@ -992,7 +992,9 @@
         "loadingAll": "Načítání všech slov...",
         "loadingSegment": "Načítání segmentu...",
         "noData": "Nejsou k dispozici žádná data segmentu",
-        "unCorrect": "Zrušit opravu"
+        "unCorrect": "Zrušit opravu",
+        "timingClamped": "Časování \"{word}\" bylo mimo segment — zarovnáno na {time} s.",
+        "timingSanitized": "Opraveno {count} časování slov, která byla mimo tento segment."
       },
       "findReplace": {
         "title": "Najít a nahradit",

@@ -992,7 +992,9 @@
         "loadingAll": "Ladataan kaikkia sanoja...",
         "loadingSegment": "Ladataan segmenttiä...",
         "noData": "Segmentin dataa ei saatavilla",
-        "unCorrect": "Peru korjaus"
+        "unCorrect": "Peru korjaus",
+        "timingClamped": "\"{word}\" ajoitus oli segmentin ulkopuolella — kohdistettiin aikaan {time} s.",
+        "timingSanitized": "Korjattu {count} sanan ajoitus(ta), jotka jäivät tämän segmentin ulkopuolelle."
       },
       "findReplace": {
         "title": "Etsi ja korvaa",

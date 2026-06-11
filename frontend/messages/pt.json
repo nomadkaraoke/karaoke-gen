@@ -992,7 +992,9 @@
         "loadingAll": "Carregando todas as palavras...",
         "loadingSegment": "Carregando segmento...",
         "noData": "Nenhum dado de segmento disponível",
-        "unCorrect": "Desfazer Correção"
+        "unCorrect": "Desfazer Correção",
+        "timingClamped": "O tempo de \"{word}\" estava fora do segmento — ajustado para {time}s.",
+        "timingSanitized": "Corrigido o tempo de {count} palavra(s) que estava(m) fora deste segmento."
       },
       "findReplace": {
         "title": "Localizar e Substituir",

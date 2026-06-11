@@ -992,7 +992,9 @@
         "loadingAll": "Učitavanje svih riječi...",
         "loadingSegment": "Učitavanje segmenta...",
         "noData": "Nema dostupnih podataka o segmentu",
-        "unCorrect": "Poništi ispravak"
+        "unCorrect": "Poništi ispravak",
+        "timingClamped": "Tajming za \"{word}\" bio je izvan segmenta — postavljen na {time} s.",
+        "timingSanitized": "Ispravljen je tajming za {count} riječ(i) koje su bile izvan ovog segmenta."
       },
       "findReplace": {
         "title": "Pronađi i zamijeni",

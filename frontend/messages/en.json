@@ -995,7 +995,9 @@
         "loadingAll": "Loading all words...",
         "loadingSegment": "Loading segment...",
         "noData": "No segment data available",
-        "unCorrect": "Un-Correct"
+        "unCorrect": "Un-Correct",
+        "timingSanitized": "Fixed {count} word timing(s) that fell outside this segment.",
+        "timingClamped": "\"{word}\" timing was outside the segment — snapped to {time}s."
       },
       "findReplace": {
         "title": "Find and Replace",

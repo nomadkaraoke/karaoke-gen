@@ -992,7 +992,9 @@
         "loadingAll": "すべての単語を読み込み中...",
         "loadingSegment": "セグメントを読み込み中...",
         "noData": "利用可能なセグメントデータがありません",
-        "unCorrect": "修正を取り消す"
+        "unCorrect": "修正を取り消す",
+        "timingClamped": "\"{word}\" のタイミングがセグメント外だったため、{time}秒に調整されました。",
+        "timingSanitized": "このセグメント外にあった {count} 個の単語のタイミングを修正しました。"
       },
       "findReplace": {
         "title": "検索と置換",

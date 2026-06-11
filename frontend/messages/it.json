@@ -992,7 +992,9 @@
         "loadingAll": "Caricamento di tutte le parole...",
         "loadingSegment": "Caricamento segmento...",
         "noData": "Nessun dato del segmento disponibile",
-        "unCorrect": "Annulla correzione"
+        "unCorrect": "Annulla correzione",
+        "timingClamped": "Il tempismo di \"{word}\" era fuori dal segmento — allineato a {time}s.",
+        "timingSanitized": "Corretti {count} tempismi delle parole che cadevano fuori da questo segmento."
       },
       "findReplace": {
         "title": "Trova e sostituisci",

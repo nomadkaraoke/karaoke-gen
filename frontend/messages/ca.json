@@ -992,7 +992,9 @@
         "loadingAll": "Carregant totes les paraules...",
         "loadingSegment": "Carregant el segment...",
         "noData": "No hi ha dades del segment disponibles",
-        "unCorrect": "Desfés la correcció"
+        "unCorrect": "Desfés la correcció",
+        "timingClamped": "La sincronització de \"{word}\" estava fora del segment — s'ha ajustat a {time}s.",
+        "timingSanitized": "S'han corregit {count} sincronitzacions de paraules que quedaven fora d'aquest segment."
       },
       "findReplace": {
         "title": "Cerca i reemplaça",

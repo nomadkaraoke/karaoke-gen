@@ -992,7 +992,9 @@
         "loadingAll": "Összes szó betöltése...",
         "loadingSegment": "Szegmens betöltése...",
         "noData": "Nincsenek elérhető szegmens adatok",
-        "unCorrect": "Javítás visszavonása"
+        "unCorrect": "Javítás visszavonása",
+        "timingClamped": "A(z) \"{word}\" időzítése a szegmensen kívül esett — {time}s-re igazítva.",
+        "timingSanitized": "{count} szó időzítése javítva, amely ezen a szegmensen kívül esett."
       },
       "findReplace": {
         "title": "Keresés és csere",

@@ -1112,6 +1112,18 @@ async def submit_corrections(
         from backend.services.storage_service import StorageService
         storage = StorageService()
 
+        # Safety net: never persist word timings that fall outside their segment.
+        # Frontend should already prevent this; this guarantees clean stored data
+        # (the render worker reads corrections_updated.json verbatim).
+        from backend.services.timing_sanitizer import sanitize_corrections
+        sanitized, clamp_count = sanitize_corrections(submission.corrections)
+        if clamp_count:
+            logger.warning(
+                f"Job {job_id}: sanitized {clamp_count} out-of-bounds word timing(s) "
+                f"in submitted corrections before persisting"
+            )
+        submission.corrections = sanitized
+
         corrections_gcs_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
         storage.upload_json(corrections_gcs_path, submission.corrections)
         job_manager.update_file_url(job_id, 'lyrics', 'corrections_updated', corrections_gcs_path)
