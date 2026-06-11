@@ -8,6 +8,23 @@ interface UseManualSyncProps {
   currentTime: number
   onPlaySegment?: (startTime: number) => void
   updateSegment: (words: Word[]) => void
+  onTimingClamped?: (wordText: string, snappedTo: number) => void
+}
+
+/**
+ * Clamp a manual-sync tap time into the segment's audio window. A tap should always land
+ * within the segment being synced; a value outside (e.g. the playhead sitting at 0) is a
+ * sync glitch — the source of the start=0/end=-0.005 corruption. Null bounds => no clamp.
+ */
+export function clampSyncTime(
+  time: number,
+  segStart: number | null,
+  segEnd: number | null
+): number {
+  let t = time
+  if (typeof segStart === 'number' && Number.isFinite(segStart)) t = Math.max(t, segStart)
+  if (typeof segEnd === 'number' && Number.isFinite(segEnd)) t = Math.min(t, segEnd)
+  return t
 }
 
 // Constants for tap detection
@@ -20,6 +37,7 @@ export default function useManualSync({
   currentTime,
   onPlaySegment,
   updateSegment,
+  onTimingClamped,
 }: UseManualSyncProps) {
   const [isManualSyncing, setIsManualSyncing] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -120,7 +138,15 @@ export default function useManualSync({
         if (syncWordIndex < editedSegment.words.length) {
           const newWords = [...wordsRef.current]
           const currentWord = newWords[syncWordIndex]
-          const currentStartTime = currentTimeRef.current
+          const rawStartTime = currentTimeRef.current
+          const currentStartTime = clampSyncTime(
+            rawStartTime,
+            editedSegment?.start_time ?? null,
+            editedSegment?.end_time ?? null
+          )
+          if (currentStartTime !== rawStartTime) {
+            onTimingClamped?.(newWords[syncWordIndex]?.text ?? '', currentStartTime)
+          }
 
           // Set the start time for the current word
           currentWord.start_time = currentStartTime
@@ -283,7 +309,15 @@ export default function useManualSync({
     if (syncWordIndex < editedSegment.words.length) {
       const newWords = [...wordsRef.current]
       const currentWord = newWords[syncWordIndex]
-      const currentStartTime = currentTimeRef.current
+      const rawStartTime = currentTimeRef.current
+      const currentStartTime = clampSyncTime(
+        rawStartTime,
+        editedSegment?.start_time ?? null,
+        editedSegment?.end_time ?? null
+      )
+      if (currentStartTime !== rawStartTime) {
+        onTimingClamped?.(newWords[syncWordIndex]?.text ?? '', currentStartTime)
+      }
 
       // Set the start time for the current word
       currentWord.start_time = currentStartTime
