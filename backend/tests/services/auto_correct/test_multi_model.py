@@ -49,7 +49,8 @@ def _run_compare(responses_by_model, compare_models_env="model-a;model-b",
         resp = responses_by_model[model]
         if isinstance(resp, Exception):
             raise resp
-        return resp
+        # _call_model now returns (parsed_json, token_usage).
+        return resp, None
 
     with patch.object(
         service.settings, "auto_correct_compare_models", compare_models_env

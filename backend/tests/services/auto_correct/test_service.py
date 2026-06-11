@@ -35,7 +35,7 @@ REFS = {"genius": {"segments": [{"text": "Sippin' on straight chlorine"}]}}
 
 def _suggest(raw_response, settings=None):
     service = AutoCorrectService()
-    with patch.object(service, "_call_model", return_value=raw_response), \
+    with patch.object(service, "_call_model", return_value=(raw_response, None)), \
          patch.object(service, "_cache_get", return_value=None), \
          patch.object(service, "_cache_put"):
         return service.suggest(
@@ -217,8 +217,8 @@ def test_non_dict_suggestion_entries_dropped() -> None:
 
 def test_call_model_dispatches_claude_to_anthropic() -> None:
     service = AutoCorrectService()
-    with patch.object(service, "_call_anthropic", return_value={"suggestions": []}) as anth, \
-         patch.object(service, "_call_gemini", return_value={"suggestions": []}) as gem:
+    with patch.object(service, "_call_anthropic", return_value=({"suggestions": []}, None)) as anth, \
+         patch.object(service, "_call_gemini", return_value=({"suggestions": []}, None)) as gem:
         service._call_model("claude-fable-5", "s", "u", job_id="j")
         anth.assert_called_once()
         gem.assert_not_called()
@@ -262,8 +262,8 @@ def test_anthropic_schema_strips_genai_pollution(monkeypatch) -> None:
 
     monkeypatch.setattr(anthropic_sdk, "Anthropic", FakeClient)
     service = AutoCorrectService()
-    result = service._call_anthropic("claude-fable-5", "s", "u", job_id="j")
-    assert result == {"suggestions": []}
+    raw, _usage = service._call_anthropic("claude-fable-5", "s", "u", job_id="j")
+    assert raw == {"suggestions": []}
     schema = captured["output_config"]["format"]["schema"]
     assert "property_ordering" not in schema
     assert "property_ordering" not in schema["properties"]["suggestions"]["items"]
