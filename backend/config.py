@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     custom_lyrics_default_strictness: str = os.getenv("CUSTOM_LYRICS_DEFAULT_STRICTNESS", "balanced")
     custom_lyrics_max_output_lines_multiplier: float = float(os.getenv("CUSTOM_LYRICS_MAX_OUTPUT_LINES_MULTIPLIER", "2.0"))
 
+    # AI auto-correct suggestions — opt-in, user-triggered from the lyrics
+    # review UI. Stateless: one whole-song LLM call returning word-level
+    # suggestions the reviewer accepts/rejects individually.
+    auto_correct_model: str = os.getenv("AUTO_CORRECT_MODEL", "gemini-3.1-pro-preview")
+
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
     # When disabled (default), workers are triggered via direct HTTP (for development)

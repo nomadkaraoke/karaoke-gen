@@ -816,7 +816,9 @@
       "playback": "Přehrávání",
       "audioLoadError": "Nepodařilo se načíst audio",
       "audioStillLoading": "Audio se stále načítá...",
-      "loadingAudio": "Načítání audia..."
+      "loadingAudio": "Načítání audia...",
+      "autoCorrect": "Návrhy AI",
+      "autoCorrectDesc": "Nech AI vygenerovat návrhy oprav porovnáním přepisu s referenčním textem. Nic se nezmění, dokud jednotlivé návrhy nepřijmeš."
     },
     "guidance": {
       "showTips": "Zobrazit tipy",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Vlastní text byl aplikován. Ručně synchronizuj každý upravený segment, aby bylo zajištěno správné načasování slov pro upravený text."
+    },
+    "autoCorrect": {
+      "accept": "Přijmout návrh",
+      "acceptAll": "Přijmout vše",
+      "accepted": "Přijato",
+      "adlibRemovalHint": "Povolit návrhy, které odstraní doprovodné vokály, které v referenčním textu chybí",
+      "adlibRemovalLabel": "Navrhnout odstranění adlibů",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formát",
+      "category_grammar": "gramatika",
+      "category_mishearing": "přeslechnutí",
+      "category_other": "ostatní",
+      "category_repeated_chorus_fix": "refrén",
+      "collapse": "Sbalit návrhy",
+      "confidenceHint": "Jak moc si musí být AI jistá, aby zobrazila návrh",
+      "confidenceLabel": "Filtr návrhů",
+      "confidence_all": "Zobrazit vše",
+      "confidence_high": "Vysoká jistota",
+      "description": "AI porovná přepsaný text s referenčními zdroji a navrhne opravy jednotlivých slov. Každý návrh si můžeš zkontrolovat — nic se nezmění, dokud ho nepřijmeš.",
+      "dismiss": "Skrýt návrhy",
+      "expand": "Rozbalit návrhy",
+      "insertMarker": "vložit:",
+      "insertionsHint": "Povolit návrhy, které vkládají slova, která v přepisu chybí",
+      "insertionsLabel": "Navrhnout chybějící slova",
+      "noReferences": "Pro tuto píseň nejsou k dispozici žádné referenční texty, takže nelze vygenerovat návrhy AI. Nejprve přidej text z referenčního panelu.",
+      "noSuggestions": "Nebyly nalezeny žádné problémy — AI nemá žádné návrhy na změnu.",
+      "reject": "Odmítnout návrh",
+      "rejectAll": "Odmítnout vše",
+      "rejected": "Odmítnuto",
+      "runButton": "Získat návrhy",
+      "running": "Analyzuji text… obvykle to trvá 15–60 sekund.",
+      "staleHint": "Tato slova byla upravena od chvíle, kdy byly návrhy vygenerovány, takže tento návrh již neplatí.",
+      "summary": "{total} návrhů · {pending} čeká · {accepted} přijato",
+      "title": "Návrhy oprav AI",
+      "undo": "Vzít tento návrh zpět",
+      "cancel": "Zrušit",
+      "close": "Zavřít",
+      "confidence_balanced": "Vyvážená"
     }
   },
   "instrumentalReview": {

@@ -816,7 +816,9 @@
       "playback": "再生",
       "audioLoadError": "音声を読み込めませんでした",
       "audioStillLoading": "音声はまだ読み込み中です...",
-      "loadingAudio": "音声を読み込み中..."
+      "loadingAudio": "音声を読み込み中...",
+      "autoCorrect": "AI提案",
+      "autoCorrectDesc": "文字起こしとリファレンス歌詞を比較して、AIが修正案を生成します。各提案を採用するまで、実際の歌詞が変更されることはありません。"
     },
     "guidance": {
       "showTips": "ヒントを表示",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "カスタム歌詞を適用しました。カスタマイズした歌詞のタイミングが合うように、編集した各セグメントを手動で同期してください。"
+    },
+    "autoCorrect": {
+      "accept": "提案を採用する",
+      "acceptAll": "すべて採用する",
+      "accepted": "採用済み",
+      "adlibRemovalHint": "リファレンスにないバックボーカルを削除する提案を表示します。",
+      "adlibRemovalLabel": "アドリブの削除を提案",
+      "category_adlib_removal": "アドリブ",
+      "category_formatting": "フォーマット",
+      "category_grammar": "文法",
+      "category_mishearing": "聞き間違い",
+      "category_other": "その他",
+      "category_repeated_chorus_fix": "コーラス",
+      "collapse": "提案を折りたたむ",
+      "confidenceHint": "AIがどの程度の確信度で提案を表示するかの基準です。",
+      "confidenceLabel": "提案フィルター",
+      "confidence_all": "すべて表示",
+      "confidence_high": "高い確信度",
+      "description": "AIが文字起こしされた歌詞とリファレンスを比較し、単語レベルで修正を提案します。すべての提案はご自身で確認でき、採用するまで実際の歌詞には反映されません。",
+      "dismiss": "提案を非表示にする",
+      "expand": "提案を展開する",
+      "insertMarker": "挿入:",
+      "insertionsHint": "文字起こしで抜けている単語を追加する提案を表示します。",
+      "insertionsLabel": "不足している単語の追加を提案",
+      "noReferences": "この曲にはリファレンス歌詞がないため、AIの提案を生成できません。まずリファレンスパネルから歌詞を追加してください。",
+      "noSuggestions": "問題は見つかりませんでした。AIからの修正提案はありません。",
+      "reject": "提案を却下する",
+      "rejectAll": "すべて却下する",
+      "rejected": "却下済み",
+      "runButton": "提案を取得する",
+      "running": "歌詞を分析しています… 通常15〜60秒かかります。",
+      "staleHint": "提案の生成後に歌詞が編集されたため、この提案は無効になりました。",
+      "summary": "{total}件の提案 · 保留中 {pending}件 · 採用済み {accepted}件",
+      "title": "AI修正提案",
+      "undo": "この提案を元に戻す",
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "confidence_balanced": "バランス"
     }
   },
   "instrumentalReview": {

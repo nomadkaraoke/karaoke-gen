@@ -545,6 +545,62 @@ Adds user-pasted lyrics as a new reference source, re-runs the correction pipeli
 
 Returns `{ "status": "success", "data": <CorrectionData> }`.
 
+#### AI Auto-Correct Suggestions
+
+```http
+POST /api/review/{job_id}/auto-correct
+Content-Type: application/json
+
+{
+  "segments": [ "...client's current corrected_segments..." ],
+  "reference_lyrics": { "genius": { "segments": [...] } },
+  "artist": "Twenty One Pilots",
+  "title": "Chlorine",
+  "settings": {
+    "suggest_adlib_removal": true,
+    "allow_insertions": true,
+    "min_confidence": 0.0
+  }
+}
+```
+
+Opt-in, user-triggered AI correction suggestions for the lyrics review UI.
+Stateless: one whole-song LLM call (model from `AUTO_CORRECT_MODEL`, default
+Gemini 3.1 Pro via Vertex AI) compares the client's current transcription
+against the reference sources and returns word-id-keyed suggestions. Nothing
+is applied server-side — the reviewer accepts/rejects each suggestion in the
+UI and persistence flows through the existing corrections/complete paths.
+
+Returns:
+
+```json
+{
+  "suggestions": [
+    {
+      "id": "uuid",
+      "op": "replace",
+      "word_ids": ["w3"],
+      "segment_ids": ["seg-1"],
+      "original_text": "glory",
+      "new_text": "chlorine",
+      "reason": "All references read 'chlorine' here",
+      "category": "mishearing",
+      "confidence": 0.95
+    }
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "elapsed_seconds": 27.4,
+  "settings_applied": { "suggest_adlib_removal": true, "allow_insertions": true, "min_confidence": 0.0 },
+  "warnings": []
+}
+```
+
+`op` is `replace` | `delete` | `insert_after` (for `insert_after`, `word_ids`
+holds the anchor word). Errors: `422` when no reference lyrics are available,
+`400` for invalid settings, `502` when the model call fails or returns
+malformed output. Design/eval background:
+`docs/archive/2026-06-10-lyrics-auto-correction-reeval-plan.md`.
+
 #### Search Reference Lyrics
 
 ```http

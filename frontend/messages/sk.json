@@ -816,7 +816,9 @@
       "playback": "Prehrávanie",
       "audioLoadError": "Nepodarilo sa načítať audio",
       "audioStillLoading": "Audio sa stále načítava...",
-      "loadingAudio": "Načítava sa audio..."
+      "loadingAudio": "Načítava sa audio...",
+      "autoCorrect": "Návrhy AI",
+      "autoCorrectDesc": "Vygeneruj si návrhy opráv od AI porovnaním prepisu s referenčným textom. Nič sa nezmení, kým jednotlivé návrhy neprijmeš."
     },
     "guidance": {
       "showTips": "Zobraziť tipy",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Vlastný text bol aplikovaný. Manuálne synchronizuj každý upravený segment, aby sa zabezpečilo správne načasovanie slov pre prispôsobený text."
+    },
+    "autoCorrect": {
+      "accept": "Prijať návrh",
+      "acceptAll": "Prijať všetko",
+      "accepted": "Prijaté",
+      "adlibRemovalHint": "Povoliť návrhy, ktoré vymažú sprievodné vokály, ak nie sú v referenčnom texte",
+      "adlibRemovalLabel": "Navrhnúť odstránenie adlibov",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formátovanie",
+      "category_grammar": "gramatika",
+      "category_mishearing": "prepočutie",
+      "category_other": "iné",
+      "category_repeated_chorus_fix": "refrén",
+      "collapse": "Zbaliť návrhy",
+      "confidenceHint": "Nakoľko si musí byť AI istá, aby zobrazila návrh",
+      "confidenceLabel": "Filter návrhov",
+      "confidence_all": "Zobraziť všetko",
+      "confidence_high": "Vysoká istota",
+      "description": "AI porovná prepísaný text s referenčnými zdrojmi a navrhne opravy na úrovni jednotlivých slov. Každý návrh si môžeš skontrolovať — nič sa nezmení, kým ho neprijmeš.",
+      "dismiss": "Zahodiť návrhy",
+      "expand": "Rozbaliť návrhy",
+      "insertMarker": "vložiť:",
+      "insertionsHint": "Povoliť návrhy na vloženie slov, ktoré v prepise chýbajú",
+      "insertionsLabel": "Navrhnúť chýbajúce slová",
+      "noReferences": "Pre túto pieseň nie sú k dispozícii žiadne referenčné texty, takže nie je možné vygenerovať návrhy AI. Najprv pridaj text z referenčného panela.",
+      "noSuggestions": "Nenašli sa žiadne problémy — AI nenavrhuje žiadne zmeny.",
+      "reject": "Odmietnuť návrh",
+      "rejectAll": "Odmietnuť všetko",
+      "rejected": "Odmietnuté",
+      "runButton": "Získať návrhy",
+      "running": "Analyzuje sa text… zvyčajne to trvá 15 – 60 sekúnd.",
+      "staleHint": "Tieto slová boli od vygenerovania návrhov upravené, takže tento návrh už neplatí.",
+      "summary": "{total} návrhov · {pending} čakajúcich · {accepted} prijatých",
+      "title": "Návrhy opráv AI",
+      "undo": "Vrátiť späť tento návrh",
+      "cancel": "Zrušiť",
+      "close": "Zavrieť",
+      "confidence_balanced": "Vyvážená"
     }
   },
   "instrumentalReview": {

@@ -816,7 +816,9 @@
       "playback": "Avspilling",
       "audioLoadError": "Kunne ikke laste inn lyd",
       "audioStillLoading": "Lyden laster fortsatt inn...",
-      "loadingAudio": "Laster inn lyd..."
+      "loadingAudio": "Laster inn lyd...",
+      "autoCorrect": "AI-forslag",
+      "autoCorrectDesc": "Generer AI-korrigeringsforslag ved å sammenligne transkripsjonen med referanseteksten. Ingenting endres før du godtar hvert forslag."
     },
     "guidance": {
       "showTips": "Vis tips",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Egendefinert tekst er lagt til. Synkroniser hvert redigerte segment manuelt for å sikre at timingen av ordene stemmer for den tilpassede teksten."
+    },
+    "autoCorrect": {
+      "accept": "Godta forslag",
+      "acceptAll": "Godta alle",
+      "accepted": "Godtatt",
+      "adlibRemovalHint": "Tillat forslag som fjerner bakgrunnsvokal som ikke finnes i referanseteksten",
+      "adlibRemovalLabel": "Foreslå å fjerne adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formatering",
+      "category_grammar": "grammatikk",
+      "category_mishearing": "feilhørt",
+      "category_other": "annet",
+      "category_repeated_chorus_fix": "refreng",
+      "collapse": "Skjul forslag",
+      "confidenceHint": "Hvor sikker AI-en må være for å vise et forslag",
+      "confidenceLabel": "Forslagsfilter",
+      "confidence_all": "Vis alle",
+      "confidence_high": "Høy sikkerhet",
+      "description": "AI-en sammenligner den transkriberte teksten med referansekildene og foreslår rettelser på ordnivå. Du går gjennom hvert forslag — ingenting blir endret før du godtar det.",
+      "dismiss": "Lukk forslag",
+      "expand": "Utvid forslag",
+      "insertMarker": "sett inn:",
+      "insertionsHint": "Tillat forslag som setter inn ord som mangler i transkripsjonen",
+      "insertionsLabel": "Foreslå manglende ord",
+      "noReferences": "Ingen referansetekster er tilgjengelige for denne sangen, så AI-forslag kan ikke genereres. Legg til tekst fra referansepanelet først.",
+      "noSuggestions": "Ingen problemer funnet — AI-en har ingen foreslåtte endringer.",
+      "reject": "Avvis forslag",
+      "rejectAll": "Avvis alle",
+      "rejected": "Avvist",
+      "runButton": "Hent forslag",
+      "running": "Analyserer tekst… dette tar vanligvis 15–60 sekunder.",
+      "staleHint": "Disse ordene ble redigert etter at forslagene ble generert, så dette forslaget gjelder ikke lenger.",
+      "summary": "{total} forslag · {pending} ventende · {accepted} godtatt",
+      "title": "AI-korrigeringsforslag",
+      "undo": "Angre dette forslaget",
+      "cancel": "Avbryt",
+      "close": "Lukk",
+      "confidence_balanced": "Balansert"
     }
   },
   "instrumentalReview": {

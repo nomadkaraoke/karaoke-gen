@@ -816,7 +816,9 @@
       "playback": "Pemutaran",
       "audioLoadError": "Gagal memuat audio",
       "audioStillLoading": "Audio masih dimuat...",
-      "loadingAudio": "Memuat audio..."
+      "loadingAudio": "Memuat audio...",
+      "autoCorrect": "Saran AI",
+      "autoCorrectDesc": "Buat saran koreksi AI dengan membandingkan transkripsi dengan lirik referensi. Tidak ada perubahan yang diterapkan sampai Anda menerima setiap saran."
     },
     "guidance": {
       "showTips": "Tampilkan tips",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Lirik kustom berhasil diterapkan. Sinkronkan setiap segmen yang diedit secara manual untuk memastikan ketepatan waktu lirik yang baru."
+    },
+    "autoCorrect": {
+      "accept": "Terima saran",
+      "acceptAll": "Terima semua",
+      "accepted": "Diterima",
+      "adlibRemovalHint": "Izinkan saran yang menghapus vokal latar yang tidak ada di referensi",
+      "adlibRemovalLabel": "Sarankan penghapusan adlib",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "tata bahasa",
+      "category_mishearing": "salah dengar",
+      "category_other": "lainnya",
+      "category_repeated_chorus_fix": "korus",
+      "collapse": "Perkecil saran",
+      "confidenceHint": "Tingkat keyakinan AI yang diperlukan untuk menampilkan saran",
+      "confidenceLabel": "Filter saran",
+      "confidence_all": "Tampilkan semua",
+      "confidence_high": "Keyakinan tinggi",
+      "description": "AI membandingkan lirik hasil transkripsi dengan sumber referensi dan menyarankan perbaikan per kata. Anda dapat meninjau setiap saran — tidak ada perubahan yang diterapkan sampai Anda menerimanya.",
+      "dismiss": "Abaikan saran",
+      "expand": "Perluas saran",
+      "insertMarker": "sisipkan:",
+      "insertionsHint": "Izinkan saran untuk menyisipkan kata yang terlewat dalam transkripsi",
+      "insertionsLabel": "Sarankan kata yang hilang",
+      "noReferences": "Tidak ada lirik referensi yang tersedia untuk lagu ini, sehingga saran AI tidak dapat dibuat. Tambahkan lirik dari panel referensi terlebih dahulu.",
+      "noSuggestions": "Tidak ada masalah yang ditemukan — AI tidak memiliki saran perubahan.",
+      "reject": "Tolak saran",
+      "rejectAll": "Tolak semua",
+      "rejected": "Ditolak",
+      "runButton": "Dapatkan saran",
+      "running": "Menganalisis lirik… biasanya memakan waktu 15–60 detik.",
+      "staleHint": "Kata-kata ini telah diedit sejak saran dibuat, sehingga saran ini tidak lagi berlaku.",
+      "summary": "{total} saran · {pending} tertunda · {accepted} diterima",
+      "title": "Saran koreksi AI",
+      "undo": "Batalkan saran ini",
+      "cancel": "Batal",
+      "close": "Tutup",
+      "confidence_balanced": "Seimbang"
     }
   },
   "instrumentalReview": {

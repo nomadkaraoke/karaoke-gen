@@ -816,7 +816,9 @@
       "playback": "Oynatma",
       "audioLoadError": "Ses yüklenemedi",
       "audioStillLoading": "Ses hâlâ yükleniyor...",
-      "loadingAudio": "Ses yükleniyor..."
+      "loadingAudio": "Ses yükleniyor...",
+      "autoCorrect": "Yapay Zeka Önerisi",
+      "autoCorrectDesc": "Deşifreyi referans şarkı sözleriyle karşılaştırarak yapay zeka düzeltme önerileri oluştur. Sen her bir öneriyi kabul edene kadar hiçbir şey değiştirilmez."
     },
     "guidance": {
       "showTips": "İpuçlarını göster",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Özel şarkı sözleri uygulandı. Özelleştirilmiş sözlerde kelime zamanlamalarının doğru olduğundan emin olmak için düzenlenen her bölümü manuel olarak senkronize et."
+    },
+    "autoCorrect": {
+      "accept": "Öneriyi kabul et",
+      "acceptAll": "Tümünü kabul et",
+      "accepted": "Kabul edildi",
+      "adlibRemovalHint": "Referanslarda olmayan geri vokalleri silen önerilere izin ver",
+      "adlibRemovalLabel": "Adlib'leri kaldırmayı öner",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "biçim",
+      "category_grammar": "dilbilgisi",
+      "category_mishearing": "yanlış duyma",
+      "category_other": "diğer",
+      "category_repeated_chorus_fix": "nakarat",
+      "collapse": "Önerileri daralt",
+      "confidenceHint": "Yapay zekanın bir öneri göstermesi için ne kadar emin olması gerektiği",
+      "confidenceLabel": "Öneri filtresi",
+      "confidence_all": "Tümünü göster",
+      "confidence_high": "Yüksek güven",
+      "description": "Yapay zeka, deşifre edilen şarkı sözlerini referans kaynaklarla karşılaştırır ve kelime düzeyinde düzeltmeler önerir. Her öneriyi sen incelersin — sen kabul edene kadar hiçbir şey uygulanmaz.",
+      "dismiss": "Önerileri yoksay",
+      "expand": "Önerileri genişlet",
+      "insertMarker": "ekle:",
+      "insertionsHint": "Deşifrede eksik olan kelimeleri ekleyen önerilere izin ver",
+      "insertionsLabel": "Eksik kelimeleri öner",
+      "noReferences": "Bu şarkı için referans şarkı sözü bulunmuyor, bu yüzden yapay zeka önerileri oluşturulamıyor. Önce referans panelinden şarkı sözlerini ekle.",
+      "noSuggestions": "Hiçbir sorun bulunamadı — yapay zekanın önerdiği bir değişiklik yok.",
+      "reject": "Öneriyi reddet",
+      "rejectAll": "Tümünü reddet",
+      "rejected": "Reddedildi",
+      "runButton": "Önerileri al",
+      "running": "Şarkı sözleri analiz ediliyor… bu genellikle 15–60 saniye sürer.",
+      "staleHint": "Bu kelimeler öneriler oluşturulduktan sonra düzenlendi, bu yüzden bu öneri artık geçerli değil.",
+      "summary": "{total} öneri · {pending} bekleyen · {accepted} kabul edilen",
+      "title": "Yapay zeka düzeltme önerileri",
+      "undo": "Bu öneriyi geri al",
+      "cancel": "İptal",
+      "close": "Kapat",
+      "confidence_balanced": "Dengeli"
     }
   },
   "instrumentalReview": {

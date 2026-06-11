@@ -18,6 +18,7 @@
 | Audio upload & separation | Working |
 | Lyrics transcription | Working |
 | Auto-correction (agentic + heuristic) | Disabled (raw transcription goes to human review) |
+| **AI auto-correct suggestions (opt-in)** | Working ("AI Suggest" button in lyrics review — whole-song LLM call, per-suggestion accept/reject) |
 | Combined review (lyrics + instrumental) | Working |
 | Preview video generation | Working |
 | Multi-format encoding | Working |
@@ -49,6 +50,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **AI Auto-Correct Suggestions** (2026-06-11): Opt-in AI correction suggestions in the lyrics review UI — the third attempt at lyrics auto-correction, redesigned around the failures that led to disabling it in PR #321 (Jan 2026). One whole-song LLM call (default Gemini 3.1 Pro via Vertex, `AUTO_CORRECT_MODEL` env) compares the working transcription against reference lyrics and returns word-id-keyed suggestions; nothing is applied until the reviewer accepts each one (or accept-all) in a dedicated panel with per-row undo. New `POST /api/review/{job_id}/auto-correct` endpoint + `backend/services/auto_correct/`; frontend `useAutoCorrect` hook, `AutoCorrectModal` (knobs: adlib removal, insertions, confidence filter), `AutoCorrectPanel`. Accept/reject decisions land in the EditLog (`ai_suggestion_*` ops) to measure real accept rates. 5-model offline eval over 30 real jobs with human ground truth picked the default (Fable 5 ≈ Gemini 3.1 Pro ≫ GPT-5.2, which made lyrics worse). See [archive/2026-06-10-lyrics-auto-correction-reeval-plan.md](archive/2026-06-10-lyrics-auto-correction-reeval-plan.md).
 
 - **Syllable-Aware Custom Lyrics** (2026-05-02): Enhanced the Custom Lyrics LLM mode with syllable-count validation and a per-line repair loop. Backend computes per-line target/candidate syllable counts via the existing `SyllablesMatchHandler` engine and re-prompts Gemini up to 3 times until lines fit budget (Δ ≤ 2 default, configurable via Verbatim/Loose/Balanced/Tight/Strict strictness). New `GenerationSettings` (`allow_reword`, `allow_omit`, `fixed_line_count`, `strictness`) exposed in the modal as a collapsible settings panel. New `CustomLyricsPreview` component shows per-line syllable annotations (target / actual / Δ) with severity badges and stop-reason banners. Variable-line-count mode (when `fixed_line_count=false`) re-times segments proportionally. Eval harness with disk-backed Gemini cache, per-line + per-fixture + corpus scorers, and 4 fixtures (1 from production, 3 handcrafted public-domain). v1-ships criteria validation (Year 5 ≥75% pass@2, macro corpus ≥70% pass@2) deferred to post-merge. See [archive/2026-05-02-custom-lyrics-syllable-aware-design.md](archive/2026-05-02-custom-lyrics-syllable-aware-design.md) and [archive/2026-05-02-custom-lyrics-syllable-aware-plan.md](archive/2026-05-02-custom-lyrics-syllable-aware-plan.md).
 

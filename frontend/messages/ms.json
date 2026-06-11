@@ -816,7 +816,9 @@
       "playback": "Main Balik",
       "audioLoadError": "Tidak dapat memuatkan audio",
       "audioStillLoading": "Audio masih dimuatkan...",
-      "loadingAudio": "Memuatkan audio..."
+      "loadingAudio": "Memuatkan audio...",
+      "autoCorrect": "Cadangan AI",
+      "autoCorrectDesc": "Jana cadangan pembetulan AI dengan membandingkan transkripsi dengan lirik rujukan. Tiada perubahan akan dibuat sehingga anda menerima setiap cadangan."
     },
     "guidance": {
       "showTips": "Tunjukkan petua",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Lirik tersuai digunakan. Segerakkan setiap segmen yang disunting secara manual untuk memastikan pemasaan perkataan adalah tepat untuk lirik tersuai."
+    },
+    "autoCorrect": {
+      "accept": "Terima cadangan",
+      "acceptAll": "Terima semua",
+      "accepted": "Diterima",
+      "adlibRemovalHint": "Benarkan cadangan yang memadam vokal latar yang tidak ada dalam rujukan",
+      "adlibRemovalLabel": "Cadangkan pemadaman adlib",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "tatabahasa",
+      "category_mishearing": "salah dengar",
+      "category_other": "lain-lain",
+      "category_repeated_chorus_fix": "korus",
+      "collapse": "Tutup cadangan",
+      "confidenceHint": "Tahap keyakinan AI yang diperlukan untuk menunjukkan cadangan",
+      "confidenceLabel": "Penapis cadangan",
+      "confidence_all": "Tunjukkan semua",
+      "confidence_high": "Keyakinan tinggi",
+      "description": "AI membandingkan lirik yang ditranskripsi dengan sumber rujukan dan mencadangkan pembetulan pada peringkat perkataan. Anda menyemak setiap cadangan — tiada perubahan akan dibuat sehingga anda menerimanya.",
+      "dismiss": "Abaikan cadangan",
+      "expand": "Kembangkan cadangan",
+      "insertMarker": "masukkan:",
+      "insertionsHint": "Benarkan cadangan yang memasukkan perkataan yang tertinggal dalam transkripsi",
+      "insertionsLabel": "Cadangkan perkataan yang tertinggal",
+      "noReferences": "Tiada lirik rujukan tersedia untuk lagu ini, jadi cadangan AI tidak dapat dijana. Tambahkan lirik dari panel rujukan terlebih dahulu.",
+      "noSuggestions": "Tiada isu ditemui — AI tiada cadangan perubahan.",
+      "reject": "Tolak cadangan",
+      "rejectAll": "Tolak semua",
+      "rejected": "Ditolak",
+      "runButton": "Dapatkan cadangan",
+      "running": "Menganalisis lirik… ini biasanya mengambil masa 15–60 saat.",
+      "staleHint": "Perkataan ini telah diedit sejak cadangan dijana, jadi cadangan ini tidak lagi terpakai.",
+      "summary": "{total} cadangan · {pending} belum selesai · {accepted} diterima",
+      "title": "Cadangan pembetulan AI",
+      "undo": "Buat asal cadangan ini",
+      "cancel": "Batal",
+      "close": "Tutup",
+      "confidence_balanced": "Seimbang"
     }
   },
   "instrumentalReview": {

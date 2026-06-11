@@ -816,7 +816,9 @@
       "playback": "Playback",
       "audioLoadError": "Hindi ma-load ang audio",
       "audioStillLoading": "Naglo-load pa rin ang audio...",
-      "loadingAudio": "Naglo-load ang audio..."
+      "loadingAudio": "Naglo-load ang audio...",
+      "autoCorrect": "AI Suggest",
+      "autoCorrectDesc": "Bumuo ng mga mungkahi sa pagwawasto ng AI sa pamamagitan ng pagkukumpara ng transcription sa reference lyrics. Walang mababago hangga't hindi mo tinatanggap ang bawat mungkahi."
     },
     "guidance": {
       "showTips": "Ipakita ang mga tip",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics."
+    },
+    "autoCorrect": {
+      "accept": "Tanggapin ang mungkahi",
+      "acceptAll": "Tanggapin lahat",
+      "accepted": "Tinanggap",
+      "adlibRemovalHint": "Payagan ang mga mungkahi na magtanggal ng mga backing vocal na wala sa mga reference",
+      "adlibRemovalLabel": "I-suggest na tanggalin ang mga adlib",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "grammar",
+      "category_mishearing": "maling dinig",
+      "category_other": "iba pa",
+      "category_repeated_chorus_fix": "chorus",
+      "collapse": "I-collapse ang mga mungkahi",
+      "confidenceHint": "Gaano dapat kasigurado ang AI para magpakita ng mungkahi",
+      "confidenceLabel": "Filter ng mungkahi",
+      "confidence_all": "Ipakita lahat",
+      "confidence_high": "Mataas na kasiguraduhan",
+      "description": "Ikinukumpara ng AI ang mga na-transcribe na lyrics sa mga reference source at nagmumungkahi ng mga pag-aayos sa bawat salita. Susuriin mo ang bawat mungkahi — walang mababago hangga't hindi mo ito tinatanggap.",
+      "dismiss": "I-dismiss ang mga mungkahi",
+      "expand": "I-expand ang mga mungkahi",
+      "insertMarker": "idagdag:",
+      "insertionsHint": "Payagan ang mga mungkahi na magdagdag ng mga salitang nakaligtaan sa transcription",
+      "insertionsLabel": "I-suggest ang mga nawawalang salita",
+      "noReferences": "Walang available na reference lyrics para sa kantang ito, kaya hindi makakagawa ng mga AI suggestion. Magdagdag muna ng lyrics mula sa reference panel.",
+      "noSuggestions": "Walang nakitang isyu — walang iminumungkahing pagbabago ang AI.",
+      "reject": "Tanggihan ang mungkahi",
+      "rejectAll": "Tanggihan lahat",
+      "rejected": "Tinanggihan",
+      "runButton": "Kumuha ng mga mungkahi",
+      "running": "Sinusuri ang lyrics… karaniwang tumatagal ito ng 15–60 segundo.",
+      "staleHint": "Na-edit na ang mga salitang ito simula nang ginawa ang mga mungkahi, kaya hindi na naaangkop ang mungkahing ito.",
+      "summary": "{total} mungkahi · {pending} nakabinbin · {accepted} tinanggap",
+      "title": "Mga mungkahi sa pagwawasto ng AI",
+      "undo": "I-undo ang mungkahing ito",
+      "cancel": "Kanselahin",
+      "close": "Isara",
+      "confidence_balanced": "Balanse"
     }
   },
   "instrumentalReview": {

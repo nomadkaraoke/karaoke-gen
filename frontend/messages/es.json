@@ -816,7 +816,9 @@
       "playback": "Reproducción",
       "audioLoadError": "No se pudo cargar el audio",
       "audioStillLoading": "El audio aún se está cargando...",
-      "loadingAudio": "Cargando audio..."
+      "loadingAudio": "Cargando audio...",
+      "autoCorrect": "Sugerencia de IA",
+      "autoCorrectDesc": "Genera sugerencias de corrección de IA comparando la transcripción con las letras de referencia. No se cambia nada hasta que aceptes cada sugerencia."
     },
     "guidance": {
       "showTips": "Mostrar consejos",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Letras personalizadas aplicadas. Sincroniza manualmente cada segmento editado para asegurar que los tiempos de las palabras sean correctos para las letras personalizadas."
+    },
+    "autoCorrect": {
+      "accept": "Aceptar sugerencia",
+      "acceptAll": "Aceptar todas",
+      "accepted": "Aceptada",
+      "adlibRemovalHint": "Permitir sugerencias que eliminen coros que las referencias no tienen",
+      "adlibRemovalLabel": "Sugerir eliminar improvisaciones",
+      "category_adlib_removal": "improvisación",
+      "category_formatting": "formato",
+      "category_grammar": "gramática",
+      "category_mishearing": "mal escuchada",
+      "category_other": "otro",
+      "category_repeated_chorus_fix": "estribillo",
+      "collapse": "Contraer sugerencias",
+      "confidenceHint": "Qué tan segura debe estar la IA para mostrar una sugerencia",
+      "confidenceLabel": "Filtro de sugerencias",
+      "confidence_all": "Mostrar todas",
+      "confidence_high": "Alta confianza",
+      "description": "La IA compara las letras transcritas con las fuentes de referencia y sugiere correcciones a nivel de palabra. Tú revisas cada sugerencia — no se aplica nada hasta que la aceptes.",
+      "dismiss": "Descartar sugerencias",
+      "expand": "Expandir sugerencias",
+      "insertMarker": "insertar:",
+      "insertionsHint": "Permitir sugerencias que inserten palabras que la transcripción omitió",
+      "insertionsLabel": "Sugerir palabras faltantes",
+      "noReferences": "No hay letras de referencia disponibles para esta canción, por lo que no se pueden generar sugerencias de IA. Agrega letras desde el panel de referencia primero.",
+      "noSuggestions": "No se encontraron problemas — la IA no tiene cambios sugeridos.",
+      "reject": "Rechazar sugerencia",
+      "rejectAll": "Rechazar todas",
+      "rejected": "Rechazada",
+      "runButton": "Obtener sugerencias",
+      "running": "Analizando letras… esto suele tardar entre 15 y 60 segundos.",
+      "staleHint": "Estas palabras fueron editadas desde que se generaron las sugerencias, por lo que esta sugerencia ya no es válida.",
+      "summary": "{total} sugerencias · {pending} pendientes · {accepted} aceptadas",
+      "title": "Sugerencias de corrección de IA",
+      "undo": "Deshacer esta sugerencia",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "confidence_balanced": "Equilibrada"
     }
   },
   "instrumentalReview": {

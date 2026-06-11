@@ -816,7 +816,9 @@
       "playback": "Uppspelning",
       "audioLoadError": "Kunde inte ladda ljudet",
       "audioStillLoading": "Ljudet laddas fortfarande...",
-      "loadingAudio": "Laddar ljud..."
+      "loadingAudio": "Laddar ljud...",
+      "autoCorrect": "AI-förslag",
+      "autoCorrectDesc": "Generera AI-korrigeringsförslag genom att jämföra transkriberingen med referenstexten. Inget ändras förrän du accepterar varje förslag."
     },
     "guidance": {
       "showTips": "Visa tips",
@@ -1274,6 +1276,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten."
+    },
+    "autoCorrect": {
+      "accept": "Acceptera förslag",
+      "acceptAll": "Acceptera alla",
+      "accepted": "Accepterat",
+      "adlibRemovalHint": "Tillåt förslag som tar bort bakgrundssång som referenserna inte har",
+      "adlibRemovalLabel": "Föreslå borttagning av adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "grammatik",
+      "category_mishearing": "felhört",
+      "category_other": "annat",
+      "category_repeated_chorus_fix": "refräng",
+      "collapse": "Fäll ihop förslag",
+      "confidenceHint": "Hur säker AI:n måste vara för att visa ett förslag",
+      "confidenceLabel": "Förslagsfilter",
+      "confidence_all": "Visa alla",
+      "confidence_high": "Hög säkerhet",
+      "description": "AI:n jämför den transkriberade låttexten med referenskällorna och föreslår korrigeringar på ordnivå. Du granskar varje förslag — inget tillämpas förrän du accepterar det.",
+      "dismiss": "Avfärda förslag",
+      "expand": "Fäll ut förslag",
+      "insertMarker": "infoga:",
+      "insertionsHint": "Tillåt förslag som infogar ord som transkriberingen missade",
+      "insertionsLabel": "Föreslå saknade ord",
+      "noReferences": "Inga referenstexter är tillgängliga för den här låten, så AI-förslag kan inte genereras. Lägg till låttext från referenspanelen först.",
+      "noSuggestions": "Inga problem hittades — AI:n har inga föreslagna ändringar.",
+      "reject": "Avvisa förslag",
+      "rejectAll": "Avvisa alla",
+      "rejected": "Avvisat",
+      "runButton": "Hämta förslag",
+      "running": "Analyserar låttext… detta tar vanligtvis 15–60 sekunder.",
+      "staleHint": "Dessa ord har redigerats sedan förslagen genererades, så detta förslag gäller inte längre.",
+      "summary": "{total} förslag · {pending} väntande · {accepted} accepterade",
+      "title": "AI-korrigeringsförslag",
+      "undo": "Ångra detta förslag",
+      "cancel": "Avbryt",
+      "close": "Stäng",
+      "confidence_balanced": "Balanserad"
     }
   },
   "instrumentalReview": {
