@@ -139,6 +139,7 @@ export default function useManualSync({
           const newWords = [...wordsRef.current]
           const currentWord = newWords[syncWordIndex]
           const rawStartTime = currentTimeRef.current
+          // Keep this clamp+callback block in sync with the other sync path
           const currentStartTime = clampSyncTime(
             rawStartTime,
             editedSegment?.start_time ?? null,
@@ -198,7 +199,7 @@ export default function useManualSync({
         }
       }
     },
-    [isManualSyncing, editedSegment, syncWordIndex, onPlaySegment, isSpacebarPressed, isPaused]
+    [isManualSyncing, editedSegment, syncWordIndex, onPlaySegment, isSpacebarPressed, isPaused, onTimingClamped]
   )
 
   const handleKeyUp = useCallback(
@@ -310,6 +311,7 @@ export default function useManualSync({
       const newWords = [...wordsRef.current]
       const currentWord = newWords[syncWordIndex]
       const rawStartTime = currentTimeRef.current
+      // Keep this clamp+callback block in sync with the other sync path
       const currentStartTime = clampSyncTime(
         rawStartTime,
         editedSegment?.start_time ?? null,
@@ -348,7 +350,7 @@ export default function useManualSync({
       // Mark that we need to update the segment
       needsSegmentUpdateRef.current = true
     }
-  }, [isManualSyncing, editedSegment, syncWordIndex, isSpacebarPressed, isPaused])
+  }, [isManualSyncing, editedSegment, syncWordIndex, isSpacebarPressed, isPaused, onTimingClamped])
 
   const handleTapEnd = useCallback(() => {
     if (!isManualSyncing || !editedSegment || !isSpacebarPressed || isPaused) return
