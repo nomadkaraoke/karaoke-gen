@@ -151,17 +151,24 @@ edited; *gap_closed* = how much of the pre→truth distance accept-all closes.
 
 | model | prec strict | prec region | recall strict | recall region | mean gap closed | median gap | harmful jobs | median latency |
 |---|---|---|---|---|---|---|---|---|
-| claude-fable-5 | **0.615** | 0.862 | **0.511** | 0.696 | **+0.505** | **+0.77** | 2 | 27s |
+| claude-fable-5 | **0.615** | 0.862 | **0.511** | 0.696 | **+0.505** | +0.77 | 2 | 27s |
 | claude-opus-4-8 | **0.627** | **0.897** | 0.336 | 0.466 | +0.475 | +0.58 | 2 | 29s |
-| gemini-3.1-pro-preview | 0.556 | 0.860 | 0.464 | **0.717** | +0.499 | +0.67 | 3 | 35s |
+| gemini-3.1-pro-preview | 0.556 | 0.860 | 0.464 | 0.717 | +0.499 | +0.67 | 3 | 35s |
+| gpt-5.5 | 0.442 | 0.832 | 0.357 | **0.726** | +0.502 | **+0.80** | 2 | 63s |
 | claude-sonnet-4-6 | 0.209 | 0.710 | 0.174 | 0.632 | +0.091 | +0.34 | 4 | 14s |
 | gpt-5.2 | 0.153 | 0.603 | 0.138 | 0.587 | **−0.796** | +0.24 | 11 | 11s |
 
 Notes:
-- GPT-5.2 (no GPT-5.5 exists on the API as of Jun 2026) actively damages
+- GPT-5.5 (added after the first pass — it wasn't visible to the original
+  API key's project) lands in the top tier on outcome quality (best median
+  gap-closed, best region recall) but with the lowest strict precision of
+  the tier and ~2× the latency (median 63s). GPT-5.2 actively damages
   lyrics in accept-all simulation — it would have repeated the 2025 failure.
-  Sonnet 4.6 is also below the bar. **Fable 5, Opus 4.8, and Gemini 3.1 Pro
-  are the viable tier.**
+  Sonnet 4.6 is also below the bar. **Fable 5, Opus 4.8, Gemini 3.1 Pro and
+  GPT-5.5 are the viable tier**; the default-model decision below is
+  unchanged by the GPT-5.5 result (slower, less precise, new billing
+  surface). gpt-5.5-pro requires the OpenAI Responses API and wasn't
+  evaluated.
 - "Harmful jobs" are almost all near-perfect transcriptions (e.g. Townes Van
   Zandt: 1 human edit in 198 words) where the model proposes
   reference-supported style tweaks (`all right`→`alright`, adding a leading
