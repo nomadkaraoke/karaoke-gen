@@ -6,7 +6,7 @@ import { test, expect, Page } from '@playwright/test'
  * Verifies the opt-in AI suggestions flow end-to-end against live production:
  *   1. Lists jobs filtered by status=in_review (admin can see all jobs).
  *   2. Navigates to the lyrics review page for the first matching job.
- *   3. Opens the "AI Suggest" modal and runs suggestion generation.
+ *   3. Opens the "Auto-correct" modal and runs suggestion generation.
  *   4. Waits for the suggestions panel (up to 120s for the LLM call).
  *   5. Asserts the panel renders with accept/reject affordances (or the
  *      explicit "no suggestions" state), then dismisses it WITHOUT
@@ -66,7 +66,7 @@ test.describe('AI auto-correct suggestions (production)', () => {
     // exceed 30s (cold Cloud Run instance + uncached correction payload).
     // A "Saved Review Sessions" dialog may open on load (it aria-hides the
     // rest of the app); close it without restoring before proceeding.
-    const suggestBtn = page.getByRole('button', { name: /AI Suggest/i })
+    const suggestBtn = page.getByRole('button', { name: /Auto-correct/i })
     const sessionDialog = page.getByRole('dialog', { name: /Saved Review Sessions/i })
     await expect(suggestBtn.or(sessionDialog).first()).toBeVisible({ timeout: 90_000 })
     if (await sessionDialog.isVisible().catch(() => false)) {

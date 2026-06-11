@@ -35,7 +35,10 @@ export const DEFAULT_AUTO_CORRECT_SETTINGS: AutoCorrectSettings = {
   suggest_adlib_removal: true,
   allow_insertions: true,
   min_confidence: 0,
-  compare_models: false,
+  // Always multi-model. Kept in sync with the backend proactive run
+  // (AutoCorrectSettings(compare_models=True)) so the on-load request is a
+  // cache hit. Not user-configurable.
+  compare_models: true,
 }
 
 export interface AiSuggestion {

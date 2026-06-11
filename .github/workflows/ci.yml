@@ -1676,10 +1676,17 @@ jobs:
             --quiet
 
           # Lyrics transcription job (CPU, us-central1)
+          # Also wire the auto-correct env + Anthropic key so the worker can
+          # proactively pre-generate multi-model suggestions (cached for the
+          # review UI). --update-* merges, preserving the job's existing vars.
+          # Same service account as the API service, which already reads
+          # anthropic-api-key, so no new IAM is required.
           gcloud run jobs update lyrics-transcription-job \
             --image "$IMAGE" \
             --region us-central1 \
             --project ${{ env.PROJECT_ID }} \
+            --update-env-vars "AUTO_CORRECT_MODEL=claude-fable-5,AUTO_CORRECT_COMPARE_MODELS=claude-fable-5;gemini-3.1-pro-preview,AUTO_CORRECT_PROACTIVE_ENABLED=true" \
+            --update-secrets "ANTHROPIC_API_KEY=anthropic-api-key:latest" \
             --quiet
 
           # Audio separation job (GPU, us-east4) — uses GPU image

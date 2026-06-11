@@ -807,7 +807,7 @@
       "acceptAll": "Accept All",
       "revertAll": "Revert All",
       "undoAll": "Undo All",
-      "resetAllChanges": "Reset all changes back to the original AI-corrected lyrics",
+      "resetAllChanges": "Reset all changes back to the original corrected lyrics",
       "undo": "Undo",
       "redo": "Redo",
       "findReplace": "Find/Replace",
@@ -821,8 +821,8 @@
       "loadingAudio": "Loading audio...",
       "audioStillLoading": "Audio is still loading...",
       "audioLoadError": "Couldn't load audio",
-      "autoCorrect": "AI Suggest",
-      "autoCorrectDesc": "Generate AI correction suggestions by comparing the transcription against the reference lyrics. Nothing is changed until you accept each suggestion."
+      "autoCorrect": "Auto-correct",
+      "autoCorrectDesc": "Generate correction suggestions by comparing the transcription against the reference lyrics. Nothing is changed until you accept each suggestion."
     },
     "guidance": {
       "showTips": "Show tips",
@@ -1282,23 +1282,23 @@
       "resetOverridesTooltip": "Reset word overrides in this segment"
     },
     "autoCorrect": {
-      "title": "AI correction suggestions",
-      "description": "The AI compares the transcribed lyrics against the reference sources and suggests word-level fixes. You review every suggestion — nothing is applied until you accept it.",
-      "noReferences": "No reference lyrics are available for this song, so AI suggestions can’t be generated. Add lyrics from the reference panel first.",
+      "title": "Auto-correct suggestions",
+      "description": "Auto-correct compares the transcribed lyrics against the reference sources and suggests word-level fixes. You review every suggestion — nothing is applied until you accept it.",
+      "noReferences": "No reference lyrics are available for this song, so suggestions can’t be generated. Add lyrics from the reference panel first.",
       "running": "Analyzing lyrics… this usually takes 15–60 seconds.",
       "adlibRemovalLabel": "Suggest removing adlibs",
       "adlibRemovalHint": "Allow suggestions that delete backing vocals the references don’t have",
       "insertionsLabel": "Suggest missing words",
       "insertionsHint": "Allow suggestions that insert words the transcription missed",
       "confidenceLabel": "Suggestion filter",
-      "confidenceHint": "How confident the AI must be to show a suggestion",
+      "confidenceHint": "How confident a suggestion must be before it’s shown",
       "confidence_all": "Show all",
       "confidence_balanced": "Balanced",
       "confidence_high": "High confidence",
       "cancel": "Cancel",
       "close": "Close",
       "runButton": "Get suggestions",
-      "noSuggestions": "No issues found — the AI has no suggested changes.",
+      "noSuggestions": "No issues found — there are no suggested changes.",
       "summary": "{total} suggestions · {pending} pending · {accepted} accepted",
       "acceptAll": "Accept all",
       "rejectAll": "Reject all",
@@ -1323,7 +1323,7 @@
       "consensusBadge": "{consensus}/{total} models",
       "consensusTooltip": "Proposed by: {models}",
       "conflictBadge": "variant",
-      "conflictTooltip": "Models disagree about these words — accepting one variant rejects the others.",
+      "conflictTooltip": "There are different suggestions for these words — accepting one variant rejects the others.",
       "cachedBadge": "cached",
       "cachedTooltip": "Restored from a previous run on the same lyrics — no AI cost was incurred."
     }

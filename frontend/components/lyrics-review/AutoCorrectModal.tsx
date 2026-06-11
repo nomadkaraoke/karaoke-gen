@@ -62,9 +62,6 @@ export default function AutoCorrectModal({
     DEFAULT_AUTO_CORRECT_SETTINGS.allow_insertions,
   )
   const [confidencePreset, setConfidencePreset] = useState<ConfidencePreset>('all')
-  const [compareModels, setCompareModels] = useState(
-    DEFAULT_AUTO_CORRECT_SETTINGS.compare_models,
-  )
 
   const isRunning = status === 'running'
 
@@ -73,7 +70,9 @@ export default function AutoCorrectModal({
       suggest_adlib_removal: adlibRemoval,
       allow_insertions: allowInsertions,
       min_confidence: PRESET_THRESHOLDS[confidencePreset],
-      compare_models: compareModels,
+      // Always multi-model — kept aligned with the backend proactive run so
+      // the cached result is reused.
+      compare_models: DEFAULT_AUTO_CORRECT_SETTINGS.compare_models,
     })
   }
 
@@ -130,20 +129,6 @@ export default function AutoCorrectModal({
                 id="ac-insertions"
                 checked={allowInsertions}
                 onCheckedChange={setAllowInsertions}
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <Label htmlFor="ac-compare">{t('compareLabel')}</Label>
-                <p className="text-xs text-muted-foreground">
-                  {t('compareHint')}
-                </p>
-              </div>
-              <Switch
-                id="ac-compare"
-                checked={compareModels}
-                onCheckedChange={setCompareModels}
               />
             </div>
 
