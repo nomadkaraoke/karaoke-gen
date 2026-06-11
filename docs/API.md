@@ -560,19 +560,26 @@ Content-Type: application/json
     "suggest_adlib_removal": true,
     "allow_insertions": true,
     "min_confidence": 0.0,
-    "compare_models": false
+    "compare_models": true
   }
 }
 ```
 
-Opt-in, user-triggered AI correction suggestions for the lyrics review UI.
-Stateless: one whole-song LLM call per model (default model from
-`AUTO_CORRECT_MODEL`; Claude models use the Anthropic API via the
+AI correction suggestions for the lyrics review UI. Stateless: one whole-song
+LLM call per model (Claude models use the Anthropic API via the
 `anthropic-api-key` secret, Gemini models use Vertex AI) compares the
 client's current transcription against the reference sources and returns
 word-id-keyed suggestions. Nothing is applied server-side — the reviewer
 accepts/rejects each suggestion in the UI and persistence flows through the
 existing corrections/complete paths.
+
+The review UI always requests the multi-model path (`compare_models: true`)
+and auto-runs once on load, so suggestions appear without a click. To make
+that load instant, the lyrics worker **proactively pre-generates and caches**
+the same multi-model run once transcription + references are ready (gated by
+`AUTO_CORRECT_PROACTIVE_ENABLED`; best-effort — it never blocks or fails the
+karaoke job). Because the proactive run uses the same default settings the UI
+sends, the on-load request is normally a cache hit with no extra cost.
 
 With `"compare_models": true`, every model in `AUTO_CORRECT_COMPARE_MODELS`
 (semicolon-separated) is queried in parallel; identical suggestions are

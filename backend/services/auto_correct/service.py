@@ -13,6 +13,7 @@ from google import genai
 from google.genai import types
 
 from backend.config import get_settings
+from backend.services.auto_correct.pricing import TokenUsage, estimate_cost_usd
 from backend.services.auto_correct.prompts import (
     RESPONSE_SCHEMA,
     build_system_prompt,
@@ -131,11 +132,17 @@ class AutoCorrectService:
 
         t0 = time.time()
         per_model: dict[str, list[Suggestion]] = {}
+        # Token usage per successful model call (None when the provider's
+        # usage object couldn't be read). Drives the cost log below.
+        per_model_usage: dict[str, Optional[TokenUsage]] = {}
         warnings: list[str] = []
         if len(models) == 1:
-            raw = self._call_model(models[0], system_prompt, user_prompt, job_id=job_id)
+            raw, usage = self._call_model(
+                models[0], system_prompt, user_prompt, job_id=job_id
+            )
             suggestions, vw = self._validate(raw, flat, settings)
             per_model[models[0]] = suggestions
+            per_model_usage[models[0]] = usage
             warnings.extend(vw)
         else:
             import concurrent.futures as cf
@@ -149,7 +156,7 @@ class AutoCorrectService:
                 }
                 for fut, m in futures.items():
                     try:
-                        raw = fut.result()
+                        raw, usage = fut.result()
                         suggestions, vw = self._validate(raw, flat, settings)
                     except AutoCorrectServiceError as exc:
                         # One model failing (call OR malformed output) must not
@@ -157,6 +164,7 @@ class AutoCorrectService:
                         warnings.append(f"model {m} failed: {exc}")
                         continue
                     per_model[m] = suggestions
+                    per_model_usage[m] = usage
                     warnings.extend(f"[{m}] {w}" for w in vw)
             if not per_model:
                 raise AutoCorrectServiceError(
@@ -170,6 +178,7 @@ class AutoCorrectService:
             "auto-correct job=%s models=%s words=%d suggestions=%d dropped_warnings=%d elapsed=%.1fs",
             job_id, model_label, len(flat), len(merged), len(warnings), elapsed,
         )
+        self._log_usage(job_id, per_model_usage)
         result = AutoCorrectResult(
             suggestions=merged,
             model=model_label,
@@ -179,6 +188,50 @@ class AutoCorrectService:
         )
         self._cache_put(cache_path, result)
         return result
+
+    @staticmethod
+    def _log_usage(
+        job_id: str, per_model_usage: dict[str, Optional[TokenUsage]]
+    ) -> None:
+        """Emit greppable per-model and total cost lines for one suggest() call.
+
+        Token counts are ground truth; the USD figures are derived from
+        ``pricing.MODEL_PRICING`` and use ESTIMATED Gemini rates (see that
+        module). Query in Cloud Logging via ``auto-correct usage`` /
+        ``auto-correct cost``. Observability only — never raises.
+        """
+        total_cost = 0.0
+        any_cost = False
+        for model, usage in per_model_usage.items():
+            cost = estimate_cost_usd(model, usage)
+            if cost is not None:
+                total_cost += cost
+                any_cost = True
+            if usage is None:
+                logger.info(
+                    "auto-correct usage job=%s model=%s tokens=unavailable",
+                    job_id, model,
+                )
+                continue
+            thinking = usage.get("thinking_tokens")
+            logger.info(
+                "auto-correct usage job=%s model=%s input_tokens=%d "
+                "output_tokens=%d thinking_tokens=%s cache_read_tokens=%d "
+                "est_cost_usd=%s",
+                job_id,
+                model,
+                usage.get("input_tokens", 0),
+                usage.get("output_tokens", 0),
+                "na" if thinking is None else thinking,
+                usage.get("cache_read_tokens", 0),
+                "unknown" if cost is None else f"{cost:.4f}",
+            )
+        logger.info(
+            "auto-correct cost job=%s models=%s total_est_cost_usd=%s",
+            job_id,
+            ", ".join(per_model_usage.keys()),
+            f"{total_cost:.4f}" if any_cost else "unknown",
+        )
 
     # ---- suggestion cache (GCS, best-effort) ----
 
@@ -334,14 +387,59 @@ class AutoCorrectService:
 
     def _call_model(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
-    ) -> Any:
+    ) -> tuple[Any, Optional[TokenUsage]]:
+        """Return (parsed_json, token_usage). Usage is None if unreadable."""
         if model.startswith("claude"):
             return self._call_anthropic(model, system_prompt, user_prompt, job_id=job_id)
         return self._call_gemini(model, system_prompt, user_prompt, job_id=job_id)
 
+    @staticmethod
+    def _anthropic_usage(response: Any) -> Optional[TokenUsage]:
+        """Best-effort usage from an Anthropic response.
+
+        ``output_tokens`` already includes adaptive thinking tokens (billed as
+        output); they are not separable here, so thinking_tokens is None.
+        Returns None on any shape problem — usage must never break the call.
+        """
+        try:
+            u = response.usage
+            return TokenUsage(
+                input_tokens=int(getattr(u, "input_tokens", 0) or 0),
+                output_tokens=int(getattr(u, "output_tokens", 0) or 0),
+                cache_read_tokens=int(getattr(u, "cache_read_input_tokens", 0) or 0),
+                thinking_tokens=None,
+            )
+        except Exception:
+            logger.debug("auto-correct: could not read Anthropic usage", exc_info=True)
+            return None
+
+    @staticmethod
+    def _gemini_usage(response: Any) -> Optional[TokenUsage]:
+        """Best-effort usage from a Gemini (Vertex) response.
+
+        Gemini reports thinking separately (``thoughts_token_count``); it is
+        billed at the output rate, so it's folded into output_tokens and also
+        reported separately for visibility. Returns None on any shape problem.
+        """
+        try:
+            u = response.usage_metadata
+            prompt = int(getattr(u, "prompt_token_count", 0) or 0)
+            candidates = int(getattr(u, "candidates_token_count", 0) or 0)
+            thoughts = int(getattr(u, "thoughts_token_count", 0) or 0)
+            cached = int(getattr(u, "cached_content_token_count", 0) or 0)
+            return TokenUsage(
+                input_tokens=prompt,
+                output_tokens=candidates + thoughts,
+                cache_read_tokens=cached,
+                thinking_tokens=thoughts,
+            )
+        except Exception:
+            logger.debug("auto-correct: could not read Gemini usage", exc_info=True)
+            return None
+
     def _call_anthropic(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
-    ) -> Any:
+    ) -> tuple[Any, Optional[TokenUsage]]:
         import os
 
         import anthropic
@@ -384,9 +482,10 @@ class AutoCorrectService:
             raise AutoCorrectServiceError(
                 "AI model call failed", status_code=502
             ) from exc
+        usage = self._anthropic_usage(response)
         try:
             text = next(b.text for b in response.content if b.type == "text")
-            return json.loads(text)
+            return json.loads(text), usage
         except (StopIteration, json.JSONDecodeError, TypeError) as exc:
             logger.exception(
                 "auto-correct model returned non-JSON job=%s model=%s", job_id, model
@@ -397,7 +496,7 @@ class AutoCorrectService:
 
     def _call_gemini(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
-    ) -> Any:
+    ) -> tuple[Any, Optional[TokenUsage]]:
         client = genai.Client(
             vertexai=True,
             project=self.settings.google_cloud_project,
@@ -425,8 +524,9 @@ class AutoCorrectService:
             raise AutoCorrectServiceError(
                 "AI model call failed", status_code=502
             ) from exc
+        usage = self._gemini_usage(response)
         try:
-            return json.loads(response.text)
+            return json.loads(response.text), usage
         except (json.JSONDecodeError, TypeError) as exc:
             logger.exception(
                 "auto-correct model returned non-JSON job=%s model=%s", job_id, model

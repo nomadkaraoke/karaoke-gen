@@ -85,7 +85,7 @@ def test_cache_hit_skips_model_call() -> None:
 def test_cache_miss_calls_model_and_writes_cache() -> None:
     service = AutoCorrectService()
     with patch.object(service, "_cache_get", return_value=None), \
-         patch.object(service, "_call_model", return_value=RAW) as call, \
+         patch.object(service, "_call_model", return_value=(RAW, None)) as call, \
          patch.object(service, "_cache_put") as put:
         result = _suggest(service)
     call.assert_called_once()
@@ -197,7 +197,7 @@ def test_corrupt_cache_entry_is_a_miss() -> None:
 def test_storage_failure_never_breaks_request() -> None:
     service = AutoCorrectService()
     with patch.object(service, "_get_storage", side_effect=RuntimeError("no gcs")), \
-         patch.object(service, "_call_model", return_value=RAW):
+         patch.object(service, "_call_model", return_value=(RAW, None)):
         result = _suggest(service)
     assert result.cached is False
     assert len(result.suggestions) == 1

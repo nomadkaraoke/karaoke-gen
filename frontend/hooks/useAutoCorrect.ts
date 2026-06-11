@@ -38,6 +38,9 @@ interface UseAutoCorrectArgs {
   updateDataWithHistory: (newData: CorrectionData, desc?: string) => void
   editLog: EditLog
   getAuthToken: () => string | undefined
+  /** Auto-trigger one run on load (when references exist) so suggestions are
+   *  ready without a click. Normally a cache hit (backend pre-generates). */
+  autoRunOnLoad?: boolean
 }
 
 export function useAutoCorrect({
@@ -46,6 +49,7 @@ export function useAutoCorrect({
   updateDataWithHistory,
   editLog,
   getAuthToken,
+  autoRunOnLoad = false,
 }: UseAutoCorrectArgs) {
   const [status, setStatus] = useState<AutoCorrectStatus>('idle')
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([])
@@ -122,6 +126,17 @@ export function useAutoCorrect({
   const cancel = useCallback(() => {
     abortRef.current?.abort()
   }, [])
+
+  // Fire exactly one run on load once references + segments are available.
+  // The ref guard ensures it never re-fires as `data` changes during review.
+  const autoRanRef = useRef(false)
+  useEffect(() => {
+    if (!autoRunOnLoad || autoRanRef.current) return
+    if (!jobId || status !== 'idle') return
+    if (!hasReferences || !(data.corrected_segments?.length > 0)) return
+    autoRanRef.current = true
+    void run()
+  }, [autoRunOnLoad, jobId, status, hasReferences, data.corrected_segments, run])
 
   const logDecision = useCallback(
     (s: AiSuggestion, op: 'ai_suggestion_accept' | 'ai_suggestion_reject' | 'ai_suggestion_undo') => {
