@@ -39,11 +39,19 @@ def sanitize_corrections(corrections: Dict[str, Any]) -> Tuple[Dict[str, Any], i
             start = w.get("start_time")
             end = w.get("end_time")
 
-            want_start = start if _finite(start) else prev_end
-            new_start = min(max(want_start, seg_start), seg_end)
+            # Invalid start = missing/non-finite OR outside the segment window.
+            if _finite(start) and seg_start <= start <= seg_end:
+                new_start = start
+            else:
+                new_start = min(max(prev_end, seg_start), seg_end)
 
-            want_end = end if _finite(end) else new_start
-            new_end = min(max(want_end, new_start), seg_end)
+            # Invalid end = missing/non-finite, before start, or past segment end.
+            if _finite(end) and new_start <= end <= seg_end:
+                new_end = end
+            else:
+                new_end = min(max(new_start, end if _finite(end) else new_start), seg_end)
+                if new_end < new_start:
+                    new_end = new_start
 
             if new_start != start:
                 w["start_time"] = new_start

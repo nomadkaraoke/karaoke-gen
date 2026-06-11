@@ -1,8 +1,10 @@
 """Tests for backend.services.timing_sanitizer."""
+import pytest
+
 from backend.services.timing_sanitizer import sanitize_corrections
 
 
-def _scalp_corrections():
+def _sample_corrections():
     return {
         "corrected_segments": [
             {
@@ -23,7 +25,7 @@ def _scalp_corrections():
 
 
 def test_clamps_out_of_bounds_words():
-    cleaned, count = sanitize_corrections(_scalp_corrections())
+    cleaned, count = sanitize_corrections(_sample_corrections())
     words = cleaned["corrected_segments"][0]["words"]
     for w in words:
         assert w["start_time"] >= 15.18
@@ -63,3 +65,38 @@ def test_non_finite_segment_bounds_left_untouched():
     cleaned, count = sanitize_corrections(payload)
     assert count == 0
     assert cleaned["corrected_segments"][0]["words"][0]["start_time"] == 3
+
+
+def test_start_past_segment_end_uses_prev_end():
+    """A word whose start_time is far outside [seg_start, seg_end] must be repaired
+    to prev_end (clamped into the segment window), not silently collapsed to seg_end."""
+    payload = {"corrected_segments": [{
+        "id": "s", "start_time": 10.0, "end_time": 12.0, "text": "hello world",
+        "words": [
+            {"id": "w0", "text": "hello", "start_time": 10.0, "end_time": 11.0},
+            {"id": "w1", "text": "world", "start_time": 99.0, "end_time": 100.0},
+        ],
+    }]}
+    cleaned, count = sanitize_corrections(payload)
+    assert count >= 2  # both start and end of w1 were repaired
+    w = cleaned["corrected_segments"][0]["words"][1]
+    # start must fall inside the segment window
+    assert 10.0 <= w["start_time"] <= 12.0
+    # end must be >= start and within the segment
+    assert w["end_time"] >= w["start_time"]
+    assert w["end_time"] <= 12.0
+    # start should be prev_end (11.0), not collapsed to seg_end (12.0)
+    assert w["start_time"] == 11.0
+
+
+@pytest.mark.parametrize("bad_value", [True, False, float("inf"), float("-inf"), float("nan"), None])
+def test_non_finite_word_timing_is_clamped(bad_value):
+    payload = {"corrected_segments": [{
+        "id": "s", "start_time": 10.0, "end_time": 12.0, "text": "x",
+        "words": [{"id": "w", "text": "x", "start_time": bad_value, "end_time": bad_value}]
+    }]}
+    cleaned, count = sanitize_corrections(payload)
+    assert count >= 1
+    w = cleaned["corrected_segments"][0]["words"][0]
+    assert 10.0 <= w["start_time"] <= 12.0
+    assert w["end_time"] >= w["start_time"]
