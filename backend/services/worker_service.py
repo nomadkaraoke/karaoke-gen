@@ -426,6 +426,8 @@ class WorkerService:
         headers = {"Content-Type": "application/json"}
         if self._admin_token:
             headers["X-Admin-Token"] = self._admin_token
+        # Propagate trace context so the service-side span links to this job.
+        headers = inject_trace_context(headers)
         try:
             async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 resp = await client.post(url, json={"job_id": job_id}, headers=headers)

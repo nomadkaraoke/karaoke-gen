@@ -246,17 +246,28 @@ async def trigger_auto_correct_worker(
     response just reports what happened. Gated by AUTO_CORRECT_PROACTIVE_ENABLED.
     """
     job_id = request.job_id
+
+    # Extract trace context from incoming request (propagated via the trigger).
+    trace_context = extract_trace_context(dict(http_request.headers))
+
     logger.info(f"[job:{job_id}] WORKER_TRIGGER worker=auto-correct")
     add_span_attribute("job_id", job_id)
     add_span_attribute("worker", "auto-correct")
 
-    result = await process_proactive_auto_correct(job_id)
-    add_span_event("auto_correct_proactive", {"result": result.get("status", "unknown")})
-    return WorkerResponse(
-        status=result.get("status", "unknown"),
-        job_id=job_id,
-        message=f"Proactive auto-correct: {result.get('status', 'unknown')}",
-    )
+    # process_proactive_auto_correct already swallows its own errors; the extra
+    # guard keeps the endpoint itself best-effort no matter what.
+    try:
+        result = await process_proactive_auto_correct(job_id)
+        add_span_event("auto_correct_proactive", {"result": result.get("status", "unknown")})
+        return WorkerResponse(
+            status=result.get("status", "unknown"),
+            job_id=job_id,
+            message=f"Proactive auto-correct: {result.get('status', 'unknown')}",
+        )
+    except Exception as e:  # noqa: BLE001 — best-effort, never fail the caller
+        logger.warning(f"[job:{job_id}] auto-correct endpoint error (non-fatal): {e}")
+        add_span_event("auto_correct_proactive", {"result": "error"})
+        return WorkerResponse(status="error", job_id=job_id, message=f"error: {e}")
 
 
 @router.post("/workers/screens", response_model=WorkerResponse)
