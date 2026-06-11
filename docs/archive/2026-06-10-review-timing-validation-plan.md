@@ -475,7 +475,7 @@ def test_missing_segments_key_is_noop():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/andrew/Projects/nomadkaraoke/karaoke-gen-review-timing-validation && python -m pytest tests/unit/services/test_timing_sanitizer.py -q`
+Run (from the repo root): `python -m pytest tests/unit/services/test_timing_sanitizer.py -q`
 Expected: FAIL — `ModuleNotFoundError: backend.services.timing_sanitizer`.
 
 - [ ] **Step 3: Write the sanitizer (dict-level, mirrors the frontend invariant and SegmentResizer._sanitize_segment_timings)**
