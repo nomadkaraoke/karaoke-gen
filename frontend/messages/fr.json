@@ -990,7 +990,9 @@
         "loadingAll": "Chargement de tous les mots...",
         "loadingSegment": "Chargement du segment...",
         "noData": "Aucune donnée de segment disponible",
-        "unCorrect": "Dé-corriger"
+        "unCorrect": "Dé-corriger",
+        "timingClamped": "Le timing de \"{word}\" était en dehors du segment — ajusté à {time}s.",
+        "timingSanitized": "Correction de {count} timing(s) de mot(s) en dehors de ce segment."
       },
       "findReplace": {
         "title": "Chercher et Remplacer",

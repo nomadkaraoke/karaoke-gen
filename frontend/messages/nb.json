@@ -990,7 +990,9 @@
         "loadingAll": "Laster inn alle ord...",
         "loadingSegment": "Laster inn segment...",
         "noData": "Ingen segmentdata tilgjengelig",
-        "unCorrect": "Fjern korrigering"
+        "unCorrect": "Fjern korrigering",
+        "timingClamped": "Timingen for \"{word}\" var utenfor segmentet — justert til {time}s.",
+        "timingSanitized": "Rettet {count} ord-timing(er) som falt utenfor dette segmentet."
       },
       "findReplace": {
         "title": "Finn og erstatt",

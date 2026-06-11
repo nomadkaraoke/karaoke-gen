@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Loader2, Play, Square, RotateCcw, Trash2, History } from 'lucide-react'
@@ -13,6 +14,7 @@ import useManualSync from '@/hooks/useManualSync'
 import { setModalHandler } from '@/lib/lyrics-review/utils/keyboardHandlers'
 import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
 import { splitWordWithTiming, createWordsWithDistributedTiming } from '@/lib/lyrics-review/utils/wordUtils'
+import { sanitizeSegmentTimings } from '@/lib/lyrics-review/sanitizeWordTimings'
 
 interface EditModalProps {
   open: boolean
@@ -56,6 +58,7 @@ export default function EditModal({
   const tHeader = useTranslations('lyricsReview.header')
   const { ready: audioReady } = useAudioReady()
   const [editedSegment, setEditedSegment] = useState<LyricsSegment | null>(segment)
+  const [timingFixCount, setTimingFixCount] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const currentTimeRef = useRef(currentTime)
 
@@ -65,7 +68,14 @@ export default function EditModal({
   }, [currentTime])
 
   useEffect(() => {
-    setEditedSegment(segment)
+    if (!segment) {
+      setEditedSegment(null)
+      setTimingFixCount(0)
+      return
+    }
+    const { segment: cleaned, changes } = sanitizeSegmentTimings(segment)
+    setEditedSegment(cleaned)
+    setTimingFixCount(changes.length)
   }, [segment])
 
   // Track playing state from global window
@@ -112,6 +122,9 @@ export default function EditModal({
     currentTime,
     onPlaySegment,
     updateSegment,
+    onTimingClamped: (wordText: string, snappedTo: number) => {
+      toast.warning(t('timingClamped', { word: wordText, time: snappedTo.toFixed(2) }))
+    },
   })
 
   // Wire up spacebar handler - use setModalHandler directly for proper modal state
@@ -389,6 +402,15 @@ export default function EditModal({
           </div>
         ) : editedSegment ? (
           <div className="flex-1 overflow-auto space-y-4">
+            {timingFixCount > 0 && (
+              <div
+                data-testid="timing-sanitized-banner"
+                className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+              >
+                {t('timingSanitized', { count: timingFixCount })}
+              </div>
+            )}
+
             {/* Timeline editor with Tap To Sync */}
             {editedSegment.words.some((w) => w.start_time !== null) && (
               <EditTimelineSection

@@ -990,7 +990,9 @@
         "loadingAll": "Wczytywanie wszystkich słów...",
         "loadingSegment": "Wczytywanie segmentu...",
         "noData": "Brak danych segmentu",
-        "unCorrect": "Cofnij poprawkę"
+        "unCorrect": "Cofnij poprawkę",
+        "timingClamped": "Czas słowa \"{word}\" wykraczał poza segment — wyrównano do {time}s.",
+        "timingSanitized": "Poprawiono czas dla {count} słów, które wykraczały poza ten segment."
       },
       "findReplace": {
         "title": "Znajdź i zamień",

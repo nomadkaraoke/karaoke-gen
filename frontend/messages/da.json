@@ -990,7 +990,9 @@
         "loadingAll": "Indlæser alle ord...",
         "loadingSegment": "Indlæser segment...",
         "noData": "Ingen segmentdata tilgængelige",
-        "unCorrect": "Fjern rettelse"
+        "unCorrect": "Fjern rettelse",
+        "timingClamped": "\"{word}\" timing var uden for segmentet — justeret til {time}s.",
+        "timingSanitized": "Rettede {count} ord-timing(er), der faldt uden for dette segment."
       },
       "findReplace": {
         "title": "Find og erstat",
