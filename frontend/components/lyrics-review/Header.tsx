@@ -21,6 +21,7 @@ import {
   Eye,
   CheckCircle2,
   XCircle,
+  Sparkles,
 } from 'lucide-react'
 import { CorrectionData, InteractionMode } from '@/lib/lyrics-review/types'
 import ModeSelector from './ModeSelector'
@@ -67,6 +68,7 @@ interface HeaderProps {
   onRevertAllCorrections?: () => void
   isDuet?: boolean
   onToggleDuet?: () => void
+  onAutoCorrect?: () => void
 }
 
 export default function Header({
@@ -100,6 +102,7 @@ export default function Header({
   onRevertAllCorrections,
   isDuet = false,
   onToggleDuet,
+  onAutoCorrect,
 }: HeaderProps) {
   const t = useTranslations('lyricsReview.header')
   const tDuet = useTranslations('lyricsReview.duet')
@@ -287,6 +290,23 @@ export default function Header({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">{t('editAllDesc')}</TooltipContent>
+                </Tooltip>
+              )}
+
+              {!isReadOnly && onAutoCorrect && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onAutoCorrect}
+                      className="h-8 text-xs text-purple-500 border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1" />
+                      {t('autoCorrect')}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">{t('autoCorrectDesc')}</TooltipContent>
                 </Tooltip>
               )}
 

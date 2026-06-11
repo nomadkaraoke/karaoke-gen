@@ -816,7 +816,9 @@
       "playback": "Lecture",
       "audioLoadError": "Impossible de charger l'audio",
       "audioStillLoading": "L'audio est toujours en cours de chargement...",
-      "loadingAudio": "Chargement de l'audio..."
+      "loadingAudio": "Chargement de l'audio...",
+      "autoCorrect": "Suggestions de l'IA",
+      "autoCorrectDesc": "Génère des suggestions de correction de l'IA en comparant la transcription aux paroles de référence. Rien n'est modifié tant que tu n'acceptes pas chaque suggestion."
     },
     "guidance": {
       "showTips": "Afficher les conseils",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct."
+    },
+    "autoCorrect": {
+      "accept": "Accepter la suggestion",
+      "acceptAll": "Tout accepter",
+      "accepted": "Accepté",
+      "adlibRemovalHint": "Autoriser les suggestions qui suppriment les voix de fond absentes des références",
+      "adlibRemovalLabel": "Suggérer la suppression des adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "grammaire",
+      "category_mishearing": "mal compris",
+      "category_other": "autre",
+      "category_repeated_chorus_fix": "refrain",
+      "collapse": "Réduire les suggestions",
+      "confidenceHint": "Le niveau de certitude requis par l'IA pour afficher une suggestion",
+      "confidenceLabel": "Filtre de suggestions",
+      "confidence_all": "Tout afficher",
+      "confidence_high": "Certitude élevée",
+      "description": "L'IA compare les paroles transcrites aux sources de référence et suggère des corrections mot par mot. Tu examines chaque suggestion — rien n'est appliqué tant que tu ne l'as pas acceptée.",
+      "dismiss": "Ignorer les suggestions",
+      "expand": "Développer les suggestions",
+      "insertMarker": "insérer :",
+      "insertionsHint": "Autoriser les suggestions qui insèrent les mots manquants dans la transcription",
+      "insertionsLabel": "Suggérer les mots manquants",
+      "noReferences": "Il n'y a pas de paroles de référence pour cette chanson, les suggestions de l'IA ne peuvent donc pas être générées. Ajoute d'abord des paroles depuis le panneau de référence.",
+      "noSuggestions": "Aucun problème trouvé — l'IA n'a aucune modification à suggérer.",
+      "reject": "Rejeter la suggestion",
+      "rejectAll": "Tout rejeter",
+      "rejected": "Rejeté",
+      "runButton": "Obtenir des suggestions",
+      "running": "Analyse des paroles… cela prend généralement 15 à 60 secondes.",
+      "staleHint": "Ces mots ont été modifiés depuis la génération des suggestions, celle-ci ne s'applique donc plus.",
+      "summary": "{total} suggestions · {pending} en attente · {accepted} acceptées",
+      "title": "Suggestions de correction de l'IA",
+      "undo": "Annuler cette suggestion",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "confidence_balanced": "Équilibrée"
     }
   },
   "instrumentalReview": {

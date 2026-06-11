@@ -44,6 +44,11 @@ from backend.services.custom_lyrics_service import (
     CustomLyricsServiceError,
     get_custom_lyrics_service,
 )
+from backend.services.auto_correct import (
+    AutoCorrectService,
+    AutoCorrectServiceError,
+    get_auto_correct_service,
+)
 
 
 class LineMetadataResponse(_PydBaseModel):
@@ -70,9 +75,42 @@ class CustomLyricsResponse(_PydBaseModel):
     model: str
 
 
+class AutoCorrectRequest(_PydBaseModel):
+    segments: list[dict]  # client's current working corrected_segments
+    reference_lyrics: dict  # client's reference sources (incl. user-added)
+    artist: Optional[str] = None
+    title: Optional[str] = None
+    settings: Optional[dict] = None  # AutoCorrectSettings knobs
+
+
+class AutoCorrectSuggestionResponse(_PydBaseModel):
+    id: str
+    op: str  # "replace" | "delete" | "insert_after"
+    word_ids: list[str]
+    segment_ids: list[str]
+    original_text: str
+    new_text: str
+    reason: str
+    category: str
+    confidence: float
+
+
+class AutoCorrectResponse(_PydBaseModel):
+    suggestions: list[AutoCorrectSuggestionResponse]
+    model: str
+    elapsed_seconds: float
+    settings_applied: dict
+    warnings: list[str]
+
+
 def _get_custom_lyrics_service_dep() -> CustomLyricsService:
     """FastAPI dependency wrapper around the singleton accessor."""
     return get_custom_lyrics_service()
+
+
+def _get_auto_correct_service_dep() -> AutoCorrectService:
+    """FastAPI dependency wrapper around the singleton accessor."""
+    return get_auto_correct_service()
 
 
 async def _load_target_segments_for_custom_lyrics(
@@ -633,6 +671,63 @@ async def generate_custom_lyrics(
         line_count_mismatch=result.line_count_mismatch,
         warnings=result.warnings,
         model=result.model,
+    )
+
+
+@router.post("/{job_id}/auto-correct", response_model=AutoCorrectResponse)
+async def auto_correct_suggestions(
+    job_id: str,
+    body: AutoCorrectRequest,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+    service: AutoCorrectService = Depends(_get_auto_correct_service_dep),
+) -> AutoCorrectResponse:
+    """Generate AI auto-correction suggestions for the lyrics review UI.
+
+    Stateless and strictly opt-in: one whole-song LLM call comparing the
+    client's current working transcription against the reference lyrics.
+    Returns word-id-keyed suggestions; nothing is applied server-side —
+    the reviewer accepts or rejects each suggestion individually and
+    persistence happens via the existing corrections/complete paths.
+    """
+    from backend.services.auto_correct.settings import settings_from_dict
+
+    try:
+        settings = settings_from_dict(body.settings or {})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid settings: {exc}") from exc
+
+    try:
+        result = await asyncio.to_thread(
+            service.suggest,
+            job_id=job_id,
+            segments=body.segments,
+            reference_lyrics=body.reference_lyrics,
+            artist=body.artist,
+            title=body.title,
+            settings=settings,
+        )
+    except AutoCorrectServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return AutoCorrectResponse(
+        suggestions=[
+            AutoCorrectSuggestionResponse(
+                id=s.id,
+                op=s.op,
+                word_ids=s.word_ids,
+                segment_ids=s.segment_ids,
+                original_text=s.original_text,
+                new_text=s.new_text,
+                reason=s.reason,
+                category=s.category,
+                confidence=s.confidence,
+            )
+            for s in result.suggestions
+        ],
+        model=result.model,
+        elapsed_seconds=result.elapsed_seconds,
+        settings_applied=result.settings_applied.to_dict(),
+        warnings=result.warnings,
     )
 
 

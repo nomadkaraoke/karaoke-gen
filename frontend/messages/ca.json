@@ -816,7 +816,9 @@
       "playback": "Reproducció",
       "audioLoadError": "No s'ha pogut carregar l'àudio",
       "audioStillLoading": "L'àudio encara s'està carregant...",
-      "loadingAudio": "Carregant l'àudio..."
+      "loadingAudio": "Carregant l'àudio...",
+      "autoCorrect": "Suggeriments de la IA",
+      "autoCorrectDesc": "Genera suggeriments de correcció de la IA comparant la transcripció amb la lletra de referència. No es canvia res fins que acceptis cada suggeriment."
     },
     "guidance": {
       "showTips": "Mostra els consells",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada."
+    },
+    "autoCorrect": {
+      "accept": "Accepta el suggeriment",
+      "acceptAll": "Accepta-ho tot",
+      "accepted": "Acceptat",
+      "adlibRemovalHint": "Permet suggeriments que eliminin les veus de fons que les referències no tenen",
+      "adlibRemovalLabel": "Suggereix eliminar els adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "gramàtica",
+      "category_mishearing": "error d'audició",
+      "category_other": "altres",
+      "category_repeated_chorus_fix": "tornada",
+      "collapse": "Contreu els suggeriments",
+      "confidenceHint": "Quin grau de certesa ha de tenir la IA per mostrar un suggeriment",
+      "confidenceLabel": "Filtre de suggeriments",
+      "confidence_all": "Mostra-ho tot",
+      "confidence_high": "Certesa alta",
+      "description": "La IA compara la lletra transcrita amb les fonts de referència i suggereix correccions paraula per paraula. Tu revises cada suggeriment — no s'aplica res fins que ho acceptes.",
+      "dismiss": "Descarta els suggeriments",
+      "expand": "Desplega els suggeriments",
+      "insertMarker": "insereix:",
+      "insertionsHint": "Permet suggeriments que insereixin paraules que la transcripció ha omès",
+      "insertionsLabel": "Suggereix paraules que falten",
+      "noReferences": "No hi ha cap lletra de referència disponible per a aquesta cançó, per la qual cosa no es poden generar suggeriments de la IA. Primer, afegeix la lletra des del tauler de referència.",
+      "noSuggestions": "No s'ha trobat cap problema — la IA no suggereix cap canvi.",
+      "reject": "Rebutja el suggeriment",
+      "rejectAll": "Rebutja-ho tot",
+      "rejected": "Rebutjat",
+      "runButton": "Obtén suggeriments",
+      "running": "S'està analitzant la lletra... això sol trigar entre 15 i 60 segons.",
+      "staleHint": "Aquestes paraules s'han editat des que es van generar els suggeriments, per la qual cosa aquest suggeriment ja no és vàlid.",
+      "summary": "{total} suggeriments · {pending} pendents · {accepted} acceptats",
+      "title": "Suggeriments de correcció de la IA",
+      "undo": "Desfés aquest suggeriment",
+      "cancel": "Cancel·la",
+      "close": "Tanca",
+      "confidence_balanced": "Equilibrat"
     }
   },
   "instrumentalReview": {

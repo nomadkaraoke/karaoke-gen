@@ -816,7 +816,9 @@
       "playback": "Toisto",
       "audioLoadError": "Ääntä ei voitu ladata",
       "audioStillLoading": "Ääni latautuu yhä...",
-      "loadingAudio": "Ladataan ääntä..."
+      "loadingAudio": "Ladataan ääntä...",
+      "autoCorrect": "Tekoälyn ehdotukset",
+      "autoCorrectDesc": "Luo tekoälyn korjausehdotuksia vertaamalla transkriptiota viitesanoituksiin. Mitään ei muuteta ennen kuin hyväksyt jokaisen ehdotuksen."
     },
     "guidance": {
       "showTips": "Näytä vinkit",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Mukautetut sanoitukset otettu käyttöön. Synkronoi jokainen muokattu segmentti manuaalisesti varmistaaksesi, että sanojen ajoitukset sopivat mukautettuihin sanoituksiin."
+    },
+    "autoCorrect": {
+      "accept": "Hyväksy ehdotus",
+      "acceptAll": "Hyväksy kaikki",
+      "accepted": "Hyväksytty",
+      "adlibRemovalHint": "Salli ehdotukset, jotka poistavat taustalauluja, joita ei ole viitesanoituksissa",
+      "adlibRemovalLabel": "Ehdotukset adlibien poistamisesta",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "muotoilu",
+      "category_grammar": "kielioppi",
+      "category_mishearing": "väärin kuultu",
+      "category_other": "muu",
+      "category_repeated_chorus_fix": "kertosäe",
+      "collapse": "Pienennä ehdotukset",
+      "confidenceHint": "Kuinka varma tekoälyn on oltava näyttääkseen ehdotuksen",
+      "confidenceLabel": "Ehdotusten suodatin",
+      "confidence_all": "Näytä kaikki",
+      "confidence_high": "Korkea varmuus",
+      "description": "Tekoäly vertaa transkriptoituja sanoituksia viitelähteisiin ja ehdottaa sanakohtaisia korjauksia. Tarkistat jokaisen ehdotuksen — mitään ei muuteta ennen kuin hyväksyt sen.",
+      "dismiss": "Ohita ehdotukset",
+      "expand": "Laajenna ehdotukset",
+      "insertMarker": "lisää:",
+      "insertionsHint": "Salli ehdotukset, jotka lisäävät transkriptiosta puuttuvia sanoja",
+      "insertionsLabel": "Ehdotukset puuttuvien sanojen lisäämisestä",
+      "noReferences": "Tälle kappaleelle ei ole saatavilla viitesanoituksia, joten tekoälyehdotuksia ei voida luoda. Lisää sanoitukset ensin viitepaneelista.",
+      "noSuggestions": "Ongelmia ei löytynyt — tekoäly ei ehdota muutoksia.",
+      "reject": "Hylkää ehdotus",
+      "rejectAll": "Hylkää kaikki",
+      "rejected": "Hylätty",
+      "runButton": "Hae ehdotuksia",
+      "running": "Analysoidaan sanoituksia… tässä kestää yleensä 15–60 sekuntia.",
+      "staleHint": "Näitä sanoja on muokattu sen jälkeen, kun ehdotukset luotiin, joten tämä ehdotus ei enää päde.",
+      "summary": "{total} ehdotusta · {pending} odottaa · {accepted} hyväksytty",
+      "title": "Tekoälyn korjausehdotukset",
+      "undo": "Kumoa tämä ehdotus",
+      "cancel": "Peruuta",
+      "close": "Sulje",
+      "confidence_balanced": "Tasapainoinen"
     }
   },
   "instrumentalReview": {

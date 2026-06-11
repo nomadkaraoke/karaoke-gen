@@ -816,7 +816,9 @@
       "playback": "Riproduzione",
       "audioLoadError": "Impossibile caricare l'audio",
       "audioStillLoading": "L'audio è ancora in caricamento...",
-      "loadingAudio": "Caricamento audio..."
+      "loadingAudio": "Caricamento audio...",
+      "autoCorrect": "Suggerimenti IA",
+      "autoCorrectDesc": "Genera suggerimenti di correzione dell'IA confrontando la trascrizione con il testo di riferimento. Non verrà modificato nulla finché non accetterai i singoli suggerimenti."
     },
     "guidance": {
       "showTips": "Mostra suggerimenti",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Testo personalizzato applicato. Sincronizza manualmente ogni segmento modificato per assicurarti che il tempismo delle parole sia corretto per il testo personalizzato."
+    },
+    "autoCorrect": {
+      "accept": "Accetta suggerimento",
+      "acceptAll": "Accetta tutti",
+      "accepted": "Accettato",
+      "adlibRemovalHint": "Consenti suggerimenti che eliminano le voci di sottofondo non presenti nei riferimenti",
+      "adlibRemovalLabel": "Suggerisci di rimuovere gli adlib",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formattazione",
+      "category_grammar": "grammatica",
+      "category_mishearing": "fraintendimento",
+      "category_other": "altro",
+      "category_repeated_chorus_fix": "ritornello",
+      "collapse": "Comprimi suggerimenti",
+      "confidenceHint": "Quanto deve essere sicura l'IA prima di mostrare un suggerimento",
+      "confidenceLabel": "Filtro suggerimenti",
+      "confidence_all": "Mostra tutti",
+      "confidence_high": "Alta sicurezza",
+      "description": "L'IA confronta il testo trascritto con le fonti di riferimento e suggerisce correzioni parola per parola. Sei tu a controllare ogni suggerimento: non verrà applicato nulla finché non lo accetti.",
+      "dismiss": "Ignora suggerimenti",
+      "expand": "Espandi suggerimenti",
+      "insertMarker": "inserisci:",
+      "insertionsHint": "Consenti suggerimenti che inseriscono le parole omesse nella trascrizione",
+      "insertionsLabel": "Suggerisci parole mancanti",
+      "noReferences": "Non sono disponibili testi di riferimento per questa canzone, quindi non è possibile generare i suggerimenti dell'IA. Aggiungi prima un testo dal pannello dei riferimenti.",
+      "noSuggestions": "Nessun problema trovato: l'IA non ha modifiche da suggerire.",
+      "reject": "Rifiuta suggerimento",
+      "rejectAll": "Rifiuta tutti",
+      "rejected": "Rifiutato",
+      "runButton": "Ottieni suggerimenti",
+      "running": "Analisi del testo in corso… di solito richiede dai 15 ai 60 secondi.",
+      "staleHint": "Queste parole sono state modificate dopo la generazione dei suggerimenti, quindi questo suggerimento non è più valido.",
+      "summary": "{total} suggerimenti · {pending} in attesa · {accepted} accettati",
+      "title": "Suggerimenti di correzione dell'IA",
+      "undo": "Annulla questo suggerimento",
+      "cancel": "Annulla",
+      "close": "Chiudi",
+      "confidence_balanced": "Bilanciato"
     }
   },
   "instrumentalReview": {

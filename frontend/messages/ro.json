@@ -816,7 +816,9 @@
       "playback": "Redare",
       "audioLoadError": "Nu s-a putut încărca fișierul audio",
       "audioStillLoading": "Fișierul audio încă se încarcă...",
-      "loadingAudio": "Se încarcă fișierul audio..."
+      "loadingAudio": "Se încarcă fișierul audio...",
+      "autoCorrect": "Sugestii AI",
+      "autoCorrectDesc": "Generează sugestii de corectare AI comparând transcrierea cu versurile de referință. Nimic nu se modifică până nu accepți fiecare sugestie."
     },
     "guidance": {
       "showTips": "Arată sfaturi",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate."
+    },
+    "autoCorrect": {
+      "accept": "Acceptă sugestia",
+      "acceptAll": "Acceptă toate",
+      "accepted": "Acceptat",
+      "adlibRemovalHint": "Permite sugestii care elimină vocile de fundal care nu apar în referințe",
+      "adlibRemovalLabel": "Sugerează eliminarea adlib-urilor",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formatare",
+      "category_grammar": "gramatică",
+      "category_mishearing": "auzite greșit",
+      "category_other": "altele",
+      "category_repeated_chorus_fix": "refren",
+      "collapse": "Restrânge sugestiile",
+      "confidenceHint": "Cât de sigur trebuie să fie AI-ul pentru a afișa o sugestie",
+      "confidenceLabel": "Filtru de sugestii",
+      "confidence_all": "Afișează toate",
+      "confidence_high": "Încredere ridicată",
+      "description": "AI-ul compară versurile transcrise cu sursele de referință și sugerează corecturi la nivel de cuvânt. Tu revizuiești fiecare sugestie — nimic nu se aplică până nu o accepți.",
+      "dismiss": "Ignoră sugestiile",
+      "expand": "Extinde sugestiile",
+      "insertMarker": "inserează:",
+      "insertionsHint": "Permite sugestii care inserează cuvinte pe care transcrierea le-a omis",
+      "insertionsLabel": "Sugerează cuvintele lipsă",
+      "noReferences": "Nu sunt disponibile versuri de referință pentru această melodie, așa că sugestiile AI nu pot fi generate. Adaugă mai întâi versuri din panoul de referință.",
+      "noSuggestions": "Nu s-au găsit probleme — AI-ul nu are modificări sugerate.",
+      "reject": "Respinge sugestia",
+      "rejectAll": "Respinge toate",
+      "rejected": "Respins",
+      "runButton": "Obține sugestii",
+      "running": "Se analizează versurile… de obicei durează 15–60 de secunde.",
+      "staleHint": "Aceste cuvinte au fost editate după generarea sugestiilor, așa că această sugestie nu se mai aplică.",
+      "summary": "{total} sugestii · {pending} în așteptare · {accepted} acceptate",
+      "title": "Sugestii de corectare AI",
+      "undo": "Anulează această sugestie",
+      "cancel": "Anulează",
+      "close": "Închide",
+      "confidence_balanced": "Echilibrat"
     }
   },
   "instrumentalReview": {

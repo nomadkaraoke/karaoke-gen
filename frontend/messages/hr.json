@@ -816,7 +816,9 @@
       "playback": "Reprodukcija",
       "audioLoadError": "Nije moguće učitati audio",
       "audioStillLoading": "Audio se još uvijek učitava...",
-      "loadingAudio": "Učitavanje audija..."
+      "loadingAudio": "Učitavanje audija...",
+      "autoCorrect": "AI prijedlog",
+      "autoCorrectDesc": "Generiraj AI prijedloge za ispravak uspoređujući transkripciju s referentnim tekstom. Ništa se ne mijenja dok ne prihvatiš svaki prijedlog."
     },
     "guidance": {
       "showTips": "Prikaži savjete",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Prilagođeni tekst je primijenjen. Ručno sinkroniziraj svaki uređeni segment kako bi tempiranje riječi bilo točno za prilagođeni tekst."
+    },
+    "autoCorrect": {
+      "accept": "Prihvati prijedlog",
+      "acceptAll": "Prihvati sve",
+      "accepted": "Prihvaćeno",
+      "adlibRemovalHint": "Dopusti prijedloge za brisanje pratećih vokala kojih nema u referentnom tekstu",
+      "adlibRemovalLabel": "Predloži uklanjanje adlibova",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "gramatika",
+      "category_mishearing": "pogrešno prepoznato",
+      "category_other": "ostalo",
+      "category_repeated_chorus_fix": "refren",
+      "collapse": "Sažmi prijedloge",
+      "confidenceHint": "Koliko AI mora biti siguran da bi prikazao prijedlog",
+      "confidenceLabel": "Filtar prijedloga",
+      "confidence_all": "Prikaži sve",
+      "confidence_high": "Visoka pouzdanost",
+      "description": "AI uspoređuje transkribirani tekst s referentnim izvorima i predlaže ispravke na razini riječi. Pregledavaš svaki prijedlog — ništa se ne primjenjuje dok ga ne prihvatiš.",
+      "dismiss": "Odbaci prijedloge",
+      "expand": "Proširi prijedloge",
+      "insertMarker": "umetni:",
+      "insertionsHint": "Dopusti prijedloge za umetanje riječi koje nedostaju u transkripciji",
+      "insertionsLabel": "Predloži riječi koje nedostaju",
+      "noReferences": "Za ovu pjesmu nema referentnog teksta, pa se AI prijedlozi ne mogu generirati. Prvo dodaj tekst iz referentnog panela.",
+      "noSuggestions": "Nisu pronađeni problemi — AI nema predloženih promjena.",
+      "reject": "Odbij prijedlog",
+      "rejectAll": "Odbij sve",
+      "rejected": "Odbijeno",
+      "runButton": "Dohvati prijedloge",
+      "running": "Analiziram tekst… ovo obično traje 15–60 sekundi.",
+      "staleHint": "Ove su riječi uređene nakon generiranja prijedloga, pa ovaj prijedlog više ne vrijedi.",
+      "summary": "{total} prijedloga · {pending} na čekanju · {accepted} prihvaćeno",
+      "title": "AI prijedlozi za ispravak",
+      "undo": "Poništi ovaj prijedlog",
+      "cancel": "Odustani",
+      "close": "Zatvori",
+      "confidence_balanced": "Uravnoteženo"
     }
   },
   "instrumentalReview": {

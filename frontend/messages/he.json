@@ -816,7 +816,9 @@
       "playback": "השמעה",
       "audioLoadError": "לא הצלחנו לטעון את האודיו",
       "audioStillLoading": "האודיו עדיין נטען...",
-      "loadingAudio": "טוען אודיו..."
+      "loadingAudio": "טוען אודיו...",
+      "autoCorrect": "הצעות AI",
+      "autoCorrectDesc": "יצירת הצעות תיקון של AI על ידי השוואת התמלול למילות המקור. שום דבר לא ישתנה עד לאישור של כל הצעה."
     },
     "guidance": {
       "showTips": "הצג טיפים",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "המילים המותאמות אישית הוחלו. יש לסנכרן ידנית כל מקטע שנערך כדי להבטיח שתזמוני המילים מדויקים."
+    },
+    "autoCorrect": {
+      "accept": "קבל הצעה",
+      "acceptAll": "קבל הכל",
+      "accepted": "התקבל",
+      "adlibRemovalHint": "אפשר הצעות שמוחקות קולות רקע שאינם מופיעים במקורות",
+      "adlibRemovalLabel": "הצע הסרת אלתורים",
+      "category_adlib_removal": "אלתור",
+      "category_formatting": "עיצוב",
+      "category_grammar": "דקדוק",
+      "category_mishearing": "שמיעה שגויה",
+      "category_other": "אחר",
+      "category_repeated_chorus_fix": "פזמון",
+      "collapse": "צמצם הצעות",
+      "confidenceHint": "רמת הביטחון הנדרשת מה-AI כדי להציג הצעה",
+      "confidenceLabel": "מסנן הצעות",
+      "confidence_all": "הצג הכל",
+      "confidence_high": "ביטחון גבוה",
+      "description": "ה-AI משווה את המילים שתומללו למקורות ומציע תיקונים ברמת המילה. באפשרותך לעבור על כל הצעה — שום שינוי לא יבוצע עד לאישור.",
+      "dismiss": "הסתר הצעות",
+      "expand": "הרחב הצעות",
+      "insertMarker": "הוסף:",
+      "insertionsHint": "אפשר הצעות שמוסיפות מילים שהתפספסו בתמלול",
+      "insertionsLabel": "הצע מילים חסרות",
+      "noReferences": "אין מילות מקור זמינות לשיר זה, ולכן לא ניתן ליצור הצעות AI. יש להוסיף מילים מחלונית המקורות תחילה.",
+      "noSuggestions": "לא נמצאו בעיות — ל-AI אין שינויים להציע.",
+      "reject": "דחה הצעה",
+      "rejectAll": "דחה הכל",
+      "rejected": "נדחה",
+      "runButton": "קבל הצעות",
+      "running": "מנתח מילים… פעולה זו אורכת בדרך כלל 15–60 שניות.",
+      "staleHint": "מילים אלו נערכו מאז שההצעות נוצרו, ולכן הצעה זו כבר אינה רלוונטית.",
+      "summary": "{total} הצעות · {pending} ממתינות · {accepted} התקבלו",
+      "title": "הצעות תיקון של AI",
+      "undo": "בטל הצעה זו",
+      "cancel": "ביטול",
+      "close": "סגירה",
+      "confidence_balanced": "מאוזנת"
     }
   },
   "instrumentalReview": {

@@ -816,7 +816,9 @@
       "playback": "Afspelen",
       "audioLoadError": "Kon audio niet laden",
       "audioStillLoading": "Audio is nog aan het laden...",
-      "loadingAudio": "Audio laden..."
+      "loadingAudio": "Audio laden...",
+      "autoCorrect": "AI-suggesties",
+      "autoCorrectDesc": "Genereer AI-correctiesuggesties door de transcriptie te vergelijken met de referentiesongtekst. Er wordt niets gewijzigd totdat je elke suggestie accepteert."
     },
     "guidance": {
       "showTips": "Toon tips",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Aangepaste songtekst toegepast. Synchroniseer elk bewerkt segment handmatig zodat de timing van de woorden perfect aansluit op de nieuwe songtekst."
+    },
+    "autoCorrect": {
+      "accept": "Accepteer suggestie",
+      "acceptAll": "Accepteer alles",
+      "accepted": "Geaccepteerd",
+      "adlibRemovalHint": "Sta suggesties toe die achtergrondzang verwijderen die niet in de referenties voorkomt",
+      "adlibRemovalLabel": "Stel voor om adlibs te verwijderen",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "opmaak",
+      "category_grammar": "grammatica",
+      "category_mishearing": "verkeerd verstaan",
+      "category_other": "overig",
+      "category_repeated_chorus_fix": "refrein",
+      "collapse": "Suggesties inklappen",
+      "confidenceHint": "Hoe zeker de AI moet zijn om een suggestie te tonen",
+      "confidenceLabel": "Suggestiefilter",
+      "confidence_all": "Toon alles",
+      "confidence_high": "Hoge zekerheid",
+      "description": "De AI vergelijkt de getranscribeerde songtekst met de referentiebronnen en stelt correcties op woordniveau voor. Je beoordeelt elke suggestie — er wordt niets toegepast totdat je deze accepteert.",
+      "dismiss": "Suggesties negeren",
+      "expand": "Suggesties uitklappen",
+      "insertMarker": "invoegen:",
+      "insertionsHint": "Sta suggesties toe die woorden invoegen die in de transcriptie ontbreken",
+      "insertionsLabel": "Stel ontbrekende woorden voor",
+      "noReferences": "Er is geen referentiesongtekst beschikbaar voor dit nummer, dus er kunnen geen AI-suggesties worden gegenereerd. Voeg eerst een songtekst toe via het referentiepaneel.",
+      "noSuggestions": "Geen problemen gevonden — de AI heeft geen wijzigingen voorgesteld.",
+      "reject": "Wijs suggestie af",
+      "rejectAll": "Wijs alles af",
+      "rejected": "Afgewezen",
+      "runButton": "Suggesties ophalen",
+      "running": "Songtekst analyseren… dit duurt meestal 15–60 seconden.",
+      "staleHint": "Deze woorden zijn bewerkt nadat de suggesties zijn gegenereerd, dus deze suggestie is niet meer van toepassing.",
+      "summary": "{total} suggesties · {pending} in afwachting · {accepted} geaccepteerd",
+      "title": "AI-correctiesuggesties",
+      "undo": "Maak deze suggestie ongedaan",
+      "cancel": "Annuleren",
+      "close": "Sluiten",
+      "confidence_balanced": "Gebalanceerd"
     }
   },
   "instrumentalReview": {

@@ -180,6 +180,7 @@ export type EditOperationType =
   | 'segment_delete' | 'segment_add' | 'segment_split' | 'segment_merge'
   | 'find_replace' | 'replace_all_lyrics' | 'change_case' | 'custom_lyrics_replace'
   | 'timing_change' | 'revert_correction' | 'revert_all'
+  | 'ai_suggestion_run' | 'ai_suggestion_accept' | 'ai_suggestion_reject' | 'ai_suggestion_undo'
 
 export type EditFeedbackReason =
   | 'misheard_word' | 'wrong_lyrics' | 'spelling_punctuation'

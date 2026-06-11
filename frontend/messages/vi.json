@@ -816,7 +816,9 @@
       "playback": "Phát lại",
       "audioLoadError": "Không thể tải âm thanh",
       "audioStillLoading": "Âm thanh vẫn đang tải...",
-      "loadingAudio": "Đang tải âm thanh..."
+      "loadingAudio": "Đang tải âm thanh...",
+      "autoCorrect": "Đề xuất từ AI",
+      "autoCorrectDesc": "Tạo các đề xuất sửa lỗi từ AI bằng cách so sánh bản chép lời với lời bài hát tham khảo. Sẽ không có thay đổi nào được áp dụng cho đến khi bạn chấp nhận từng đề xuất."
     },
     "guidance": {
       "showTips": "Hiện mẹo",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh."
+    },
+    "autoCorrect": {
+      "accept": "Chấp nhận đề xuất",
+      "acceptAll": "Chấp nhận tất cả",
+      "accepted": "Đã chấp nhận",
+      "adlibRemovalHint": "Cho phép các đề xuất xóa phần hát bè mà bản tham khảo không có",
+      "adlibRemovalLabel": "Đề xuất xóa hát bè",
+      "category_adlib_removal": "hát bè",
+      "category_formatting": "định dạng",
+      "category_grammar": "ngữ pháp",
+      "category_mishearing": "nghe nhầm",
+      "category_other": "khác",
+      "category_repeated_chorus_fix": "điệp khúc",
+      "collapse": "Thu gọn đề xuất",
+      "confidenceHint": "Mức độ chắc chắn của AI để hiển thị đề xuất",
+      "confidenceLabel": "Bộ lọc đề xuất",
+      "confidence_all": "Hiển thị tất cả",
+      "confidence_high": "Độ chắc chắn cao",
+      "description": "AI sẽ so sánh bản chép lời với các nguồn tham khảo và đề xuất sửa lỗi cho từng từ. Bạn có thể xem xét từng đề xuất — sẽ không có thay đổi nào được áp dụng cho đến khi bạn chấp nhận.",
+      "dismiss": "Bỏ qua đề xuất",
+      "expand": "Mở rộng đề xuất",
+      "insertMarker": "chèn:",
+      "insertionsHint": "Cho phép các đề xuất chèn những từ mà bản chép lời bỏ sót",
+      "insertionsLabel": "Đề xuất các từ còn thiếu",
+      "noReferences": "Bài hát này chưa có lời tham khảo nên AI không thể tạo đề xuất. Bạn hãy thêm lời bài hát từ bảng tham khảo trước nhé.",
+      "noSuggestions": "Không tìm thấy vấn đề nào — AI không có đề xuất thay đổi nào.",
+      "reject": "Từ chối đề xuất",
+      "rejectAll": "Từ chối tất cả",
+      "rejected": "Đã từ chối",
+      "runButton": "Nhận đề xuất",
+      "running": "Đang phân tích lời bài hát… quá trình này thường mất 15–60 giây.",
+      "staleHint": "Những từ này đã được chỉnh sửa sau khi đề xuất được tạo, nên đề xuất này không còn phù hợp nữa.",
+      "summary": "{total} đề xuất · {pending} đang chờ · {accepted} đã chấp nhận",
+      "title": "Đề xuất sửa lỗi của AI",
+      "undo": "Hoàn tác đề xuất này",
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "confidence_balanced": "Cân bằng"
     }
   },
   "instrumentalReview": {

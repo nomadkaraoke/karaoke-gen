@@ -816,7 +816,9 @@
       "playback": "Reprodução",
       "audioLoadError": "Não foi possível carregar o áudio",
       "audioStillLoading": "O áudio ainda está carregando...",
-      "loadingAudio": "Carregando áudio..."
+      "loadingAudio": "Carregando áudio...",
+      "autoCorrect": "Sugestões da IA",
+      "autoCorrectDesc": "Gere sugestões de correção da IA comparando a transcrição com a letra de referência. Nada é alterado até que você aceite cada sugestão."
     },
     "guidance": {
       "showTips": "Mostrar dicas",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Letras personalizadas aplicadas. Sincronize manualmente cada segmento editado para garantir que o tempo das palavras fique adequado para as novas letras."
+    },
+    "autoCorrect": {
+      "accept": "Aceitar sugestão",
+      "acceptAll": "Aceitar todas",
+      "accepted": "Aceita",
+      "adlibRemovalHint": "Permitir sugestões que removam vocais de apoio que as referências não têm",
+      "adlibRemovalLabel": "Sugerir remoção de adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formatação",
+      "category_grammar": "gramática",
+      "category_mishearing": "erro de escuta",
+      "category_other": "outro",
+      "category_repeated_chorus_fix": "refrão",
+      "collapse": "Recolher sugestões",
+      "confidenceHint": "O nível de confiança que a IA deve ter para mostrar uma sugestão",
+      "confidenceLabel": "Filtro de sugestões",
+      "confidence_all": "Mostrar todas",
+      "confidence_high": "Alta confiança",
+      "description": "A IA compara a letra transcrita com as fontes de referência e sugere correções palavra por palavra. Você revisa cada sugestão — nada é aplicado até que você aceite.",
+      "dismiss": "Descartar sugestões",
+      "expand": "Expandir sugestões",
+      "insertMarker": "inserir:",
+      "insertionsHint": "Permitir sugestões que insiram palavras que faltaram na transcrição",
+      "insertionsLabel": "Sugerir palavras ausentes",
+      "noReferences": "Não há letras de referência disponíveis para esta música, portanto, não é possível gerar sugestões da IA. Adicione a letra no painel de referência primeiro.",
+      "noSuggestions": "Nenhum problema encontrado — a IA não tem alterações sugeridas.",
+      "reject": "Rejeitar sugestão",
+      "rejectAll": "Rejeitar todas",
+      "rejected": "Rejeitada",
+      "runButton": "Obter sugestões",
+      "running": "Analisando a letra… isso geralmente leva de 15 a 60 segundos.",
+      "staleHint": "Estas palavras foram editadas desde que as sugestões foram geradas, então esta sugestão não se aplica mais.",
+      "summary": "{total} sugestões · {pending} pendentes · {accepted} aceitas",
+      "title": "Sugestões de correção da IA",
+      "undo": "Desfazer esta sugestão",
+      "cancel": "Cancelar",
+      "close": "Fechar",
+      "confidence_balanced": "Equilibrado"
     }
   },
   "instrumentalReview": {

@@ -55,6 +55,9 @@ import { hasMultipleSingers } from '@/lib/lyrics-review/duet'
 import SessionRestoreDialog from './SessionRestoreDialog'
 import Header from './Header'
 import GapNavigator from './GapNavigator'
+import AutoCorrectModal from './AutoCorrectModal'
+import AutoCorrectPanel from './AutoCorrectPanel'
+import { useAutoCorrect } from '@/hooks/useAutoCorrect'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
 import { applyOffsetToCorrectionData, applyOffsetToSegment } from '@/lib/lyrics-review/utils/timingUtils'
 
@@ -154,6 +157,9 @@ export default function LyricsAnalyzer({
   const [countdown, setCountdown] = useState(2)
   const [showInstrumentalReview, setShowInstrumentalReview] = useState(false)
 
+  // AI auto-correct state
+  const [isAutoCorrectModalOpen, setIsAutoCorrectModalOpen] = useState(false)
+
   // Edit log state
   const [editLog] = useState<EditLog>(() => createEditLog(jobId ?? 'unknown', audioHash))
   const [lastEditEntry, setLastEditEntry] = useState<EditLogEntry | null>(null)
@@ -213,6 +219,22 @@ export default function LyricsAnalyzer({
     },
     [history, historyIndex]
   )
+
+  // AI auto-correct suggestions (opt-in; nothing runs unless triggered)
+  const autoCorrect = useAutoCorrect({
+    jobId,
+    data,
+    updateDataWithHistory,
+    editLog,
+    getAuthToken: () => getAccessToken() ?? undefined,
+  })
+
+  // Close the run modal once suggestions arrive (panel takes over)
+  useEffect(() => {
+    if (autoCorrect.status === 'reviewing') {
+      setIsAutoCorrectModalOpen(false)
+    }
+  }, [autoCorrect.status])
 
   // Compute which word IDs have been edited by the user (compared to initial state)
   const editedWordIds = useMemo(() => {
@@ -1299,7 +1321,10 @@ export default function LyricsAnalyzer({
         onRevertAllCorrections={handleRevertAllCorrections}
         isDuet={isDuet}
         onToggleDuet={() => setIsDuet(d => !d)}
+        onAutoCorrect={!isLocalMode && jobId ? () => setIsAutoCorrectModalOpen(true) : undefined}
       />
+
+      <AutoCorrectPanel controller={autoCorrect} isReadOnly={isReadOnly} />
 
       <div className={cn('grid gap-2', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
         <TranscriptionView
@@ -1507,6 +1532,16 @@ export default function LyricsAnalyzer({
         artist={data.metadata?.artist}
         title={data.metadata?.title}
         authToken={getAccessToken() ?? undefined}
+      />
+
+      <AutoCorrectModal
+        open={isAutoCorrectModalOpen}
+        onClose={() => setIsAutoCorrectModalOpen(false)}
+        onRun={(settings) => void autoCorrect.run(settings)}
+        onCancelRun={autoCorrect.cancel}
+        status={autoCorrect.status}
+        error={autoCorrect.error}
+        hasReferences={autoCorrect.hasReferences}
       />
 
       <EditFeedbackBar

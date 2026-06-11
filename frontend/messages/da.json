@@ -816,7 +816,9 @@
       "playback": "Afspilning",
       "audioLoadError": "Kunne ikke indlæse lyd",
       "audioStillLoading": "Lyden indlæses stadig...",
-      "loadingAudio": "Indlæser lyd..."
+      "loadingAudio": "Indlæser lyd...",
+      "autoCorrect": "AI-forslag",
+      "autoCorrectDesc": "Generer AI-rettelsesforslag ved at sammenligne transskriptionen med referenceteksten. Intet ændres, før du accepterer hvert forslag."
     },
     "guidance": {
       "showTips": "Vis tips",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst."
+    },
+    "autoCorrect": {
+      "accept": "Accepter forslag",
+      "acceptAll": "Accepter alle",
+      "accepted": "Accepteret",
+      "adlibRemovalHint": "Tillad forslag, der sletter korvokal, som ikke findes i referencerne",
+      "adlibRemovalLabel": "Foreslå at fjerne adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "grammatik",
+      "category_mishearing": "fejlhørt",
+      "category_other": "andet",
+      "category_repeated_chorus_fix": "omkvæd",
+      "collapse": "Skjul forslag",
+      "confidenceHint": "Hvor sikker AI'en skal være for at vise et forslag",
+      "confidenceLabel": "Forslagsfilter",
+      "confidence_all": "Vis alle",
+      "confidence_high": "Høj sikkerhed",
+      "description": "AI'en sammenligner den transskriberede tekst med referencekilderne og foreslår rettelser på ordniveau. Du gennemgår hvert forslag — intet ændres, før du accepterer det.",
+      "dismiss": "Fjern forslag",
+      "expand": "Udvid forslag",
+      "insertMarker": "indsæt:",
+      "insertionsHint": "Tillad forslag, der indsætter ord, som transskriptionen overså",
+      "insertionsLabel": "Foreslå manglende ord",
+      "noReferences": "Der er ingen referencetekster tilgængelige for denne sang, så der kan ikke genereres AI-forslag. Tilføj tekster fra referencepanelet først.",
+      "noSuggestions": "Ingen problemer fundet — AI'en har ingen foreslåede ændringer.",
+      "reject": "Afvis forslag",
+      "rejectAll": "Afvis alle",
+      "rejected": "Afvist",
+      "runButton": "Hent forslag",
+      "running": "Analyserer tekst… dette tager normalt 15–60 sekunder.",
+      "staleHint": "Disse ord er blevet redigeret, siden forslagene blev genereret, så dette forslag gælder ikke længere.",
+      "summary": "{total} forslag · {pending} afventer · {accepted} accepteret",
+      "title": "AI-rettelsesforslag",
+      "undo": "Fortryd dette forslag",
+      "cancel": "Annuller",
+      "close": "Luk",
+      "confidence_balanced": "Balanceret"
     }
   },
   "instrumentalReview": {

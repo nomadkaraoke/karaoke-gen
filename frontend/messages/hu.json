@@ -816,7 +816,9 @@
       "playback": "Lejátszás",
       "audioLoadError": "Nem sikerült betölteni a hanganyagot",
       "audioStillLoading": "A hanganyag még töltődik...",
-      "loadingAudio": "Hanganyag betöltése..."
+      "loadingAudio": "Hanganyag betöltése...",
+      "autoCorrect": "MI-javaslat",
+      "autoCorrectDesc": "Generálj MI-javítási javaslatokat az átírás és a referenciadalszöveg összehasonlításával. Semmi sem változik, amíg el nem fogadod az egyes javaslatokat."
     },
     "guidance": {
       "showTips": "Tippek mutatása",
@@ -1272,6 +1274,44 @@
     },
     "toasts": {
       "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez."
+    },
+    "autoCorrect": {
+      "accept": "Javaslat elfogadása",
+      "acceptAll": "Összes elfogadása",
+      "accepted": "Elfogadva",
+      "adlibRemovalHint": "Engedélyezd az olyan javaslatokat, amelyek törlik a referenciákban nem szereplő háttérvokálokat",
+      "adlibRemovalLabel": "Adlibek eltávolításának javaslata",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formátum",
+      "category_grammar": "nyelvtan",
+      "category_mishearing": "félrehallás",
+      "category_other": "egyéb",
+      "category_repeated_chorus_fix": "refrén",
+      "collapse": "Javaslatok összecsukása",
+      "confidenceHint": "Milyen biztosnak kell lennie az MI-nek ahhoz, hogy megjelenítsen egy javaslatot",
+      "confidenceLabel": "Javaslatszűrő",
+      "confidence_all": "Összes megjelenítése",
+      "confidence_high": "Nagy bizonyosság",
+      "description": "Az MI összehasonlítja az átírt dalszöveget a referenciaforrásokkal, és szószintű javításokat javasol. Minden javaslatot átnézhetsz — semmi sem módosul, amíg el nem fogadod.",
+      "dismiss": "Javaslatok elvetése",
+      "expand": "Javaslatok kibontása",
+      "insertMarker": "beszúrás:",
+      "insertionsHint": "Engedélyezd az olyan javaslatokat, amelyek beszúrják az átírásból kimaradt szavakat",
+      "insertionsLabel": "Hiányzó szavak javaslata",
+      "noReferences": "Ehhez a dalhoz nem érhető el referenciadalszöveg, így az MI nem tud javaslatokat tenni. Először adj hozzá dalszöveget a referenciapanelen.",
+      "noSuggestions": "Nem találtunk problémát — az MI-nek nincsenek módosítási javaslatai.",
+      "reject": "Javaslat elutasítása",
+      "rejectAll": "Összes elutasítása",
+      "rejected": "Elutasítva",
+      "runButton": "Javaslatok kérése",
+      "running": "Dalszöveg elemzése… ez általában 15–60 másodpercet vesz igénybe.",
+      "staleHint": "Ezeket a szavakat módosítottad a javaslatok generálása óta, így ez a javaslat már nem érvényes.",
+      "summary": "{total} javaslat · {pending} függőben · {accepted} elfogadva",
+      "title": "MI-javítási javaslatok",
+      "undo": "Javaslat visszavonása",
+      "cancel": "Mégse",
+      "close": "Bezárás",
+      "confidence_balanced": "Kiegyensúlyozott"
     }
   },
   "instrumentalReview": {
