@@ -1323,7 +1323,9 @@
       "conflictBadge": "بديل",
       "conflictTooltip": "تختلف النماذج حول هذه الكلمات — قبول أحد البدائل يعني رفض الأخرى.",
       "consensusBadge": "{consensus}/{total} من النماذج",
-      "consensusTooltip": "مقترح من: {models}"
+      "consensusTooltip": "مقترح من: {models}",
+      "cachedBadge": "مخزن مؤقتاً",
+      "cachedTooltip": "تمت الاستعادة من معالجة سابقة لنفس الكلمات — لم يتم احتساب أي تكلفة للذكاء الاصطناعي."
     }
   },
   "instrumentalReview": {

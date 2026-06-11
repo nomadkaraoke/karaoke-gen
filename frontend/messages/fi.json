@@ -1323,7 +1323,9 @@
       "conflictBadge": "vaihtoehto",
       "conflictTooltip": "Mallit ovat eri mieltä näistä sanoista — yhden vaihtoehdon hyväksyminen hylkää muut.",
       "consensusBadge": "{consensus}/{total} mallia",
-      "consensusTooltip": "Ehdottanut: {models}"
+      "consensusTooltip": "Ehdottanut: {models}",
+      "cachedBadge": "välimuistissa",
+      "cachedTooltip": "Palautettu aiemmasta ajosta samoilla sanoituksilla — tekoälykustannuksia ei syntynyt."
     }
   },
   "instrumentalReview": {

@@ -1323,7 +1323,9 @@
       "conflictBadge": "varijanta",
       "conflictTooltip": "Modeli se ne slažu oko ovih riječi — prihvaćanje jedne varijante odbacuje ostale.",
       "consensusBadge": "{consensus}/{total} modela",
-      "consensusTooltip": "Predložili: {models}"
+      "consensusTooltip": "Predložili: {models}",
+      "cachedBadge": "predmemorirano",
+      "cachedTooltip": "Obnovljeno iz prethodnog pokretanja s istim tekstom pjesme — nije bilo troškova za AI."
     }
   },
   "instrumentalReview": {

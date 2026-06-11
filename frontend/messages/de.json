@@ -1323,7 +1323,9 @@
       "conflictBadge": "Variante",
       "conflictTooltip": "Die Modelle sind sich bei diesen Wörtern uneinig — wenn du eine Variante akzeptierst, werden die anderen abgelehnt.",
       "consensusBadge": "{consensus}/{total} Modelle",
-      "consensusTooltip": "Vorgeschlagen von: {models}"
+      "consensusTooltip": "Vorgeschlagen von: {models}",
+      "cachedBadge": "zwischengespeichert",
+      "cachedTooltip": "Wiederhergestellt aus einem vorherigen Durchlauf mit demselben Text — es sind keine KI-Kosten angefallen."
     }
   },
   "instrumentalReview": {

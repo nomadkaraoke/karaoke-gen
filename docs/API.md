@@ -606,9 +606,18 @@ Returns:
   "model": "claude-fable-5, gemini-3.1-pro-preview",
   "elapsed_seconds": 27.4,
   "settings_applied": { "suggest_adlib_removal": true, "allow_insertions": true, "min_confidence": 0.0 },
-  "warnings": []
+  "warnings": [],
+  "cached": false
 }
 ```
+
+Results are cached per job in GCS
+(`jobs/{job_id}/lyrics/auto_correct_cache/{hash}.json`), keyed on the exact
+input: word ids + texts, reference lyrics texts, settings, and the resolved
+model list. Re-running on unmodified lyrics returns the previous result with
+`"cached": true` and incurs no LLM cost; any edit to the lyrics, references,
+or settings produces a new key and a fresh run. Cache reads/writes are
+best-effort — storage failures degrade to a normal uncached run.
 
 `op` is `replace` | `delete` | `insert_after` (for `insert_after`, `word_ids`
 holds the anchor word). Errors: `422` when no reference lyrics are available,

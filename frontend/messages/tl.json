@@ -1323,7 +1323,9 @@
       "conflictBadge": "variant",
       "conflictTooltip": "Hindi magkakatugma ang mga modelo sa mga salitang ito — kapag tinanggap ang isang variant, tatanggihan ang iba.",
       "consensusBadge": "{consensus}/{total} modelo",
-      "consensusTooltip": "Iminungkahi ng: {models}"
+      "consensusTooltip": "Iminungkahi ng: {models}",
+      "cachedBadge": "naka-cache",
+      "cachedTooltip": "Na-restore mula sa nakaraang pag-proseso ng parehong lyrics — walang nagastos na AI cost."
     }
   },
   "instrumentalReview": {

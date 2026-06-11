@@ -1323,7 +1323,9 @@
       "conflictBadge": "ตัวเลือก",
       "conflictTooltip": "โมเดลให้ผลลัพธ์คำเหล่านี้ไม่ตรงกัน — การเลือกตัวเลือกหนึ่งจะเป็นการปฏิเสธตัวเลือกอื่นๆ",
       "consensusBadge": "{consensus}/{total} โมเดล",
-      "consensusTooltip": "เสนอโดย: {models}"
+      "consensusTooltip": "เสนอโดย: {models}",
+      "cachedBadge": "แคชไว้",
+      "cachedTooltip": "กู้คืนจากการประมวลผลเนื้อเพลงเดียวกันในครั้งก่อนหน้า — ไม่มีการคิดค่าใช้จ่าย AI"
     }
   },
   "instrumentalReview": {

@@ -1323,7 +1323,9 @@
       "conflictBadge": "variant",
       "conflictTooltip": "Els models no coincideixen en aquestes paraules — si acceptes una variant, rebutges les altres.",
       "consensusBadge": "{consensus}/{total} models",
-      "consensusTooltip": "Proposat per: {models}"
+      "consensusTooltip": "Proposat per: {models}",
+      "cachedBadge": "en memòria cau",
+      "cachedTooltip": "Restaurat a partir d'una execució anterior amb la mateixa lletra — no s'ha generat cap cost d'IA."
     }
   },
   "instrumentalReview": {

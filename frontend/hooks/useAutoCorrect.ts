@@ -51,6 +51,7 @@ export function useAutoCorrect({
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([])
   const [decisions, setDecisions] = useState<Record<string, SuggestionDecision>>({})
   const [model, setModel] = useState<string>('')
+  const [cached, setCached] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const undoInfos = useRef<Record<string, SuggestionUndoInfo>>({})
   const abortRef = useRef<AbortController | null>(null)
@@ -91,10 +92,12 @@ export function useAutoCorrect({
         )
         undoInfos.current = {}
         setModel(response.model)
+        setCached(response.cached)
         setStatus('reviewing')
         addEditEntry(editLog, 'ai_suggestion_run', {
           details: {
             model: response.model,
+            cached: response.cached,
             suggestion_count: response.suggestions.length,
             elapsed_seconds: response.elapsed_seconds,
             settings: response.settings_applied as unknown as Record<string, unknown>,
@@ -273,6 +276,7 @@ export function useAutoCorrect({
     suggestions,
     decisions,
     model,
+    cached,
     error,
     hasReferences,
     pendingCount,

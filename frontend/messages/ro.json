@@ -1323,7 +1323,9 @@
       "conflictBadge": "variantă",
       "conflictTooltip": "Modelele au variante diferite pentru aceste cuvinte — dacă accepți o variantă, le respingi pe celelalte.",
       "consensusBadge": "{consensus}/{total} modele",
-      "consensusTooltip": "Propus de: {models}"
+      "consensusTooltip": "Propus de: {models}",
+      "cachedBadge": "din cache",
+      "cachedTooltip": "Restaurat dintr-o rulare anterioară pentru aceleași versuri — nu a generat niciun cost AI."
     }
   },
   "instrumentalReview": {

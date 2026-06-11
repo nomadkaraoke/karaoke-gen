@@ -1323,7 +1323,9 @@
       "conflictBadge": "다른 버전",
       "conflictTooltip": "이 단어들에 대해 모델마다 제안이 달라요. 하나의 버전을 수락하면 나머지는 반영되지 않아요.",
       "consensusBadge": "{consensus}/{total}개 모델",
-      "consensusTooltip": "제안한 모델: {models}"
+      "consensusTooltip": "제안한 모델: {models}",
+      "cachedBadge": "캐시됨",
+      "cachedTooltip": "동일한 가사로 진행한 이전 작업에서 복원되었습니다 — AI 비용이 발생하지 않았습니다."
     }
   },
   "instrumentalReview": {

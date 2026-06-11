@@ -1323,7 +1323,9 @@
       "conflictBadge": "biến thể",
       "conflictTooltip": "Các mô hình không đồng nhất về những từ này — chấp nhận một biến thể sẽ loại bỏ các biến thể khác.",
       "consensusBadge": "{consensus}/{total} mô hình",
-      "consensusTooltip": "Đề xuất bởi: {models}"
+      "consensusTooltip": "Đề xuất bởi: {models}",
+      "cachedBadge": "đã lưu cache",
+      "cachedTooltip": "Được khôi phục từ lần chạy trước với cùng lời bài hát — không phát sinh chi phí AI."
     }
   },
   "instrumentalReview": {

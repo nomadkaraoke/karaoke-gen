@@ -1323,7 +1323,9 @@
       "conflictBadge": "variant",
       "conflictTooltip": "Modellerna är oense om dessa ord — om du accepterar en variant väljs de andra bort.",
       "consensusBadge": "{consensus}/{total} modeller",
-      "consensusTooltip": "Föreslaget av: {models}"
+      "consensusTooltip": "Föreslaget av: {models}",
+      "cachedBadge": "cachad",
+      "cachedTooltip": "Återställd från en tidigare körning på samma låttext — ingen AI-kostnad tillkom."
     }
   },
   "instrumentalReview": {

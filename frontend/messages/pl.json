@@ -1323,7 +1323,9 @@
       "conflictBadge": "wariant",
       "conflictTooltip": "Modele nie są zgodne co do tych słów — zaakceptowanie jednego wariantu odrzuca pozostałe.",
       "consensusBadge": "{consensus}/{total} modeli",
-      "consensusTooltip": "Zaproponowane przez: {models}"
+      "consensusTooltip": "Zaproponowane przez: {models}",
+      "cachedBadge": "zbuforowane",
+      "cachedTooltip": "Przywrócono z poprzedniego przetworzenia tego samego tekstu — nie poniesiono kosztów AI."
     }
   },
   "instrumentalReview": {
