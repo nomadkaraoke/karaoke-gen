@@ -990,7 +990,9 @@
         "loadingAll": "Nilo-load ang lahat ng salita...",
         "loadingSegment": "Nilo-load ang segment...",
         "noData": "Walang available na segment data",
-        "unCorrect": "I-un-Correct"
+        "unCorrect": "I-un-Correct",
+        "timingClamped": "Ang timing ng \"{word}\" ay nasa labas ng segment — inilapat sa {time}s.",
+        "timingSanitized": "Inayos ang {count} timing ng salita na nasa labas ng segment na ito."
       },
       "findReplace": {
         "title": "Hanapin at Palitan",

@@ -990,7 +990,9 @@
         "loadingAll": "Načítavajú sa všetky slová...",
         "loadingSegment": "Načítava sa segment...",
         "noData": "Nie sú k dispozícii žiadne dáta segmentu",
-        "unCorrect": "Zrušiť opravu"
+        "unCorrect": "Zrušiť opravu",
+        "timingClamped": "Časovanie \"{word}\" bolo mimo segmentu — zarovnané na {time} s.",
+        "timingSanitized": "Opravené časovanie pre {count} slov, ktoré boli mimo tohto segmentu."
       },
       "findReplace": {
         "title": "Nájsť a nahradiť",

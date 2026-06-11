@@ -990,7 +990,9 @@
         "loadingAll": "正在加载所有单词...",
         "loadingSegment": "正在加载片段...",
         "noData": "无可用片段数据",
-        "unCorrect": "取消校对"
+        "unCorrect": "取消校对",
+        "timingClamped": "\"{word}\" 的时间点超出了片段范围 — 已调整至 {time} 秒。",
+        "timingSanitized": "已修复 {count} 个超出此片段范围的单词时间点。"
       },
       "findReplace": {
         "title": "查找和替换",

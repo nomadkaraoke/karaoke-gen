@@ -990,7 +990,9 @@
         "loadingAll": "Lade alle Wörter...",
         "loadingSegment": "Lade Segment...",
         "noData": "Keine Segmentdaten verfügbar",
-        "unCorrect": "Ent-Korrigieren"
+        "unCorrect": "Ent-Korrigieren",
+        "timingClamped": "Das Timing von \"{word}\" lag außerhalb des Segments — auf {time}s gesetzt.",
+        "timingSanitized": "{count} Wort-Timing(s) korrigiert, die außerhalb dieses Segments lagen."
       },
       "findReplace": {
         "title": "Suchen und Ersetzen",

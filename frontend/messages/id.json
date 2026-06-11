@@ -990,7 +990,9 @@
         "loadingAll": "Memuat semua kata...",
         "loadingSegment": "Memuat segmen...",
         "noData": "Tidak ada data segmen yang tersedia",
-        "unCorrect": "Batalkan Koreksi"
+        "unCorrect": "Batalkan Koreksi",
+        "timingClamped": "Waktu \"{word}\" berada di luar segmen — disesuaikan ke {time}s.",
+        "timingSanitized": "Memperbaiki waktu {count} kata yang berada di luar segmen ini."
       },
       "findReplace": {
         "title": "Cari dan Ganti",

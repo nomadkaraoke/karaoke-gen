@@ -990,7 +990,9 @@
         "loadingAll": "Đang tải tất cả các từ...",
         "loadingSegment": "Đang tải phân đoạn...",
         "noData": "Không có dữ liệu phân đoạn",
-        "unCorrect": "Bỏ sửa"
+        "unCorrect": "Bỏ sửa",
+        "timingClamped": "Thời gian của \"{word}\" nằm ngoài phân đoạn — đã được điều chỉnh về {time}s.",
+        "timingSanitized": "Đã sửa thời gian của {count} từ nằm ngoài phân đoạn này."
       },
       "findReplace": {
         "title": "Tìm và Thay thế",

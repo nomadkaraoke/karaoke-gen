@@ -990,7 +990,9 @@
         "loadingAll": "Tüm kelimeler yükleniyor...",
         "loadingSegment": "Segment yükleniyor...",
         "noData": "Segment verisi mevcut değil",
-        "unCorrect": "Düzeltmeyi Geri Al"
+        "unCorrect": "Düzeltmeyi Geri Al",
+        "timingClamped": "\"{word}\" zamanlaması bölümün dışındaydı — {time}s'ye hizalandı.",
+        "timingSanitized": "Bu bölümün dışına çıkan {count} kelime zamanlaması düzeltildi."
       },
       "findReplace": {
         "title": "Bul ve Değiştir",
