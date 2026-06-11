@@ -1676,17 +1676,18 @@ jobs:
             --quiet
 
           # Lyrics transcription job (CPU, us-central1)
-          # Also wire the auto-correct env + Anthropic key so the worker can
-          # proactively pre-generate multi-model suggestions (cached for the
-          # review UI). --update-* merges, preserving the job's existing vars.
-          # Same service account as the API service, which already reads
-          # anthropic-api-key, so no new IAM is required.
+          # NOTE: image-only update. Adding --update-secrets here crashed gcloud
+          # ("Invalid secret path ... in annotation") because this job's existing
+          # secrets are stored via Cloud Run secret *aliases* that --update-secrets
+          # re-validates and rejects. Proactive auto-correct env/secret
+          # (AUTO_CORRECT_PROACTIVE_ENABLED + ANTHROPIC_API_KEY) must be wired by a
+          # method that handles the alias format (see proactive-autocorrect plan
+          # doc); until then the proactive flag stays unset and the worker's
+          # _run_proactive_auto_correct() returns early (no-op).
           gcloud run jobs update lyrics-transcription-job \
             --image "$IMAGE" \
             --region us-central1 \
             --project ${{ env.PROJECT_ID }} \
-            --update-env-vars "AUTO_CORRECT_MODEL=claude-fable-5,AUTO_CORRECT_COMPARE_MODELS=claude-fable-5;gemini-3.1-pro-preview,AUTO_CORRECT_PROACTIVE_ENABLED=true" \
-            --update-secrets "ANTHROPIC_API_KEY=anthropic-api-key:latest" \
             --quiet
 
           # Audio separation job (GPU, us-east4) — uses GPU image
