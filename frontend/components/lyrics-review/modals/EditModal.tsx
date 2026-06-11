@@ -285,12 +285,16 @@ export default function EditModal({
 
   const handleReset = useCallback(() => {
     if (!originalSegment) return
-    setEditedSegment(JSON.parse(JSON.stringify(originalSegment)))
+    const { segment: cleaned, changes } = sanitizeSegmentTimings(JSON.parse(JSON.stringify(originalSegment)))
+    setEditedSegment(cleaned)
+    setTimingFixCount(changes.length)
   }, [originalSegment])
 
   const handleRevertToOriginal = useCallback(() => {
     if (!originalTranscribedSegment) return
-    setEditedSegment(JSON.parse(JSON.stringify(originalTranscribedSegment)))
+    const { segment: cleaned, changes } = sanitizeSegmentTimings(JSON.parse(JSON.stringify(originalTranscribedSegment)))
+    setEditedSegment(cleaned)
+    setTimingFixCount(changes.length)
   }, [originalTranscribedSegment])
 
   const handleClose = useCallback(() => {

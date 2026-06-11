@@ -168,7 +168,7 @@ export default function useManualSync({
                   previousWord.end_time = previousWord.start_time + 0.5
                 } else {
                   // Normal flow - set previous word's end time to current word's start time minus 5ms
-                  previousWord.end_time = currentStartTime - 0.005
+                  previousWord.end_time = Math.max(currentStartTime - 0.005, previousWord.start_time ?? (currentStartTime - 0.005))
                 }
               }
             }
@@ -226,10 +226,11 @@ export default function useManualSync({
             // For a tap, set a default duration
             const defaultEndTime =
               (wordStartTimeRef.current || currentTimeRef.current) + DEFAULT_WORD_DURATION
-            currentWord.end_time = defaultEndTime
+            currentWord.end_time = Math.max(defaultEndTime, currentWord.start_time ?? defaultEndTime)
           } else {
             // For a hold, use the current time as the end time
-            currentWord.end_time = currentTimeRef.current
+            const rawEndTime = currentTimeRef.current
+            currentWord.end_time = Math.max(rawEndTime, currentWord.start_time ?? rawEndTime)
           }
 
           // Update our ref
@@ -338,7 +339,7 @@ export default function useManualSync({
             if (timeSincePreviousStart > 1.0) {
               previousWord.end_time = previousWord.start_time + 0.5
             } else {
-              previousWord.end_time = currentStartTime - 0.005
+              previousWord.end_time = Math.max(currentStartTime - 0.005, previousWord.start_time ?? (currentStartTime - 0.005))
             }
           }
         }
@@ -370,9 +371,10 @@ export default function useManualSync({
       if (isTap) {
         const defaultEndTime =
           (wordStartTimeRef.current || currentTimeRef.current) + DEFAULT_WORD_DURATION
-        currentWord.end_time = defaultEndTime
+        currentWord.end_time = Math.max(defaultEndTime, currentWord.start_time ?? defaultEndTime)
       } else {
-        currentWord.end_time = currentTimeRef.current
+        const rawEndTime = currentTimeRef.current
+        currentWord.end_time = Math.max(rawEndTime, currentWord.start_time ?? rawEndTime)
       }
 
       // Update our ref
