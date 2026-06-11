@@ -20,6 +20,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from pydantic import BaseModel
 
 from backend.workers.audio_worker import process_audio_separation
+from backend.workers.auto_correct_worker import process_proactive_auto_correct
 from backend.workers.lyrics_worker import process_lyrics_transcription
 from backend.workers.screens_worker import generate_screens
 from backend.workers.video_worker import generate_video
@@ -224,6 +225,37 @@ async def trigger_lyrics_worker(
         status="started",
         job_id=job_id,
         message="Lyrics transcription worker started"
+    )
+
+
+@router.post("/workers/auto-correct", response_model=WorkerResponse)
+async def trigger_auto_correct_worker(
+    request: WorkerRequest,
+    http_request: Request,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """Proactively pre-generate + cache AI auto-correct suggestions for a job.
+
+    Called by the lyrics worker once transcription + references are ready, so
+    the suggestions are cached before the reviewer opens the lyrics UI. Runs
+    HERE (the API service) because the service has the working Anthropic key /
+    compare-models config; the lyrics job does not.
+
+    Best-effort and runs synchronously within the request (the caller awaits
+    with its own timeout): the work never fails the karaoke job, and the
+    response just reports what happened. Gated by AUTO_CORRECT_PROACTIVE_ENABLED.
+    """
+    job_id = request.job_id
+    logger.info(f"[job:{job_id}] WORKER_TRIGGER worker=auto-correct")
+    add_span_attribute("job_id", job_id)
+    add_span_attribute("worker", "auto-correct")
+
+    result = await process_proactive_auto_correct(job_id)
+    add_span_event("auto_correct_proactive", {"result": result.get("status", "unknown")})
+    return WorkerResponse(
+        status=result.get("status", "unknown"),
+        job_id=job_id,
+        message=f"Proactive auto-correct: {result.get('status', 'unknown')}",
     )
 
 
