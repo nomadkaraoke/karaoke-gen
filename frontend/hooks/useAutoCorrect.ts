@@ -22,6 +22,10 @@ import {
   isSuggestionStale,
   SuggestionUndoInfo,
 } from '@/lib/lyrics-review/utils/autoCorrectApply'
+import {
+  getConflictSiblings,
+  pickAcceptAllWinners,
+} from '@/lib/lyrics-review/utils/autoCorrectConflicts'
 import { addEditEntry } from '@/lib/lyrics-review/utils/editLog'
 import type { CorrectionData, EditLog } from '@/lib/lyrics-review/types'
 
@@ -130,6 +134,10 @@ export function useAutoCorrect({
           confidence: s.confidence,
           reason: s.reason,
           model,
+          models: s.models,
+          consensus: s.consensus,
+          total_models: s.total_models,
+          conflict_group: s.conflict_group,
         },
       })
     },
@@ -150,7 +158,16 @@ export function useAutoCorrect({
         { ...data, corrected_segments: result.segments },
         'accept AI suggestion',
       )
-      setDecisions((d) => ({ ...d, [id]: 'accepted' }))
+      // Accepting one variant of a conflict group rejects the others —
+      // they target the same words with a different outcome.
+      const siblingUpdates: Record<string, SuggestionDecision> = {}
+      for (const sibling of getConflictSiblings(suggestions, id)) {
+        if (decisions[sibling.id] === 'pending') {
+          siblingUpdates[sibling.id] = 'rejected'
+          logDecision(sibling, 'ai_suggestion_reject')
+        }
+      }
+      setDecisions((d) => ({ ...d, ...siblingUpdates, [id]: 'accepted' }))
       logDecision(s, 'ai_suggestion_accept')
     },
     [suggestions, decisions, data, updateDataWithHistory, logDecision],
@@ -188,9 +205,19 @@ export function useAutoCorrect({
   const acceptAll = useCallback(() => {
     let segments = data.corrected_segments
     const newDecisions: Record<string, SuggestionDecision> = { ...decisions }
+    // In conflict groups only the winner (highest consensus, then
+    // confidence) is applied; the losing variants are rejected.
+    const winners = new Set(
+      pickAcceptAllWinners(suggestions.filter((s) => newDecisions[s.id] === 'pending')),
+    )
     let applied = 0
     for (const s of suggestions) {
       if (newDecisions[s.id] !== 'pending') continue
+      if (!winners.has(s.id)) {
+        newDecisions[s.id] = 'rejected'
+        logDecision(s, 'ai_suggestion_reject')
+        continue
+      }
       const result = applySuggestion(segments, s)
       if (!result) {
         newDecisions[s.id] = 'stale'

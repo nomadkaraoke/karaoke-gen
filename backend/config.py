@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     # review UI. Stateless: one whole-song LLM call returning word-level
     # suggestions the reviewer accepts/rejects individually.
     auto_correct_model: str = os.getenv("AUTO_CORRECT_MODEL", "gemini-3.1-pro-preview")
+    # Models used by the multi-model "compare" mode (semicolon-separated —
+    # Cloud Run --set-env-vars is comma-delimited). Empty = single-model only.
+    auto_correct_compare_models: str = os.getenv("AUTO_CORRECT_COMPARE_MODELS", "")
 
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery

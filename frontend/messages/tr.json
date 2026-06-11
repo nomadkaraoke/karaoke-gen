@@ -1313,7 +1313,13 @@
       "undo": "Bu öneriyi geri al",
       "cancel": "İptal",
       "close": "Kapat",
-      "confidence_balanced": "Dengeli"
+      "confidence_balanced": "Dengeli",
+      "compareHint": "Daha yavaş ve daha maliyetli, ancak birden fazla modelin hangi önerilerde uzlaştığını gösterir",
+      "compareLabel": "Birden fazla yapay zeka modelini karşılaştır",
+      "conflictBadge": "varyant",
+      "conflictTooltip": "Modeller bu kelimeler konusunda uyuşmuyor — bir varyantı kabul ettiğinde diğerlerini reddetmiş olursun.",
+      "consensusBadge": "{consensus}/{total} model",
+      "consensusTooltip": "Öneren: {models}"
     }
   },
   "instrumentalReview": {

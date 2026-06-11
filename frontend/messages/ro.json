@@ -1313,7 +1313,13 @@
       "undo": "Anulează această sugestie",
       "cancel": "Anulează",
       "close": "Închide",
-      "confidence_balanced": "Echilibrat"
+      "confidence_balanced": "Echilibrat",
+      "compareHint": "Mai lent și costă mai mult, dar îți arată cu ce sugestii sunt de acord mai multe modele",
+      "compareLabel": "Compară mai multe modele AI",
+      "conflictBadge": "variantă",
+      "conflictTooltip": "Modelele au variante diferite pentru aceste cuvinte — dacă accepți o variantă, le respingi pe celelalte.",
+      "consensusBadge": "{consensus}/{total} modele",
+      "consensusTooltip": "Propus de: {models}"
     }
   },
   "instrumentalReview": {

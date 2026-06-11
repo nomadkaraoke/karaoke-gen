@@ -1313,7 +1313,13 @@
       "category_adlib_removal": "adlib",
       "category_repeated_chorus_fix": "chorus",
       "category_formatting": "format",
-      "category_other": "other"
+      "category_other": "other",
+      "compareLabel": "Compare multiple AI models",
+      "compareHint": "Slower and costs more, but shows which suggestions multiple models agree on",
+      "consensusBadge": "{consensus}/{total} models",
+      "consensusTooltip": "Proposed by: {models}",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Models disagree about these words — accepting one variant rejects the others."
     }
   },
   "instrumentalReview": {

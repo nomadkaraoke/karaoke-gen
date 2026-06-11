@@ -1313,7 +1313,13 @@
       "undo": "इस सुझाव को पूर्ववत करो",
       "cancel": "कैंसल",
       "close": "बंद करो",
-      "confidence_balanced": "संतुलित"
+      "confidence_balanced": "संतुलित",
+      "compareHint": "यह धीमा है और इसमें ज़्यादा खर्च आता है, लेकिन यह दिखाता है कि किन सुझावों पर कई मॉडल सहमत हैं",
+      "compareLabel": "कई AI मॉडलों की तुलना करो",
+      "conflictBadge": "विकल्प",
+      "conflictTooltip": "इन शब्दों पर मॉडल असहमत हैं — एक विकल्प को स्वीकार करने से बाकी अस्वीकार हो जाते हैं।",
+      "consensusBadge": "{consensus}/{total} मॉडल",
+      "consensusTooltip": "इनके द्वारा प्रस्तावित: {models}"
     }
   },
   "instrumentalReview": {

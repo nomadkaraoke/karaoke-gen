@@ -1313,7 +1313,13 @@
       "undo": "Javaslat visszavonása",
       "cancel": "Mégse",
       "close": "Bezárás",
-      "confidence_balanced": "Kiegyensúlyozott"
+      "confidence_balanced": "Kiegyensúlyozott",
+      "compareHint": "Lassabb és többe kerül, de megmutatja, mely javaslatokban ért egyet több modell.",
+      "compareLabel": "Több MI-modell összehasonlítása",
+      "conflictBadge": "változat",
+      "conflictTooltip": "A modellek nem értenek egyet ezeknél a szavaknál — egy változat elfogadásával elutasítod a többit.",
+      "consensusBadge": "{consensus}/{total} modell",
+      "consensusTooltip": "Javasolta: {models}"
     }
   },
   "instrumentalReview": {

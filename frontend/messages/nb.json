@@ -1313,7 +1313,13 @@
       "undo": "Angre dette forslaget",
       "cancel": "Avbryt",
       "close": "Lukk",
-      "confidence_balanced": "Balansert"
+      "confidence_balanced": "Balansert",
+      "compareHint": "Tar lengre tid og koster mer, men viser hvilke forslag flere modeller er enige om",
+      "compareLabel": "Sammenlign flere AI-modeller",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Modellene er uenige om disse ordene — hvis du godtar én variant, avvises de andre.",
+      "consensusBadge": "{consensus}/{total} modeller",
+      "consensusTooltip": "Foreslått av: {models}"
     }
   },
   "instrumentalReview": {

@@ -1313,7 +1313,13 @@
       "undo": "Отменить эту правку",
       "cancel": "Отмена",
       "close": "Закрыть",
-      "confidence_balanced": "Сбалансированная"
+      "confidence_balanced": "Сбалансированная",
+      "compareHint": "Медленнее и стоит дороже, но показывает, в каких вариантах сходятся несколько моделей",
+      "compareLabel": "Сравнить несколько ИИ-моделей",
+      "conflictBadge": "вариант",
+      "conflictTooltip": "Модели расходятся во мнении насчет этих слов — приняв один вариант, ты отклонишь остальные.",
+      "consensusBadge": "{consensus}/{total} моделей",
+      "consensusTooltip": "Предложено: {models}"
     }
   },
   "instrumentalReview": {

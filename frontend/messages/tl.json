@@ -1313,7 +1313,13 @@
       "undo": "I-undo ang mungkahing ito",
       "cancel": "Kanselahin",
       "close": "Isara",
-      "confidence_balanced": "Balanse"
+      "confidence_balanced": "Balanse",
+      "compareHint": "Mas mabagal at mas mahal, pero ipinapakita nito kung aling mga mungkahi ang sinasang-ayunan ng iba't ibang modelo",
+      "compareLabel": "Paghambingin ang iba't ibang AI model",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Hindi magkakatugma ang mga modelo sa mga salitang ito — kapag tinanggap ang isang variant, tatanggihan ang iba.",
+      "consensusBadge": "{consensus}/{total} modelo",
+      "consensusTooltip": "Iminungkahi ng: {models}"
     }
   },
   "instrumentalReview": {

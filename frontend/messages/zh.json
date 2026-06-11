@@ -1313,7 +1313,13 @@
       "undo": "撤销此建议",
       "cancel": "取消",
       "close": "关闭",
-      "confidence_balanced": "平衡"
+      "confidence_balanced": "平衡",
+      "compareHint": "速度较慢且成本较高，但会显示多个模型一致认可的建议",
+      "compareLabel": "比较多个 AI 模型",
+      "conflictBadge": "选项",
+      "conflictTooltip": "各模型对这些词存在分歧 —— 接受其中一个选项将放弃其他选项。",
+      "consensusBadge": "{consensus}/{total} 个模型",
+      "consensusTooltip": "推荐模型：{models}"
     }
   },
   "instrumentalReview": {

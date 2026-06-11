@@ -27,12 +27,15 @@ export interface AutoCorrectSettings {
   suggest_adlib_removal: boolean
   allow_insertions: boolean
   min_confidence: number
+  /** Query all configured models in parallel and report consensus. */
+  compare_models: boolean
 }
 
 export const DEFAULT_AUTO_CORRECT_SETTINGS: AutoCorrectSettings = {
   suggest_adlib_removal: true,
   allow_insertions: true,
   min_confidence: 0,
+  compare_models: false,
 }
 
 export interface AiSuggestion {
@@ -45,6 +48,14 @@ export interface AiSuggestion {
   reason: string
   category: AiSuggestionCategory
   confidence: number
+  /** Models that proposed this exact suggestion. */
+  models: string[]
+  /** How many of total_models agreed on this exact suggestion. */
+  consensus: number
+  total_models: number
+  /** Suggestions sharing a conflict_group target overlapping words with
+   *  different outcomes — accept at most one per group. */
+  conflict_group: string | null
 }
 
 export interface AutoCorrectResponse {
@@ -112,8 +123,17 @@ export async function fetchAutoCorrectSuggestions(
   }
 
   const data = await response.json()
+  const rawSuggestions: AiSuggestion[] = Array.isArray(data.suggestions)
+    ? data.suggestions
+    : []
   return {
-    suggestions: data.suggestions ?? [],
+    suggestions: rawSuggestions.map((s: AiSuggestion) => ({
+      ...s,
+      models: s.models ?? [],
+      consensus: s.consensus ?? 1,
+      total_models: s.total_models ?? 1,
+      conflict_group: s.conflict_group ?? null,
+    })),
     model: data.model,
     elapsed_seconds: data.elapsed_seconds,
     settings_applied: data.settings_applied,

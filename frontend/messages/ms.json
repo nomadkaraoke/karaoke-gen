@@ -1313,7 +1313,13 @@
       "undo": "Buat asal cadangan ini",
       "cancel": "Batal",
       "close": "Tutup",
-      "confidence_balanced": "Seimbang"
+      "confidence_balanced": "Seimbang",
+      "compareHint": "Lebih perlahan dan kos lebih tinggi, tetapi menunjukkan cadangan yang dipersetujui oleh berbilang model",
+      "compareLabel": "Bandingkan berbilang model AI",
+      "conflictBadge": "varian",
+      "conflictTooltip": "Model tidak bersetuju tentang perkataan ini — menerima satu varian akan menolak varian yang lain.",
+      "consensusBadge": "{consensus}/{total} model",
+      "consensusTooltip": "Dicadangkan oleh: {models}"
     }
   },
   "instrumentalReview": {

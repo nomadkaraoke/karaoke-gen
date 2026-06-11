@@ -1313,7 +1313,13 @@
       "undo": "Vrátiť späť tento návrh",
       "cancel": "Zrušiť",
       "close": "Zavrieť",
-      "confidence_balanced": "Vyvážená"
+      "confidence_balanced": "Vyvážená",
+      "compareHint": "Je to pomalšie a stojí to viac, ale ukáže, na ktorých návrhoch sa zhoduje viacero modelov",
+      "compareLabel": "Porovnať viacero AI modelov",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Modely sa nezhodujú na týchto slovách — prijatím jedného variantu odmietneš ostatné.",
+      "consensusBadge": "{consensus}/{total} modelov",
+      "consensusTooltip": "Navrhli: {models}"
     }
   },
   "instrumentalReview": {

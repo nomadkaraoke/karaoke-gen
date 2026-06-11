@@ -559,17 +559,28 @@ Content-Type: application/json
   "settings": {
     "suggest_adlib_removal": true,
     "allow_insertions": true,
-    "min_confidence": 0.0
+    "min_confidence": 0.0,
+    "compare_models": false
   }
 }
 ```
 
 Opt-in, user-triggered AI correction suggestions for the lyrics review UI.
-Stateless: one whole-song LLM call (model from `AUTO_CORRECT_MODEL`, default
-Gemini 3.1 Pro via Vertex AI) compares the client's current transcription
-against the reference sources and returns word-id-keyed suggestions. Nothing
-is applied server-side — the reviewer accepts/rejects each suggestion in the
-UI and persistence flows through the existing corrections/complete paths.
+Stateless: one whole-song LLM call per model (default model from
+`AUTO_CORRECT_MODEL`; Claude models use the Anthropic API via the
+`anthropic-api-key` secret, Gemini models use Vertex AI) compares the
+client's current transcription against the reference sources and returns
+word-id-keyed suggestions. Nothing is applied server-side — the reviewer
+accepts/rejects each suggestion in the UI and persistence flows through the
+existing corrections/complete paths.
+
+With `"compare_models": true`, every model in `AUTO_CORRECT_COMPARE_MODELS`
+(semicolon-separated) is queried in parallel; identical suggestions are
+deduplicated with a per-suggestion `consensus` count, and suggestions that
+target overlapping words with different outcomes share a `conflict_group`
+(the UI accepts at most one per group). A model failure in compare mode is
+reported in `warnings` while remaining model results are returned; only if
+all models fail does the endpoint return 502.
 
 Returns:
 
@@ -585,10 +596,14 @@ Returns:
       "new_text": "chlorine",
       "reason": "All references read 'chlorine' here",
       "category": "mishearing",
-      "confidence": 0.95
+      "confidence": 0.95,
+      "models": ["claude-fable-5", "gemini-3.1-pro-preview"],
+      "consensus": 2,
+      "total_models": 2,
+      "conflict_group": null
     }
   ],
-  "model": "gemini-3.1-pro-preview",
+  "model": "claude-fable-5, gemini-3.1-pro-preview",
   "elapsed_seconds": 27.4,
   "settings_applied": { "suggest_adlib_removal": true, "allow_insertions": true, "min_confidence": 0.0 },
   "warnings": []

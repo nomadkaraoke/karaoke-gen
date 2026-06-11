@@ -1313,7 +1313,13 @@
       "undo": "เลิกทำคำแนะนำนี้",
       "cancel": "ยกเลิก",
       "close": "ปิด",
-      "confidence_balanced": "สมดุล"
+      "confidence_balanced": "สมดุล",
+      "compareHint": "ช้ากว่าและมีค่าใช้จ่ายสูงกว่า แต่จะแสดงคำแนะนำที่โมเดลหลายตัวเห็นตรงกัน",
+      "compareLabel": "เปรียบเทียบโมเดล AI หลายตัว",
+      "conflictBadge": "ตัวเลือก",
+      "conflictTooltip": "โมเดลให้ผลลัพธ์คำเหล่านี้ไม่ตรงกัน — การเลือกตัวเลือกหนึ่งจะเป็นการปฏิเสธตัวเลือกอื่นๆ",
+      "consensusBadge": "{consensus}/{total} โมเดล",
+      "consensusTooltip": "เสนอโดย: {models}"
     }
   },
   "instrumentalReview": {

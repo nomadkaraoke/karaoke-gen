@@ -1313,7 +1313,13 @@
       "undo": "Poništi ovaj prijedlog",
       "cancel": "Odustani",
       "close": "Zatvori",
-      "confidence_balanced": "Uravnoteženo"
+      "confidence_balanced": "Uravnoteženo",
+      "compareHint": "Sporije je i košta više, ali pokazuje oko kojih se prijedloga slaže više modela",
+      "compareLabel": "Usporedi više AI modela",
+      "conflictBadge": "varijanta",
+      "conflictTooltip": "Modeli se ne slažu oko ovih riječi — prihvaćanje jedne varijante odbacuje ostale.",
+      "consensusBadge": "{consensus}/{total} modela",
+      "consensusTooltip": "Predložili: {models}"
     }
   },
   "instrumentalReview": {

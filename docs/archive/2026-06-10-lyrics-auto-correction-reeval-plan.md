@@ -207,6 +207,27 @@ prod accept-rate data exists or if an Anthropic key is added to Secret Manager.
    (`ai_suggestion_accept`/`reject` entries) becomes the real gate for any
    future default-on behaviour.
 
+## 4d. Follow-up shipped (2026-06-11, v0.178.0): Fable default + multi-model compare
+
+Per Andrew's decisions after v0.177.0 shipped:
+
+- **Default model switched to Claude Fable 5** (`AUTO_CORRECT_MODEL=claude-fable-5`
+  in the Cloud Run deploy). Anthropic provider path added to the service
+  (Anthropic API, structured outputs, adaptive thinking — same configuration
+  the eval used). Key lives in the `anthropic-api-key` secret (container
+  Pulumi-managed in `infrastructure/modules/secrets.py`, value added manually).
+- **Multi-model compare mode** (Andrew's idea): `compare_models` setting
+  queries all of `AUTO_CORRECT_COMPARE_MODELS` (prod: Fable 5 + Gemini 3.1
+  Pro) in parallel, dedupes identical suggestions with a consensus count
+  (e.g. "2/2 models"), and groups conflicting overlapping suggestions —
+  accepting one variant rejects its siblings; accept-all picks the
+  highest-consensus variant per group. Partial model failures degrade to
+  warnings; all-fail → 502.
+- **Gotcha for posterity**: the google-genai SDK mutates `response_schema`
+  dicts in place (injects `property_ordering`), which the Anthropic API
+  rejects — schemas must be deep-copied per provider call. Caught by the
+  real-call smoke test, now covered by a regression test.
+
 ## 5. Open questions for Andrew
 
 1. **Model:** start with Claude Fable 5 (best reasoning, audio-capable) via the

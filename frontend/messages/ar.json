@@ -1313,7 +1313,13 @@
       "undo": "التراجع عن هذا الاقتراح",
       "cancel": "إلغاء",
       "close": "إغلاق",
-      "confidence_balanced": "متوازن"
+      "confidence_balanced": "متوازن",
+      "compareHint": "أبطأ وأعلى تكلفة، لكنه يوضح الاقتراحات التي تتفق عليها عدة نماذج",
+      "compareLabel": "مقارنة عدة نماذج للذكاء الاصطناعي",
+      "conflictBadge": "بديل",
+      "conflictTooltip": "تختلف النماذج حول هذه الكلمات — قبول أحد البدائل يعني رفض الأخرى.",
+      "consensusBadge": "{consensus}/{total} من النماذج",
+      "consensusTooltip": "مقترح من: {models}"
     }
   },
   "instrumentalReview": {
