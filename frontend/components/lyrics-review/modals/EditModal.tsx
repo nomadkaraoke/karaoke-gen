@@ -107,6 +107,13 @@ export default function EditModal({
     })
   }, [editedSegment])
 
+  const handleTimingClamped = useCallback(
+    (wordText: string, snappedTo: number) => {
+      toast.warning(t('timingClamped', { word: wordText, time: snappedTo.toFixed(2) }))
+    },
+    [t]  // toast is a module-level singleton; t is stable in next-intl
+  )
+
   // Manual sync hook
   const {
     isManualSyncing,
@@ -122,9 +129,7 @@ export default function EditModal({
     currentTime,
     onPlaySegment,
     updateSegment,
-    onTimingClamped: (wordText: string, snappedTo: number) => {
-      toast.warning(t('timingClamped', { word: wordText, time: snappedTo.toFixed(2) }))
-    },
+    onTimingClamped: handleTimingClamped,
   })
 
   // Wire up spacebar handler - use setModalHandler directly for proper modal state
@@ -404,6 +409,8 @@ export default function EditModal({
           <div className="flex-1 overflow-auto space-y-4">
             {timingFixCount > 0 && (
               <div
+                role="status"
+                aria-live="polite"
                 data-testid="timing-sanitized-banner"
                 className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
               >
