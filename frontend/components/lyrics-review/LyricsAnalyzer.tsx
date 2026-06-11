@@ -229,8 +229,9 @@ export default function LyricsAnalyzer({
     getAuthToken: () => getAccessToken() ?? undefined,
     // Auto-run once on load so suggestions are ready without a click. The
     // backend pre-generates + caches them during lyrics processing, so this
-    // is normally an instant cache hit. Skipped in read-only / local mode.
-    autoRunOnLoad: !isReadOnly && !isLocalMode,
+    // is normally an instant cache hit. Skipped in read-only / local mode,
+    // and only when a jobId exists (the request needs one).
+    autoRunOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId),
   })
 
   // Close the run modal once suggestions arrive (panel takes over)
