@@ -57,6 +57,20 @@ describe('sanitizeSegmentTimings', () => {
     expect(segment.words[0].end_time!).toBeGreaterThanOrEqual(segment.words[0].start_time!)
   })
 
+  it('places a word whose start is past the segment end at the previous word end, not collapsed', () => {
+    const seg: LyricsSegment = {
+      id: 's', text: 'x y', start_time: 10, end_time: 12,
+      words: [
+        { id: 'w0', text: 'x', start_time: 10, end_time: 11 },
+        { id: 'w1', text: 'y', start_time: 99, end_time: 100 },
+      ],
+    }
+    const { segment } = sanitizeSegmentTimings(seg)
+    expect(segment.words[1].start_time!).toBe(11)
+    expect(segment.words[1].end_time!).toBeGreaterThanOrEqual(11)
+    expect(segment.words[1].end_time!).toBeLessThanOrEqual(12)
+  })
+
   it('returns segment untouched when segment bounds are null (non-finite)', () => {
     const seg: LyricsSegment = {
       id: 's', text: 'hello world', start_time: null, end_time: null,

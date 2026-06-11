@@ -51,10 +51,18 @@ export function sanitizeSegmentTimings(segment: LyricsSegment): {
     const start = isFiniteNumber(w.start_time) ? (w.start_time as number) : null
     const end   = isFiniteNumber(w.end_time)   ? (w.end_time   as number) : null
 
-    const wantStart = start === null ? prevEnd : start
-    const newStart = clamp(Math.max(wantStart, segStart))
-    const wantEnd = end === null ? newStart : end
-    const newEnd = clamp(Math.max(wantEnd, newStart))
+    // Invalid start = non-finite OR outside the segment window -> place at previous word's end.
+    const newStart = start !== null && start >= segStart && start <= segEnd
+      ? start
+      : clamp(Math.max(prevEnd, segStart))
+    // Invalid end = non-finite, before start, or past segment end.
+    let newEnd: number
+    if (end !== null && end >= newStart && end <= segEnd) {
+      newEnd = end
+    } else {
+      newEnd = clamp(Math.max(newStart, end ?? newStart))
+      if (newEnd < newStart) newEnd = newStart
+    }
 
     let next = w
     if (newStart !== start) {
