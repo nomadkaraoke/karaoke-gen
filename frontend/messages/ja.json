@@ -776,7 +776,11 @@
     "undoFailed": "元に戻す操作に失敗しました",
     "redoFailed": "やり直し操作に失敗しました",
     "restoreFailed": "復元に失敗しました — 一部の編集が適用されていない可能性があります",
-    "submitFailed": "送信に失敗しました"
+    "submitFailed": "送信に失敗しました",
+    "fadeIn": "フェードイン",
+    "fadeInSelection": "選択した範囲をフェードイン",
+    "fadeOut": "フェードアウト",
+    "fadeOutSelection": "選択した範囲をフェードアウト"
   },
   "audioEditRestore": {
     "title": "保存されたオーディオ編集セッション",

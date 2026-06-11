@@ -776,7 +776,11 @@
     "undoFailed": "Kumoaminen epäonnistui",
     "redoFailed": "Uudelleentekeminen epäonnistui",
     "restoreFailed": "Palauttaminen epäonnistui — joitain muokkauksia ei ehkä ole sovellettu",
-    "submitFailed": "Lähetys epäonnistui"
+    "submitFailed": "Lähetys epäonnistui",
+    "fadeIn": "Häivytä sisään",
+    "fadeInSelection": "Häivytä sisään valitulla alueella",
+    "fadeOut": "Häivytä ulos",
+    "fadeOutSelection": "Häivytä ulos valitulla alueella"
   },
   "audioEditRestore": {
     "title": "Tallennetut äänimuokkausistunnot",

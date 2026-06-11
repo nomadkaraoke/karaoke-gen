@@ -776,7 +776,11 @@
     "undoFailed": "No s'ha pogut desfer",
     "redoFailed": "No s'ha pogut refer",
     "restoreFailed": "La restauració ha fallat — és possible que algunes edicions no s'hagin aplicat",
-    "submitFailed": "L'enviament ha fallat"
+    "submitFailed": "L'enviament ha fallat",
+    "fadeIn": "Fosa d'entrada",
+    "fadeInSelection": "Aplica una fosa d'entrada a la regió seleccionada",
+    "fadeOut": "Fosa de sortida",
+    "fadeOutSelection": "Aplica una fosa de sortida a la regió seleccionada"
   },
   "audioEditRestore": {
     "title": "Sessions d'edició d'àudio desades",

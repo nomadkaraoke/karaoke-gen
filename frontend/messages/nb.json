@@ -776,7 +776,11 @@
     "undoFailed": "Angre mislyktes",
     "redoFailed": "Gjør om mislyktes",
     "restoreFailed": "Gjenoppretting mislyktes — noen redigeringer kan ha blitt utelatt",
-    "submitFailed": "Innsending mislyktes"
+    "submitFailed": "Innsending mislyktes",
+    "fadeIn": "Ton inn",
+    "fadeInSelection": "Ton inn over det valgte området",
+    "fadeOut": "Ton ut",
+    "fadeOutSelection": "Ton ut over det valgte området"
   },
   "audioEditRestore": {
     "title": "Lagrede lydredigeringsøkter",

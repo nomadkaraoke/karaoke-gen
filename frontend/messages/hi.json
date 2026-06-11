@@ -776,7 +776,11 @@
     "undoFailed": "अनडू विफल रहा",
     "redoFailed": "रीडू विफल रहा",
     "restoreFailed": "रिस्टोर विफल रहा — कुछ एडिट्स लागू नहीं हुए होंगे",
-    "submitFailed": "सबमिट विफल रहा"
+    "submitFailed": "सबमिट विफल रहा",
+    "fadeIn": "फ़ेड इन",
+    "fadeInSelection": "चुने गए हिस्से पर फ़ेड इन करो",
+    "fadeOut": "फ़ेड आउट",
+    "fadeOutSelection": "चुने गए हिस्से पर फ़ेड आउट करो"
   },
   "audioEditRestore": {
     "title": "सेव किए गए ऑडियो एडिट सेशंस",

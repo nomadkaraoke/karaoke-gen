@@ -1931,7 +1931,8 @@ async def apply_audio_edit(
     """
     Apply an edit operation to the input audio.
 
-    Supported operations: trim_start, trim_end, cut, mute, join_start, join_end.
+    Supported operations: trim_start, trim_end, cut, mute, fade_in, fade_out,
+    join_start, join_end.
     Returns updated waveform data and playback URL.
     """
     import uuid
@@ -1945,7 +1946,7 @@ async def apply_audio_edit(
     if not operation:
         raise HTTPException(status_code=400, detail="Missing 'operation' field")
 
-    valid_operations = {"trim_start", "trim_end", "cut", "mute", "join_start", "join_end"}
+    valid_operations = {"trim_start", "trim_end", "cut", "mute", "fade_in", "fade_out", "join_start", "join_end"}
     if operation not in valid_operations:
         raise HTTPException(status_code=400, detail=f"Invalid operation: {operation}. Valid: {valid_operations}")
 

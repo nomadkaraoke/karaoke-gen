@@ -776,7 +776,11 @@
     "undoFailed": "Geri alma başarısız oldu",
     "redoFailed": "Yineleme başarısız oldu",
     "restoreFailed": "Geri yükleme başarısız oldu — bazı düzenlemeler uygulanmamış olabilir",
-    "submitFailed": "Gönderme başarısız oldu"
+    "submitFailed": "Gönderme başarısız oldu",
+    "fadeIn": "Sesi Kademeli Artır",
+    "fadeInSelection": "Seçili bölgede sesi kademeli artır",
+    "fadeOut": "Sesi Kademeli Azalt",
+    "fadeOutSelection": "Seçili bölgede sesi kademeli azalt"
   },
   "audioEditRestore": {
     "title": "Kaydedilmiş Ses Düzenleme Oturumları",

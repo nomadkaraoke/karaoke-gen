@@ -776,7 +776,11 @@
     "undoFailed": "Gagal mengurungkan",
     "redoFailed": "Gagal mengulangi",
     "restoreFailed": "Gagal memulihkan — beberapa editan mungkin tidak diterapkan",
-    "submitFailed": "Gagal mengirim"
+    "submitFailed": "Gagal mengirim",
+    "fadeIn": "Fade In",
+    "fadeInSelection": "Terapkan fade in pada bagian yang dipilih",
+    "fadeOut": "Fade Out",
+    "fadeOutSelection": "Terapkan fade out pada bagian yang dipilih"
   },
   "audioEditRestore": {
     "title": "Sesi Edit Audio Tersimpan",

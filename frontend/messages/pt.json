@@ -776,7 +776,11 @@
     "undoFailed": "Falha ao desfazer",
     "redoFailed": "Falha ao refazer",
     "restoreFailed": "Falha ao restaurar — algumas edições podem não ter sido aplicadas",
-    "submitFailed": "Falha ao enviar"
+    "submitFailed": "Falha ao enviar",
+    "fadeIn": "Fade In",
+    "fadeInSelection": "Aplicar fade in na região selecionada",
+    "fadeOut": "Fade Out",
+    "fadeOutSelection": "Aplicar fade out na região selecionada"
   },
   "audioEditRestore": {
     "title": "Sessões de Edição de Áudio Salvas",

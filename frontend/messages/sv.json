@@ -776,7 +776,11 @@
     "undoFailed": "Kunde inte ångra",
     "redoFailed": "Kunde inte göra om",
     "restoreFailed": "Kunde inte återställa — vissa redigeringar kanske inte har tillämpats",
-    "submitFailed": "Kunde inte skicka in"
+    "submitFailed": "Kunde inte skicka in",
+    "fadeIn": "Tona in",
+    "fadeInSelection": "Tona in över det markerade området",
+    "fadeOut": "Tona ut",
+    "fadeOutSelection": "Tona ut över det markerade området"
   },
   "audioEditRestore": {
     "title": "Sparade ljudredigeringssessioner",

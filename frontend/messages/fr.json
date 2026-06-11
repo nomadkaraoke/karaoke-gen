@@ -776,7 +776,11 @@
     "undoFailed": "Échec de l'annulation",
     "redoFailed": "Échec du rétablissement",
     "restoreFailed": "Échec de la restauration — certaines modifications peuvent ne pas avoir été appliquées",
-    "submitFailed": "Échec de la soumission"
+    "submitFailed": "Échec de la soumission",
+    "fadeIn": "Fondu entrant",
+    "fadeInSelection": "Fondu entrant sur la zone sélectionnée",
+    "fadeOut": "Fondu sortant",
+    "fadeOutSelection": "Fondu sortant sur la zone sélectionnée"
   },
   "audioEditRestore": {
     "title": "Sessions d'édition audio sauvegardées",

@@ -776,7 +776,11 @@
     "undoFailed": "Error al deshacer",
     "redoFailed": "Error al rehacer",
     "restoreFailed": "Error al restaurar — algunas ediciones pueden no haberse aplicado",
-    "submitFailed": "Error al enviar"
+    "submitFailed": "Error al enviar",
+    "fadeIn": "Fundido de entrada",
+    "fadeInSelection": "Aplicar fundido de entrada en la región seleccionada",
+    "fadeOut": "Fundido de salida",
+    "fadeOutSelection": "Aplicar fundido de salida en la región seleccionada"
   },
   "audioEditRestore": {
     "title": "Sesiones de edición de audio guardadas",

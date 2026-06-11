@@ -776,7 +776,11 @@
     "undoFailed": "การเลิกทำล้มเหลว",
     "redoFailed": "การทำซ้ำล้มเหลว",
     "restoreFailed": "การกู้คืนล้มเหลว — การแก้ไขบางอย่างอาจไม่ถูกนำไปใช้",
-    "submitFailed": "การส่งล้มเหลว"
+    "submitFailed": "การส่งล้มเหลว",
+    "fadeIn": "เฟดอิน",
+    "fadeInSelection": "เฟดอินในส่วนที่เลือก",
+    "fadeOut": "เฟดเอาต์",
+    "fadeOutSelection": "เฟดเอาต์ในส่วนที่เลือก"
   },
   "audioEditRestore": {
     "title": "เซสชันการแก้ไขเสียงที่บันทึกไว้",

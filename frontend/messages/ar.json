@@ -776,7 +776,11 @@
     "undoFailed": "فشل التراجع",
     "redoFailed": "فشلت الإعادة",
     "restoreFailed": "فشلت الاستعادة — قد لا يتم تطبيق بعض التعديلات",
-    "submitFailed": "فشل الإرسال"
+    "submitFailed": "فشل الإرسال",
+    "fadeIn": "ظهور تدريجي",
+    "fadeInSelection": "ظهور تدريجي في المنطقة المحددة",
+    "fadeOut": "تلاشي تدريجي",
+    "fadeOutSelection": "تلاشي تدريجي في المنطقة المحددة"
   },
   "audioEditRestore": {
     "title": "جلسات تعديل الصوت المحفوظة",

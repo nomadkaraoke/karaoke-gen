@@ -776,7 +776,11 @@
     "undoFailed": "Poništavanje nije uspjelo",
     "redoFailed": "Ponavljanje nije uspjelo",
     "restoreFailed": "Vraćanje nije uspjelo — neka uređivanja možda nisu primijenjena",
-    "submitFailed": "Slanje nije uspjelo"
+    "submitFailed": "Slanje nije uspjelo",
+    "fadeIn": "Postupno pojačavanje",
+    "fadeInSelection": "Postupno pojačaj odabrano područje",
+    "fadeOut": "Postupno stišavanje",
+    "fadeOutSelection": "Postupno stišaj odabrano područje"
   },
   "audioEditRestore": {
     "title": "Spremljene sesije uređivanja zvuka",

@@ -776,7 +776,11 @@
     "undoFailed": "Gagal buat asal",
     "redoFailed": "Gagal buat semula",
     "restoreFailed": "Gagal memulihkan — beberapa suntingan mungkin tidak digunakan",
-    "submitFailed": "Gagal menghantar"
+    "submitFailed": "Gagal menghantar",
+    "fadeIn": "Pudar Masuk",
+    "fadeInSelection": "Pudar masuk pada bahagian yang dipilih",
+    "fadeOut": "Pudar Keluar",
+    "fadeOutSelection": "Pudar keluar pada bahagian yang dipilih"
   },
   "audioEditRestore": {
     "title": "Sesi Suntingan Audio Disimpan",
