@@ -123,8 +123,11 @@ export async function fetchAutoCorrectSuggestions(
   }
 
   const data = await response.json()
+  const rawSuggestions: AiSuggestion[] = Array.isArray(data.suggestions)
+    ? data.suggestions
+    : []
   return {
-    suggestions: (data.suggestions ?? []).map((s: AiSuggestion) => ({
+    suggestions: rawSuggestions.map((s: AiSuggestion) => ({
       ...s,
       models: s.models ?? [],
       consensus: s.consensus ?? 1,

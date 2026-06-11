@@ -131,10 +131,12 @@ class AutoCorrectService:
                 for fut, m in futures.items():
                     try:
                         raw = fut.result()
+                        suggestions, vw = self._validate(raw, flat, settings)
                     except AutoCorrectServiceError as exc:
+                        # One model failing (call OR malformed output) must not
+                        # abort compare mode; the rest still return results.
                         warnings.append(f"model {m} failed: {exc}")
                         continue
-                    suggestions, vw = self._validate(raw, flat, settings)
                     per_model[m] = suggestions
                     warnings.extend(f"[{m}] {w}" for w in vw)
             if not per_model:

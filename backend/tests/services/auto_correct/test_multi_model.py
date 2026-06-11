@@ -41,7 +41,7 @@ def _sugg(start, end, text, op="replace", confidence=0.9):
 
 
 def _run_compare(responses_by_model, compare_models_env="model-a;model-b",
-                 settings=COMPARE):
+                 settings=COMPARE, single_model="gemini-3.1-pro-preview"):
     """responses_by_model: model name -> raw dict response or Exception."""
     service = AutoCorrectService()
 
@@ -53,6 +53,8 @@ def _run_compare(responses_by_model, compare_models_env="model-a;model-b",
 
     with patch.object(
         service.settings, "auto_correct_compare_models", compare_models_env
+    ), patch.object(
+        service.settings, "auto_correct_model", single_model
     ), patch.object(service, "_call_model", side_effect=fake_call):
         return service.suggest(
             job_id="job-1",
@@ -115,6 +117,16 @@ def test_one_model_failing_produces_warning_not_error() -> None:
     })
     assert len(result.suggestions) == 1
     assert result.suggestions[0].total_models == 1  # only one model answered
+    assert any("model-b failed" in w for w in result.warnings)
+    assert result.model == "model-a"
+
+
+def test_malformed_model_output_warns_instead_of_aborting_compare() -> None:
+    result = _run_compare({
+        "model-a": {"suggestions": [_sugg(3, 3, "chlorine")]},
+        "model-b": {"not_suggestions": []},  # malformed -> _validate raises
+    })
+    assert len(result.suggestions) == 1
     assert any("model-b failed" in w for w in result.warnings)
     assert result.model == "model-a"
 

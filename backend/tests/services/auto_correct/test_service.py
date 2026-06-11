@@ -230,11 +230,12 @@ def test_anthropic_schema_strips_genai_pollution(monkeypatch) -> None:
     from unittest.mock import MagicMock
     import backend.services.auto_correct.service as svc_mod
 
+    import copy
+
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    polluted = {
-        **svc_mod.RESPONSE_SCHEMA,
-        "property_ordering": ["suggestions"],
-    }
+    # Deep copy so this test never mutates the real module-level schema.
+    polluted = copy.deepcopy(svc_mod.RESPONSE_SCHEMA)
+    polluted["property_ordering"] = ["suggestions"]
     polluted["properties"]["suggestions"]["items"]["property_ordering"] = ["op"]
     monkeypatch.setattr(svc_mod, "RESPONSE_SCHEMA", polluted)
 

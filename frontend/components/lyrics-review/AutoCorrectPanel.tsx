@@ -130,11 +130,19 @@ export default function AutoCorrectPanel({
               return (
                 <li
                   key={s.id}
+                  role="button"
+                  tabIndex={0}
                   className={cn(
-                    'flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50',
+                    'flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none',
                     decision === 'rejected' && 'opacity-50',
                   )}
                   onClick={() => scrollToWord(s.word_ids[0])}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      scrollToWord(s.word_ids[0])
+                    }
+                  }}
                 >
                   <Badge
                     className={cn('shrink-0 text-[10px]', CATEGORY_BADGE[s.category])}
