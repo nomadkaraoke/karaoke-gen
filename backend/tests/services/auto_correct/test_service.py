@@ -211,3 +211,68 @@ def test_non_dict_suggestion_entries_dropped() -> None:
     result = _suggest({"suggestions": ["bogus", 42]})
     assert result.suggestions == []
     assert len(result.warnings) == 2
+
+
+def test_call_model_dispatches_claude_to_anthropic() -> None:
+    service = AutoCorrectService()
+    with patch.object(service, "_call_anthropic", return_value={"suggestions": []}) as anth, \
+         patch.object(service, "_call_gemini", return_value={"suggestions": []}) as gem:
+        service._call_model("claude-fable-5", "s", "u", job_id="j")
+        anth.assert_called_once()
+        gem.assert_not_called()
+        service._call_model("gemini-3.1-pro-preview", "s", "u", job_id="j")
+        gem.assert_called_once()
+
+
+def test_anthropic_schema_strips_genai_pollution(monkeypatch) -> None:
+    """google-genai mutates schema dicts in place (adds property_ordering);
+    the anthropic path must send a clean strict schema regardless."""
+    from unittest.mock import MagicMock
+    import backend.services.auto_correct.service as svc_mod
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    polluted = {
+        **svc_mod.RESPONSE_SCHEMA,
+        "property_ordering": ["suggestions"],
+    }
+    polluted["properties"]["suggestions"]["items"]["property_ordering"] = ["op"]
+    monkeypatch.setattr(svc_mod, "RESPONSE_SCHEMA", polluted)
+
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.messages = MagicMock()
+
+            def create(**ckwargs):
+                captured.update(ckwargs)
+                block = MagicMock()
+                block.type = "text"
+                block.text = '{"suggestions": []}'
+                resp = MagicMock()
+                resp.content = [block]
+                return resp
+
+            self.messages.create = create
+
+    import anthropic as anthropic_sdk
+
+    monkeypatch.setattr(anthropic_sdk, "Anthropic", FakeClient)
+    service = AutoCorrectService()
+    result = service._call_anthropic("claude-fable-5", "s", "u", job_id="j")
+    assert result == {"suggestions": []}
+    schema = captured["output_config"]["format"]["schema"]
+    assert "property_ordering" not in schema
+    assert "property_ordering" not in schema["properties"]["suggestions"]["items"]
+    assert schema["additionalProperties"] is False
+    # and the polluted module constant was not further mutated
+    assert "property_ordering" in polluted
+
+
+def test_anthropic_without_api_key_raises_502(monkeypatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    service = AutoCorrectService()
+    with pytest.raises(AutoCorrectServiceError) as exc_info:
+        service._call_anthropic("claude-fable-5", "s", "u", job_id="j")
+    assert exc_info.value.status_code == 502
+    assert "not configured" in str(exc_info.value)

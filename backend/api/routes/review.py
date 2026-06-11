@@ -93,6 +93,10 @@ class AutoCorrectSuggestionResponse(_PydBaseModel):
     reason: str
     category: str
     confidence: float
+    models: list[str]
+    consensus: int
+    total_models: int
+    conflict_group: Optional[str] = None
 
 
 class AutoCorrectResponse(_PydBaseModel):
@@ -732,6 +736,10 @@ async def auto_correct_suggestions(
                 reason=s.reason,
                 category=s.category,
                 confidence=s.confidence,
+                models=s.models,
+                consensus=s.consensus,
+                total_models=s.total_models,
+                conflict_group=s.conflict_group,
             )
             for s in result.suggestions
         ],

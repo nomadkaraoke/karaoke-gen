@@ -1313,7 +1313,13 @@
       "undo": "Hoàn tác đề xuất này",
       "cancel": "Hủy",
       "close": "Đóng",
-      "confidence_balanced": "Cân bằng"
+      "confidence_balanced": "Cân bằng",
+      "compareHint": "Chậm hơn và tốn phí hơn, nhưng cho thấy các gợi ý được nhiều mô hình cùng đồng thuận",
+      "compareLabel": "So sánh nhiều mô hình AI",
+      "conflictBadge": "biến thể",
+      "conflictTooltip": "Các mô hình không đồng nhất về những từ này — chấp nhận một biến thể sẽ loại bỏ các biến thể khác.",
+      "consensusBadge": "{consensus}/{total} mô hình",
+      "consensusTooltip": "Đề xuất bởi: {models}"
     }
   },
   "instrumentalReview": {

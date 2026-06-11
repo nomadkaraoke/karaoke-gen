@@ -33,6 +33,9 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         "langfuse-secret-key",
         "langfuse-host",
 
+        # AI auto-correct suggestions (Claude models via Anthropic API)
+        "anthropic-api-key",
+
         # Service authentication
         "flacfetch-api-key",
         "flacfetch-api-url",

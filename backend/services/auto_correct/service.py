@@ -49,12 +49,20 @@ class Suggestion:
     reason: str
     category: str
     confidence: float
+    # Multi-model compare metadata. In single-model mode models has one
+    # entry and consensus == total_models == 1.
+    models: list[str] = field(default_factory=list)
+    consensus: int = 1
+    total_models: int = 1
+    # Set when other suggestions target overlapping words with a different
+    # outcome — the UI lets the reviewer pick at most one per group.
+    conflict_group: Optional[str] = None
 
 
 @dataclass
 class AutoCorrectResult:
     suggestions: list[Suggestion]
-    model: str
+    model: str  # comma-joined when compare mode queried several models
     elapsed_seconds: float
     settings_applied: AutoCorrectSettings
     warnings: list[str] = field(default_factory=list)
@@ -101,27 +109,199 @@ class AutoCorrectService:
             title=title,
         )
 
+        models = self._models_for(settings)
         t0 = time.time()
-        model = self.settings.auto_correct_model
-        raw = self._call_model(model, system_prompt, user_prompt, job_id=job_id)
-        elapsed = time.time() - t0
+        per_model: dict[str, list[Suggestion]] = {}
+        warnings: list[str] = []
+        if len(models) == 1:
+            raw = self._call_model(models[0], system_prompt, user_prompt, job_id=job_id)
+            suggestions, vw = self._validate(raw, flat, settings)
+            per_model[models[0]] = suggestions
+            warnings.extend(vw)
+        else:
+            import concurrent.futures as cf
 
-        suggestions, warnings = self._validate(raw, flat, settings)
+            with cf.ThreadPoolExecutor(max_workers=len(models)) as ex:
+                futures = {
+                    ex.submit(
+                        self._call_model, m, system_prompt, user_prompt, job_id=job_id
+                    ): m
+                    for m in models
+                }
+                for fut, m in futures.items():
+                    try:
+                        raw = fut.result()
+                    except AutoCorrectServiceError as exc:
+                        warnings.append(f"model {m} failed: {exc}")
+                        continue
+                    suggestions, vw = self._validate(raw, flat, settings)
+                    per_model[m] = suggestions
+                    warnings.extend(f"[{m}] {w}" for w in vw)
+            if not per_model:
+                raise AutoCorrectServiceError(
+                    "all AI models failed", status_code=502
+                )
+
+        merged = self._merge(per_model, flat)
+        elapsed = time.time() - t0
+        model_label = ", ".join(per_model.keys())
         logger.info(
-            "auto-correct job=%s model=%s words=%d suggestions=%d dropped_warnings=%d elapsed=%.1fs",
-            job_id, model, len(flat), len(suggestions), len(warnings), elapsed,
+            "auto-correct job=%s models=%s words=%d suggestions=%d dropped_warnings=%d elapsed=%.1fs",
+            job_id, model_label, len(flat), len(merged), len(warnings), elapsed,
         )
         return AutoCorrectResult(
-            suggestions=suggestions,
-            model=model,
+            suggestions=merged,
+            model=model_label,
             elapsed_seconds=round(elapsed, 1),
             settings_applied=settings,
             warnings=warnings,
         )
 
+    def _models_for(self, settings: AutoCorrectSettings) -> list[str]:
+        if settings.compare_models:
+            configured = [
+                m.strip()
+                for m in self.settings.auto_correct_compare_models.replace(",", ";").split(";")
+                if m.strip()
+            ]
+            # De-dupe while preserving order.
+            seen: set[str] = set()
+            models = [m for m in configured if not (m in seen or seen.add(m))]
+            if len(models) >= 2:
+                return models
+            logger.warning(
+                "compare_models requested but AUTO_CORRECT_COMPARE_MODELS has "
+                "%d usable entries; falling back to single model", len(models),
+            )
+        return [self.settings.auto_correct_model]
+
+    @staticmethod
+    def _merge(
+        per_model: dict[str, list[Suggestion]],
+        flat: list[tuple[str, str, str]],
+    ) -> list[Suggestion]:
+        """Deduplicate identical suggestions across models, tag consensus,
+        assign conflict groups to overlapping non-identical suggestions, and
+        sort by document position."""
+        total = len(per_model)
+        merged: dict[tuple, Suggestion] = {}
+        for model, suggestions in per_model.items():
+            for s in suggestions:
+                key = (s.op, tuple(s.word_ids), " ".join(s.new_text.lower().split()))
+                existing = merged.get(key)
+                if existing is None:
+                    s.models = [model]
+                    s.consensus = 1
+                    s.total_models = total
+                    merged[key] = s
+                else:
+                    existing.models.append(model)
+                    existing.consensus += 1
+                    existing.confidence = max(existing.confidence, s.confidence)
+
+        result = list(merged.values())
+
+        # Conflict groups: suggestions sharing any target word but not merged
+        # above disagree about the same span — reviewer picks at most one.
+        # (insert_after anchors are excluded: inserting after a word does not
+        # conflict with editing that word.)
+        by_word: dict[str, list[int]] = {}
+        for i, s in enumerate(result):
+            if s.op == "insert_after":
+                continue
+            for wid in s.word_ids:
+                by_word.setdefault(wid, []).append(i)
+        parent = list(range(len(result)))
+
+        def find(x: int) -> int:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        for overlapping in by_word.values():
+            for other in overlapping[1:]:
+                parent[find(other)] = find(overlapping[0])
+        roots: dict[int, list[int]] = {}
+        for i in range(len(result)):
+            roots.setdefault(find(i), []).append(i)
+        for members in roots.values():
+            if len(members) < 2:
+                continue
+            group = str(uuid.uuid4())
+            for i in members:
+                result[i].conflict_group = group
+
+        position = {word_id: i for i, (word_id, _, _) in enumerate(flat)}
+        result.sort(key=lambda s: position.get(s.word_ids[0], 0) if s.word_ids else 0)
+        return result
+
     # ---- internals ----
 
     def _call_model(
+        self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
+    ) -> Any:
+        if model.startswith("claude"):
+            return self._call_anthropic(model, system_prompt, user_prompt, job_id=job_id)
+        return self._call_gemini(model, system_prompt, user_prompt, job_id=job_id)
+
+    def _call_anthropic(
+        self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
+    ) -> Any:
+        import os
+
+        import anthropic
+
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            # No silent fallback to another provider — surface the
+            # misconfiguration so it gets fixed, not masked.
+            logger.error(
+                "auto-correct model %s requires ANTHROPIC_API_KEY which is not set "
+                "(job=%s)", model, job_id,
+            )
+            raise AutoCorrectServiceError(
+                "AI model is not configured", status_code=502
+            )
+
+        # Structured outputs require additionalProperties: false on objects;
+        # the Vertex variant of the schema omits it, so inject here. Deep-copy
+        # because the google-genai SDK mutates schema dicts in place (it adds
+        # 'property_ordering', which the Anthropic API rejects).
+        import copy
+
+        base = copy.deepcopy(RESPONSE_SCHEMA)
+        for obj in (base, base["properties"]["suggestions"]["items"]):
+            obj.pop("property_ordering", None)
+            obj.pop("propertyOrdering", None)
+            obj["additionalProperties"] = False
+        strict_schema = base
+        client = anthropic.Anthropic(timeout=120.0)
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=16000,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+                thinking={"type": "adaptive"},
+                output_config={"format": {"type": "json_schema", "schema": strict_schema}},
+            )
+        except Exception as exc:
+            logger.exception("auto-correct model call failed job=%s model=%s", job_id, model)
+            raise AutoCorrectServiceError(
+                "AI model call failed", status_code=502
+            ) from exc
+        try:
+            text = next(b.text for b in response.content if b.type == "text")
+            return json.loads(text)
+        except (StopIteration, json.JSONDecodeError, TypeError) as exc:
+            logger.exception(
+                "auto-correct model returned non-JSON job=%s model=%s", job_id, model
+            )
+            raise AutoCorrectServiceError(
+                "AI returned non-JSON output", status_code=502
+            ) from exc
+
+    def _call_gemini(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
     ) -> Any:
         client = genai.Client(
@@ -131,6 +311,11 @@ class AutoCorrectService:
             # Milliseconds; bounds the call so a hung model never strands the UI.
             http_options=types.HttpOptions(timeout=120_000),
         )
+        # Deep-copy: the google-genai SDK mutates the schema dict in place,
+        # which would poison the shared module-level constant for other
+        # providers running in the same process.
+        import copy
+
         try:
             response = client.models.generate_content(
                 model=model,
@@ -138,7 +323,7 @@ class AutoCorrectService:
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
                     response_mime_type="application/json",
-                    response_schema=RESPONSE_SCHEMA,
+                    response_schema=copy.deepcopy(RESPONSE_SCHEMA),
                 ),
             )
         except Exception as exc:  # surface as 502, never a stuck job

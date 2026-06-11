@@ -1313,7 +1313,13 @@
       "undo": "בטל הצעה זו",
       "cancel": "ביטול",
       "close": "סגירה",
-      "confidence_balanced": "מאוזנת"
+      "confidence_balanced": "מאוזנת",
+      "compareHint": "איטי ויקר יותר, אבל מראה על אילו הצעות מספר מודלים מסכימים",
+      "compareLabel": "השוואה בין מספר מודלי AI",
+      "conflictBadge": "גרסה",
+      "conflictTooltip": "המודלים לא מסכימים לגבי המילים האלו — אישור גרסה אחת ידחה את האחרות.",
+      "consensusBadge": "{consensus}/{total} מודלים",
+      "consensusTooltip": "הוצע על ידי: {models}"
     }
   },
   "instrumentalReview": {

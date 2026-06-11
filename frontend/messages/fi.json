@@ -1313,7 +1313,13 @@
       "undo": "Kumoa tämä ehdotus",
       "cancel": "Peruuta",
       "close": "Sulje",
-      "confidence_balanced": "Tasapainoinen"
+      "confidence_balanced": "Tasapainoinen",
+      "compareHint": "Hitaampi ja kalliimpi, mutta näyttää, mistä ehdotuksista useampi malli on samaa mieltä",
+      "compareLabel": "Vertaile useita tekoälymalleja",
+      "conflictBadge": "vaihtoehto",
+      "conflictTooltip": "Mallit ovat eri mieltä näistä sanoista — yhden vaihtoehdon hyväksyminen hylkää muut.",
+      "consensusBadge": "{consensus}/{total} mallia",
+      "consensusTooltip": "Ehdottanut: {models}"
     }
   },
   "instrumentalReview": {

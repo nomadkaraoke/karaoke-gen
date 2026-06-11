@@ -1313,7 +1313,13 @@
       "undo": "Annulla questo suggerimento",
       "cancel": "Annulla",
       "close": "Chiudi",
-      "confidence_balanced": "Bilanciato"
+      "confidence_balanced": "Bilanciato",
+      "compareHint": "Più lento e costoso, ma mostra su quali suggerimenti concordano più modelli",
+      "compareLabel": "Confronta più modelli IA",
+      "conflictBadge": "variante",
+      "conflictTooltip": "I modelli non concordano su queste parole — accettare una variante esclude le altre.",
+      "consensusBadge": "{consensus}/{total} modelli",
+      "consensusTooltip": "Proposto da: {models}"
     }
   },
   "instrumentalReview": {

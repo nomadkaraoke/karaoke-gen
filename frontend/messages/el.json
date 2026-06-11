@@ -1313,7 +1313,13 @@
       "undo": "Αναίρεση αυτής της πρότασης",
       "cancel": "Ακύρωση",
       "close": "Κλείσιμο",
-      "confidence_balanced": "Ισορροπημένη"
+      "confidence_balanced": "Ισορροπημένη",
+      "compareHint": "Πιο αργό και κοστίζει περισσότερο, αλλά δείχνει σε ποιες προτάσεις συμφωνούν πολλαπλά μοντέλα",
+      "compareLabel": "Σύγκρινε πολλαπλά μοντέλα AI",
+      "conflictBadge": "παραλλαγή",
+      "conflictTooltip": "Τα μοντέλα διαφωνούν για αυτές τις λέξεις — αν αποδεχτείς μια παραλλαγή, απορρίπτεις τις υπόλοιπες.",
+      "consensusBadge": "{consensus}/{total} μοντέλα",
+      "consensusTooltip": "Προτάθηκε από: {models}"
     }
   },
   "instrumentalReview": {

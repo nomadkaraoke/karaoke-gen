@@ -1313,7 +1313,13 @@
       "undo": "이 제안 실행 취소",
       "cancel": "취소",
       "close": "닫기",
-      "confidence_balanced": "균형"
+      "confidence_balanced": "균형",
+      "compareHint": "시간과 비용이 더 들지만, 여러 모델이 공통으로 제안하는 내용을 확인할 수 있어요.",
+      "compareLabel": "여러 AI 모델 비교하기",
+      "conflictBadge": "다른 버전",
+      "conflictTooltip": "이 단어들에 대해 모델마다 제안이 달라요. 하나의 버전을 수락하면 나머지는 반영되지 않아요.",
+      "consensusBadge": "{consensus}/{total}개 모델",
+      "consensusTooltip": "제안한 모델: {models}"
     }
   },
   "instrumentalReview": {

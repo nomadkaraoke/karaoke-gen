@@ -1313,7 +1313,13 @@
       "undo": "Скасувати цю пропозицію",
       "cancel": "Скасувати",
       "close": "Закрити",
-      "confidence_balanced": "Збалансована"
+      "confidence_balanced": "Збалансована",
+      "compareHint": "Повільніше та дорожче, але показує, з якими пропозиціями погоджуються кілька моделей",
+      "compareLabel": "Порівняти кілька моделей ШІ",
+      "conflictBadge": "варіант",
+      "conflictTooltip": "Моделі розійшлися щодо цих слів — обравши один варіант, ти відхилиш інші.",
+      "consensusBadge": "{consensus}/{total} моделей",
+      "consensusTooltip": "Запропоновано: {models}"
     }
   },
   "instrumentalReview": {

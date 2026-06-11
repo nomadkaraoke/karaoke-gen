@@ -45,6 +45,10 @@ function suggestion(partial: Partial<AiSuggestion>): AiSuggestion {
     reason: 'reference match',
     category: 'mishearing',
     confidence: 0.95,
+    models: ['test-model'],
+    consensus: 1,
+    total_models: 1,
+    conflict_group: null,
     ...partial,
   }
 }

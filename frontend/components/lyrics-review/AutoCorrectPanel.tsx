@@ -141,6 +141,48 @@ export default function AutoCorrectPanel({
                   >
                     {t(`category_${s.category}`)}
                   </Badge>
+                  {s.total_models > 1 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'shrink-0 text-[10px] tabular-nums',
+                              s.consensus === s.total_models
+                                ? 'border-green-500/50 text-green-600 dark:text-green-400'
+                                : 'border-amber-500/50 text-amber-600 dark:text-amber-400',
+                            )}
+                          >
+                            {t('consensusBadge', {
+                              consensus: s.consensus,
+                              total: s.total_models,
+                            })}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          {t('consensusTooltip', { models: s.models.join(', ') })}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  {s.conflict_group && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 text-[10px] border-purple-500/50 text-purple-600 dark:text-purple-400"
+                          >
+                            {t('conflictBadge')}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          {t('conflictTooltip')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   <span className="min-w-0 flex-1 truncate">
                     {s.op === 'insert_after' ? (
                       <>

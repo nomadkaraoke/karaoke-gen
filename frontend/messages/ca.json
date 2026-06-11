@@ -1313,7 +1313,13 @@
       "undo": "Desfés aquest suggeriment",
       "cancel": "Cancel·la",
       "close": "Tanca",
-      "confidence_balanced": "Equilibrat"
+      "confidence_balanced": "Equilibrat",
+      "compareHint": "Més lent i més car, però mostra en quins suggeriments coincideixen diversos models",
+      "compareLabel": "Compara diversos models d'IA",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Els models no coincideixen en aquestes paraules — si acceptes una variant, rebutges les altres.",
+      "consensusBadge": "{consensus}/{total} models",
+      "consensusTooltip": "Proposat per: {models}"
     }
   },
   "instrumentalReview": {

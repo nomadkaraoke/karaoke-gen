@@ -1313,7 +1313,13 @@
       "undo": "Desfazer esta sugestão",
       "cancel": "Cancelar",
       "close": "Fechar",
-      "confidence_balanced": "Equilibrado"
+      "confidence_balanced": "Equilibrado",
+      "compareHint": "Mais lento e mais caro, mas mostra em quais sugestões vários modelos concordam",
+      "compareLabel": "Comparar vários modelos de IA",
+      "conflictBadge": "variante",
+      "conflictTooltip": "Os modelos discordam sobre estas palavras — aceitar uma variante rejeita as outras.",
+      "consensusBadge": "{consensus}/{total} modelos",
+      "consensusTooltip": "Proposto por: {models}"
     }
   },
   "instrumentalReview": {

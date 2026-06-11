@@ -1313,7 +1313,13 @@
       "undo": "Cofnij tę sugestię",
       "cancel": "Anuluj",
       "close": "Zamknij",
-      "confidence_balanced": "Zrównoważona"
+      "confidence_balanced": "Zrównoważona",
+      "compareHint": "Działa wolniej i kosztuje więcej, ale pokazuje, co do których sugestii zgadza się kilka modeli",
+      "compareLabel": "Porównaj kilka modeli AI",
+      "conflictBadge": "wariant",
+      "conflictTooltip": "Modele nie są zgodne co do tych słów — zaakceptowanie jednego wariantu odrzuca pozostałe.",
+      "consensusBadge": "{consensus}/{total} modeli",
+      "consensusTooltip": "Zaproponowane przez: {models}"
     }
   },
   "instrumentalReview": {

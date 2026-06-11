@@ -1313,7 +1313,13 @@
       "undo": "Diesen Vorschlag rückgängig machen",
       "cancel": "Abbrechen",
       "close": "Schließen",
-      "confidence_balanced": "Ausgewogen"
+      "confidence_balanced": "Ausgewogen",
+      "compareHint": "Langsamer und teurer, zeigt aber, bei welchen Vorschlägen mehrere Modelle übereinstimmen",
+      "compareLabel": "Mehrere KI-Modelle vergleichen",
+      "conflictBadge": "Variante",
+      "conflictTooltip": "Die Modelle sind sich bei diesen Wörtern uneinig — wenn du eine Variante akzeptierst, werden die anderen abgelehnt.",
+      "consensusBadge": "{consensus}/{total} Modelle",
+      "consensusTooltip": "Vorgeschlagen von: {models}"
     }
   },
   "instrumentalReview": {

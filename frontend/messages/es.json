@@ -1313,7 +1313,13 @@
       "undo": "Deshacer esta sugerencia",
       "cancel": "Cancelar",
       "close": "Cerrar",
-      "confidence_balanced": "Equilibrada"
+      "confidence_balanced": "Equilibrada",
+      "compareHint": "Es más lento y cuesta más, pero muestra en qué sugerencias coinciden varios modelos",
+      "compareLabel": "Comparar varios modelos de IA",
+      "conflictBadge": "variante",
+      "conflictTooltip": "Los modelos no coinciden en estas palabras; al aceptar una variante, se rechazan las demás.",
+      "consensusBadge": "{consensus}/{total} modelos",
+      "consensusTooltip": "Propuesto por: {models}"
     }
   },
   "instrumentalReview": {

@@ -1313,7 +1313,13 @@
       "undo": "この提案を元に戻す",
       "cancel": "キャンセル",
       "close": "閉じる",
-      "confidence_balanced": "バランス"
+      "confidence_balanced": "バランス",
+      "compareHint": "時間とコストはかかりますが、複数のモデルで一致した提案を確認できます。",
+      "compareLabel": "複数のAIモデルを比較する",
+      "conflictBadge": "別案",
+      "conflictTooltip": "モデル間でこれらの単語の認識が異なります。1つの案を採用すると、他の案は破棄されます。",
+      "consensusBadge": "{consensus}/{total} モデル",
+      "consensusTooltip": "提案元: {models}"
     }
   },
   "instrumentalReview": {
