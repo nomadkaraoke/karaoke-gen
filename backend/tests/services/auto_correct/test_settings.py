@@ -44,7 +44,7 @@ def test_settings_from_dict_unknown_key_raises() -> None:
         settings_from_dict({"bogus": 1})
 
 
-@pytest.mark.parametrize("value", [-0.1, 1.5, "high", None])
+@pytest.mark.parametrize("value", [-0.1, 1.5, "high", None, True, False])
 def test_settings_from_dict_invalid_confidence_raises(value) -> None:
     with pytest.raises(ValueError, match="min_confidence"):
         settings_from_dict({"min_confidence": value})

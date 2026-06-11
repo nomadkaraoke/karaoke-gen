@@ -86,10 +86,12 @@ class AutoCorrectService:
         # Flat word list mirrors the prompt's global indices.
         flat: list[tuple[str, str, str]] = []  # (word_id, word_text, segment_id)
         for seg in segments:
+            if not seg.get("id"):
+                raise AutoCorrectServiceError("all segments must have ids")
             for w in seg.get("words") or []:
                 if not w.get("id"):
                     raise AutoCorrectServiceError("all words must have ids")
-                flat.append((w["id"], w.get("text", ""), seg.get("id", "")))
+                flat.append((w["id"], w.get("text", ""), seg["id"]))
 
         system_prompt = build_system_prompt(settings)
         user_prompt = build_user_prompt(
@@ -101,7 +103,7 @@ class AutoCorrectService:
 
         t0 = time.time()
         model = self.settings.auto_correct_model
-        raw = self._call_model(model, system_prompt, user_prompt)
+        raw = self._call_model(model, system_prompt, user_prompt, job_id=job_id)
         elapsed = time.time() - t0
 
         suggestions, warnings = self._validate(raw, flat, settings)
@@ -119,11 +121,15 @@ class AutoCorrectService:
 
     # ---- internals ----
 
-    def _call_model(self, model: str, system_prompt: str, user_prompt: str) -> Any:
+    def _call_model(
+        self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
+    ) -> Any:
         client = genai.Client(
             vertexai=True,
             project=self.settings.google_cloud_project,
             location="global",
+            # Milliseconds; bounds the call so a hung model never strands the UI.
+            http_options=types.HttpOptions(timeout=120_000),
         )
         try:
             response = client.models.generate_content(
@@ -136,14 +142,18 @@ class AutoCorrectService:
                 ),
             )
         except Exception as exc:  # surface as 502, never a stuck job
+            logger.exception("auto-correct model call failed job=%s model=%s", job_id, model)
             raise AutoCorrectServiceError(
-                f"AI model call failed: {exc}", status_code=502
+                "AI model call failed", status_code=502
             ) from exc
         try:
             return json.loads(response.text)
         except (json.JSONDecodeError, TypeError) as exc:
+            logger.exception(
+                "auto-correct model returned non-JSON job=%s model=%s", job_id, model
+            )
             raise AutoCorrectServiceError(
-                f"AI returned non-JSON output: {exc}", status_code=502
+                "AI returned non-JSON output", status_code=502
             ) from exc
 
     def _validate(

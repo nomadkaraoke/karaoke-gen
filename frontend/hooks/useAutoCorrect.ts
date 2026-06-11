@@ -8,7 +8,7 @@
  * bulk) accepted. Every accept/reject/undo lands in the edit log so we can
  * measure real-world accept rates per category over time.
  */
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   AiSuggestion,
   AutoCorrectApiError,
@@ -52,6 +52,13 @@ export function useAutoCorrect({
   const abortRef = useRef<AbortController | null>(null)
 
   const hasReferences = Object.keys(data.reference_lyrics ?? {}).length > 0
+
+  // Abort any in-flight request on unmount so no state updates land after.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
 
   const run = useCallback(
     async (settings: AutoCorrectSettings = DEFAULT_AUTO_CORRECT_SETTINGS) => {

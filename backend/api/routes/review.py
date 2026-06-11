@@ -696,18 +696,29 @@ async def auto_correct_suggestions(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"invalid settings: {exc}") from exc
 
-    try:
-        result = await asyncio.to_thread(
-            service.suggest,
-            job_id=job_id,
-            segments=body.segments,
-            reference_lyrics=body.reference_lyrics,
-            artist=body.artist,
-            title=body.title,
-            settings=settings,
+    with job_log_context(job_id), create_span("auto_correct_suggestions"):
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("segment_count", len(body.segments))
+        logger.info(
+            "auto-correct requested job=%s segments=%d sources=%d",
+            job_id, len(body.segments), len(body.reference_lyrics),
         )
-    except AutoCorrectServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+        try:
+            result = await asyncio.to_thread(
+                service.suggest,
+                job_id=job_id,
+                segments=body.segments,
+                reference_lyrics=body.reference_lyrics,
+                artist=body.artist,
+                title=body.title,
+                settings=settings,
+            )
+        except AutoCorrectServiceError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+        logger.info(
+            "auto-correct completed job=%s suggestions=%d model=%s elapsed=%.1fs",
+            job_id, len(result.suggestions), result.model, result.elapsed_seconds,
+        )
 
     return AutoCorrectResponse(
         suggestions=[

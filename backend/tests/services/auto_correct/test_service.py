@@ -175,6 +175,19 @@ def test_empty_segments_raises_400() -> None:
     assert exc_info.value.status_code == 400
 
 
+def test_missing_segment_ids_raises() -> None:
+    service = AutoCorrectService()
+    with pytest.raises(AutoCorrectServiceError, match="segments must have ids"):
+        service.suggest(
+            job_id="job-1",
+            segments=[{"words": [{"id": "w0", "text": "hi"}]}],
+            reference_lyrics=REFS,
+            artist=None,
+            title=None,
+            settings=AutoCorrectSettings(),
+        )
+
+
 def test_missing_word_ids_raises() -> None:
     service = AutoCorrectService()
     with pytest.raises(AutoCorrectServiceError, match="ids"):

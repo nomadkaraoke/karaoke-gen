@@ -35,7 +35,7 @@ def settings_from_dict(data: dict) -> AutoCorrectSettings:
     if not isinstance(merged["allow_insertions"], bool):
         raise ValueError("allow_insertions must be a boolean")
     mc = merged["min_confidence"]
-    if not isinstance(mc, (int, float)) or not 0.0 <= float(mc) <= 1.0:
+    if isinstance(mc, bool) or not isinstance(mc, (int, float)) or not 0.0 <= float(mc) <= 1.0:
         raise ValueError("min_confidence must be a number between 0 and 1")
     merged["min_confidence"] = float(mc)
     return AutoCorrectSettings(**merged)
