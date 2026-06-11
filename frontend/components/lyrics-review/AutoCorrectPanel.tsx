@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Tooltip,
   TooltipContent,
@@ -122,7 +121,10 @@ export default function AutoCorrectPanel({
       </div>
 
       {!collapsed && suggestions.length > 0 && (
-        <ScrollArea className="max-h-64 border-t">
+        // Plain overflow div, NOT the ScrollArea component: its Radix root
+        // has no overflow-hidden, so a max-height there doesn't clip and
+        // long suggestion lists spill over the panel border.
+        <div className="max-h-64 overflow-y-auto border-t">
           <ul className="divide-y">
             {suggestions.map((s) => {
               const decision = decisions[s.id]
@@ -285,7 +287,7 @@ export default function AutoCorrectPanel({
               )
             })}
           </ul>
-        </ScrollArea>
+        </div>
       )}
     </Card>
   )
