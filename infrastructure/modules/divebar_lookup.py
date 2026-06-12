@@ -118,22 +118,17 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
                 # Region the divebar scheduler jobs live in — the `refresh`
                 # action builds job paths from it to run them on demand.
                 "GCP_REGION": REGION,
+                # Secret holding the `refresh` bearer token. Read at runtime
+                # (not injected as a secret env var) so the function deploys
+                # cleanly before the secret has a version — it just returns 403
+                # until one is added. Avoids a deploy-ordering gotcha.
+                "DIVEBAR_REFRESH_SECRET_ID": all_secrets["divebar-refresh-token"].secret_id,
             },
-            # Shared bearer token gating the `refresh` action (anti-abuse on an
-            # otherwise-public endpoint). Injected from Secret Manager.
-            secret_environment_variables=[
-                cloudfunctionsv2.FunctionServiceConfigSecretEnvironmentVariableArgs(
-                    key="DIVEBAR_REFRESH_TOKEN",
-                    project_id=PROJECT_ID,
-                    secret=all_secrets["divebar-refresh-token"].secret_id,
-                    version="latest",
-                ),
-            ],
         ),
     )
     resources["function"] = function
 
-    # Allow the function SA to read the refresh-token secret.
+    # Allow the function SA to read the refresh-token secret at runtime.
     resources["refresh_token_accessor"] = gcp.secretmanager.SecretIamMember(
         "divebar-lookup-refresh-token-accessor",
         secret_id=all_secrets["divebar-refresh-token"].secret_id,

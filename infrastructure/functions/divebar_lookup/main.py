@@ -25,7 +25,9 @@ Provides search and cross-reference endpoints for the KJ Controller:
 Environment variables:
   GCP_PROJECT_ID: GCP project ID
   GCP_REGION: region the divebar scheduler jobs live in (for `refresh`)
-  DIVEBAR_REFRESH_TOKEN: shared bearer token gating the `refresh` action
+  DIVEBAR_REFRESH_SECRET_ID: Secret Manager secret holding the `refresh` bearer
+    token (read at runtime, so the function deploys before the secret has a
+    value — it just returns 403 until one is added)
 """
 
 import hmac
@@ -44,6 +46,7 @@ logger = logging.getLogger(__name__)
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "nomadkaraoke")
 GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 DATASET = "karaoke_decide"
+REFRESH_SECRET_ID = os.environ.get("DIVEBAR_REFRESH_SECRET_ID", "divebar-refresh-token")
 
 # Cloud Scheduler jobs the `refresh` action force-runs, in pipeline order.
 # Each carries its own OIDC identity/target, so we only need run permission.
@@ -398,20 +401,40 @@ def _get_full_stats() -> dict:
     }
 
 
+def _get_expected_token() -> str:
+    """Read the refresh bearer token from Secret Manager (latest version).
+
+    Read at call time rather than injected as an env var so the function can be
+    deployed before the secret has any version — until one is added this returns
+    "" and the gate below rejects every request. Returns "" on any access error
+    (missing secret/version, no permission) so failures fail closed.
+    """
+    from google.cloud import secretmanager
+
+    name = f"projects/{GCP_PROJECT_ID}/secrets/{REFRESH_SECRET_ID}/versions/latest"
+    try:
+        client = secretmanager.SecretManagerServiceClient()
+        resp = client.access_secret_version(name=name)
+        return resp.payload.data.decode("utf-8").strip()
+    except Exception as e:
+        logger.warning("Could not read refresh token secret: %s", e)
+        return ""
+
+
 def _refresh(token: str) -> dict:
     """Force-run the divebar pipeline scheduler jobs on demand.
 
-    Validates the shared bearer token, then triggers each job in
-    REFRESH_SCHEDULER_JOBS via the Cloud Scheduler API. Jobs run
+    Validates the shared bearer token (from Secret Manager), then triggers each
+    job in REFRESH_SCHEDULER_JOBS via the Cloud Scheduler API. Jobs run
     asynchronously under their own identities; this returns as soon as they're
     queued.
 
     Returns {"triggered": [...]} on success. Raises PermissionError on a
     bad/missing token.
     """
-    expected = os.environ.get("DIVEBAR_REFRESH_TOKEN", "")
+    expected = _get_expected_token()
     # Constant-time compare; also reject when the token isn't configured so a
-    # misconfigured deploy can't be bypassed with an empty token.
+    # function deployed before the secret has a value can't be bypassed.
     if not expected or not token or not hmac.compare_digest(str(token), expected):
         raise PermissionError("invalid or missing refresh token")
 

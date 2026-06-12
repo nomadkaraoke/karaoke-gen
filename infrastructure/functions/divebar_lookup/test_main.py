@@ -14,9 +14,9 @@ from unittest.mock import MagicMock
 import pytest
 
 # Stub out Cloud Function deps that aren't installed in the test env. The
-# scheduler client is imported lazily inside _refresh, so stub it here too.
-# functions_framework.http must be an identity decorator so the real entry
-# point stays callable (a bare MagicMock would replace it).
+# scheduler/secret clients are imported lazily inside the refresh helpers, so
+# stub them here too. functions_framework.http must be an identity decorator so
+# the real entry point stays callable (a bare MagicMock would replace it).
 _functions_framework = MagicMock()
 _functions_framework.http = lambda fn: fn
 _scheduler_mod = MagicMock()
@@ -25,6 +25,7 @@ for name, mod in (
     ("google.cloud.bigquery", MagicMock()),
     ("google.cloud.storage", MagicMock()),
     ("google.cloud.scheduler_v1", _scheduler_mod),
+    ("google.cloud.secretmanager", MagicMock()),
 ):
     sys.modules.setdefault(name, mod)
 
@@ -37,8 +38,9 @@ TOKEN = "s3cret-refresh-token"
 
 @pytest.fixture(autouse=True)
 def _reset_scheduler(monkeypatch):
-    """Fresh scheduler client mock + configured token for each test."""
-    monkeypatch.setenv("DIVEBAR_REFRESH_TOKEN", TOKEN)
+    """Fresh scheduler client mock + a configured token (read from Secret
+    Manager at runtime, mocked here) for each test."""
+    monkeypatch.setattr(main, "_get_expected_token", lambda: TOKEN)
     client = MagicMock()
     _scheduler_mod.CloudSchedulerClient = MagicMock(return_value=client)
     yield client
@@ -69,9 +71,9 @@ class TestRefreshTokenGate:
         _reset_scheduler.run_job.assert_not_called()
 
     def test_unconfigured_server_token_raises(self, monkeypatch, _reset_scheduler):
-        # Even if the caller sends a token, an unconfigured server rejects it
-        # (can't be bypassed with a blank expected value).
-        monkeypatch.delenv("DIVEBAR_REFRESH_TOKEN", raising=False)
+        # Secret has no value yet (read returns "") — even if the caller sends a
+        # token, an unconfigured server rejects it (fails closed).
+        monkeypatch.setattr(main, "_get_expected_token", lambda: "")
         with pytest.raises(PermissionError):
             main._refresh("anything")
         _reset_scheduler.run_job.assert_not_called()

@@ -8,5 +8,8 @@ google-cloud-storage>=2.13.0
 # divebar mirror/sync/xref scheduler jobs)
 google-cloud-scheduler>=2.13.0
 
+# Secret Manager (reads the `refresh` action's bearer token at runtime)
+google-cloud-secret-manager>=2.16.0
+
 # Cloud Functions framework
 functions-framework>=3.0.0
