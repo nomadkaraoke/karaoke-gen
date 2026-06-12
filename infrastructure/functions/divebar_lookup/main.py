@@ -15,10 +15,22 @@ Provides search and cross-reference endpoints for the KJ Controller:
   POST /  {"action": "download_url", "file_id": "abc123"}
     → Generate a signed Google Drive download URL
 
+  POST /  {"action": "refresh", "token": "..."}
+    → On-demand "refresh now": force-run the divebar scheduler jobs
+      (Drive→BigQuery index, Drive→GCS file sync, xref rebuild) so a track
+      just published to the Nomad Drive shows up without waiting for the
+      nightly 2/3/6 AM runs. Token-gated (shared bearer) since the endpoint
+      is otherwise public.
+
 Environment variables:
   GCP_PROJECT_ID: GCP project ID
+  GCP_REGION: region the divebar scheduler jobs live in (for `refresh`)
+  DIVEBAR_REFRESH_SECRET_ID: Secret Manager secret holding the `refresh` bearer
+    token (read at runtime, so the function deploys before the secret has a
+    value — it just returns 403 until one is added)
 """
 
+import hmac
 import json
 import logging
 import os
@@ -32,7 +44,17 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 logger = logging.getLogger(__name__)
 
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "nomadkaraoke")
+GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 DATASET = "karaoke_decide"
+REFRESH_SECRET_ID = os.environ.get("DIVEBAR_REFRESH_SECRET_ID", "divebar-refresh-token")
+
+# Cloud Scheduler jobs the `refresh` action force-runs, in pipeline order.
+# Each carries its own OIDC identity/target, so we only need run permission.
+REFRESH_SCHEDULER_JOBS = [
+    "divebar-mirror-daily",        # Drive -> BigQuery index (track first appears)
+    "divebar-sync-vm-daily",       # Drive -> GCS file sync (upgrades to fast URL)
+    "divebar-xref-rebuild-daily",  # KN <-> Divebar cross-reference rebuild
+]
 
 
 def _json_response(data: dict, status: int = 200):
@@ -379,6 +401,68 @@ def _get_full_stats() -> dict:
     }
 
 
+def _get_expected_token() -> str:
+    """Read the refresh bearer token from Secret Manager (latest version).
+
+    Read at call time rather than injected as an env var so the function can be
+    deployed before the secret has any version — until one is added this returns
+    "" and the gate below rejects every request. Returns "" on any access error
+    (missing secret/version, no permission) so failures fail closed.
+    """
+    from google.cloud import secretmanager
+
+    name = f"projects/{GCP_PROJECT_ID}/secrets/{REFRESH_SECRET_ID}/versions/latest"
+    try:
+        client = secretmanager.SecretManagerServiceClient()
+        resp = client.access_secret_version(name=name)
+        return resp.payload.data.decode("utf-8").strip()
+    except Exception as e:
+        logger.warning("Could not read refresh token secret: %s", e)
+        return ""
+
+
+def _refresh(token: str) -> dict:
+    """Force-run the divebar pipeline scheduler jobs on demand.
+
+    Validates the shared bearer token (from Secret Manager), then triggers each
+    job in REFRESH_SCHEDULER_JOBS via the Cloud Scheduler API. Jobs run
+    asynchronously under their own identities; this returns as soon as they're
+    queued.
+
+    Returns {"triggered": [...]} on success. Raises PermissionError on a
+    bad/missing token.
+    """
+    expected = _get_expected_token()
+    # Constant-time compare; also reject when the token isn't configured so a
+    # function deployed before the secret has a value can't be bypassed.
+    if not expected or not token or not hmac.compare_digest(str(token), expected):
+        raise PermissionError("invalid or missing refresh token")
+
+    from google.cloud import scheduler_v1
+
+    client = scheduler_v1.CloudSchedulerClient()
+    triggered, failed = [], []
+    for job in REFRESH_SCHEDULER_JOBS:
+        job_path = f"projects/{GCP_PROJECT_ID}/locations/{GCP_REGION}/jobs/{job}"
+        try:
+            client.run_job(name=job_path)
+            triggered.append(job)
+        except Exception as e:
+            # Best-effort: one job failing (e.g. already running) shouldn't
+            # block the others. Surface it so callers can see partial success.
+            logger.warning("Failed to run scheduler job %s: %s", job, e)
+            failed.append({"job": job, "error": str(e)})
+
+    return {
+        "triggered": triggered,
+        "failed": failed,
+        # The mirror/sync jobs run async (index ~minutes, GCS sync up to ~1h);
+        # the catalog reflects a newly-published track once the mirror index
+        # completes. xref fully reflects new tracks after the next mirror run.
+        "note": "Jobs queued. New tracks appear after the mirror index completes (~minutes).",
+    }
+
+
 @functions_framework.http
 def divebar_lookup(request):
     """HTTP Cloud Function entry point."""
@@ -433,6 +517,14 @@ def divebar_lookup(request):
         elif action == "stats":
             stats = _get_full_stats()
             return _json_response({"status": "ok", **stats})
+
+        elif action == "refresh":
+            try:
+                result = _refresh(body.get("token", ""))
+            except PermissionError:
+                # Don't leak whether the token exists; uniform 403.
+                return _json_response({"status": "error", "message": "forbidden"}, 403)
+            return _json_response({"status": "ok", **result})
 
         else:
             return _json_response({"status": "error", "message": f"Unknown action: {action}"}, 400)
