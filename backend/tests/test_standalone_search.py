@@ -545,6 +545,57 @@ class TestCreateJobFromSearch:
         assert job_create.artist == "Abba (Display)"
         assert job_create.title == "Waterloo (Karaoke)"
 
+    def test_corrected_artist_title_wins_over_session_query(self, create_from_search_client, auth_headers):
+        """Regression: when the user clicks "Use official formatting", the corrected
+        artist/title sent in the request body must win over the original (raw) search
+        query stored in the session. Previously the job was named with the raw query,
+        so the official formatting selection was silently ignored."""
+        # Session was created from the raw lowercase query the user typed...
+        raw_session = _make_search_session(user_email="test@example.com")
+        raw_session["artist"] = "hard-fi"
+        raw_session["title"] = "hard to beat"
+        create_from_search_client._mock_firestore.get_search_session.return_value = raw_session
+        create_from_search_client._mock_firestore.consume_search_session.return_value = raw_session
+
+        # ...then the user picked the official formatting, so the frontend sends the
+        # corrected artist/title (no separate display override).
+        create_from_search_client.post(
+            "/api/jobs/create-from-search",
+            json={
+                "search_session_id": "sess-abc-123",
+                "selection_index": 0,
+                "artist": "Hard-Fi",
+                "title": "Hard to Beat",
+            },
+            headers=auth_headers,
+        )
+        call_args = create_from_search_client._mock_jm.create_job.call_args
+        job_create = call_args[0][0]
+        assert job_create.artist == "Hard-Fi"
+        assert job_create.title == "Hard to Beat"
+        # The original query is still preserved for audio-search matching metadata.
+        assert job_create.audio_search_artist == "hard-fi"
+        assert job_create.audio_search_title == "hard to beat"
+
+    def test_blank_body_artist_title_falls_back_to_session_query(self, create_from_search_client, auth_headers):
+        """Whitespace-only artist/title in the body must not become the job name —
+        fall back to the stored search query instead."""
+        create_from_search_client.post(
+            "/api/jobs/create-from-search",
+            json={
+                "search_session_id": "sess-abc-123",
+                "selection_index": 0,
+                "artist": "   ",
+                "title": "\t",
+            },
+            headers=auth_headers,
+        )
+        call_args = create_from_search_client._mock_jm.create_job.call_args
+        job_create = call_args[0][0]
+        # Session stores "ABBA" / "Waterloo" (see _make_search_session).
+        assert job_create.artist == "ABBA"
+        assert job_create.title == "Waterloo"
+
     def test_session_consumed_atomically(self, create_from_search_client, auth_headers):
         """Session is consumed (atomically read+deleted) via consume_search_session."""
         create_from_search_client.post(

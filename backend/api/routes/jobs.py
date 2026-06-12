@@ -2434,11 +2434,21 @@ async def create_job_from_search(
         from backend.services.job_defaults_service import resolve_cdg_txt_defaults
         resolved_cdg, resolved_txt = resolve_cdg_txt_defaults(effective_theme_id, None, None)
 
-        # Determine display values
+        # Determine display values.
+        # The session stores the ORIGINAL search query (e.g. "hard-fi"). body.artist/
+        # body.title carry whatever is currently in the wizard's artist/title fields,
+        # which reflect a "Use official formatting" correction the user may have applied
+        # after searching. The displayed job name must honour that correction, so prefer
+        # the request body over the stored query. An explicit display override wins above all.
         session_artist = session.get('artist', body.artist)
         session_title = session.get('title', body.title)
-        effective_display_artist = body.display_artist or session_artist
-        effective_display_title = body.display_title or session_title
+        # body.artist/body.title are required but unvalidated for whitespace, so strip
+        # them and fall back to the stored query if blank (display_* is pre-stripped to
+        # None by its validator). This keeps a stray "   " from becoming the job name.
+        body_artist = (body.artist or "").strip()
+        body_title = (body.title or "").strip()
+        effective_display_artist = body.display_artist or body_artist or session_artist
+        effective_display_title = body.display_title or body_title or session_title
 
         tenant_id = session.get('tenant_id') or ""
 
