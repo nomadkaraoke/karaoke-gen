@@ -115,10 +115,31 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
             service_account_email=sa.email,
             environment_variables={
                 "GCP_PROJECT_ID": PROJECT_ID,
+                # Region the divebar scheduler jobs live in — the `refresh`
+                # action builds job paths from it to run them on demand.
+                "GCP_REGION": REGION,
             },
+            # Shared bearer token gating the `refresh` action (anti-abuse on an
+            # otherwise-public endpoint). Injected from Secret Manager.
+            secret_environment_variables=[
+                cloudfunctionsv2.FunctionServiceConfigSecretEnvironmentVariableArgs(
+                    key="DIVEBAR_REFRESH_TOKEN",
+                    project_id=PROJECT_ID,
+                    secret=all_secrets["divebar-refresh-token"].secret_id,
+                    version="latest",
+                ),
+            ],
         ),
     )
     resources["function"] = function
+
+    # Allow the function SA to read the refresh-token secret.
+    resources["refresh_token_accessor"] = gcp.secretmanager.SecretIamMember(
+        "divebar-lookup-refresh-token-accessor",
+        secret_id=all_secrets["divebar-refresh-token"].secret_id,
+        role="roles/secretmanager.secretAccessor",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
 
     # ==================== IAM: Allow unauthenticated access ====================
     # The KJ Controller calls this from a LAN device without GCP credentials.
@@ -187,6 +208,33 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
             min_backoff_duration="60s",
             max_backoff_duration="300s",
         ),
+    )
+
+    # ==================== IAM: on-demand scheduler-job runner ====================
+    # The `refresh` action forces the existing divebar scheduler jobs
+    # (mirror index, file-sync VM start, xref rebuild) to run immediately,
+    # reusing their own OIDC identities and targets. The function SA therefore
+    # only needs permission to *run* those jobs — not to invoke the mirror
+    # function or start the VM directly. Least-privilege custom role rather than
+    # the broad roles/cloudscheduler.admin.
+
+    scheduler_runner_role = gcp.projects.IAMCustomRole(
+        "divebar-scheduler-runner-role",
+        role_id="divebarSchedulerRunner",
+        title="Divebar Scheduler Job Runner",
+        description="Run (force-trigger) Divebar Cloud Scheduler jobs on demand",
+        permissions=[
+            "cloudscheduler.jobs.run",
+            "cloudscheduler.jobs.get",
+        ],
+    )
+    resources["scheduler_runner_role"] = scheduler_runner_role
+
+    resources["scheduler_runner_binding"] = gcp.projects.IAMMember(
+        "divebar-lookup-scheduler-runner",
+        project=PROJECT_ID,
+        role=scheduler_runner_role.id,
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
     return resources

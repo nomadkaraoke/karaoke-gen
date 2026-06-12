@@ -4,5 +4,9 @@ google-cloud-bigquery>=3.13.0
 # Cloud Storage (for signed download URLs)
 google-cloud-storage>=2.13.0
 
+# Cloud Scheduler (for the on-demand `refresh` action — force-runs the
+# divebar mirror/sync/xref scheduler jobs)
+google-cloud-scheduler>=2.13.0
+
 # Cloud Functions framework
 functions-framework>=3.0.0

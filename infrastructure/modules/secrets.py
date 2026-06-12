@@ -68,6 +68,12 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
 
         # Notifications (Discord)
         "discord-alert-webhook",
+
+        # Divebar on-demand refresh trigger (shared bearer token: kjbox's
+        # "Refresh catalog" button -> divebar-lookup `refresh` action). Gates
+        # an otherwise-public endpoint that re-runs the mirror/sync/xref
+        # scheduler jobs on demand, so it's anti-abuse, not data-sensitive.
+        "divebar-refresh-token",
     ]
 
     secrets = {}
