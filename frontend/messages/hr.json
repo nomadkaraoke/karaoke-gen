@@ -780,7 +780,13 @@
     "fadeIn": "Postupno pojačavanje",
     "fadeInSelection": "Postupno pojačaj odabrano područje",
     "fadeOut": "Postupno stišavanje",
-    "fadeOutSelection": "Postupno stišaj odabrano područje"
+    "fadeOutSelection": "Postupno stišaj odabrano područje",
+    "fadeInDisabledHint": "Za postepeno pojačavanje zvuka, odaberi dio koji počinje na samom početku trake",
+    "fadeOutDisabledHint": "Za postepeno stišavanje zvuka, odaberi dio koji završava na samom kraju trake",
+    "trimEndDisabledHint": "Za skraćivanje kraja, odaberi dio koji završava na samom kraju trake",
+    "trimEndSelection": "Ukloni sve nakon odabira",
+    "trimStartDisabledHint": "Za skraćivanje početka, odaberi dio koji počinje na samom početku trake",
+    "trimStartSelection": "Ukloni sve prije odabira"
   },
   "audioEditRestore": {
     "title": "Spremljene sesije uređivanja zvuka",

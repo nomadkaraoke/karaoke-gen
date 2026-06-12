@@ -780,7 +780,13 @@
     "fadeIn": "Postupné zosilnenie",
     "fadeInSelection": "Postupné zosilnenie vo vybranej oblasti",
     "fadeOut": "Postupné stíšenie",
-    "fadeOutSelection": "Postupné stíšenie vo vybranej oblasti"
+    "fadeOutSelection": "Postupné stíšenie vo vybranej oblasti",
+    "fadeInDisabledHint": "Ak chceš použiť postupné zosilnenie, vyber oblasť, ktorá sa začína na úplnom začiatku stopy",
+    "fadeOutDisabledHint": "Ak chceš použiť postupné zoslabenie, vyber oblasť, ktorá sa končí na úplnom konci stopy",
+    "trimEndDisabledHint": "Ak chceš orezať koniec, vyber oblasť, ktorá sa končí na úplnom konci stopy",
+    "trimEndSelection": "Odstrániť všetko za výberom",
+    "trimStartDisabledHint": "Ak chceš orezať začiatok, vyber oblasť, ktorá sa začína na úplnom začiatku stopy",
+    "trimStartSelection": "Odstrániť všetko pred výberom"
   },
   "audioEditRestore": {
     "title": "Uložené relácie úprav zvuku",

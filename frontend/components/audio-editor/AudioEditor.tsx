@@ -384,6 +384,12 @@ export function AudioEditor({ job }: AudioEditorProps) {
     ? (audioInfo?.original_duration_seconds ?? 0)
     : (audioInfo?.current_duration_seconds ?? 0)
 
+  // Trim/Fade are edge actions — only valid when the selection touches the
+  // very start or very end of the track (1s tolerance, matching the
+  // server-side anchoring in audio_edit_service.fade_region).
+  const atStartEdge = !!selection && selection.startSeconds < 1
+  const atEndEdge = !!selection && selection.endSeconds > currentDuration - 1
+
   // ─── Auto-save ─────────────────────────────────────────────────
 
   const { saveSession } = useAudioEditAutoSave({
@@ -884,54 +890,52 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 {formatTimePrecise(selection.startSeconds)} - {formatTimePrecise(selection.endSeconds)}
                 ({formatTimePrecise(selection.endSeconds - selection.startSeconds)})
               </span>
-              {selection.startSeconds < 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isOperating}
-                  onClick={handleTrimStart}
-                  className="text-xs h-7"
-                >
-                  {t('trimStart')}
-                </Button>
-              )}
-              {selection.startSeconds < 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isOperating}
-                  onClick={handleFadeIn}
-                  className="text-xs h-7"
-                  title={t('fadeInSelection')}
-                >
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                  {t('fadeIn')}
-                </Button>
-              )}
-              {selection.endSeconds > currentDuration - 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isOperating}
-                  onClick={handleTrimEnd}
-                  className="text-xs h-7"
-                >
-                  {t('trimEnd')}
-                </Button>
-              )}
-              {selection.endSeconds > currentDuration - 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isOperating}
-                  onClick={handleFadeOut}
-                  className="text-xs h-7"
-                  title={t('fadeOutSelection')}
-                >
-                  <TrendingDown className="w-3 h-3 mr-1" />
-                  {t('fadeOut')}
-                </Button>
-              )}
+              {/* Trim/Fade are edge actions: enabled only when the selection
+                  touches the very start (start) or very end (end) of the track.
+                  Always rendered (disabled off-edge) so the actions stay
+                  discoverable, with a tooltip explaining how to enable them. */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isOperating || !atStartEdge}
+                onClick={handleTrimStart}
+                className="text-xs h-7"
+                title={atStartEdge ? t('trimStartSelection') : t('trimStartDisabledHint')}
+              >
+                {t('trimStart')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isOperating || !atStartEdge}
+                onClick={handleFadeIn}
+                className="text-xs h-7"
+                title={atStartEdge ? t('fadeInSelection') : t('fadeInDisabledHint')}
+              >
+                <TrendingUp className="w-3 h-3 mr-1" />
+                {t('fadeIn')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isOperating || !atEndEdge}
+                onClick={handleTrimEnd}
+                className="text-xs h-7"
+                title={atEndEdge ? t('trimEndSelection') : t('trimEndDisabledHint')}
+              >
+                {t('trimEnd')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isOperating || !atEndEdge}
+                onClick={handleFadeOut}
+                className="text-xs h-7"
+                title={atEndEdge ? t('fadeOutSelection') : t('fadeOutDisabledHint')}
+              >
+                <TrendingDown className="w-3 h-3 mr-1" />
+                {t('fadeOut')}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

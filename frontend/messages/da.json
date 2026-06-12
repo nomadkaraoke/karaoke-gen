@@ -780,7 +780,13 @@
     "fadeIn": "Fade ind",
     "fadeInSelection": "Fade ind over det valgte område",
     "fadeOut": "Fade ud",
-    "fadeOutSelection": "Fade ud over det valgte område"
+    "fadeOutSelection": "Fade ud over det valgte område",
+    "fadeInDisabledHint": "For at fade ind skal du vælge et område, der begynder helt i starten af sporet",
+    "fadeOutDisabledHint": "For at fade ud skal du vælge et område, der slutter helt for enden af sporet",
+    "trimEndDisabledHint": "For at beskære slutningen skal du vælge et område, der slutter helt for enden af sporet",
+    "trimEndSelection": "Fjern alt efter markeringen",
+    "trimStartDisabledHint": "For at beskære starten skal du vælge et område, der begynder helt i starten af sporet",
+    "trimStartSelection": "Fjern alt før markeringen"
   },
   "audioEditRestore": {
     "title": "Gemte lydredigeringssessioner",

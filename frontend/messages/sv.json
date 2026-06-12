@@ -780,7 +780,13 @@
     "fadeIn": "Tona in",
     "fadeInSelection": "Tona in över det markerade området",
     "fadeOut": "Tona ut",
-    "fadeOutSelection": "Tona ut över det markerade området"
+    "fadeOutSelection": "Tona ut över det markerade området",
+    "fadeInDisabledHint": "För att tona in, markera ett område som börjar precis i början av spåret",
+    "fadeOutDisabledHint": "För att tona ut, markera ett område som slutar precis i slutet av spåret",
+    "trimEndDisabledHint": "För att trimma slutet, markera ett område som slutar precis i slutet av spåret",
+    "trimEndSelection": "Ta bort allt efter markeringen",
+    "trimStartDisabledHint": "För att trimma början, markera ett område som börjar precis i början av spåret",
+    "trimStartSelection": "Ta bort allt före markeringen"
   },
   "audioEditRestore": {
     "title": "Sparade ljudredigeringssessioner",

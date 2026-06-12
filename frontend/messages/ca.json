@@ -780,7 +780,13 @@
     "fadeIn": "Fosa d'entrada",
     "fadeInSelection": "Aplica una fosa d'entrada a la regió seleccionada",
     "fadeOut": "Fosa de sortida",
-    "fadeOutSelection": "Aplica una fosa de sortida a la regió seleccionada"
+    "fadeOutSelection": "Aplica una fosa de sortida a la regió seleccionada",
+    "fadeInDisabledHint": "Per fer una fosa d'entrada, selecciona una regió que comenci just al principi de la pista",
+    "fadeOutDisabledHint": "Per fer una fosa de sortida, selecciona una regió que acabi just al final de la pista",
+    "trimEndDisabledHint": "Per retallar el final, selecciona una regió que acabi just al final de la pista",
+    "trimEndSelection": "Elimina tot el que hi ha després de la selecció",
+    "trimStartDisabledHint": "Per retallar el principi, selecciona una regió que comenci just al principi de la pista",
+    "trimStartSelection": "Elimina tot el que hi ha abans de la selecció"
   },
   "audioEditRestore": {
     "title": "Sessions d'edició d'àudio desades",

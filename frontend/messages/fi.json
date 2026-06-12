@@ -780,7 +780,13 @@
     "fadeIn": "Häivytä sisään",
     "fadeInSelection": "Häivytä sisään valitulla alueella",
     "fadeOut": "Häivytä ulos",
-    "fadeOutSelection": "Häivytä ulos valitulla alueella"
+    "fadeOutSelection": "Häivytä ulos valitulla alueella",
+    "fadeInDisabledHint": "Jos haluat lisätä sisäänhäivytyksen, valitse alue, joka alkaa aivan raidan alusta",
+    "fadeOutDisabledHint": "Jos haluat lisätä uloshäivytyksen, valitse alue, joka päättyy aivan raidan loppuun",
+    "trimEndDisabledHint": "Jos haluat leikata lopun, valitse alue, joka päättyy aivan raidan loppuun",
+    "trimEndSelection": "Poista kaikki valinnan jälkeen",
+    "trimStartDisabledHint": "Jos haluat leikata alun, valitse alue, joka alkaa aivan raidan alusta",
+    "trimStartSelection": "Poista kaikki ennen valintaa"
   },
   "audioEditRestore": {
     "title": "Tallennetut äänimuokkausistunnot",

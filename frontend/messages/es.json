@@ -780,7 +780,13 @@
     "fadeIn": "Fundido de entrada",
     "fadeInSelection": "Aplicar fundido de entrada en la región seleccionada",
     "fadeOut": "Fundido de salida",
-    "fadeOutSelection": "Aplicar fundido de salida en la región seleccionada"
+    "fadeOutSelection": "Aplicar fundido de salida en la región seleccionada",
+    "fadeInDisabledHint": "Para hacer un fundido de entrada, selecciona una región que comience justo al principio de la pista",
+    "fadeOutDisabledHint": "Para hacer un fundido de salida, selecciona una región que termine justo al final de la pista",
+    "trimEndDisabledHint": "Para recortar el final, selecciona una región que termine justo al final de la pista",
+    "trimEndSelection": "Eliminar todo después de la selección",
+    "trimStartDisabledHint": "Para recortar el principio, selecciona una región que comience justo al principio de la pista",
+    "trimStartSelection": "Eliminar todo antes de la selección"
   },
   "audioEditRestore": {
     "title": "Sesiones de edición de audio guardadas",

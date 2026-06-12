@@ -780,7 +780,13 @@
     "fadeIn": "Dissolvenza in entrata",
     "fadeInSelection": "Dissolvenza in entrata sulla regione selezionata",
     "fadeOut": "Dissolvenza in uscita",
-    "fadeOutSelection": "Dissolvenza in uscita sulla regione selezionata"
+    "fadeOutSelection": "Dissolvenza in uscita sulla regione selezionata",
+    "fadeInDisabledHint": "Per la dissolvenza in entrata, seleziona una regione che parta esattamente dall'inizio della traccia",
+    "fadeOutDisabledHint": "Per la dissolvenza in uscita, seleziona una regione che termini esattamente alla fine della traccia",
+    "trimEndDisabledHint": "Per tagliare la fine, seleziona una regione che termini esattamente alla fine della traccia",
+    "trimEndSelection": "Rimuovi tutto dopo la selezione",
+    "trimStartDisabledHint": "Per tagliare l'inizio, seleziona una regione che parta esattamente dall'inizio della traccia",
+    "trimStartSelection": "Rimuovi tutto prima della selezione"
   },
   "audioEditRestore": {
     "title": "Sessioni di modifica audio salvate",

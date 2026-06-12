@@ -780,7 +780,13 @@
     "fadeIn": "Postupné zesílení",
     "fadeInSelection": "Postupné zesílení vybraného úseku",
     "fadeOut": "Postupné zeslabení",
-    "fadeOutSelection": "Postupné zeslabení vybraného úseku"
+    "fadeOutSelection": "Postupné zeslabení vybraného úseku",
+    "fadeInDisabledHint": "Pro postupné zesílení vyber úsek, který začíná na úplném začátku stopy",
+    "fadeOutDisabledHint": "Pro postupné zeslabení vyber úsek, který končí na úplném konci stopy",
+    "trimEndDisabledHint": "Pro oříznutí konce vyber úsek, který končí na úplném konci stopy",
+    "trimEndSelection": "Odstranit vše za výběrem",
+    "trimStartDisabledHint": "Pro oříznutí začátku vyber úsek, který začíná na úplném začátku stopy",
+    "trimStartSelection": "Odstranit vše před výběrem"
   },
   "audioEditRestore": {
     "title": "Uložené relace úprav zvuku",

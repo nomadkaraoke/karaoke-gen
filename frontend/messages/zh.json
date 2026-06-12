@@ -780,7 +780,13 @@
     "fadeIn": "淡入",
     "fadeInSelection": "在选定区域淡入",
     "fadeOut": "淡出",
-    "fadeOutSelection": "在选定区域淡出"
+    "fadeOutSelection": "在选定区域淡出",
+    "fadeInDisabledHint": "如需添加淡入效果，请选择从音轨最开头开始的区域",
+    "fadeOutDisabledHint": "如需添加淡出效果，请选择在音轨最末尾结束的区域",
+    "trimEndDisabledHint": "如需裁剪结尾，请选择在音轨最末尾结束的区域",
+    "trimEndSelection": "移除所选区域之后的所有内容",
+    "trimStartDisabledHint": "如需裁剪开头，请选择从音轨最开头开始的区域",
+    "trimStartSelection": "移除所选区域之前的所有内容"
   },
   "audioEditRestore": {
     "title": "已保存的音频编辑会话",

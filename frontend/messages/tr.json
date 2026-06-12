@@ -780,7 +780,13 @@
     "fadeIn": "Sesi Kademeli Artır",
     "fadeInSelection": "Seçili bölgede sesi kademeli artır",
     "fadeOut": "Sesi Kademeli Azalt",
-    "fadeOutSelection": "Seçili bölgede sesi kademeli azalt"
+    "fadeOutSelection": "Seçili bölgede sesi kademeli azalt",
+    "fadeInDisabledHint": "Sesi yavaşça açmak için parçanın en başından başlayan bir bölge seç",
+    "fadeOutDisabledHint": "Sesi yavaşça kısmak için parçanın en sonunda biten bir bölge seç",
+    "trimEndDisabledHint": "Sonu kırpmak için parçanın en sonunda biten bir bölge seç",
+    "trimEndSelection": "Seçimden sonraki her şeyi kaldır",
+    "trimStartDisabledHint": "Başlangıcı kırpmak için parçanın en başından başlayan bir bölge seç",
+    "trimStartSelection": "Seçimden önceki her şeyi kaldır"
   },
   "audioEditRestore": {
     "title": "Kaydedilmiş Ses Düzenleme Oturumları",
