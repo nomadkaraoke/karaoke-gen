@@ -780,7 +780,13 @@
     "fadeIn": "Fondu entrant",
     "fadeInSelection": "Fondu entrant sur la zone sélectionnée",
     "fadeOut": "Fondu sortant",
-    "fadeOutSelection": "Fondu sortant sur la zone sélectionnée"
+    "fadeOutSelection": "Fondu sortant sur la zone sélectionnée",
+    "fadeInDisabledHint": "Pour faire un fondu en ouverture, sélectionne une région qui commence tout au début de la piste",
+    "fadeOutDisabledHint": "Pour faire un fondu en fermeture, sélectionne une région qui se termine tout à la fin de la piste",
+    "trimEndDisabledHint": "Pour couper la fin, sélectionne une région qui se termine tout à la fin de la piste",
+    "trimEndSelection": "Tout supprimer après la sélection",
+    "trimStartDisabledHint": "Pour couper le début, sélectionne une région qui commence tout au début de la piste",
+    "trimStartSelection": "Tout supprimer avant la sélection"
   },
   "audioEditRestore": {
     "title": "Sessions d'édition audio sauvegardées",

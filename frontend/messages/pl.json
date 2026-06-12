@@ -780,7 +780,13 @@
     "fadeIn": "Płynne pogłaśnianie",
     "fadeInSelection": "Płynnie pogłośnij zaznaczony fragment",
     "fadeOut": "Płynne wyciszanie",
-    "fadeOutSelection": "Płynnie wycisz zaznaczony fragment"
+    "fadeOutSelection": "Płynnie wycisz zaznaczony fragment",
+    "fadeInDisabledHint": "Aby płynnie zgłośnić, zaznacz fragment, który zaczyna się na samym początku utworu",
+    "fadeOutDisabledHint": "Aby płynnie wyciszyć, zaznacz fragment, który kończy się na samym końcu utworu",
+    "trimEndDisabledHint": "Aby przyciąć koniec, zaznacz fragment, który kończy się na samym końcu utworu",
+    "trimEndSelection": "Usuń wszystko po zaznaczeniu",
+    "trimStartDisabledHint": "Aby przyciąć początek, zaznacz fragment, który zaczyna się na samym początku utworu",
+    "trimStartSelection": "Usuń wszystko przed zaznaczeniem"
   },
   "audioEditRestore": {
     "title": "Zapisane sesje edycji dźwięku",

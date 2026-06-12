@@ -780,7 +780,13 @@
     "fadeIn": "Fade In",
     "fadeInSelection": "Mag-fade in sa napiling bahagi",
     "fadeOut": "Fade Out",
-    "fadeOutSelection": "Mag-fade out sa napiling bahagi"
+    "fadeOutSelection": "Mag-fade out sa napiling bahagi",
+    "fadeInDisabledHint": "Para mag-fade in, pumili ng bahagi na nagsisimula sa mismong simula ng track",
+    "fadeOutDisabledHint": "Para mag-fade out, pumili ng bahagi na nagtatapos sa mismong dulo ng track",
+    "trimEndDisabledHint": "Para i-trim ang dulo, pumili ng bahagi na nagtatapos sa mismong dulo ng track",
+    "trimEndSelection": "Alisin ang lahat pagkatapos ng napiling bahagi",
+    "trimStartDisabledHint": "Para i-trim ang simula, pumili ng bahagi na nagsisimula sa mismong simula ng track",
+    "trimStartSelection": "Alisin ang lahat bago ang napiling bahagi"
   },
   "audioEditRestore": {
     "title": "Mga Naka-save na Audio Edit Session",

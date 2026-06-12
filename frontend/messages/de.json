@@ -780,7 +780,13 @@
     "fadeIn": "Einblenden",
     "fadeInSelection": "Über den ausgewählten Bereich einblenden",
     "fadeOut": "Ausblenden",
-    "fadeOutSelection": "Über den ausgewählten Bereich ausblenden"
+    "fadeOutSelection": "Über den ausgewählten Bereich ausblenden",
+    "fadeInDisabledHint": "Um einzublenden, wähle einen Bereich, der ganz am Anfang des Tracks beginnt",
+    "fadeOutDisabledHint": "Um auszublenden, wähle einen Bereich, der ganz am Ende des Tracks endet",
+    "trimEndDisabledHint": "Um das Ende abzuschneiden, wähle einen Bereich, der ganz am Ende des Tracks endet",
+    "trimEndSelection": "Alles nach der Auswahl entfernen",
+    "trimStartDisabledHint": "Um den Anfang abzuschneiden, wähle einen Bereich, der ganz am Anfang des Tracks beginnt",
+    "trimStartSelection": "Alles vor der Auswahl entfernen"
   },
   "audioEditRestore": {
     "title": "Gespeicherte Audiobearbeitungs-Sitzungen",

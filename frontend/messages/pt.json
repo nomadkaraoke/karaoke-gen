@@ -780,7 +780,13 @@
     "fadeIn": "Fade In",
     "fadeInSelection": "Aplicar fade in na região selecionada",
     "fadeOut": "Fade Out",
-    "fadeOutSelection": "Aplicar fade out na região selecionada"
+    "fadeOutSelection": "Aplicar fade out na região selecionada",
+    "fadeInDisabledHint": "Para aplicar fade in, selecione uma região que comece bem no início da faixa",
+    "fadeOutDisabledHint": "Para aplicar fade out, selecione uma região que termine bem no final da faixa",
+    "trimEndDisabledHint": "Para cortar o final, selecione uma região que termine bem no final da faixa",
+    "trimEndSelection": "Remover tudo após a seleção",
+    "trimStartDisabledHint": "Para cortar o início, selecione uma região que comece bem no início da faixa",
+    "trimStartSelection": "Remover tudo antes da seleção"
   },
   "audioEditRestore": {
     "title": "Sessões de Edição de Áudio Salvas",

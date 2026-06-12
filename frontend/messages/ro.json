@@ -780,7 +780,13 @@
     "fadeIn": "Fade In",
     "fadeInSelection": "Aplică fade in pe regiunea selectată",
     "fadeOut": "Fade Out",
-    "fadeOutSelection": "Aplică fade out pe regiunea selectată"
+    "fadeOutSelection": "Aplică fade out pe regiunea selectată",
+    "fadeInDisabledHint": "Pentru fade in, selectează o regiune care începe chiar de la începutul piesei",
+    "fadeOutDisabledHint": "Pentru fade out, selectează o regiune care se termină chiar la sfârșitul piesei",
+    "trimEndDisabledHint": "Pentru a tăia sfârșitul, selectează o regiune care se termină chiar la sfârșitul piesei",
+    "trimEndSelection": "Elimină totul de după selecție",
+    "trimStartDisabledHint": "Pentru a tăia începutul, selectează o regiune care începe chiar de la începutul piesei",
+    "trimStartSelection": "Elimină totul dinaintea selecției"
   },
   "audioEditRestore": {
     "title": "Sesiuni de editare audio salvate",

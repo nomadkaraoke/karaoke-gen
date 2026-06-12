@@ -780,7 +780,13 @@
     "fadeIn": "フェードイン",
     "fadeInSelection": "選択した範囲をフェードイン",
     "fadeOut": "フェードアウト",
-    "fadeOutSelection": "選択した範囲をフェードアウト"
+    "fadeOutSelection": "選択した範囲をフェードアウト",
+    "fadeInDisabledHint": "フェードインするには、トラックの先頭から始まる範囲を選択してください",
+    "fadeOutDisabledHint": "フェードアウトするには、トラックの末尾で終わる範囲を選択してください",
+    "trimEndDisabledHint": "末尾をトリミングするには、トラックの末尾で終わる範囲を選択してください",
+    "trimEndSelection": "選択範囲より後の部分をすべて削除します",
+    "trimStartDisabledHint": "先頭をトリミングするには、トラックの先頭から始まる範囲を選択してください",
+    "trimStartSelection": "選択範囲より前の部分をすべて削除します"
   },
   "audioEditRestore": {
     "title": "保存されたオーディオ編集セッション",

@@ -780,7 +780,13 @@
     "fadeIn": "Felerősítés",
     "fadeInSelection": "Felerősítés a kijelölt szakaszon",
     "fadeOut": "Elhalkítás",
-    "fadeOutSelection": "Elhalkítás a kijelölt szakaszon"
+    "fadeOutSelection": "Elhalkítás a kijelölt szakaszon",
+    "fadeInDisabledHint": "A felerősítéshez jelölj ki egy olyan részt, amely pontosan a sáv legeléjén kezdődik",
+    "fadeOutDisabledHint": "Az elhalkításhoz jelölj ki egy olyan részt, amely pontosan a sáv legvégéig tart",
+    "trimEndDisabledHint": "A végének levágásához jelölj ki egy olyan részt, amely pontosan a sáv legvégéig tart",
+    "trimEndSelection": "Minden eltávolítása a kijelölés után",
+    "trimStartDisabledHint": "Az elejének levágásához jelölj ki egy olyan részt, amely pontosan a sáv legeléjén kezdődik",
+    "trimStartSelection": "Minden eltávolítása a kijelölés előtt"
   },
   "audioEditRestore": {
     "title": "Mentett hangszerkesztési munkamenetek",

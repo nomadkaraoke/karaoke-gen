@@ -780,7 +780,13 @@
     "fadeIn": "Tăng dần âm lượng",
     "fadeInSelection": "Tăng dần âm lượng trong vùng đã chọn",
     "fadeOut": "Giảm dần âm lượng",
-    "fadeOutSelection": "Giảm dần âm lượng trong vùng đã chọn"
+    "fadeOutSelection": "Giảm dần âm lượng trong vùng đã chọn",
+    "fadeInDisabledHint": "Để tăng dần âm lượng, hãy chọn một đoạn bắt đầu ngay từ đầu bản nhạc",
+    "fadeOutDisabledHint": "Để giảm dần âm lượng, hãy chọn một đoạn kết thúc ngay ở cuối bản nhạc",
+    "trimEndDisabledHint": "Để cắt phần cuối, hãy chọn một đoạn kết thúc ngay ở cuối bản nhạc",
+    "trimEndSelection": "Xóa mọi thứ sau phần được chọn",
+    "trimStartDisabledHint": "Để cắt phần đầu, hãy chọn một đoạn bắt đầu ngay từ đầu bản nhạc",
+    "trimStartSelection": "Xóa mọi thứ trước phần được chọn"
   },
   "audioEditRestore": {
     "title": "Các phiên chỉnh sửa âm thanh đã lưu",

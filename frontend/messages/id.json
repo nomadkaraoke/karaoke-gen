@@ -780,7 +780,13 @@
     "fadeIn": "Fade In",
     "fadeInSelection": "Terapkan fade in pada bagian yang dipilih",
     "fadeOut": "Fade Out",
-    "fadeOutSelection": "Terapkan fade out pada bagian yang dipilih"
+    "fadeOutSelection": "Terapkan fade out pada bagian yang dipilih",
+    "fadeInDisabledHint": "Untuk menerapkan fade in, pilih bagian yang dimulai tepat dari awal trek",
+    "fadeOutDisabledHint": "Untuk menerapkan fade out, pilih bagian yang berakhir tepat di akhir trek",
+    "trimEndDisabledHint": "Untuk memotong bagian akhir, pilih bagian yang berakhir tepat di akhir trek",
+    "trimEndSelection": "Hapus semua setelah bagian yang dipilih",
+    "trimStartDisabledHint": "Untuk memotong bagian awal, pilih bagian yang dimulai tepat dari awal trek",
+    "trimStartSelection": "Hapus semua sebelum bagian yang dipilih"
   },
   "audioEditRestore": {
     "title": "Sesi Edit Audio Tersimpan",

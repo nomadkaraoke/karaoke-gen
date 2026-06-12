@@ -780,7 +780,13 @@
     "fadeIn": "Pudar Masuk",
     "fadeInSelection": "Pudar masuk pada bahagian yang dipilih",
     "fadeOut": "Pudar Keluar",
-    "fadeOutSelection": "Pudar keluar pada bahagian yang dipilih"
+    "fadeOutSelection": "Pudar keluar pada bahagian yang dipilih",
+    "fadeInDisabledHint": "Untuk fade in, pilih bahagian yang bermula tepat pada permulaan trek",
+    "fadeOutDisabledHint": "Untuk fade out, pilih bahagian yang berakhir tepat pada penghujung trek",
+    "trimEndDisabledHint": "Untuk memotong bahagian akhir, pilih bahagian yang berakhir tepat pada penghujung trek",
+    "trimEndSelection": "Buang semua bahagian selepas pilihan",
+    "trimStartDisabledHint": "Untuk memotong bahagian awal, pilih bahagian yang bermula tepat pada permulaan trek",
+    "trimStartSelection": "Buang semua bahagian sebelum pilihan"
   },
   "audioEditRestore": {
     "title": "Sesi Suntingan Audio Disimpan",

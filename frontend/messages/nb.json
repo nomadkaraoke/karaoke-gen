@@ -780,7 +780,13 @@
     "fadeIn": "Ton inn",
     "fadeInSelection": "Ton inn over det valgte området",
     "fadeOut": "Ton ut",
-    "fadeOutSelection": "Ton ut over det valgte området"
+    "fadeOutSelection": "Ton ut over det valgte området",
+    "fadeInDisabledHint": "For å tone inn, velg et område som starter helt i begynnelsen av sporet",
+    "fadeOutDisabledHint": "For å tone ut, velg et område som går helt til slutten av sporet",
+    "trimEndDisabledHint": "For å trimme slutten, velg et område som går helt til slutten av sporet",
+    "trimEndSelection": "Fjern alt etter markeringen",
+    "trimStartDisabledHint": "For å trimme starten, velg et område som starter helt i begynnelsen av sporet",
+    "trimStartSelection": "Fjern alt før markeringen"
   },
   "audioEditRestore": {
     "title": "Lagrede lydredigeringsøkter",

@@ -391,6 +391,36 @@ describe("AudioEditor", () => {
     })
   })
 
+  it("renders Trim/Fade buttons disabled for a mid-track selection", async () => {
+    mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Audio Editor")).toBeInTheDocument()
+    })
+
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement
+    jest.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 1000, bottom: 140, width: 1000, height: 140, x: 0, y: 0,
+      toJSON: () => ({}),
+    } as DOMRect)
+
+    // Drag a mid-track region (duration 200, width 1000 → 100px≈20s, 300px≈60s)
+    fireEvent.mouseDown(canvas, { clientX: 100 })
+    fireEvent.mouseMove(canvas, { clientX: 300 })
+    fireEvent.mouseUp(canvas, { clientX: 300 })
+
+    // Buttons stay visible (discoverable) but disabled off-edge
+    const fadeIn = (await screen.findByText("Fade In")).closest("button")
+    const fadeOut = screen.getByText("Fade Out").closest("button")
+    const trimStart = screen.getByText("Trim Start").closest("button")
+    const trimEnd = screen.getByText("Trim End").closest("button")
+    expect(fadeIn).toBeDisabled()
+    expect(fadeOut).toBeDisabled()
+    expect(trimStart).toBeDisabled()
+    expect(trimEnd).toBeDisabled()
+  })
+
   it("shows playback controls", async () => {
     mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
     render(<AudioEditor job={mockJob} />)

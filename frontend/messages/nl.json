@@ -780,7 +780,13 @@
     "fadeIn": "Fade-in",
     "fadeInSelection": "Fade-in over het geselecteerde gedeelte",
     "fadeOut": "Fade-out",
-    "fadeOutSelection": "Fade-out over het geselecteerde gedeelte"
+    "fadeOutSelection": "Fade-out over het geselecteerde gedeelte",
+    "fadeInDisabledHint": "Om in te faden, selecteer je een gedeelte dat helemaal aan het begin van de track begint",
+    "fadeOutDisabledHint": "Om uit te faden, selecteer je een gedeelte dat helemaal aan het einde van de track eindigt",
+    "trimEndDisabledHint": "Om het einde bij te knippen, selecteer je een gedeelte dat helemaal aan het einde van de track eindigt",
+    "trimEndSelection": "Verwijder alles na de selectie",
+    "trimStartDisabledHint": "Om het begin bij te knippen, selecteer je een gedeelte dat helemaal aan het begin van de track begint",
+    "trimStartSelection": "Verwijder alles voor de selectie"
   },
   "audioEditRestore": {
     "title": "Opgeslagen Audio Bewerkingssessies",
