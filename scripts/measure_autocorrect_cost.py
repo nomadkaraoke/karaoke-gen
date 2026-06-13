@@ -19,7 +19,7 @@ Usage:
     python scripts/measure_autocorrect_cost.py --jobs abc123 def456
 
     # Single-model instead of the multi-model compare config
-    python scripts/measure_autocorrect_cost.py --limit 3 --models claude-fable-5
+    python scripts/measure_autocorrect_cost.py --limit 3 --models claude-opus-4-8
 
 Requires:
     - ANTHROPIC_API_KEY in the environment (for claude-* models)
@@ -55,7 +55,7 @@ logger.setLevel(logging.INFO)
 
 PROJECT = "nomadkaraoke"
 GCS_BUCKET = "karaoke-gen-storage-nomadkaraoke"
-DEFAULT_MODELS = ["claude-fable-5", "gemini-3.1-pro-preview"]
+DEFAULT_MODELS = ["claude-opus-4-8", "gemini-3.1-pro-preview"]
 
 
 # ---------------------------------------------------------------------------

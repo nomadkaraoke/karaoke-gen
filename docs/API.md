@@ -606,13 +606,13 @@ Returns:
       "reason": "All references read 'chlorine' here",
       "category": "mishearing",
       "confidence": 0.95,
-      "models": ["claude-fable-5", "gemini-3.1-pro-preview"],
+      "models": ["claude-opus-4-8", "gemini-3.1-pro-preview"],
       "consensus": 2,
       "total_models": 2,
       "conflict_group": null
     }
   ],
-  "model": "claude-fable-5, gemini-3.1-pro-preview",
+  "model": "claude-opus-4-8, gemini-3.1-pro-preview",
   "elapsed_seconds": 27.4,
   "settings_applied": { "suggest_adlib_removal": true, "allow_insertions": true, "min_confidence": 0.0 },
   "warnings": [],
