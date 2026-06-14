@@ -30,6 +30,27 @@ def create_audio_separator_artifact_repo() -> artifactregistry.Repository:
         location=AUDIO_SEPARATOR_REGION,
         format="DOCKER",
         description="Docker repository for audio-separator GPU service",
+        # Cost control: audio-separator images bake ~14GB of models. Keep 10
+        # most recent versions for rollback; delete untagged digests older
+        # than 7 days.
+        cleanup_policies=[
+            artifactregistry.RepositoryCleanupPolicyArgs(
+                id="keep-recent-10",
+                action="KEEP",
+                most_recent_versions=artifactregistry.RepositoryCleanupPolicyMostRecentVersionsArgs(
+                    keep_count=10,
+                ),
+            ),
+            artifactregistry.RepositoryCleanupPolicyArgs(
+                id="delete-untagged-after-7d",
+                action="DELETE",
+                condition=artifactregistry.RepositoryCleanupPolicyConditionArgs(
+                    tag_state="UNTAGGED",
+                    older_than="604800s",  # 7 days
+                ),
+            ),
+        ],
+        cleanup_policy_dry_run=False,
     )
 
 

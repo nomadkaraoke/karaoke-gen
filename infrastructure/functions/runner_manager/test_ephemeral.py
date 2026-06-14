@@ -164,7 +164,9 @@ class TestCreateEphemeralRunner:
 
         assert result["family"] == "general"
         assert result["zone"] == "us-central1-a"
-        assert result["external_ip"] is False
+        # All runners now get an ephemeral external IP to bypass the Cloud NAT
+        # data-processing charge (runners were the NAT's only user).
+        assert result["external_ip"] is True
         assert result["runner_name"].startswith("gha-general-")
         compute_client.insert.assert_called_once()
 

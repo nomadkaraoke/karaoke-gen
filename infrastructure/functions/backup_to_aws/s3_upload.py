@@ -21,12 +21,20 @@ def upload_staging_to_s3(
     staging_bucket: str,
     s3_bucket: str,
     project: str = "nomadkaraoke",
+    exclude_prefixes: list | None = None,
 ) -> str:
     """Upload all objects in staging bucket to S3 using streaming.
 
     Walks the staging bucket and uploads each object to the corresponding
-    S3 key path. Skips marker files (.*).
+    S3 key path. Skips marker files (.*) and any object whose name starts with
+    one of ``exclude_prefixes`` (used to hold the nightly Firestore export back
+    from S3 on non-weekly days — it stays in GCS staging as a daily local
+    restore point and is uploaded only on the weekly run).
+
+    Excluded objects are left in staging (not deleted), so they remain a local
+    backup until the GCS lifecycle policy or the next weekly upload removes them.
     """
+    exclude_prefixes = exclude_prefixes or []
     aws_creds = get_aws_credentials(project)
     s3_client = boto3.client(
         "s3",
@@ -43,6 +51,9 @@ def upload_staging_to_s3(
 
     for blob in bucket.list_blobs():
         if blob.name.startswith(".") or "/.last_sync" in blob.name:
+            continue
+
+        if any(blob.name.startswith(p) for p in exclude_prefixes):
             continue
 
         try:
