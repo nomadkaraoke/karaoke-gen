@@ -370,9 +370,14 @@ def create_ephemeral_runner(labels: Iterable[str], pat: str) -> dict:
 
     last_error: Exception | None = None
     for zone in zones:
-        use_external_ip = (
-            family.needs_external_ip_in_fallback_zone and zone != PRIMARY_ZONE
-        )
+        # Always attach an ephemeral external IP so runner egress (Docker
+        # pulls, dependency downloads) leaves via the VM's own IP and bypasses
+        # the Cloud NAT data-processing charge (~$26/mo — runners were the
+        # NAT's only user). Ephemeral IPs are free while attached to a running
+        # VM, runners are short-lived, and us-central1 has ample IN_USE_ADDRESSES
+        # quota (limit 69). Supersedes the prior fallback-zone-only logic;
+        # `needs_external_ip_in_fallback_zone` is retained for documentation.
+        use_external_ip = True
         instance = _build_instance(
             name=runner_name,
             family=family,

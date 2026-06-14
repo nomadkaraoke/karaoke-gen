@@ -50,6 +50,18 @@ def create_encoding_worker_vms(
                     image=custom_image,
                     size=DiskSizes.ENCODING_WORKER,
                     type="hyperdisk-balanced",
+                    # NOTE: Hyperdisk provisioned IOPS/throughput are deliberately
+                    # NOT set here. Specifying them forces a full VM *replacement*
+                    # (the provider treats boot-disk init params as immutable), and
+                    # recreating a primary depends on us-central1-c capacity — the
+                    # exact shortage the fallback fleet exists to absorb. So the
+                    # disks are pinned to the Hyperdisk Balanced free baseline
+                    # (3000 IOPS / 140 MB/s) live via `gcloud compute disks update`
+                    # instead — non-disruptive, and pulumi does not manage this
+                    # attribute so there is no drift. They were over-provisioned at
+                    # 3600 IOPS / 290 MB/s (~$8.70/disk/mo wasted). Re-apply the
+                    # gcloud tune after any worker-image rebuild that recreates the
+                    # disks. See docs/archive/2026-06-14-gcp-cost-reduction-plan.md.
                 ),
             ),
             network_interfaces=[compute.InstanceNetworkInterfaceArgs(
@@ -127,6 +139,18 @@ def create_encoding_worker_fallback_vms(
                     image=custom_image,
                     size=DiskSizes.ENCODING_WORKER,
                     type="hyperdisk-balanced",
+                    # NOTE: Hyperdisk provisioned IOPS/throughput are deliberately
+                    # NOT set here. Specifying them forces a full VM *replacement*
+                    # (the provider treats boot-disk init params as immutable), and
+                    # recreating a primary depends on us-central1-c capacity — the
+                    # exact shortage the fallback fleet exists to absorb. So the
+                    # disks are pinned to the Hyperdisk Balanced free baseline
+                    # (3000 IOPS / 140 MB/s) live via `gcloud compute disks update`
+                    # instead — non-disruptive, and pulumi does not manage this
+                    # attribute so there is no drift. They were over-provisioned at
+                    # 3600 IOPS / 290 MB/s (~$8.70/disk/mo wasted). Re-apply the
+                    # gcloud tune after any worker-image rebuild that recreates the
+                    # disks. See docs/archive/2026-06-14-gcp-cost-reduction-plan.md.
                 ),
             ),
             network_interfaces=[compute.InstanceNetworkInterfaceArgs(
