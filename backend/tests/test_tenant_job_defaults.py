@@ -56,6 +56,43 @@ def _make_job_mock(**kwargs):
     return job
 
 
+class TestSelectMixedAudioFiles:
+    """Regression tests for _select_mixed_audio_files() in file_upload.py.
+
+    The existing-instrumental file shares the uploads/{job}/audio/ directory with the
+    mixed audio, so the 'audio/' prefix matches both. Before the fix, files[0] resolved to
+    'existing_instrumental.mp3' (it sorts first) and transcription ran on the instrumental.
+    """
+
+    def _fn(self):
+        from backend.api.routes.file_upload import _select_mixed_audio_files
+        return _select_mixed_audio_files
+
+    def test_excludes_existing_instrumental(self):
+        fn = self._fn()
+        # Listing is sorted alphabetically by GCS, so the instrumental comes first.
+        files = [
+            "uploads/job123/audio/existing_instrumental.mp3",
+            "uploads/job123/audio/mixed.mp3",
+        ]
+        result = fn(files)
+        assert result == ["uploads/job123/audio/mixed.mp3"]
+        assert result[0] == "uploads/job123/audio/mixed.mp3"
+
+    def test_plain_audio_only_unchanged(self):
+        fn = self._fn()
+        files = ["uploads/job123/audio/My Song.flac"]
+        assert fn(files) == files
+
+    def test_real_filenames_with_instrumental(self):
+        fn = self._fn()
+        files = [
+            "uploads/job123/audio/existing_instrumental.mp3",
+            "uploads/job123/audio/Eddy Grant - I Don't Wanna Dance Guide.mp3",
+        ]
+        assert fn(files) == ["uploads/job123/audio/Eddy Grant - I Don't Wanna Dance Guide.mp3"]
+
+
 class TestApplyTenantOverrides:
     """Tests for _apply_tenant_overrides() in file_upload.py."""
 

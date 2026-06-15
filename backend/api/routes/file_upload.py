@@ -57,6 +57,19 @@ def _is_youtube_url(url: str) -> bool:
 router = APIRouter(tags=["jobs"])
 
 
+def _select_mixed_audio_files(files):
+    """Filter a listing of ``uploads/{job_id}/audio/`` down to the mixed (with-vocals) audio.
+
+    When a job supplies its own instrumental (existing_instrumental flow, e.g. tenant
+    submissions), that file is uploaded into the SAME ``audio/`` directory as the mixed
+    audio (``existing_instrumental.*``). The ``audio/`` prefix therefore matches both, and
+    because ``existing_instrumental`` sorts before most filenames, ``files[0]`` would pick
+    the instrumental — so transcription would run on the backing track instead of the
+    vocals. Excluding it here ensures the mixed audio is selected as the transcription input.
+    """
+    return [f for f in files if not Path(f).name.startswith('existing_instrumental')]
+
+
 def _apply_tenant_overrides(
     dist: EffectiveDistributionSettings,
     tenant_config,
@@ -1388,12 +1401,14 @@ async def mark_uploads_complete(
             
             # List files with this prefix to find the actual uploaded file
             files = storage_service.list_files(prefix)
+            if file_type == 'audio':
+                files = _select_mixed_audio_files(files)
             if not files:
                 raise HTTPException(
                     status_code=400,
                     detail=f"File for '{file_type}' was not uploaded to GCS. Expected prefix: {prefix}"
                 )
-            
+
             # Use the first (and should be only) file found
             gcs_path = files[0]
             
