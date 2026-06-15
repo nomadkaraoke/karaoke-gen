@@ -1,0 +1,111 @@
+name: E2E Daily Test (Tenant Portals)
+
+# Full production E2E per white-label tenant: submit a job with the tenant's own
+# mixed + instrumental audio, approve the lyrics review, wait for the render, and assert
+# the tenant distribution (locked theme, no YouTube, no Google Drive, Dropbox folder +
+# downloadable outputs). Mirrors the consumer e2e-daily.yml. Each run cleans up its job.
+
+on:
+  schedule:
+    # Daily at 07:37 UTC (off-peak, off the :00 mark).
+    - cron: '37 7 * * *'
+  workflow_dispatch:
+    inputs:
+      tenant:
+        description: 'Tenant to test (blank = all)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - vocalstar
+          - singa
+
+permissions:
+  contents: read
+  id-token: write   # for Workload Identity Federation
+
+jobs:
+  e2e-tenant:
+    name: "Tenant E2E: ${{ matrix.tenant }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        tenant: [vocalstar, singa]
+    # On manual dispatch with a specific tenant, only run that one.
+    if: ${{ github.event.inputs.tenant == '' || github.event.inputs.tenant == matrix.tenant }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Install dependencies
+        run: pip install google-cloud-storage google-cloud-secret-manager
+
+      - name: Run tenant E2E
+        id: run_test
+        env:
+          KARAOKE_ADMIN_TOKEN: ${{ secrets.E2E_ADMIN_TOKEN }}
+        run: |
+          echo "=== Tenant E2E: ${{ matrix.tenant }} ==="
+          python scripts/e2e/tenant_e2e.py ${{ matrix.tenant }} 2>&1 | tee e2e-output.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-tenant-${{ matrix.tenant }}-${{ github.run_number }}
+          path: e2e-output.log
+          retention-days: 14
+
+      - name: Discord notification (failure)
+        if: ${{ steps.run_test.outputs.exit_code != '0' }}
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK" ]; then
+            curl -s -H "Content-Type: application/json" \
+              -d "{\"embeds\": [{\"title\": \"❌ Tenant E2E FAILED — ${{ matrix.tenant }}\", \"description\": \"Run: #${{ github.run_number }}\", \"color\": 15158332}]}" \
+              "$DISCORD_WEBHOOK" || true
+          fi
+
+      - name: Fail the job if the test failed
+        if: ${{ steps.run_test.outputs.exit_code != '0' }}
+        run: exit 1
+
+  notify-email:
+    name: "Email summary"
+    runs-on: ubuntu-latest
+    needs: e2e-tenant
+    if: ${{ always() && github.event_name == 'schedule' }}
+    steps:
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.postmarkapp.com
+          server_port: 587
+          username: ${{ secrets.POSTMARK_SERVER_TOKEN }}
+          password: ${{ secrets.POSTMARK_SERVER_TOKEN }}
+          subject: "Tenant E2E Daily ${{ needs.e2e-tenant.result == 'success' && 'PASSED' || 'FAILED' }} - Run #${{ github.run_number }}"
+          to: andrew@nomadkaraoke.com
+          from: "Karaoke Gen CI <noreply@nomadkaraoke.com>"
+          body: |
+            Tenant E2E Daily Test (Vocal Star + Singa)
+            Result: ${{ needs.e2e-tenant.result }}
+            Run: #${{ github.run_number }}
+            Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
