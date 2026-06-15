@@ -33,8 +33,11 @@ BUCKET = os.environ.get("KARAOKE_GCS_BUCKET", "karaoke-gen-storage-nomadkaraoke"
 TEST_MIXED = f"gs://{BUCKET}/e2e-tests/shared/e2e-mixed.mp3"
 TEST_INSTRUMENTAL = f"gs://{BUCKET}/e2e-tests/shared/e2e-instrumental.mp3"
 # Clearly-labelled so the daily output is identifiable in the tenant's Dropbox folder.
+# Title is tenant-specific: the GCE encoder caches by base_name (artist - title), so two
+# tenants running the matrix concurrently must NOT share a base_name or one would receive
+# the other's (differently-themed) cached encode.
 ARTIST = "Nomad Karaoke"
-TITLE = "E2E Health Check"
+TITLE = None  # set per-tenant below
 
 EXPECTED = {
     "vocalstar": {"theme": "vocalstar"},
@@ -78,6 +81,7 @@ TENANT = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("E2E_TENANT", "voc
 if TENANT not in EXPECTED:
     log(f"Unknown tenant: {TENANT}")
     sys.exit(2)
+TITLE = f"E2E Health Check {TENANT}"
 TOKEN = admin_token()
 
 
