@@ -473,6 +473,18 @@ export interface CommunityCheckResponse {
   best_youtube_url: string | null;
 }
 
+export type MatchJudgeKind = 'cosmetic' | 'content' | 'ambiguous' | 'none';
+
+export interface MatchJudgeVerdict {
+  kind: MatchJudgeKind;
+  confident: boolean;
+  canonical_artist: string;
+  canonical_title: string;
+  alternatives: { artist: string; title: string }[];
+  engine: 'deterministic' | 'catalog' | 'ai';
+  reason: string;
+}
+
 export const api = {
   /**
    * List all jobs
@@ -1569,6 +1581,20 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ artist, title }),
+    });
+    return handleResponse(response);
+  },
+
+  async matchJudge(artist: string, title: string, audioConfidenceTier?: number): Promise<MatchJudgeVerdict> {
+    const body: Record<string, unknown> = { artist, title };
+    if (audioConfidenceTier != null) body.audio_confidence_tier = audioConfidenceTier;
+    const response = await fetch(`${API_BASE_URL}/api/catalog/match-judge`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
     return handleResponse(response);
   },
