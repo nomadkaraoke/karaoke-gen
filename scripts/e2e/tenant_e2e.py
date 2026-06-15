@@ -48,6 +48,10 @@ REVIEW_TIMEOUT = int(os.environ.get("E2E_REVIEW_TIMEOUT", "900"))    # 15 min to
 RENDER_TIMEOUT = int(os.environ.get("E2E_RENDER_TIMEOUT", "1800"))   # 30 min to full render
 
 
+class TransientEncoderError(Exception):
+    """A known, non-tenant-specific transient failure from the shared GCE encoder."""
+
+
 def log(msg):
     print(msg, flush=True)
 
@@ -120,19 +124,20 @@ def poll_until(job_id, statuses, timeout, label):
         if s in statuses:
             return job
         if s in ("failed", "error"):
-            raise RuntimeError(f"Job failed during {label}: {job.get('error_message')}")
+            msg = job.get("error_message") or ""
+            # The shared GCE encoder occasionally drops a job mid-encode (VM restart /
+            # idle-shutdown race) — a pre-existing, non-tenant-specific transient. Surface
+            # it distinctly so the caller retries the whole job rather than false-alarming.
+            if "lost contact with worker" in msg or "not found" in msg:
+                raise TransientEncoderError(f"Transient encoder failure during {label}: {msg}")
+            raise RuntimeError(f"Job failed during {label}: {msg}")
         time.sleep(15)
     raise TimeoutError(f"Timed out waiting for {label} (last status={last})")
 
 
-def main():
-    log(f"=== Tenant E2E health check: {TENANT} ===")
-    tmp = tempfile.mkdtemp()
-    mixed = os.path.join(tmp, "mixed.mp3")
-    instrumental = os.path.join(tmp, "instrumental.mp3")
-    gcs_download(TEST_MIXED, mixed)
-    gcs_download(TEST_INSTRUMENTAL, instrumental)
-
+def run_once(mixed, instrumental):
+    """Submit one job, drive it to completion, assert outputs. Cleans up its own job.
+    Raises TransientEncoderError on a known transient encoder failure (caller may retry)."""
     files = [
         {"file_type": "audio", "filename": "mixed.mp3", "content_type": "audio/mpeg"},
         {"file_type": "existing_instrumental", "filename": "instrumental.mp3", "content_type": "audio/mpeg"},
@@ -145,7 +150,6 @@ def main():
     job_id = resp["job_id"]
     log(f"job_id: {job_id}")
 
-    failed = True
     try:
         urls = {u["file_type"]: u for u in resp["upload_urls"]}
         put_file(urls["audio"]["upload_url"], mixed, urls["audio"]["content_type"])
@@ -188,7 +192,6 @@ def main():
             raise RuntimeError("Assertions failed: " + "; ".join(errors))
 
         log(f"\n✅ {TENANT} E2E PASSED — job completed, Dropbox link present, no YouTube, downloads available")
-        failed = False
     finally:
         # Always clean up the test job and its uploads.
         try:
@@ -199,8 +202,28 @@ def main():
         except Exception as e:
             log(f"cleanup warning: {e}")
 
-    if failed:
-        sys.exit(1)
+
+def main():
+    log(f"=== Tenant E2E health check: {TENANT} ===")
+    tmp = tempfile.mkdtemp()
+    mixed = os.path.join(tmp, "mixed.mp3")
+    instrumental = os.path.join(tmp, "instrumental.mp3")
+    gcs_download(TEST_MIXED, mixed)
+    gcs_download(TEST_INSTRUMENTAL, instrumental)
+
+    # Retry once on a known transient encoder failure (shared GCE worker dropping a job
+    # mid-encode) so the daily health check doesn't false-alarm on pre-existing flakiness.
+    attempts = 2
+    for attempt in range(1, attempts + 1):
+        try:
+            run_once(mixed, instrumental)
+            return
+        except TransientEncoderError as e:
+            log(f"⚠️  attempt {attempt}/{attempts}: {e}")
+            if attempt == attempts:
+                log("Transient encoder failure persisted across retries.")
+                sys.exit(1)
+            log("Retrying with a fresh job...")
 
 
 if __name__ == "__main__":
