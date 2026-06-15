@@ -164,18 +164,26 @@ def main():
         sd = job.get("state_data") or {}
         dropbox = sd.get("dropbox_link") or job.get("dropbox_link")
         youtube = sd.get("youtube_url") or job.get("youtube_url")
-        downloads = job.get("download_urls") or {}
+        # Portal downloads are driven by job.file_urls (finals/packages), the same field
+        # the OutputLinks UI reads — not download_urls/output_files.
+        file_urls = job.get("file_urls") or {}
+        finals = file_urls.get("finals") or {}
+        packages = file_urls.get("packages") or {}
+        has_downloads = bool(
+            finals.get("lossy_4k_mp4") or finals.get("lossy_720p_mp4")
+            or finals.get("with_vocals_mp4") or packages.get("cdg_zip") or packages.get("txt_zip")
+        )
         log(f"  dropbox_link: {dropbox}")
         log(f"  youtube_url: {youtube}")
-        log(f"  download_urls: {sorted(downloads.keys())}")
+        log(f"  finals: {sorted(finals.keys())} | packages: {sorted(packages.keys())}")
 
         errors = []
         if not dropbox:
             errors.append("no dropbox_link (tenant Dropbox distribution did not run)")
         if youtube:
             errors.append(f"unexpected youtube_url={youtube} (tenant must not publish to YouTube)")
-        if not downloads:
-            errors.append("no download_urls (outputs not downloadable from portal)")
+        if not has_downloads:
+            errors.append("no downloadable outputs in file_urls (finals/packages empty)")
         if errors:
             raise RuntimeError("Assertions failed: " + "; ".join(errors))
 

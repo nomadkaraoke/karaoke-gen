@@ -72,6 +72,21 @@ tenant daily (07:37 UTC, matrix vocalstar/singa): submit → approve review → 
 assert (completes, Dropbox link present, no YouTube, downloads available) → clean up the
 job + uploads. Auth via WIF + `E2E_ADMIN_TOKEN`; test audio in `gs://.../e2e-tests/shared/`.
 
+## Outcome
+
+Both tenants pass the full prod E2E (PRs #824–#830): log in → submit (artist, title, mixed,
+instrumental) → transcribe → review → render with the locked theme → encode → package →
+Dropbox delivery, with **no YouTube, no Google Drive**, and all outputs (4K / 720p /
+with-vocals MP4 + CDG + TXT) downloadable from the portal via `job.file_urls`.
+
+The encoder blocker (bug #8) took three iterations: the staging had to land in the
+**orchestrator** path (`video_worker_orchestrator._run_encoding`, not the legacy
+`_encode_via_gce`) and use the filename the running encoder VM's `custom` branch globs for
+(`custom_instrumental.<ext>`, since the live VM boots the 2026-01-23 image whose `custom`
+branch predates `*existing_instrumental*` / `*Instrumental User*`). The instrumental is
+server-side-copied from `uploads/{job}/audio/existing_instrumental.*` →
+`jobs/{job}/custom_instrumental.<ext>`.
+
 ## Gotchas / lessons
 
 - The tenant pipeline had never run end-to-end, so every stage hid a latent bug. "Has a
