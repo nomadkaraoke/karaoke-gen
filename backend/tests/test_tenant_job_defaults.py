@@ -125,24 +125,70 @@ class TestApplyTenantOverrides:
         _, _, _, yt_upload = apply_fn(dist, tenant_config, "default", False, True)
         assert yt_upload is False
 
-    def test_request_values_take_precedence(self):
-        """Explicit request-level values are not overridden by tenant defaults."""
+    def test_tenant_config_overrides_global_defaults(self):
+        """Tenant config is authoritative: it overrides any global/consumer default
+        distribution settings already seeded into `dist`.
+
+        Regression guard: prod sets DEFAULT_DROPBOX_PATH / DEFAULT_GDRIVE_FOLDER_ID /
+        DEFAULT_BRAND_PREFIX globally, which get_effective_distribution_settings seeds
+        into `dist`. If tenant overrides only filled in *unset* fields, every tenant job
+        would leak into the shared consumer Dropbox folder and global Google Drive.
+        """
         apply_fn = self._get_apply_fn()
         tenant_config = _make_tenant_config()
 
+        # `dist` arrives pre-seeded with the GLOBAL consumer defaults.
         dist = EffectiveDistributionSettings(
-            dropbox_path="/Custom/Path",
-            gdrive_folder_id="custom-folder",
+            dropbox_path="/MediaUnsynced/Karaoke/Tracks-Organized",  # global default
+            gdrive_folder_id="global-consumer-folder",               # global default
             discord_webhook_url=None,
-            brand_prefix="CUSTOM",
+            brand_prefix="NOMAD",                                    # global default
             enable_youtube_upload=True,
             youtube_description=None,
         )
 
         new_dist, _, _, _ = apply_fn(dist, tenant_config, "default", False, True)
-        assert new_dist.brand_prefix == "CUSTOM"
-        assert new_dist.dropbox_path == "/Custom/Path"
-        assert new_dist.gdrive_folder_id == "custom-folder"
+        # Tenant config wins on every distribution field.
+        assert new_dist.brand_prefix == "VSTAR"
+        assert new_dist.dropbox_path == "/Karaoke/Vocal-Star"
+        assert new_dist.gdrive_folder_id == "gdrive-folder-123"
+
+    def test_gdrive_disabled_clears_global_default(self):
+        """When the tenant disables gdrive_upload, the global default GDrive folder is
+        cleared so the tenant job never publishes to Google Drive (the B2B requirement)."""
+        apply_fn = self._get_apply_fn()
+        # Tenant has a gdrive folder configured but the feature is OFF — the disabled
+        # flag must win, clearing both the configured folder and any global default.
+        tenant_config = _make_tenant_config()
+        tenant_config.features.gdrive_upload = False
+
+        dist = EffectiveDistributionSettings(
+            dropbox_path=None,
+            gdrive_folder_id="global-consumer-folder",  # would otherwise leak
+            discord_webhook_url=None,
+            brand_prefix=None,
+            enable_youtube_upload=True,
+            youtube_description=None,
+        )
+
+        new_dist, _, _, yt_upload = apply_fn(dist, tenant_config, "default", False, True)
+        assert new_dist.gdrive_folder_id is None
+        assert yt_upload is False
+
+    def test_dropbox_disabled_clears_path(self):
+        """When the tenant disables dropbox_upload, the Dropbox path is cleared."""
+        apply_fn = self._get_apply_fn()
+        tenant_config = _make_tenant_config()
+        tenant_config.features.dropbox_upload = False
+
+        dist = EffectiveDistributionSettings(
+            dropbox_path="/MediaUnsynced/Karaoke/Tracks-Organized",
+            gdrive_folder_id=None, discord_webhook_url=None,
+            brand_prefix=None, enable_youtube_upload=True, youtube_description=None,
+        )
+
+        new_dist, _, _, _ = apply_fn(dist, tenant_config, "default", False, True)
+        assert new_dist.dropbox_path is None
 
     def test_no_tenant_config_passthrough(self):
         """When no tenant config, all values pass through unchanged."""

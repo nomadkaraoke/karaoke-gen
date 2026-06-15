@@ -67,12 +67,20 @@ def _apply_tenant_overrides(
     """
     Apply tenant-specific overrides to distribution settings and job options.
 
+    White-label tenant config is AUTHORITATIVE: it replaces (not just fills in) the
+    distribution settings, so tenant outputs never inherit the global consumer defaults
+    (DEFAULT_BRAND_PREFIX / DEFAULT_DROPBOX_PATH / DEFAULT_GDRIVE_FOLDER_ID) that
+    ``get_effective_distribution_settings`` seeds into ``dist``. Without this, every
+    tenant job would land in the shared consumer Dropbox folder and upload to the global
+    Google Drive, regardless of the tenant's own config.
+
     For tenant jobs:
-    - Overlays brand_prefix, dropbox_path, gdrive_folder_id from tenant defaults
-      (only when not already set in the request body / dist)
+    - Sets brand_prefix, dropbox_path, gdrive_folder_id authoritatively from tenant config
+    - Routes Dropbox / Google Drive only when the matching feature flag is enabled;
+      otherwise disables that channel entirely (no global-default leak)
     - Forces is_private = True
     - Applies locked_theme as effective theme
-    - Disables YouTube upload
+    - Disables YouTube upload (tenants never publish to YouTube)
 
     Returns:
         Tuple of (dist, effective_theme_id, is_private, enable_youtube_upload)
@@ -81,14 +89,12 @@ def _apply_tenant_overrides(
         return dist, effective_theme_id, is_private, enable_youtube_upload
 
     defaults = tenant_config.defaults
+    features = tenant_config.features
 
-    # Overlay tenant distribution defaults (request-level values take precedence)
-    if defaults.brand_prefix and not dist.brand_prefix:
-        dist.brand_prefix = defaults.brand_prefix
-    if defaults.dropbox_path and not dist.dropbox_path:
-        dist.dropbox_path = defaults.dropbox_path
-    if defaults.gdrive_folder_id and not dist.gdrive_folder_id:
-        dist.gdrive_folder_id = defaults.gdrive_folder_id
+    # Authoritative distribution routing (overrides any global defaults in `dist`).
+    dist.brand_prefix = defaults.brand_prefix
+    dist.dropbox_path = defaults.dropbox_path if features.dropbox_upload else None
+    dist.gdrive_folder_id = defaults.gdrive_folder_id if features.gdrive_upload else None
 
     # Force private for all tenant jobs
     is_private = True
