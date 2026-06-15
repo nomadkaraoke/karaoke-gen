@@ -533,7 +533,12 @@
     "pasteUrlButton": "Enganxa un enllaç",
     "urlSupportedSitesHint": "Funciona amb YouTube, Facebook, SoundCloud, TikTok, Vimeo i centenars de llocs més.",
     "urlSupportedSitesLink": "Consulta tots els llocs compatibles",
-    "useThisUrl": "Utilitza aquest URL"
+    "useThisUrl": "Utilitza aquest URL",
+    "matchCorrectedTo": "Corregit a {value} — has escrit “{typed}”",
+    "matchDidYouMean": "Volies dir?",
+    "matchKeepMine": "mantenir el que he escrit",
+    "matchTidiedTo": "Ajustat a {value}",
+    "matchUndo": "Desfer"
   },
   "jobStatus": {
     "settingUp": "Configurant",

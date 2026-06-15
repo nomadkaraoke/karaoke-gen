@@ -533,7 +533,12 @@
     "pasteUrlButton": "Vložit odkaz",
     "urlSupportedSitesHint": "Funguje se službami YouTube, Facebook, SoundCloud, TikTok, Vimeo a stovkami dalších webů.",
     "urlSupportedSitesLink": "Zobrazit všechny podporované weby",
-    "useThisUrl": "Použít tuto URL"
+    "useThisUrl": "Použít tuto URL",
+    "matchCorrectedTo": "Opraveno na {value} — zadal jsi „{typed}“",
+    "matchDidYouMean": "Měl jsi na mysli?",
+    "matchKeepMine": "ponechat můj text",
+    "matchTidiedTo": "Upraveno na {value}",
+    "matchUndo": "Zpět"
   },
   "jobStatus": {
     "settingUp": "Nastavování",

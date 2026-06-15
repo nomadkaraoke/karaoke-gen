@@ -23,6 +23,7 @@ jest.mock("@/lib/api", () => ({
     searchStandalone: jest.fn(),
     searchCatalogTracks: jest.fn(),
     checkCommunityVersions: jest.fn(),
+    matchJudge: jest.fn(),
     createJobFromSearch: jest.fn(),
   },
   ApiError: class ApiError extends Error {
@@ -92,6 +93,15 @@ function setupMocks() {
     songs: [],
     best_youtube_url: null,
   })
+  mockApi.matchJudge.mockResolvedValue({
+    kind: "none",
+    confident: true,
+    canonical_artist: "ABBA",
+    canonical_title: "Waterloo",
+    alternatives: [],
+    engine: "catalog",
+    reason: "",
+  })
 }
 
 describe("AudioSourceStep", () => {
@@ -108,11 +118,11 @@ describe("AudioSourceStep", () => {
     })
   })
 
-  it("calls searchCatalogTracks on mount in parallel", async () => {
+  it("calls matchJudge after the search resolves, with the confidence tier", async () => {
     render(<AudioSourceStep {...defaultProps} />)
 
     await waitFor(() => {
-      expect(mockApi.searchCatalogTracks).toHaveBeenCalledWith("Waterloo", "ABBA", 5)
+      expect(mockApi.matchJudge).toHaveBeenCalledWith("ABBA", "Waterloo", 1)
     })
   })
 
@@ -147,16 +157,46 @@ describe("AudioSourceStep", () => {
     expect(screen.getByText("ABBA - Waterloo")).toBeInTheDocument()
   })
 
-  it("renders SongSuggestionPanel when catalog returns results", async () => {
-    mockApi.searchCatalogTracks.mockResolvedValue([
-      { artist_name: "ABBA", track_name: "Waterloo (Remastered)" },
-    ])
+  it("auto-applies a cosmetic tidy and shows the tidy notice", async () => {
+    mockApi.matchJudge.mockResolvedValue({
+      kind: "cosmetic",
+      confident: true,
+      canonical_artist: "ABBA",
+      canonical_title: "Waterloo (Remastered)",
+      alternatives: [],
+      engine: "catalog",
+      reason: "",
+    })
 
     render(<AudioSourceStep {...defaultProps} />)
 
     await waitFor(() => {
-      expect(screen.getByTestId("song-suggestion-panel")).toBeInTheDocument()
+      expect(defaultProps.onArtistTitleCorrection).toHaveBeenCalledWith("ABBA", "Waterloo (Remastered)")
     })
+    expect(screen.getByTestId("match-tidy-notice")).toBeInTheDocument()
+  })
+
+  it("does not auto-apply an ambiguous match — shows an ask instead", async () => {
+    mockApi.matchJudge.mockResolvedValue({
+      kind: "ambiguous",
+      confident: false,
+      canonical_artist: "Lewis Capaldi",
+      canonical_title: "Bruises",
+      alternatives: [{ artist: "Fox Stevenson", title: "Bruises" }],
+      engine: "ai",
+      reason: "",
+    })
+
+    render(<AudioSourceStep {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("match-didyoumean")).toBeInTheDocument()
+    })
+    expect(defaultProps.onArtistTitleCorrection).not.toHaveBeenCalled()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText("Lewis Capaldi — Bruises"))
+    expect(defaultProps.onArtistTitleCorrection).toHaveBeenCalledWith("Lewis Capaldi", "Bruises")
   })
 
   it("renders CommunityVersionBanner when community data has results", async () => {
@@ -239,8 +279,8 @@ describe("AudioSourceStep", () => {
     expect(defaultProps.onBack).toHaveBeenCalledTimes(1)
   })
 
-  it("silently handles catalog search failure (does not show error)", async () => {
-    mockApi.searchCatalogTracks.mockRejectedValue(new Error("catalog down"))
+  it("silently handles matchJudge failure (does not show error)", async () => {
+    mockApi.matchJudge.mockRejectedValue(new Error("judge down"))
 
     render(<AudioSourceStep {...defaultProps} />)
 
@@ -248,8 +288,8 @@ describe("AudioSourceStep", () => {
       expect(mockApi.searchStandalone).toHaveBeenCalled()
     })
 
-    // No error shown for catalog failure — it's a nice-to-have
-    expect(screen.queryByText("catalog down")).not.toBeInTheDocument()
+    // No error shown for judge failure — it's a nice-to-have
+    expect(screen.queryByText("judge down")).not.toBeInTheDocument()
   })
 
   it("silently handles community check failure", async () => {
@@ -264,16 +304,15 @@ describe("AudioSourceStep", () => {
     expect(screen.queryByText("community down")).not.toBeInTheDocument()
   })
 
-  it("does not show SongSuggestionPanel when catalog returns empty array", async () => {
-    mockApi.searchCatalogTracks.mockResolvedValue([])
-
+  it("shows no match notice for a 'none' verdict", async () => {
     render(<AudioSourceStep {...defaultProps} />)
 
     await waitFor(() => {
-      expect(mockApi.searchStandalone).toHaveBeenCalled()
+      expect(mockApi.matchJudge).toHaveBeenCalled()
     })
 
-    expect(screen.queryByTestId("song-suggestion-panel")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("match-tidy-notice")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("match-didyoumean")).not.toBeInTheDocument()
   })
 
   it("does not show CommunityVersionBanner when has_community is false", async () => {

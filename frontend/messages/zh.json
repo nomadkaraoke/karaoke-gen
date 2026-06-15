@@ -533,7 +533,12 @@
     "pasteUrlButton": "粘贴链接",
     "urlSupportedSitesHint": "支持 YouTube、Facebook、SoundCloud、TikTok、Vimeo 以及数百个其他网站。",
     "urlSupportedSitesLink": "查看所有支持的网站",
-    "useThisUrl": "使用此链接"
+    "useThisUrl": "使用此链接",
+    "matchCorrectedTo": "已更正为 {value} — 您输入的是“{typed}”",
+    "matchDidYouMean": "您是不是指？",
+    "matchKeepMine": "保留我的输入",
+    "matchTidiedTo": "已整理为 {value}",
+    "matchUndo": "撤销"
   },
   "jobStatus": {
     "settingUp": "设置中",

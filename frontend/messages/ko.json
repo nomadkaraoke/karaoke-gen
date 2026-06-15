@@ -533,7 +533,12 @@
     "pasteUrlButton": "링크 붙여넣기",
     "urlSupportedSitesHint": "YouTube, Facebook, SoundCloud, TikTok, Vimeo 등 수백 개의 사이트에서 사용할 수 있습니다.",
     "urlSupportedSitesLink": "지원되는 모든 사이트 보기",
-    "useThisUrl": "이 URL 사용하기"
+    "useThisUrl": "이 URL 사용하기",
+    "matchCorrectedTo": "{value}(으)로 수정되었습니다 — 입력하신 내용: “{typed}”",
+    "matchDidYouMean": "혹시 다음을 찾으셨나요?",
+    "matchKeepMine": "입력한 내용 유지",
+    "matchTidiedTo": "{value}(으)로 정리되었습니다",
+    "matchUndo": "실행 취소"
   },
   "jobStatus": {
     "settingUp": "설정 중",

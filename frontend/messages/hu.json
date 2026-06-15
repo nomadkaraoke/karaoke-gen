@@ -533,7 +533,12 @@
     "pasteUrlButton": "Illessz be egy linket",
     "urlSupportedSitesHint": "Működik a YouTube, Facebook, SoundCloud, TikTok, Vimeo és több száz más oldallal.",
     "urlSupportedSitesLink": "Nézd meg az összes támogatott oldalt",
-    "useThisUrl": "Használd ezt az URL-t"
+    "useThisUrl": "Használd ezt az URL-t",
+    "matchCorrectedTo": "Javítva erre: {value} — ezt írtad: „{typed}”",
+    "matchDidYouMean": "Erre gondoltál?",
+    "matchKeepMine": "maradjon, amit írtam",
+    "matchTidiedTo": "Rendezve erre: {value}",
+    "matchUndo": "Visszavonás"
   },
   "jobStatus": {
     "settingUp": "Beállítás",

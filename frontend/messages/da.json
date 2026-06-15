@@ -533,7 +533,12 @@
     "pasteUrlButton": "Indsæt et link",
     "urlSupportedSitesHint": "Fungerer med YouTube, Facebook, SoundCloud, TikTok, Vimeo og hundredvis af andre sider.",
     "urlSupportedSitesLink": "Se alle understøttede sider",
-    "useThisUrl": "Brug denne URL"
+    "useThisUrl": "Brug denne URL",
+    "matchCorrectedTo": "Rettet til {value} — du skrev “{typed}”",
+    "matchDidYouMean": "Mente du?",
+    "matchKeepMine": "behold det, jeg skrev",
+    "matchTidiedTo": "Finpudset til {value}",
+    "matchUndo": "Fortryd"
   },
   "jobStatus": {
     "settingUp": "Sætter op",

@@ -533,7 +533,12 @@
     "pasteUrlButton": "Επικόλλησε έναν σύνδεσμο",
     "urlSupportedSitesHint": "Λειτουργεί με YouTube, Facebook, SoundCloud, TikTok, Vimeo και εκατοντάδες άλλους ιστότοπους.",
     "urlSupportedSitesLink": "Δες όλους τους υποστηριζόμενους ιστότοπους",
-    "useThisUrl": "Χρησιμοποίησε αυτό το URL"
+    "useThisUrl": "Χρησιμοποίησε αυτό το URL",
+    "matchCorrectedTo": "Διορθώθηκε σε {value} — πληκτρολόγησες “{typed}”",
+    "matchDidYouMean": "Μήπως εννοούσες;",
+    "matchKeepMine": "κράτα αυτό που πληκτρολόγησα",
+    "matchTidiedTo": "Διαμορφώθηκε σε {value}",
+    "matchUndo": "Αναίρεση"
   },
   "jobStatus": {
     "settingUp": "Ρύθμιση",

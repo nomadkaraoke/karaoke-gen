@@ -533,7 +533,12 @@
     "pasteUrlButton": "Tampal pautan",
     "urlSupportedSitesHint": "Berfungsi dengan YouTube, Facebook, SoundCloud, TikTok, Vimeo dan beratus-ratus laman web lain.",
     "urlSupportedSitesLink": "Lihat semua laman web yang disokong",
-    "useThisUrl": "Gunakan URL Ini"
+    "useThisUrl": "Gunakan URL Ini",
+    "matchCorrectedTo": "Dibetulkan kepada {value} — anda menaip “{typed}”",
+    "matchDidYouMean": "Maksud anda?",
+    "matchKeepMine": "kekalkan apa yang saya taip",
+    "matchTidiedTo": "Dikemaskan kepada {value}",
+    "matchUndo": "Buat asal"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",

@@ -533,7 +533,12 @@
     "pasteUrlButton": "วางลิงก์",
     "urlSupportedSitesHint": "รองรับการใช้งานกับ YouTube, Facebook, SoundCloud, TikTok, Vimeo และเว็บไซต์อื่นๆ อีกหลายร้อยแห่ง",
     "urlSupportedSitesLink": "ดูเว็บไซต์ที่รองรับทั้งหมด",
-    "useThisUrl": "ใช้ URL นี้"
+    "useThisUrl": "ใช้ URL นี้",
+    "matchCorrectedTo": "แก้ไขเป็น {value} — คุณพิมพ์ว่า “{typed}”",
+    "matchDidYouMean": "คุณหมายถึงคำนี้ใช่ไหม?",
+    "matchKeepMine": "ใช้ข้อความที่ฉันพิมพ์",
+    "matchTidiedTo": "จัดรูปแบบเป็น {value}",
+    "matchUndo": "เลิกทำ"
   },
   "jobStatus": {
     "settingUp": "กำลังตั้งค่า",

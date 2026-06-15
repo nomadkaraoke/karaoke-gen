@@ -533,7 +533,12 @@
     "pasteUrlButton": "Incolla un link",
     "urlSupportedSitesHint": "Funziona con YouTube, Facebook, SoundCloud, TikTok, Vimeo e centinaia di altri siti.",
     "urlSupportedSitesLink": "Vedi tutti i siti supportati",
-    "useThisUrl": "Usa questo URL"
+    "useThisUrl": "Usa questo URL",
+    "matchCorrectedTo": "Corretto in {value} — hai digitato “{typed}”",
+    "matchDidYouMean": "Intendevi dire?",
+    "matchKeepMine": "mantieni quello che ho digitato",
+    "matchTidiedTo": "Sistemato in {value}",
+    "matchUndo": "Annulla"
   },
   "jobStatus": {
     "settingUp": "Configurazione",
