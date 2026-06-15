@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 
 # kind values:
@@ -15,14 +16,18 @@ KIND_AMBIGUOUS = "ambiguous"
 KIND_NONE = "none"
 
 
+Kind = Literal["cosmetic", "content", "ambiguous", "none"]
+Engine = Literal["deterministic", "catalog", "ai"]
+
+
 @dataclass(frozen=True)
 class MatchVerdict:
-    kind: str
+    kind: Kind
     confident: bool
     canonical_artist: str
     canonical_title: str
     alternatives: list[dict] = field(default_factory=list)  # [{"artist","title"}]
-    engine: str = "deterministic"  # "deterministic" | "catalog" | "ai"
+    engine: Engine = "deterministic"
     reason: str = ""
 
     def to_dict(self) -> dict:
