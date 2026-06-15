@@ -38,9 +38,36 @@ class TestStorageServiceInit:
         assert service.bucket == mock_bucket
 
 
+class TestStorageServiceCopy:
+    """Test server-side copy (used to stage the tenant instrumental for the GCE encoder)."""
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_copy_blob(self, mock_settings, mock_client_class):
+        mock_settings.gcs_bucket_name = "test-bucket"
+        mock_src_blob = Mock()
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_src_blob
+        mock_client = Mock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_client_class.return_value = mock_client
+
+        service = StorageService()
+        result = service.copy_blob(
+            "uploads/job123/audio/existing_instrumental.mp3",
+            "jobs/job123/existing_instrumental.mp3",
+        )
+
+        mock_bucket.blob.assert_called_once_with("uploads/job123/audio/existing_instrumental.mp3")
+        mock_bucket.copy_blob.assert_called_once_with(
+            mock_src_blob, mock_bucket, "jobs/job123/existing_instrumental.mp3"
+        )
+        assert result == "jobs/job123/existing_instrumental.mp3"
+
+
 class TestStorageServiceUpload:
     """Test upload operations."""
-    
+
     @patch("backend.services.storage_service.storage.Client")
     @patch("backend.services.storage_service.settings")
     def test_upload_file(self, mock_settings, mock_client_class):

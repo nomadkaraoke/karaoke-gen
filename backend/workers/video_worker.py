@@ -107,6 +107,21 @@ async def _encode_via_gce(
     instrumental_selection = job.state_data.get('instrumental_selection', 'clean')
     existing_instrumental = getattr(job, 'existing_instrumental_gcs_path', None)
 
+    # Stage the user-provided instrumental into the encoder's input prefix (jobs/{job_id}/).
+    # It is uploaded under uploads/, which the GCE encoder does NOT pull via input_gcs_path;
+    # copying it here makes the encoder's recursive find_file("*existing_instrumental*")
+    # locate it regardless of the worker image version (older encoder images predate the
+    # encoding_config "existing_instrumental" download path). Without this, tenant /
+    # existing-instrumental jobs fail with "No instrumental audio found".
+    if existing_instrumental:
+        try:
+            ext = os.path.splitext(existing_instrumental)[1].lower() or ".mp3"
+            staged_path = f"jobs/{job_id}/existing_instrumental{ext}"
+            storage.copy_blob(existing_instrumental, staged_path)
+            job_log.info(f"Staged existing instrumental for encoder: {staged_path}")
+        except Exception as e:
+            job_log.warning(f"Failed to stage existing instrumental into jobs/ prefix: {e}")
+
     encoding_config = {
         "formats": ["mp4_4k_lossless", "mp4_4k_lossy", "mp4_720p"],
         "base_name": base_name,
