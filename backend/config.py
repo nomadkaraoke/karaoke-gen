@@ -111,8 +111,11 @@ class Settings(BaseSettings):
         "true", "1", "yes",
     )
     match_judge_model: str = os.getenv("MATCH_JUDGE_MODEL", "gemini-3.5-flash")
-    # Bounds the AI call so a hung model never strands the submission UI.
-    match_judge_timeout_ms: int = int(os.getenv("MATCH_JUDGE_TIMEOUT_MS", "3000"))
+    # Bounds the AI call so a hung model never strands the submission UI. Kept
+    # generous because Vertex returns 504 DEADLINE_EXCEEDED if generation can't
+    # finish within this deadline (3s was too tight for gemini-3.5-flash); the
+    # call still runs off the critical path and degrades to "none" on timeout.
+    match_judge_timeout_ms: int = int(os.getenv("MATCH_JUDGE_TIMEOUT_MS", "12000"))
 
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
