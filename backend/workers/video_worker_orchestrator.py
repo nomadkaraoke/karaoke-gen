@@ -452,6 +452,22 @@ class VideoWorkerOrchestrator:
         if self.config.countdown_padding_seconds:
             self.job_log.info(f"Countdown padding: {self.config.countdown_padding_seconds}s - instrumental will be padded")
 
+        # The GCE encoder downloads its inputs from input_gcs_path (jobs/{job_id}/) and locates
+        # the instrumental via find_file("*Instrumental User*", "*existing_instrumental*", ...).
+        # For user-supplied instrumentals (existing_instrumental / custom) the file only exists
+        # locally (and under uploads/), never under jobs/{job_id}/ — so the encoder fails with
+        # "No instrumental audio found". Upload it into the input prefix so the encoder finds it.
+        if encoding_backend.name == "gce" and self.storage and self.config.instrumental_audio_path:
+            instr_basename = os.path.basename(self.config.instrumental_audio_path)
+            needs_staging = ("Instrumental User" in instr_basename) or ("Instrumental Custom" in instr_basename)
+            if needs_staging and os.path.isfile(self.config.instrumental_audio_path):
+                try:
+                    dest = f"jobs/{self.config.job_id}/{instr_basename}"
+                    self.storage.upload_file(self.config.instrumental_audio_path, dest)
+                    self.job_log.info(f"Staged instrumental for GCE encoder: {dest}")
+                except Exception as e:
+                    self.job_log.warning(f"Failed to stage instrumental for GCE encoder: {e}")
+
         # Run encoding
         with job_span("encoding", self.config.job_id) as span:
             add_span_event("encoding_started", {"backend": encoding_backend.name})
