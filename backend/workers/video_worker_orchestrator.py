@@ -452,6 +452,27 @@ class VideoWorkerOrchestrator:
         if self.config.countdown_padding_seconds:
             self.job_log.info(f"Countdown padding: {self.config.countdown_padding_seconds}s - instrumental will be padded")
 
+        # The GCE encoder downloads its inputs from input_gcs_path (jobs/{job_id}/) and resolves
+        # the instrumental via find_file. For jobs that supply their own instrumental
+        # (existing_instrumental flow, e.g. tenant submissions), the file lives under
+        # uploads/{job_id}/audio/existing_instrumental.* — which is NOT under jobs/{job_id}/ and
+        # is NOT a name the encoder's 'custom' branch looks for. The encoder's 'custom' branch
+        # globs for "*custom_instrumental*.{flac,mp3}" / "*Instrumental Custom*", so copy the
+        # supplied instrumental into jobs/{job_id}/custom_instrumental.<ext> (server-side, from
+        # the authoritative GCS source — no dependency on local temp files). Without this,
+        # existing-instrumental jobs fail at the encoder with "No instrumental audio found".
+        if encoding_backend.name == "gce" and self.storage:
+            try:
+                srcs = self.storage.list_files(f"uploads/{self.config.job_id}/audio/existing_instrumental")
+                if srcs:
+                    src = srcs[0]
+                    ext = os.path.splitext(src)[1].lower() or ".mp3"
+                    dest = f"jobs/{self.config.job_id}/custom_instrumental{ext}"
+                    self.storage.copy_blob(src, dest)
+                    self.job_log.info(f"Staged custom instrumental for GCE encoder: {dest}")
+            except Exception as e:
+                self.job_log.warning(f"Failed to stage custom instrumental for GCE encoder: {e}")
+
         # Run encoding
         with job_span("encoding", self.config.job_id) as span:
             add_span_event("encoding_started", {"backend": encoding_backend.name})

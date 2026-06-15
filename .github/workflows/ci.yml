@@ -1399,29 +1399,47 @@ jobs:
         run: |
           OLD_PRIMARY="${{ steps.config.outputs.primary_vm }}"
           OLD_PRIMARY_IP="${{ steps.config.outputs.primary_ip }}"
-          API_KEY=$(gcloud secrets versions access latest \
-            --secret=encoding-worker-api-key --project=nomadkaraoke)
 
-          ACTIVE_JOBS=$(curl -sf --connect-timeout 3 --max-time 5 "http://${OLD_PRIMARY_IP}:8080/health" \
-            | jq -r '.active_jobs // 0' 2>/dev/null || echo "0")
+          # Probe the worker's active_jobs. Echoes a non-negative integer on a
+          # successful /health response, or "unknown" if /health can't be
+          # reached or parsed. We must NOT conflate "unknown" with "0": a busy
+          # encoder running a 4K render pins all 32 cores and can miss the 5s
+          # health window, and treating that as idle previously let us stop the
+          # VM mid-render — orphaning the job and surfacing as "lost contact
+          # with worker ... not found" (incident 2026-06-15).
+          probe_active_jobs() {
+            local body n
+            body=$(curl -sf --connect-timeout 3 --max-time 5 \
+              "http://${OLD_PRIMARY_IP}:8080/health" 2>/dev/null) || { echo "unknown"; return; }
+            n=$(printf '%s' "$body" | jq -r '.active_jobs // empty' 2>/dev/null)
+            case "$n" in
+              ''|*[!0-9]*) echo "unknown" ;;
+              *)           echo "$n" ;;
+            esac
+          }
 
-          if [ "$ACTIVE_JOBS" -gt 0 ]; then
-            echo "Old primary has $ACTIVE_JOBS active jobs, waiting for drain..."
-            DRAIN_TIMEOUT=600
-            ELAPSED=0
-            while [ $ELAPSED -lt $DRAIN_TIMEOUT ]; do
-              sleep 15
-              ELAPSED=$((ELAPSED + 15))
-              ACTIVE_JOBS=$(curl -sf --connect-timeout 3 --max-time 5 "http://${OLD_PRIMARY_IP}:8080/health" \
-                | jq -r '.active_jobs // 0' 2>/dev/null || echo "0")
-              echo "Active jobs: $ACTIVE_JOBS (${ELAPSED}s elapsed)"
-              if [ "$ACTIVE_JOBS" -eq 0 ]; then
-                break
-              fi
-            done
+          # Drain: wait until /health CONFIRMS 0 active jobs, or the bounded
+          # timeout elapses. "unknown" is treated as "maybe busy" and keeps us
+          # waiting — we only stop on a definitive 0 (or after the timeout, so
+          # a wedged worker can't block the deploy forever). 20 min comfortably
+          # covers a full 4K render; the old primary only drains in-flight work
+          # since new renders already route to the just-swapped new primary.
+          DRAIN_TIMEOUT=1200
+          ELAPSED=0
+          ACTIVE_JOBS=$(probe_active_jobs)
+          echo "Initial active_jobs: $ACTIVE_JOBS"
+          while [ "$ACTIVE_JOBS" != "0" ] && [ $ELAPSED -lt $DRAIN_TIMEOUT ]; do
+            sleep 15
+            ELAPSED=$((ELAPSED + 15))
+            ACTIVE_JOBS=$(probe_active_jobs)
+            echo "active_jobs: $ACTIVE_JOBS (${ELAPSED}s elapsed)"
+          done
+
+          if [ "$ACTIVE_JOBS" = "0" ]; then
+            echo "Drain confirmed (0 active jobs). Stopping old primary: $OLD_PRIMARY"
+          else
+            echo "::warning::Drain not confirmed after ${DRAIN_TIMEOUT}s (last='${ACTIVE_JOBS}'); stopping anyway to avoid a stuck deploy"
           fi
-
-          echo "Stopping old primary: $OLD_PRIMARY"
           gcloud compute instances stop "$OLD_PRIMARY" \
             --zone=us-central1-c --project=nomadkaraoke || true
 

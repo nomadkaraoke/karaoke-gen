@@ -1475,6 +1475,13 @@ async def complete_review(
     try:
         # Store instrumental selection if provided (combined review flow)
         instrumental_selection = body.instrumental_selection if body else None
+        # Jobs that supplied their own instrumental (existing_instrumental flow, e.g. tenant
+        # submissions) have no instrumental-selection UI step. Default to 'custom' so the
+        # render uses the provided instrumental instead of a separated stem that was never
+        # produced (the orchestrator otherwise defaults to 'clean' and fails prerequisites).
+        if not instrumental_selection and getattr(job, 'existing_instrumental_gcs_path', None):
+            instrumental_selection = 'custom'
+            logger.info(f"Job {job_id}: Defaulting instrumental selection to 'custom' (existing instrumental provided)")
         if instrumental_selection:
             job_manager.update_state_data(job_id, 'instrumental_selection', instrumental_selection)
             logger.info(f"Job {job_id}: Stored instrumental selection: {instrumental_selection}")

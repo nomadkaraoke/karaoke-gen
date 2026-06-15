@@ -76,6 +76,9 @@ function resetStore() {
     error: null,
     isInitialized: false,
   })
+  // The store now mirrors resolved config onto window.__TENANT_CONFIG__ (so lib/api.ts
+  // can read it synchronously). Clear it between tests to keep them isolated.
+  delete (window as { __TENANT_CONFIG__?: unknown }).__TENANT_CONFIG__
 }
 
 describe("useTenant store", () => {

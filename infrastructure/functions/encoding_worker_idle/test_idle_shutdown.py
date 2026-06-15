@@ -204,8 +204,13 @@ class TestIdleShutdown:
         result = json.loads(response)
         assert result["status"] == "no_config"
 
-    def test_vm_without_ip_still_gets_stopped(self, mock_compute, mock_firestore):
-        """VMs without an IP (no access config) should still be stopped if idle."""
+    def test_vm_without_ip_kept_alive_failsafe(self, mock_compute, mock_firestore):
+        """A RUNNING VM with no reachable IP must be KEPT ALIVE, not stopped.
+
+        We can't query /health without an IP, so we can't confirm the VM is
+        idle — stopping it risks killing an in-flight render. Fail safe and
+        leave it for a later cycle once it has an IP (incident 2026-06-15).
+        """
         old_activity = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
         config = _make_config(last_activity_at=old_activity)
         _setup_firestore(mock_firestore, config)
@@ -218,9 +223,29 @@ class TestIdleShutdown:
         response, status_code = main.idle_shutdown(MagicMock())
 
         result = json.loads(response)
-        assert result["results"]["encoding-worker-a"] == "stopped"
-        assert result["results"]["encoding-worker-b"] == "stopped"
-        assert mock_compute.stop.call_count == 2
+        assert result["results"]["encoding-worker-a"] == "no_ip_kept_alive"
+        assert result["results"]["encoding-worker-b"] == "no_ip_kept_alive"
+        mock_compute.stop.assert_not_called()
+
+    def test_health_unconfirmed_keeps_vm_alive(self, mock_compute, mock_firestore):
+        """If /health can't be confirmed (check_active_jobs returns None), the
+        VM must be KEPT ALIVE, not stopped — a busy encoder's /health can time
+        out under render load, and stopping it orphans the job ("lost contact
+        with worker ... not found", incident 2026-06-15)."""
+        old_activity = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        config = _make_config(last_activity_at=old_activity)
+        _setup_firestore(mock_firestore, config)
+
+        instance = _make_instance(status="RUNNING", ip="1.2.3.4")
+        mock_compute.get.return_value = instance
+
+        with patch("main.check_active_jobs", return_value=None):
+            response, status_code = main.idle_shutdown(MagicMock())
+
+        result = json.loads(response)
+        assert result["results"]["encoding-worker-a"] == "health_unknown_kept_alive"
+        assert result["results"]["encoding-worker-b"] == "health_unknown_kept_alive"
+        mock_compute.stop.assert_not_called()
 
     def test_no_last_activity_treats_as_idle(self, mock_compute, mock_firestore):
         """If last_activity_at is not set, treat as no recent activity."""
@@ -440,3 +465,51 @@ class TestParseFallbackVms:
             ("fb-a", "us-central1-a"),
             ("fb-c", "us-central1-c"),
         ]
+
+
+class TestCheckActiveJobs:
+    """Direct tests for check_active_jobs — the fail-safe health probe.
+
+    The critical contract: return None (not 0) whenever the count can't be
+    confirmed, so the caller never stops a VM it can't prove is idle
+    (incident 2026-06-15).
+    """
+
+    def test_returns_count_on_healthy_response(self):
+        resp = MagicMock(status_code=200)
+        resp.json.return_value = {"active_jobs": 4}
+        with patch("main.requests.get", return_value=resp) as get, \
+                patch("main.time.sleep") as sleep:
+            assert main.check_active_jobs("1.2.3.4") == 4
+        # Healthy on first try → no retries, no sleeps
+        assert get.call_count == 1
+        sleep.assert_not_called()
+
+    def test_returns_zero_when_field_missing(self):
+        """A healthy 200 with no active_jobs field is a confirmed 0, not unknown."""
+        resp = MagicMock(status_code=200)
+        resp.json.return_value = {}
+        with patch("main.requests.get", return_value=resp), patch("main.time.sleep"):
+            assert main.check_active_jobs("1.2.3.4") == 0
+
+    def test_returns_none_on_persistent_exception(self):
+        with patch("main.requests.get", side_effect=OSError("conn refused")) as get, \
+                patch("main.time.sleep") as sleep:
+            assert main.check_active_jobs("1.2.3.4", attempts=3) is None
+        assert get.call_count == 3        # all attempts tried
+        assert sleep.call_count == 2      # slept between, not after the last
+
+    def test_returns_none_on_persistent_non_200(self):
+        resp = MagicMock(status_code=503)
+        with patch("main.requests.get", return_value=resp), patch("main.time.sleep"):
+            assert main.check_active_jobs("1.2.3.4", attempts=2) is None
+
+    def test_recovers_on_retry(self):
+        """A transient blip followed by a healthy response returns the count."""
+        bad = OSError("timeout")
+        good = MagicMock(status_code=200)
+        good.json.return_value = {"active_jobs": 1}
+        with patch("main.requests.get", side_effect=[bad, good]) as get, \
+                patch("main.time.sleep"):
+            assert main.check_active_jobs("1.2.3.4", attempts=3) == 1
+        assert get.call_count == 2

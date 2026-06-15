@@ -57,6 +57,19 @@ def _is_youtube_url(url: str) -> bool:
 router = APIRouter(tags=["jobs"])
 
 
+def _select_mixed_audio_files(files):
+    """Filter a listing of ``uploads/{job_id}/audio/`` down to the mixed (with-vocals) audio.
+
+    When a job supplies its own instrumental (existing_instrumental flow, e.g. tenant
+    submissions), that file is uploaded into the SAME ``audio/`` directory as the mixed
+    audio (``existing_instrumental.*``). The ``audio/`` prefix therefore matches both, and
+    because ``existing_instrumental`` sorts before most filenames, ``files[0]`` would pick
+    the instrumental — so transcription would run on the backing track instead of the
+    vocals. Excluding it here ensures the mixed audio is selected as the transcription input.
+    """
+    return [f for f in files if not Path(f).name.startswith('existing_instrumental')]
+
+
 def _apply_tenant_overrides(
     dist: EffectiveDistributionSettings,
     tenant_config,
@@ -67,12 +80,20 @@ def _apply_tenant_overrides(
     """
     Apply tenant-specific overrides to distribution settings and job options.
 
+    White-label tenant config is AUTHORITATIVE: it replaces (not just fills in) the
+    distribution settings, so tenant outputs never inherit the global consumer defaults
+    (DEFAULT_BRAND_PREFIX / DEFAULT_DROPBOX_PATH / DEFAULT_GDRIVE_FOLDER_ID) that
+    ``get_effective_distribution_settings`` seeds into ``dist``. Without this, every
+    tenant job would land in the shared consumer Dropbox folder and upload to the global
+    Google Drive, regardless of the tenant's own config.
+
     For tenant jobs:
-    - Overlays brand_prefix, dropbox_path, gdrive_folder_id from tenant defaults
-      (only when not already set in the request body / dist)
+    - Sets brand_prefix, dropbox_path, gdrive_folder_id authoritatively from tenant config
+    - Routes Dropbox / Google Drive only when the matching feature flag is enabled;
+      otherwise disables that channel entirely (no global-default leak)
     - Forces is_private = True
     - Applies locked_theme as effective theme
-    - Disables YouTube upload
+    - Disables YouTube upload (tenants never publish to YouTube)
 
     Returns:
         Tuple of (dist, effective_theme_id, is_private, enable_youtube_upload)
@@ -81,14 +102,12 @@ def _apply_tenant_overrides(
         return dist, effective_theme_id, is_private, enable_youtube_upload
 
     defaults = tenant_config.defaults
+    features = tenant_config.features
 
-    # Overlay tenant distribution defaults (request-level values take precedence)
-    if defaults.brand_prefix and not dist.brand_prefix:
-        dist.brand_prefix = defaults.brand_prefix
-    if defaults.dropbox_path and not dist.dropbox_path:
-        dist.dropbox_path = defaults.dropbox_path
-    if defaults.gdrive_folder_id and not dist.gdrive_folder_id:
-        dist.gdrive_folder_id = defaults.gdrive_folder_id
+    # Authoritative distribution routing (overrides any global defaults in `dist`).
+    dist.brand_prefix = defaults.brand_prefix
+    dist.dropbox_path = defaults.dropbox_path if features.dropbox_upload else None
+    dist.gdrive_folder_id = defaults.gdrive_folder_id if features.gdrive_upload else None
 
     # Force private for all tenant jobs
     is_private = True
@@ -1382,12 +1401,14 @@ async def mark_uploads_complete(
             
             # List files with this prefix to find the actual uploaded file
             files = storage_service.list_files(prefix)
+            if file_type == 'audio':
+                files = _select_mixed_audio_files(files)
             if not files:
                 raise HTTPException(
                     status_code=400,
                     detail=f"File for '{file_type}' was not uploaded to GCS. Expected prefix: {prefix}"
                 )
-            
+
             # Use the first (and should be only) file found
             gcs_path = files[0]
             

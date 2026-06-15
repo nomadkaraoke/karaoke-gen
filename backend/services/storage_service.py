@@ -59,6 +59,17 @@ class StorageService:
             logger.error(f"Error downloading file {source_path}: {e}")
             raise
     
+    def copy_blob(self, source_path: str, destination_path: str) -> str:
+        """Server-side copy of a blob within the bucket (no download/upload)."""
+        try:
+            src = self.bucket.blob(source_path)
+            self.bucket.copy_blob(src, self.bucket, destination_path)
+            logger.info(f"Copied gs://{settings.gcs_bucket_name}/{source_path} -> {destination_path}")
+            return destination_path
+        except Exception as e:
+            logger.error(f"Error copying blob {source_path} -> {destination_path}: {e}")
+            raise
+
     def generate_signed_url(self, blob_path: str, expiration_minutes: int = 60) -> str:
         """Generate a signed URL for downloading a file.
         

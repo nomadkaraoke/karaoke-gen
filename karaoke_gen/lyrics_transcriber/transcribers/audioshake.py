@@ -29,6 +29,11 @@ AUDIOSHAKE_SUPPORTED = AUDIOSHAKE_SUPPORTED_AUDIO | AUDIOSHAKE_SUPPORTED_VIDEO
 # Uncompressed formats that benefit from FLAC conversion (smaller upload)
 UNCOMPRESSED_FORMATS = {'.wav', '.aiff', '.aif', '.pcm'}
 
+# Compressed audio formats where leading 0x00 bytes are unambiguous garbage (the real
+# audio starts at an ID3 tag or MPEG/ADTS frame sync). Container formats like .mp4/.mov
+# legitimately begin with null bytes (box-size prefix) and must NOT be treated this way.
+LEADING_PADDING_PRONE = {'.mp3', '.aac', '.mp4a'}
+
 
 class AudioUploadOptimizer:
     """Optimizes audio files for upload by converting uncompressed formats to FLAC."""
@@ -57,8 +62,14 @@ class AudioUploadOptimizer:
             self.logger.info("Stripping metadata from FLAC before upload (audio unchanged)")
             return self._strip_metadata(filepath)
 
-        # Other AudioShake-supported formats: upload directly
+        # Other AudioShake-supported formats: upload directly, unless the file has leading
+        # null-byte padding that AudioShake's asset processing rejects (see below).
         if ext in AUDIOSHAKE_SUPPORTED:
+            if ext in LEADING_PADDING_PRONE and self._has_leading_padding(filepath):
+                self.logger.info(
+                    f"Leading padding detected in {ext}; remuxing losslessly before upload"
+                )
+                return self._remux_clean(filepath, ext)
             self.logger.info(f"Uploading AudioShake-supported format ({ext}) directly")
             return filepath, None
 
@@ -89,6 +100,46 @@ class AudioUploadOptimizer:
             raise
 
         self.logger.info(f"Stripped metadata from {os.path.basename(filepath)}")
+        return clean_path, clean_path
+
+    def _has_leading_padding(self, filepath: str) -> bool:
+        """Return True if the file begins with a null byte (leading padding).
+
+        Some user-provided files (notably certain karaoke production exports, e.g. the
+        Vocal Star bulk batch) carry a block of leading 0x00 bytes before the first ID3
+        tag / MPEG frame sync. ffmpeg tolerates this, but AudioShake's asset processing
+        rejects it with "Error fetching or processing asset". Such files must be remuxed
+        before upload. Only call this for LEADING_PADDING_PRONE formats — container
+        formats begin with null bytes legitimately.
+        """
+        try:
+            with open(filepath, "rb") as f:
+                return f.read(1) == b"\x00"
+        except OSError:
+            return False
+
+    def _remux_clean(self, filepath: str, ext: str) -> Tuple[str, str]:
+        """Losslessly remux audio to strip leading padding that breaks AudioShake.
+
+        Uses ffmpeg stream copy (no re-encode, no quality loss); ffmpeg's demuxer skips
+        the leading garbage and writes only valid frames, so the output starts cleanly.
+        """
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as temp_file:
+            clean_path = temp_file.name
+
+        try:
+            subprocess.run(
+                ["ffmpeg", "-i", filepath, "-map", "0:a", "-c", "copy", "-map_metadata", "-1", clean_path, "-y"],
+                check=True,
+                capture_output=True,
+            )
+        except subprocess.CalledProcessError as e:
+            if os.path.exists(clean_path):
+                os.unlink(clean_path)
+            self.logger.error(f"ffmpeg remux failed: {e.stderr.decode()}")
+            raise
+
+        self.logger.info(f"Remuxed {os.path.basename(filepath)} to strip leading padding")
         return clean_path, clean_path
 
     def _convert_to_flac(self, filepath: str) -> Tuple[str, str]:
