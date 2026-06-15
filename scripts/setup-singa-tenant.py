@@ -565,9 +565,9 @@ def create_tenant_config() -> dict:
             "audio_search": False,
             "file_upload": True,
             "youtube_url": False,
-            "youtube_upload": False,
-            "dropbox_upload": False,
-            "gdrive_upload": False,
+            "youtube_upload": False,  # B2B: never publish to YouTube
+            "dropbox_upload": True,   # Outputs delivered to the tenant's Dropbox folder
+            "gdrive_upload": False,   # B2B: never publish to Google Drive
             "theme_selection": False,
             "color_overrides": False,
             "enable_cdg": True,
@@ -579,6 +579,8 @@ def create_tenant_config() -> dict:
             "locked_theme": THEME_ID,
             "distribution_mode": "download_only",
             "brand_prefix": "SINGA",
+            "dropbox_path": "/MediaUnsynced/Karaoke/Tracks-Singa",
+            "gdrive_folder_id": None,  # No Google Drive for white-label tenants
             "youtube_description_template": None,
         },
         "auth": {

@@ -55,10 +55,45 @@ function getLocaleFromPath(): string {
   return 'en';
 }
 
-function getAuthHeaders(): HeadersInit {
-  const headers: HeadersInit = {
+/**
+ * Resolve the current white-label tenant id, if any.
+ *
+ * On tenant portals the Cloudflare Pages edge function (frontend/functions/[[path]].ts)
+ * injects `window.__TENANT_CONFIG__` into the HTML before any app JS runs, and the
+ * tenant store (lib/tenant.ts) mirrors the same shape there in dev/preview. Reading it
+ * directly here keeps api.ts free of an import cycle with tenant.ts (which imports
+ * API_BASE_URL from this module).
+ *
+ * Returns null on the consumer build / consumer domain, so no tenant header is sent and
+ * existing consumer behavior is unchanged.
+ */
+export function getTenantId(): string | null {
+  if (typeof window === 'undefined') return null;
+  const injected = (window as { __TENANT_CONFIG__?: { tenant?: { id?: string } | null } }).__TENANT_CONFIG__;
+  const id = injected?.tenant?.id;
+  return typeof id === 'string' && id ? id : null;
+}
+
+/**
+ * Base headers attached to every API request: locale, and the X-Tenant-ID header when
+ * on a white-label tenant portal. The shared backend (api.nomadkaraoke.com) cannot infer
+ * the tenant from the Host (it's not the tenant subdomain) or from the prod-disabled
+ * `?tenant=` query param, so this header is the primary tenant-detection signal that lets
+ * the backend apply tenant config (locked theme, Dropbox path, no YouTube/GDrive).
+ */
+function getBaseHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
     'Accept-Language': getLocaleFromPath(),
   };
+  const tenantId = getTenantId();
+  if (tenantId) {
+    headers['X-Tenant-ID'] = tenantId;
+  }
+  return headers;
+}
+
+function getAuthHeaders(): HeadersInit {
+  const headers: Record<string, string> = getBaseHeaders();
   const token = getAccessToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -1285,6 +1320,11 @@ export const api = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Carry tenant context so the backend validates the email domain against the
+        // tenant, embeds tenant_id in the magic-link token, and uses the tenant's
+        // sender email + portal URL. Without this, tenant sign-in silently falls back
+        // to the consumer (nomad) flow.
+        ...getBaseHeaders(),
       },
       body: JSON.stringify(body),
     });
