@@ -533,7 +533,12 @@
     "pasteUrlButton": "Lipește un link",
     "urlSupportedSitesHint": "Funcționează cu YouTube, Facebook, SoundCloud, TikTok, Vimeo și sute de alte site-uri.",
     "urlSupportedSitesLink": "Vezi toate site-urile acceptate",
-    "useThisUrl": "Folosește acest URL"
+    "useThisUrl": "Folosește acest URL",
+    "matchCorrectedTo": "Corectat în {value} — ai scris „{typed}”",
+    "matchDidYouMean": "Ai vrut să spui?",
+    "matchKeepMine": "păstrează ce am scris",
+    "matchTidiedTo": "Ajustat în {value}",
+    "matchUndo": "Anulează"
   },
   "jobStatus": {
     "settingUp": "Se configurează",

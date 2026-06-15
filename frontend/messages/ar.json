@@ -533,7 +533,12 @@
     "pasteUrlButton": "لصق رابط",
     "urlSupportedSitesHint": "يعمل مع YouTube و Facebook و SoundCloud و TikTok و Vimeo ومئات المواقع الأخرى.",
     "urlSupportedSitesLink": "عرض جميع المواقع المدعومة",
-    "useThisUrl": "استخدام هذا الرابط"
+    "useThisUrl": "استخدام هذا الرابط",
+    "matchCorrectedTo": "تم التصحيح إلى {value} — لقد كتبت “{typed}”",
+    "matchDidYouMean": "هل تقصد؟",
+    "matchKeepMine": "الاحتفاظ بما كتبته",
+    "matchTidiedTo": "تم التنسيق إلى {value}",
+    "matchUndo": "تراجع"
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",

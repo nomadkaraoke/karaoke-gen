@@ -533,7 +533,12 @@
     "pasteUrlButton": "Mag-paste ng link",
     "urlSupportedSitesHint": "Gumagana sa YouTube, Facebook, SoundCloud, TikTok, Vimeo at daan-daang iba pang mga site.",
     "urlSupportedSitesLink": "Tingnan ang lahat ng suportadong site",
-    "useThisUrl": "Gamitin ang URL na Ito"
+    "useThisUrl": "Gamitin ang URL na Ito",
+    "matchCorrectedTo": "Itinama sa {value} — ang tinype mo ay “{typed}”",
+    "matchDidYouMean": "Ibig mo bang sabihin?",
+    "matchKeepMine": "panatilihin ang tinype ko",
+    "matchTidiedTo": "Inayos sa {value}",
+    "matchUndo": "I-undo"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",

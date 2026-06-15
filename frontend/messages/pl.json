@@ -533,7 +533,12 @@
     "pasteUrlButton": "Wklej link",
     "urlSupportedSitesHint": "Działa z YouTube, Facebookiem, SoundCloud, TikTokiem, Vimeo i setkami innych stron.",
     "urlSupportedSitesLink": "Zobacz wszystkie obsługiwane strony",
-    "useThisUrl": "Użyj tego adresu URL"
+    "useThisUrl": "Użyj tego adresu URL",
+    "matchCorrectedTo": "Poprawiono na {value} — Twój wpis: „{typed}”",
+    "matchDidYouMean": "Czy chodziło Ci o?",
+    "matchKeepMine": "zachowaj mój wpis",
+    "matchTidiedTo": "Uporządkowano: {value}",
+    "matchUndo": "Cofnij"
   },
   "jobStatus": {
     "settingUp": "Konfigurowanie",

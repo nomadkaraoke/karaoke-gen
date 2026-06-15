@@ -104,6 +104,16 @@ class Settings(BaseSettings):
         "AUTO_CORRECT_PROACTIVE_ENABLED", "false"
     ).lower() in ("true", "1", "yes")
 
+    # Match judge — artist/title formatting + match-acceptance for the job
+    # submission flow. Deterministic + catalog layers always run; the light AI
+    # layer (Vertex Gemini Flash) fires only when those aren't confident.
+    match_judge_enabled: bool = os.getenv("MATCH_JUDGE_ENABLED", "true").lower() in (
+        "true", "1", "yes",
+    )
+    match_judge_model: str = os.getenv("MATCH_JUDGE_MODEL", "gemini-3.5-flash")
+    # Bounds the AI call so a hung model never strands the submission UI.
+    match_judge_timeout_ms: int = int(os.getenv("MATCH_JUDGE_TIMEOUT_MS", "3000"))
+
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
     # When disabled (default), workers are triggered via direct HTTP (for development)

@@ -533,7 +533,12 @@
     "pasteUrlButton": "एक लिंक पेस्ट करो",
     "urlSupportedSitesHint": "यह YouTube, Facebook, SoundCloud, TikTok, Vimeo और सैकड़ों अन्य साइटों के साथ काम करता है।",
     "urlSupportedSitesLink": "सभी समर्थित साइटें देखो",
-    "useThisUrl": "इस URL का इस्तेमाल करो"
+    "useThisUrl": "इस URL का इस्तेमाल करो",
+    "matchCorrectedTo": "सही करके {value} कर दिया गया — तुमने “{typed}” टाइप किया था",
+    "matchDidYouMean": "क्या तुम्हारा मतलब यह था?",
+    "matchKeepMine": "जो मैंने टाइप किया है वही रखो",
+    "matchTidiedTo": "ठीक करके {value} कर दिया गया",
+    "matchUndo": "पूर्ववत करो"
   },
   "jobStatus": {
     "settingUp": "सेटअप हो रहा है",

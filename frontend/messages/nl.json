@@ -533,7 +533,12 @@
     "pasteUrlButton": "Plak een link",
     "urlSupportedSitesHint": "Werkt met YouTube, Facebook, SoundCloud, TikTok, Vimeo en honderden andere sites.",
     "urlSupportedSitesLink": "Bekijk alle ondersteunde sites",
-    "useThisUrl": "Gebruik deze URL"
+    "useThisUrl": "Gebruik deze URL",
+    "matchCorrectedTo": "Gecorrigeerd naar {value} — je typte “{typed}”",
+    "matchDidYouMean": "Bedoelde je?",
+    "matchKeepMine": "behoud wat ik typte",
+    "matchTidiedTo": "Opgeschoond naar {value}",
+    "matchUndo": "Ongedaan maken"
   },
   "jobStatus": {
     "settingUp": "Instellen",

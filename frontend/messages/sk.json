@@ -533,7 +533,12 @@
     "pasteUrlButton": "Vlož odkaz",
     "urlSupportedSitesHint": "Funguje s YouTube, Facebook, SoundCloud, TikTok, Vimeo a stovkami ďalších stránok.",
     "urlSupportedSitesLink": "Pozri si všetky podporované stránky",
-    "useThisUrl": "Použi túto URL"
+    "useThisUrl": "Použi túto URL",
+    "matchCorrectedTo": "Opravené na {value} — tvoj text: „{typed}“",
+    "matchDidYouMean": "Mal si na mysli?",
+    "matchKeepMine": "ponechať môj text",
+    "matchTidiedTo": "Upravené na {value}",
+    "matchUndo": "Vrátiť späť"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",

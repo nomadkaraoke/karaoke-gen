@@ -533,7 +533,12 @@
     "pasteUrlButton": "Tempel tautan",
     "urlSupportedSitesHint": "Berfungsi dengan YouTube, Facebook, SoundCloud, TikTok, Vimeo, dan ratusan situs lainnya.",
     "urlSupportedSitesLink": "Lihat semua situs yang didukung",
-    "useThisUrl": "Gunakan URL Ini"
+    "useThisUrl": "Gunakan URL Ini",
+    "matchCorrectedTo": "Dikoreksi menjadi {value} — Anda mengetik “{typed}”",
+    "matchDidYouMean": "Maksud Anda?",
+    "matchKeepMine": "tetap gunakan yang saya ketik",
+    "matchTidiedTo": "Dirapikan menjadi {value}",
+    "matchUndo": "Urungkan"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",

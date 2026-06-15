@@ -533,7 +533,12 @@
     "pasteUrlButton": "リンクを貼り付ける",
     "urlSupportedSitesHint": "YouTube、Facebook、SoundCloud、TikTok、Vimeoなど、数百ものサイトに対応しています。",
     "urlSupportedSitesLink": "対応サイト一覧を見る",
-    "useThisUrl": "このURLを使用する"
+    "useThisUrl": "このURLを使用する",
+    "matchCorrectedTo": "{value} に修正しました — 入力内容: 「{typed}」",
+    "matchDidYouMean": "もしかして？",
+    "matchKeepMine": "入力した内容をそのまま使う",
+    "matchTidiedTo": "{value} に整えました",
+    "matchUndo": "元に戻す"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",

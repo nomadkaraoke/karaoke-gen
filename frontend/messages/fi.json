@@ -533,7 +533,12 @@
     "pasteUrlButton": "Liitä linkki",
     "urlSupportedSitesHint": "Toimii YouTuben, Facebookin, SoundCloudin, TikTokin, Vimeon ja satojen muiden sivustojen kanssa.",
     "urlSupportedSitesLink": "Katso kaikki tuetut sivustot",
-    "useThisUrl": "Käytä tätä osoitetta"
+    "useThisUrl": "Käytä tätä osoitetta",
+    "matchCorrectedTo": "Korjattu muotoon {value} — kirjoitit ”{typed}”",
+    "matchDidYouMean": "Tarkoititko?",
+    "matchKeepMine": "säilytä kirjoittamani",
+    "matchTidiedTo": "Siistitty muotoon {value}",
+    "matchUndo": "Kumoa"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",

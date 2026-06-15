@@ -533,7 +533,12 @@
     "pasteUrlButton": "Zalijepi poveznicu",
     "urlSupportedSitesHint": "Radi s platformama YouTube, Facebook, SoundCloud, TikTok, Vimeo i stotinama drugih stranica.",
     "urlSupportedSitesLink": "Pogledaj sve podržane stranice",
-    "useThisUrl": "Upotrijebi ovaj URL"
+    "useThisUrl": "Upotrijebi ovaj URL",
+    "matchCorrectedTo": "Ispravljeno u {value} — tvoj unos: “{typed}”",
+    "matchDidYouMean": "Jesi li mislio/la?",
+    "matchKeepMine": "zadrži moj unos",
+    "matchTidiedTo": "Uređeno u {value}",
+    "matchUndo": "Poništi"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",

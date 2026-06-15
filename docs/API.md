@@ -831,6 +831,45 @@ Response:
 
 When `has_community` is true, the frontend shows a dismissible green banner suggesting the user check existing versions before creating a new one.
 
+#### Match Judge (artist/title formatting + match acceptance)
+
+```http
+POST /api/catalog/match-judge
+Content-Type: application/json
+
+{
+  "artist": "paramore",
+  "title": "big man, little dignity",
+  "audio_confidence_tier": 1
+}
+```
+
+Decides the official formatting for a typed artist/title and whether it matches a
+real song. A deterministic normalizer + the catalog run first; a light Vertex
+Gemini model (`MATCH_JUDGE_MODEL`, default `gemini-3.5-flash`) is consulted
+**only** when those aren't confident. `audio_confidence_tier` (1=strong..3=weak,
+optional) lets the judge tell whether weak audio results hint at a typo. The call
+never blocks job creation — on timeout/error it returns a `none` verdict. Disable
+the AI layer with `MATCH_JUDGE_ENABLED=false` (deterministic+catalog still run).
+
+Response:
+```json
+{
+  "kind": "cosmetic",
+  "confident": true,
+  "canonical_artist": "Paramore",
+  "canonical_title": "Big Man, Little Dignity",
+  "alternatives": [],
+  "engine": "catalog",
+  "reason": "formatting differs from catalog"
+}
+```
+
+`kind` drives the Step 2 UI: `cosmetic` → silent tidy with an undo line;
+`content` (confident) → applied with a "Corrected … · Undo" line, re-searching
+audio only when the original results were weak; `ambiguous` (or unconfident
+`content`) → an ask-first "Did you mean?" prompt; `none` → no change.
+
 ### Audio Search
 
 #### Search for Audio

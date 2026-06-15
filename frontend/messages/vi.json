@@ -533,7 +533,12 @@
     "pasteUrlButton": "Dán liên kết",
     "urlSupportedSitesHint": "Hỗ trợ YouTube, Facebook, SoundCloud, TikTok, Vimeo và hàng trăm trang web khác.",
     "urlSupportedSitesLink": "Xem tất cả các trang web được hỗ trợ",
-    "useThisUrl": "Sử dụng URL này"
+    "useThisUrl": "Sử dụng URL này",
+    "matchCorrectedTo": "Đã sửa thành {value} — bạn đã nhập “{typed}”",
+    "matchDidYouMean": "Có phải ý bạn là?",
+    "matchKeepMine": "giữ nguyên nội dung tôi đã nhập",
+    "matchTidiedTo": "Đã chỉnh gọn thành {value}",
+    "matchUndo": "Hoàn tác"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",

@@ -533,7 +533,12 @@
     "pasteUrlButton": "הדבקת קישור",
     "urlSupportedSitesHint": "עובד עם YouTube, Facebook, SoundCloud, TikTok, Vimeo ומאות אתרים נוספים.",
     "urlSupportedSitesLink": "לצפייה בכל האתרים הנתמכים",
-    "useThisUrl": "שימוש בכתובת זו"
+    "useThisUrl": "שימוש בכתובת זו",
+    "matchCorrectedTo": "תוקן ל-{value} — הקלדת “{typed}”",
+    "matchDidYouMean": "האם התכוונת?",
+    "matchKeepMine": "להשאיר את מה שהקלדתי",
+    "matchTidiedTo": "סודר ל-{value}",
+    "matchUndo": "ביטול"
   },
   "jobStatus": {
     "settingUp": "מגדיר",

@@ -533,7 +533,12 @@
     "pasteUrlButton": "Вставити посилання",
     "urlSupportedSitesHint": "Працює з YouTube, Facebook, SoundCloud, TikTok, Vimeo та сотнями інших сайтів.",
     "urlSupportedSitesLink": "Переглянути всі підтримувані сайти",
-    "useThisUrl": "Використати це посилання"
+    "useThisUrl": "Використати це посилання",
+    "matchCorrectedTo": "Виправлено на {value} — твій варіант: «{typed}»",
+    "matchDidYouMean": "Маєш на увазі?",
+    "matchKeepMine": "залишити мій варіант",
+    "matchTidiedTo": "Відформатовано як {value}",
+    "matchUndo": "Скасувати"
   },
   "jobStatus": {
     "settingUp": "Налаштування",

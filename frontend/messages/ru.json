@@ -533,7 +533,12 @@
     "pasteUrlButton": "Вставить ссылку",
     "urlSupportedSitesHint": "Работает с YouTube, Facebook, SoundCloud, TikTok, Vimeo и сотнями других сайтов.",
     "urlSupportedSitesLink": "Посмотреть все поддерживаемые сайты",
-    "useThisUrl": "Использовать эту ссылку"
+    "useThisUrl": "Использовать эту ссылку",
+    "matchCorrectedTo": "Исправлено на {value} — твой текст: «{typed}»",
+    "matchDidYouMean": "Имелось в виду?",
+    "matchKeepMine": "оставить мой вариант",
+    "matchTidiedTo": "Отформатировано как {value}",
+    "matchUndo": "Отменить"
   },
   "jobStatus": {
     "settingUp": "Настройка",

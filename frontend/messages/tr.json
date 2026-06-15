@@ -533,7 +533,12 @@
     "pasteUrlButton": "Bir bağlantı yapıştır",
     "urlSupportedSitesHint": "YouTube, Facebook, SoundCloud, TikTok, Vimeo ve yüzlerce başka siteyle çalışır.",
     "urlSupportedSitesLink": "Desteklenen tüm siteleri gör",
-    "useThisUrl": "Bu URL'yi Kullan"
+    "useThisUrl": "Bu URL'yi Kullan",
+    "matchCorrectedTo": "{value} olarak düzeltildi — “{typed}” yazmıştın",
+    "matchDidYouMean": "Bunu mu demek istedin?",
+    "matchKeepMine": "yazdığım gibi kalsın",
+    "matchTidiedTo": "{value} olarak düzenlendi",
+    "matchUndo": "Geri al"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",
