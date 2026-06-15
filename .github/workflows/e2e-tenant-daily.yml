@@ -9,17 +9,7 @@ on:
   schedule:
     # Daily at 07:37 UTC (off-peak, off the :00 mark).
     - cron: '37 7 * * *'
-  workflow_dispatch:
-    inputs:
-      tenant:
-        description: 'Tenant to test (blank = all)'
-        required: false
-        default: ''
-        type: choice
-        options:
-          - ''
-          - vocalstar
-          - singa
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -34,8 +24,6 @@ jobs:
       fail-fast: false
       matrix:
         tenant: [vocalstar, singa]
-    # On manual dispatch with a specific tenant, only run that one.
-    if: ${{ github.event.inputs.tenant == '' || github.event.inputs.tenant == matrix.tenant }}
 
     steps:
       - name: Checkout code
