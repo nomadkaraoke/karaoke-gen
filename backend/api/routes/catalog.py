@@ -103,6 +103,31 @@ class CommunityCheckResponse(BaseModel):
     best_youtube_url: Optional[str] = None
 
 
+class MatchJudgeRequest(BaseModel):
+    """Request body for the artist/title match judge."""
+    artist: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1)
+    # The audio search's confidence tier (1=strong..3=weak), so the judge can
+    # tell whether weak results hint at a typo. Optional.
+    audio_confidence_tier: Optional[int] = Field(None, ge=1, le=3)
+
+
+class MatchJudgeAlternative(BaseModel):
+    artist: str
+    title: str
+
+
+class MatchJudgeResponse(BaseModel):
+    """Verdict on a typed artist/title — formatting + match acceptance."""
+    kind: str  # "cosmetic" | "content" | "ambiguous" | "none"
+    confident: bool
+    canonical_artist: str
+    canonical_title: str
+    alternatives: list[MatchJudgeAlternative] = []
+    engine: str  # "deterministic" | "catalog" | "ai"
+    reason: str = ""
+
+
 # --- Routes ---
 
 
@@ -161,3 +186,29 @@ async def check_community_versions(
     from backend.services.karaokenerds_service import check_community_versions
     result = await check_community_versions(body.artist, body.title)
     return result
+
+
+@router.post("/match-judge", response_model=MatchJudgeResponse)
+async def match_judge(
+    request: Request,
+    body: MatchJudgeRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Judge a typed artist/title: decide official formatting + whether it matches a
+    real song. Deterministic + catalog layers run first; a light AI model fires
+    only when those aren't confident. Never blocks the submission flow — failures
+    degrade to a "none" verdict.
+    """
+    locale = get_locale_from_request(request)
+    _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown", locale)
+
+    from backend.services.match_judge.service import judge_match
+    verdict = await judge_match(
+        body.artist, body.title, audio_tier=body.audio_confidence_tier
+    )
+    logger.info(
+        "match-judge kind=%s engine=%s confident=%s",
+        verdict.kind, verdict.engine, verdict.confident,
+    )
+    return verdict.to_dict()

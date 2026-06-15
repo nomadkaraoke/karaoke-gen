@@ -62,10 +62,10 @@ Response:
 
 **Resilience:** AI judge runs under a short timeout (~2–3s) and is fully optional — on timeout/error/unparseable output, fall back to deterministic+catalog result (or `kind=none`). Never block the audio search; never error the request. Mirror `auto_correct`'s greppable usage/cost logging (`match-judge usage/cost job/session=…`).
 
-### Model (decision point)
+### Model (decided)
 
-Reuse `auto_correct` dispatch (`claude*` → Anthropic, else Gemini). Candidates: `claude-haiku-4-5` (Anthropic; pricing already in `pricing.py`) or a Vertex Gemini Flash (`gemini-3-flash-preview` / `gemini-2.x-flash`, already used elsewhere — no extra API key).
-**Recommendation:** default to **Vertex Gemini Flash** to avoid requiring `ANTHROPIC_API_KEY` in prod, configurable via `MATCH_JUDGE_MODEL`. Confirm with Andrew.
+Reuse `auto_correct` dispatch (`claude*` → Anthropic, else Gemini via `genai.Client(vertexai=True, project=…, location="global").models.generate_content(model=…)`).
+**Decision (Andrew, 2026-06-15):** default `MATCH_JUDGE_MODEL=gemini-3.5-flash` — the latest Vertex Gemini Flash (https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash). Passed bare to the genai Vertex client exactly like `auto_correct` passes `gemini-3.1-pro-preview`. No `ANTHROPIC_API_KEY` needed. Env-configurable, so if Vertex requires a version suffix it's a one-line env change (an invalid id surfaces as a loud error on first call). Add `gemini-3.5-flash` pricing to `pricing.py` for cost logging.
 
 ### Frontend (`AudioSourceStep.tsx`)
 
@@ -95,7 +95,7 @@ Per `docs/TESTING.md`:
 
 ## Open decisions
 
-1. Judge model default (Vertex Gemini Flash [rec] vs Haiku 4.5).
+1. ~~Judge model default~~ — DECIDED: `gemini-3.5-flash` (Vertex), configurable via `MATCH_JUDGE_MODEL`.
 2. Confidence thresholds for cosmetic vs content vs ambiguous (start conservative; tune from telemetry).
 3. Whether to keep a tiny instant frontend normalizer for immediate display, or rely solely on the judge response (~sub-second). Lean: rely on judge for v1; add instant normalize later if the delay is noticeable.
 
