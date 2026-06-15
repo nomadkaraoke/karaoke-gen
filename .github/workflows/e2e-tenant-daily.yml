@@ -7,8 +7,10 @@ name: E2E Daily Test (Tenant Portals)
 
 on:
   schedule:
-    # Daily at 07:37 UTC (off-peak, off the :00 mark).
-    - cron: '37 7 * * *'
+    # Daily at 00:07 UTC = ~8pm US Eastern (8:07pm EDT / 7:07pm EST). Cron is fixed
+    # UTC so the local time shifts 1h across DST. Off the :00 mark to avoid the
+    # top-of-hour scheduler herd.
+    - cron: '7 0 * * *'
   workflow_dispatch: {}
 
 permissions:
