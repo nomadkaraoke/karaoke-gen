@@ -350,6 +350,7 @@ class EncodingService:
         timeout: float = 30.0,
         job_id: str = "unknown",
         path: Optional[str] = None,
+        allow_failover: bool = True,
     ) -> Dict[str, Any]:
         """
         Make an HTTP request with retry logic for transient failures.
@@ -371,6 +372,13 @@ class EncodingService:
                 fallback VM in another zone) and invalidate the URL cache; the
                 next retry then targets the freshly-routed URL instead of the
                 original primary which is dead.
+            allow_failover: When True (default), a connection error fires the
+                fallback-VM warmup and lets retries re-resolve the URL. Set False
+                for requests pinned to a specific worker (in-flight status polls):
+                a pinned poll must never re-route to active_url nor spin up a
+                fallback VM, because a different/fresh VM cannot have the job — it
+                would only return "not found" and orphan a render that is actually
+                succeeding on the pinned worker (incident 2026-06-16, job d3af33ae).
 
         Returns:
             Dict with keys:
@@ -392,7 +400,7 @@ class EncodingService:
             # active_override change made by the warmup actually takes effect.
             # Without this, all 8 retry attempts hammer the original (dead)
             # URL even though the warmup successfully routed to a fallback VM.
-            if path and warmup_ran and self._worker_manager is not None:
+            if allow_failover and path and warmup_ran and self._worker_manager is not None:
                 resolved = f"{self._get_worker_url()}{path}"
                 if resolved != url:
                     logger.info(
@@ -424,7 +432,7 @@ class EncodingService:
                             }
             except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError, asyncio.TimeoutError) as e:
                 last_exception = e
-                if attempt == 0:
+                if allow_failover and attempt == 0:
                     try:
                         await self._warmup_encoding_worker_fallback(job_id)
                         warmup_ran = True
@@ -530,12 +538,23 @@ class EncodingService:
 
         return resp["json"]
 
-    async def get_job_status(self, job_id: str) -> Dict[str, Any]:
+    async def get_job_status(
+        self, job_id: str, worker_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get the status of an encoding job.
 
         Args:
             job_id: Job identifier
+            worker_url: When set, pin the request to this worker base URL instead
+                of resolving the current active_url. In-flight polls must stay on
+                the worker that accepted the job: a blue-green deploy can swap the
+                active_url primary pointer mid-render, and an unpinned poll would
+                migrate to the new primary — which never received the job and 404s
+                "not found", orphaning a render that is succeeding on the original
+                worker (incident 2026-06-16, job d3af33ae). A pinned poll also
+                disables failover (allow_failover=False) so it never re-routes nor
+                starts a fallback VM.
 
         Returns:
             Job status including: status, progress, error, output_files
@@ -546,7 +565,10 @@ class EncodingService:
             raise RuntimeError("Encoding service not configured")
 
         path = f"/status/{job_id}"
-        url = f"{self._get_worker_url()}{path}"
+        if worker_url:
+            url = f"{worker_url}{path}"
+        else:
+            url = f"{self._get_worker_url()}{path}"
         headers = {"X-API-Key": self._api_key}
 
         resp = await self._request_with_retry(
@@ -555,7 +577,10 @@ class EncodingService:
             headers=headers,
             timeout=30.0,
             job_id=job_id,
-            path=path,
+            # When pinned, never re-resolve or fail over — the job lives on this
+            # exact worker; do not pass `path` (which drives re-resolution).
+            path=None if worker_url else path,
+            allow_failover=not worker_url,
         )
 
         if resp["status"] == 401:
@@ -573,6 +598,7 @@ class EncodingService:
         poll_interval: float = 10.0,
         timeout: float = 3600.0,
         progress_callback=None,
+        worker_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Poll for encoding job completion with tolerance for transient failures.
@@ -587,6 +613,11 @@ class EncodingService:
             poll_interval: Seconds between status checks
             timeout: Maximum time to wait (default 1 hour)
             progress_callback: Optional callback(progress: int) for progress updates
+            worker_url: Worker base URL the job was submitted to. When set, every
+                poll is pinned to this worker (see get_job_status) so a mid-render
+                blue-green primary swap can't migrate the poll to a worker that
+                never received the job. When None, polls resolve active_url (legacy
+                behaviour, e.g. direct callers/tests).
 
         Returns:
             Final job status with output files
@@ -607,7 +638,7 @@ class EncodingService:
                 raise TimeoutError(f"Encoding job {job_id} timed out after {timeout}s")
 
             try:
-                status = await self.get_job_status(job_id)
+                status = await self.get_job_status(job_id, worker_url=worker_url)
                 # Reset failure counter on successful poll
                 consecutive_failures = 0
             except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError,
@@ -708,11 +739,14 @@ class EncodingService:
             if submit_status == "in_progress":
                 logger.info(f"[job:{job_id}] Encoding already in progress, joining poll")
 
+            # Pin polls to the worker the job landed on (see render_video_on_gce).
+            pinned_url = self._get_worker_url()
+
             # Wait for completion (still holding the slot — the worker is
             # actually doing CPU work for `job_id` until poll returns
             # complete/failed).
             return await self.wait_for_completion(
-                job_id, progress_callback=progress_callback
+                job_id, progress_callback=progress_callback, worker_url=pinned_url
             )
 
     async def submit_preview_encoding_job(
@@ -837,11 +871,15 @@ class EncodingService:
         if submit_status == "in_progress":
             logger.info(f"[job:{job_id}] Preview encoding already in progress, waiting")
 
+        # Pin polls to the worker the job landed on (see render_video_on_gce).
+        pinned_url = self._get_worker_url()
+
         # Wait for completion with shorter timeout
         return await self.wait_for_completion(
             job_id=job_id,
             poll_interval=poll_interval,
             timeout=timeout,
+            worker_url=pinned_url,
         )
 
     async def submit_render_video_job(
@@ -961,11 +999,18 @@ class EncodingService:
             if submit_status == "in_progress":
                 logger.info(f"[job:{job_id}] Render-video already in progress, joining poll")
 
+            # Pin status polls to the worker the job actually landed on. Resolving
+            # AFTER submit captures a capacity-fallback re-route (warmup invalidates
+            # the URL cache) while being BEFORE any later blue-green deploy swap —
+            # so the poll follows the job, not the floating active_url primary
+            # pointer (incident 2026-06-16, job d3af33ae).
+            pinned_url = self._get_worker_url()
+
             # Wait for completion (still holding the slot — the worker is
             # actively rendering for `job_id` until poll returns
             # complete/failed).
             return await self.wait_for_completion(
-                job_id, progress_callback=progress_callback
+                job_id, progress_callback=progress_callback, worker_url=pinned_url
             )
 
     async def health_check(self) -> Dict[str, Any]:

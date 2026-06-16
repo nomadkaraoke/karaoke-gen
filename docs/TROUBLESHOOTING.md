@@ -58,6 +58,8 @@ curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/video" \
 
 **Prevention:** The video worker now runs as a **Cloud Run Job** (`USE_CLOUD_RUN_JOBS_FOR_VIDEO=true`), which runs to completion and is immune to Cloud Run Service deployment rollouts. This replaces the `BackgroundTask` pattern that was vulnerable to instance termination during deployments. Additionally, CI performs a graceful drain before restarting the GCE encoding worker, the encoding client retries for ~90s, and status polling tolerates up to 5 consecutive failures.
 
+Since v0.184.2, in-flight status polls are also **pinned to the worker that accepted the job** (`get_job_status(..., worker_url=)`), so a blue-green deploy that swaps the `active_url` primary pointer mid-render no longer migrates the poll to a worker that never received the job. If you still see `lost contact with worker after 5 consecutive poll failures: Encoding job <ID> not found`, confirm via step 2 above that the worker the job was submitted to (not necessarily the current primary) still has the job — a `not found` from the *current* primary while the job is alive on the old primary was the pre-v0.184.2 failure mode (incident 2026-06-16, job d3af33ae).
+
 ---
 
 ## CDG/TXT packages missing from completed job

@@ -601,7 +601,7 @@ class TestWaitForCompletionPollTolerance:
         """Tolerates up to MAX_CONSECUTIVE_POLL_FAILURES-1 consecutive failures."""
         call_count = 0
 
-        async def mock_get_status(job_id):
+        async def mock_get_status(job_id, worker_url=None):
             nonlocal call_count
             call_count += 1
             if call_count <= 2:
@@ -623,7 +623,7 @@ class TestWaitForCompletionPollTolerance:
     @pytest.mark.asyncio
     async def test_fails_after_max_consecutive_poll_failures(self, encoding_service):
         """Fails after MAX_CONSECUTIVE_POLL_FAILURES consecutive failures."""
-        async def always_fail(job_id):
+        async def always_fail(job_id, worker_url=None):
             raise aiohttp.ClientConnectorError(
                 connection_key=MagicMock(), os_error=OSError("Connection refused")
             )
@@ -640,7 +640,7 @@ class TestWaitForCompletionPollTolerance:
         """A successful poll resets the consecutive failure counter."""
         call_count = 0
 
-        async def intermittent_failures(job_id):
+        async def intermittent_failures(job_id, worker_url=None):
             nonlocal call_count
             call_count += 1
             # Fail for 2, succeed (running), fail for 2 more, succeed (complete)
@@ -752,3 +752,128 @@ class TestFormatException:
         e = aiohttp.ClientConnectorError(MagicMock(), OSError())
         # Type name should always appear
         assert "ClientConnectorError" in _format_exception(e)
+
+
+class TestWorkerUrlPinning:
+    """Status polls must stay pinned to the worker that ACCEPTED the job.
+
+    Regression for incident 2026-06-16 (job d3af33ae): a blue-green deploy
+    swapped the primary pointer mid-render, and because status polls re-resolved
+    `active_url` on every call, they migrated from the worker actually encoding
+    the job (old primary) to the freshly-swapped new primary — which 404'd
+    "Encoding job ... not found" and failed the render after 5 polls, even though
+    the original worker finished the encode fine.
+    """
+
+    @pytest.mark.asyncio
+    async def test_get_job_status_targets_pinned_url(self, encoding_service):
+        """A pinned poll hits the given worker_url, not active_url, and disables
+        failover (a pinned poll must never re-resolve or spin up a fallback VM —
+        a fresh VM cannot have the in-flight job)."""
+        # active_url would resolve to worker-b, but the job lives on worker-a.
+        captured = {}
+
+        async def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"status": 200, "json": {"status": "running", "progress": 40}, "text": None}
+
+        with patch.object(encoding_service, "_get_worker_url", return_value="http://worker-b:8080"), \
+             patch.object(encoding_service, "_request_with_retry", side_effect=fake_request):
+            result = await encoding_service.get_job_status("d3af33ae", worker_url="http://worker-a:8080")
+
+        assert result["status"] == "running"
+        assert captured["url"] == "http://worker-a:8080/status/d3af33ae"
+        assert captured["allow_failover"] is False
+
+    @pytest.mark.asyncio
+    async def test_get_job_status_without_pin_uses_active_url(self, encoding_service):
+        """Regression: unpinned polls still resolve the current active_url."""
+        captured = {}
+
+        async def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"status": 200, "json": {"status": "running"}, "text": None}
+
+        with patch.object(encoding_service, "_get_worker_url", return_value="http://worker-b:8080"), \
+             patch.object(encoding_service, "_request_with_retry", side_effect=fake_request):
+            await encoding_service.get_job_status("d3af33ae")
+
+        assert captured["url"] == "http://worker-b:8080/status/d3af33ae"
+        # Unpinned keeps the existing failover/re-resolution behaviour.
+        assert captured.get("allow_failover", True) is True
+
+    @pytest.mark.asyncio
+    async def test_wait_for_completion_threads_pinned_url_into_polls(self, encoding_service):
+        """wait_for_completion forwards its worker_url to every status poll."""
+        seen_urls = []
+
+        async def mock_get_status(job_id, worker_url=None):
+            seen_urls.append(worker_url)
+            return {"status": "complete", "output_files": ["a.mp4"]}
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            result = await encoding_service.wait_for_completion(
+                "d3af33ae", worker_url="http://worker-a:8080"
+            )
+
+        assert result["status"] == "complete"
+        assert seen_urls == ["http://worker-a:8080"]
+
+    @pytest.mark.asyncio
+    async def test_request_with_retry_no_failover_when_disabled(self, encoding_service):
+        """With allow_failover=False, a connection error must NOT trigger the
+        fallback-VM warmup nor URL re-resolution — it just retries the same URL
+        and surfaces the failure to the caller's own poll-tolerance loop."""
+        encoding_service.set_worker_manager(MagicMock())
+        warmup = AsyncMock()
+
+        with patch.object(encoding_service, "_warmup_encoding_worker_fallback", warmup), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("aiohttp.ClientSession") as mock_session:
+            mock_session.side_effect = aiohttp.ClientConnectorError(
+                MagicMock(), OSError("Connection refused")
+            )
+            with pytest.raises(aiohttp.ClientConnectorError):
+                await encoding_service._request_with_retry(
+                    method="GET",
+                    url="http://worker-a:8080/status/j1",
+                    headers={},
+                    job_id="j1",
+                    path=None,
+                    allow_failover=False,
+                )
+
+        warmup.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_render_video_keeps_polling_submission_worker_after_swap(self, encoding_service):
+        """End-to-end: when active_url has swapped to a worker that 404s, the
+        render keeps polling the worker the job was submitted to and completes.
+
+        This FAILS before the fix (the poll follows active_url to worker-b and
+        gets "not found"), and PASSES after (the poll is pinned to worker-a)."""
+        encoding_service.set_worker_manager(MagicMock())
+
+        async def fake_submit(job_id, render_config):
+            return {"status": "accepted", "job_id": job_id}
+
+        async def fake_get_status(job_id, worker_url=None):
+            # worker-a owns the job; the post-swap active worker (worker-b, or an
+            # unpinned None) has never seen it.
+            if worker_url == "http://worker-a:8080":
+                return {"status": "complete", "output_files": ["4k.mp4"]}
+            raise RuntimeError(f"Encoding job {job_id} not found")
+
+        with patch.object(encoding_service, "_get_worker_url", return_value="http://worker-a:8080"), \
+             patch.object(encoding_service, "submit_render_video_job", side_effect=fake_submit), \
+             patch.object(encoding_service, "get_job_status", side_effect=fake_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            result = await encoding_service.render_video_on_gce("d3af33ae", {"foo": "bar"})
+
+        assert result["status"] == "complete"
+        assert result["output_files"] == ["4k.mp4"]
