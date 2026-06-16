@@ -538,7 +538,11 @@
     "matchDidYouMean": "您是不是指？",
     "matchKeepMine": "保留我的输入",
     "matchTidiedTo": "已整理为 {value}",
-    "matchUndo": "撤销"
+    "matchUndo": "撤销",
+    "matchChecking": "正在检查歌曲详情…",
+    "matchUseCorrection": "使用修正内容",
+    "matchUseTidied": "使用整理后的版本",
+    "matchUsingTyped": "使用您输入的内容：{value}"
   },
   "jobStatus": {
     "settingUp": "设置中",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "歌曲名称",
-    "artist": "歌手"
+    "artist": "歌手",
+    "loading": "正在加载标题画面预览"
   },
   "editTrack": {
     "title": "编辑已完成的曲目",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "预估 — 最终费用将在下载后确认",
     "reconcileTitle": "这首歌比预期的要长",
     "cancel": "取消"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "正在加载背景预览"
   }
 }

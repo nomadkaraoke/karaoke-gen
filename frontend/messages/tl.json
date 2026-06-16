@@ -538,7 +538,11 @@
     "matchDidYouMean": "Ibig mo bang sabihin?",
     "matchKeepMine": "panatilihin ang tinype ko",
     "matchTidiedTo": "Inayos sa {value}",
-    "matchUndo": "I-undo"
+    "matchUndo": "I-undo",
+    "matchChecking": "Sinusuri ang mga detalye ng kanta…",
+    "matchUseCorrection": "gamitin ang itinama",
+    "matchUseTidied": "gamitin ang inayos na bersyon",
+    "matchUsingTyped": "Ginagamit ang iyong nai-type: {value}"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Pamagat ng Kanta",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Nilo-load ang preview ng title screen"
   },
   "editTrack": {
     "title": "I-edit ang Nakumpletong Track",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Tantiya — kukumpirmahin ang pinal na halaga pagkatapos ma-download",
     "reconcileTitle": "Mas mahaba ang kantang ito kaysa sa inaasahan",
     "cancel": "Kanselahin"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Nilo-load ang preview ng background"
   }
 }

@@ -538,7 +538,11 @@
     "matchDidYouMean": "Tarkoititko?",
     "matchKeepMine": "säilytä kirjoittamani",
     "matchTidiedTo": "Siistitty muotoon {value}",
-    "matchUndo": "Kumoa"
+    "matchUndo": "Kumoa",
+    "matchChecking": "Tarkistetaan kappaleen tietoja…",
+    "matchUseCorrection": "käytä korjausta",
+    "matchUseTidied": "käytä siistittyä versiota",
+    "matchUsingTyped": "Käytetään kirjoittamaasi: {value}"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Kappaleen nimi",
-    "artist": "Esittäjä"
+    "artist": "Esittäjä",
+    "loading": "Ladataan otsikkonäytön esikatselua"
   },
   "editTrack": {
     "title": "Muokkaa valmista raitaa",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Arvioitu — lopullinen hinta vahvistetaan latauksen jälkeen",
     "reconcileTitle": "Tämä kappale on odotettua pidempi",
     "cancel": "Peruuta"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Ladataan taustan esikatselua"
   }
 }

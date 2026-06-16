@@ -538,7 +538,11 @@
     "matchDidYouMean": "Ai vrut să spui?",
     "matchKeepMine": "păstrează ce am scris",
     "matchTidiedTo": "Ajustat în {value}",
-    "matchUndo": "Anulează"
+    "matchUndo": "Anulează",
+    "matchChecking": "Se verifică detaliile melodiei…",
+    "matchUseCorrection": "folosește corecția",
+    "matchUseTidied": "folosește versiunea curățată",
+    "matchUsingTyped": "Folosim ce ai tastat: {value}"
   },
   "jobStatus": {
     "settingUp": "Se configurează",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Titlul melodiei",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Se încarcă previzualizarea ecranului de titlu"
   },
   "editTrack": {
     "title": "Editează piesa finalizată",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Estimat — costul final va fi confirmat după descărcare",
     "reconcileTitle": "Această melodie este mai lungă decât era de așteptat",
     "cancel": "Anulează"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Se încarcă previzualizarea fundalului"
   }
 }

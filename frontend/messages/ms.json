@@ -538,7 +538,11 @@
     "matchDidYouMean": "Maksud anda?",
     "matchKeepMine": "kekalkan apa yang saya taip",
     "matchTidiedTo": "Dikemaskan kepada {value}",
-    "matchUndo": "Buat asal"
+    "matchUndo": "Buat asal",
+    "matchChecking": "Menyemak butiran lagu…",
+    "matchUseCorrection": "gunakan pembetulan",
+    "matchUseTidied": "gunakan versi yang dikemaskan",
+    "matchUsingTyped": "Menggunakan apa yang anda taip: {value}"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Tajuk Lagu",
-    "artist": "Artis"
+    "artist": "Artis",
+    "loading": "Memuatkan pratonton skrin tajuk"
   },
   "editTrack": {
     "title": "Edit Trek Selesai",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Anggaran — kos akhir disahkan selepas muat turun",
     "reconcileTitle": "Lagu ini lebih panjang daripada yang dijangkakan",
     "cancel": "Batal"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Memuatkan pratonton latar belakang"
   }
 }

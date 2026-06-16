@@ -538,7 +538,11 @@
     "matchDidYouMean": "Erre gondoltál?",
     "matchKeepMine": "maradjon, amit írtam",
     "matchTidiedTo": "Rendezve erre: {value}",
-    "matchUndo": "Visszavonás"
+    "matchUndo": "Visszavonás",
+    "matchChecking": "A dal adatainak ellenőrzése…",
+    "matchUseCorrection": "javítás használata",
+    "matchUseTidied": "letisztított verzió használata",
+    "matchUsingTyped": "Az általad beírtak használata: {value}"
   },
   "jobStatus": {
     "settingUp": "Beállítás",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Dal címe",
-    "artist": "Előadó"
+    "artist": "Előadó",
+    "loading": "Címképernyő előnézetének betöltése"
   },
   "editTrack": {
     "title": "Befejezett dal szerkesztése",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Becsült — a végső költséget a letöltés után erősítjük meg",
     "reconcileTitle": "Ez a dal hosszabb a vártnál",
     "cancel": "Mégse"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Háttér előnézetének betöltése"
   }
 }

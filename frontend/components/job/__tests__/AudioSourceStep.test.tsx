@@ -76,10 +76,46 @@ const defaultProps = {
   onUrlReady: jest.fn(),
   onFileReady: jest.fn(),
   onBack: jest.fn(),
+  onAudioEditChange: jest.fn(),
   noCredits: false,
 }
 
+function verdict(overrides: Partial<import("@/lib/api").MatchJudgeVerdict> = {}) {
+  return {
+    kind: "none" as const,
+    confident: true,
+    canonical_artist: "ABBA",
+    canonical_title: "Waterloo",
+    alternatives: [],
+    engine: "catalog" as const,
+    reason: "",
+    needs_ai: false,
+    ...overrides,
+  }
+}
+
+/** Stage-aware matchJudge mock: the component fires a "fast" pass on mount and a
+ *  "full" pass (with the tier) only when the fast pass is inconclusive / weak. */
+function setJudgeVerdicts(opts: {
+  fast?: Partial<import("@/lib/api").MatchJudgeVerdict>
+  full?: Partial<import("@/lib/api").MatchJudgeVerdict>
+}) {
+  mockApi.matchJudge.mockImplementation((_a, _t, callOpts) => {
+    const isFast = callOpts?.stage === "fast"
+    return Promise.resolve(verdict(isFast ? opts.fast : opts.full))
+  })
+}
+
 function setupMocks() {
+  // Reset confidence to the tier-1 default each test (mockReturnValue otherwise
+  // persists across tests because clearAllMocks only clears call history).
+  mockGetSearchConfidence.mockReturnValue({
+    tier: 1,
+    bestResult: { index: 0, title: "Waterloo", artist: "ABBA", provider: "YouTube", url: "https://yt.com/1" },
+    bestCategory: "LOSSLESS",
+    reason: "Perfect match",
+    warnings: [],
+  })
   mockApi.searchStandalone.mockResolvedValue({
     search_session_id: "sess-123",
     results: [
@@ -93,15 +129,8 @@ function setupMocks() {
     songs: [],
     best_youtube_url: null,
   })
-  mockApi.matchJudge.mockResolvedValue({
-    kind: "none",
-    confident: true,
-    canonical_artist: "ABBA",
-    canonical_title: "Waterloo",
-    alternatives: [],
-    engine: "catalog",
-    reason: "",
-  })
+  // Default: catalog says "already canonical" on both passes (no change).
+  setJudgeVerdicts({ fast: {}, full: {} })
 }
 
 describe("AudioSourceStep", () => {
@@ -118,11 +147,63 @@ describe("AudioSourceStep", () => {
     })
   })
 
-  it("calls matchJudge after the search resolves, with the confidence tier", async () => {
+  it("fires a fast catalog-only pass on mount (parallel with search)", async () => {
     render(<AudioSourceStep {...defaultProps} />)
 
     await waitFor(() => {
-      expect(mockApi.matchJudge).toHaveBeenCalledWith("ABBA", "Waterloo", 1)
+      expect(mockApi.matchJudge).toHaveBeenCalledWith("ABBA", "Waterloo", { stage: "fast" })
+    })
+  })
+
+  it("fires a full pass with the tier when the fast pass is inconclusive", async () => {
+    setJudgeVerdicts({
+      fast: { kind: "none", confident: false, needs_ai: true, engine: "catalog" },
+      full: { kind: "none", confident: true },
+    })
+
+    render(<AudioSourceStep {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(mockApi.matchJudge).toHaveBeenCalledWith(
+        "ABBA", "Waterloo", { stage: "full", audioConfidenceTier: 1 }
+      )
+    })
+  })
+
+  it("does NOT fire a full pass when the fast pass is confident and audio is strong", async () => {
+    // Default mocks: fast returns a confident catalog verdict, tier 1.
+    render(<AudioSourceStep {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(mockApi.matchJudge).toHaveBeenCalledWith("ABBA", "Waterloo", { stage: "fast" })
+    })
+    // Give the coordinating effect a chance to (not) fire the full call.
+    await waitFor(() => {
+      expect(mockApi.matchJudge).toHaveBeenCalledTimes(1)
+    })
+    expect(mockApi.matchJudge).not.toHaveBeenCalledWith(
+      "ABBA", "Waterloo", expect.objectContaining({ stage: "full" })
+    )
+  })
+
+  it("fires a full pass to verify a catalog match when audio results are weak (tier 3)", async () => {
+    mockApi.searchStandalone.mockResolvedValue({
+      search_session_id: "sess-empty", results: [], results_count: 0,
+    })
+    mockGetSearchConfidence.mockReturnValue({
+      tier: 3, bestResult: null, bestCategory: null, reason: "", warnings: [],
+    })
+    setJudgeVerdicts({
+      fast: { kind: "none", confident: true, engine: "catalog" }, // catalog "matched"
+      full: { kind: "content", confident: true, canonical_title: "Waterloo (Fixed)", engine: "ai" },
+    })
+
+    render(<AudioSourceStep {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(mockApi.matchJudge).toHaveBeenCalledWith(
+        "ABBA", "Waterloo", { stage: "full", audioConfidenceTier: 3 }
+      )
     })
   })
 
@@ -157,15 +238,14 @@ describe("AudioSourceStep", () => {
     expect(screen.getByText("ABBA - Waterloo")).toBeInTheDocument()
   })
 
-  it("auto-applies a cosmetic tidy and shows the tidy notice", async () => {
-    mockApi.matchJudge.mockResolvedValue({
-      kind: "cosmetic",
-      confident: true,
-      canonical_artist: "ABBA",
-      canonical_title: "Waterloo (Remastered)",
-      alternatives: [],
-      engine: "catalog",
-      reason: "",
+  it("auto-applies a cosmetic tidy from the fast pass and shows the tidy notice", async () => {
+    setJudgeVerdicts({
+      fast: {
+        kind: "cosmetic",
+        confident: true,
+        canonical_title: "Waterloo (Remastered)",
+        engine: "catalog",
+      },
     })
 
     render(<AudioSourceStep {...defaultProps} />)
@@ -177,14 +257,16 @@ describe("AudioSourceStep", () => {
   })
 
   it("does not auto-apply an ambiguous match — shows an ask instead", async () => {
-    mockApi.matchJudge.mockResolvedValue({
-      kind: "ambiguous",
-      confident: false,
-      canonical_artist: "Lewis Capaldi",
-      canonical_title: "Bruises",
-      alternatives: [{ artist: "Fox Stevenson", title: "Bruises" }],
-      engine: "ai",
-      reason: "",
+    setJudgeVerdicts({
+      fast: { kind: "none", confident: false, needs_ai: true, engine: "catalog" },
+      full: {
+        kind: "ambiguous",
+        confident: false,
+        canonical_artist: "Lewis Capaldi",
+        canonical_title: "Bruises",
+        alternatives: [{ artist: "Fox Stevenson", title: "Bruises" }],
+        engine: "ai",
+      },
     })
 
     render(<AudioSourceStep {...defaultProps} />)
@@ -197,6 +279,78 @@ describe("AudioSourceStep", () => {
     const user = userEvent.setup()
     await user.click(screen.getByText("Lewis Capaldi — Bruises"))
     expect(defaultProps.onArtistTitleCorrection).toHaveBeenCalledWith("Lewis Capaldi", "Bruises")
+  })
+
+  it("gates the pick button until the judge settles, then enables it", async () => {
+    // Fast pass is inconclusive; full pass resolves after a tick → gate releases.
+    let resolveFull: (v: import("@/lib/api").MatchJudgeVerdict) => void = () => {}
+    mockApi.matchJudge.mockImplementation((_a, _t, callOpts) => {
+      if (callOpts?.stage === "fast") {
+        return Promise.resolve(verdict({ kind: "none", confident: false, needs_ai: true }))
+      }
+      return new Promise<import("@/lib/api").MatchJudgeVerdict>((res) => { resolveFull = res })
+    })
+
+    render(<AudioSourceStep {...defaultProps} />)
+
+    // Pick button rendered but disabled while the full pass is in flight.
+    const pickButton = await screen.findByRole("button", { name: /Use This Audio/i })
+    expect(pickButton).toBeDisabled()
+    expect(screen.getByTestId("match-gate-checking")).toBeInTheDocument()
+
+    // Resolve the full pass → gate releases, button enables.
+    await act(async () => {
+      resolveFull(verdict({ kind: "none", confident: true }))
+    })
+    await waitFor(() => expect(pickButton).toBeEnabled())
+    expect(screen.queryByTestId("match-gate-checking")).not.toBeInTheDocument()
+  })
+
+  it("releases the gate via the safety timeout if the judge hangs", async () => {
+    jest.useFakeTimers()
+    try {
+      mockApi.matchJudge.mockImplementation((_a, _t, callOpts) => {
+        if (callOpts?.stage === "fast") {
+          return Promise.resolve(verdict({ kind: "none", confident: false, needs_ai: true }))
+        }
+        return new Promise(() => {}) // full pass never resolves
+      })
+
+      render(<AudioSourceStep {...defaultProps} />)
+
+      // Let the fast pass + coordinating effect run.
+      await act(async () => { await Promise.resolve() })
+      const pickButton = await screen.findByRole("button", { name: /Use This Audio/i })
+      expect(pickButton).toBeDisabled()
+
+      // Advance past the 12s safety timeout → gate releases.
+      await act(async () => { jest.advanceTimersByTime(12000) })
+      await waitFor(() => expect(pickButton).toBeEnabled())
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("toggles a cosmetic tidy back and forth (two-way)", async () => {
+    setJudgeVerdicts({
+      fast: { kind: "cosmetic", confident: true, canonical_title: "Waterloo (Remastered)", engine: "catalog" },
+    })
+
+    render(<AudioSourceStep {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(defaultProps.onArtistTitleCorrection).toHaveBeenCalledWith("ABBA", "Waterloo (Remastered)")
+    })
+
+    const user = userEvent.setup()
+    // Revert to what the user typed.
+    await user.click(screen.getByText("keep what I typed"))
+    expect(defaultProps.onArtistTitleCorrection).toHaveBeenLastCalledWith("ABBA", "Waterloo")
+    expect(screen.getByText(/Using what you typed/)).toBeInTheDocument()
+
+    // Switch back to the tidied version.
+    await user.click(screen.getByText("use tidied version"))
+    expect(defaultProps.onArtistTitleCorrection).toHaveBeenLastCalledWith("ABBA", "Waterloo (Remastered)")
   })
 
   it("renders CommunityVersionBanner when community data has results", async () => {

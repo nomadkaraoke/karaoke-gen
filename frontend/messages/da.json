@@ -538,7 +538,11 @@
     "matchDidYouMean": "Mente du?",
     "matchKeepMine": "behold det, jeg skrev",
     "matchTidiedTo": "Finpudset til {value}",
-    "matchUndo": "Fortryd"
+    "matchUndo": "Fortryd",
+    "matchChecking": "Tjekker sangdetaljer…",
+    "matchUseCorrection": "brug rettelsen",
+    "matchUseTidied": "brug den tilrettede version",
+    "matchUsingTyped": "Bruger det, du indtastede: {value}"
   },
   "jobStatus": {
     "settingUp": "Sætter op",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Sangtitel",
-    "artist": "Kunstner"
+    "artist": "Kunstner",
+    "loading": "Indlæser forhåndsvisning af titelskærm"
   },
   "editTrack": {
     "title": "Rediger fuldført nummer",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Anslået — endelig pris bekræftes efter download",
     "reconcileTitle": "Denne sang er længere end forventet",
     "cancel": "Annuller"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Indlæser forhåndsvisning af baggrund"
   }
 }

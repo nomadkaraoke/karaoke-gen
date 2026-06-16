@@ -474,6 +474,10 @@
     "matchKeepMine": "keep what I typed",
     "matchCorrectedTo": "Corrected to {value} — you typed “{typed}”",
     "matchUndo": "Undo",
+    "matchUsingTyped": "Using what you typed: {value}",
+    "matchUseTidied": "use tidied version",
+    "matchUseCorrection": "use the correction",
+    "matchChecking": "Checking song details…",
     "matchDidYouMean": "Did you mean?",
     "weFindBestAudio": "We find the best audio",
     "uploadAFile": "upload a file",
@@ -688,7 +692,11 @@
   },
   "titleCardPreview": {
     "songTitle": "Song Title",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Loading title screen preview"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Loading background preview"
   },
   "editTrack": {
     "title": "Edit Completed Track",

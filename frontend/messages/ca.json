@@ -538,7 +538,11 @@
     "matchDidYouMean": "Volies dir?",
     "matchKeepMine": "mantenir el que he escrit",
     "matchTidiedTo": "Ajustat a {value}",
-    "matchUndo": "Desfer"
+    "matchUndo": "Desfer",
+    "matchChecking": "Comprovant els detalls de la cançó…",
+    "matchUseCorrection": "utilitza la correcció",
+    "matchUseTidied": "utilitza la versió polida",
+    "matchUsingTyped": "Utilitzant el que has escrit: {value}"
   },
   "jobStatus": {
     "settingUp": "Configurant",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Títol de la cançó",
-    "artist": "Artista"
+    "artist": "Artista",
+    "loading": "Carregant la previsualització de la pantalla de títol"
   },
   "editTrack": {
     "title": "Edita la pista completada",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Aproximat — el cost final es confirmarà després de la descàrrega",
     "reconcileTitle": "Aquesta cançó és més llarga del que s'esperava",
     "cancel": "Cancel·la"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Carregant la previsualització del fons"
   }
 }

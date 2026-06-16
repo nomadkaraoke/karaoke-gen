@@ -538,7 +538,11 @@
     "matchDidYouMean": "Menade du?",
     "matchKeepMine": "behåll det jag skrev",
     "matchTidiedTo": "Justerat till {value}",
-    "matchUndo": "Ångra"
+    "matchUndo": "Ångra",
+    "matchChecking": "Kontrollerar låtdetaljer…",
+    "matchUseCorrection": "använd korrigeringen",
+    "matchUseTidied": "använd rensad version",
+    "matchUsingTyped": "Använder det du skrev: {value}"
   },
   "jobStatus": {
     "settingUp": "Ställer in",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Låttitel",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Laddar förhandsgranskning av titelskärm"
   },
   "editTrack": {
     "title": "Redigera slutfört spår",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Preliminärt — slutgiltig kostnad bekräftas efter nedladdning",
     "reconcileTitle": "Den här låten är längre än förväntat",
     "cancel": "Avbryt"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Laddar förhandsgranskning av bakgrund"
   }
 }

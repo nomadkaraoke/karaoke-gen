@@ -538,7 +538,11 @@
     "matchDidYouMean": "Mal si na mysli?",
     "matchKeepMine": "ponechať môj text",
     "matchTidiedTo": "Upravené na {value}",
-    "matchUndo": "Vrátiť späť"
+    "matchUndo": "Vrátiť späť",
+    "matchChecking": "Kontrolujú sa detaily skladby…",
+    "matchUseCorrection": "použiť opravu",
+    "matchUseTidied": "použiť upravenú verziu",
+    "matchUsingTyped": "Používam to, čo si zadal: {value}"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Názov piesne",
-    "artist": "Interpret"
+    "artist": "Interpret",
+    "loading": "Načítava sa náhľad úvodnej obrazovky"
   },
   "editTrack": {
     "title": "Upraviť dokončenú skladbu",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Odhadované — konečná cena bude potvrdená po stiahnutí",
     "reconcileTitle": "Táto pieseň je dlhšia, ako sa očakávalo",
     "cancel": "Zrušiť"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Načítava sa náhľad pozadia"
   }
 }

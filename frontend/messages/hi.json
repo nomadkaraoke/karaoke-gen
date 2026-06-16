@@ -538,7 +538,11 @@
     "matchDidYouMean": "क्या तुम्हारा मतलब यह था?",
     "matchKeepMine": "जो मैंने टाइप किया है वही रखो",
     "matchTidiedTo": "ठीक करके {value} कर दिया गया",
-    "matchUndo": "पूर्ववत करो"
+    "matchUndo": "पूर्ववत करो",
+    "matchChecking": "गाने की जानकारी चेक की जा रही है…",
+    "matchUseCorrection": "सुधार का इस्तेमाल करो",
+    "matchUseTidied": "व्यवस्थित वर्शन का इस्तेमाल करो",
+    "matchUsingTyped": "जो तुमने टाइप किया है, उसका इस्तेमाल हो रहा है: {value}"
   },
   "jobStatus": {
     "settingUp": "सेटअप हो रहा है",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "गाने का टाइटल",
-    "artist": "आर्टिस्ट"
+    "artist": "आर्टिस्ट",
+    "loading": "टाइटल स्क्रीन प्रीव्यू लोड हो रहा है"
   },
   "editTrack": {
     "title": "पूरा हुआ ट्रैक एडिट करो",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "अनुमानित — डाउनलोड के बाद अंतिम लागत की पुष्टि की जाएगी",
     "reconcileTitle": "यह गाना उम्मीद से लंबा है",
     "cancel": "कैंसल"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "बैकग्राउंड प्रीव्यू लोड हो रहा है"
   }
 }
