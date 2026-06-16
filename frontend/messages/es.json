@@ -538,7 +538,11 @@
     "matchDidYouMean": "¿Quisiste decir?",
     "matchKeepMine": "mantener lo que escribí",
     "matchTidiedTo": "Ajustado a {value}",
-    "matchUndo": "Deshacer"
+    "matchUndo": "Deshacer",
+    "matchChecking": "Revisando los detalles de la canción…",
+    "matchUseCorrection": "usar la corrección",
+    "matchUseTidied": "usar la versión arreglada",
+    "matchUsingTyped": "Usando lo que escribiste: {value}"
   },
   "jobStatus": {
     "settingUp": "Configurando",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Título de la canción",
-    "artist": "Artista"
+    "artist": "Artista",
+    "loading": "Cargando vista previa de la pantalla de título"
   },
   "editTrack": {
     "title": "Editar pista completada",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Estimado — el costo final se confirmará después de la descarga",
     "reconcileTitle": "Esta canción es más larga de lo esperado",
     "cancel": "Cancelar"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Cargando vista previa del fondo"
   }
 }

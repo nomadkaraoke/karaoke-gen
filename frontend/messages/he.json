@@ -538,7 +538,11 @@
     "matchDidYouMean": "האם התכוונת?",
     "matchKeepMine": "להשאיר את מה שהקלדתי",
     "matchTidiedTo": "סודר ל-{value}",
-    "matchUndo": "ביטול"
+    "matchUndo": "ביטול",
+    "matchChecking": "בודקים את פרטי השיר…",
+    "matchUseCorrection": "להשתמש בתיקון",
+    "matchUseTidied": "להשתמש בגרסה המסודרת",
+    "matchUsingTyped": "משתמשים במה שהקלדת: {value}"
   },
   "jobStatus": {
     "settingUp": "מגדיר",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "שם השיר",
-    "artist": "אמן"
+    "artist": "אמן",
+    "loading": "טעינת תצוגה מקדימה של מסך הכותרת"
   },
   "editTrack": {
     "title": "ערוך רצועה שהושלמה",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "משוער — העלות הסופית תאושר לאחר ההורדה",
     "reconcileTitle": "השיר הזה ארוך מהצפוי",
     "cancel": "ביטול"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "טעינת תצוגה מקדימה של הרקע"
   }
 }

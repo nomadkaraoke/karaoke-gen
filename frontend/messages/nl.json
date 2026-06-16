@@ -538,7 +538,11 @@
     "matchDidYouMean": "Bedoelde je?",
     "matchKeepMine": "behoud wat ik typte",
     "matchTidiedTo": "Opgeschoond naar {value}",
-    "matchUndo": "Ongedaan maken"
+    "matchUndo": "Ongedaan maken",
+    "matchChecking": "Nummergegevens controleren…",
+    "matchUseCorrection": "gebruik de correctie",
+    "matchUseTidied": "gebruik opgeschoonde versie",
+    "matchUsingTyped": "We gebruiken wat je hebt getypt: {value}"
   },
   "jobStatus": {
     "settingUp": "Instellen",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Titel van nummer",
-    "artist": "Artiest"
+    "artist": "Artiest",
+    "loading": "Voorbeeld van titelscherm laden"
   },
   "editTrack": {
     "title": "Bewerk Voltooide Track",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Geschat — definitieve kosten worden na downloaden bevestigd",
     "reconcileTitle": "Dit nummer is langer dan verwacht",
     "cancel": "Annuleren"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Achtergrondvoorbeeld laden"
   }
 }

@@ -538,7 +538,11 @@
     "matchDidYouMean": "هل تقصد؟",
     "matchKeepMine": "الاحتفاظ بما كتبته",
     "matchTidiedTo": "تم التنسيق إلى {value}",
-    "matchUndo": "تراجع"
+    "matchUndo": "تراجع",
+    "matchChecking": "جارٍ التحقق من تفاصيل الأغنية…",
+    "matchUseCorrection": "استخدام التصحيح",
+    "matchUseTidied": "استخدام النسخة المنقحة",
+    "matchUsingTyped": "استخدام ما كتبته: {value}"
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "عنوان الأغنية",
-    "artist": "الفنان"
+    "artist": "الفنان",
+    "loading": "جارٍ تحميل معاينة شاشة العنوان"
   },
   "editTrack": {
     "title": "تعديل المسار المكتمل",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "تكلفة تقديرية — يتم تأكيد التكلفة النهائية بعد التنزيل",
     "reconcileTitle": "هذه الأغنية أطول من المتوقع",
     "cancel": "إلغاء"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "جارٍ تحميل معاينة الخلفية"
   }
 }

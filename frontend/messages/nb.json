@@ -538,7 +538,11 @@
     "matchDidYouMean": "Mente du?",
     "matchKeepMine": "behold det jeg skrev",
     "matchTidiedTo": "Justert til {value}",
-    "matchUndo": "Angre"
+    "matchUndo": "Angre",
+    "matchChecking": "Sjekker sangdetaljer…",
+    "matchUseCorrection": "bruk rettelsen",
+    "matchUseTidied": "bruk oppryddet versjon",
+    "matchUsingTyped": "Bruker det du skrev inn: {value}"
   },
   "jobStatus": {
     "settingUp": "Setter opp",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Sangtittel",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Laster inn forhåndsvisning av tittelskjerm"
   },
   "editTrack": {
     "title": "Rediger fullført spor",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Estimert — endelig pris bekreftes etter nedlasting",
     "reconcileTitle": "Denne sangen er lengre enn forventet",
     "cancel": "Avbryt"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Laster inn forhåndsvisning av bakgrunn"
   }
 }

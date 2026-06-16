@@ -538,7 +538,11 @@
     "matchDidYouMean": "Có phải ý bạn là?",
     "matchKeepMine": "giữ nguyên nội dung tôi đã nhập",
     "matchTidiedTo": "Đã chỉnh gọn thành {value}",
-    "matchUndo": "Hoàn tác"
+    "matchUndo": "Hoàn tác",
+    "matchChecking": "Đang kiểm tra chi tiết bài hát…",
+    "matchUseCorrection": "sử dụng bản sửa đổi",
+    "matchUseTidied": "sử dụng bản đã tinh chỉnh",
+    "matchUsingTyped": "Sử dụng nội dung bạn đã nhập: {value}"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Tên bài hát",
-    "artist": "Nghệ sĩ"
+    "artist": "Nghệ sĩ",
+    "loading": "Đang tải bản xem trước màn hình tiêu đề"
   },
   "editTrack": {
     "title": "Chỉnh sửa bài hát đã hoàn thành",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Ước tính — chi phí cuối cùng sẽ được xác nhận sau khi tải xuống",
     "reconcileTitle": "Bài hát này dài hơn dự kiến",
     "cancel": "Hủy"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Đang tải bản xem trước hình nền"
   }
 }

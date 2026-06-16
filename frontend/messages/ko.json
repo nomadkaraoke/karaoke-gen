@@ -538,7 +538,11 @@
     "matchDidYouMean": "혹시 다음을 찾으셨나요?",
     "matchKeepMine": "입력한 내용 유지",
     "matchTidiedTo": "{value}(으)로 정리되었습니다",
-    "matchUndo": "실행 취소"
+    "matchUndo": "실행 취소",
+    "matchChecking": "노래 세부 정보 확인 중…",
+    "matchUseCorrection": "수정본 사용하기",
+    "matchUseTidied": "정리된 버전 사용하기",
+    "matchUsingTyped": "입력한 내용 사용: {value}"
   },
   "jobStatus": {
     "settingUp": "설정 중",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "노래 제목",
-    "artist": "아티스트"
+    "artist": "아티스트",
+    "loading": "타이틀 화면 미리보기 불러오는 중"
   },
   "editTrack": {
     "title": "완료된 트랙 편집",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "예상 비용 — 최종 비용은 다운로드 후 확정됩니다",
     "reconcileTitle": "노래 길이가 예상보다 깁니다",
     "cancel": "취소"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "배경 미리보기 불러오는 중"
   }
 }

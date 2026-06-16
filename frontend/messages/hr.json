@@ -538,7 +538,11 @@
     "matchDidYouMean": "Jesi li mislio/la?",
     "matchKeepMine": "zadrži moj unos",
     "matchTidiedTo": "Uređeno u {value}",
-    "matchUndo": "Poništi"
+    "matchUndo": "Poništi",
+    "matchChecking": "Provjera detalja pjesme…",
+    "matchUseCorrection": "koristi ispravak",
+    "matchUseTidied": "koristi uređenu verziju",
+    "matchUsingTyped": "Koristimo ono što si upisao: {value}"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Naslov pjesme",
-    "artist": "Izvođač"
+    "artist": "Izvođač",
+    "loading": "Učitavanje pregleda naslovnog zaslona"
   },
   "editTrack": {
     "title": "Uredi završenu pjesmu",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Procijenjeno — konačna cijena potvrđuje se nakon preuzimanja",
     "reconcileTitle": "Ova pjesma je duža od očekivanog",
     "cancel": "Odustani"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Učitavanje pregleda pozadine"
   }
 }

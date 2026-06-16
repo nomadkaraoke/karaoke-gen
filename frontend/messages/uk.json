@@ -538,7 +538,11 @@
     "matchDidYouMean": "Маєш на увазі?",
     "matchKeepMine": "залишити мій варіант",
     "matchTidiedTo": "Відформатовано як {value}",
-    "matchUndo": "Скасувати"
+    "matchUndo": "Скасувати",
+    "matchChecking": "Перевіряємо деталі пісні…",
+    "matchUseCorrection": "використати виправлення",
+    "matchUseTidied": "використати впорядковану версію",
+    "matchUsingTyped": "Використовуємо введений тобою текст: {value}"
   },
   "jobStatus": {
     "settingUp": "Налаштування",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Назва пісні",
-    "artist": "Виконавець"
+    "artist": "Виконавець",
+    "loading": "Завантаження попереднього перегляду титульного екрана"
   },
   "editTrack": {
     "title": "Редагувати завершений трек",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Орієнтовно — остаточна вартість підтверджується після завантаження",
     "reconcileTitle": "Ця пісня довша, ніж очікувалося",
     "cancel": "Скасувати"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Завантаження попереднього перегляду фону"
   }
 }

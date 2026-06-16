@@ -538,7 +538,11 @@
     "matchDidYouMean": "Имелось в виду?",
     "matchKeepMine": "оставить мой вариант",
     "matchTidiedTo": "Отформатировано как {value}",
-    "matchUndo": "Отменить"
+    "matchUndo": "Отменить",
+    "matchChecking": "Проверка данных песни…",
+    "matchUseCorrection": "использовать исправление",
+    "matchUseTidied": "использовать отформатированную версию",
+    "matchUsingTyped": "Используем твой вариант: {value}"
   },
   "jobStatus": {
     "settingUp": "Настройка",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Название песни",
-    "artist": "Исполнитель"
+    "artist": "Исполнитель",
+    "loading": "Загрузка предпросмотра титульного экрана"
   },
   "editTrack": {
     "title": "Редактировать завершенный трек",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Ориентировочно — итоговая стоимость будет подтверждена после скачивания",
     "reconcileTitle": "Эта песня длиннее, чем ожидалось",
     "cancel": "Отмена"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Загрузка предпросмотра фона"
   }
 }

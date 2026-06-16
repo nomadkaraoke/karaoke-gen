@@ -840,7 +840,8 @@ Content-Type: application/json
 {
   "artist": "paramore",
   "title": "big man, little dignity",
-  "audio_confidence_tier": 1
+  "audio_confidence_tier": 1,
+  "stage": "full"
 }
 ```
 
@@ -852,6 +853,18 @@ optional) lets the judge tell whether weak audio results hint at a typo. The cal
 never blocks job creation — on timeout/error it returns a `none` verdict. Disable
 the AI layer with `MATCH_JUDGE_ENABLED=false` (deterministic+catalog still run).
 
+`stage` (optional, `"fast"` | `"full"`, default `"full"`) supports a two-call
+pattern the frontend uses to keep the tidy off the critical path:
+
+- `"fast"` — catalog-only pass (no AI, `audio_confidence_tier` ignored). The
+  client fires this on mount, in parallel with the audio search. Returns a
+  confident catalog verdict when it can, otherwise `needs_ai: true` (a marker
+  telling the client to follow up with a `"full"` call once the tier is known).
+- `"full"` — the complete pipeline. Runs the AI judge when the catalog isn't
+  confident, **and** when a confident catalog match coincides with a weak audio
+  tier (`>= 3`) — a weak tier means the match may be a junk/typo'd entry, so the
+  AI verifies it and can override.
+
 Response:
 ```json
 {
@@ -861,14 +874,21 @@ Response:
   "canonical_title": "Big Man, Little Dignity",
   "alternatives": [],
   "engine": "catalog",
-  "reason": "formatting differs from catalog"
+  "reason": "formatting differs from catalog",
+  "needs_ai": false
 }
 ```
 
-`kind` drives the Step 2 UI: `cosmetic` → silent tidy with an undo line;
-`content` (confident) → applied with a "Corrected … · Undo" line, re-searching
-audio only when the original results were weak; `ambiguous` (or unconfident
-`content`) → an ask-first "Did you mean?" prompt; `none` → no change.
+`kind` drives the Step 2 UI: `cosmetic` → silent tidy with a two-way toggle
+("keep what I typed" ⇄ "use tidied version"); `content` (confident) → applied
+with a "Corrected … · Undo" toggle, re-searching audio only when the original
+results were weak; `ambiguous` (or unconfident `content`) → an ask-first "Did you
+mean?" prompt; `none` → no change. `needs_ai` is only ever `true` on a `"fast"`
+verdict that couldn't decide; it is always `false` on a `"full"` verdict.
+
+Until the judge settles, the Step 2 audio-selection buttons are disabled with a
+subtle "Checking song details…" indicator, so a user can never advance with
+un-tidied metadata; a 12s timeout guarantees the gate releases.
 
 ### Audio Search
 

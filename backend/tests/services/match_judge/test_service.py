@@ -8,6 +8,7 @@ import pytest
 
 from backend.services.match_judge.service import judge_match
 from backend.services.match_judge.verdict import (
+    KIND_AMBIGUOUS,
     KIND_COSMETIC,
     KIND_CONTENT,
     KIND_NONE,
@@ -103,6 +104,153 @@ async def test_ai_failure_falls_back_to_none():
     )
     assert verdict.kind == KIND_NONE
     assert verdict.canonical_title == "bohemian rapsody"
+
+
+# --- Fast stage (catalog-only parallel pass) ---
+
+
+@pytest.mark.asyncio
+async def test_fast_stage_returns_catalog_verdict_without_ai():
+    verdict = await judge_match(
+        "paramore",
+        "big man, little dignity",
+        stage="fast",
+        search_tracks=_candidates(("Paramore", "Big Man, Little Dignity")),
+        ai_judge=_ai_never,
+        enabled=True,
+    )
+    assert verdict.kind == KIND_COSMETIC
+    assert verdict.engine == "catalog"
+    assert verdict.needs_ai is False
+
+
+@pytest.mark.asyncio
+async def test_fast_stage_undecided_signals_needs_ai_without_calling_ai():
+    verdict = await judge_match(
+        "queen",
+        "bohemian rapsody",
+        stage="fast",
+        search_tracks=_candidates(("Queen", "Radio Ga Ga")),
+        ai_judge=_ai_never,
+        enabled=True,
+    )
+    assert verdict.kind == KIND_NONE
+    assert verdict.needs_ai is True
+    assert verdict.confident is False
+
+
+@pytest.mark.asyncio
+async def test_fast_stage_never_calls_ai_even_when_undecided():
+    # _ai_never raises if called; reaching here proves the fast pass skipped AI.
+    verdict = await judge_match(
+        "queen", "bohemian rapsody", stage="fast",
+        search_tracks=_candidates(), ai_judge=_ai_never, enabled=True,
+    )
+    assert verdict.needs_ai is True
+
+
+# --- Item 4: verify a confident catalog match with AI when the audio tier is weak ---
+
+
+@pytest.mark.asyncio
+async def test_weak_tier_catalog_match_is_verified_and_overridden_by_ai():
+    async def ai(artist, title, candidates, audio_tier):
+        return MatchVerdict(
+            KIND_CONTENT, True, "Queen", "Bohemian Rhapsody",
+            engine="ai", reason="typo",
+        )
+
+    # Catalog "matched" the user's exact typo (junk entry) → would normally be
+    # 'none'/already-canonical. Weak tier (3) makes us verify with AI, which overrides.
+    verdict = await judge_match(
+        "Queen", "Bohemian Rapsody",
+        audio_tier=3,
+        search_tracks=_candidates(("Queen", "Bohemian Rapsody")),
+        ai_judge=ai,
+        enabled=True,
+    )
+    assert verdict.kind == KIND_CONTENT
+    assert verdict.canonical_title == "Bohemian Rhapsody"
+    assert verdict.engine == "ai"
+
+
+@pytest.mark.asyncio
+async def test_strong_tier_catalog_match_still_skips_ai():
+    verdict = await judge_match(
+        "Queen", "Bohemian Rapsody",
+        audio_tier=1,
+        search_tracks=_candidates(("Queen", "Bohemian Rapsody")),
+        ai_judge=_ai_never,
+        enabled=True,
+    )
+    # Strong audio results → trust the catalog match, no AI.
+    assert verdict.engine == "catalog"
+
+
+@pytest.mark.asyncio
+async def test_weak_tier_keeps_catalog_verdict_when_ai_unconfident():
+    async def ai(artist, title, candidates, audio_tier):
+        return MatchVerdict(KIND_NONE, False, artist, title, engine="ai")
+
+    verdict = await judge_match(
+        "paramore", "big man, little dignity",
+        audio_tier=3,
+        search_tracks=_candidates(("Paramore", "Big Man, Little Dignity")),
+        ai_judge=ai,
+        enabled=True,
+    )
+    # AI wasn't confident about a change → keep the cosmetic catalog tidy.
+    assert verdict.kind == KIND_COSMETIC
+    assert verdict.engine == "catalog"
+
+
+@pytest.mark.asyncio
+async def test_weak_tier_keeps_catalog_verdict_when_ai_fails():
+    async def ai(*_a, **_k):
+        raise RuntimeError("model exploded")
+
+    verdict = await judge_match(
+        "paramore", "big man, little dignity",
+        audio_tier=3,
+        search_tracks=_candidates(("Paramore", "Big Man, Little Dignity")),
+        ai_judge=ai,
+        enabled=True,
+    )
+    assert verdict.kind == KIND_COSMETIC
+    assert verdict.engine == "catalog"
+
+
+@pytest.mark.asyncio
+async def test_weak_tier_does_not_verify_when_ai_disabled():
+    verdict = await judge_match(
+        "paramore", "big man, little dignity",
+        audio_tier=3,
+        search_tracks=_candidates(("Paramore", "Big Man, Little Dignity")),
+        ai_judge=_ai_never,
+        enabled=False,
+    )
+    assert verdict.kind == KIND_COSMETIC
+    assert verdict.engine == "catalog"
+
+
+@pytest.mark.asyncio
+async def test_weak_tier_ai_can_escalate_to_ambiguous():
+    async def ai(artist, title, candidates, audio_tier):
+        return MatchVerdict(
+            KIND_AMBIGUOUS, True, "Lewis Capaldi", "Bruises",
+            alternatives=[{"artist": "Fox Stevenson", "title": "Bruises"}],
+            engine="ai",
+        )
+
+    verdict = await judge_match(
+        "capaldi", "bruises",
+        audio_tier=3,
+        search_tracks=_candidates(("Lewis Capaldi", "Bruises")),
+        ai_judge=ai,
+        enabled=True,
+    )
+    assert verdict.kind == KIND_AMBIGUOUS
+    assert verdict.alternatives == [{"artist": "Fox Stevenson", "title": "Bruises"}]
 
 
 @pytest.mark.asyncio

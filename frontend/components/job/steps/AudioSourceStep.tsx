@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl"
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { api, ApiError, CatalogTrackResult, CommunityCheckResponse, MatchJudgeVerdict } from "@/lib/api"
 import { CommunityVersionBanner } from "@/components/job/CommunityVersionBanner"
+import { preloadTitleCardBg } from "@/components/job/TitleCardPreview"
+import { preloadKaraokeBg } from "@/components/job/KaraokeBackgroundPreview"
 import {
   ExtendedAudioSearchResult,
   groupResults,
@@ -46,6 +48,21 @@ type SearchStatus =
 
 const MAX_SEARCH_ATTEMPTS = 3
 const RETRY_DELAYS = [0, 2000, 4000] // ms delay before each attempt
+
+// Audio tier at/above this is "weak" (poor / no results) — a hint the title may
+// be a typo, which makes the AI judge worth consulting even on a catalog match.
+const WEAK_TIER = 3
+
+// Hard ceiling on how long the audio-selection gate stays closed waiting for the
+// judge. The backend AI call already caps at ~12s; this is a belt-and-suspenders
+// release so a network hang never strands the user. Bounds the gate to ≤12s.
+const JUDGE_GATE_TIMEOUT_MS = 12000
+
+/** True when a fast (catalog-only) pass produced a confident catalog verdict
+ *  (a cosmetic tidy or an exact "already canonical" match) — i.e. no AI needed. */
+function isCatalogConfident(v: MatchJudgeVerdict | null): boolean {
+  return !!v && !v.needs_ai && v.confident && (v.kind === 'cosmetic' || v.kind === 'none')
+}
 
 /** Returns true for transient errors that should be auto-retried */
 function isRetryableError(err: unknown): boolean {
@@ -126,6 +143,7 @@ export function AudioSourceStep({
   noCredits,
   onAudioEditChange,
 }: AudioSourceStepProps) {
+  const tJobFlow = useTranslations('jobFlow')
   const [results, setResults] = useState<ExtendedAudioSearchResult[]>([])
   const [searchStatus, setSearchStatus] = useState<SearchStatus>({ phase: 'searching', attempt: 1 })
   const [pendingChoice, setPendingChoice] = useState<PendingChoice | null>(null)
@@ -143,12 +161,25 @@ export function AudioSourceStep({
   const [communityDismissed, setCommunityDismissed] = useState(false)
 
   // Artist/title match judge: formatting tidy + match-acceptance + did-you-mean.
-  // Runs after the audio search resolves so the judge sees the confidence tier.
+  // Two-phase: a fast catalog-only pass fires on mount (in parallel with the audio
+  // search) so the common cosmetic tidy is ready before results render; a full pass
+  // (with the confidence tier, may use AI) runs after the search resolves, only when
+  // the fast pass was inconclusive or a catalog match coincides with weak audio.
   const [verdict, setVerdict] = useState<MatchJudgeVerdict | null>(null)
   const [verdictDismissed, setVerdictDismissed] = useState(false)
-  // What we auto-applied, so the user can Undo back to exactly what they typed.
+  // What we auto-applied, so the user can toggle back to exactly what they typed.
   const [appliedFrom, setAppliedFrom] = useState<{ artist: string; title: string } | null>(null)
-  const judgeTriggered = useRef(false)
+  // Two-way toggle state: true = the canonical correction is applied, false = the
+  // user reverted to what they typed (they can switch back).
+  const [correctionActive, setCorrectionActive] = useState(true)
+  // The fast pass's promise, awaited by the full-pass effect once the tier is known.
+  const fastJudgeRef = useRef<Promise<MatchJudgeVerdict | null> | null>(null)
+  const fullJudgeTriggered = useRef(false)
+
+  // Hard gate: audio-selection buttons stay disabled until the judge settles, so a
+  // user can never advance with un-tidied metadata (and a slow verdict can't clobber
+  // a selection). Released on any terminal judge state or the safety timeout.
+  const [gateReleased, setGateReleased] = useState(false)
 
   const [showBuyCreditsDialog, setShowBuyCreditsDialog] = useState(false)
 
@@ -216,41 +247,92 @@ export function AudioSourceStep({
       })
   }, [doSearch, artist, title])
 
+  // Warm the Step 4 preview backgrounds now (artist/title are locked here), so the
+  // title-card / karaoke previews paint instantly by the time the user arrives.
+  useEffect(() => {
+    preloadTitleCardBg()
+    preloadKaraokeBg()
+  }, [])
+
   const confidence = useMemo(() => getSearchConfidence(results, title), [results, title])
   const groupedResults = useMemo(() => groupResults(results), [results])
   const otherResultsCount = results.length > 0 && confidence.bestResult ? results.length - 1 : 0
 
-  // Match judge: runs once the audio search resolves (so it sees the confidence
-  // tier). Deterministic+catalog formatting fixes apply silently; the light AI
-  // layer only fires server-side when those aren't confident.
+  // Phase 1 — fast catalog-only pass, fired on mount in parallel with the audio
+  // search (no tier needed). A confident cosmetic tidy applies immediately so it's
+  // done before results render. The promise is awaited by phase 2.
   useEffect(() => {
-    if (judgeTriggered.current) return
-    if (isSearching) return // Wait for the audio search so the tier is known
-    judgeTriggered.current = true
-    api.matchJudge(artist, title, confidence.tier)
+    if (fastJudgeRef.current) return
+    fastJudgeRef.current = api.matchJudge(artist, title, { stage: 'fast' })
       .then((v) => {
-        setVerdict(v)
-        if (v.kind === 'cosmetic' && v.confident) {
-          // Same song, formatting only — apply silently, never re-search.
+        if (v.kind === 'cosmetic' && v.confident && !v.needs_ai) {
+          setVerdict(v)
           applyCorrection(v.canonical_artist, v.canonical_title, false)
-        } else if (v.kind === 'content' && v.confident) {
-          // Real character change — apply, and re-search only if the typo'd
-          // search came back weak (tier 3) so we fetch better audio for the fix.
-          applyCorrection(v.canonical_artist, v.canonical_title, confidence.tier >= 3)
         }
-        // ambiguous / unconfident content / none → render an ask (no auto-apply)
+        return v
       })
-      .catch(() => {
-        // Silently fail — matching is a nice-to-have
-      })
+      .catch(() => null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSearching, artist, title])
+  }, [artist, title])
+
+  // Phase 2 — once the audio search resolves (so the tier is known): await the fast
+  // pass, run a full pass only when needed (fast inconclusive, or a catalog match
+  // landed on weak audio — item 4), then release the selection gate. Always settles.
+  useEffect(() => {
+    if (isSearching) return
+    if (fullJudgeTriggered.current) return
+    fullJudgeTriggered.current = true
+
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (!cancelled) setGateReleased(true)
+    }, JUDGE_GATE_TIMEOUT_MS)
+    const tier = confidence.tier
+
+    ;(async () => {
+      const fast = await (fastJudgeRef.current ?? Promise.resolve(null))
+      const needFull = !fast || fast.needs_ai || (isCatalogConfident(fast) && tier >= WEAK_TIER)
+      if (needFull) {
+        try {
+          const full = await api.matchJudge(artist, title, { stage: 'full', audioConfidenceTier: tier })
+          if (!cancelled) applyFullVerdict(full, tier)
+        } catch {
+          // Silently fail — matching is a nice-to-have.
+        }
+      }
+      if (!cancelled) {
+        clearTimeout(timer)
+        setGateReleased(true)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearching])
+
+  // Apply a full-pass verdict (cosmetic tidy / confident content correction / ask).
+  function applyFullVerdict(v: MatchJudgeVerdict, tier: number) {
+    setVerdict(v)
+    if (v.kind === 'cosmetic' && v.confident) {
+      // Same song, formatting only — apply silently, never re-search.
+      applyCorrection(v.canonical_artist, v.canonical_title, false)
+    } else if (v.kind === 'content' && v.confident) {
+      // Real character change — apply, and re-search only if the typo'd search came
+      // back weak (tier 3) so we fetch better audio for the fix.
+      applyCorrection(v.canonical_artist, v.canonical_title, tier >= WEAK_TIER)
+    }
+    // ambiguous / unconfident content / none → render an ask (no auto-apply)
+  }
 
   // Apply a corrected artist/title. reSearch=true re-runs the audio search with
   // the corrected terms; the verdict notice stays visible across the re-search.
   function applyCorrection(newArtist: string, newTitle: string, reSearch: boolean) {
     if (newArtist === artist && newTitle === title) return
     setAppliedFrom({ artist, title })
+    setCorrectionActive(true)
     onArtistTitleCorrection(newArtist, newTitle)
     if (reSearch) {
       setResults([])
@@ -258,7 +340,7 @@ export function AudioSourceStep({
       setCommunityData(null)
       setCommunityDismissed(false)
       setShowOtherOptions(false)
-      // Keep judgeTriggered=true: don't re-judge the corrected terms. doSearch
+      // Keep the gate open and don't re-judge the corrected terms. doSearch
       // re-fires via the mount effect when the parent re-renders with the
       // corrected artist/title props (searchTriggered is reset below).
       searchTriggered.current = false
@@ -270,18 +352,23 @@ export function AudioSourceStep({
     setVerdict({
       kind: 'content', confident: true,
       canonical_artist: newArtist, canonical_title: newTitle,
-      alternatives: [], engine: 'ai', reason: '',
+      alternatives: [], engine: 'ai', reason: '', needs_ai: false,
     })
     applyCorrection(newArtist, newTitle, true)
   }
 
-  // User undoes an auto-applied correction — restore exactly what they typed.
-  function handleUndoCorrection() {
+  // Two-way toggle. Revert restores exactly what the user typed; reapply switches
+  // back to the canonical correction. Toggling is metadata-only (no re-search).
+  function handleRevert() {
     if (!appliedFrom) return
-    const prev = appliedFrom
-    setAppliedFrom(null)
-    setVerdict(null)
-    onArtistTitleCorrection(prev.artist, prev.title)
+    setCorrectionActive(false)
+    onArtistTitleCorrection(appliedFrom.artist, appliedFrom.title)
+  }
+
+  function handleReapply() {
+    if (!verdict) return
+    setCorrectionActive(true)
+    onArtistTitleCorrection(verdict.canonical_artist, verdict.canonical_title)
   }
 
   function handleSelect(index: number) {
@@ -432,10 +519,25 @@ export function AudioSourceStep({
         <MatchNotice
           verdict={verdict}
           appliedFrom={appliedFrom}
+          correctionActive={correctionActive}
           onAccept={handleSuggestionAccept}
-          onUndo={handleUndoCorrection}
+          onRevert={handleRevert}
+          onReapply={handleReapply}
           onDismiss={() => setVerdictDismissed(true)}
         />
+      )}
+
+      {/* Selection gate indicator — while the judge confirms the song details, the
+          audio pick buttons stay disabled so we never advance with un-tidied metadata. */}
+      {!isSearching && !gateReleased && (
+        <div
+          className="flex items-center gap-2 text-xs"
+          style={{ color: 'var(--text-muted)' }}
+          data-testid="match-gate-checking"
+        >
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+          <span>{tJobFlow('matchChecking')}</span>
+        </div>
       )}
 
       {/* Community version banner */}
@@ -487,6 +589,7 @@ export function AudioSourceStep({
           searchTitle={title}
           onSelect={handleSelect}
           noCredits={noCredits}
+          locked={!gateReleased}
         />
       )}
 
@@ -498,6 +601,7 @@ export function AudioSourceStep({
           searchTitle={title}
           onSelect={handleSelect}
           noCredits={noCredits}
+          locked={!gateReleased}
         />
       )}
 
@@ -515,6 +619,7 @@ export function AudioSourceStep({
             uploadFile={uploadFile}
             setUploadFile={setUploadFile}
             noCredits={noCredits}
+            locked={!gateReleased}
             onUrlSubmit={handleUrlSubmit}
             onUploadSubmit={handleUploadSubmit}
           />
@@ -534,6 +639,7 @@ export function AudioSourceStep({
           searchTitle={title}
           onSelect={handleSelect}
           noCredits={noCredits}
+          locked={!gateReleased}
         />
       )}
 
@@ -554,6 +660,7 @@ export function AudioSourceStep({
           uploadFile={uploadFile}
           setUploadFile={setUploadFile}
           noCredits={noCredits}
+          locked={!gateReleased}
           onUrlSubmit={handleUrlSubmit}
           onUploadSubmit={handleUploadSubmit}
         />
@@ -571,12 +678,14 @@ function PickCard({
   searchTitle,
   onSelect,
   noCredits,
+  locked,
 }: {
   confidence: SearchConfidence
   variant: "perfect" | "recommended"
   searchTitle: string
   onSelect: (index: number) => void
   noCredits: boolean
+  locked?: boolean
 }) {
   const bestResult = confidence.bestResult!
   const isPerfect = variant === "perfect"
@@ -674,7 +783,7 @@ function PickCard({
 
         <Button
           onClick={() => onSelect(bestResult.index)}
-          disabled={noCredits}
+          disabled={noCredits || locked}
           className={`w-full text-white ${
             isPerfect
               ? 'bg-green-600 hover:bg-green-500'
@@ -764,6 +873,7 @@ function OtherOptionsSection({
   searchTitle,
   onSelect,
   noCredits,
+  locked,
 }: {
   confidence: SearchConfidence
   groupedResults: ReturnType<typeof groupResults>
@@ -775,6 +885,7 @@ function OtherOptionsSection({
   searchTitle: string
   onSelect: (index: number) => void
   noCredits: boolean
+  locked?: boolean
 }) {
   const isTier3 = confidence.tier === 3
 
@@ -794,6 +905,7 @@ function OtherOptionsSection({
           searchTitle={searchTitle}
           onSelect={onSelect}
           noCredits={noCredits}
+          locked={locked}
           defaultExpanded
           alwaysShowMatchBadge
         />
@@ -830,6 +942,7 @@ function OtherOptionsSection({
             searchTitle={searchTitle}
             onSelect={onSelect}
             noCredits={noCredits}
+            locked={locked}
           />
         </div>
       )}
@@ -846,6 +959,7 @@ function ResultCategories({
   searchTitle,
   onSelect,
   noCredits,
+  locked,
   defaultExpanded,
   alwaysShowMatchBadge,
 }: {
@@ -856,6 +970,7 @@ function ResultCategories({
   searchTitle: string
   onSelect: (index: number) => void
   noCredits: boolean
+  locked?: boolean
   defaultExpanded?: boolean
   alwaysShowMatchBadge?: boolean
 }) {
@@ -928,6 +1043,7 @@ function ResultCategories({
                   showMatchBadges={showMatchBadges}
                   onSelect={onSelect}
                   noCredits={noCredits}
+                  locked={locked}
                 />
               ))}
             </div>
@@ -945,12 +1061,14 @@ function ResultRow({
   showMatchBadges,
   onSelect,
   noCredits,
+  locked,
 }: {
   result: ExtendedAudioSearchResult
   searchTitle: string
   showMatchBadges: boolean
   onSelect: (index: number) => void
   noCredits: boolean
+  locked?: boolean
 }) {
   const mismatch = useMemo(() => checkFilenameMismatch(searchTitle, result), [searchTitle, result])
   // Only show "Title match" when we actually verified a match (filename is non-empty)
@@ -1010,7 +1128,7 @@ function ResultRow({
       <Button
         size="sm"
         onClick={() => onSelect(result.index)}
-        disabled={noCredits}
+        disabled={noCredits || locked}
         className="h-7 px-3 text-xs shrink-0 bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white"
       >
         <Check className="w-3 h-3 mr-1" />
@@ -1110,6 +1228,7 @@ function FallbackSection({
   uploadFile,
   setUploadFile,
   noCredits,
+  locked,
   onUrlSubmit,
   onUploadSubmit,
 }: {
@@ -1122,6 +1241,7 @@ function FallbackSection({
   uploadFile: File | null
   setUploadFile: (file: File | null) => void
   noCredits: boolean
+  locked?: boolean
   onUrlSubmit: (e: React.FormEvent) => void
   onUploadSubmit: (e: React.FormEvent) => void
 }) {
@@ -1195,7 +1315,7 @@ function FallbackSection({
           <Button
             type="submit"
             size="sm"
-            disabled={!youtubeUrl.trim() || noCredits}
+            disabled={!youtubeUrl.trim() || noCredits || locked}
             className="w-full bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white"
           >
             {t('useThisUrl')}
@@ -1247,7 +1367,7 @@ function FallbackSection({
           <Button
             type="submit"
             size="sm"
-            disabled={!uploadFile || noCredits}
+            disabled={!uploadFile || noCredits || locked}
             className="w-full bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white"
           >
             Use This File
@@ -1258,46 +1378,65 @@ function FallbackSection({
   )
 }
 
-/** Match-judge notice: a quiet auto-applied tidy/correction line (with undo),
- *  or an ask-first "Did you mean?" prompt for ambiguous cases. */
+/** Match-judge notice: a quiet two-way toggle for an auto-applied tidy/correction
+ *  (switch between the canonical version and what you typed), or an ask-first
+ *  "Did you mean?" prompt for ambiguous cases. */
 function MatchNotice({
   verdict,
   appliedFrom,
+  correctionActive,
   onAccept,
-  onUndo,
+  onRevert,
+  onReapply,
   onDismiss,
 }: {
   verdict: MatchJudgeVerdict
   appliedFrom: { artist: string; title: string } | null
+  correctionActive: boolean
   onAccept: (artist: string, title: string) => void
-  onUndo: () => void
+  onRevert: () => void
+  onReapply: () => void
   onDismiss: () => void
 }) {
   const t = useTranslations('jobFlow')
   const canonical = `${verdict.canonical_artist} — ${verdict.canonical_title}`
 
-  // Auto-applied cosmetic tidy or confident content correction → quiet line + undo.
+  // Auto-applied cosmetic tidy or confident content correction → quiet two-way
+  // toggle. Active: shows the canonical value + a revert link. Reverted: shows what
+  // the user typed + a reapply link. The current value is always clear.
   if (appliedFrom && (verdict.kind === 'cosmetic' || verdict.kind === 'content')) {
     const typed = `${appliedFrom.artist} — ${appliedFrom.title}`
+    const isContent = verdict.kind === 'content'
+    let label: string
+    let action: string
+    let onToggle: () => void
+    if (correctionActive) {
+      label = isContent
+        ? t('matchCorrectedTo', { value: canonical, typed })
+        : t('matchTidiedTo', { value: canonical })
+      action = isContent ? t('matchUndo') : t('matchKeepMine')
+      onToggle = onRevert
+    } else {
+      label = t('matchUsingTyped', { value: typed })
+      action = isContent ? t('matchUseCorrection') : t('matchUseTidied')
+      onToggle = onReapply
+    }
     return (
       <div
         className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
         style={{ backgroundColor: 'var(--secondary)', color: 'var(--text-muted)' }}
         data-testid="match-tidy-notice"
+        data-correction-active={correctionActive}
       >
         <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
-        <span className="flex-1">
-          {verdict.kind === 'content'
-            ? t('matchCorrectedTo', { value: canonical, typed })
-            : t('matchTidiedTo', { value: canonical })}
-        </span>
+        <span className="flex-1">{label}</span>
         <button
           type="button"
-          onClick={onUndo}
+          onClick={onToggle}
           className="underline shrink-0"
           style={{ color: 'var(--brand-pink)' }}
         >
-          {verdict.kind === 'content' ? t('matchUndo') : t('matchKeepMine')}
+          {action}
         </button>
       </div>
     )

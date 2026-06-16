@@ -538,7 +538,11 @@
     "matchDidYouMean": "Bunu mu demek istedin?",
     "matchKeepMine": "yazdığım gibi kalsın",
     "matchTidiedTo": "{value} olarak düzenlendi",
-    "matchUndo": "Geri al"
+    "matchUndo": "Geri al",
+    "matchChecking": "Şarkı detayları kontrol ediliyor…",
+    "matchUseCorrection": "düzeltmeyi kullan",
+    "matchUseTidied": "düzenlenmiş sürümü kullan",
+    "matchUsingTyped": "Yazdığın kullanılıyor: {value}"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Şarkı Adı",
-    "artist": "Sanatçı"
+    "artist": "Sanatçı",
+    "loading": "Başlık ekranı önizlemesi yükleniyor"
   },
   "editTrack": {
     "title": "Tamamlanan Parçayı Düzenle",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Tahmini — nihai maliyet indirmeden sonra kesinleşir",
     "reconcileTitle": "Bu şarkı beklenenden daha uzun",
     "cancel": "İptal"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Arka plan önizlemesi yükleniyor"
   }
 }

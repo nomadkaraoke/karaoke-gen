@@ -1,5 +1,5 @@
-import { render, act } from "@testing-library/react"
-import { TitleCardPreview } from "../TitleCardPreview"
+import { render, act, screen } from "@testing-library/react"
+import { TitleCardPreview, preloadTitleCardBg, __resetTitleCardBgCacheForTest } from "../TitleCardPreview"
 
 // Module-level state shared with mock closures via reference
 const state = {
@@ -32,6 +32,7 @@ function setupMocks() {
   state.fontLoadResolve = null
 
   HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
+    setTransform: jest.fn(),
     drawImage: jest.fn(),
     fillRect: jest.fn(),
     fillText: jest.fn((text: string) => {
@@ -74,6 +75,7 @@ function setupMocks() {
 
 beforeEach(() => {
   setupMocks()
+  __resetTitleCardBgCacheForTest()
 })
 
 describe("TitleCardPreview", () => {
@@ -154,6 +156,7 @@ describe("TitleCardPreview", () => {
       let _fillStyle = ""
       let _font = ""
       return {
+        setTransform: jest.fn(),
         drawImage: jest.fn(),
         fillRect: jest.fn(),
         fillText: jest.fn((text: string) => {
@@ -185,6 +188,66 @@ describe("TitleCardPreview", () => {
     // The fillStyle should include our custom colors
     expect(fillStyles).toContain("#ff0000")
     expect(fillStyles).toContain("#00ff00")
+  })
+
+  it("renders the canvas at preview resolution, not 4K", async () => {
+    let result: ReturnType<typeof render>
+    await act(async () => {
+      result = render(<TitleCardPreview title="Test" artist="Artist" />)
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    const canvasEl = result!.container.querySelector("canvas")
+    expect(canvasEl).not.toBeNull()
+    // dpr defaults to 1 in jsdom → 960×540 backing store (was 3840×2160).
+    expect(canvasEl!.width).toBe(960)
+    expect(canvasEl!.height).toBe(540)
+  })
+
+  it("loads the low-res preview background by default", async () => {
+    const loadedSrcs: string[] = []
+    global.Image = class MockImageDefault {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      _src = ""
+      complete = true
+      get src() { return this._src }
+      set src(v: string) {
+        this._src = v
+        loadedSrcs.push(v)
+        Promise.resolve().then(() => this.onload?.())
+      }
+    } as unknown as typeof Image
+
+    await act(async () => {
+      render(<TitleCardPreview title="Test" artist="Artist" />)
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    expect(loadedSrcs).toContain("/title-card-bg-preview.png")
+    expect(loadedSrcs).not.toContain("/title-card-bg.png")
+  })
+
+  it("shows a loading spinner before the first draw completes", () => {
+    // Hold the font load open so draw() never reaches setReady(true).
+    state.fontCheckReturn = false
+    render(<TitleCardPreview title="Song" artist="Artist" />)
+    expect(screen.getByTestId("title-card-preview-loading")).toBeInTheDocument()
+  })
+
+  it("preloadTitleCardBg loads the low-res asset without throwing", () => {
+    const loadedSrcs: string[] = []
+    global.Image = class MockImagePreload {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      _src = ""
+      complete = false
+      get src() { return this._src }
+      set src(v: string) { this._src = v; loadedSrcs.push(v) }
+    } as unknown as typeof Image
+
+    expect(() => preloadTitleCardBg()).not.toThrow()
+    expect(loadedSrcs).toContain("/title-card-bg-preview.png")
   })
 
   it("loads custom background image when customBackgroundUrl is provided", async () => {

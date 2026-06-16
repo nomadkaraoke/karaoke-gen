@@ -538,7 +538,11 @@
     "matchDidYouMean": "คุณหมายถึงคำนี้ใช่ไหม?",
     "matchKeepMine": "ใช้ข้อความที่ฉันพิมพ์",
     "matchTidiedTo": "จัดรูปแบบเป็น {value}",
-    "matchUndo": "เลิกทำ"
+    "matchUndo": "เลิกทำ",
+    "matchChecking": "กำลังตรวจสอบรายละเอียดเพลง…",
+    "matchUseCorrection": "ใช้ตามที่แก้ไข",
+    "matchUseTidied": "ใช้เวอร์ชันที่จัดระเบียบแล้ว",
+    "matchUsingTyped": "ใช้ข้อความที่คุณพิมพ์: {value}"
   },
   "jobStatus": {
     "settingUp": "กำลังตั้งค่า",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "ชื่อเพลง",
-    "artist": "ศิลปิน"
+    "artist": "ศิลปิน",
+    "loading": "กำลังโหลดตัวอย่างหน้าจอไตเติ้ล"
   },
   "editTrack": {
     "title": "แก้ไขแทร็กที่เสร็จสมบูรณ์แล้ว",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "โดยประมาณ — จะยืนยันค่าใช้จ่ายจริงหลังดาวน์โหลด",
     "reconcileTitle": "เพลงนี้ยาวกว่าที่คาดไว้",
     "cancel": "ยกเลิก"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "กำลังโหลดตัวอย่างพื้นหลัง"
   }
 }

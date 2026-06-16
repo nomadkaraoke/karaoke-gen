@@ -538,7 +538,11 @@
     "matchDidYouMean": "Maksud Anda?",
     "matchKeepMine": "tetap gunakan yang saya ketik",
     "matchTidiedTo": "Dirapikan menjadi {value}",
-    "matchUndo": "Urungkan"
+    "matchUndo": "Urungkan",
+    "matchChecking": "Memeriksa detail lagu…",
+    "matchUseCorrection": "gunakan koreksi",
+    "matchUseTidied": "gunakan versi yang dirapikan",
+    "matchUsingTyped": "Menggunakan yang Anda ketik: {value}"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Judul Lagu",
-    "artist": "Artis"
+    "artist": "Artis",
+    "loading": "Memuat pratinjau layar judul"
   },
   "editTrack": {
     "title": "Edit Track yang Selesai",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "Estimasi — biaya akhir dikonfirmasi setelah diunduh",
     "reconcileTitle": "Lagu ini lebih panjang dari perkiraan",
     "cancel": "Batal"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Memuat pratinjau latar belakang"
   }
 }

@@ -29,6 +29,10 @@ class MatchVerdict:
     alternatives: list[dict] = field(default_factory=list)  # [{"artist","title"}]
     engine: Engine = "deterministic"
     reason: str = ""
+    # True only from a "fast" (catalog-only) pass that couldn't confidently decide:
+    # the caller should escalate to a "full" pass (with the audio tier) for an AI
+    # verdict. Always False on a full-pass verdict.
+    needs_ai: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -39,4 +43,5 @@ class MatchVerdict:
             "alternatives": self.alternatives,
             "engine": self.engine,
             "reason": self.reason,
+            "needs_ai": self.needs_ai,
         }

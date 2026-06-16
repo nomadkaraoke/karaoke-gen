@@ -538,7 +538,11 @@
     "matchDidYouMean": "もしかして？",
     "matchKeepMine": "入力した内容をそのまま使う",
     "matchTidiedTo": "{value} に整えました",
-    "matchUndo": "元に戻す"
+    "matchUndo": "元に戻す",
+    "matchChecking": "曲の詳細を確認しています…",
+    "matchUseCorrection": "修正を適用する",
+    "matchUseTidied": "整形版を使用する",
+    "matchUsingTyped": "入力された内容を使用します: {value}"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",
@@ -688,7 +692,8 @@
   },
   "titleCardPreview": {
     "songTitle": "曲名",
-    "artist": "アーティスト"
+    "artist": "アーティスト",
+    "loading": "タイトル画面のプレビューを読み込んでいます"
   },
   "editTrack": {
     "title": "完了したトラックを編集",
@@ -1571,5 +1576,8 @@
     "estimatedLabel": "目安 — 最終的な料金はダウンロード後に確定します",
     "reconcileTitle": "この曲は想定より長くなっています",
     "cancel": "キャンセル"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "背景プレビューを読み込んでいます"
   }
 }

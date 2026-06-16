@@ -518,6 +518,16 @@ export interface MatchJudgeVerdict {
   alternatives: { artist: string; title: string }[];
   engine: 'deterministic' | 'catalog' | 'ai';
   reason: string;
+  // Set by a "fast" (catalog-only) pass that couldn't decide — the client should
+  // follow up with a "full" call once the audio confidence tier is known.
+  needs_ai: boolean;
+}
+
+export type MatchJudgeStage = 'fast' | 'full';
+
+export interface MatchJudgeOptions {
+  stage?: MatchJudgeStage;
+  audioConfidenceTier?: number;
 }
 
 export const api = {
@@ -1625,9 +1635,10 @@ export const api = {
     return handleResponse(response);
   },
 
-  async matchJudge(artist: string, title: string, audioConfidenceTier?: number): Promise<MatchJudgeVerdict> {
+  async matchJudge(artist: string, title: string, opts?: MatchJudgeOptions): Promise<MatchJudgeVerdict> {
     const body: Record<string, unknown> = { artist, title };
-    if (audioConfidenceTier != null) body.audio_confidence_tier = audioConfidenceTier;
+    if (opts?.audioConfidenceTier != null) body.audio_confidence_tier = opts.audioConfidenceTier;
+    if (opts?.stage != null) body.stage = opts.stage;
     const response = await fetch(`${API_BASE_URL}/api/catalog/match-judge`, {
       method: 'POST',
       headers: {

@@ -1,7 +1,8 @@
 "use client"
 
-import { useRef, useEffect, useCallback } from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
 import { useTranslations } from 'next-intl'
+import { Loader2 } from "lucide-react"
 
 interface TitleCardPreviewProps {
   artist: string
@@ -19,8 +20,18 @@ interface TitleCardPreviewProps {
 // - Title: white (#ffffff), uppercase, region 370,980,3100,350
 // - Artist: golden yellow (#ffdf6b), uppercase, region 370,1400,3100,450
 
+// Coordinate space the title-card layout is authored in (style_params.json is in
+// 4K). All region/font constants below are in this space; the canvas renders at a
+// much smaller preview resolution (see PREVIEW_*) via a scale transform, so a small
+// thumbnail no longer allocates a 4K (3840×2160) backing store + 4K PNG.
 const CANVAS_W = 3840
 const CANVAS_H = 2160
+
+// Actual canvas backing-store resolution for the preview (multiplied by the
+// device pixel ratio, capped, at draw time). Plenty sharp for the thumbnail.
+const PREVIEW_W = 960
+const PREVIEW_H = 540
+const MAX_DPR = 2
 
 // Title region: x=370, y=980, w=3100, h=350
 const TITLE_X = 370
@@ -37,6 +48,9 @@ const ARTIST_H = 450
 const TITLE_COLOR = "#ffffff"
 const ARTIST_COLOR = "#ffdf6b"
 
+// Low-res background sized for the preview (the full 4K asset stays for the real
+// render path). Cached at module scope so it loads once per session.
+const TITLE_CARD_BG_SRC = "/title-card-bg-preview.png"
 let bgImageCache: HTMLImageElement | null = null
 
 function loadBgImage(): Promise<HTMLImageElement> {
@@ -48,8 +62,19 @@ function loadBgImage(): Promise<HTMLImageElement> {
       resolve(img)
     }
     img.onerror = reject
-    img.src = "/title-card-bg.png"
+    img.src = TITLE_CARD_BG_SRC
   })
+}
+
+/** Warm the title-card background cache ahead of time (e.g. on Step 2) so the
+ *  Step 4 preview paints instantly. Safe to call repeatedly; failures are ignored. */
+export function preloadTitleCardBg(): void {
+  void loadBgImage().catch(() => {})
+}
+
+/** Test-only: clear the module-level bg cache so each test starts from a cold load. */
+export function __resetTitleCardBgCacheForTest(): void {
+  bgImageCache = null
 }
 
 function fitText(
@@ -126,6 +151,7 @@ function drawTextBlock(
 export function TitleCardPreview({ artist, title, customBackgroundUrl, backgroundColor, titleColor, artistColor }: TitleCardPreviewProps) {
   const t = useTranslations('titleCardPreview')
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [ready, setReady] = useState(false)
 
   const effectiveTitleColor = titleColor || TITLE_COLOR
   const effectiveArtistColor = artistColor || ARTIST_COLOR
@@ -133,8 +159,18 @@ export function TitleCardPreview({ artist, title, customBackgroundUrl, backgroun
   const draw = useCallback(async () => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    // Size the backing store to the preview resolution (dpr-aware, capped) and
+    // scale the 4K coordinate space down to it, so we never allocate a 4K canvas.
+    const dpr = Math.min((typeof window !== "undefined" && window.devicePixelRatio) || 1, MAX_DPR)
+    const cw = Math.round(PREVIEW_W * dpr)
+    const ch = Math.round(PREVIEW_H * dpr)
+    if (canvas.width !== cw) canvas.width = cw
+    if (canvas.height !== ch) canvas.height = ch
+
     const ctx = canvas.getContext("2d")
     if (!ctx) return
+    ctx.setTransform(cw / CANVAS_W, 0, 0, ch / CANVAS_H, 0, 0)
 
     // Draw background: custom image > solid color > default image
     try {
@@ -194,6 +230,8 @@ export function TitleCardPreview({ artist, title, customBackgroundUrl, backgroun
       artist ? effectiveArtistColor : "rgba(255,223,107,0.25)",
       fontFamily,
     )
+
+    setReady(true)
   }, [artist, title, customBackgroundUrl, backgroundColor, effectiveTitleColor, effectiveArtistColor, t])
 
   useEffect(() => {
@@ -201,15 +239,26 @@ export function TitleCardPreview({ artist, title, customBackgroundUrl, backgroun
   }, [draw])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={CANVAS_W}
-      height={CANVAS_H}
-      className="w-full rounded-lg"
-      style={{
-        aspectRatio: "16/9",
-        border: "1px solid var(--card-border)",
-      }}
-    />
+    <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+      <canvas
+        ref={canvasRef}
+        width={PREVIEW_W}
+        height={PREVIEW_H}
+        className="w-full h-full rounded-lg"
+        style={{
+          border: "1px solid var(--card-border)",
+        }}
+      />
+      {!ready && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg"
+          style={{ backgroundColor: "var(--secondary)", color: "var(--text-muted)" }}
+          data-testid="title-card-preview-loading"
+        >
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-xs">{t('loading')}</span>
+        </div>
+      )}
+    </div>
   )
 }

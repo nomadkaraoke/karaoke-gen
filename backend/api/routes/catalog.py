@@ -7,7 +7,7 @@ and checks karaokenerds.com for existing community karaoke versions.
 
 import logging
 import time
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -110,6 +110,10 @@ class MatchJudgeRequest(BaseModel):
     # The audio search's confidence tier (1=strong..3=weak), so the judge can
     # tell whether weak results hint at a typo. Optional.
     audio_confidence_tier: Optional[int] = Field(None, ge=1, le=3)
+    # "fast" = catalog-only pass (no AI, no tier needed) the client fires in
+    # parallel with the audio search; "full" = complete pipeline once the tier is
+    # known. Defaults to "full" so a single legacy call still works.
+    stage: Literal["fast", "full"] = "full"
 
 
 class MatchJudgeAlternative(BaseModel):
@@ -126,6 +130,9 @@ class MatchJudgeResponse(BaseModel):
     alternatives: list[MatchJudgeAlternative] = []
     engine: str  # "deterministic" | "catalog" | "ai"
     reason: str = ""
+    # Set by a "fast" pass that couldn't decide — the client should follow up with
+    # a "full" call once the audio tier is known.
+    needs_ai: bool = False
 
 
 # --- Routes ---
@@ -205,10 +212,12 @@ async def match_judge(
 
     from backend.services.match_judge.service import judge_match
     verdict = await judge_match(
-        body.artist, body.title, audio_tier=body.audio_confidence_tier
+        body.artist, body.title,
+        audio_tier=body.audio_confidence_tier,
+        stage=body.stage,
     )
     logger.info(
-        "match-judge kind=%s engine=%s confident=%s",
-        verdict.kind, verdict.engine, verdict.confident,
+        "match-judge stage=%s kind=%s engine=%s confident=%s needs_ai=%s",
+        body.stage, verdict.kind, verdict.engine, verdict.confident, verdict.needs_ai,
     )
     return verdict.to_dict()
