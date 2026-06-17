@@ -1058,6 +1058,52 @@ class TestVideoWorkerOrchestratorEncoding:
             with pytest.raises(RuntimeError, match="stale"):
                 await orchestrator._download_gce_encoded_files(output)
 
+    @pytest.mark.asyncio
+    async def test_download_gce_includes_screen_movs(self):
+        """Screen MOVs returned by the encoder are downloaded into output_dir.
+
+        Regression: the standalone (Title).mov / (End).mov stopped reaching the
+        Dropbox folder after #647/#650. They must be pulled back like other finals.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = OrchestratorConfig(
+                job_id="test-job",
+                artist="Test Artist",
+                title="Test Title",
+                title_video_path=os.path.join(temp_dir, "title.png"),
+                karaoke_video_path=os.path.join(temp_dir, "karaoke.mkv"),
+                instrumental_audio_path=os.path.join(temp_dir, "audio.flac"),
+                output_dir=temp_dir,
+            )
+
+            mock_storage = MagicMock()
+            mock_storage.download_file = MagicMock()
+
+            orchestrator = VideoWorkerOrchestrator(config, storage=mock_storage)
+
+            from backend.services.encoding_interface import EncodingOutput
+            output = EncodingOutput(
+                success=True,
+                lossless_4k_mp4_path="jobs/test-job/finals/Test Artist - Test Title (Final Karaoke Lossless 4k).mp4",
+                title_mov_path="jobs/test-job/finals/Test Artist - Test Title (Title).mov",
+                end_mov_path="jobs/test-job/finals/Test Artist - Test Title (End).mov",
+                encoding_time_seconds=0.0,
+                encoding_backend="gce",
+            )
+
+            await orchestrator._download_gce_encoded_files(output)
+
+            downloaded = {os.path.basename(c.args[0]) for c in mock_storage.download_file.call_args_list}
+            assert "Test Artist - Test Title (Title).mov" in downloaded
+            assert "Test Artist - Test Title (End).mov" in downloaded
+            # Result points the screen MOVs at their local copies in output_dir
+            assert orchestrator.result.title_mov == os.path.join(
+                temp_dir, "Test Artist - Test Title (Title).mov"
+            )
+            assert orchestrator.result.end_mov == os.path.join(
+                temp_dir, "Test Artist - Test Title (End).mov"
+            )
+
 
 class TestVideoWorkerOrchestratorOrganization:
     """Test organization stage."""
@@ -1404,6 +1450,36 @@ class TestCreateOrchestratorConfigFromJob:
         )
 
         assert config.instrumental_audio_path == "/tmp/test/Test Artist - Test Title (Instrumental User).mp3"
+
+    def test_create_config_includes_original_audio(self):
+        """Config carries the original input audio so it can be staged into the
+        Dropbox folder. Regression: source audio stopped reaching organised outputs.
+        """
+        job = MagicMock()
+        job.job_id = "test-123"
+        job.artist = "Test Artist"
+        job.title = "Test Title"
+        job.state_data = {"instrumental_selection": "clean"}
+        job.enable_cdg = False
+        job.enable_txt = False
+        job.enable_youtube_upload = False
+        job.is_private = False
+        job.brand_prefix = "NOMAD"
+        job.discord_webhook_url = None
+        job.youtube_description_template = None
+        job.dropbox_path = "/Karaoke"
+        job.gdrive_folder_id = None
+        job.keep_brand_code = None
+        job.existing_instrumental_gcs_path = None
+        job.file_urls = {'screens': {'title_png': 'screens/title.png', 'end_png': 'screens/end.png'}}
+        # flacfetch (audio_search) download
+        job.audio_source_type = "audio_search"
+        job.input_media_gcs_path = "jobs/test-123/input/track.flac"
+
+        config = create_orchestrator_config_from_job(job=job, temp_dir="/tmp/test")
+
+        assert config.original_audio_gcs_path == "jobs/test-123/input/track.flac"
+        assert config.original_audio_filename == "Test Artist - Test Title (flacfetch).flac"
 
     def test_create_config_passes_instrumental_selection(self):
         """Test that instrumental_selection is passed through to OrchestratorConfig.
@@ -1903,3 +1979,73 @@ class TestLrcHasLyricsContent:
         lrc_file.write_text("[ti:Song Title]\n[ar:Artist Name]\n[re:MidiCo]\n")
         orchestrator = self._make_orchestrator(lrc_file_path=str(lrc_file))
         assert orchestrator._lrc_has_lyrics_content() is False
+
+
+class TestStageOriginalAudio:
+    """Original input audio is staged into output_dir before folder uploads.
+
+    Regression: the source audio ((flacfetch).flac / (uploaded).mp3) stopped
+    appearing in the Dropbox track folder after the move to the distributed
+    pipeline. It must be fetched from GCS into output_dir before upload.
+    """
+
+    def _make(self, temp_dir, **overrides):
+        cfg = dict(
+            job_id="job-1",
+            artist="Test Artist",
+            title="Test Title",
+            title_video_path=os.path.join(temp_dir, "title.png"),
+            karaoke_video_path=os.path.join(temp_dir, "karaoke.mkv"),
+            instrumental_audio_path=os.path.join(temp_dir, "audio.flac"),
+            output_dir=temp_dir,
+        )
+        cfg.update(overrides)
+        config = OrchestratorConfig(**cfg)
+        storage = MagicMock()
+        return VideoWorkerOrchestrator(config, storage=storage), storage
+
+    def test_downloads_original_audio_into_output_dir(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orch, storage = self._make(
+                temp_dir,
+                original_audio_gcs_path="jobs/job-1/input/track.flac",
+                original_audio_filename="Test Artist - Test Title (flacfetch).flac",
+            )
+            orch._stage_original_audio_for_upload()
+
+            storage.download_file.assert_called_once()
+            args = storage.download_file.call_args.args
+            assert args[0] == "jobs/job-1/input/track.flac"
+            assert args[1] == os.path.join(temp_dir, "Test Artist - Test Title (flacfetch).flac")
+
+    def test_noop_when_no_original_audio_configured(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orch, storage = self._make(temp_dir)
+            orch._stage_original_audio_for_upload()
+            storage.download_file.assert_not_called()
+
+    def test_skips_when_already_present(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fname = "Test Artist - Test Title (uploaded).mp3"
+            # File already in output_dir (e.g. legacy/local run)
+            with open(os.path.join(temp_dir, fname), "wb") as f:
+                f.write(b"existing")
+            orch, storage = self._make(
+                temp_dir,
+                original_audio_gcs_path="jobs/job-1/input/song.mp3",
+                original_audio_filename=fname,
+            )
+            orch._stage_original_audio_for_upload()
+            storage.download_file.assert_not_called()
+
+    def test_download_failure_is_non_fatal(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orch, storage = self._make(
+                temp_dir,
+                original_audio_gcs_path="jobs/job-1/input/track.flac",
+                original_audio_filename="Test Artist - Test Title (flacfetch).flac",
+            )
+            storage.download_file.side_effect = Exception("gcs boom")
+            # Must not raise
+            orch._stage_original_audio_for_upload()
+            assert any("Original audio" in w for w in orch.result.distribution_warnings)

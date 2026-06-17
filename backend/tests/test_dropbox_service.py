@@ -471,3 +471,42 @@ class TestCreateSharedLink:
         
         assert url == "https://dropbox.com/s/existing/file.mp4"
 
+
+
+class TestFileExists:
+    """Test DropboxService.file_exists (used by the original-audio backfill)."""
+
+    def test_returns_true_when_metadata_found(self):
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        mock_client = MagicMock()
+        service._client = mock_client
+
+        assert service.file_exists("/Karaoke/NOMAD-1 - A - B/A - B (flacfetch).flac") is True
+        mock_client.files_get_metadata.assert_called_once_with(
+            "/Karaoke/NOMAD-1 - A - B/A - B (flacfetch).flac"
+        )
+
+    def test_returns_false_on_api_error(self):
+        from dropbox.exceptions import ApiError
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        mock_client = MagicMock()
+        mock_client.files_get_metadata.side_effect = ApiError(
+            request_id="r", error=MagicMock(), user_message_text=None, user_message_locale=None
+        )
+        service._client = mock_client
+
+        assert service.file_exists("/missing.flac") is False
+
+    def test_prepends_leading_slash(self):
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        mock_client = MagicMock()
+        service._client = mock_client
+
+        service.file_exists("Karaoke/x.flac")
+        mock_client.files_get_metadata.assert_called_once_with("/Karaoke/x.flac")

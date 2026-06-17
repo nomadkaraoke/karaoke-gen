@@ -827,6 +827,20 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
 
         jobs[job_id]["progress"] = 90
 
+        # Include the standalone 5-second screen videos in the uploaded outputs so they
+        # land in the Dropbox folder. They are generated above (or passed in) purely as
+        # concat inputs and used to live only in screens/; copy them into outputs/ with
+        # the canonical names. Regression fix: screen MOVs disappeared from Dropbox after
+        # #647/#650 moved screen generation to this encoder.
+        for screen_video, suffix in ((title_video, "Title"), (end_video, "End")):
+            if screen_video and Path(screen_video).is_file():
+                dest = output_dir / f"{base_name} ({suffix}).mov"
+                try:
+                    shutil.copy2(screen_video, dest)
+                    logger.info(f"Staged screen video for upload: {dest.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to stage {suffix} MOV into outputs: {e}")
+
         # Collect output files
         output_files = [str(f) for f in output_dir.glob("*") if f.is_file()]
         jobs[job_id]["output_files"] = output_files

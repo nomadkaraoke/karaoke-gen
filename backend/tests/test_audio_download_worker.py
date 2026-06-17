@@ -124,6 +124,11 @@ class TestProcessAudioDownload:
                 'input_media_gcs_path': "uploads/test-job-123/audio/song.mp3",
                 'filename': "song.mp3",
             })
+            # Original audio recorded in file_urls so it shows in the admin files
+            # manifest (and can be staged into the Dropbox folder) for URL/search jobs.
+            mock_jm.update_file_url.assert_any_call(
+                "test-job-123", 'input', 'audio', "uploads/test-job-123/audio/song.mp3"
+            )
             mock_jm.transition_to_state.assert_called_once()
             mock_ws.trigger_audio_worker.assert_awaited_once_with("test-job-123")
             mock_ws.trigger_lyrics_worker.assert_awaited_once_with("test-job-123")

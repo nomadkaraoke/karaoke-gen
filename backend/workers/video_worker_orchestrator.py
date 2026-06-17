@@ -28,6 +28,10 @@ from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.tracing import job_span, add_span_event
+from backend.services.original_audio import (
+    original_audio_gcs_path,
+    original_audio_output_filename,
+)
 from karaoke_gen.utils import sanitize_filename
 
 logger = logging.getLogger(__name__)
@@ -66,6 +70,11 @@ class OrchestratorConfig:
     # Dropbox/GDrive configuration
     dropbox_path: Optional[str] = None
     gdrive_folder_id: Optional[str] = None
+
+    # Original input audio to include in the uploaded folder (the archival master,
+    # e.g. "<artist> - <title> (flacfetch).flac"). GCS blob path + target filename.
+    original_audio_gcs_path: Optional[str] = None
+    original_audio_filename: Optional[str] = None
 
     # Keep existing brand code (for re-processing)
     keep_brand_code: Optional[str] = None
@@ -111,6 +120,11 @@ class OrchestratorResult:
     final_with_vocals_mp4: Optional[str] = None  # With Vocals MP4 (encoded from raw MKV)
     final_karaoke_cdg_zip: Optional[str] = None
     final_karaoke_txt_zip: Optional[str] = None
+
+    # Standalone 5-second screen videos (downloaded from GCE finals so they land in
+    # the Dropbox folder). Not used downstream — kept for archival/upload only.
+    title_mov: Optional[str] = None
+    end_mov: Optional[str] = None
 
     # Organization
     brand_code: Optional[str] = None
@@ -553,6 +567,9 @@ class VideoWorkerOrchestrator:
             ('lossy_4k_mp4_path', 'final_video_lossy'),
             ('lossy_720p_mp4_path', 'final_video_720p'),
             ('with_vocals_mp4_path', 'final_with_vocals_mp4'),
+            # Standalone screen videos — pulled back so they reach the Dropbox folder
+            ('title_mov_path', 'title_mov'),
+            ('end_mov_path', 'end_mov'),
         ]
 
         downloaded_count = 0
@@ -622,6 +639,16 @@ class VideoWorkerOrchestrator:
         """Run the distribution stage (YouTube, Dropbox, GDrive uploads)."""
         self.job_log.info("Starting distribution stage")
         self._update_progress(JobStatus.PACKAGING, 90, "Uploading files")
+
+        # Stage the original input audio into output_dir before any folder upload
+        # (Dropbox/GDrive upload the whole directory). Only worth the GCS fetch when
+        # such an upload will actually happen.
+        will_upload_folder = (
+            (self.config.dropbox_path and self.config.brand_prefix)
+            or self.config.gdrive_folder_id
+        )
+        if will_upload_folder:
+            self._stage_original_audio_for_upload()
 
         # YouTube upload
         if self.config.enable_youtube_upload and self.config.youtube_credentials:
@@ -758,6 +785,32 @@ class VideoWorkerOrchestrator:
             self.result.distribution_warnings.append(
                 f"YouTube upload skipped (quota exceeded) and failed to queue: {e}"
             )
+
+    def _stage_original_audio_for_upload(self):
+        """Copy the original input audio into output_dir so uploads include it.
+
+        The source audio (e.g. "<artist> - <title> (flacfetch).flac" /
+        "(uploaded).mp3") is the archival master used for separation/transcription.
+        The distributed pipeline otherwise leaves it in GCS only, so it stopped
+        appearing in the Dropbox track folder. Best-effort: never fail the pipeline.
+        """
+        gcs_path = self.config.original_audio_gcs_path
+        filename = self.config.original_audio_filename
+        if not gcs_path or not filename:
+            return
+
+        dest = os.path.join(self.config.output_dir, filename)
+        if os.path.exists(dest):
+            self.job_log.info(f"Original audio already present, skipping: {filename}")
+            return
+
+        try:
+            self.job_log.info(f"Staging original audio for upload: {filename}")
+            self.storage.download_file(gcs_path, dest)
+            self.job_log.info(f"Staged original audio: {dest}")
+        except Exception as e:
+            self.job_log.warning(f"Failed to stage original audio ({filename}): {e}")
+            self.result.distribution_warnings.append(f"Original audio not included: {e}")
 
     async def _upload_to_dropbox(self):
         """Upload files to Dropbox."""
@@ -994,6 +1047,10 @@ def create_orchestrator_config_from_job(
         # Dropbox/GDrive (overridden for private tracks)
         dropbox_path=dist.dropbox_path,
         gdrive_folder_id=dist.gdrive_folder_id,
+
+        # Original input audio to include in the uploaded folder (archival master)
+        original_audio_gcs_path=original_audio_gcs_path(job),
+        original_audio_filename=original_audio_output_filename(job, base_name),
 
         # Keep existing brand code
         keep_brand_code=getattr(job, 'keep_brand_code', None),
