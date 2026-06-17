@@ -508,3 +508,50 @@ class TestWheelVersionSorting:
         wheels = ["/tmp/karaoke_gen-current.whl"]
         latest = self.select_latest_wheel(wheels)
         assert latest is None
+
+
+class TestScreenVideoStaging:
+    """Test that the standalone screen MOVs are copied into outputs/ for upload.
+
+    Mirrors the copy logic in run_encoding (kept self-contained, like the other
+    tests in this file). Regression: (Title).mov / (End).mov disappeared from the
+    Dropbox folder after #647/#650 moved screen generation into this encoder.
+    """
+
+    @staticmethod
+    def stage_screen_videos(title_video, end_video, output_dir: Path, base_name: str):
+        """Replicates run_encoding's screen-video staging step."""
+        import shutil
+        for screen_video, suffix in ((title_video, "Title"), (end_video, "End")):
+            if screen_video and Path(screen_video).is_file():
+                dest = output_dir / f"{base_name} ({suffix}).mov"
+                shutil.copy2(screen_video, dest)
+
+    def test_copies_title_and_end_with_canonical_names(self, tmp_path):
+        screens = tmp_path / "screens"
+        screens.mkdir()
+        title = screens / "title.mov"
+        end = screens / "end.mov"
+        title.write_bytes(b"title-mov-bytes")
+        end.write_bytes(b"end-mov-bytes")
+        outputs = tmp_path / "outputs"
+        outputs.mkdir()
+
+        self.stage_screen_videos(title, end, outputs, "Artist - Title")
+
+        assert (outputs / "Artist - Title (Title).mov").read_bytes() == b"title-mov-bytes"
+        assert (outputs / "Artist - Title (End).mov").read_bytes() == b"end-mov-bytes"
+
+    def test_skips_missing_end_video(self, tmp_path):
+        screens = tmp_path / "screens"
+        screens.mkdir()
+        title = screens / "title.mov"
+        title.write_bytes(b"title-mov-bytes")
+        outputs = tmp_path / "outputs"
+        outputs.mkdir()
+
+        # end_video is None (no end screen) — must not raise
+        self.stage_screen_videos(title, None, outputs, "Artist - Title")
+
+        assert (outputs / "Artist - Title (Title).mov").is_file()
+        assert not (outputs / "Artist - Title (End).mov").exists()

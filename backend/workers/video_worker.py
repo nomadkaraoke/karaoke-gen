@@ -359,6 +359,8 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                     'final_with_vocals_mp4': result.final_with_vocals_mp4,
                     'final_karaoke_cdg_zip': result.final_karaoke_cdg_zip,
                     'final_karaoke_txt_zip': result.final_karaoke_txt_zip,
+                    'title_mov': result.title_mov,
+                    'end_mov': result.end_mov,
                 })
 
             # Store result metadata in job BEFORE transitioning to COMPLETE
@@ -1604,6 +1606,10 @@ async def _upload_results(
         ('final_with_vocals_mp4', 'finals', 'with_vocals_mp4'),
         ('final_karaoke_cdg_zip', 'packages', 'cdg_zip'),
         ('final_karaoke_txt_zip', 'packages', 'txt_zip'),
+        # Standalone screen videos — recorded so they appear in the admin files
+        # manifest and are verifiable (regression: missing from Dropbox folders)
+        ('title_mov', 'finals', 'title_mov'),
+        ('end_mov', 'finals', 'end_mov'),
     ]
     
     for result_key, category, file_key in file_mappings:

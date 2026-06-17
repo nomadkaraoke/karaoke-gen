@@ -71,7 +71,7 @@ def test_execute_command_runs_command(mock_subprocess_run, finaliser_with_aac):
     description = "Running test command"
     finaliser_with_aac.execute_command(command, description)
     
-    mock_subprocess_run.assert_called_once_with(command, shell=True, capture_output=True, text=True, timeout=600)
+    mock_subprocess_run.assert_called_once_with(command, shell=True, capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
     finaliser_with_aac.logger.info.assert_any_call(description)
     finaliser_with_aac.logger.debug.assert_any_call(f"Executing command: {command}")
     finaliser_with_aac.logger.info.assert_any_call("✓ Command completed successfully")

@@ -232,6 +232,10 @@ async def process_audio_download(job_id: str) -> bool:
             'input_media_gcs_path': audio_gcs_path,
             'filename': filename,
         })
+        # Record the original input audio in file_urls too (the upload path does this
+        # in audio_worker), so it appears in the admin files manifest consistently
+        # across all source types and can be staged into the output folder.
+        job_manager.update_file_url(job_id, 'input', 'audio', audio_gcs_path)
 
         # Download succeeded — clear any stale retry-pending marker and
         # previous error so the UI stops showing a resolved failure.

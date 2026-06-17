@@ -986,6 +986,52 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       console.log('STEP 10 COMPLETE: Downloads verified');
 
       // =========================================================================
+      // STEP 10.5: Verify Output File Completeness
+      // =========================================================================
+      // Guards against regressions where files silently stop being produced/
+      // distributed (e.g. the screen .mov videos and the original input audio
+      // disappearing from the organised Dropbox folders). Asserts the job's file
+      // manifest contains every expected output, not just that one download works.
+      console.log('\n========================================');
+      console.log('STEP 10.5: Verify Output File Completeness');
+      console.log('========================================');
+
+      const manifestToken = process.env.E2E_ADMIN_TOKEN;
+      if (manifestToken && jobId) {
+        const filesResponse = await page.request.get(
+          `${API_URL}/api/admin/jobs/${jobId}/files`,
+          { headers: { 'Authorization': `Bearer ${manifestToken}` } }
+        );
+        expect(filesResponse.ok()).toBe(true);
+        const manifest = await filesResponse.json();
+        const files: Array<{ category?: string; file_key?: string; name?: string }> =
+          manifest.files || [];
+        const keys = new Set(files.map((f) => `${f.category || ''}/${f.file_key || ''}`));
+        console.log(`  Manifest has ${files.length} files:`);
+        for (const f of files) {
+          console.log(`    - ${f.category}/${f.file_key}: ${f.name}`);
+        }
+
+        // The two regressions this guards against:
+        const required: Array<[string, string]> = [
+          ['finals/title_mov', 'Title screen video (.mov)'],
+          ['finals/end_mov', 'End screen video (.mov)'],
+          ['input/audio', 'Original input audio'],
+          // Core deliverable sanity check
+          ['finals/lossless_4k_mp4', 'Final lossless 4K video'],
+        ];
+        const missing = required.filter(([key]) => !keys.has(key));
+        if (missing.length > 0) {
+          console.log('  MISSING expected output files:');
+          for (const [key, desc] of missing) console.log(`    ✗ ${key} (${desc})`);
+        }
+        expect(missing, `Missing expected output files: ${missing.map(([k]) => k).join(', ')}`).toEqual([]);
+        console.log('STEP 10.5 COMPLETE: All expected output files present');
+      } else {
+        console.log('  Skipping - E2E_ADMIN_TOKEN not set or no job ID');
+      }
+
+      // =========================================================================
       // STEP 11: Verify Distribution (if enabled)
       // =========================================================================
       console.log('\n========================================');

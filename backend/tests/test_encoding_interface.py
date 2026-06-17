@@ -394,6 +394,48 @@ class TestGCEEncodingBackend:
         assert output.lossless_mkv_path == "jobs/test/finals/Artist - Title (Final Karaoke Lossless 4k).mkv"
         assert output.lossy_720p_mp4_path == "jobs/test/finals/Artist - Title (Final Karaoke Lossy 720p).mp4"
 
+    @patch.object(GCEEncodingBackend, "_get_service")
+    @pytest.mark.asyncio
+    async def test_encode_maps_screen_movs_from_list(self, mock_get_service):
+        """Test GCE encoding maps the standalone (Title).mov / (End).mov from output_files list.
+
+        The GCE worker now copies the 5-second screen videos into its outputs/ dir so they
+        upload to GCS finals. The mapper must recognise them and populate
+        title_mov_path / end_mov_path so the orchestrator downloads them into output_dir
+        (and thus into the Dropbox folder). Regression for: screen MOVs lost from Dropbox
+        after #647/#650 moved screen generation to the encoder.
+        """
+        mock_service = MagicMock()
+        mock_service.encode_videos = AsyncMock(return_value={
+            "status": "complete",
+            "output_files": [
+                "jobs/test/finals/Artist - Title (Final Karaoke Lossless 4k).mp4",
+                "jobs/test/finals/Artist - Title (Title).mov",
+                "jobs/test/finals/Artist - Title (End).mov",
+            ]
+        })
+        mock_get_service.return_value = mock_service
+
+        backend = GCEEncodingBackend()
+        input_config = EncodingInput(
+            title_video_path="/input/title.png",
+            karaoke_video_path="/input/karaoke.mkv",
+            instrumental_audio_path="/input/audio.flac",
+            artist="Artist",
+            title="Title",
+            options={
+                "job_id": "test-job",
+                "input_gcs_path": "gs://bucket/input/",
+                "output_gcs_path": "gs://bucket/output/",
+            }
+        )
+
+        output = await backend.encode(input_config)
+
+        assert output.success is True
+        assert output.title_mov_path == "jobs/test/finals/Artist - Title (Title).mov"
+        assert output.end_mov_path == "jobs/test/finals/Artist - Title (End).mov"
+
 
 class TestGetEncodingBackend:
     """Test encoding backend factory function."""
