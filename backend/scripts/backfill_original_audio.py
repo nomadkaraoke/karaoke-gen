@@ -103,7 +103,13 @@ def run_backfill(*, since, until=None, limit, environment, live):
 
     tally = {}
     for job in jobs:
-        action, detail = plan_job_backfill(job, storage=storage, dropbox=dropbox)
+        try:
+            action, detail = plan_job_backfill(job, storage=storage, dropbox=dropbox)
+        except Exception as e:
+            # A transient GCS/Dropbox error while planning shouldn't abort the whole run.
+            logger.error("  planning failed for %s: %s", getattr(job, "job_id", "?"), e)
+            tally["error"] = tally.get("error", 0) + 1
+            continue
         tally[action] = tally.get(action, 0) + 1
         if action == "upload":
             verb = "uploading" if live else "[DRY-RUN] would upload"

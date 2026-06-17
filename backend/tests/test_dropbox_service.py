@@ -488,18 +488,39 @@ class TestFileExists:
             "/Karaoke/NOMAD-1 - A - B/A - B (flacfetch).flac"
         )
 
-    def test_returns_false_on_api_error(self):
+    def test_returns_false_on_not_found(self):
         from dropbox.exceptions import ApiError
         from backend.services.dropbox_service import DropboxService
 
         service = DropboxService()
         mock_client = MagicMock()
+        # Genuine "not found": is_path() -> get_path().is_not_found() == True
+        not_found_err = MagicMock()
+        not_found_err.is_path.return_value = True
+        not_found_err.get_path.return_value.is_not_found.return_value = True
         mock_client.files_get_metadata.side_effect = ApiError(
-            request_id="r", error=MagicMock(), user_message_text=None, user_message_locale=None
+            request_id="r", error=not_found_err, user_message_text=None, user_message_locale=None
         )
         service._client = mock_client
 
         assert service.file_exists("/missing.flac") is False
+
+    def test_reraises_non_not_found_api_error(self):
+        """Auth/network/rate-limit errors must NOT be masked as 'file missing'."""
+        from dropbox.exceptions import ApiError
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        mock_client = MagicMock()
+        other_err = MagicMock()
+        other_err.is_path.return_value = False
+        mock_client.files_get_metadata.side_effect = ApiError(
+            request_id="r", error=other_err, user_message_text=None, user_message_locale=None
+        )
+        service._client = mock_client
+
+        with pytest.raises(ApiError):
+            service.file_exists("/some.flac")
 
     def test_prepends_leading_slash(self):
         from backend.services.dropbox_service import DropboxService

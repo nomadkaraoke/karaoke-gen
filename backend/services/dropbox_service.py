@@ -169,8 +169,18 @@ class DropboxService:
         try:
             self.client.files_get_metadata(remote_path)
             return True
-        except ApiError:
-            return False
+        except ApiError as e:
+            # Only a genuine "not found" means the file is absent. Re-raise other
+            # API errors (auth, network, rate limit) so callers don't mistake a
+            # transient failure for "missing" (e.g. the backfill uploading a dup).
+            err = e.error
+            if (
+                hasattr(err, "is_path")
+                and err.is_path()
+                and err.get_path().is_not_found()
+            ):
+                return False
+            raise
 
     def upload_file(self, local_path: str, remote_path: str) -> None:
         """
