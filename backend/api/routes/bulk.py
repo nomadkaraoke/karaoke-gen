@@ -334,3 +334,81 @@ async def bulk_submit(
     logger.info("[batch:%s] created %d jobs, dispatched bulk-search worker", batch_id, len(job_ids))
 
     return BulkSubmitResponse(batch_id=batch_id, job_ids=job_ids, total=len(job_ids))
+
+
+# --- Progress ---------------------------------------------------------------
+
+
+class BulkJobStatus(BaseModel):
+    job_id: str
+    artist: str
+    title: str
+    status: str
+    auto_selected: bool = False
+
+
+class BulkBatchResponse(BaseModel):
+    batch_id: str
+    total: int
+    counts: dict
+    jobs: list[BulkJobStatus]
+
+
+# Status -> progress bucket for the batch summary.
+_AWAITING = "awaiting_audio_selection"
+_TERMINAL_OK = "complete"
+_TERMINAL_FAIL = "failed"
+_SEARCHING = {"pending", "searching_audio"}
+
+
+def _bucket(status: str, pending_search: bool) -> str:
+    if pending_search or status in _SEARCHING:
+        return "searching"
+    if status == _AWAITING:
+        return "awaiting_selection"
+    if status == _TERMINAL_OK:
+        return "complete"
+    if status == _TERMINAL_FAIL:
+        return "failed"
+    return "processing"
+
+
+@router.get("/{batch_id}", response_model=BulkBatchResponse)
+async def bulk_batch(
+    request: Request,
+    batch_id: str,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """Progress summary for a batch: counts by bucket + per-job status."""
+    from backend.services.job_manager import JobManager
+
+    job_manager = JobManager()
+    jobs = job_manager.list_jobs_by_batch_id(batch_id)
+
+    if not bool(auth_result.is_admin):
+        email = (auth_result.user_email or "").lower()
+        jobs = [j for j in jobs if (j.user_email or "").lower() == email]
+
+    if not jobs:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    counts = {"searching": 0, "awaiting_selection": 0, "processing": 0, "complete": 0, "failed": 0}
+    job_statuses: list[BulkJobStatus] = []
+    for j in jobs:
+        status = j.status.value if hasattr(j.status, "value") else str(j.status)
+        sd = j.state_data or {}
+        bucket = _bucket(status, bool(sd.get("bulk_pending_search")))
+        counts[bucket] += 1
+        job_statuses.append(
+            BulkJobStatus(
+                job_id=j.job_id,
+                artist=j.audio_search_artist or j.artist or "",
+                title=j.audio_search_title or j.title or "",
+                status=status,
+                auto_selected=bool(sd.get("bulk_auto_selected")),
+            )
+        )
+
+    return BulkBatchResponse(
+        batch_id=batch_id, total=len(jobs), counts=counts, jobs=job_statuses
+    )
