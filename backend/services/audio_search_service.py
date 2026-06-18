@@ -18,7 +18,8 @@ downloads since Cloud Run doesn't support BitTorrent peer connections.
 import asyncio
 import logging
 import os
-from typing import List, Optional
+import re
+from typing import Any, Dict, List, Optional
 
 import nest_asyncio
 
@@ -45,6 +46,142 @@ AudioSearchError = AudioFetcherError
 
 # Also alias AudioFetchResult as AudioDownloadResult for backwards compatibility
 AudioDownloadResult = AudioFetchResult
+
+
+# ---------------------------------------------------------------------------
+# Bulk Mode: tier-1 auto-selection.
+#
+# This is a faithful port of the frontend confidence-tier logic in
+# frontend/lib/audio-search-utils.ts (categorizeResult / getBestResult /
+# checkFilenameMismatch / getSearchConfidence). It operates on the dicts
+# produced by AudioSearchResult.to_dict() (keys: is_lossless, quality_data,
+# seeders, provider, release_type, target_file, title, index).
+#
+# MAINTENANCE SEAM: if the frontend tier rule changes, update both. The
+# parity tests in backend/tests/test_bulk_foundations.py guard the behaviour.
+# ---------------------------------------------------------------------------
+
+_BEST_RESULT_PRIORITY = [
+    "BEST CHOICE",
+    "STUDIO ALBUMS",
+    "HI-RES 24-BIT",
+    "SINGLES",
+    "COMPILATIONS",
+    "SPOTIFY",
+    "YOUTUBE",
+    "OTHER",
+]
+
+
+def _categorize_result(result: Dict[str, Any]) -> str:
+    """Port of categorizeResult() from audio-search-utils.ts."""
+    is_lossless = result.get("is_lossless") is True
+    quality_data = result.get("quality_data") or {}
+    is_24bit = quality_data.get("bit_depth") == 24
+    seeders = result.get("seeders") or 0
+    provider = (result.get("provider") or "").lower()
+    release_type = (result.get("release_type") or "").lower()
+    media = (quality_data.get("media") or "").lower()
+
+    if provider == "spotify":
+        return "SPOTIFY"
+    if provider == "youtube" or not is_lossless:
+        return "YOUTUBE"
+    # Vinyl rips checked before BEST CHOICE (surface noise -> poor for karaoke)
+    if is_lossless and media == "vinyl":
+        return "VINYL RIPS"
+    if is_lossless and seeders >= 50:
+        return "BEST CHOICE"
+    if is_lossless and is_24bit:
+        return "HI-RES 24-BIT"
+    if is_lossless and (
+        release_type == "live album" or release_type == "bootleg" or "live" in release_type
+    ):
+        return "LIVE VERSIONS"
+    if is_lossless and release_type in ("compilation", "soundtrack", "anthology"):
+        return "COMPILATIONS"
+    if is_lossless and release_type in ("single", "ep"):
+        return "SINGLES"
+    if is_lossless and (release_type == "album" or not release_type):
+        return "STUDIO ALBUMS"
+    return "OTHER"
+
+
+def _get_best_result(results: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Port of getBestResult() — highest-priority category, skipping vinyl."""
+    if not results:
+        return None
+    best: Optional[Dict[str, Any]] = None
+    best_priority = float("inf")
+    for result in results:
+        category = _categorize_result(result)
+        if category == "VINYL RIPS":
+            continue
+        try:
+            priority = _BEST_RESULT_PRIORITY.index(category)
+        except ValueError:
+            priority = float("inf")
+        if priority < best_priority:
+            best = result
+            best_priority = priority
+        elif priority == best_priority and best is not None:
+            if (result.get("seeders") or 0) > (best.get("seeders") or 0):
+                best = result
+    return best if best is not None else results[0]
+
+
+def _check_filename_mismatch(search_title: str, result: Dict[str, Any]) -> bool:
+    """Port of checkFilenameMismatch() — True if the file is clearly another track."""
+    if len(search_title) < 3:
+        return False
+
+    target_file = result.get("target_file")
+    if target_file:
+        raw_filename = target_file.split("/")[-1] or target_file
+        without_ext = re.sub(r"\.[^.]+$", "", raw_filename)
+        filename = re.sub(r"^\d{1,3}\s*[-.\s]\s*", "", without_ext)
+    elif result.get("title"):
+        filename = result["title"]
+    else:
+        return False
+
+    def normalize(s: str) -> str:
+        s = s.lower()
+        s = re.sub(r"[_\-.]+", " ", s)
+        s = re.sub(r"[^a-z0-9\s]", "", s)
+        s = re.sub(r"\s+", " ", s)
+        return s.strip()
+
+    norm_title = normalize(search_title)
+    norm_file = normalize(filename)
+    if not norm_file:
+        return False
+
+    shorter, longer = (
+        (norm_file, norm_title) if len(norm_file) <= len(norm_title) else (norm_title, norm_file)
+    )
+    matches = len(shorter) >= 3 and shorter in longer
+    return not matches
+
+
+def pick_auto_selection(results: List[Dict[str, Any]], search_title: str = "") -> Optional[int]:
+    """Return the index to auto-select, or None if no confident lossless pick.
+
+    Tier-1 rule (mirrors getSearchConfidence): the best result must be in the
+    BEST CHOICE category (lossless, 50+ seeders, non-vinyl) AND its filename
+    must match ``search_title`` (the song the user searched for). Otherwise we
+    defer to human selection.
+    """
+    if not results:
+        return None
+    best = _get_best_result(results)
+    if best is None:
+        return None
+    if _categorize_result(best) != "BEST CHOICE":
+        return None
+    if _check_filename_mismatch(search_title, best):
+        return None
+    return best.get("index")
 
 
 class AudioSearchService:

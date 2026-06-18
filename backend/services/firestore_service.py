@@ -194,6 +194,8 @@ class FirestoreService:
         'state_data.pending_additional_credits',
         'state_data.duration_actual_seconds',
         'state_data.duration_confirm_reason',
+        'state_data.batch_id',
+        'state_data.bulk_auto_selected',
         'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
         'processing_metadata',
     ]
