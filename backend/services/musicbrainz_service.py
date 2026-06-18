@@ -38,6 +38,8 @@ USER_AGENT = "NomadKaraoke/1.0 (contact@nomadkaraoke.com)"
 _MIN_INTERVAL_S = 1.0  # MusicBrainz politeness: ~1 req/s
 _CACHE_TTL_S = 600  # 10 min — album metadata is effectively static
 _REQUEST_TIMEOUT_S = 15.0
+_MAX_RETRIES = 3  # MusicBrainz 503s / transient transport errors are common from cloud egress
+_RETRY_BACKOFF_S = 0.5
 
 # Country preference for canonical-release tie-breaks (worldwide / Europe / US / UK).
 _PREFERRED_COUNTRIES = ["XW", "XE", "US", "GB"]
@@ -109,16 +111,34 @@ class MusicBrainzService:
         cached = self._cache.get(cache_key)
         if cached and (time.monotonic() - cached[0]) < _CACHE_TTL_S:
             return cached[1]
-        await self._throttle()
         params = {**params, "fmt": "json"}
-        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_S) as client:
-            resp = await client.get(
-                f"{MB_BASE}/{path}", params=params, headers={"User-Agent": USER_AGENT}
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        self._cache[cache_key] = (time.monotonic(), data)
-        return data
+        last_exc: Optional[Exception] = None
+        for attempt in range(_MAX_RETRIES):
+            await self._throttle()
+            try:
+                async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_S) as client:
+                    resp = await client.get(
+                        f"{MB_BASE}/{path}", params=params, headers={"User-Agent": USER_AGENT}
+                    )
+                    # MusicBrainz returns 503 when rate-limited/throttled — retry those.
+                    if resp.status_code == 503 and attempt < _MAX_RETRIES - 1:
+                        last_exc = httpx.HTTPStatusError(
+                            "503 from MusicBrainz", request=resp.request, response=resp
+                        )
+                        await asyncio.sleep(_RETRY_BACKOFF_S * (attempt + 1))
+                        continue
+                    resp.raise_for_status()
+                    data = resp.json()
+                self._cache[cache_key] = (time.monotonic(), data)
+                return data
+            except (httpx.TransportError, httpx.TimeoutException) as e:
+                # Connection/timeout errors — retry with backoff.
+                last_exc = e
+                logger.warning("MusicBrainz %s attempt %d/%d failed: %r", path, attempt + 1, _MAX_RETRIES, e)
+                if attempt < _MAX_RETRIES - 1:
+                    await asyncio.sleep(_RETRY_BACKOFF_S * (attempt + 1))
+        # Exhausted retries.
+        raise last_exc if last_exc else RuntimeError(f"MusicBrainz request failed: {path}")
 
     # -- Public API --------------------------------------------------------
 

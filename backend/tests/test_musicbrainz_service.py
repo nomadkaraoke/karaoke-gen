@@ -129,3 +129,60 @@ class TestServiceCalls:
         assert result["tracks"][0]["is_extra"] is False
         assert result["tracks"][2]["is_extra"] is True  # the (Live) track
         assert len(result["editions"]) == 2
+
+
+import httpx as _httpx
+
+
+class _FakeResp:
+    def __init__(self, status, json_data=None):
+        self.status_code = status
+        self._json = json_data
+        self.request = _httpx.Request("GET", "https://musicbrainz.org/ws/2/artist")
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise _httpx.HTTPStatusError(
+                f"{self.status_code}", request=self.request, response=self
+            )
+
+    def json(self):
+        return self._json
+
+
+def _patch_http(monkeypatch, mbs, svc, responses):
+    """Make AsyncClient.get return queued _FakeResp objects; disable throttle/backoff."""
+    async def _noop():
+        return None
+    monkeypatch.setattr(svc, "_throttle", _noop)
+    monkeypatch.setattr(mbs, "_RETRY_BACKOFF_S", 0)
+    calls = {"n": 0}
+
+    async def fake_get(self, url, **kwargs):
+        r = responses[min(calls["n"], len(responses) - 1)]
+        calls["n"] += 1
+        return r
+
+    monkeypatch.setattr(_httpx.AsyncClient, "get", fake_get)
+    return calls
+
+
+@pytest.mark.asyncio
+class TestRetry:
+    async def test_retries_503_then_succeeds(self, monkeypatch):
+        from backend.services import musicbrainz_service as mbs
+        svc = mbs.MusicBrainzService()
+        calls = _patch_http(monkeypatch, mbs, svc, [
+            _FakeResp(503),
+            _FakeResp(200, {"artists": [{"id": "x", "name": "Queen"}]}),
+        ])
+        out = await svc.search_artists("Queen")
+        assert out[0]["mbid"] == "x"
+        assert calls["n"] == 2  # one 503 retry, then success
+
+    async def test_exhausts_retries_raises(self, monkeypatch):
+        from backend.services import musicbrainz_service as mbs
+        svc = mbs.MusicBrainzService()
+        _patch_http(monkeypatch, mbs, svc, [_FakeResp(503)])
+        with pytest.raises(_httpx.HTTPStatusError):
+            await svc.search_artists("Queen")
