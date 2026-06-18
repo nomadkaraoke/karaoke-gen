@@ -840,7 +840,9 @@
       "audioStillLoading": "Audio sa stále načítava...",
       "loadingAudio": "Načítava sa audio...",
       "autoCorrect": "Automatická oprava",
-      "autoCorrectDesc": "Vygeneruj návrhy na opravu porovnaním prepisu s referenčným textom. Nič sa nezmení, kým neschváliš každý návrh."
+      "autoCorrectDesc": "Vygeneruj návrhy na opravu porovnaním prepisu s referenčným textom. Nič sa nezmení, kým neschváliš každý návrh.",
+      "autoCorrectedCount": "Automaticky opravené · {count}",
+      "autoCorrectedDesc": "Aplikovali sme {count, plural, =1 {# automatickú opravu} few {# automatické opravy} other {# automatických opráv}} (zobrazené fialovou farbou). Klikni pre zobrazenie podrobností a zrušenie tých, s ktorými nesúhlasíš."
     },
     "guidance": {
       "showTips": "Zobraziť tipy",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Neopravené medzery",
       "uncorrectedGapsDesc": "Časti, ktoré môžu vyžadovať manuálnu kontrolu",
       "wordsUncorrected": "Neopravené slová",
-      "numberOfGaps": "Počet medzier"
+      "numberOfGaps": "Počet medzier",
+      "autoCorrectTip": "{count, plural, =1 {# slovo bolo automaticky opravené} few {# slová boli automaticky opravené} other {# slov bolo automaticky opravených}} (zobrazené fialovou farbou, s pôvodným slovom vyššie). Prehraj si každý opravený riadok a skontroluj, či slová stále sedia — najmä tie podčiarknuté jantárovou farbou, kde bolo načasovanie odhadnuté a pravdepodobne bude potrebovať úpravu.",
+      "autoCorrected": "Automaticky opravené",
+      "timingEstimated": "Odhadované načasovanie"
     },
     "transcription": {
       "syncedLyrics": "Synchronizovaný text",
@@ -878,7 +883,13 @@
       "text": "Text",
       "timeline": "Časová os",
       "deleteSegment": "Vymazať segment",
-      "playSegment": "Prehrať segment"
+      "playSegment": "Prehrať segment",
+      "aiTooltipEstimated": "Automaticky opravené naším systémom. Načasovanie tu bolo odhadnuté, takže si prehraj tento riadok a v prípade potreby uprav načasovanie slov.",
+      "aiTooltipReplaced": "Automaticky opravené naším systémom z „{original}“. Prehraj si tento riadok a potvrď, že slová stále sedia.",
+      "aiTooltipReplacedEstimated": "Automaticky opravené naším systémom z „{original}“. Načasovanie bolo odhadnuté, takže si prehraj tento riadok a v prípade potreby uprav načasovanie slov.",
+      "longGapWarning": "Medzera {seconds} s pred ďalším slovom — často ide o predčasné slovo (napr. falošné „a“). Klikni pre prehratie odtiaľto.",
+      "longWordWarning": "Toto slovo trvá {seconds} s — čo je nezvyčajne dlho. Prehraj si riadok a skontroluj, či jeho koniec nezasahuje do inštrumentálnej pasáže.",
+      "playFromGap": "Prehrať od konca tejto medzery"
     },
     "editActionBar": {
       "reset": "Obnoviť",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modelov",
       "consensusTooltip": "Navrhli: {models}",
       "cachedBadge": "z cache",
-      "cachedTooltip": "Obnovené z predchádzajúceho spustenia na rovnakom texte — nevznikli žiadne náklady na AI."
+      "cachedTooltip": "Obnovené z predchádzajúceho spustenia na rovnakom texte — nevznikli žiadne náklady na AI.",
+      "appliedSummary": "Aplikované automatické opravy: {count}",
+      "hideDetails": "Skryť podrobnosti",
+      "rerun": "Spustiť znova",
+      "revertAllAuto": "Vrátiť všetko",
+      "showDetails": "Zobraziť podrobnosti"
     }
   },
   "instrumentalReview": {

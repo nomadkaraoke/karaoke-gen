@@ -840,7 +840,9 @@
       "audioStillLoading": "아직 오디오를 불러오는 중입니다...",
       "loadingAudio": "오디오를 불러오는 중입니다...",
       "autoCorrect": "자동 수정",
-      "autoCorrectDesc": "추출된 가사를 참조 가사와 비교하여 수정 제안을 생성합니다. 각 제안을 수락하기 전까지는 아무것도 변경되지 않습니다."
+      "autoCorrectDesc": "추출된 가사를 참조 가사와 비교하여 수정 제안을 생성합니다. 각 제안을 수락하기 전까지는 아무것도 변경되지 않습니다.",
+      "autoCorrectedCount": "자동 수정됨 · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {#개의 자동 수정이} other {#개의 자동 수정이}} 적용되었습니다(보라색으로 표시됨). 클릭하여 세부 정보를 확인하고 원치 않는 수정 사항은 되돌릴 수 있습니다."
     },
     "guidance": {
       "showTips": "팁 표시",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "수정되지 않은 공백",
       "uncorrectedGapsDesc": "수동 검토가 필요할 수 있는 구간",
       "wordsUncorrected": "수정되지 않은 단어",
-      "numberOfGaps": "공백 수"
+      "numberOfGaps": "공백 수",
+      "autoCorrectTip": "{count, plural, =1 {#개의 단어가} other {#개의 단어가}} 자동 수정되었습니다(보라색으로 표시, 원래 단어는 위에 표시됨). 수정된 각 줄을 재생하여 단어 타이밍이 잘 맞는지 확인해 주세요. 특히 주황색으로 밑줄 친 부분은 타이밍이 추정된 것이므로 조정이 필요할 수 있습니다.",
+      "autoCorrected": "자동 수정됨",
+      "timingEstimated": "타이밍 추정됨"
     },
     "transcription": {
       "syncedLyrics": "싱크된 가사",
@@ -878,7 +883,13 @@
       "text": "텍스트",
       "timeline": "타임라인",
       "deleteSegment": "세그먼트 삭제",
-      "playSegment": "세그먼트 재생"
+      "playSegment": "세그먼트 재생",
+      "aiTooltipEstimated": "시스템에서 자동 수정했습니다. 타이밍이 추정된 것이므로, 이 줄을 재생해 보고 필요한 경우 단어 타이밍을 조정해 주세요.",
+      "aiTooltipReplaced": "시스템에서 \"{original}\"을(를) 자동 수정했습니다. 이 줄을 재생하여 단어 타이밍이 잘 맞는지 확인해 주세요.",
+      "aiTooltipReplacedEstimated": "시스템에서 \"{original}\"을(를) 자동 수정했습니다. 타이밍이 추정된 것이므로, 이 줄을 재생해 보고 필요한 경우 단어 타이밍을 조정해 주세요.",
+      "longGapWarning": "다음 단어 전에 {seconds}초의 공백이 있습니다. 잘못 인식된 단어(예: 불필요한 \"and\")일 수 있습니다. 클릭하여 여기서부터 재생해 보세요.",
+      "longWordWarning": "이 단어는 {seconds}초 동안 지속되어 비정상적으로 깁니다. 이 줄을 재생하여 끝나는 시간이 반주 부분까지 넘어가지 않았는지 확인해 주세요.",
+      "playFromGap": "이 공백의 끝부분부터 재생"
     },
     "editActionBar": {
       "reset": "초기화",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total}개 모델",
       "consensusTooltip": "제안한 모델: {models}",
       "cachedBadge": "캐시됨",
-      "cachedTooltip": "동일한 가사로 진행한 이전 작업에서 복원되었습니다 — AI 비용이 발생하지 않았습니다."
+      "cachedTooltip": "동일한 가사로 진행한 이전 작업에서 복원되었습니다 — AI 비용이 발생하지 않았습니다.",
+      "appliedSummary": "{count}개의 자동 수정이 적용되었습니다",
+      "hideDetails": "세부 정보 숨기기",
+      "rerun": "다시 실행",
+      "revertAllAuto": "모두 되돌리기",
+      "showDetails": "세부 정보 보기"
     }
   },
   "instrumentalReview": {

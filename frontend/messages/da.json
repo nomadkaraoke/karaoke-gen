@@ -840,7 +840,9 @@
       "audioStillLoading": "Lyden indlæses stadig...",
       "loadingAudio": "Indlæser lyd...",
       "autoCorrect": "Autokorrektur",
-      "autoCorrectDesc": "Generer forslag til rettelser ved at sammenligne transskriptionen med referenceteksten. Intet ændres, før du accepterer hvert forslag."
+      "autoCorrectDesc": "Generer forslag til rettelser ved at sammenligne transskriptionen med referenceteksten. Intet ændres, før du accepterer hvert forslag.",
+      "autoCorrectedCount": "Automatisk rettet · {count}",
+      "autoCorrectedDesc": "Vi har foretaget {count, plural, =1 {# automatisk rettelse} other {# automatiske rettelser}} (vist med lilla). Klik for at se detaljerne og fortryde dem, du er uenig i."
     },
     "guidance": {
       "showTips": "Vis tips",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Urettede huller",
       "uncorrectedGapsDesc": "Sektioner, der kan kræve manuel gennemgang",
       "wordsUncorrected": "Ord ikke rettet",
-      "numberOfGaps": "Antal huller"
+      "numberOfGaps": "Antal huller",
+      "autoCorrectTip": "{count, plural, =1 {# ord blev automatisk rettet} other {# ord blev automatisk rettet}} for dig (vist med lilla, med det oprindelige ord ovenover). Afspil hver rettet linje og tjek, at ordene stadig passer — især dem, der er understreget med orange, hvor timingen blev estimeret og sandsynligvis skal justeres.",
+      "autoCorrected": "Automatisk rettet",
+      "timingEstimated": "Timing estimeret"
     },
     "transcription": {
       "syncedLyrics": "Synkroniserede sangtekster",
@@ -878,7 +883,13 @@
       "text": "Tekst",
       "timeline": "Tidslinje",
       "deleteSegment": "Slet segment",
-      "playSegment": "Afspil segment"
+      "playSegment": "Afspil segment",
+      "aiTooltipEstimated": "Automatisk rettet af vores system. Timingen her blev estimeret, så afspil denne linje og juster ordets timing, hvis det er nødvendigt.",
+      "aiTooltipReplaced": "Automatisk rettet af vores system fra \"{original}\". Afspil denne linje for at bekræfte, at ordene stadig passer.",
+      "aiTooltipReplacedEstimated": "Automatisk rettet af vores system fra \"{original}\". Timingen blev estimeret, så afspil denne linje og juster ordets timing, hvis det er nødvendigt.",
+      "longGapWarning": "{seconds}s pause før det næste ord — ofte et fejlplaceret tidligt ord (f.eks. et fantom-\"og\"). Klik for at afspille herfra.",
+      "longWordWarning": "Dette ord varer {seconds}s — usædvanligt længe. Afspil linjen og tjek, at dets sluttidspunkt ikke fortsætter ind i det instrumentale.",
+      "playFromGap": "Afspil fra slutningen af denne pause"
     },
     "editActionBar": {
       "reset": "Nulstil",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modeller",
       "consensusTooltip": "Foreslået af: {models}",
       "cachedBadge": "cachet",
-      "cachedTooltip": "Gendannet fra en tidligere kørsel med de samme sangtekster — der påløb ingen AI-omkostninger."
+      "cachedTooltip": "Gendannet fra en tidligere kørsel med de samme sangtekster — der påløb ingen AI-omkostninger.",
+      "appliedSummary": "{count} automatiske rettelser foretaget",
+      "hideDetails": "Skjul detaljer",
+      "rerun": "Kør igen",
+      "revertAllAuto": "Fortryd alle",
+      "showDetails": "Vis detaljer"
     }
   },
   "instrumentalReview": {

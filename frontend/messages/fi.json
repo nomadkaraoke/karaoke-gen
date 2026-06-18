@@ -840,7 +840,9 @@
       "audioStillLoading": "Ääni latautuu yhä...",
       "loadingAudio": "Ladataan ääntä...",
       "autoCorrect": "Automaattinen korjaus",
-      "autoCorrectDesc": "Luo korjausehdotuksia vertaamalla litterointia vertailusanoituksiin. Mitään ei muuteta ennen kuin hyväksyt jokaisen ehdotuksen."
+      "autoCorrectDesc": "Luo korjausehdotuksia vertaamalla litterointia vertailusanoituksiin. Mitään ei muuteta ennen kuin hyväksyt jokaisen ehdotuksen.",
+      "autoCorrectedCount": "Automaattisesti korjattu · {count}",
+      "autoCorrectedDesc": "Teimme {count, plural, =1 {# automaattisen korjauksen} other {# automaattista korjausta}} (näkyy violettina). Napsauta nähdäksesi tiedot ja kumoa ne korjaukset, jotka haluat perua."
     },
     "guidance": {
       "showTips": "Näytä vinkit",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Korjaamattomat aukot",
       "uncorrectedGapsDesc": "Osiot, jotka saattavat vaatia manuaalista tarkistusta",
       "wordsUncorrected": "Korjaamattomat sanat",
-      "numberOfGaps": "Aukkojen määrä"
+      "numberOfGaps": "Aukkojen määrä",
+      "autoCorrectTip": "{count, plural, =1 {# sana korjattiin automaattisesti} other {# sanaa korjattiin automaattisesti}} puolestasi (näkyy violettina, alkuperäinen sana yläpuolella). Toista jokainen korjattu rivi ja tarkista, että sanat osuvat yhä kohdalleen — erityisesti keltaisella alleviivatut, joiden ajoitus on arvioitu ja vaatii todennäköisesti säätämistä.",
+      "autoCorrected": "Automaattisesti korjattu",
+      "timingEstimated": "Ajoitus arvioitu"
     },
     "transcription": {
       "syncedLyrics": "Synkronoidut sanoitukset",
@@ -878,7 +883,13 @@
       "text": "Teksti",
       "timeline": "Aikajana",
       "deleteSegment": "Poista segmentti",
-      "playSegment": "Toista segmentti"
+      "playSegment": "Toista segmentti",
+      "aiTooltipEstimated": "Järjestelmämme automaattisesti korjaama. Ajoitus on tässä arvioitu, joten toista tämä rivi ja säädä sanojen ajoitusta tarvittaessa.",
+      "aiTooltipReplaced": "Järjestelmämme automaattisesti korjaama sanasta \"{original}\". Toista tämä rivi vahvistaaksesi, että sanat osuvat yhä kohdalleen.",
+      "aiTooltipReplacedEstimated": "Järjestelmämme automaattisesti korjaama sanasta \"{original}\". Ajoitus on arvioitu, joten toista tämä rivi ja säädä sanojen ajoitusta tarvittaessa.",
+      "longGapWarning": "{seconds} s tauko ennen seuraavaa sanaa — usein kyseessä on irrallinen, liian aikainen sana (esim. ylimääräinen \"ja\"). Toista tästä napsauttamalla.",
+      "longWordWarning": "Tämä sana kestää {seconds} s — epätavallisen pitkään. Toista rivi ja tarkista, ettei sen loppuaika ole mennyt instrumentaaliosuuden päälle.",
+      "playFromGap": "Toista tämän tauon lopusta"
     },
     "editActionBar": {
       "reset": "Nollaa",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} mallia",
       "consensusTooltip": "Ehdottanut: {models}",
       "cachedBadge": "välimuistissa",
-      "cachedTooltip": "Palautettu aiemmasta ajosta samoilla sanoituksilla — tekoälykustannuksia ei syntynyt."
+      "cachedTooltip": "Palautettu aiemmasta ajosta samoilla sanoituksilla — tekoälykustannuksia ei syntynyt.",
+      "appliedSummary": "{count} automaattista korjausta tehty",
+      "hideDetails": "Piilota tiedot",
+      "rerun": "Suorita uudelleen",
+      "revertAllAuto": "Kumoa kaikki",
+      "showDetails": "Näytä tiedot"
     }
   },
   "instrumentalReview": {

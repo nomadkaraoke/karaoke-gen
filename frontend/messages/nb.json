@@ -840,7 +840,9 @@
       "audioStillLoading": "Lyden laster fortsatt inn...",
       "loadingAudio": "Laster inn lyd...",
       "autoCorrect": "Autokorrektur",
-      "autoCorrectDesc": "Generer forslag til rettelser ved å sammenligne transkripsjonen med referanseteksten. Ingenting endres før du godtar hvert forslag."
+      "autoCorrectDesc": "Generer forslag til rettelser ved å sammenligne transkripsjonen med referanseteksten. Ingenting endres før du godtar hvert forslag.",
+      "autoCorrectedCount": "Autokorrigert · {count}",
+      "autoCorrectedDesc": "Vi utførte {count, plural, =1 {# autokorrigering} other {# autokorrigeringer}} (vist i lilla). Klikk for å se detaljene og angre de du er uenig i."
     },
     "guidance": {
       "showTips": "Vis tips",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Ukorrigerte hull",
       "uncorrectedGapsDesc": "Seksjoner som kan trenge manuell gjennomgang",
       "wordsUncorrected": "Ord ukorrigert",
-      "numberOfGaps": "Antall hull"
+      "numberOfGaps": "Antall hull",
+      "autoCorrectTip": "{count, plural, =1 {# ord ble autokorrigert} other {# ord ble autokorrigert}} for deg (vist i lilla, med det opprinnelige ordet over). Spill av hver korrigerte linje og sjekk at ordene fortsatt stemmer overens — spesielt de som er understreket i gult, hvor timingen ble estimert og sannsynligvis må justeres.",
+      "autoCorrected": "Autokorrigert",
+      "timingEstimated": "Timing estimert"
     },
     "transcription": {
       "syncedLyrics": "Synkronisert tekst",
@@ -878,7 +883,13 @@
       "text": "Tekst",
       "timeline": "Tidslinje",
       "deleteSegment": "Slett segment",
-      "playSegment": "Spill av segment"
+      "playSegment": "Spill av segment",
+      "aiTooltipEstimated": "Autokorrigert av systemet vårt. Timingen her ble estimert, så spill av denne linjen og juster ordtimingen om nødvendig.",
+      "aiTooltipReplaced": "Autokorrigert av systemet vårt fra \"{original}\". Spill av denne linjen for å bekrefte at ordene fortsatt stemmer overens.",
+      "aiTooltipReplacedEstimated": "Autokorrigert av systemet vårt fra \"{original}\". Timingen ble estimert, så spill av denne linjen og juster ordtimingen om nødvendig.",
+      "longGapWarning": "{seconds} s mellomrom før neste ord — ofte et feilplassert tidlig ord (f.eks. et fantom-\"og\"). Klikk for å spille av herfra.",
+      "longWordWarning": "Dette ordet varer i {seconds} s — uvanlig lenge. Spill av linjen og sjekk at sluttiden ikke strekker seg inn i instrumentalen.",
+      "playFromGap": "Spill av fra slutten av dette mellomrommet"
     },
     "editActionBar": {
       "reset": "Tilbakestill",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modeller",
       "consensusTooltip": "Foreslått av: {models}",
       "cachedBadge": "bufret",
-      "cachedTooltip": "Hentet fra en tidligere kjøring på samme sangtekst — det påløp ingen AI-kostnader."
+      "cachedTooltip": "Hentet fra en tidligere kjøring på samme sangtekst — det påløp ingen AI-kostnader.",
+      "appliedSummary": "{count} autokorrigeringer utført",
+      "hideDetails": "Skjul detaljer",
+      "rerun": "Kjør på nytt",
+      "revertAllAuto": "Tilbakestill alle",
+      "showDetails": "Vis detaljer"
     }
   },
   "instrumentalReview": {

@@ -112,6 +112,11 @@ export function applySuggestion(
       end_time: timings[i].end_time,
       confidence: 1,
       created_during_correction: true,
+      ai_corrected: true,
+      // Inserted words have no source transcription, so their timing is always
+      // synthetic — flag every one for review.
+      timing_estimated: true,
+      correction_span_id: suggestion.id,
     }))
     seg.words.splice(spanEnd + 1, 0, ...newWords)
     seg.text = rebuildText(seg.words)
@@ -163,6 +168,11 @@ export function applySuggestion(
     removedWords[0]?.start_time ?? null,
     removedWords[removedWords.length - 1]?.end_time ?? null,
   )
+  // A single replacement word inherits a real range (1:1, or a merge spanning
+  // the removed words). Producing more than one word forces an even split of
+  // one range across many — guessed timing that needs reviewer scrutiny.
+  const timingEstimated = newTexts.length > 1
+  const originalSpanText = suggestion.original_text || rebuildText(removedWords)
   const newWords: Word[] = newTexts.map((text, i) => ({
     id: nanoid(),
     text,
@@ -170,6 +180,12 @@ export function applySuggestion(
     end_time: timings[i].end_time,
     confidence: 1,
     created_during_correction: true,
+    ai_corrected: true,
+    timing_estimated: timingEstimated,
+    correction_span_id: suggestion.id,
+    // The bubble shows the original transcription once per span, anchored on
+    // the first replacement word.
+    ...(i === 0 ? { original_text: originalSpanText } : {}),
   }))
   seg.words.splice(spanStart, removedWords.length, ...newWords)
   seg.text = rebuildText(seg.words)

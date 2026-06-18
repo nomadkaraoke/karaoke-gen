@@ -840,7 +840,9 @@
       "audioStillLoading": "音声はまだ読み込み中です...",
       "loadingAudio": "音声を読み込み中...",
       "autoCorrect": "自動補正",
-      "autoCorrectDesc": "文字起こしした歌詞と参照用の歌詞を比較して、修正の提案を生成します。各提案を承認するまで変更は適用されません。"
+      "autoCorrectDesc": "文字起こしした歌詞と参照用の歌詞を比較して、修正の提案を生成します。各提案を承認するまで変更は適用されません。",
+      "autoCorrectedCount": "自動修正済み · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {#件の自動修正} other {#件の自動修正}}を適用しました（紫色で表示）。クリックして詳細を表示し、不要な修正は元に戻すことができます。"
     },
     "guidance": {
       "showTips": "ヒントを表示",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "未修正のギャップ",
       "uncorrectedGapsDesc": "手動での確認が必要な可能性があるセクション",
       "wordsUncorrected": "未修正の単語",
-      "numberOfGaps": "ギャップの数"
+      "numberOfGaps": "ギャップの数",
+      "autoCorrectTip": "{count, plural, =1 {#語を自動修正しました} other {#語を自動修正しました}}（紫色で表示され、上に元の単語が表示されます）。修正された各行を再生し、タイミングが合っているか確認してください。オレンジ色で下線が引かれている箇所はタイミングが推定されたもので、調整が必要になる場合があります。",
+      "autoCorrected": "自動修正済み",
+      "timingEstimated": "推定タイミング"
     },
     "transcription": {
       "syncedLyrics": "同期された歌詞",
@@ -878,7 +883,13 @@
       "text": "テキスト",
       "timeline": "タイムライン",
       "deleteSegment": "セグメントを削除",
-      "playSegment": "セグメントを再生"
+      "playSegment": "セグメントを再生",
+      "aiTooltipEstimated": "システムにより自動修正されました。ここのタイミングは推定のため、この行を再生して必要に応じてタイミングを調整してください。",
+      "aiTooltipReplaced": "システムにより「{original}」から自動修正されました。この行を再生して、タイミングが合っているか確認してください。",
+      "aiTooltipReplacedEstimated": "システムにより「{original}」から自動修正されました。タイミングは推定のため、この行を再生して必要に応じてタイミングを調整してください。",
+      "longGapWarning": "次の単語まで{seconds}秒のギャップがあります。これは誤って早く認識された単語（例：余分な「and」など）によく見られます。クリックしてここから再生してください。",
+      "longWordWarning": "この単語は{seconds}秒続いており、不自然に長くなっています。行を再生して、終了時間が間奏に食い込んでいないか確認してください。",
+      "playFromGap": "このギャップの終わりから再生"
     },
     "editActionBar": {
       "reset": "リセット",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} モデル",
       "consensusTooltip": "提案元: {models}",
       "cachedBadge": "キャッシュ済み",
-      "cachedTooltip": "同じ歌詞の過去のデータから復元されました。AIのコストは発生していません。"
+      "cachedTooltip": "同じ歌詞の過去のデータから復元されました。AIのコストは発生していません。",
+      "appliedSummary": "{count}件の自動修正を適用しました",
+      "hideDetails": "詳細を非表示",
+      "rerun": "再実行",
+      "revertAllAuto": "すべて元に戻す",
+      "showDetails": "詳細を表示"
     }
   },
   "instrumentalReview": {

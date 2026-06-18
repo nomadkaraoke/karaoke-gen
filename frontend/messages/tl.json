@@ -840,7 +840,9 @@
       "audioStillLoading": "Naglo-load pa rin ang audio...",
       "loadingAudio": "Naglo-load ang audio...",
       "autoCorrect": "Auto-correct",
-      "autoCorrectDesc": "Bumuo ng mga mungkahi sa pagwawasto sa pamamagitan ng paghahambing ng transcription sa reference lyrics. Walang mababago hangga't hindi mo tinatanggap ang bawat mungkahi."
+      "autoCorrectDesc": "Bumuo ng mga mungkahi sa pagwawasto sa pamamagitan ng paghahambing ng transcription sa reference lyrics. Walang mababago hangga't hindi mo tinatanggap ang bawat mungkahi.",
+      "autoCorrectedCount": "Na-auto-correct · {count}",
+      "autoCorrectedDesc": "Naglapat kami ng {count, plural, =1 {# auto-correction} other {# na auto-correction}} (ipinapakita sa kulay lila). I-click upang makita ang mga detalye at i-undo ang anumang hindi mo sinasang-ayunan."
     },
     "guidance": {
       "showTips": "Ipakita ang mga tip",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Hindi Naitamang mga Gap",
       "uncorrectedGapsDesc": "Mga bahagi na maaaring mangailangan ng manual na review",
       "wordsUncorrected": "Mga Salitang Hindi Naitama",
-      "numberOfGaps": "Bilang ng mga Gap"
+      "numberOfGaps": "Bilang ng mga Gap",
+      "autoCorrectTip": "{count, plural, =1 {May # salitang na-auto-correct} other {May # na salitang na-auto-correct}} para sa iyo (ipinapakita sa kulay lila, na may orihinal na salita sa itaas). I-play ang bawat naitamang linya at suriin kung naka-align pa rin ang mga salita — lalo na ang mga may salungguhit na amber, kung saan tinantya ang timing at malamang na kailangang i-adjust.",
+      "autoCorrected": "Na-auto-correct",
+      "timingEstimated": "Tinantya ang timing"
     },
     "transcription": {
       "syncedLyrics": "Naka-sync na Lyrics",
@@ -878,7 +883,13 @@
       "text": "Text",
       "timeline": "Timeline",
       "deleteSegment": "Tanggalin ang segment",
-      "playSegment": "I-play ang segment"
+      "playSegment": "I-play ang segment",
+      "aiTooltipEstimated": "Na-auto-correct ng aming system. Tinantya ang timing dito, kaya i-play ang linyang ito at i-adjust ang timing ng salita kung kinakailangan.",
+      "aiTooltipReplaced": "Na-auto-correct ng aming system mula sa \"{original}\". I-play ang linyang ito upang kumpirmahin na naka-align pa rin ang mga salita.",
+      "aiTooltipReplacedEstimated": "Na-auto-correct ng aming system mula sa \"{original}\". Tinantya ang timing, kaya i-play ang linyang ito at i-adjust ang timing ng salita kung kinakailangan.",
+      "longGapWarning": "{seconds}s na puwang bago ang susunod na salita — kadalasang isang ligaw na maagang salita (hal. isang phantom na \"and\"). I-click upang i-play mula rito.",
+      "longWordWarning": "Tumatagal ang salitang ito ng {seconds}s — masyadong mahaba. I-play ang linya at suriin kung ang oras ng pagtatapos nito ay hindi umabot sa instrumental.",
+      "playFromGap": "I-play mula sa dulo ng puwang na ito"
     },
     "editActionBar": {
       "reset": "I-reset",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modelo",
       "consensusTooltip": "Iminungkahi ng: {models}",
       "cachedBadge": "naka-cache",
-      "cachedTooltip": "Na-restore mula sa nakaraang pag-proseso ng parehong lyrics — walang nagastos na AI cost."
+      "cachedTooltip": "Na-restore mula sa nakaraang pag-proseso ng parehong lyrics — walang nagastos na AI cost.",
+      "appliedSummary": "{count} na auto-correction ang inilapat",
+      "hideDetails": "Itago ang mga detalye",
+      "rerun": "Patakbuhin muli",
+      "revertAllAuto": "Ibalik lahat",
+      "showDetails": "Ipakita ang mga detalye"
     }
   },
   "instrumentalReview": {

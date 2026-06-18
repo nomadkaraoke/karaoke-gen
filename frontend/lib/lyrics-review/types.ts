@@ -11,6 +11,20 @@ export interface Word {
   confidence?: number
   created_during_correction?: boolean
   singer?: SingerId
+  // AI auto-correct provenance (stamped when an AI suggestion is applied).
+  // These drive the distinct purple highlight, the original-text bubble, and
+  // the "estimated timing — needs scrutiny" marker in the review UI.
+  /** This word was produced by an applied AI auto-correction → purple. */
+  ai_corrected?: boolean
+  /** Original transcription text for the whole correction span. Set on the
+   *  FIRST word of the span only, so the bubble renders once per span. */
+  original_text?: string
+  /** Timing was guessed (one word split into N evenly-spaced words, or a word
+   *  inserted) rather than inherited from a clean 1:1 replacement. */
+  timing_estimated?: boolean
+  /** Groups the words produced by one suggestion (= the suggestion id). Powers
+   *  one-bubble-per-span rendering and inline undo. */
+  correction_span_id?: string
 }
 
 export interface LyricsSegment {
@@ -345,6 +359,19 @@ export interface WordProps {
   isCurrentlyPlaying?: boolean
   isActiveGap?: boolean
   isUserEdited?: boolean
+  /** Word produced by an applied AI auto-correction → purple highlight. */
+  isAiCorrected?: boolean
+  /** Original transcription text for this AI correction span → bubble above the
+   *  word. Only set on the first word of a span. */
+  aiOriginalText?: string
+  /** AI correction whose timing was guessed (split/insert) → scrutiny marker. */
+  aiTimingEstimated?: boolean
+  /** Word duration in seconds when it exceeds the warning threshold → shows a
+   *  clock badge above the word (like the correction bubble). */
+  longWordSeconds?: number
+  /** Advanced mode: flex-grow weight (= duration) so the word pill takes a
+   *  share of the segment's full width proportional to how long it lasts. */
+  timelineGrow?: number
   padding?: string
   onClick?: () => void
   id?: string
@@ -390,6 +417,12 @@ export interface TranscriptionViewProps {
   advancedMode?: boolean
   onAdvancedModeToggle?: (enabled: boolean) => void
   editedWordIds?: Set<string>
+  /** Word IDs produced by an applied AI auto-correction → rendered purple. */
+  aiCorrectedWordIds?: Set<string>
+  /** First-word-of-span → original transcription text, for the bubble. */
+  aiOriginalTextByWordId?: Map<string, string>
+  /** AI word IDs whose timing was guessed → scrutiny marker. */
+  aiEstimatedWordIds?: Set<string>
   isDuet?: boolean
   onSegmentSingerChange?: (segmentIdx: number, next: SingerId) => void
   onSegmentFocus?: (segmentIndex: number | null) => void

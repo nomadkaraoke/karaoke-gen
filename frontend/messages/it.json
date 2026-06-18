@@ -840,7 +840,9 @@
       "audioStillLoading": "L'audio è ancora in caricamento...",
       "loadingAudio": "Caricamento audio...",
       "autoCorrect": "Correzione automatica",
-      "autoCorrectDesc": "Genera suggerimenti di correzione confrontando la trascrizione con il testo di riferimento. Non viene modificato nulla finché non accetti ogni suggerimento."
+      "autoCorrectDesc": "Genera suggerimenti di correzione confrontando la trascrizione con il testo di riferimento. Non viene modificato nulla finché non accetti ogni suggerimento.",
+      "autoCorrectedCount": "Correzioni automatiche · {count}",
+      "autoCorrectedDesc": "Abbiamo applicato {count, plural, =1 {# correzione automatica} other {# correzioni automatiche}} (mostrate in viola). Clicca per visualizzare i dettagli e annullare quelle con cui non sei d'accordo."
     },
     "guidance": {
       "showTips": "Mostra suggerimenti",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Lacune non corrette",
       "uncorrectedGapsDesc": "Sezioni che potrebbero richiedere una revisione manuale",
       "wordsUncorrected": "Parole non corrette",
-      "numberOfGaps": "Numero di lacune"
+      "numberOfGaps": "Numero di lacune",
+      "autoCorrectTip": "{count, plural, =1 {# parola è stata corretta automaticamente} other {# parole sono state corrette automaticamente}} per te (mostrate in viola, con la parola originale sopra). Riproduci ogni riga corretta e controlla che le parole siano ancora allineate — specialmente quelle sottolineate in ambra, dove la sincronizzazione è stata stimata e probabilmente dovrà essere regolata.",
+      "autoCorrected": "Corretto automaticamente",
+      "timingEstimated": "Sincronizzazione stimata"
     },
     "transcription": {
       "syncedLyrics": "Testo sincronizzato",
@@ -878,7 +883,13 @@
       "text": "Testo",
       "timeline": "Timeline",
       "deleteSegment": "Elimina segmento",
-      "playSegment": "Riproduci segmento"
+      "playSegment": "Riproduci segmento",
+      "aiTooltipEstimated": "Corretto automaticamente dal nostro sistema. La sincronizzazione qui è stata stimata, quindi riproduci questa riga e regola i tempi delle parole se necessario.",
+      "aiTooltipReplaced": "Corretto automaticamente dal nostro sistema da \"{original}\". Riproduci questa riga per confermare che le parole siano ancora allineate.",
+      "aiTooltipReplacedEstimated": "Corretto automaticamente dal nostro sistema da \"{original}\". La sincronizzazione è stata stimata, quindi riproduci questa riga e regola i tempi delle parole se necessario.",
+      "longGapWarning": "Pausa di {seconds}s prima della parola successiva — spesso una parola isolata in anticipo (es. una \"e\" fantasma). Clicca per riprodurre da qui.",
+      "longWordWarning": "Questa parola dura {seconds}s — è insolitamente lunga. Riproduci la riga e controlla che il suo tempo di fine non si sovrapponga alla parte strumentale.",
+      "playFromGap": "Riproduci dalla fine di questa pausa"
     },
     "editActionBar": {
       "reset": "Reimposta",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modelli",
       "consensusTooltip": "Proposto da: {models}",
       "cachedBadge": "in cache",
-      "cachedTooltip": "Ripristinato da un'elaborazione precedente dello stesso testo — non ha comportato alcun costo per l'IA."
+      "cachedTooltip": "Ripristinato da un'elaborazione precedente dello stesso testo — non ha comportato alcun costo per l'IA.",
+      "appliedSummary": "{count} correzioni automatiche applicate",
+      "hideDetails": "Nascondi dettagli",
+      "rerun": "Riesegui",
+      "revertAllAuto": "Ripristina tutto",
+      "showDetails": "Mostra dettagli"
     }
   },
   "instrumentalReview": {

@@ -840,7 +840,9 @@
       "audioStillLoading": "Audio wciąż się ładuje...",
       "loadingAudio": "Ładowanie audio...",
       "autoCorrect": "Autokorekta",
-      "autoCorrectDesc": "Wygeneruj sugestie poprawek, porównując transkrypcję z tekstem referencyjnym. Żadna zmiana nie zostanie wprowadzona, dopóki jej nie zaakceptujesz."
+      "autoCorrectDesc": "Wygeneruj sugestie poprawek, porównując transkrypcję z tekstem referencyjnym. Żadna zmiana nie zostanie wprowadzona, dopóki jej nie zaakceptujesz.",
+      "autoCorrectedCount": "Automatycznie poprawione · {count}",
+      "autoCorrectedDesc": "Zastosowaliśmy {count, plural, one {# autokorektę} few {# autokorekty} many {# autokorekt} other {# autokorekt}} (zaznaczone na fioletowo). Kliknij, aby wyświetlić szczegóły i cofnąć te, z którymi się nie zgadzasz."
     },
     "guidance": {
       "showTips": "Pokaż wskazówki",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Niepoprawione luki",
       "uncorrectedGapsDesc": "Sekcje, które mogą wymagać ręcznego sprawdzenia",
       "wordsUncorrected": "Niepoprawione słowa",
-      "numberOfGaps": "Liczba luk"
+      "numberOfGaps": "Liczba luk",
+      "autoCorrectTip": "{count, plural, one {# słowo zostało automatycznie poprawione} few {# słowa zostały automatycznie poprawione} many {# słów zostało automatycznie poprawionych} other {# słów zostało automatycznie poprawionych}} (zaznaczone na fioletowo, z oryginalnym słowem powyżej). Odtwórz każdą poprawioną linijkę i sprawdź, czy słowa nadal dobrze się zgrywają — zwłaszcza te podkreślone na pomarańczowo, gdzie czas został oszacowany i prawdopodobnie będzie wymagał dostosowania.",
+      "autoCorrected": "Automatycznie poprawione",
+      "timingEstimated": "Czas oszacowany"
     },
     "transcription": {
       "syncedLyrics": "Zsynchronizowany tekst",
@@ -878,7 +883,13 @@
       "text": "Tekst",
       "timeline": "Oś czasu",
       "deleteSegment": "Usuń segment",
-      "playSegment": "Odtwórz segment"
+      "playSegment": "Odtwórz segment",
+      "aiTooltipEstimated": "Automatycznie poprawione przez nasz system. Czas został tutaj oszacowany, więc odtwórz tę linijkę i w razie potrzeby dostosuj synchronizację słów.",
+      "aiTooltipReplaced": "Automatycznie poprawione przez nasz system z \"{original}\". Odtwórz tę linijkę, aby potwierdzić, że słowa nadal dobrze się zgrywają.",
+      "aiTooltipReplacedEstimated": "Automatycznie poprawione przez nasz system z \"{original}\". Czas został oszacowany, więc odtwórz tę linijkę i w razie potrzeby dostosuj synchronizację słów.",
+      "longGapWarning": "{seconds} s przerwy przed następnym słowem — często oznacza to przypadkowe, przedwczesne słowo (np. nadmiarowe \"i\"). Kliknij, aby odtworzyć od tego miejsca.",
+      "longWordWarning": "To słowo trwa {seconds} s — nietypowo długo. Odtwórz linijkę i sprawdź, czy jej czas zakończenia nie nakłada się na partię instrumentalną.",
+      "playFromGap": "Odtwórz od końca tej przerwy"
     },
     "editActionBar": {
       "reset": "Resetuj",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modeli",
       "consensusTooltip": "Zaproponowane przez: {models}",
       "cachedBadge": "zbuforowane",
-      "cachedTooltip": "Przywrócono z poprzedniego przetworzenia tego samego tekstu — nie poniesiono kosztów AI."
+      "cachedTooltip": "Przywrócono z poprzedniego przetworzenia tego samego tekstu — nie poniesiono kosztów AI.",
+      "appliedSummary": "Zastosowano {count} autokorekt",
+      "hideDetails": "Ukryj szczegóły",
+      "rerun": "Uruchom ponownie",
+      "revertAllAuto": "Cofnij wszystko",
+      "showDetails": "Pokaż szczegóły"
     }
   },
   "instrumentalReview": {

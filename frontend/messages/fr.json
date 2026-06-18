@@ -840,7 +840,9 @@
       "audioStillLoading": "L'audio est toujours en cours de chargement...",
       "loadingAudio": "Chargement de l'audio...",
       "autoCorrect": "Correction automatique",
-      "autoCorrectDesc": "Génère des suggestions de correction en comparant la transcription aux paroles de référence. Rien n'est modifié tant que tu n'as pas accepté chaque suggestion."
+      "autoCorrectDesc": "Génère des suggestions de correction en comparant la transcription aux paroles de référence. Rien n'est modifié tant que tu n'as pas accepté chaque suggestion.",
+      "autoCorrectedCount": "Corrections automatiques · {count}",
+      "autoCorrectedDesc": "Nous avons appliqué {count, plural, =1 {# correction automatique} other {# corrections automatiques}} (affichées en violet). Clique pour voir les détails et annuler celles avec lesquelles tu n'es pas d'accord."
     },
     "guidance": {
       "showTips": "Afficher les conseils",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Écarts non corrigés",
       "uncorrectedGapsDesc": "Sections pouvant nécessiter une révision manuelle",
       "wordsUncorrected": "Mots non corrigés",
-      "numberOfGaps": "Nombre d'écarts"
+      "numberOfGaps": "Nombre d'écarts",
+      "autoCorrectTip": "{count, plural, =1 {# mot a été corrigé automatiquement} other {# mots ont été corrigés automatiquement}} pour toi (affichés en violet, avec le mot d'origine au-dessus). Joue chaque ligne corrigée et vérifie que les mots sont toujours bien synchronisés — en particulier ceux soulignés en orange, où le timing a été estimé et nécessitera probablement un ajustement.",
+      "autoCorrected": "Corrigé automatiquement",
+      "timingEstimated": "Timing estimé"
     },
     "transcription": {
       "syncedLyrics": "Paroles synchronisées",
@@ -878,7 +883,13 @@
       "text": "Texte",
       "timeline": "Chronologie",
       "deleteSegment": "Supprimer le segment",
-      "playSegment": "Lire le segment"
+      "playSegment": "Lire le segment",
+      "aiTooltipEstimated": "Corrigé automatiquement par notre système. Le timing ici a été estimé, alors joue cette ligne et ajuste le timing des mots si nécessaire.",
+      "aiTooltipReplaced": "Corrigé automatiquement par notre système à partir de \"{original}\". Joue cette ligne pour confirmer que les mots sont toujours bien synchronisés.",
+      "aiTooltipReplacedEstimated": "Corrigé automatiquement par notre système à partir de \"{original}\". Le timing a été estimé, alors joue cette ligne et ajuste le timing des mots si nécessaire.",
+      "longGapWarning": "Blanc de {seconds}s avant le mot suivant — souvent un mot isolé apparu trop tôt (par ex. un \"et\" fantôme). Clique pour jouer à partir d'ici.",
+      "longWordWarning": "Ce mot dure {seconds}s — c'est inhabituellement long. Joue la ligne et vérifie que sa fin ne déborde pas sur l'instrumental.",
+      "playFromGap": "Jouer à partir de la fin de ce blanc"
     },
     "editActionBar": {
       "reset": "Réinitialiser",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modèles",
       "consensusTooltip": "Proposé par : {models}",
       "cachedBadge": "en cache",
-      "cachedTooltip": "Restauré depuis un traitement précédent sur les mêmes paroles — aucun coût d'IA n'a été engagé."
+      "cachedTooltip": "Restauré depuis un traitement précédent sur les mêmes paroles — aucun coût d'IA n'a été engagé.",
+      "appliedSummary": "{count} corrections automatiques appliquées",
+      "hideDetails": "Masquer les détails",
+      "rerun": "Relancer",
+      "revertAllAuto": "Tout rétablir",
+      "showDetails": "Afficher les détails"
     }
   },
   "instrumentalReview": {

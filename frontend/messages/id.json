@@ -840,7 +840,9 @@
       "audioStillLoading": "Audio masih dimuat...",
       "loadingAudio": "Memuat audio...",
       "autoCorrect": "Koreksi otomatis",
-      "autoCorrectDesc": "Hasilkan saran koreksi dengan membandingkan transkripsi dengan lirik referensi. Tidak ada perubahan yang diterapkan sampai Anda menyetujui setiap saran."
+      "autoCorrectDesc": "Hasilkan saran koreksi dengan membandingkan transkripsi dengan lirik referensi. Tidak ada perubahan yang diterapkan sampai Anda menyetujui setiap saran.",
+      "autoCorrectedCount": "Dikoreksi otomatis · {count}",
+      "autoCorrectedDesc": "Kami menerapkan {count, plural, =1 {# koreksi otomatis} other {# koreksi otomatis}} (ditampilkan dalam warna ungu). Klik untuk melihat detailnya dan batalkan jika Anda tidak setuju."
     },
     "guidance": {
       "showTips": "Tampilkan tips",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Celah yang Tidak Dikoreksi",
       "uncorrectedGapsDesc": "Bagian yang mungkin perlu tinjauan manual",
       "wordsUncorrected": "Kata Tidak Dikoreksi",
-      "numberOfGaps": "Jumlah Celah"
+      "numberOfGaps": "Jumlah Celah",
+      "autoCorrectTip": "{count, plural, =1 {# kata dikoreksi otomatis} other {# kata dikoreksi otomatis}} untuk Anda (ditampilkan dalam warna ungu, dengan kata asli di atasnya). Putar setiap baris yang dikoreksi dan periksa apakah kata-katanya masih selaras — terutama yang digarisbawahi warna kuning, karena penempatan waktunya hanya perkiraan dan mungkin perlu disesuaikan.",
+      "autoCorrected": "Dikoreksi otomatis",
+      "timingEstimated": "Waktu diperkirakan"
     },
     "transcription": {
       "syncedLyrics": "Lirik yang Disinkronkan",
@@ -878,7 +883,13 @@
       "text": "Teks",
       "timeline": "Garis Waktu",
       "deleteSegment": "Hapus segmen",
-      "playSegment": "Putar segmen"
+      "playSegment": "Putar segmen",
+      "aiTooltipEstimated": "Dikoreksi otomatis oleh sistem kami. Penempatan waktu di sini hanya perkiraan, jadi putar baris ini dan sesuaikan waktu kata jika diperlukan.",
+      "aiTooltipReplaced": "Dikoreksi otomatis oleh sistem kami dari \"{original}\". Putar baris ini untuk memastikan kata-katanya masih selaras.",
+      "aiTooltipReplacedEstimated": "Dikoreksi otomatis oleh sistem kami dari \"{original}\". Penempatan waktunya hanya perkiraan, jadi putar baris ini dan sesuaikan waktu kata jika diperlukan.",
+      "longGapWarning": "Jeda {seconds} dtk sebelum kata berikutnya — sering kali berupa kata yang muncul terlalu awal (misalnya kata \"dan\" yang tidak seharusnya ada). Klik untuk memutar dari sini.",
+      "longWordWarning": "Kata ini berlangsung selama {seconds} dtk — durasi yang tidak wajar. Putar baris ini dan periksa apakah waktu akhirnya tidak menabrak bagian instrumental.",
+      "playFromGap": "Putar dari akhir jeda ini"
     },
     "editActionBar": {
       "reset": "Atur Ulang",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} model",
       "consensusTooltip": "Diusulkan oleh: {models}",
       "cachedBadge": "di-cache",
-      "cachedTooltip": "Dipulihkan dari proses sebelumnya untuk lirik yang sama — tidak ada biaya AI yang dikenakan."
+      "cachedTooltip": "Dipulihkan dari proses sebelumnya untuk lirik yang sama — tidak ada biaya AI yang dikenakan.",
+      "appliedSummary": "{count} koreksi otomatis diterapkan",
+      "hideDetails": "Sembunyikan detail",
+      "rerun": "Jalankan ulang",
+      "revertAllAuto": "Kembalikan semua",
+      "showDetails": "Tampilkan detail"
     }
   },
   "instrumentalReview": {

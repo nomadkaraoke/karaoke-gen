@@ -840,7 +840,9 @@
       "audioStillLoading": "L'àudio encara s'està carregant...",
       "loadingAudio": "Carregant l'àudio...",
       "autoCorrect": "Autocorrecció",
-      "autoCorrectDesc": "Genera suggeriments de correcció comparant la transcripció amb la lletra de referència. No es canvia res fins que acceptes cada suggeriment."
+      "autoCorrectDesc": "Genera suggeriments de correcció comparant la transcripció amb la lletra de referència. No es canvia res fins que acceptes cada suggeriment.",
+      "autoCorrectedCount": "Autocorregit · {count}",
+      "autoCorrectedDesc": "Hem aplicat {count, plural, =1 {# autocorrecció} other {# autocorreccions}} (es mostren en lila). Fes clic per veure els detalls i desfer les que no et semblin bé."
     },
     "guidance": {
       "showTips": "Mostra els consells",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Buits no corregits",
       "uncorrectedGapsDesc": "Seccions que poden necessitar revisió manual",
       "wordsUncorrected": "Paraules no corregides",
-      "numberOfGaps": "Nombre de buits"
+      "numberOfGaps": "Nombre de buits",
+      "autoCorrectTip": "{count, plural, =1 {T'hem autocorregit # paraula} other {T'hem autocorregit # paraules}} (es mostren en lila, amb la paraula original a sobre). Reprodueix cada línia corregida i comprova que les paraules encara quadrin — especialment les subratllades en ambre, on la sincronització s'ha estimat i probablement caldrà ajustar-la.",
+      "autoCorrected": "Autocorregit",
+      "timingEstimated": "Sincronització estimada"
     },
     "transcription": {
       "syncedLyrics": "Lletres sincronitzades",
@@ -878,7 +883,13 @@
       "text": "Text",
       "timeline": "Línia de temps",
       "deleteSegment": "Suprimeix el segment",
-      "playSegment": "Reprodueix el segment"
+      "playSegment": "Reprodueix el segment",
+      "aiTooltipEstimated": "Autocorregit pel nostre sistema. La sincronització aquí s'ha estimat, així que reprodueix aquesta línia i ajusta el temps de les paraules si cal.",
+      "aiTooltipReplaced": "Autocorregit pel nostre sistema en lloc de \"{original}\". Reprodueix aquesta línia per confirmar que les paraules encara quadrin.",
+      "aiTooltipReplacedEstimated": "Autocorregit pel nostre sistema en lloc de \"{original}\". La sincronització s'ha estimat, així que reprodueix aquesta línia i ajusta el temps de les paraules si cal.",
+      "longGapWarning": "Pausa de {seconds}s abans de la següent paraula — sovint una paraula solta avançada (p. ex. un \"and\" fantasma). Fes clic per reproduir des d'aquí.",
+      "longWordWarning": "Aquesta paraula dura {seconds}s — és inusualment llarga. Reprodueix la línia i comprova que el seu temps final no s'hagi solapat amb la instrumental.",
+      "playFromGap": "Reprodueix des del final d'aquesta pausa"
     },
     "editActionBar": {
       "reset": "Restableix",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} models",
       "consensusTooltip": "Proposat per: {models}",
       "cachedBadge": "en memòria cau",
-      "cachedTooltip": "Restaurat a partir d'una execució anterior amb la mateixa lletra — no s'ha generat cap cost d'IA."
+      "cachedTooltip": "Restaurat a partir d'una execució anterior amb la mateixa lletra — no s'ha generat cap cost d'IA.",
+      "appliedSummary": "{count} autocorreccions aplicades",
+      "hideDetails": "Amaga els detalls",
+      "rerun": "Torna a executar",
+      "revertAllAuto": "Reverteix-ho tot",
+      "showDetails": "Mostra els detalls"
     }
   },
   "instrumentalReview": {

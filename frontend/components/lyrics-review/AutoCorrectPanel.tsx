@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,8 +15,7 @@ import {
   Check,
   X,
   Undo2,
-  ChevronDown,
-  ChevronUp,
+  RefreshCw,
   AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -27,6 +25,12 @@ import type { AutoCorrectController } from '@/hooks/useAutoCorrect'
 interface AutoCorrectPanelProps {
   controller: AutoCorrectController
   isReadOnly: boolean
+  /** Details are shown on demand from the toolbar button, not as a standing
+   *  row — so the panel only renders when the reviewer opens it. */
+  open: boolean
+  onClose: () => void
+  /** Re-open the run/settings modal for another pass. */
+  onRerun?: () => void
 }
 
 function scrollToWord(wordId: string | undefined) {
@@ -51,9 +55,11 @@ const CATEGORY_BADGE: Record<AiSuggestion['category'], string> = {
 export default function AutoCorrectPanel({
   controller,
   isReadOnly,
+  open,
+  onClose,
+  onRerun,
 }: AutoCorrectPanelProps) {
   const t = useTranslations('lyricsReview.autoCorrect')
-  const [collapsed, setCollapsed] = useState(false)
   const {
     suggestions,
     decisions,
@@ -63,12 +69,13 @@ export default function AutoCorrectPanel({
     reject,
     undoAccept,
     acceptAll,
+    revertAll,
     rejectAll,
-    dismiss,
     isPendingAndStale,
   } = controller
 
-  if (controller.status !== 'reviewing') return null
+  // Details are opened on demand from the toolbar button.
+  if (!open || controller.status !== 'reviewing') return null
 
   return (
     <Card className="mb-3 border-purple-500/40">
@@ -78,17 +85,21 @@ export default function AutoCorrectPanel({
           <span className="text-sm font-medium truncate">
             {suggestions.length === 0
               ? t('noSuggestions')
-              : t('summary', {
-                  total: suggestions.length,
-                  pending: pendingCount,
-                  accepted: acceptedCount,
-                })}
+              : acceptedCount > 0 && pendingCount === 0
+                ? t('appliedSummary', { count: acceptedCount })
+                : t('summary', {
+                    total: suggestions.length,
+                    pending: pendingCount,
+                    accepted: acceptedCount,
+                  })}
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {/* Any remaining pending suggestions (e.g. ones that couldn't be
+              auto-applied) keep their bulk controls. */}
           {!isReadOnly && pendingCount > 0 && (
             <>
-              <Button size="sm" variant="outline" onClick={acceptAll}>
+              <Button size="sm" variant="outline" onClick={() => acceptAll(false)}>
                 <Check className="h-3.5 w-3.5 mr-1" />
                 {t('acceptAll')}
               </Button>
@@ -98,25 +109,35 @@ export default function AutoCorrectPanel({
               </Button>
             </>
           )}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? t('expand') : t('collapse')}
-          >
-            {collapsed ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={dismiss} aria-label={t('dismiss')}>
+          {!isReadOnly && acceptedCount > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-muted-foreground hover:text-destructive"
+              onClick={revertAll}
+            >
+              <Undo2 className="h-3.5 w-3.5 mr-1" />
+              {t('revertAllAuto')}
+            </Button>
+          )}
+          {!isReadOnly && onRerun && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-muted-foreground"
+              onClick={onRerun}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              {t('rerun')}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={onClose} aria-label={t('close')}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {!collapsed && suggestions.length > 0 && (
+      {suggestions.length > 0 && (
         // Plain overflow div, NOT the ScrollArea component: its Radix root
         // has no overflow-hidden, so a max-height there doesn't clip and
         // long suggestion lists spill over the panel border.

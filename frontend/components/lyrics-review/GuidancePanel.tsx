@@ -105,6 +105,13 @@ export default function GuidancePanel({
   const correctedPercentage = totalWords > 0 ? Math.round((correctedWordCount / totalWords) * 100) : 0
   const uncorrectedPercentage = totalWords > 0 ? Math.round((uncorrectedWordCount / totalWords) * 100) : 0
 
+  // Words auto-corrected for the reviewer (rendered purple). Drives the
+  // legend entries and the "play & re-check timing" tip.
+  const aiCorrectedWordCount = data.corrected_segments.reduce(
+    (n, seg) => n + seg.words.filter((w) => w.ai_corrected).length,
+    0
+  )
+
   const handleDismiss = () => {
     setGuidanceDismissed(true)
     if (typeof window !== 'undefined') {
@@ -144,6 +151,18 @@ export default function GuidancePanel({
           <span className="w-2.5 h-2.5 rounded-full bg-green-500/60 inline-block" />
           <span className="text-muted-foreground">{t('corrected')}</span>
         </button>
+        {aiCorrectedWordCount > 0 && (
+          <>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-purple-500/60 inline-block" />
+              <span className="text-muted-foreground">{t('autoCorrected')}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 border-b-2 border-dashed border-amber-500 inline-block" />
+              <span className="text-muted-foreground">{t('timingEstimated')}</span>
+            </span>
+          </>
+        )}
 
         <div className="flex items-center gap-2 ml-auto">
           {guidanceDismissed && !isReadOnly && (
@@ -173,6 +192,11 @@ export default function GuidancePanel({
         <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20">
           <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground flex-1 leading-relaxed space-y-1.5">
+            {aiCorrectedWordCount > 0 && (
+              <p className="text-foreground/90">
+                {t('autoCorrectTip', { count: aiCorrectedWordCount })}
+              </p>
+            )}
             {totalGaps === 0 && Object.keys(data.reference_lyrics).length === 0 ? (
               <p>{t('noReferenceFound')}</p>
             ) : totalGaps === 0 ? (

@@ -840,7 +840,9 @@
       "audioStillLoading": "Ljudet laddas fortfarande...",
       "loadingAudio": "Laddar ljud...",
       "autoCorrect": "Autokorrigering",
-      "autoCorrectDesc": "Generera korrigeringsförslag genom att jämföra transkriptionen med referenstexten. Ingenting ändras förrän du accepterar varje förslag."
+      "autoCorrectDesc": "Generera korrigeringsförslag genom att jämföra transkriptionen med referenstexten. Ingenting ändras förrän du accepterar varje förslag.",
+      "autoCorrectedCount": "Autokorrigerat · {count}",
+      "autoCorrectedDesc": "Vi gjorde {count, plural, =1 {# autokorrigering} other {# autokorrigeringar}} (visas i lila). Klicka för att visa detaljerna och ångra de som inte stämmer."
     },
     "guidance": {
       "showTips": "Visa tips",
@@ -869,7 +871,10 @@
       "uncorrectedGaps": "Okorrigerade luckor",
       "uncorrectedGapsDesc": "Sektioner som kan behöva manuell granskning",
       "wordsUncorrected": "Okorrigerade ord",
-      "numberOfGaps": "Antal luckor"
+      "numberOfGaps": "Antal luckor",
+      "autoCorrectTip": "{count, plural, =1 {# ord autokorrigerades} other {# ord autokorrigerades}} åt dig (visas i lila, med det ursprungliga ordet ovanför). Spela upp varje korrigerad rad och kontrollera att orden fortfarande ligger rätt — särskilt de som är understrukna i orange, där tajmingen är uppskattad och förmodligen behöver justeras.",
+      "autoCorrected": "Autokorrigerat",
+      "timingEstimated": "Uppskattad tajming"
     },
     "transcription": {
       "syncedLyrics": "Synkroniserad text",
@@ -878,7 +883,13 @@
       "text": "Text",
       "timeline": "Tidslinje",
       "deleteSegment": "Ta bort segment",
-      "playSegment": "Spela segment"
+      "playSegment": "Spela segment",
+      "aiTooltipEstimated": "Autokorrigerat av vårt system. Tajmingen här är uppskattad, så spela upp den här raden och justera ordens tajming om det behövs.",
+      "aiTooltipReplaced": "Autokorrigerat av vårt system från \"{original}\". Spela upp den här raden för att bekräfta att orden fortfarande ligger rätt.",
+      "aiTooltipReplacedEstimated": "Autokorrigerat av vårt system från \"{original}\". Tajmingen är uppskattad, så spela upp den här raden och justera ordens tajming om det behövs.",
+      "longGapWarning": "{seconds} s mellanrum före nästa ord — ofta ett felplacerat tidigt ord (t.ex. ett extra \"och\"). Klicka för att spela upp härifrån.",
+      "longWordWarning": "Det här ordet är {seconds} s långt — ovanligt länge. Spela upp raden och kontrollera att sluttiden inte överlappar med musiken.",
+      "playFromGap": "Spela upp från slutet av detta mellanrum"
     },
     "editActionBar": {
       "reset": "Återställ",
@@ -1343,7 +1354,12 @@
       "consensusBadge": "{consensus}/{total} modeller",
       "consensusTooltip": "Föreslaget av: {models}",
       "cachedBadge": "cachad",
-      "cachedTooltip": "Återställd från en tidigare körning på samma låttext — ingen AI-kostnad tillkom."
+      "cachedTooltip": "Återställd från en tidigare körning på samma låttext — ingen AI-kostnad tillkom.",
+      "appliedSummary": "{count} autokorrigeringar genomfördes",
+      "hideDetails": "Dölj detaljer",
+      "rerun": "Kör igen",
+      "revertAllAuto": "Återställ alla",
+      "showDetails": "Visa detaljer"
     }
   },
   "instrumentalReview": {
