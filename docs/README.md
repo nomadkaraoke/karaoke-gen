@@ -7,6 +7,9 @@
 - **Web App**: https://gen.nomadkaraoke.com
   - `/` - Landing page with pricing
   - `/app` - Main app (upload audio, review lyrics, download videos)
+    - **Bulk Mode** (Jun 2026): submit up to 100 jobs at once by text or by album
+      (MusicBrainz lookup + KaraokeNerds availability); auto-picks confident
+      lossless audio, parks the rest in a review queue. See `docs/API.md` § Bulk Mode.
   - `/admin` - Admin dashboard (user management, job monitoring)
 - **Backend API**: https://api.nomadkaraoke.com - FastAPI on Cloud Run
 - **CLI Tools**: `karaoke-gen` (local), `karaoke-gen-remote` (cloud)

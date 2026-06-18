@@ -6,6 +6,26 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Bulk Mode (Jun 2026)
+
+- **Auto-pick "tier 1" rule is duplicated** between `frontend/lib/audio-search-utils.ts`
+  (`getSearchConfidence`) and `backend/services/audio_search_service.py`
+  (`pick_auto_selection`). The backend port drives the `bulk_search_worker`
+  auto-select decision. If you change the rule, change BOTH — the parity is guarded
+  by `backend/tests/test_bulk_foundations.py`.
+- **The duration-delta charge is replicated** in `bulk_search_worker._auto_select`
+  using the same primitives/state keys (`credits_charged`/`select_charge_applied`)
+  as `audio_search.select_audio_source`, rather than refactoring the proven money
+  path. Keep them in sync.
+- **KaraokeNerds availability** reuses the existing `karaokenerds_service`
+  scraper via `check_community_versions_batch` (it has the `is_community` flag,
+  matching "community-*created* version"). We deliberately did NOT add a
+  karaoke-decide BigQuery endpoint — its catalog is search-based and lacks the
+  community distinction.
+- **Parked bulk jobs are hidden from the main jobs list** (the dashboard filters
+  out `awaiting_audio_selection`). The bulk review queue renders them itself, and
+  the batch_id is persisted to `localStorage` so a returning user can finish them.
+
 ## AI Generation Patterns
 
 ### Auto-Correction Take 3: Suggestion Layer, Not Silent Application (Jun 2026)
