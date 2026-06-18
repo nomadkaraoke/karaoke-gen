@@ -33,8 +33,15 @@ review queue.
    song they can: auto-pick the audio **only** when there is a confident
    lossless/FLAC match (tier 1), apply visibility, skip edit/customize. Songs
    without a confident lossless match are parked for a quick per-song selection.
-2. **KaraokeNerds availability source:** the **karaoke-decide BigQuery catalog**
-   (~275K entries, O(1) in-memory lookup) via a new decide endpoint. Not scraping.
+2. **KaraokeNerds availability source:** ~~the karaoke-decide BigQuery catalog via a
+   new decide endpoint~~ **REVISED during implementation (2026-06-18):** reuse
+   karaoke-gen's existing `karaokenerds_service.check_community_versions` scraper
+   (ported from kjbox, already in prod) via a new **batch** helper. Rationale: it
+   already exists and is tested, it carries the **`is_community` flag** that
+   precisely matches rule #1 ("community-*created* version"), it has a 1h cache +
+   graceful degradation, and it avoids a cross-repo deploy. decide's catalog is
+   BigQuery *search*-based (no clean batch key-lookup) and lacks the community
+   distinction. **No karaoke-decide change is needed.** (Flagged to Andrew.)
 3. **Credit gate:** **1 credit/song minimum** in both modes. Duration deltas for
    long tracks are charged per-song during processing as today.
 4. **Release selection (album mode):** **auto-pick the canonical release**, with a

@@ -5,6 +5,7 @@ Scrapes karaokenerds.com to check if a song already has community-approved
 karaoke versions available on YouTube. Ported from kjbox/kj-controller/karaoke_nerds.py.
 """
 
+import asyncio
 import logging
 import re
 import time
@@ -201,3 +202,40 @@ async def check_community_versions(artist: str, title: str) -> dict:
     }
     _cache_set(cache_key, result)
     return result
+
+
+async def check_community_versions_batch(
+    songs: list[dict], concurrency: int = 5
+) -> list[dict]:
+    """Check community-version availability for many songs (Bulk Mode).
+
+    ``songs`` is a list of ``{"artist": str, "title": str}``. Returns a list in the
+    same order, each ``{"artist", "title", "available": bool, "brands": [str],
+    "brand_count": int}``. Bounded concurrency keeps us polite to karaokenerds.com;
+    per-song results reuse the existing 1h cache. A failed lookup degrades to
+    ``available=False`` (the track simply stays selectable) — never raises.
+    """
+    sem = asyncio.Semaphore(max(1, concurrency))
+
+    async def _one(song: dict) -> dict:
+        artist = (song.get("artist") or "").strip()
+        title = (song.get("title") or "").strip()
+        if not artist or not title:
+            return {"artist": artist, "title": title, "available": False, "brands": [], "brand_count": 0}
+        async with sem:
+            res = await check_community_versions(artist, title)
+        brands: list[str] = []
+        for matched in res.get("songs", []):
+            for track in matched.get("community_tracks", []):
+                name = track.get("brand_name")
+                if name and name not in brands:
+                    brands.append(name)
+        return {
+            "artist": artist,
+            "title": title,
+            "available": bool(res.get("has_community")),
+            "brands": brands,
+            "brand_count": len(brands),
+        }
+
+    return await asyncio.gather(*[_one(s) for s in songs])
