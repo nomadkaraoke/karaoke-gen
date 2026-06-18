@@ -113,7 +113,7 @@ async def album_artists(
     try:
         results = await get_musicbrainz_service().search_artists(q, limit=limit)
     except Exception as e:  # noqa: BLE001
-        logger.warning("MusicBrainz artist search failed: %s", e)
+        logger.warning("MusicBrainz artist search failed: %r", e, exc_info=True)
         raise HTTPException(status_code=502, detail="Artist lookup is temporarily unavailable")
     return results
 
@@ -130,7 +130,7 @@ async def album_albums(
     try:
         return await get_musicbrainz_service().get_albums(artist_mbid)
     except Exception as e:  # noqa: BLE001
-        logger.warning("MusicBrainz album list failed: %s", e)
+        logger.warning("MusicBrainz album list failed: %r", e, exc_info=True)
         raise HTTPException(status_code=502, detail="Album lookup is temporarily unavailable")
 
 
@@ -159,7 +159,7 @@ async def album_tracklist(
         else:
             tracklist = await mb.get_album_tracklist(release_group_mbid)
     except Exception as e:  # noqa: BLE001
-        logger.warning("MusicBrainz tracklist failed: %s", e)
+        logger.warning("MusicBrainz tracklist failed: %r", e, exc_info=True)
         raise HTTPException(status_code=502, detail="Tracklist lookup is temporarily unavailable")
 
     tracks = tracklist.get("tracks", [])
