@@ -241,7 +241,8 @@
     "noJobsYet": "Tiada kerja lagi. Cipta satu untuk bermula!",
     "referrals": "Rujukan",
     "bulkMode": "Pukal",
-    "singleMode": "Tunggal"
+    "singleMode": "Tunggal",
+    "submitModeToggle": "Penyerahan tunggal atau pukal"
   },
   "auth": {
     "noVerificationToken": "Tiada token pengesahan diberikan",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Audio masih dimuatkan...",
       "loadingAudio": "Memuatkan audio...",
       "autoCorrect": "Pembetulan automatik",
-      "autoCorrectDesc": "Jana cadangan pembetulan dengan membandingkan transkripsi dengan lirik rujukan. Tiada perubahan akan dibuat sehingga anda menerima setiap cadangan.",
+      "autoCorrectDesc": "Bandingkan transkripsi dengan lirik rujukan dan gunakan pembetulan peringkat perkataan untuk anda. Perkataan yang dibetulkan ditunjukkan dalam warna ungu.",
       "autoCorrectedCount": "Dibetulkan secara automatik · {count}",
       "autoCorrectedDesc": "Kami telah melaksanakan {count, plural, =1 {# pembetulan automatik} other {# pembetulan automatik}} (ditunjukkan dalam warna ungu). Klik untuk melihat butiran dan buat asal mana-mana yang anda tidak bersetuju."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Perkataan yang diserlahkan oren adalah jurang — bahagian yang tidak dapat dipadankan dengan lirik rujukan dan mungkin mengandungi ralat (cth. perkataan salah dengar yang berbunyi serupa).",
       "useNAndP": "Gunakan N dan P untuk melompat antara jurang. Untuk setiap satu, klik main di sebelah baris dan bandingkan apa yang anda dengar dengan lirik rujukan di sebelah kanan, kemudian klik perkataan untuk mengedit atau memadamnya.",
       "watchOutForPhantomWords": "Berhati-hati dengan perkataan hantu seperti \"and\" pada permulaan atau akhir baris — transkripsi sering menambah ini.",
-      "tryTimelineView": "Cuba paparan Garis Masa untuk mengesan sebarang perkataan yang luar biasa panjang (10+ saat), yang biasanya menunjukkan masalah pemasaan.",
+      "tryTimelineView": "Perkataan lebih daripada 2s dan jurang lebih daripada 2s ditandakan dengan tempoh ambar — semak untuk masalah pemasaan. Tukar kepada Lanjutan untuk melihat setiap baris diregangkan menjadi garis masa.",
       "watchFullTutorial": "Tonton tutorial penuh",
       "correctionHandlers": "Pengendali Pembetulan",
       "anchorSequences": "Jujukan Sauh",
@@ -1348,7 +1349,7 @@
       "close": "Tutup",
       "confidence_balanced": "Seimbang",
       "compareHint": "Lebih perlahan dan kos lebih tinggi, tetapi menunjukkan cadangan yang dipersetujui oleh berbilang model",
-      "compareLabel": "Bandingkan berbilang model AI",
+      "compareLabel": "Bandingkan berbilang model",
       "conflictBadge": "varian",
       "conflictTooltip": "Terdapat cadangan yang berbeza untuk perkataan ini — menerima satu varian akan menolak yang lain.",
       "consensusBadge": "{consensus}/{total} model",

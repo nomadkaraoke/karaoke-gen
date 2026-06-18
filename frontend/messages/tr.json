@@ -241,7 +241,8 @@
     "noJobsYet": "Henüz iş yok. Başlamak için bir tane oluştur!",
     "referrals": "Referanslar",
     "bulkMode": "Toplu",
-    "singleMode": "Tekli"
+    "singleMode": "Tekli",
+    "submitModeToggle": "Tekli veya toplu gönderim"
   },
   "auth": {
     "noVerificationToken": "Doğrulama belirteci sağlanmadı",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Ses hâlâ yükleniyor...",
       "loadingAudio": "Ses yükleniyor...",
       "autoCorrect": "Otomatik düzeltme",
-      "autoCorrectDesc": "Yazıya dökülen metni referans şarkı sözleriyle karşılaştırarak düzeltme önerileri oluştur. Sen her bir öneriyi onaylamadan hiçbir şey değiştirilmez.",
+      "autoCorrectDesc": "Deşifreyi referans şarkı sözleriyle karşılaştırır ve senin için kelime düzeyinde düzeltmeler uygular. Düzeltilen kelimeler mor renkte gösterilir.",
       "autoCorrectedCount": "Otomatik düzeltildi · {count}",
       "autoCorrectedDesc": "{count, plural, =1 {# otomatik düzeltme} other {# otomatik düzeltme}} uyguladık (mor renkle gösterilir). Detayları görmek ve hatalı bulduklarını geri almak için tıkla."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Turuncu vurgulanan kelimeler boşluklardır — referans sözlerle eşleştirilemeyen ve hatalar içerebilen bölümler (örn. benzer ses çıkaran yanlış duyulmuş kelimeler).",
       "useNAndP": "Boşluklar arasında atlamak için N ve P kullan. Her biri için, satırın yanındaki oynat düğmesine tıkla ve duyduğunu sağdaki referans sözlerle karşılaştır, ardından düzenlemek veya silmek için bir kelimeye tıkla.",
       "watchOutForPhantomWords": "Satırların başında veya sonunda \"and\" gibi hayalet kelimelere dikkat et — transkripsiyon genellikle bunları ekler.",
-      "tryTimelineView": "Genellikle bir zamanlama sorununu gösteren alışılmadık derecede uzun kelimeleri (10+ saniye) tespit etmek için Zaman Çizelgesi görünümünü dene.",
+      "tryTimelineView": "2 saniyeden uzun kelimeler ve 2 saniyeden uzun boşluklar kehribar rengi bir süre ile işaretlenir — zamanlama sorunları için bunları kontrol et. Her satırın bir zaman çizelgesine yayıldığını görmek için Gelişmiş'e geç.",
       "watchFullTutorial": "Tam eğitimi izle",
       "correctionHandlers": "Düzeltme İşleyicileri",
       "anchorSequences": "Çapa Dizileri",
@@ -1348,7 +1349,7 @@
       "close": "Kapat",
       "confidence_balanced": "Dengeli",
       "compareHint": "Daha yavaş ve daha maliyetli, ancak birden fazla modelin hangi önerilerde uzlaştığını gösterir",
-      "compareLabel": "Birden fazla yapay zeka modelini karşılaştır",
+      "compareLabel": "Birden fazla modeli karşılaştır",
       "conflictBadge": "varyant",
       "conflictTooltip": "Bu kelimeler için farklı öneriler var — bir seçeneği kabul ettiğinde diğerleri reddedilir.",
       "consensusBadge": "{consensus}/{total} model",

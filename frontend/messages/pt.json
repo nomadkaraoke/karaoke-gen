@@ -241,7 +241,8 @@
     "noJobsYet": "Nenhum trabalho ainda. Crie um para começar!",
     "referrals": "Indicações",
     "bulkMode": "Em lote",
-    "singleMode": "Único"
+    "singleMode": "Único",
+    "submitModeToggle": "Envio único ou em lote"
   },
   "auth": {
     "noVerificationToken": "Nenhum token de verificação fornecido",
@@ -840,7 +841,7 @@
       "audioStillLoading": "O áudio ainda está carregando...",
       "loadingAudio": "Carregando áudio...",
       "autoCorrect": "Autocorreção",
-      "autoCorrectDesc": "Gere sugestões de correção comparando a transcrição com a letra de referência. Nada é alterado até que você aceite cada sugestão.",
+      "autoCorrectDesc": "Compara a transcrição com a letra de referência e aplica correções no nível da palavra para você. As palavras corrigidas são mostradas em roxo.",
       "autoCorrectedCount": "Corrigido automaticamente · {count}",
       "autoCorrectedDesc": "Aplicamos {count, plural, =1 {# correção automática} other {# correções automáticas}} (mostradas em roxo). Clique para ver os detalhes e desfazer as que você não concordar."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "As palavras destacadas em laranja são lacunas — seções que não puderam ser correspondidas às letras de referência e podem conter erros (ex. palavras mal ouvidas que soam parecidas).",
       "useNAndP": "Use N e P para pular entre as lacunas. Para cada uma, clique em reproduzir ao lado da linha e compare o que você ouve com as letras de referência à direita, depois clique em uma palavra para editá-la ou excluí-la.",
       "watchOutForPhantomWords": "Cuidado com palavras fantasmas como \"e\" no início ou no final das linhas — a transcrição geralmente as adiciona.",
-      "tryTimelineView": "Experimente a visualização Linha do Tempo para identificar palavras incomumente longas (10+ segundos), que geralmente indicam um problema de tempo.",
+      "tryTimelineView": "Palavras com mais de 2s e intervalos com mais de 2s são sinalizados com a duração em âmbar — verifique-os para encontrar problemas de sincronia. Mude para Avançado para ver cada linha estendida em uma linha do tempo.",
       "watchFullTutorial": "Assistir ao tutorial completo",
       "correctionHandlers": "Manipuladores de Correção",
       "anchorSequences": "Sequências Âncora",
@@ -1348,7 +1349,7 @@
       "close": "Fechar",
       "confidence_balanced": "Equilibrado",
       "compareHint": "Mais lento e mais caro, mas mostra em quais sugestões vários modelos concordam",
-      "compareLabel": "Comparar vários modelos de IA",
+      "compareLabel": "Comparar vários modelos",
       "conflictBadge": "variante",
       "conflictTooltip": "Há sugestões diferentes para estas palavras — aceitar uma variante rejeita as outras.",
       "consensusBadge": "{consensus}/{total} modelos",

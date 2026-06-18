@@ -241,7 +241,8 @@
     "noJobsYet": "Još nema poslova. Izradi jedan za početak!",
     "referrals": "Preporuke",
     "bulkMode": "Grupno",
-    "singleMode": "Pojedinačno"
+    "singleMode": "Pojedinačno",
+    "submitModeToggle": "Pojedinačno ili grupno slanje"
   },
   "auth": {
     "noVerificationToken": "Nije naveden token za provjeru",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Audio se još uvijek učitava...",
       "loadingAudio": "Učitavanje audija...",
       "autoCorrect": "Automatski ispravak",
-      "autoCorrectDesc": "Generiraj prijedloge za ispravak usporedbom transkripcije s referentnim tekstom. Ništa se ne mijenja dok ne prihvatiš svaki prijedlog.",
+      "autoCorrectDesc": "Uspoređuje transkripciju s referentnim tekstom i primjenjuje ispravke na razini riječi za tebe. Ispravljene riječi prikazane su ljubičastom bojom.",
       "autoCorrectedCount": "Automatski ispravljeno · {count}",
       "autoCorrectedDesc": "Primijenili smo {count, plural, =1 {# automatski ispravak} other {# automatskih ispravaka}} (prikazano ljubičastom bojom). Klikni za prikaz detalja i poništi one s kojima se ne slažeš."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Narančasto istaknute riječi su praznine — dijelovi koji se nisu mogli uskladiti s referentnim tekstom i mogu sadržavati greške (npr. pogrešno shvaćene riječi koje zvuče slično).",
       "useNAndP": "Koristi N i P za preskakanje između praznina. Za svaku od njih, klikni reproduciraj pored retka i usporedi ono što čuješ s referentnim tekstom s desne strane, zatim klikni riječ za uređivanje ili brisanje.",
       "watchOutForPhantomWords": "Pazi na fantomske riječi poput \"and\" na početku ili kraju redaka — transkripcija ih često dodaje.",
-      "tryTimelineView": "Isprobaj prikaz Vremenske trake za uočavanje bilo kakvih neobično dugih riječi (10+ sekundi), koje obično ukazuju na problem s tempiranjem.",
+      "tryTimelineView": "Riječi duže od 2s i pauze duže od 2s označene su žutom bojom trajanja — provjeri ih zbog problema s tajmingom. Prebaci se na Napredno za prikaz svake linije razvučene u vremensku traku.",
       "watchFullTutorial": "Pogledaj cijeli vodič",
       "correctionHandlers": "Rukovatelji ispravcima",
       "anchorSequences": "Sidrišne sekvence",
@@ -1348,7 +1349,7 @@
       "close": "Zatvori",
       "confidence_balanced": "Uravnoteženo",
       "compareHint": "Sporije je i košta više, ali pokazuje oko kojih se prijedloga slaže više modela",
-      "compareLabel": "Usporedi više AI modela",
+      "compareLabel": "Usporedi više modela",
       "conflictBadge": "varijanta",
       "conflictTooltip": "Postoje različiti prijedlozi za ove riječi — prihvaćanjem jedne varijante odbacuješ ostale.",
       "consensusBadge": "{consensus}/{total} modela",

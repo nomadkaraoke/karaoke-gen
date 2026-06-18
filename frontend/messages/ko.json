@@ -241,7 +241,8 @@
     "noJobsYet": "아직 작업이 없습니다. 첫 작업을 만들어보세요!",
     "referrals": "추천 프로그램",
     "bulkMode": "일괄",
-    "singleMode": "단일"
+    "singleMode": "단일",
+    "submitModeToggle": "단일 또는 일괄 제출"
   },
   "auth": {
     "noVerificationToken": "인증 토큰이 제공되지 않았습니다",
@@ -840,7 +841,7 @@
       "audioStillLoading": "아직 오디오를 불러오는 중입니다...",
       "loadingAudio": "오디오를 불러오는 중입니다...",
       "autoCorrect": "자동 수정",
-      "autoCorrectDesc": "추출된 가사를 참조 가사와 비교하여 수정 제안을 생성합니다. 각 제안을 수락하기 전까지는 아무것도 변경되지 않습니다.",
+      "autoCorrectDesc": "트랜스크립션을 참조 가사와 비교하여 단어 단위로 수정 사항을 적용합니다. 수정된 단어는 보라색으로 표시됩니다.",
       "autoCorrectedCount": "자동 수정됨 · {count}",
       "autoCorrectedDesc": "{count, plural, =1 {#개의 자동 수정이} other {#개의 자동 수정이}} 적용되었습니다(보라색으로 표시됨). 클릭하여 세부 정보를 확인하고 원치 않는 수정 사항은 되돌릴 수 있습니다."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "주황색으로 강조 표시된 단어는 공백입니다 — 참조 가사와 일치하지 않아 오류(예: 비슷하게 들리는 잘못 인식된 단어)가 포함될 수 있는 구간입니다.",
       "useNAndP": "N과 P를 사용하여 공백 사이를 이동하세요. 각 줄 옆의 재생을 클릭하고 들리는 내용과 오른쪽의 참조 가사를 비교한 다음, 단어를 클릭하여 편집하거나 삭제하세요.",
       "watchOutForPhantomWords": "줄의 시작이나 끝에 있는 \"and\"와 같은 팬텀 워드에 주의하세요 — 추출 과정에서 종종 이런 단어가 추가됩니다.",
-      "tryTimelineView": "타임라인 보기를 사용하여 비정상적으로 긴 단어(10초 이상)를 찾아보세요. 이는 보통 타이밍 문제를 나타냅니다.",
+      "tryTimelineView": "2초가 넘는 단어와 2초가 넘는 공백은 주황색으로 표시됩니다. 타이밍에 문제가 없는지 확인해 보세요. 고급 모드로 전환하면 각 줄이 타임라인으로 펼쳐진 모습을 볼 수 있습니다.",
       "watchFullTutorial": "전체 튜토리얼 시청",
       "correctionHandlers": "수정 핸들러",
       "anchorSequences": "앵커 시퀀스",
@@ -1348,7 +1349,7 @@
       "close": "닫기",
       "confidence_balanced": "균형",
       "compareHint": "시간과 비용이 더 들지만, 여러 모델이 공통으로 제안하는 내용을 확인할 수 있어요.",
-      "compareLabel": "여러 AI 모델 비교하기",
+      "compareLabel": "여러 모델 비교",
       "conflictBadge": "다른 버전",
       "conflictTooltip": "이 단어들에 대해 여러 제안이 있습니다 — 하나를 수락하면 나머지는 적용되지 않습니다.",
       "consensusBadge": "{consensus}/{total}개 모델",

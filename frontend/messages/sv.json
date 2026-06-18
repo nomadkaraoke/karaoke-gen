@@ -241,7 +241,8 @@
     "noJobsYet": "Inga jobb ännu. Skapa ett för att komma igång!",
     "referrals": "Värvningar",
     "bulkMode": "Bulk",
-    "singleMode": "Enskild"
+    "singleMode": "Enskild",
+    "submitModeToggle": "Enskild eller massinlämning"
   },
   "auth": {
     "noVerificationToken": "Ingen verifieringstoken angavs",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Ljudet laddas fortfarande...",
       "loadingAudio": "Laddar ljud...",
       "autoCorrect": "Autokorrigering",
-      "autoCorrectDesc": "Generera korrigeringsförslag genom att jämföra transkriptionen med referenstexten. Ingenting ändras förrän du accepterar varje förslag.",
+      "autoCorrectDesc": "Jämför transkriptionen med referenstexten och tillämpar korrigeringar på ordnivå åt dig. Korrigerade ord visas i lila.",
       "autoCorrectedCount": "Autokorrigerat · {count}",
       "autoCorrectedDesc": "Vi gjorde {count, plural, =1 {# autokorrigering} other {# autokorrigeringar}} (visas i lila). Klicka för att visa detaljerna och ångra de som inte stämmer."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "De orange markerade orden är luckor — sektioner som inte kunde matchas till referenstexten och kan innehålla fel (t.ex. felhörda ord som låter liknande).",
       "useNAndP": "Använd N och P för att hoppa mellan luckor. För varje lucka, klicka på spela bredvid raden och jämför vad du hör med referenstexten till höger, klicka sedan på ett ord för att redigera eller ta bort det.",
       "watchOutForPhantomWords": "Se upp för fantomord som \"and\" i början eller slutet av rader — transkriberingen lägger ofta till dessa.",
-      "tryTimelineView": "Prova tidslinjevyn för att upptäcka ovanligt långa ord (10+ sekunder), vilket vanligtvis indikerar ett tajmingproblem.",
+      "tryTimelineView": "Ord över 2s och luckor över 2s markeras med en orange varaktighet — kontrollera dessa för tajmingsproblem. Byt till Avancerat för att se varje rad utsträckt i en tidslinje.",
       "watchFullTutorial": "Titta på hela handledningen",
       "correctionHandlers": "Korrigeringshanterare",
       "anchorSequences": "Ankarsekvenser",
@@ -1348,7 +1349,7 @@
       "close": "Stäng",
       "confidence_balanced": "Balanserad",
       "compareHint": "Långsammare och kostar mer, men visar vilka förslag flera modeller är överens om",
-      "compareLabel": "Jämför flera AI-modeller",
+      "compareLabel": "Jämför flera modeller",
       "conflictBadge": "variant",
       "conflictTooltip": "Det finns olika förslag för dessa ord — om du accepterar en variant avvisas de andra.",
       "consensusBadge": "{consensus}/{total} modeller",

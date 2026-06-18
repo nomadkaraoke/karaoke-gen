@@ -23,7 +23,6 @@ import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
 import { BulkMode } from "@/components/job/bulk/BulkMode"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { TenantJobFlow } from "@/components/job/TenantJobFlow"
 import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
@@ -51,6 +50,7 @@ function AppPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [allJobs, setAllJobs] = useState<Job[]>([])
+  const [submitMode, setSubmitMode] = useState<"single" | "bulk">("single")
   const [isLoadingJobs, setIsLoadingJobs] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasFetchedSuccessfully, setHasFetchedSuccessfully] = useState(false)
@@ -338,29 +338,52 @@ function AppPageContent() {
           {/* Submit Job Card */}
           <Card className="backdrop-blur min-w-0" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
             <CardHeader>
-              <CardTitle style={{ color: 'var(--text)' }}>
-                {isDefaultTenant ? t('createKaraokeVideo') : t('submitTrack')}
-              </CardTitle>
-              <CardDescription style={{ color: 'var(--text-muted)' }}>
-                {isDefaultTenant
-                  ? t('createDescription')
-                  : t('submitDescription')}
-              </CardDescription>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <CardTitle style={{ color: 'var(--text)' }}>
+                    {isDefaultTenant ? t('createKaraokeVideo') : t('submitTrack')}
+                  </CardTitle>
+                  <CardDescription style={{ color: 'var(--text-muted)' }}>
+                    {isDefaultTenant
+                      ? t('createDescription')
+                      : t('submitDescription')}
+                  </CardDescription>
+                </div>
+                {isDefaultTenant && (
+                  <div
+                    className="shrink-0 inline-flex rounded-md p-0.5"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                    role="tablist"
+                    aria-label={t('submitModeToggle')}
+                  >
+                    {(['single', 'bulk'] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        role="tab"
+                        aria-selected={submitMode === m}
+                        onClick={() => setSubmitMode(m)}
+                        className="px-2.5 py-1 rounded text-xs font-medium transition-colors"
+                        style={
+                          submitMode === m
+                            ? { backgroundColor: 'var(--card)', color: 'var(--text)' }
+                            : { color: 'var(--text-muted)', background: 'transparent' }
+                        }
+                      >
+                        {m === 'single' ? t('singleMode') : t('bulkMode')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isDefaultTenant ? (
-                <Tabs defaultValue="single">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="single">{t('singleMode')}</TabsTrigger>
-                    <TabsTrigger value="bulk">{t('bulkMode')}</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="single">
-                    <GuidedJobFlow onJobCreated={loadJobs} />
-                  </TabsContent>
-                  <TabsContent value="bulk">
-                    <BulkMode onJobsChanged={loadJobs} />
-                  </TabsContent>
-                </Tabs>
+                submitMode === 'bulk' ? (
+                  <BulkMode onJobsChanged={loadJobs} />
+                ) : (
+                  <GuidedJobFlow onJobCreated={loadJobs} />
+                )
               ) : (
                 <TenantJobFlow onJobCreated={loadJobs} />
               )}

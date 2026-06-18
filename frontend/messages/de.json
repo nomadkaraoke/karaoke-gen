@@ -241,7 +241,8 @@
     "noJobsYet": "Noch keine Aufträge. Erstelle einen, um loszulegen!",
     "referrals": "Empfehlungen",
     "bulkMode": "Bulk",
-    "singleMode": "Einzeln"
+    "singleMode": "Einzeln",
+    "submitModeToggle": "Einzel- oder Masseneinreichung"
   },
   "auth": {
     "noVerificationToken": "Kein Verifizierungstoken angegeben",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Audio wird noch geladen...",
       "loadingAudio": "Audio wird geladen...",
       "autoCorrect": "Autokorrektur",
-      "autoCorrectDesc": "Generiere Korrekturvorschläge, indem du die Transkription mit dem Referenztext vergleichst. Nichts wird geändert, bis du jeden Vorschlag akzeptierst.",
+      "autoCorrectDesc": "Vergleicht die Transkription mit dem Referenztext und wendet für dich Korrekturen auf Wortebene an. Korrigierte Wörter werden in Lila angezeigt.",
       "autoCorrectedCount": "Automatisch korrigiert · {count}",
       "autoCorrectedDesc": "Wir haben {count, plural, =1 {# automatische Korrektur} other {# automatische Korrekturen}} angewendet (lila dargestellt). Klicke, um die Details anzuzeigen und Korrekturen rückgängig zu machen, mit denen du nicht einverstanden bist."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Die orange hervorgehobenen Wörter sind Lücken — Abschnitte, die nicht mit dem Referenztext abgeglichen werden konnten und Fehler enthalten können (z.B. falsch erkannte Wörter, die ähnlich klingen).",
       "useNAndP": "Verwende N und P, um zwischen Lücken zu springen. Klicke für jede auf Wiedergabe neben der Zeile und vergleiche, was du hörst, mit dem Referenztext auf der rechten Seite. Klicke dann auf ein Wort, um es zu bearbeiten oder zu löschen.",
       "watchOutForPhantomWords": "Achte auf Phantomwörter wie \"and\" am Anfang oder Ende von Zeilen — die Transkription fügt diese oft hinzu.",
-      "tryTimelineView": "Probiere die Timeline-Ansicht aus, um ungewöhnlich lange Wörter (10+ Sekunden) zu entdecken, die normalerweise auf ein Timing-Problem hinweisen.",
+      "tryTimelineView": "Wörter über 2s und Lücken über 2s werden mit einer orangefarbenen Dauer markiert — überprüfe diese auf Timing-Probleme. Wechsle zu Erweitert, um jede Zeile gestreckt in einer Zeitleiste zu sehen.",
       "watchFullTutorial": "Vollständiges Tutorial ansehen",
       "correctionHandlers": "Korrektur-Handler",
       "anchorSequences": "Ankersequenzen",
@@ -1348,7 +1349,7 @@
       "close": "Schließen",
       "confidence_balanced": "Ausgewogen",
       "compareHint": "Langsamer und teurer, zeigt aber, bei welchen Vorschlägen mehrere Modelle übereinstimmen",
-      "compareLabel": "Mehrere KI-Modelle vergleichen",
+      "compareLabel": "Mehrere Modelle vergleichen",
       "conflictBadge": "Variante",
       "conflictTooltip": "Es gibt verschiedene Vorschläge für diese Wörter — wenn du eine Variante akzeptierst, werden die anderen abgelehnt.",
       "consensusBadge": "{consensus}/{total} Modelle",

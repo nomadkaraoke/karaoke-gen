@@ -241,7 +241,8 @@
     "noJobsYet": "Niciun job încă. Creează unul pentru a începe!",
     "referrals": "Recomandări",
     "bulkMode": "În masă",
-    "singleMode": "Individual"
+    "singleMode": "Individual",
+    "submitModeToggle": "Trimitere individuală sau în masă"
   },
   "auth": {
     "noVerificationToken": "Niciun token de verificare furnizat",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Fișierul audio încă se încarcă...",
       "loadingAudio": "Se încarcă fișierul audio...",
       "autoCorrect": "Autocorectare",
-      "autoCorrectDesc": "Generează sugestii de corectare comparând transcrierea cu versurile de referință. Nimic nu este modificat până când nu accepți fiecare sugestie.",
+      "autoCorrectDesc": "Compară transcrierea cu versurile de referință și aplică corecții la nivel de cuvânt pentru tine. Cuvintele corectate sunt afișate cu mov.",
       "autoCorrectedCount": "Autocorectat · {count}",
       "autoCorrectedDesc": "Am aplicat {count, plural, =1 {# autocorecție} other {# autocorecții}} (afișate cu mov). Dă clic pentru a vedea detaliile și a anula orice modificare cu care nu ești de acord."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Cuvintele evidențiate cu portocaliu sunt goluri — secțiuni care nu au putut fi potrivite cu versurile de referință și pot conține erori (ex. cuvinte auzite greșit care sună similar).",
       "useNAndP": "Folosește N și P pentru a sări între goluri. Pentru fiecare, fă clic pe redare lângă rând și compară ceea ce auzi cu versurile de referință din dreapta, apoi fă clic pe un cuvânt pentru a-l edita sau șterge.",
       "watchOutForPhantomWords": "Fii atent la cuvintele fantomă precum „and” la începutul sau sfârșitul rândurilor — transcrierea adaugă adesea acestea.",
-      "tryTimelineView": "Încearcă vizualizarea Cronologie pentru a observa orice cuvinte neobișnuit de lungi (10+ secunde), care indică de obicei o problemă de sincronizare.",
+      "tryTimelineView": "Cuvintele de peste 2s și pauzele de peste 2s sunt marcate cu o durată de culoare chihlimbar — verifică-le pentru probleme de sincronizare. Comută la Avansat pentru a vedea fiecare vers extins pe o axă a timpului.",
       "watchFullTutorial": "Urmărește tutorialul complet",
       "correctionHandlers": "Gestionari de corectare",
       "anchorSequences": "Secvențe ancoră",
@@ -1348,7 +1349,7 @@
       "close": "Închide",
       "confidence_balanced": "Echilibrat",
       "compareHint": "Mai lent și costă mai mult, dar îți arată cu ce sugestii sunt de acord mai multe modele",
-      "compareLabel": "Compară mai multe modele AI",
+      "compareLabel": "Compară mai multe modele",
       "conflictBadge": "variantă",
       "conflictTooltip": "Există sugestii diferite pentru aceste cuvinte — acceptarea unei variante le respinge pe celelalte.",
       "consensusBadge": "{consensus}/{total} modele",

@@ -241,7 +241,8 @@
     "noJobsYet": "Még nincsenek projektek. Hozz létre egyet a kezdéshez!",
     "referrals": "Ajánlások",
     "bulkMode": "Tömeges",
-    "singleMode": "Egyes"
+    "singleMode": "Egyes",
+    "submitModeToggle": "Egyedi vagy tömeges beküldés"
   },
   "auth": {
     "noVerificationToken": "Nincs megadva ellenőrző token",
@@ -840,7 +841,7 @@
       "audioStillLoading": "A hanganyag még töltődik...",
       "loadingAudio": "Hanganyag betöltése...",
       "autoCorrect": "Automatikus javítás",
-      "autoCorrectDesc": "Javítási javaslatok generálása a leírt és a referencia-dalszöveg összehasonlításával. Semmi sem módosul, amíg el nem fogadod az egyes javaslatokat.",
+      "autoCorrectDesc": "Összehasonlítja az átiratot a referencia dalszöveggel, és szószintű javításokat alkalmaz számodra. A javított szavak lila színnel jelennek meg.",
       "autoCorrectedCount": "Automatikusan javítva · {count}",
       "autoCorrectedDesc": "{count, plural, =1 {# automatikus javítást alkalmaztunk} other {# automatikus javítást alkalmaztunk}} (lilával jelölve). Kattints a részletek megtekintéséhez, és vond vissza azokat, amikkel nem értesz egyet."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "A narancssárgával kiemelt szavak a hézagok — azok a részek, amelyeket nem lehetett egyeztetni a referencia dalszöveggel, és hibákat tartalmazhatnak (pl. félrehallott szavak, amelyek hasonlóan hangzanak).",
       "useNAndP": "Használd az N és P billentyűket a hézagok közötti ugráshoz. Mindegyiknél kattints a lejátszásra a sor mellett, és hasonlítsd össze, amit hallasz, a jobb oldali referencia dalszöveggel, majd kattints egy szóra a szerkesztéshez vagy törléshez.",
       "watchOutForPhantomWords": "Vigyázz a fantom szavakra, mint például az \"és\" a sorok elején vagy végén — az átírás gyakran hozzáadja ezeket.",
-      "tryTimelineView": "Próbáld ki az Idővonal nézetet, hogy észrevedd a szokatlanul hosszú szavakat (10+ másodperc), amelyek általában időzítési problémát jeleznek.",
+      "tryTimelineView": "A 2 másodpercnél hosszabb szavak és a 2 másodpercnél hosszabb szünetek borostyánsárga időtartammal vannak megjelölve — ellenőrizd ezeket az időzítési problémák miatt. Válts a Haladó nézetre, hogy minden sort egy idővonalon kinyújtva láthass.",
       "watchFullTutorial": "Nézd meg a teljes oktatóvideót",
       "correctionHandlers": "Javítási kezelők",
       "anchorSequences": "Horgony szekvenciák",
@@ -1348,7 +1349,7 @@
       "close": "Bezárás",
       "confidence_balanced": "Kiegyensúlyozott",
       "compareHint": "Lassabb és többe kerül, de megmutatja, mely javaslatokban ért egyet több modell.",
-      "compareLabel": "Több MI-modell összehasonlítása",
+      "compareLabel": "Több modell összehasonlítása",
       "conflictBadge": "változat",
       "conflictTooltip": "Több különböző javaslat is van ezekre a szavakra — az egyik változat elfogadásával elutasítod a többit.",
       "consensusBadge": "{consensus}/{total} modell",
