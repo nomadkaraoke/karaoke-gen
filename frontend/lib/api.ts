@@ -449,6 +449,90 @@ export function extractErrorMessage(data: any, fallback: string): string {
   return fallback;
 }
 
+// ===== Bulk Mode types =====
+
+export interface BulkArtist {
+  mbid: string | null;
+  name: string;
+  disambiguation: string;
+  type?: string | null;
+  country?: string | null;
+}
+
+export interface BulkAlbum {
+  release_group_mbid: string;
+  title: string;
+  primary_type?: string | null;
+  secondary_types: string[];
+  first_release_date: string;
+  is_studio: boolean;
+}
+
+export interface BulkEdition {
+  release_mbid: string;
+  title?: string | null;
+  status?: string | null;
+  date: string;
+  country?: string | null;
+  track_count: number;
+}
+
+export interface BulkTrack {
+  position: number | null;
+  title: string;
+  recording_mbid?: string | null;
+  length_ms?: number | null;
+  is_extra: boolean;
+  extra_reason: string;
+  available: boolean;
+  brands: string[];
+}
+
+export interface BulkTracklist {
+  release_mbid: string | null;
+  canonical_release_mbid: string | null;
+  title: string | null;
+  date: string;
+  tracks: BulkTrack[];
+  editions: BulkEdition[];
+}
+
+export interface BulkAvailabilityResult {
+  artist: string;
+  title: string;
+  available: boolean;
+  brands: string[];
+  brand_count: number;
+}
+
+export interface BulkSettings {
+  auto_select_if_lossless: boolean;
+  is_private: boolean;
+  skip_audio_edit: boolean;
+  skip_customization: boolean;
+}
+
+export interface BulkSubmitResponse {
+  batch_id: string;
+  job_ids: string[];
+  total: number;
+}
+
+export interface BulkBatchJob {
+  job_id: string;
+  artist: string;
+  title: string;
+  status: string;
+  auto_selected: boolean;
+}
+
+export interface BulkBatch {
+  batch_id: string;
+  total: number;
+  counts: Record<string, number>;
+  jobs: BulkBatchJob[];
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let data;
@@ -1175,6 +1259,66 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(params),
+    });
+    return handleResponse(response);
+  },
+
+  // ===== Bulk Mode =====
+
+  async searchAlbumArtists(q: string): Promise<BulkArtist[]> {
+    const response = await fetch(`${API_BASE_URL}/api/bulk/album/artists?q=${encodeURIComponent(q)}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async getAlbums(artistMbid: string): Promise<BulkAlbum[]> {
+    const response = await fetch(`${API_BASE_URL}/api/bulk/album/albums?artist_mbid=${encodeURIComponent(artistMbid)}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async getAlbumTracklist(params: {
+    artist: string;
+    releaseGroupMbid?: string;
+    releaseMbid?: string;
+  }): Promise<BulkTracklist> {
+    const qs = new URLSearchParams({ artist: params.artist });
+    if (params.releaseGroupMbid) qs.set('release_group_mbid', params.releaseGroupMbid);
+    if (params.releaseMbid) qs.set('release_mbid', params.releaseMbid);
+    const response = await fetch(`${API_BASE_URL}/api/bulk/album/tracklist?${qs.toString()}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async checkBulkAvailability(
+    tracks: Array<{ artist: string; title: string }>
+  ): Promise<{ results: BulkAvailabilityResult[] }> {
+    const response = await fetch(`${API_BASE_URL}/api/bulk/availability`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ tracks }),
+    });
+    return handleResponse(response);
+  },
+
+  async bulkSubmit(params: {
+    songs: Array<{ artist: string; title: string; display_artist?: string; display_title?: string }>;
+    settings: BulkSettings;
+  }): Promise<BulkSubmitResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/bulk/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(params),
+    });
+    return handleResponse(response);
+  },
+
+  async getBulkBatch(batchId: string): Promise<BulkBatch> {
+    const response = await fetch(`${API_BASE_URL}/api/bulk/${encodeURIComponent(batchId)}`, {
+      headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
   },
