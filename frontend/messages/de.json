@@ -838,7 +838,9 @@
       "audioStillLoading": "Audio wird noch geladen...",
       "loadingAudio": "Audio wird geladen...",
       "autoCorrect": "Autokorrektur",
-      "autoCorrectDesc": "Generiere Korrekturvorschläge, indem du die Transkription mit dem Referenztext vergleichst. Nichts wird geändert, bis du jeden Vorschlag akzeptierst."
+      "autoCorrectDesc": "Generiere Korrekturvorschläge, indem du die Transkription mit dem Referenztext vergleichst. Nichts wird geändert, bis du jeden Vorschlag akzeptierst.",
+      "autoCorrectedCount": "Automatisch korrigiert · {count}",
+      "autoCorrectedDesc": "Wir haben {count, plural, =1 {# automatische Korrektur} other {# automatische Korrekturen}} angewendet (lila dargestellt). Klicke, um die Details anzuzeigen und Korrekturen rückgängig zu machen, mit denen du nicht einverstanden bist."
     },
     "guidance": {
       "showTips": "Tipps anzeigen",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Unkorrigierte Lücken",
       "uncorrectedGapsDesc": "Abschnitte, die möglicherweise manuell überprüft werden müssen",
       "wordsUncorrected": "Unkorrigierte Wörter",
-      "numberOfGaps": "Anzahl der Lücken"
+      "numberOfGaps": "Anzahl der Lücken",
+      "autoCorrectTip": "{count, plural, =1 {# Wort wurde} other {# Wörter wurden}} für dich automatisch korrigiert (lila dargestellt, das Originalwort steht darüber). Spiele jede korrigierte Zeile ab und prüfe, ob die Wörter noch synchron sind – achte besonders auf die orange unterstrichenen Wörter, da hier das Timing geschätzt wurde und wahrscheinlich angepasst werden muss.",
+      "autoCorrected": "Automatisch korrigiert",
+      "timingEstimated": "Timing geschätzt"
     },
     "transcription": {
       "syncedLyrics": "Synchronisierter Text",
@@ -876,7 +881,13 @@
       "text": "Text",
       "timeline": "Timeline",
       "deleteSegment": "Segment löschen",
-      "playSegment": "Segment abspielen"
+      "playSegment": "Segment abspielen",
+      "aiTooltipEstimated": "Von unserem System automatisch korrigiert. Das Timing wurde hier geschätzt. Spiele diese Zeile ab und passe das Timing der Wörter an, falls nötig.",
+      "aiTooltipReplaced": "Von unserem System automatisch korrigiert (vorher: \"{original}\"). Spiele diese Zeile ab, um zu prüfen, ob die Wörter noch synchron sind.",
+      "aiTooltipReplacedEstimated": "Von unserem System automatisch korrigiert (vorher: \"{original}\"). Das Timing wurde geschätzt. Spiele diese Zeile ab und passe das Timing der Wörter an, falls nötig.",
+      "longGapWarning": "{seconds}s Lücke vor dem nächsten Wort – oft ein fälschlicherweise zu früh erkanntes Wort (z. B. ein Phantomwort wie \"und\"). Klicke, um von hier abzuspielen.",
+      "longWordWarning": "Dieses Wort dauert {seconds}s – ungewöhnlich lang. Spiele die Zeile ab und prüfe, ob die Endzeit nicht ins Instrumental hineinreicht.",
+      "playFromGap": "Vom Ende dieser Lücke abspielen"
     },
     "editActionBar": {
       "reset": "Zurücksetzen",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} Modelle",
       "consensusTooltip": "Vorgeschlagen von: {models}",
       "cachedBadge": "zwischengespeichert",
-      "cachedTooltip": "Wiederhergestellt aus einem vorherigen Durchlauf mit demselben Text — es sind keine KI-Kosten angefallen."
+      "cachedTooltip": "Wiederhergestellt aus einem vorherigen Durchlauf mit demselben Text — es sind keine KI-Kosten angefallen.",
+      "appliedSummary": "{count} automatische Korrekturen angewendet",
+      "hideDetails": "Details ausblenden",
+      "rerun": "Erneut ausführen",
+      "revertAllAuto": "Alle rückgängig machen",
+      "showDetails": "Details anzeigen"
     }
   },
   "instrumentalReview": {

@@ -838,7 +838,9 @@
       "audioStillLoading": "Audio se još uvijek učitava...",
       "loadingAudio": "Učitavanje audija...",
       "autoCorrect": "Automatski ispravak",
-      "autoCorrectDesc": "Generiraj prijedloge za ispravak usporedbom transkripcije s referentnim tekstom. Ništa se ne mijenja dok ne prihvatiš svaki prijedlog."
+      "autoCorrectDesc": "Generiraj prijedloge za ispravak usporedbom transkripcije s referentnim tekstom. Ništa se ne mijenja dok ne prihvatiš svaki prijedlog.",
+      "autoCorrectedCount": "Automatski ispravljeno · {count}",
+      "autoCorrectedDesc": "Primijenili smo {count, plural, =1 {# automatski ispravak} other {# automatskih ispravaka}} (prikazano ljubičastom bojom). Klikni za prikaz detalja i poništi one s kojima se ne slažeš."
     },
     "guidance": {
       "showTips": "Prikaži savjete",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Neispravljene praznine",
       "uncorrectedGapsDesc": "Dijelovi koji bi mogli zahtijevati ručni pregled",
       "wordsUncorrected": "Neispravljene riječi",
-      "numberOfGaps": "Broj praznina"
+      "numberOfGaps": "Broj praznina",
+      "autoCorrectTip": "{count, plural, =1 {# riječ je automatski ispravljena} other {# riječi je automatski ispravljeno}} za tebe (prikazano ljubičastom bojom, s originalnom riječi iznad). Reproduciraj svaki ispravljeni redak i provjeri poklapaju li se riječi i dalje — posebno one podcrtane narančastom bojom, gdje je tajming procijenjen i vjerojatno će ga trebati prilagoditi.",
+      "autoCorrected": "Automatski ispravljeno",
+      "timingEstimated": "Procijenjen tajming"
     },
     "transcription": {
       "syncedLyrics": "Sinkronizirani tekst",
@@ -876,7 +881,13 @@
       "text": "Tekst",
       "timeline": "Vremenska traka",
       "deleteSegment": "Izbriši segment",
-      "playSegment": "Reproduciraj segment"
+      "playSegment": "Reproduciraj segment",
+      "aiTooltipEstimated": "Naš sustav je ovo automatski ispravio. Tajming je ovdje procijenjen, stoga reproduciraj ovaj redak i po potrebi prilagodi tajming riječi.",
+      "aiTooltipReplaced": "Naš sustav je ovo automatski ispravio iz \"{original}\". Reproduciraj ovaj redak da potvrdiš da se riječi i dalje poklapaju.",
+      "aiTooltipReplacedEstimated": "Naš sustav je ovo automatski ispravio iz \"{original}\". Tajming je procijenjen, stoga reproduciraj ovaj redak i po potrebi prilagodi tajming riječi.",
+      "longGapWarning": "Pauza od {seconds} s prije sljedeće riječi — često zalutala rana riječ (npr. fantomsko \"i\"). Klikni za reprodukciju odavde.",
+      "longWordWarning": "Ova riječ traje {seconds} s — neobično dugo. Reproduciraj redak i provjeri da njezino vrijeme završetka ne ulazi u instrumental.",
+      "playFromGap": "Reproduciraj od kraja ove pauze"
     },
     "editActionBar": {
       "reset": "Poništi",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} modela",
       "consensusTooltip": "Predložili: {models}",
       "cachedBadge": "predmemorirano",
-      "cachedTooltip": "Obnovljeno iz prethodnog pokretanja s istim tekstom pjesme — nije bilo troškova za AI."
+      "cachedTooltip": "Obnovljeno iz prethodnog pokretanja s istim tekstom pjesme — nije bilo troškova za AI.",
+      "appliedSummary": "Primijenjeno {count} automatskih ispravaka",
+      "hideDetails": "Sakrij detalje",
+      "rerun": "Pokreni ponovno",
+      "revertAllAuto": "Poništi sve",
+      "showDetails": "Prikaži detalje"
     }
   },
   "instrumentalReview": {

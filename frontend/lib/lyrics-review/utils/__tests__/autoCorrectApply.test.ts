@@ -166,6 +166,76 @@ describe('applySuggestion', () => {
   })
 })
 
+describe('applySuggestion — AI provenance stamping', () => {
+  it('stamps a 1:1 replace as AI-corrected with trustworthy timing', () => {
+    const result = applySuggestion(makeSegments(), suggestion({}))!
+    const newWord = result.segments[0].words[3]
+    expect(newWord.ai_corrected).toBe(true)
+    expect(newWord.correction_span_id).toBe('sug-1')
+    // single replacement word inherits the original [start,end] → not estimated
+    expect(newWord.timing_estimated).toBe(false)
+    // the original transcription text sits on the (only) span word
+    expect(newWord.original_text).toBe('glory')
+  })
+
+  it('flags a 1→N split as estimated and bubbles the original once', () => {
+    const result = applySuggestion(
+      makeSegments(),
+      suggestion({
+        word_ids: ['w2', 'w3'],
+        original_text: 'straight glory',
+        new_text: 'straight-up chlorine gas',
+      }),
+    )!
+    const [a, b, c] = result.segments[0].words.slice(2, 5)
+    for (const w of [a, b, c]) {
+      expect(w.ai_corrected).toBe(true)
+      expect(w.timing_estimated).toBe(true)
+      expect(w.correction_span_id).toBe('sug-1')
+    }
+    // bubble text only on the first word of the span
+    expect(a.original_text).toBe('straight glory')
+    expect(b.original_text).toBeUndefined()
+    expect(c.original_text).toBeUndefined()
+  })
+
+  it('treats an N→1 merge as trustworthy timing', () => {
+    const result = applySuggestion(
+      makeSegments(),
+      suggestion({
+        word_ids: ['w2', 'w3'],
+        original_text: 'straight glory',
+        new_text: 'straightglory',
+      }),
+    )!
+    const merged = result.segments[0].words[2]
+    expect(merged.text).toBe('straightglory')
+    expect(merged.ai_corrected).toBe(true)
+    // one word spanning the real [11,12] range → not estimated
+    expect(merged.timing_estimated).toBe(false)
+    expect(merged.original_text).toBe('straight glory')
+  })
+
+  it('always flags inserted words as estimated (synthetic timing)', () => {
+    const result = applySuggestion(
+      makeSegments(),
+      suggestion({
+        op: 'insert_after',
+        word_ids: ['w1'],
+        original_text: '',
+        new_text: 'the',
+      }),
+    )!
+    const inserted = result.segments[0].words[2]
+    expect(inserted.text).toBe('the')
+    expect(inserted.ai_corrected).toBe(true)
+    expect(inserted.timing_estimated).toBe(true)
+    expect(inserted.correction_span_id).toBe('sug-1')
+    // inserts have no original transcription → no bubble
+    expect(inserted.original_text).toBeUndefined()
+  })
+})
+
 describe('revertSuggestion', () => {
   it('round-trips a replace', () => {
     const original = makeSegments()

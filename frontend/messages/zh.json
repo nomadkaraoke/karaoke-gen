@@ -838,7 +838,9 @@
       "audioStillLoading": "音频仍在加载中...",
       "loadingAudio": "正在加载音频...",
       "autoCorrect": "自动纠错",
-      "autoCorrectDesc": "通过将转录内容与参考歌词进行比较来生成纠错建议。在您接受每条建议之前，不会进行任何更改。"
+      "autoCorrectDesc": "通过将转录内容与参考歌词进行比较来生成纠错建议。在您接受每条建议之前，不会进行任何更改。",
+      "autoCorrectedCount": "自动更正 · {count}",
+      "autoCorrectedDesc": "我们进行了 {count, plural, =1 {# 处自动更正} other {# 处自动更正}}（以紫色显示）。点击查看详情，您也可以撤销任何不合适的更正。"
     },
     "guidance": {
       "showTips": "显示提示",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "未校对的未匹配片段",
       "uncorrectedGapsDesc": "可能需要手动检查的部分",
       "wordsUncorrected": "未校对的单词",
-      "numberOfGaps": "未匹配片段数量"
+      "numberOfGaps": "未匹配片段数量",
+      "autoCorrectTip": "{count, plural, =1 {已为您自动更正 # 个字词} other {已为您自动更正 # 个字词}}（以紫色显示，上方为原词）。请播放每一行更正后的歌词，检查字词是否仍然对齐——特别是带有橙黄色下划线的字词，其时间为估算值，可能需要调整。",
+      "autoCorrected": "已自动更正",
+      "timingEstimated": "时间为估算值"
     },
     "transcription": {
       "syncedLyrics": "同步歌词",
@@ -876,7 +881,13 @@
       "text": "文本",
       "timeline": "时间轴",
       "deleteSegment": "删除片段",
-      "playSegment": "播放片段"
+      "playSegment": "播放片段",
+      "aiTooltipEstimated": "由系统自动更正。此处的时间为估算值，请播放此行，并在需要时调整字词的对齐时间。",
+      "aiTooltipReplaced": "由系统将“{original}”自动更正而来。请播放此行以确认字词仍然对齐。",
+      "aiTooltipReplacedEstimated": "由系统将“{original}”自动更正而来。时间为估算值，请播放此行，并在需要时调整字词的对齐时间。",
+      "longGapWarning": "距离下一个词有 {seconds} 秒的间隙——通常是多余的提前词（例如凭空多出的“and”）。点击从此处开始播放。",
+      "longWordWarning": "这个词持续了 {seconds} 秒——时间异常长。请播放此行，检查其结束时间是否延伸到了伴奏中。",
+      "playFromGap": "从该间隙的末尾开始播放"
     },
     "editActionBar": {
       "reset": "重置",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} 个模型",
       "consensusTooltip": "推荐模型：{models}",
       "cachedBadge": "已缓存",
-      "cachedTooltip": "已从之前相同歌词的处理记录中恢复 —— 未产生 AI 费用。"
+      "cachedTooltip": "已从之前相同歌词的处理记录中恢复 —— 未产生 AI 费用。",
+      "appliedSummary": "已应用 {count} 处自动更正",
+      "hideDetails": "隐藏详情",
+      "rerun": "重新运行",
+      "revertAllAuto": "全部还原",
+      "showDetails": "显示详情"
     }
   },
   "instrumentalReview": {

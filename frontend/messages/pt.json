@@ -838,7 +838,9 @@
       "audioStillLoading": "O áudio ainda está carregando...",
       "loadingAudio": "Carregando áudio...",
       "autoCorrect": "Autocorreção",
-      "autoCorrectDesc": "Gere sugestões de correção comparando a transcrição com a letra de referência. Nada é alterado até que você aceite cada sugestão."
+      "autoCorrectDesc": "Gere sugestões de correção comparando a transcrição com a letra de referência. Nada é alterado até que você aceite cada sugestão.",
+      "autoCorrectedCount": "Corrigido automaticamente · {count}",
+      "autoCorrectedDesc": "Aplicamos {count, plural, =1 {# correção automática} other {# correções automáticas}} (mostradas em roxo). Clique para ver os detalhes e desfazer as que você não concordar."
     },
     "guidance": {
       "showTips": "Mostrar dicas",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Lacunas Não Corrigidas",
       "uncorrectedGapsDesc": "Seções que podem precisar de revisão manual",
       "wordsUncorrected": "Palavras Não Corrigidas",
-      "numberOfGaps": "Número de Lacunas"
+      "numberOfGaps": "Número de Lacunas",
+      "autoCorrectTip": "{count, plural, =1 {# palavra foi corrigida automaticamente} other {# palavras foram corrigidas automaticamente}} para você (mostradas em roxo, com a palavra original acima). Toque cada linha corrigida e verifique se as palavras ainda estão alinhadas — especialmente as sublinhadas em âmbar, onde a sincronização foi estimada e provavelmente precisará de ajustes.",
+      "autoCorrected": "Corrigido automaticamente",
+      "timingEstimated": "Sincronização estimada"
     },
     "transcription": {
       "syncedLyrics": "Letras Sincronizadas",
@@ -876,7 +881,13 @@
       "text": "Texto",
       "timeline": "Linha do Tempo",
       "deleteSegment": "Excluir segmento",
-      "playSegment": "Reproduzir segmento"
+      "playSegment": "Reproduzir segmento",
+      "aiTooltipEstimated": "Corrigido automaticamente pelo nosso sistema. A sincronização aqui foi estimada, então toque esta linha e ajuste o tempo das palavras, se necessário.",
+      "aiTooltipReplaced": "Corrigido automaticamente pelo nosso sistema a partir de \"{original}\". Toque esta linha para confirmar se as palavras ainda estão alinhadas.",
+      "aiTooltipReplacedEstimated": "Corrigido automaticamente pelo nosso sistema a partir de \"{original}\". A sincronização foi estimada, então toque esta linha e ajuste o tempo das palavras, se necessário.",
+      "longGapWarning": "Intervalo de {seconds}s antes da próxima palavra — muitas vezes uma palavra solta adiantada (ex: um \"e\" fantasma). Clique para tocar a partir daqui.",
+      "longWordWarning": "Esta palavra dura {seconds}s — um tempo incomum. Toque a linha e verifique se o final dela não invadiu o instrumental.",
+      "playFromGap": "Tocar a partir do final deste intervalo"
     },
     "editActionBar": {
       "reset": "Redefinir",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} modelos",
       "consensusTooltip": "Proposto por: {models}",
       "cachedBadge": "em cache",
-      "cachedTooltip": "Restaurado de uma execução anterior da mesma letra — nenhum custo de IA foi gerado."
+      "cachedTooltip": "Restaurado de uma execução anterior da mesma letra — nenhum custo de IA foi gerado.",
+      "appliedSummary": "{count} correções automáticas aplicadas",
+      "hideDetails": "Ocultar detalhes",
+      "rerun": "Executar novamente",
+      "revertAllAuto": "Reverter tudo",
+      "showDetails": "Mostrar detalhes"
     }
   },
   "instrumentalReview": {

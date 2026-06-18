@@ -838,7 +838,9 @@
       "audioStillLoading": "Audio masih dimuatkan...",
       "loadingAudio": "Memuatkan audio...",
       "autoCorrect": "Pembetulan automatik",
-      "autoCorrectDesc": "Jana cadangan pembetulan dengan membandingkan transkripsi dengan lirik rujukan. Tiada perubahan akan dibuat sehingga anda menerima setiap cadangan."
+      "autoCorrectDesc": "Jana cadangan pembetulan dengan membandingkan transkripsi dengan lirik rujukan. Tiada perubahan akan dibuat sehingga anda menerima setiap cadangan.",
+      "autoCorrectedCount": "Dibetulkan secara automatik · {count}",
+      "autoCorrectedDesc": "Kami telah melaksanakan {count, plural, =1 {# pembetulan automatik} other {# pembetulan automatik}} (ditunjukkan dalam warna ungu). Klik untuk melihat butiran dan buat asal mana-mana yang anda tidak bersetuju."
     },
     "guidance": {
       "showTips": "Tunjukkan petua",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Jurang Tidak Dibetulkan",
       "uncorrectedGapsDesc": "Bahagian yang mungkin memerlukan semakan manual",
       "wordsUncorrected": "Perkataan Tidak Dibetulkan",
-      "numberOfGaps": "Bilangan Jurang"
+      "numberOfGaps": "Bilangan Jurang",
+      "autoCorrectTip": "{count, plural, =1 {# perkataan telah dibetulkan secara automatik} other {# perkataan telah dibetulkan secara automatik}} untuk anda (ditunjukkan dalam warna ungu, dengan perkataan asal di atas). Mainkan setiap baris yang dibetulkan dan pastikan perkataan masih selari — terutamanya yang digariskan dengan warna ambar, di mana pemasaan telah dianggarkan dan mungkin perlu diselaraskan.",
+      "autoCorrected": "Dibetulkan secara automatik",
+      "timingEstimated": "Pemasaan dianggarkan"
     },
     "transcription": {
       "syncedLyrics": "Lirik Disegerakkan",
@@ -876,7 +881,13 @@
       "text": "Teks",
       "timeline": "Garis Masa",
       "deleteSegment": "Padam segmen",
-      "playSegment": "Main segmen"
+      "playSegment": "Main segmen",
+      "aiTooltipEstimated": "Dibetulkan secara automatik oleh sistem kami. Pemasaan di sini telah dianggarkan, jadi mainkan baris ini dan selaraskan pemasaan perkataan jika perlu.",
+      "aiTooltipReplaced": "Dibetulkan secara automatik oleh sistem kami daripada \"{original}\". Mainkan baris ini untuk mengesahkan perkataan masih selari.",
+      "aiTooltipReplacedEstimated": "Dibetulkan secara automatik oleh sistem kami daripada \"{original}\". Pemasaan telah dianggarkan, jadi mainkan baris ini dan selaraskan pemasaan perkataan jika perlu.",
+      "longGapWarning": "Jurang {seconds}s sebelum perkataan seterusnya — selalunya perkataan awal yang tersesat (cth. \"dan\" bayangan). Klik untuk main dari sini.",
+      "longWordWarning": "Perkataan ini berlarutan selama {seconds}s — luar biasa panjang. Mainkan baris ini dan pastikan masa tamatnya tidak meleret ke bahagian instrumental.",
+      "playFromGap": "Main dari penghujung jurang ini"
     },
     "editActionBar": {
       "reset": "Tetapkan Semula",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} model",
       "consensusTooltip": "Dicadangkan oleh: {models}",
       "cachedBadge": "dicache",
-      "cachedTooltip": "Dipulihkan daripada proses sebelumnya untuk lirik yang sama — tiada kos AI dikenakan."
+      "cachedTooltip": "Dipulihkan daripada proses sebelumnya untuk lirik yang sama — tiada kos AI dikenakan.",
+      "appliedSummary": "{count} pembetulan automatik diterapkan",
+      "hideDetails": "Sembunyikan butiran",
+      "rerun": "Jalankan semula",
+      "revertAllAuto": "Kembalikan semua",
+      "showDetails": "Papar butiran"
     }
   },
   "instrumentalReview": {

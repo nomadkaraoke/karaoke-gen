@@ -838,7 +838,9 @@
       "audioStillLoading": "Fișierul audio încă se încarcă...",
       "loadingAudio": "Se încarcă fișierul audio...",
       "autoCorrect": "Autocorectare",
-      "autoCorrectDesc": "Generează sugestii de corectare comparând transcrierea cu versurile de referință. Nimic nu este modificat până când nu accepți fiecare sugestie."
+      "autoCorrectDesc": "Generează sugestii de corectare comparând transcrierea cu versurile de referință. Nimic nu este modificat până când nu accepți fiecare sugestie.",
+      "autoCorrectedCount": "Autocorectat · {count}",
+      "autoCorrectedDesc": "Am aplicat {count, plural, =1 {# autocorecție} other {# autocorecții}} (afișate cu mov). Dă clic pentru a vedea detaliile și a anula orice modificare cu care nu ești de acord."
     },
     "guidance": {
       "showTips": "Arată sfaturi",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Goluri necorectate",
       "uncorrectedGapsDesc": "Secțiuni care pot necesita revizuire manuală",
       "wordsUncorrected": "Cuvinte necorectate",
-      "numberOfGaps": "Număr de goluri"
+      "numberOfGaps": "Număr de goluri",
+      "autoCorrectTip": "{count, plural, =1 {# cuvânt a fost autocorectat} other {# cuvinte au fost autocorectate}} pentru tine (afișate cu mov, cu cuvântul original deasupra). Redă fiecare rând corectat și verifică dacă se aliniază în continuare cuvintele — în special cele subliniate cu portocaliu, unde sincronizarea a fost estimată și probabil va necesita ajustare.",
+      "autoCorrected": "Autocorectat",
+      "timingEstimated": "Sincronizare estimată"
     },
     "transcription": {
       "syncedLyrics": "Versuri sincronizate",
@@ -876,7 +881,13 @@
       "text": "Text",
       "timeline": "Cronologie",
       "deleteSegment": "Șterge segmentul",
-      "playSegment": "Redă segmentul"
+      "playSegment": "Redă segmentul",
+      "aiTooltipEstimated": "Autocorectat de sistemul nostru. Sincronizarea aici a fost estimată, așa că redă acest rând și ajustează sincronizarea cuvintelor dacă este necesar.",
+      "aiTooltipReplaced": "Autocorectat de sistemul nostru din \"{original}\". Redă acest rând pentru a confirma că se aliniază în continuare cuvintele.",
+      "aiTooltipReplacedEstimated": "Autocorectat de sistemul nostru din \"{original}\". Sincronizarea a fost estimată, așa că redă acest rând și ajustează sincronizarea cuvintelor dacă este necesar.",
+      "longGapWarning": "Pauză de {seconds}s înainte de următorul cuvânt — adesea un cuvânt rătăcit apărut prea devreme (de ex. un \"și\" fantomă). Dă clic pentru a reda de aici.",
+      "longWordWarning": "Acest cuvânt durează {seconds}s — neobișnuit de mult. Redă rândul și verifică dacă timpul său de final nu s-a suprapus peste instrumental.",
+      "playFromGap": "Redă de la sfârșitul acestei pauze"
     },
     "editActionBar": {
       "reset": "Resetează",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} modele",
       "consensusTooltip": "Propus de: {models}",
       "cachedBadge": "din cache",
-      "cachedTooltip": "Restaurat dintr-o rulare anterioară pentru aceleași versuri — nu a generat niciun cost AI."
+      "cachedTooltip": "Restaurat dintr-o rulare anterioară pentru aceleași versuri — nu a generat niciun cost AI.",
+      "appliedSummary": "{count} autocorecții aplicate",
+      "hideDetails": "Ascunde detaliile",
+      "rerun": "Rulează din nou",
+      "revertAllAuto": "Anulează tot",
+      "showDetails": "Arată detaliile"
     }
   },
   "instrumentalReview": {

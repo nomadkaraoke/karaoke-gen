@@ -838,7 +838,9 @@
       "audioStillLoading": "Audio is nog aan het laden...",
       "loadingAudio": "Audio laden...",
       "autoCorrect": "Autocorrectie",
-      "autoCorrectDesc": "Genereer correctiesuggesties door de transcriptie te vergelijken met de referentiesongtekst. Er wordt niets gewijzigd totdat je elke suggestie accepteert."
+      "autoCorrectDesc": "Genereer correctiesuggesties door de transcriptie te vergelijken met de referentiesongtekst. Er wordt niets gewijzigd totdat je elke suggestie accepteert.",
+      "autoCorrectedCount": "Automatisch gecorrigeerd · {count}",
+      "autoCorrectedDesc": "We hebben {count, plural, =1 {# automatische correctie} other {# automatische correcties}} toegepast (weergegeven in het paars). Klik om de details te bekijken en maak de correcties ongedaan waar je het niet mee eens bent."
     },
     "guidance": {
       "showTips": "Toon tips",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Ongecorrigeerde gaten",
       "uncorrectedGapsDesc": "Secties die mogelijk handmatige controle nodig hebben",
       "wordsUncorrected": "Woorden ongecorrigeerd",
-      "numberOfGaps": "Aantal gaten"
+      "numberOfGaps": "Aantal gaten",
+      "autoCorrectTip": "{count, plural, =1 {Er is # woord automatisch voor je gecorrigeerd} other {Er zijn # woorden automatisch voor je gecorrigeerd}} (weergegeven in het paars, met het originele woord erboven). Speel elke gecorrigeerde regel af en controleer of de woorden nog steeds gelijk lopen — vooral de woorden die oranje onderstreept zijn, waarvan de timing is geschat en waarschijnlijk moet worden aangepast.",
+      "autoCorrected": "Automatisch gecorrigeerd",
+      "timingEstimated": "Timing geschat"
     },
     "transcription": {
       "syncedLyrics": "Gesynchroniseerde songteksten",
@@ -876,7 +881,13 @@
       "text": "Tekst",
       "timeline": "Tijdlijn",
       "deleteSegment": "Verwijder segment",
-      "playSegment": "Speel segment af"
+      "playSegment": "Speel segment af",
+      "aiTooltipEstimated": "Automatisch gecorrigeerd door ons systeem. De timing is hier geschat, dus speel deze regel af en pas indien nodig de timing van de woorden aan.",
+      "aiTooltipReplaced": "Automatisch door ons systeem gecorrigeerd van \"{original}\". Speel deze regel af om te bevestigen dat de woorden nog steeds gelijk lopen.",
+      "aiTooltipReplacedEstimated": "Automatisch door ons systeem gecorrigeerd van \"{original}\". De timing is geschat, dus speel deze regel af en pas indien nodig de timing van de woorden aan.",
+      "longGapWarning": "{seconds}s pauze voor het volgende woord — vaak een verdwaald woord dat te vroeg komt (bijv. een spook-\"en\"). Klik om vanaf hier af te spelen.",
+      "longWordWarning": "Dit woord duurt {seconds}s — ongewoon lang. Speel de regel af en controleer of de eindtijd niet doorloopt in het instrumentale gedeelte.",
+      "playFromGap": "Afspelen vanaf het einde van deze pauze"
     },
     "editActionBar": {
       "reset": "Resetten",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} modellen",
       "consensusTooltip": "Voorgesteld door: {models}",
       "cachedBadge": "gecached",
-      "cachedTooltip": "Hersteld uit een eerdere verwerking van dezelfde songtekst — er zijn geen AI-kosten gemaakt."
+      "cachedTooltip": "Hersteld uit een eerdere verwerking van dezelfde songtekst — er zijn geen AI-kosten gemaakt.",
+      "appliedSummary": "{count} automatische correcties toegepast",
+      "hideDetails": "Details verbergen",
+      "rerun": "Opnieuw uitvoeren",
+      "revertAllAuto": "Alles ongedaan maken",
+      "showDetails": "Details tonen"
     }
   },
   "instrumentalReview": {

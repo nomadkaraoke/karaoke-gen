@@ -36,20 +36,30 @@ interface UseAutoCorrectArgs {
   jobId?: string
   data: CorrectionData
   updateDataWithHistory: (newData: CorrectionData, desc?: string) => void
+  /** Commit data as the new review baseline (collapses undo history). Used for
+   *  the on-load auto-apply so auto-corrections are the starting point, not a
+   *  user "edit" that would trigger a save/restore prompt. */
+  rebaseData?: (newData: CorrectionData) => void
   editLog: EditLog
   getAuthToken: () => string | undefined
   /** Auto-trigger one run on load (when references exist) so suggestions are
    *  ready without a click. Normally a cache hit (backend pre-generates). */
   autoRunOnLoad?: boolean
+  /** After the auto-run completes, immediately apply all suggestions (the
+   *  equivalent of clicking "Accept All") so the reviewer starts from the
+   *  corrected lyrics. Implies autoRunOnLoad. */
+  autoApplyOnLoad?: boolean
 }
 
 export function useAutoCorrect({
   jobId,
   data,
   updateDataWithHistory,
+  rebaseData,
   editLog,
   getAuthToken,
   autoRunOnLoad = false,
+  autoApplyOnLoad = false,
 }: UseAutoCorrectArgs) {
   const [status, setStatus] = useState<AutoCorrectStatus>('idle')
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([])
@@ -59,6 +69,10 @@ export function useAutoCorrect({
   const [error, setError] = useState<string | null>(null)
   const undoInfos = useRef<Record<string, SuggestionUndoInfo>>({})
   const abortRef = useRef<AbortController | null>(null)
+  // Guards the one-shot auto-run on load. Reset on abort so a request that was
+  // cancelled mid-flight (e.g. React StrictMode's dev double-invoke, or a fast
+  // re-render) re-fires instead of permanently stranding the auto-run.
+  const autoRanRef = useRef(false)
 
   const hasReferences = Object.keys(data.reference_lyrics ?? {}).length > 0
 
@@ -109,6 +123,9 @@ export function useAutoCorrect({
         })
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
+          // Allow the load effect to retry: flipping status back to 'idle' is a
+          // dependency change that re-runs it, and the guard is now clear.
+          autoRanRef.current = false
           setStatus('idle')
           return
         }
@@ -128,15 +145,15 @@ export function useAutoCorrect({
   }, [])
 
   // Fire exactly one run on load once references + segments are available.
-  // The ref guard ensures it never re-fires as `data` changes during review.
-  const autoRanRef = useRef(false)
+  // The ref guard ensures it never re-fires as `data` changes during review
+  // (but is cleared on abort above so a cancelled attempt can retry).
   useEffect(() => {
-    if (!autoRunOnLoad || autoRanRef.current) return
+    if (!(autoRunOnLoad || autoApplyOnLoad) || autoRanRef.current) return
     if (!jobId || status !== 'idle') return
     if (!hasReferences || !(data.corrected_segments?.length > 0)) return
     autoRanRef.current = true
     void run()
-  }, [autoRunOnLoad, jobId, status, hasReferences, data.corrected_segments, run])
+  }, [autoRunOnLoad, autoApplyOnLoad, jobId, status, hasReferences, data.corrected_segments, run])
 
   const logDecision = useCallback(
     (s: AiSuggestion, op: 'ai_suggestion_accept' | 'ai_suggestion_reject' | 'ai_suggestion_undo') => {
@@ -220,41 +237,91 @@ export function useAutoCorrect({
     [suggestions, decisions, data, updateDataWithHistory, logDecision],
   )
 
-  const acceptAll = useCallback(() => {
+  const acceptAll = useCallback(
+    (asBaseline = false) => {
+      let segments = data.corrected_segments
+      const newDecisions: Record<string, SuggestionDecision> = { ...decisions }
+      // In conflict groups only the winner (highest consensus, then
+      // confidence) is applied; the losing variants are rejected.
+      const winners = new Set(
+        pickAcceptAllWinners(suggestions.filter((s) => newDecisions[s.id] === 'pending')),
+      )
+      let applied = 0
+      for (const s of suggestions) {
+        if (newDecisions[s.id] !== 'pending') continue
+        if (!winners.has(s.id)) {
+          newDecisions[s.id] = 'rejected'
+          logDecision(s, 'ai_suggestion_reject')
+          continue
+        }
+        const result = applySuggestion(segments, s)
+        if (!result) {
+          newDecisions[s.id] = 'stale'
+          continue
+        }
+        segments = result.segments
+        undoInfos.current[s.id] = result.undo
+        newDecisions[s.id] = 'accepted'
+        logDecision(s, 'ai_suggestion_accept')
+        applied += 1
+      }
+      if (applied > 0) {
+        const next = { ...data, corrected_segments: segments }
+        // On-load auto-apply commits as the review baseline (no undo entry, no
+        // save/restore prompt); a manual "Accept all" is a normal edit.
+        if (asBaseline && rebaseData) {
+          rebaseData(next)
+        } else {
+          updateDataWithHistory(next, 'accept all AI suggestions')
+        }
+      }
+      setDecisions(newDecisions)
+    },
+    [suggestions, decisions, data, updateDataWithHistory, rebaseData, logDecision],
+  )
+
+  // Revert every applied auto-correction back to the original transcription
+  // words (in one undo step), leaving any manual edits to other words intact.
+  const revertAll = useCallback(() => {
     let segments = data.corrected_segments
     const newDecisions: Record<string, SuggestionDecision> = { ...decisions }
-    // In conflict groups only the winner (highest consensus, then
-    // confidence) is applied; the losing variants are rejected.
-    const winners = new Set(
-      pickAcceptAllWinners(suggestions.filter((s) => newDecisions[s.id] === 'pending')),
-    )
-    let applied = 0
-    for (const s of suggestions) {
-      if (newDecisions[s.id] !== 'pending') continue
-      if (!winners.has(s.id)) {
-        newDecisions[s.id] = 'rejected'
-        logDecision(s, 'ai_suggestion_reject')
-        continue
-      }
-      const result = applySuggestion(segments, s)
-      if (!result) {
-        newDecisions[s.id] = 'stale'
-        continue
-      }
-      segments = result.segments
-      undoInfos.current[s.id] = result.undo
-      newDecisions[s.id] = 'accepted'
-      logDecision(s, 'ai_suggestion_accept')
-      applied += 1
+    let reverted = 0
+    // Reverse order: later applies may sit after earlier ones in a segment.
+    for (let i = suggestions.length - 1; i >= 0; i--) {
+      const s = suggestions[i]
+      if (decisions[s.id] !== 'accepted') continue
+      const undo = undoInfos.current[s.id]
+      if (!undo) continue
+      const result = revertSuggestion(segments, undo)
+      if (!result) continue
+      segments = result
+      delete undoInfos.current[s.id]
+      newDecisions[s.id] = 'pending'
+      logDecision(s, 'ai_suggestion_undo')
+      reverted += 1
     }
-    if (applied > 0) {
+    if (reverted > 0) {
       updateDataWithHistory(
         { ...data, corrected_segments: segments },
-        'accept all AI suggestions',
+        'revert all AI suggestions',
       )
     }
     setDecisions(newDecisions)
   }, [suggestions, decisions, data, updateDataWithHistory, logDecision])
+
+  // Auto-apply: once the auto-run lands, apply every suggestion exactly as
+  // "Accept All" would, once. The ref guard survives the data/decisions churn
+  // that acceptAll triggers (each re-creates this callback), and re-runs on a
+  // reload no-op because the re-fetched suggestions are stale → 0 pending.
+  const autoAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!autoApplyOnLoad || autoAppliedRef.current) return
+    if (status !== 'reviewing') return
+    const hasPending = suggestions.some((s) => decisions[s.id] === 'pending')
+    if (!hasPending) return
+    autoAppliedRef.current = true
+    acceptAll(true)
+  }, [autoApplyOnLoad, status, suggestions, decisions, acceptAll])
 
   const rejectAll = useCallback(() => {
     const newDecisions: Record<string, SuggestionDecision> = { ...decisions }
@@ -302,6 +369,7 @@ export function useAutoCorrect({
     reject,
     undoAccept,
     acceptAll,
+    revertAll,
     rejectAll,
     dismiss,
     isPendingAndStale,

@@ -838,7 +838,9 @@
       "audioStillLoading": "A hanganyag még töltődik...",
       "loadingAudio": "Hanganyag betöltése...",
       "autoCorrect": "Automatikus javítás",
-      "autoCorrectDesc": "Javítási javaslatok generálása a leírt és a referencia-dalszöveg összehasonlításával. Semmi sem módosul, amíg el nem fogadod az egyes javaslatokat."
+      "autoCorrectDesc": "Javítási javaslatok generálása a leírt és a referencia-dalszöveg összehasonlításával. Semmi sem módosul, amíg el nem fogadod az egyes javaslatokat.",
+      "autoCorrectedCount": "Automatikusan javítva · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {# automatikus javítást alkalmaztunk} other {# automatikus javítást alkalmaztunk}} (lilával jelölve). Kattints a részletek megtekintéséhez, és vond vissza azokat, amikkel nem értesz egyet."
     },
     "guidance": {
       "showTips": "Tippek mutatása",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Javítatlan hézagok",
       "uncorrectedGapsDesc": "Részek, amelyek manuális áttekintést igényelhetnek",
       "wordsUncorrected": "Javítatlan szavak",
-      "numberOfGaps": "Hézagok száma"
+      "numberOfGaps": "Hézagok száma",
+      "autoCorrectTip": "{count, plural, =1 {# szót javítottunk automatikusan} other {# szót javítottunk automatikusan}} (lilával jelölve, az eredeti szó felette látható). Játszd le az összes javított sort, és ellenőrizd, hogy a szavak szinkronban maradtak-e — különösen a borostyánsárgával aláhúzottakat, ahol az időzítés csak becsült, és valószínűleg módosításra szorul.",
+      "autoCorrected": "Automatikusan javítva",
+      "timingEstimated": "Becsült időzítés"
     },
     "transcription": {
       "syncedLyrics": "Szinkronizált dalszöveg",
@@ -876,7 +881,13 @@
       "text": "Szöveg",
       "timeline": "Idővonal",
       "deleteSegment": "Szegmens törlése",
-      "playSegment": "Szegmens lejátszása"
+      "playSegment": "Szegmens lejátszása",
+      "aiTooltipEstimated": "A rendszerünk automatikusan javította. Az időzítés itt csak becsült, ezért játszd le ezt a sort, és szükség esetén állítsd be a szavak időzítését.",
+      "aiTooltipReplaced": "A rendszerünk automatikusan javította erről: \"{original}\". Játszd le ezt a sort, hogy megerősítsd, a szavak még mindig szinkronban vannak.",
+      "aiTooltipReplacedEstimated": "A rendszerünk automatikusan javította erről: \"{original}\". Az időzítés csak becsült, ezért játszd le ezt a sort, és szükség esetén állítsd be a szavak időzítését.",
+      "longGapWarning": "{seconds} mp szünet a következő szó előtt — gyakran egy véletlen korai szó (pl. egy fantom \"és\"). Kattints ide a lejátszáshoz innen.",
+      "longWordWarning": "Ez a szó {seconds} mp-ig tart — szokatlanul hosszú. Játszd le a sort, és ellenőrizd, hogy a befejezési ideje nem lóg-e bele az instrumentális részbe.",
+      "playFromGap": "Lejátszás a szünet végétől"
     },
     "editActionBar": {
       "reset": "Visszaállítás",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} modell",
       "consensusTooltip": "Javasolta: {models}",
       "cachedBadge": "gyorsítótárazott",
-      "cachedTooltip": "Egy korábbi, azonos dalszövegen végzett futtatásból visszaállítva — nem merült fel AI-költség."
+      "cachedTooltip": "Egy korábbi, azonos dalszövegen végzett futtatásból visszaállítva — nem merült fel AI-költség.",
+      "appliedSummary": "{count} automatikus javítás alkalmazva",
+      "hideDetails": "Részletek elrejtése",
+      "rerun": "Újrafuttatás",
+      "revertAllAuto": "Összes visszavonása",
+      "showDetails": "Részletek megjelenítése"
     }
   },
   "instrumentalReview": {

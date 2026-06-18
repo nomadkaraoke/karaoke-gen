@@ -838,7 +838,9 @@
       "audioStillLoading": "Ses hâlâ yükleniyor...",
       "loadingAudio": "Ses yükleniyor...",
       "autoCorrect": "Otomatik düzeltme",
-      "autoCorrectDesc": "Yazıya dökülen metni referans şarkı sözleriyle karşılaştırarak düzeltme önerileri oluştur. Sen her bir öneriyi onaylamadan hiçbir şey değiştirilmez."
+      "autoCorrectDesc": "Yazıya dökülen metni referans şarkı sözleriyle karşılaştırarak düzeltme önerileri oluştur. Sen her bir öneriyi onaylamadan hiçbir şey değiştirilmez.",
+      "autoCorrectedCount": "Otomatik düzeltildi · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {# otomatik düzeltme} other {# otomatik düzeltme}} uyguladık (mor renkle gösterilir). Detayları görmek ve hatalı bulduklarını geri almak için tıkla."
     },
     "guidance": {
       "showTips": "İpuçlarını göster",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Düzeltilmemiş Boşluklar",
       "uncorrectedGapsDesc": "Manuel inceleme gerektirebilecek bölümler",
       "wordsUncorrected": "Düzeltilmemiş Kelimeler",
-      "numberOfGaps": "Boşluk Sayısı"
+      "numberOfGaps": "Boşluk Sayısı",
+      "autoCorrectTip": "Senin için {count, plural, =1 {# kelime} other {# kelime}} otomatik düzeltildi (mor renkle gösterilir, orijinal kelime üstündedir). Düzeltilen her satırı oynat ve kelimelerin hala doğru hizalandığından emin ol — özellikle zamanlamanın tahmini olduğu ve muhtemelen ayarlama gerektirecek altı turuncu çizili olanları.",
+      "autoCorrected": "Otomatik düzeltildi",
+      "timingEstimated": "Tahmini zamanlama"
     },
     "transcription": {
       "syncedLyrics": "Senkronize Sözler",
@@ -876,7 +881,13 @@
       "text": "Metin",
       "timeline": "Zaman Çizelgesi",
       "deleteSegment": "Segmenti sil",
-      "playSegment": "Segmenti oynat"
+      "playSegment": "Segmenti oynat",
+      "aiTooltipEstimated": "Sistemimiz tarafından otomatik düzeltildi. Buradaki zamanlama tahmini olarak belirlendi, bu yüzden bu satırı oynat ve gerekirse kelime zamanlamalarını ayarla.",
+      "aiTooltipReplaced": "\"{original}\" kelimesi sistemimiz tarafından otomatik düzeltildi. Kelimelerin hala doğru hizalandığını doğrulamak için bu satırı oynat.",
+      "aiTooltipReplacedEstimated": "\"{original}\" kelimesi sistemimiz tarafından otomatik düzeltildi. Zamanlama tahmini olarak belirlendi, bu yüzden bu satırı oynat ve gerekirse kelime zamanlamalarını ayarla.",
+      "longGapWarning": "Sonraki kelimeden önce {seconds} sn boşluk var — genellikle yanlışlıkla erken eklenmiş bir kelime (ör. fazladan bir \"ve\"). Buradan itibaren oynatmak için tıkla.",
+      "longWordWarning": "Bu kelime {seconds} sn sürüyor — alışılmadık derecede uzun. Satırı oynat ve bitiş zamanının enstrümantal kısma taşmadığını kontrol et.",
+      "playFromGap": "Bu boşluğun sonundan itibaren oynat"
     },
     "editActionBar": {
       "reset": "Sıfırla",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} model",
       "consensusTooltip": "Öneren: {models}",
       "cachedBadge": "önbellekten",
-      "cachedTooltip": "Aynı şarkı sözleriyle yapılan önceki bir işlemden geri yüklendi — yapay zeka maliyeti oluşmadı."
+      "cachedTooltip": "Aynı şarkı sözleriyle yapılan önceki bir işlemden geri yüklendi — yapay zeka maliyeti oluşmadı.",
+      "appliedSummary": "{count} otomatik düzeltme uygulandı",
+      "hideDetails": "Detayları gizle",
+      "rerun": "Yeniden çalıştır",
+      "revertAllAuto": "Tümünü geri al",
+      "showDetails": "Detayları göster"
     }
   },
   "instrumentalReview": {

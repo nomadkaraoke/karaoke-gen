@@ -838,7 +838,9 @@
       "audioStillLoading": "Âm thanh vẫn đang tải...",
       "loadingAudio": "Đang tải âm thanh...",
       "autoCorrect": "Tự động sửa lỗi",
-      "autoCorrectDesc": "Tạo các đề xuất sửa lỗi bằng cách so sánh bản chép lời với lời bài hát tham khảo. Sẽ không có thay đổi nào được áp dụng cho đến khi bạn chấp nhận từng đề xuất."
+      "autoCorrectDesc": "Tạo các đề xuất sửa lỗi bằng cách so sánh bản chép lời với lời bài hát tham khảo. Sẽ không có thay đổi nào được áp dụng cho đến khi bạn chấp nhận từng đề xuất.",
+      "autoCorrectedCount": "Đã chỉnh sửa tự động · {count}",
+      "autoCorrectedDesc": "Chúng tôi đã áp dụng {count, plural, =1 {# chỉnh sửa tự động} other {# chỉnh sửa tự động}} (hiển thị màu tím). Nhấp để xem chi tiết và hoàn tác những thay đổi mà bạn không đồng ý."
     },
     "guidance": {
       "showTips": "Hiện mẹo",
@@ -867,7 +869,10 @@
       "uncorrectedGaps": "Đoạn trống chưa sửa",
       "uncorrectedGapsDesc": "Các phần có thể cần xem lại thủ công",
       "wordsUncorrected": "Số từ chưa sửa",
-      "numberOfGaps": "Số lượng đoạn trống"
+      "numberOfGaps": "Số lượng đoạn trống",
+      "autoCorrectTip": "{count, plural, =1 {Có # từ đã được chỉnh sửa tự động} other {Có # từ đã được chỉnh sửa tự động}} cho bạn (hiển thị màu tím, với từ gốc ở bên trên). Hãy phát từng dòng đã sửa và kiểm tra xem chữ có khớp nhịp không — đặc biệt chú ý những từ được gạch chân màu vàng cam, vì thời gian hiển thị chỉ là ước tính và có thể cần bạn điều chỉnh lại.",
+      "autoCorrected": "Đã chỉnh sửa tự động",
+      "timingEstimated": "Thời gian ước tính"
     },
     "transcription": {
       "syncedLyrics": "Lời bài hát được đồng bộ",
@@ -876,7 +881,13 @@
       "text": "Văn bản",
       "timeline": "Dòng thời gian",
       "deleteSegment": "Xóa phân đoạn",
-      "playSegment": "Phát phân đoạn"
+      "playSegment": "Phát phân đoạn",
+      "aiTooltipEstimated": "Được hệ thống chỉnh sửa tự động. Thời gian hiển thị ở đây chỉ là ước tính, vì vậy hãy phát dòng này và điều chỉnh lại thời gian của từ nếu cần.",
+      "aiTooltipReplaced": "Được hệ thống chỉnh sửa tự động từ \"{original}\". Hãy phát dòng này để đảm bảo chữ vẫn khớp nhịp.",
+      "aiTooltipReplacedEstimated": "Được hệ thống chỉnh sửa tự động từ \"{original}\". Thời gian hiển thị chỉ là ước tính, vì vậy hãy phát dòng này và điều chỉnh lại thời gian của từ nếu cần.",
+      "longGapWarning": "Có khoảng trống {seconds}s trước từ tiếp theo — thường là do một từ thừa xuất hiện sớm (ví dụ: từ \"and\" ảo). Nhấp để phát từ vị trí này.",
+      "longWordWarning": "Từ này kéo dài {seconds}s — dài bất thường. Hãy phát dòng này và kiểm tra xem thời gian kết thúc của từ có bị lấn sang đoạn nhạc không lời hay không.",
+      "playFromGap": "Phát từ cuối khoảng trống này"
     },
     "editActionBar": {
       "reset": "Đặt lại",
@@ -1341,7 +1352,12 @@
       "consensusBadge": "{consensus}/{total} mô hình",
       "consensusTooltip": "Đề xuất bởi: {models}",
       "cachedBadge": "đã lưu cache",
-      "cachedTooltip": "Được khôi phục từ lần chạy trước với cùng lời bài hát — không phát sinh chi phí AI."
+      "cachedTooltip": "Được khôi phục từ lần chạy trước với cùng lời bài hát — không phát sinh chi phí AI.",
+      "appliedSummary": "Đã áp dụng {count} chỉnh sửa tự động",
+      "hideDetails": "Ẩn chi tiết",
+      "rerun": "Chạy lại",
+      "revertAllAuto": "Hoàn tác tất cả",
+      "showDetails": "Hiện chi tiết"
     }
   },
   "instrumentalReview": {
