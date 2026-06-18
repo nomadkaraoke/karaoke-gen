@@ -39,14 +39,19 @@ def plan_job_backfill(job, *, storage, dropbox):
       - ``"skip-no-dropbox"``        — job was never uploaded to Dropbox
       - ``"skip-no-audio-record"``   — no original-audio reference on the job
       - ``"skip-audio-missing-gcs"`` — original audio no longer in GCS (detail=gcs_path)
+      - ``"skip-folder-missing"``    — the track's Dropbox folder doesn't exist (detail=folder)
       - ``"skip-already-present"``   — file already in the Dropbox folder (detail=remote_path)
       - ``"upload"``                 — detail={gcs_path, remote_path, filename}
     """
     from karaoke_gen.utils import sanitize_filename
+    from backend.services.job_defaults_service import get_effective_distribution_for_job
 
     state = getattr(job, "state_data", None) or {}
     brand_code = state.get("brand_code")
-    dropbox_path = getattr(job, "dropbox_path", None)
+    # Use the EFFECTIVE dropbox path — private (NOMADNP) tracks upload to the
+    # NonPublished path, not the job's stored (public) dropbox_path. This mirrors
+    # what the orchestrator does at distribution time.
+    dropbox_path = get_effective_distribution_for_job(job).dropbox_path
     if not brand_code or not dropbox_path:
         return ("skip-no-dropbox", None)
 
@@ -62,6 +67,11 @@ def plan_job_backfill(job, *, storage, dropbox):
     filename = original_audio_output_filename(job, base_name)
     folder = f"{dropbox_path.rstrip('/')}/{brand_code} - {base_name}"
     remote_path = f"{folder}/{filename}"
+
+    # Only backfill into a track folder that already exists — never create a new
+    # folder (guards against drifted brand/artist/title naming producing an orphan).
+    if not dropbox.file_exists(folder):
+        return ("skip-folder-missing", folder)
 
     if dropbox.file_exists(remote_path):
         return ("skip-already-present", remote_path)
@@ -89,16 +99,45 @@ def run_backfill(*, since, until=None, limit, environment, live):
         logger.error("Dropbox not configured; aborting.")
         return
 
-    jobs = jm.list_jobs(
-        status=JobStatus.COMPLETE,
-        environment=environment,
-        created_after=since,
-        created_before=until,
-        limit=limit,
-    )
+    # NOTE: created_at is stored as an ISO string in Firestore, so server-side
+    # created_after/created_before datetime filters match nothing. We fetch the most
+    # recent completed jobs (ordered by created_at desc) and filter dates in Python.
+    # `limit` therefore bounds how far back we look — set it high enough to cover the
+    # window since `since`.
+    jobs = jm.list_jobs(status=JobStatus.COMPLETE, limit=limit)
+
+    def _created(j):
+        c = getattr(j, "created_at", None)
+        if c is None:
+            return None
+        return c.replace(tzinfo=None) if getattr(c, "tzinfo", None) else c
+
+    since_naive = since.replace(tzinfo=None)
+    until_naive = until.replace(tzinfo=None) if until else None
+
+    def _in_window(j):
+        c = _created(j)
+        if c is None:
+            return False
+        if c < since_naive:
+            return False
+        if until_naive and c >= until_naive:
+            return False
+        return True
+
+    jobs = [j for j in jobs if _in_window(j)]
+
+    if environment:
+        def _env(j):
+            rm = getattr(j, "request_metadata", None)
+            if rm is None:
+                return None
+            return rm.get("environment") if isinstance(rm, dict) else getattr(rm, "environment", None)
+        jobs = [j for j in jobs if _env(j) == environment]
+
     logger.info(
-        "Considering %d completed jobs since %s (env=%s)",
-        len(jobs), since.date(), environment,
+        "Considering %d completed jobs since %s (env=%s, fetch limit=%d)",
+        len(jobs), since.date(), environment or "all", limit,
     )
 
     tally = {}
@@ -133,8 +172,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--since", default=DEFAULT_SINCE, help="Only jobs created on/after YYYY-MM-DD")
     parser.add_argument("--until", default=None, help="Only jobs created before YYYY-MM-DD")
-    parser.add_argument("--limit", type=int, default=1000)
-    parser.add_argument("--env", default="production", dest="environment")
+    parser.add_argument("--limit", type=int, default=5000,
+                        help="Max completed jobs to fetch (most-recent first). Bounds how far "
+                             "back the date window can reach.")
+    parser.add_argument("--env", default=None, dest="environment",
+                        help="Filter to a request environment (e.g. production). Default: all "
+                             "(test jobs are skipped anyway — no brand code / Dropbox folder).")
     parser.add_argument("--live", action="store_true", help="Actually upload (default: dry-run)")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()

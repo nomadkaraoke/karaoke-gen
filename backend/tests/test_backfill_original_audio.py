@@ -23,17 +23,24 @@ def _job(**kwargs):
     return SimpleNamespace(**base)
 
 
-def _services(gcs_exists=True, dropbox_exists=False):
+def _services(gcs_exists=True, folder_exists=True, file_present=False):
     storage = MagicMock()
     storage.file_exists.return_value = gcs_exists
     dropbox = MagicMock()
-    dropbox.file_exists.return_value = dropbox_exists
+    # plan_job_backfill calls dropbox.file_exists for the folder first, then the file.
+    calls = {"n": 0}
+
+    def _fe(_path):
+        calls["n"] += 1
+        return folder_exists if calls["n"] == 1 else file_present
+
+    dropbox.file_exists.side_effect = _fe
     return storage, dropbox
 
 
 class TestPlanJobBackfill:
     def test_upload_when_audio_present_and_not_yet_uploaded(self):
-        storage, dropbox = _services(gcs_exists=True, dropbox_exists=False)
+        storage, dropbox = _services(gcs_exists=True, folder_exists=True, file_present=False)
         action, detail = plan_job_backfill(_job(), storage=storage, dropbox=dropbox)
         assert action == "upload"
         assert detail["gcs_path"] == "jobs/job-1/input/track.flac"
@@ -66,12 +73,18 @@ class TestPlanJobBackfill:
         assert detail == "jobs/job-1/input/track.flac"
 
     def test_skip_when_already_present_in_dropbox(self):
-        storage, dropbox = _services(gcs_exists=True, dropbox_exists=True)
+        storage, dropbox = _services(gcs_exists=True, folder_exists=True, file_present=True)
         action, _ = plan_job_backfill(_job(), storage=storage, dropbox=dropbox)
         assert action == "skip-already-present"
 
+    def test_skip_when_track_folder_missing(self):
+        storage, dropbox = _services(gcs_exists=True, folder_exists=False)
+        action, detail = plan_job_backfill(_job(), storage=storage, dropbox=dropbox)
+        assert action == "skip-folder-missing"
+        assert detail.endswith("NOMAD-1184 - Eddie Money - I'll Get By")
+
     def test_sanitizes_artist_title_for_paths(self):
-        storage, dropbox = _services(gcs_exists=True, dropbox_exists=False)
+        storage, dropbox = _services(gcs_exists=True, folder_exists=True, file_present=False)
         job = _job(artist="AC/DC", title="T:N/T")
         action, detail = plan_job_backfill(job, storage=storage, dropbox=dropbox)
         assert action == "upload"
