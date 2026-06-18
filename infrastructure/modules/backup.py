@@ -159,7 +159,9 @@ def create_backup_resources(all_secrets: dict) -> dict:
         service_config=cloudfunctionsv2.FunctionServiceConfigArgs(
             available_memory="2Gi",
             available_cpu="1",
-            timeout_seconds=3600,
+            # 30 min — matches the deployed value (was manually tuned down from
+            # 3600 in prod) and the scheduler's attempt_deadline below.
+            timeout_seconds=1800,
             min_instance_count=0,
             max_instance_count=1,
             service_account_email=sa.email,
@@ -213,6 +215,10 @@ def create_backup_resources(all_secrets: dict) -> dict:
         region=REGION,
         schedule="0 1 * * *",
         time_zone="America/New_York",
+        # 30 min — matches the deployed value (manually raised in prod from the
+        # provider default of 180s) so the scheduler waits for the long-running
+        # backup function instead of giving up after 3 min and retrying.
+        attempt_deadline="1800s",
         http_target=cloudscheduler.JobHttpTargetArgs(
             uri=function.url,
             http_method="POST",
