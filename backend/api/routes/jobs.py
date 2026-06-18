@@ -576,6 +576,8 @@ _SUMMARY_STATE_DATA_KEYS = {
     'pending_additional_credits',
     'duration_actual_seconds',
     'duration_confirm_reason',
+    'batch_id',
+    'bulk_auto_selected',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']

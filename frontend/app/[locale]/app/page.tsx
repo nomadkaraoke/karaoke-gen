@@ -22,6 +22,8 @@ import { sortJobsByDate } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
+import { BulkMode } from "@/components/job/bulk/BulkMode"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { TenantJobFlow } from "@/components/job/TenantJobFlow"
 import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
@@ -347,7 +349,18 @@ function AppPageContent() {
             </CardHeader>
             <CardContent>
               {isDefaultTenant ? (
-                <GuidedJobFlow onJobCreated={loadJobs} />
+                <Tabs defaultValue="single">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="single">{t('singleMode')}</TabsTrigger>
+                    <TabsTrigger value="bulk">{t('bulkMode')}</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="single">
+                    <GuidedJobFlow onJobCreated={loadJobs} />
+                  </TabsContent>
+                  <TabsContent value="bulk">
+                    <BulkMode onJobsChanged={loadJobs} />
+                  </TabsContent>
+                </Tabs>
               ) : (
                 <TenantJobFlow onJobCreated={loadJobs} />
               )}

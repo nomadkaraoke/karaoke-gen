@@ -2270,6 +2270,31 @@ Referred users with an active discount window (default 30 days) automatically re
 
 After a credit purchase by a referred user, earnings are recorded automatically in the Stripe webhook handler. When a referrer's pending balance reaches $20 and they have a Stripe Connect account, a payout is triggered automatically.
 
+## Bulk Mode
+
+Submit up to 100 karaoke jobs at once (by text rows or by album lookup). All
+routes require auth.
+
+### Album lookup (MusicBrainz)
+
+- `GET /api/bulk/album/artists?q=<name>` → `[{mbid,name,disambiguation,type,country}]`
+- `GET /api/bulk/album/albums?artist_mbid=<mbid>` → `[{release_group_mbid,title,primary_type,secondary_types,first_release_date,is_studio}]` (studio albums first)
+- `GET /api/bulk/album/tracklist?artist=<name>&release_group_mbid=<mbid>` (or `&release_mbid=<mbid>` for a specific edition) → `{release_mbid,canonical_release_mbid,title,date,tracks:[{position,title,recording_mbid,length_ms,is_extra,extra_reason,available,brands}],editions:[{release_mbid,title,status,date,country,track_count}]}`. Each track is enriched with KaraokeNerds community-version availability (`available`/`brands`); enrichment is best-effort and never fatal.
+
+### Availability (text mode)
+
+- `POST /api/bulk/availability` body `{tracks:[{artist,title}]}` (≤100) → `{results:[{artist,title,available,brands,brand_count}]}`. Backed by the existing KaraokeNerds community-version scraper (1h cache, bounded concurrency).
+
+### Submit
+
+- `POST /api/bulk/submit` body `{songs:[{artist,title,display_artist?,display_title?}],settings:{auto_select_if_lossless,is_private,skip_audio_edit,skip_customization}}` → `{batch_id,job_ids,total}`.
+  - Credit gate: requires `credits >= len(songs)` (1/song minimum) before any job is created; admins bypass. Returns `402` with `{credits_available,credits_required}` if short (no jobs created). `422` for 0 or >100 songs.
+  - Creates one parked job per song (`auto_download=False`), stamps `state_data.batch_id` + `bulk_settings`, and dispatches the `bulk-search-job` Cloud Run Job which runs each search and either auto-selects a confident lossless match or parks the job in `AWAITING_AUDIO_SELECTION`.
+
+### Progress
+
+- `GET /api/bulk/{batch_id}` → `{batch_id,total,counts:{searching,awaiting_selection,processing,complete,failed},jobs:[{job_id,artist,title,status,auto_selected}]}`. Ownership-scoped (admins see any); `404` for another user's batch. Parked jobs are completed via the existing `/api/audio-search/{job_id}/select` flow.
+
 ## Webhooks
 
 Stripe webhooks implemented at `/api/users/webhooks/stripe`.

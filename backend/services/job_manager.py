@@ -189,6 +189,10 @@ class JobManager:
     def update_job(self, job_id: str, updates: Dict[str, Any]) -> None:
         """Update job with arbitrary fields."""
         self.firestore.update_job(job_id, updates)
+
+    def list_jobs_by_batch_id(self, batch_id: str, limit: int = 200) -> List[Job]:
+        """List all jobs in a Bulk Mode batch (state_data.batch_id == batch_id)."""
+        return self.firestore.list_jobs_by_batch_id(batch_id, limit=limit)
     
     def list_jobs(
         self,

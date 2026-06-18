@@ -1,2 +1,7 @@
 pulumi>=3.0.0,<4.0.0
-pulumi-gcp>=9.0.0,<10.0.0
+# Pinned to the version the prod stack was last applied with. The floating
+# `>=9.0.0,<10.0.0` range let local installs drift up to 9.27.0, whose changed
+# Compute Instance schema (eraseWindowsVssSignature/boot_disk) forced spurious
+# REPLACEMENT of the encoding-worker VMs on `pulumi up`. Bump this deliberately
+# (and handle any VM replacement in a maintenance window) — never let it float.
+pulumi-gcp==9.22.0
