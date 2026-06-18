@@ -149,7 +149,9 @@ export const WordComponent = React.memo(function Word({
   )
 
   // Common case: a bare pill (optionally with the legacy correction tooltip).
-  if (!hasAbove && !isTimeline) {
+  // AI-corrected words always fall through so they get their explanatory
+  // tooltip, even when they have no original-text bubble (split/inserted words).
+  if (!hasAbove && !isTimeline && !isAiCorrected) {
     if (correction) {
       return (
         <TooltipProvider delayDuration={200}>
