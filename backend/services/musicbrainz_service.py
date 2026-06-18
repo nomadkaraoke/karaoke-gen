@@ -27,6 +27,7 @@ import re
 import time
 from collections import Counter
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlencode
 
 import httpx
 
@@ -104,7 +105,7 @@ class MusicBrainzService:
             self._last_request_at = time.monotonic()
 
     async def _get(self, path: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        cache_key = path + "?" + "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+        cache_key = path + "?" + urlencode(sorted(params.items()))
         cached = self._cache.get(cache_key)
         if cached and (time.monotonic() - cached[0]) < _CACHE_TTL_S:
             return cached[1]
