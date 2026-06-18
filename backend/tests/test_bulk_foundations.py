@@ -95,3 +95,14 @@ class TestPickAutoSelection:
         from backend.services.audio_search_service import pick_auto_selection
         results = [_lossless_best(0, seeders=60), _lossless_best(1, seeders=200)]
         assert pick_auto_selection(results, "Bohemian Rhapsody") == 1
+
+    def test_short_title_is_not_auto_selected(self):
+        # Too-short titles can't be verified against the filename -> defer to human.
+        from backend.services.audio_search_service import pick_auto_selection
+        assert pick_auto_selection([_lossless_best(0, seeders=80, title="Go")], "Go") is None
+
+    def test_partial_word_filename_is_a_mismatch(self):
+        # Title "One" must NOT match a file for "Someone" (whole-word matching).
+        from backend.services.audio_search_service import pick_auto_selection
+        r = _lossless_best(0, seeders=80, title="Someone", target_file="04 - Someone.flac")
+        assert pick_auto_selection([r], "One") is None

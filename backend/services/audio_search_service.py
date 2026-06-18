@@ -154,13 +154,18 @@ def _check_filename_mismatch(search_title: str, result: Dict[str, Any]) -> bool:
 
     norm_title = normalize(search_title)
     norm_file = normalize(filename)
-    if not norm_file:
+    if not norm_file or not norm_title:
         return False
 
-    shorter, longer = (
-        (norm_file, norm_title) if len(norm_file) <= len(norm_title) else (norm_title, norm_file)
-    )
-    matches = len(shorter) >= 3 and shorter in longer
+    # Stricter than the frontend's substring check (intentional — for the bulk
+    # AUTO-select path we'd rather park an uncertain match than auto-pick the
+    # wrong track). A match requires every title word to appear as a whole word
+    # in the filename, so "One" no longer matches "Someone".
+    title_tokens = [t for t in norm_title.split() if t]
+    file_tokens = set(norm_file.split())
+    if not title_tokens:
+        return False
+    matches = all(tok in file_tokens for tok in title_tokens)
     return not matches
 
 
@@ -173,6 +178,10 @@ def pick_auto_selection(results: List[Dict[str, Any]], search_title: str = "") -
     defer to human selection.
     """
     if not results:
+        return None
+    # Require a usable title before auto-selecting: a blank/too-short title can't
+    # be verified against the filename, so defer to human selection.
+    if len((search_title or "").strip()) < 3:
         return None
     best = _get_best_result(results)
     if best is None:

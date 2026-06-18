@@ -21,9 +21,9 @@ API shapes (captured from the live API, 2026-06):
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
-import threading
 import time
 from collections import Counter
 from typing import Any, Dict, List, Optional
@@ -89,17 +89,18 @@ class MusicBrainzService:
 
     def __init__(self) -> None:
         self._last_request_at = 0.0
-        self._throttle_lock = threading.Lock()
+        self._throttle_lock = asyncio.Lock()
         self._cache: Dict[str, tuple[float, Any]] = {}
 
     # -- HTTP plumbing -----------------------------------------------------
 
-    def _throttle(self) -> None:
-        with self._throttle_lock:
+    async def _throttle(self) -> None:
+        # Non-blocking: yields to the event loop instead of stalling it.
+        async with self._throttle_lock:
             now = time.monotonic()
             wait = self._last_request_at + _MIN_INTERVAL_S - now
             if wait > 0:
-                time.sleep(wait)
+                await asyncio.sleep(wait)
             self._last_request_at = time.monotonic()
 
     async def _get(self, path: str, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -107,7 +108,7 @@ class MusicBrainzService:
         cached = self._cache.get(cache_key)
         if cached and (time.monotonic() - cached[0]) < _CACHE_TTL_S:
             return cached[1]
-        self._throttle()
+        await self._throttle()
         params = {**params, "fmt": "json"}
         async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_S) as client:
             resp = await client.get(

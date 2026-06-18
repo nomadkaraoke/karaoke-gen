@@ -330,7 +330,29 @@ async def bulk_submit(
     if not job_ids:
         raise HTTPException(status_code=402, detail="No jobs could be created")
 
-    await get_worker_service().trigger_bulk_search_worker(batch_id)
+    # Dispatch the batch search worker. Retry once on transient failure. If it
+    # still fails the jobs exist (and are charged) but won't process, so surface
+    # an explicit error with the batch_id — and tell the user NOT to resubmit
+    # (that would create+charge a second batch); the batch can be re-dispatched.
+    worker_service = get_worker_service()
+    triggered = await worker_service.trigger_bulk_search_worker(batch_id)
+    if not triggered:
+        triggered = await worker_service.trigger_bulk_search_worker(batch_id)
+    if not triggered:
+        logger.critical(
+            "[batch:%s] created %d jobs but FAILED to dispatch bulk-search worker",
+            batch_id, len(job_ids),
+        )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "dispatch_failed",
+                "message": "Your batch was created but processing couldn't start. "
+                           "Please don't resubmit — contact support with this batch ID and we'll start it.",
+                "batch_id": batch_id,
+                "job_ids": job_ids,
+            },
+        )
     logger.info("[batch:%s] created %d jobs, dispatched bulk-search worker", batch_id, len(job_ids))
 
     return BulkSubmitResponse(batch_id=batch_id, job_ids=job_ids, total=len(job_ids))

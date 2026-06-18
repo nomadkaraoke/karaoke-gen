@@ -41,7 +41,11 @@ export function BulkMode({ onJobsChanged, onBuyCredits }: BulkModeProps) {
   // (parked awaiting-selection jobs are hidden from the main jobs list).
   const [batchId, setBatchId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
-    return localStorage.getItem("nomad-bulk-last-batch")
+    try {
+      return localStorage.getItem("nomad-bulk-last-batch")
+    } catch {
+      return null
+    }
   })
   const [error, setError] = useState("")
 
@@ -65,7 +69,13 @@ export function BulkMode({ onJobsChanged, onBuyCredits }: BulkModeProps) {
         settings,
       })
       setBatchId(resp.batch_id)
-      if (typeof window !== "undefined") localStorage.setItem("nomad-bulk-last-batch", resp.batch_id)
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("nomad-bulk-last-batch", resp.batch_id)
+        } catch {
+          // Non-fatal: progress still shows this session; just won't survive refresh.
+        }
+      }
       onJobsChanged?.()
     } catch (e: any) {
       setError(e?.message || t("submitError"))
@@ -76,7 +86,13 @@ export function BulkMode({ onJobsChanged, onBuyCredits }: BulkModeProps) {
 
   function startAnother() {
     setBatchId(null)
-    if (typeof window !== "undefined") localStorage.removeItem("nomad-bulk-last-batch")
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("nomad-bulk-last-batch")
+      } catch {
+        // Non-fatal: React state is already cleared.
+      }
+    }
     setTextRows([])
     setAlbumRows([])
   }

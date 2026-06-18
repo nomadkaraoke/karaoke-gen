@@ -18,8 +18,8 @@ import logging
 from backend.models.job import JobStatus
 from backend.services.audio_search_service import (
     AudioSearchError,
+    AudioSearchService,
     NoResultsError,
-    get_audio_search_service,
     pick_auto_selection,
 )
 from backend.services.job_manager import JobManager
@@ -87,16 +87,28 @@ async def _auto_select(job, selection_index: int, selected: dict,
             user_email = job.user_email
             if not user_email:
                 return False
-            ok, _, _ = get_user_service().deduct_credits(
-                user_email, job_id, amount=owed, reason="job_creation",
-                count_as_job_creation=False,
-            )
-            if not ok:
-                logger.info("[bulk] job %s lacks credits for duration delta; parking", job_id)
-                return False
+            # Crash-safety: if a previous attempt already marked the charge as
+            # pending, the deduction may have gone through — do NOT deduct again
+            # (bias toward under-charge over double-charge on worker retry).
+            if sd.get("bulk_charge_pending"):
+                logger.warning(
+                    "[bulk] job %s had a pending charge from a prior attempt; "
+                    "skipping re-deduction to avoid double-charge", job_id
+                )
+            else:
+                job_manager.update_job(job_id, {"state_data.bulk_charge_pending": owed})
+                ok, _, _ = get_user_service().deduct_credits(
+                    user_email, job_id, amount=owed, reason="job_creation",
+                    count_as_job_creation=False,
+                )
+                if not ok:
+                    job_manager.update_job(job_id, {"state_data.bulk_charge_pending": None})
+                    logger.info("[bulk] job %s lacks credits for duration delta; parking", job_id)
+                    return False
         update = {
             "state_data.credits_charged": target_total,
             "state_data.select_charge_applied": True,
+            "state_data.bulk_charge_pending": None,
         }
         if duration is not None:
             update["state_data.duration_estimate_seconds"] = duration
@@ -190,7 +202,6 @@ async def process_job(job_id: str, job_manager: JobManager, audio_search_service
 async def process_batch(batch_id: str) -> int:
     """Process all pending-search jobs in a batch. Returns the count processed."""
     job_manager = JobManager()
-    audio_search_service = get_audio_search_service()
 
     jobs = job_manager.list_jobs_by_batch_id(batch_id)
     pending = [j for j in jobs if (j.state_data or {}).get("bulk_pending_search")]
@@ -200,6 +211,9 @@ async def process_batch(batch_id: str) -> int:
 
     async def _guarded(job_id: str) -> None:
         async with sem:
+            # Fresh service per task: last_remote_search_id is instance state and
+            # would be cross-contaminated if shared across concurrent searches.
+            audio_search_service = AudioSearchService()
             try:
                 await process_job(job_id, job_manager, audio_search_service)
             except Exception as e:  # noqa: BLE001  (one job must not kill the batch)
