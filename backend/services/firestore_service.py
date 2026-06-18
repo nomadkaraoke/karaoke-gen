@@ -177,7 +177,23 @@ class FirestoreService:
         except Exception as e:
             logger.error(f"Error listing jobs: {e}")
             raise
-    
+
+    def list_jobs_by_batch_id(self, batch_id: str, limit: int = 200) -> List[Job]:
+        """List all jobs belonging to a Bulk Mode batch (state_data.batch_id == batch_id).
+
+        Single-field equality, so no composite index is required.
+        """
+        try:
+            query = (
+                self.db.collection(self.collection)
+                .where(filter=FieldFilter('state_data.batch_id', '==', batch_id))
+                .limit(limit)
+            )
+            return [Job(**doc.to_dict()) for doc in query.stream()]
+        except Exception as e:
+            logger.error(f"Error listing jobs for batch {batch_id}: {e}")
+            raise
+
     # Fields needed by the dashboard summary view
     SUMMARY_FIELD_PATHS = [
         'job_id', 'status', 'progress', 'created_at', 'artist', 'title',

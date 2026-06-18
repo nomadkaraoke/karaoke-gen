@@ -181,6 +181,7 @@ video_encoding_job = cloud_run.create_video_encoding_job(bucket, backend_service
 lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
 audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
 audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account, vpc_connector)
+bulk_search_job = cloud_run.create_bulk_search_job(bucket, backend_service_account, vpc_connector)
 
 # ==================== Error Monitor ====================
 
@@ -617,6 +618,7 @@ pulumi.export("video_encoding_job", video_encoding_job.name)
 pulumi.export("lyrics_transcription_job", lyrics_transcription_job.name)
 pulumi.export("audio_separation_job", audio_separation_job.name)
 pulumi.export("audio_download_job", audio_download_job.name)
+pulumi.export("bulk_search_job", bulk_search_job.name)
 pulumi.export("backend_url", "https://api.nomadkaraoke.com")
 pulumi.export("backend_default_url", "https://karaoke-backend-ipzqd2k4yq-uc.a.run.app")
 
