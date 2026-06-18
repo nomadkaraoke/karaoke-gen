@@ -109,17 +109,20 @@ function isBenignError(e: unknown): boolean {
  * Local development must never reach the production error monitor. On localhost
  * the API base URL is relative, so reports would be proxied straight to the prod
  * backend and trip prod alerts for transient dev errors (hot-reload, half-saved
- * edits, etc.). Skip reporting entirely from a localhost origin.
+ * edits, etc.). Decided from the page URL the error occurred on.
  */
-function isLocalhostOrigin(): boolean {
-  if (typeof window === 'undefined') return false
-  const h = window.location.hostname
-  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+function isLocalhostUrl(url: string | undefined): boolean {
+  if (!url) return false
+  try {
+    const h = new URL(url).hostname
+    return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+  } catch {
+    return false
+  }
 }
 
 export async function reportClientError(args: ReportArgs): Promise<void> {
   try {
-    if (isLocalhostOrigin()) return
     if (isBenignError(args.error)) return
 
     const { message, stack } = normalizeError(args.error)
@@ -136,6 +139,8 @@ export async function reportClientError(args: ReportArgs): Promise<void> {
     }
 
     const ctx = collectContext(args.context)
+    // Never report from local dev — would hit the prod error monitor.
+    if (isLocalhostUrl(ctx.url)) return
     const body = {
       message,
       stack,
