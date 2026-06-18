@@ -1,6 +1,6 @@
 # Disaster Recovery Runbook
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-06-18
 **Design doc:** `docs/archive/2026-03-27-business-continuity-design.md`
 **Implementation plan:** `docs/archive/2026-03-29-business-continuity-plan.md`
 **External services reference:** `docs/archive/2026-03-29-external-services-config.md`
@@ -9,7 +9,7 @@
 
 | Data | Backup Location | Recovery Method | RPO |
 |------|----------------|-----------------|-----|
-| Firestore | S3 `firestore/YYYY-MM-DD/` | Import to new GCP project | 24h |
+| Firestore | S3 `firestore/YYYY-MM-DD/` | Import to new GCP project | 7 days off-site (S3); 24h local (GCS staging) |
 | BigQuery (weekly) | S3 `bigquery/daily-refresh/` | Load Parquet files | 7 days |
 | BigQuery (monthly) | S3 `bigquery/musicbrainz/` | Load Parquet files | 30 days |
 | BigQuery (Spotify) | S3 `bigquery/spotify/` | Load from Glacier Deep Archive | N/A (static) |
@@ -342,6 +342,15 @@ export AWS_DEFAULT_REGION=us-east-1
 ## Backup freshness monitor
 
 A GitHub Actions cron (`.github/workflows/dr-backup-freshness.yml`) runs daily at 14:00 UTC and checks that the most recent objects in `s3://nomadkaraoke-backup/firestore/`, `gcs/job-files/`, `secrets/`, and `bigquery/daily-refresh/` are no older than their per-prefix limit. Stale or missing backups → Discord alert + workflow failure.
+
+Per-prefix limits reflect each prefix's **S3 (off-site)** cadence, which is not the same as its GCS-staging cadence:
+
+| Prefix | S3 upload cadence | Monitor limit |
+|--------|-------------------|---------------|
+| `gcs/job-files/`, `secrets/` | nightly | 36h |
+| `firestore/`, `bigquery/daily-refresh/` | weekly (Sundays) | 192h (≈8 days) |
+
+Firestore exports to GCS staging nightly (24h local restore point) but only ships to S3 weekly to cut cross-cloud egress (see `backup_to_aws/main.py` → `firestore_to_s3_today`). The monitor only sees the S3 copy, so its Firestore limit must allow a full week — using the 36h nightly figure caused a false "DR backup is stale" alert every Tue–Sat (fixed 2026-06-18).
 
 This monitor runs in GitHub, not GCP, so it survives a complete GCP project loss.
 
