@@ -241,7 +241,8 @@
     "noJobsYet": "Ei töitä vielä. Luo sellainen aloittaaksesi!",
     "referrals": "Suosittelut",
     "bulkMode": "Erä",
-    "singleMode": "Yksittäinen"
+    "singleMode": "Yksittäinen",
+    "submitModeToggle": "Yksittäis- tai joukkolähetys"
   },
   "auth": {
     "noVerificationToken": "Vahvistustunnusta ei annettu",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Ääni latautuu yhä...",
       "loadingAudio": "Ladataan ääntä...",
       "autoCorrect": "Automaattinen korjaus",
-      "autoCorrectDesc": "Luo korjausehdotuksia vertaamalla litterointia vertailusanoituksiin. Mitään ei muuteta ennen kuin hyväksyt jokaisen ehdotuksen.",
+      "autoCorrectDesc": "Vertailee transkriptiota viitesanoituksiin ja tekee sanakohtaisia korjauksia puolestasi. Korjatut sanat näkyvät violetteina.",
       "autoCorrectedCount": "Automaattisesti korjattu · {count}",
       "autoCorrectedDesc": "Teimme {count, plural, =1 {# automaattisen korjauksen} other {# automaattista korjausta}} (näkyy violettina). Napsauta nähdäksesi tiedot ja kumoa ne korjaukset, jotka haluat perua."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Oranssilla korostetut sanat ovat aukkoja — osioita, joita ei voitu yhdistää viitesanoituksiin ja jotka saattavat sisältää virheitä (esim. väärin kuullut sanat, jotka kuulostavat samalta).",
       "useNAndP": "Käytä N ja P hypätäksesi aukkojen välillä. Napsauta jokaisen kohdalla toista rivin vieressä ja vertaa kuulemaasi oikealla oleviin viitesanoituksiin, napsauta sitten sanaa muokataksesi tai poistaaksesi sen.",
       "watchOutForPhantomWords": "Varo haamusanoja kuten \"ja\" rivien alussa tai lopussa — litterointi lisää näitä usein.",
-      "tryTimelineView": "Kokeile Aikajana-näkymää havaitaksesi epätavallisen pitkät sanat (10+ sekuntia), jotka yleensä viittaavat ajoitusongelmaan.",
+      "tryTimelineView": "Yli 2 sekunnin sanat ja yli 2 sekunnin tauot on merkitty oranssilla kestolla — tarkista ne ajoitusongelmien varalta. Vaihda Edistynyt-tilaan nähdäksesi jokaisen rivin venytettynä aikajanalle.",
       "watchFullTutorial": "Katso koko opetusohjelma",
       "correctionHandlers": "Korjauskäsittelijät",
       "anchorSequences": "Ankkurisekvenssit",
@@ -1348,7 +1349,7 @@
       "close": "Sulje",
       "confidence_balanced": "Tasapainoinen",
       "compareHint": "Hitaampi ja kalliimpi, mutta näyttää, mistä ehdotuksista useampi malli on samaa mieltä",
-      "compareLabel": "Vertaile useita tekoälymalleja",
+      "compareLabel": "Vertaile useita malleja",
       "conflictBadge": "vaihtoehto",
       "conflictTooltip": "Näille sanoille on eri ehdotuksia — yhden vaihtoehdon hyväksyminen hylkää muut.",
       "consensusBadge": "{consensus}/{total} mallia",

@@ -241,7 +241,8 @@
     "noJobsYet": "Aucun projet pour le moment. Crées-en un pour commencer !",
     "referrals": "Parrainages",
     "bulkMode": "En lot",
-    "singleMode": "Individuel"
+    "singleMode": "Individuel",
+    "submitModeToggle": "Soumission unique ou groupée"
   },
   "auth": {
     "noVerificationToken": "Aucun jeton de vérification fourni",
@@ -840,7 +841,7 @@
       "audioStillLoading": "L'audio est toujours en cours de chargement...",
       "loadingAudio": "Chargement de l'audio...",
       "autoCorrect": "Correction automatique",
-      "autoCorrectDesc": "Génère des suggestions de correction en comparant la transcription aux paroles de référence. Rien n'est modifié tant que tu n'as pas accepté chaque suggestion.",
+      "autoCorrectDesc": "Compare la transcription aux paroles de référence et applique des corrections mot par mot pour toi. Les mots corrigés s'affichent en violet.",
       "autoCorrectedCount": "Corrections automatiques · {count}",
       "autoCorrectedDesc": "Nous avons appliqué {count, plural, =1 {# correction automatique} other {# corrections automatiques}} (affichées en violet). Clique pour voir les détails et annuler celles avec lesquelles tu n'es pas d'accord."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Les mots surlignés en orange sont des écarts — des sections qui n'ont pas pu être associées aux paroles de référence et peuvent contenir des erreurs (ex. mots mal entendus qui se ressemblent).",
       "useNAndP": "Utilise N et P pour sauter entre les écarts. Pour chacun, clique sur lecture à côté de la ligne et compare ce que tu entends avec les paroles de référence à droite, puis clique sur un mot pour le modifier ou le supprimer.",
       "watchOutForPhantomWords": "Fais attention aux mots fantômes comme \"et\" au début ou à la fin des lignes — la transcription ajoute souvent ceux-ci.",
-      "tryTimelineView": "Essaie la vue Chronologie pour repérer tout mot inhabituellement long (10+ secondes), ce qui indique généralement un problème de timing.",
+      "tryTimelineView": "Les mots de plus de 2s et les écarts de plus de 2s sont signalés par une durée ambre — vérifie-les pour d'éventuels problèmes de synchronisation. Passe en mode Avancé pour voir chaque ligne étirée sur une chronologie.",
       "watchFullTutorial": "Regarder le tutoriel complet",
       "correctionHandlers": "Gestionnaires de correction",
       "anchorSequences": "Séquences d'ancrage",
@@ -1348,7 +1349,7 @@
       "close": "Fermer",
       "confidence_balanced": "Équilibrée",
       "compareHint": "Plus lent et plus cher, mais montre les suggestions sur lesquelles plusieurs modèles s'accordent",
-      "compareLabel": "Comparer plusieurs modèles d'IA",
+      "compareLabel": "Comparer plusieurs modèles",
       "conflictBadge": "variante",
       "conflictTooltip": "Plusieurs suggestions sont proposées pour ces mots — en accepter une rejette les autres.",
       "consensusBadge": "{consensus}/{total} modèles",

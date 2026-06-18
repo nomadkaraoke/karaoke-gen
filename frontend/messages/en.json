@@ -241,7 +241,8 @@
     "noJobsYet": "No jobs yet. Create one to get started!",
     "referrals": "Referrals",
     "singleMode": "Single",
-    "bulkMode": "Bulk"
+    "bulkMode": "Bulk",
+    "submitModeToggle": "Single or bulk submission"
   },
   "auth": {
     "noVerificationToken": "No verification token provided",

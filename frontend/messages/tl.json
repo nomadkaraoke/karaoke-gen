@@ -241,7 +241,8 @@
     "noJobsYet": "Wala pang mga job. Gumawa ng isa para makapagsimula!",
     "referrals": "Mga Referral",
     "bulkMode": "Maramihan",
-    "singleMode": "Isahan"
+    "singleMode": "Isahan",
+    "submitModeToggle": "Isahan o maramihang pagsusumite"
   },
   "auth": {
     "noVerificationToken": "Walang ibinigay na verification token",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Naglo-load pa rin ang audio...",
       "loadingAudio": "Naglo-load ang audio...",
       "autoCorrect": "Auto-correct",
-      "autoCorrectDesc": "Bumuo ng mga mungkahi sa pagwawasto sa pamamagitan ng paghahambing ng transcription sa reference lyrics. Walang mababago hangga't hindi mo tinatanggap ang bawat mungkahi.",
+      "autoCorrectDesc": "Paghambingin ang transkripsyon laban sa mga reference na lyrics at ilapat ang mga pag-aayos sa antas ng salita para sa iyo. Ang mga naitamang salita ay ipinapakita sa kulay lila.",
       "autoCorrectedCount": "Na-auto-correct · {count}",
       "autoCorrectedDesc": "Naglapat kami ng {count, plural, =1 {# auto-correction} other {# na auto-correction}} (ipinapakita sa kulay lila). I-click upang makita ang mga detalye at i-undo ang anumang hindi mo sinasang-ayunan."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Ang mga salitang naka-highlight ng orange ay mga gap — mga bahagi na hindi maitugma sa reference lyrics at maaaring may mga mali (hal. mga maling narinig na salita na magkatunog).",
       "useNAndP": "Gamitin ang N at P para lumipat sa pagitan ng mga gap. Para sa bawat isa, i-click ang play sa tabi ng linya at ihambing ang naririnig mo sa reference lyrics sa kanan, pagkatapos ay i-click ang isang salita para i-edit o tanggalin ito.",
       "watchOutForPhantomWords": "Mag-ingat sa mga phantom word tulad ng \"and\" sa simula o dulo ng mga linya — madalas itong idinadagdag ng transcription.",
-      "tryTimelineView": "Subukan ang Timeline view para makita ang anumang hindi pangkaraniwang mahahabang salita (10+ segundo), na karaniwang nagpapahiwatig ng problema sa timing.",
+      "tryTimelineView": "Ang mga salitang higit sa 2s at mga puwang na higit sa 2s ay minarkahan ng kulay amber na tagal — suriin ang mga ito para sa mga problema sa timing. Lumipat sa Advanced upang makita ang bawat linya na naka-stretch sa isang timeline.",
       "watchFullTutorial": "Panoorin ang buong tutorial",
       "correctionHandlers": "Correction Handlers",
       "anchorSequences": "Anchor Sequences",
@@ -1348,7 +1349,7 @@
       "close": "Isara",
       "confidence_balanced": "Balanse",
       "compareHint": "Mas mabagal at mas mahal, pero ipinapakita nito kung aling mga mungkahi ang sinasang-ayunan ng iba't ibang modelo",
-      "compareLabel": "Paghambingin ang iba't ibang AI model",
+      "compareLabel": "Paghambingin ang maraming modelo",
       "conflictBadge": "variant",
       "conflictTooltip": "May iba't ibang mungkahi para sa mga salitang ito — ang pagtanggap sa isang variant ay magbabalewala sa iba.",
       "consensusBadge": "{consensus}/{total} modelo",

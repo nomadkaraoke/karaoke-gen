@@ -241,7 +241,8 @@
     "noJobsYet": "Brak zadań. Utwórz jedno, aby zacząć!",
     "referrals": "Polecenia",
     "bulkMode": "Masowo",
-    "singleMode": "Pojedynczo"
+    "singleMode": "Pojedynczo",
+    "submitModeToggle": "Pojedyncze lub masowe przesyłanie"
   },
   "auth": {
     "noVerificationToken": "Brak tokena weryfikacyjnego",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Audio wciąż się ładuje...",
       "loadingAudio": "Ładowanie audio...",
       "autoCorrect": "Autokorekta",
-      "autoCorrectDesc": "Wygeneruj sugestie poprawek, porównując transkrypcję z tekstem referencyjnym. Żadna zmiana nie zostanie wprowadzona, dopóki jej nie zaakceptujesz.",
+      "autoCorrectDesc": "Porównaj transkrypcję z tekstem referencyjnym i pozwól nanieść poprawki na poziomie słów za ciebie. Poprawione słowa są wyświetlane na fioletowo.",
       "autoCorrectedCount": "Automatycznie poprawione · {count}",
       "autoCorrectedDesc": "Zastosowaliśmy {count, plural, one {# autokorektę} few {# autokorekty} many {# autokorekt} other {# autokorekt}} (zaznaczone na fioletowo). Kliknij, aby wyświetlić szczegóły i cofnąć te, z którymi się nie zgadzasz."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Słowa podświetlone na pomarańczowo to luki — sekcje, których nie można było dopasować do tekstów referencyjnych i mogą zawierać błędy (np. źle usłyszane słowa, które brzmią podobnie).",
       "useNAndP": "Użyj N i P, aby przeskakiwać między lukami. Dla każdej z nich kliknij odtwarzaj obok linii i porównaj to, co słyszysz, z tekstami referencyjnymi po prawej stronie, a następnie kliknij słowo, aby je edytować lub usunąć.",
       "watchOutForPhantomWords": "Uważaj na słowa-widma, takie jak \"and\" na początku lub na końcu linii — transkrypcja często je dodaje.",
-      "tryTimelineView": "Wypróbuj widok Osi czasu, aby zauważyć nietypowo długie słowa (10+ sekund), które zazwyczaj wskazują na problem z synchronizacją.",
+      "tryTimelineView": "Słowa trwające ponad 2s i przerwy powyżej 2s są oznaczone bursztynowym czasem trwania — sprawdź je pod kątem problemów z synchronizacją. Przełącz na Zaawansowane, aby zobaczyć każdą linię rozciągniętą na osi czasu.",
       "watchFullTutorial": "Obejrzyj pełny samouczek",
       "correctionHandlers": "Procedury obsługi poprawek",
       "anchorSequences": "Sekwencje kotwic",
@@ -1348,7 +1349,7 @@
       "close": "Zamknij",
       "confidence_balanced": "Zrównoważona",
       "compareHint": "Działa wolniej i kosztuje więcej, ale pokazuje, co do których sugestii zgadza się kilka modeli",
-      "compareLabel": "Porównaj kilka modeli AI",
+      "compareLabel": "Porównaj wiele modeli",
       "conflictBadge": "wariant",
       "conflictTooltip": "Dla tych słów dostępne są różne sugestie — zaakceptowanie jednego wariantu odrzuca pozostałe.",
       "consensusBadge": "{consensus}/{total} modeli",

@@ -241,7 +241,8 @@
     "noJobsYet": "Ancora nessun lavoro. Creane uno per iniziare!",
     "referrals": "Inviti",
     "bulkMode": "In blocco",
-    "singleMode": "Singolo"
+    "singleMode": "Singolo",
+    "submitModeToggle": "Invio singolo o in blocco"
   },
   "auth": {
     "noVerificationToken": "Nessun token di verifica fornito",
@@ -840,7 +841,7 @@
       "audioStillLoading": "L'audio è ancora in caricamento...",
       "loadingAudio": "Caricamento audio...",
       "autoCorrect": "Correzione automatica",
-      "autoCorrectDesc": "Genera suggerimenti di correzione confrontando la trascrizione con il testo di riferimento. Non viene modificato nulla finché non accetti ogni suggerimento.",
+      "autoCorrectDesc": "Confronta la trascrizione con il testo di riferimento e applica le correzioni a livello di parola per te. Le parole corrette sono mostrate in viola.",
       "autoCorrectedCount": "Correzioni automatiche · {count}",
       "autoCorrectedDesc": "Abbiamo applicato {count, plural, =1 {# correzione automatica} other {# correzioni automatiche}} (mostrate in viola). Clicca per visualizzare i dettagli e annullare quelle con cui non sei d'accordo."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Le parole evidenziate in arancione sono lacune — sezioni che non è stato possibile abbinare al testo di riferimento e potrebbero contenere errori (es. parole fraintese che suonano in modo simile).",
       "useNAndP": "Usa N e P per saltare tra le lacune. Per ognuna, clicca su play accanto alla riga e confronta ciò che senti con il testo di riferimento a destra, poi clicca su una parola per modificarla o eliminarla.",
       "watchOutForPhantomWords": "Fai attenzione alle parole fantasma come \"and\" all'inizio o alla fine delle righe — la trascrizione spesso le aggiunge.",
-      "tryTimelineView": "Prova la vista Timeline per individuare eventuali parole insolitamente lunghe (10+ secondi), che di solito indicano un problema di tempismo.",
+      "tryTimelineView": "Le parole oltre i 2s e le pause oltre i 2s sono contrassegnate con una durata color ambra — controllale per problemi di tempismo. Passa ad Avanzate per vedere ogni riga estesa in una timeline.",
       "watchFullTutorial": "Guarda il tutorial completo",
       "correctionHandlers": "Gestori di correzione",
       "anchorSequences": "Sequenze di ancoraggio",
@@ -1348,7 +1349,7 @@
       "close": "Chiudi",
       "confidence_balanced": "Bilanciato",
       "compareHint": "Più lento e costoso, ma mostra su quali suggerimenti concordano più modelli",
-      "compareLabel": "Confronta più modelli IA",
+      "compareLabel": "Confronta più modelli",
       "conflictBadge": "variante",
       "conflictTooltip": "Ci sono diversi suggerimenti per queste parole — accettando una variante rifiuterai le altre.",
       "consensusBadge": "{consensus}/{total} modelli",

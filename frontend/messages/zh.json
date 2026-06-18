@@ -241,7 +241,8 @@
     "noJobsYet": "暂无任务。创建一个来开始吧！",
     "referrals": "推荐",
     "bulkMode": "批量",
-    "singleMode": "单曲"
+    "singleMode": "单曲",
+    "submitModeToggle": "单曲或批量提交"
   },
   "auth": {
     "noVerificationToken": "未提供验证令牌",
@@ -840,7 +841,7 @@
       "audioStillLoading": "音频仍在加载中...",
       "loadingAudio": "正在加载音频...",
       "autoCorrect": "自动纠错",
-      "autoCorrectDesc": "通过将转录内容与参考歌词进行比较来生成纠错建议。在您接受每条建议之前，不会进行任何更改。",
+      "autoCorrectDesc": "将转录内容与参考歌词进行比较，并为您应用单词级别的修复。已纠正的单词会以紫色显示。",
       "autoCorrectedCount": "自动更正 · {count}",
       "autoCorrectedDesc": "我们进行了 {count, plural, =1 {# 处自动更正} other {# 处自动更正}}（以紫色显示）。点击查看详情，您也可以撤销任何不合适的更正。"
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "橙色高亮的单词是未匹配片段——无法与参考歌词匹配的部分，可能包含错误（例如听错的相似发音单词）。",
       "useNAndP": "使用 N 和 P 在未匹配片段之间跳转。对于每一个，点击行旁边的播放按钮，将您听到的内容与右侧的参考歌词进行比较，然后点击一个单词进行编辑或删除。",
       "watchOutForPhantomWords": "注意行首或行尾多余的词 (Phantom words)，如“and”——转录经常会添加这些词。",
-      "tryTimelineView": "尝试时间轴视图以发现任何异常长的单词（10 秒以上），这通常表明存在时间同步问题。",
+      "tryTimelineView": "超过2秒的单词和超过2秒的间隙会用琥珀色标记时长 — 请检查这些地方是否存在时间同步问题。切换到高级模式以查看每行展开的时间轴。",
       "watchFullTutorial": "观看完整教程",
       "correctionHandlers": "校对处理程序",
       "anchorSequences": "锚点序列",
@@ -1348,7 +1349,7 @@
       "close": "关闭",
       "confidence_balanced": "平衡",
       "compareHint": "速度较慢且成本较高，但会显示多个模型一致认可的建议",
-      "compareLabel": "比较多个 AI 模型",
+      "compareLabel": "比较多个模型",
       "conflictBadge": "选项",
       "conflictTooltip": "这些词有不同的修改建议——接受其中一个会自动拒绝其他建议。",
       "consensusBadge": "{consensus}/{total} 个模型",

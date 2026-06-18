@@ -241,7 +241,8 @@
     "noJobsYet": "Encara no hi ha treballs. Crea'n un per començar!",
     "referrals": "Referències",
     "bulkMode": "En lot",
-    "singleMode": "Individual"
+    "singleMode": "Individual",
+    "submitModeToggle": "Enviament únic o massiu"
   },
   "auth": {
     "noVerificationToken": "No s'ha proporcionat cap testimoni de verificació",
@@ -840,7 +841,7 @@
       "audioStillLoading": "L'àudio encara s'està carregant...",
       "loadingAudio": "Carregant l'àudio...",
       "autoCorrect": "Autocorrecció",
-      "autoCorrectDesc": "Genera suggeriments de correcció comparant la transcripció amb la lletra de referència. No es canvia res fins que acceptes cada suggeriment.",
+      "autoCorrectDesc": "Compara la transcripció amb la lletra de referència i aplica correccions a nivell de paraula per tu. Les paraules corregides es mostren en lila.",
       "autoCorrectedCount": "Autocorregit · {count}",
       "autoCorrectedDesc": "Hem aplicat {count, plural, =1 {# autocorrecció} other {# autocorreccions}} (es mostren en lila). Fes clic per veure els detalls i desfer les que no et semblin bé."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Les paraules ressaltades en taronja són buits — seccions que no s'han pogut fer coincidir amb les lletres de referència i poden contenir errors (p. ex. paraules mal enteses que sonen semblant).",
       "useNAndP": "Utilitza N i P per saltar entre els buits. Per a cadascun, fes clic a reprodueix al costat de la línia i compara el que sents amb les lletres de referència a la dreta, després fes clic a una paraula per editar-la o suprimir-la.",
       "watchOutForPhantomWords": "Vigila amb les paraules fantasma com \"and\" a l'inici o al final de les línies — la transcripció sovint les afegeix.",
-      "tryTimelineView": "Prova la vista de Línia de temps per detectar qualsevol paraula inusualment llarga (més de 10 segons), que normalment indica un problema de temps.",
+      "tryTimelineView": "Les paraules de més de 2s i els espais de més de 2s es marquen amb una durada de color ambre — revisa'ls per si hi ha problemes de sincronització. Canvia a Avançat per veure cada línia estesa en una línia de temps.",
       "watchFullTutorial": "Mira el tutorial complet",
       "correctionHandlers": "Gestors de correcció",
       "anchorSequences": "Seqüències d'ancoratge",
@@ -1348,7 +1349,7 @@
       "close": "Tanca",
       "confidence_balanced": "Equilibrat",
       "compareHint": "Més lent i més car, però mostra en quins suggeriments coincideixen diversos models",
-      "compareLabel": "Compara diversos models d'IA",
+      "compareLabel": "Compara múltiples models",
       "conflictBadge": "variant",
       "conflictTooltip": "Hi ha diferents suggeriments per a aquestes paraules — si acceptes una variant, es rebutgen les altres.",
       "consensusBadge": "{consensus}/{total} models",

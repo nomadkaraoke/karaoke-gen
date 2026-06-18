@@ -241,7 +241,8 @@
     "noJobsYet": "Zatiaľ žiadne úlohy. Vytvor jednu a začni!",
     "referrals": "Odporúčania",
     "bulkMode": "Hromadne",
-    "singleMode": "Jednotlivo"
+    "singleMode": "Jednotlivo",
+    "submitModeToggle": "Jednotlivé alebo hromadné odoslanie"
   },
   "auth": {
     "noVerificationToken": "Nebol poskytnutý žiadny overovací token",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Audio sa stále načítava...",
       "loadingAudio": "Načítava sa audio...",
       "autoCorrect": "Automatická oprava",
-      "autoCorrectDesc": "Vygeneruj návrhy na opravu porovnaním prepisu s referenčným textom. Nič sa nezmení, kým neschváliš každý návrh.",
+      "autoCorrectDesc": "Porovná prepis s referenčným textom a aplikuje za teba opravy na úrovni slov. Opravené slová sú zobrazené fialovou farbou.",
       "autoCorrectedCount": "Automaticky opravené · {count}",
       "autoCorrectedDesc": "Aplikovali sme {count, plural, =1 {# automatickú opravu} few {# automatické opravy} other {# automatických opráv}} (zobrazené fialovou farbou). Klikni pre zobrazenie podrobností a zrušenie tých, s ktorými nesúhlasíš."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Oranžovo zvýraznené slová sú medzery — časti, ktoré sa nepodarilo priradiť k referenčnému textu a môžu obsahovať chyby (napr. zle počuté slová, ktoré znejú podobne).",
       "useNAndP": "Použi N a P na preskakovanie medzi medzerami. Pri každej klikni na prehrávanie vedľa riadku a porovnaj to, čo počuješ, s referenčným textom napravo, potom klikni na slovo pre jeho úpravu alebo vymazanie.",
       "watchOutForPhantomWords": "Dávaj si pozor na fantómové slová ako \"and\" na začiatku alebo na konci riadkov — prepis ich často pridáva.",
-      "tryTimelineView": "Vyskúšaj zobrazenie Časová os, aby si si všimol akékoľvek nezvyčajne dlhé slová (10+ sekúnd), ktoré zvyčajne naznačujú problém s časovaním.",
+      "tryTimelineView": "Slová dlhšie ako 2 s a medzery dlhšie ako 2 s sú označené jantárovou farbou — skontroluj ich kvôli problémom s časovaním. Prepni na Pokročilé, aby si videl každý riadok roztiahnutý na časovej osi.",
       "watchFullTutorial": "Pozrieť si celý tutoriál",
       "correctionHandlers": "Spracovatelia opráv",
       "anchorSequences": "Kotviace sekvencie",
@@ -1348,7 +1349,7 @@
       "close": "Zavrieť",
       "confidence_balanced": "Vyvážená",
       "compareHint": "Je to pomalšie a stojí to viac, ale ukáže, na ktorých návrhoch sa zhoduje viacero modelov",
-      "compareLabel": "Porovnať viacero AI modelov",
+      "compareLabel": "Porovnaj viaceré modely",
       "conflictBadge": "variant",
       "conflictTooltip": "Pre tieto slová existujú rôzne návrhy — prijatím jedného variantu odmietneš ostatné.",
       "consensusBadge": "{consensus}/{total} modelov",

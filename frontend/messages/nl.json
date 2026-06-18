@@ -241,7 +241,8 @@
     "noJobsYet": "Nog geen taken. Maak er een aan om te beginnen!",
     "referrals": "Verwijzingen",
     "bulkMode": "Bulk",
-    "singleMode": "Enkel"
+    "singleMode": "Enkel",
+    "submitModeToggle": "Enkele of bulk inzending"
   },
   "auth": {
     "noVerificationToken": "Geen verificatietoken opgegeven",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Audio is nog aan het laden...",
       "loadingAudio": "Audio laden...",
       "autoCorrect": "Autocorrectie",
-      "autoCorrectDesc": "Genereer correctiesuggesties door de transcriptie te vergelijken met de referentiesongtekst. Er wordt niets gewijzigd totdat je elke suggestie accepteert.",
+      "autoCorrectDesc": "Vergelijk de transcriptie met de referentietekst en pas correcties op woordniveau voor je toe. Gecorrigeerde woorden worden in het paars weergegeven.",
       "autoCorrectedCount": "Automatisch gecorrigeerd · {count}",
       "autoCorrectedDesc": "We hebben {count, plural, =1 {# automatische correctie} other {# automatische correcties}} toegepast (weergegeven in het paars). Klik om de details te bekijken en maak de correcties ongedaan waar je het niet mee eens bent."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "De oranje gemarkeerde woorden zijn gaten — secties die niet konden worden gematcht met de referentie songteksten en mogelijk fouten bevatten (bijv. verkeerd verstane woorden die vergelijkbaar klinken).",
       "useNAndP": "Gebruik N en P om tussen gaten te springen. Klik voor elk gat op afspelen naast de regel en vergelijk wat je hoort met de referentie songteksten aan de rechterkant, klik vervolgens op een woord om het te bewerken of te verwijderen.",
       "watchOutForPhantomWords": "Pas op voor spookwoorden zoals \"en\" aan het begin of einde van regels — de transcriptie voegt deze vaak toe.",
-      "tryTimelineView": "Probeer de Tijdlijn-weergave om ongewoon lange woorden (10+ seconden) te spotten, wat meestal wijst op een timingprobleem.",
+      "tryTimelineView": "Woorden langer dan 2s en pauzes langer dan 2s worden gemarkeerd met een oranje duur — controleer deze op timingproblemen. Schakel over naar Geavanceerd om elke regel uitgerekt in een tijdlijn te zien.",
       "watchFullTutorial": "Bekijk volledige tutorial",
       "correctionHandlers": "Correctie-handlers",
       "anchorSequences": "Anker-sequenties",
@@ -1348,7 +1349,7 @@
       "close": "Sluiten",
       "confidence_balanced": "Gebalanceerd",
       "compareHint": "Langzamer en kost meer, maar laat zien over welke suggesties meerdere modellen het eens zijn",
-      "compareLabel": "Vergelijk meerdere AI-modellen",
+      "compareLabel": "Vergelijk meerdere modellen",
       "conflictBadge": "variant",
       "conflictTooltip": "Er zijn verschillende suggesties voor deze woorden — als je één variant accepteert, worden de andere afgewezen.",
       "consensusBadge": "{consensus}/{total} modellen",

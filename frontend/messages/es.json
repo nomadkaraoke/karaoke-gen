@@ -241,7 +241,8 @@
     "noJobsYet": "Aún no hay trabajos. ¡Crea uno para empezar!",
     "referrals": "Referencias",
     "bulkMode": "Por lotes",
-    "singleMode": "Individual"
+    "singleMode": "Individual",
+    "submitModeToggle": "Envío individual o masivo"
   },
   "auth": {
     "noVerificationToken": "No se proporcionó token de verificación",
@@ -840,7 +841,7 @@
       "audioStillLoading": "El audio aún se está cargando...",
       "loadingAudio": "Cargando audio...",
       "autoCorrect": "Autocorrección",
-      "autoCorrectDesc": "Genera sugerencias de corrección comparando la transcripción con las letras de referencia. No se cambia nada hasta que aceptas cada sugerencia.",
+      "autoCorrectDesc": "Compara la transcripción con las letras de referencia y aplica correcciones a nivel de palabra por ti. Las palabras corregidas se muestran en morado.",
       "autoCorrectedCount": "Corregido automáticamente · {count}",
       "autoCorrectedDesc": "Aplicamos {count, plural, =1 {# corrección automática} other {# correcciones automáticas}} (se muestran en morado). Haz clic para ver los detalles y deshacer cualquiera con la que no estés de acuerdo."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Las palabras resaltadas en naranja son huecos — secciones que no se pudieron emparejar con las letras de referencia y pueden contener errores (ej. palabras mal escuchadas que suenan similar).",
       "useNAndP": "Usa N y P para saltar entre huecos. Para cada uno, haz clic en reproducir junto a la línea y compara lo que escuchas con las letras de referencia a la derecha, luego haz clic en una palabra para editarla o eliminarla.",
       "watchOutForPhantomWords": "Cuidado con las palabras fantasma como \"and\" al principio o al final de las líneas — la transcripción a menudo las añade.",
-      "tryTimelineView": "Prueba la vista de Línea de tiempo para detectar cualquier palabra inusualmente larga (10+ segundos), que generalmente indica un problema de tiempo.",
+      "tryTimelineView": "Las palabras de más de 2s y los huecos de más de 2s se marcan con una duración en ámbar — revísalos para detectar problemas de tiempo. Cambia a Avanzado para ver cada línea extendida en una línea de tiempo.",
       "watchFullTutorial": "Ver tutorial completo",
       "correctionHandlers": "Manejadores de corrección",
       "anchorSequences": "Secuencias de anclaje",
@@ -1348,7 +1349,7 @@
       "close": "Cerrar",
       "confidence_balanced": "Equilibrada",
       "compareHint": "Es más lento y cuesta más, pero muestra en qué sugerencias coinciden varios modelos",
-      "compareLabel": "Comparar varios modelos de IA",
+      "compareLabel": "Comparar múltiples modelos",
       "conflictBadge": "variante",
       "conflictTooltip": "Hay diferentes sugerencias para estas palabras — al aceptar una variante se rechazan las demás.",
       "consensusBadge": "{consensus}/{total} modelos",

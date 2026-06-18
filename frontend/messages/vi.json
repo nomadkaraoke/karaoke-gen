@@ -241,7 +241,8 @@
     "noJobsYet": "Chưa có công việc nào. Hãy tạo một công việc để bắt đầu!",
     "referrals": "Giới thiệu",
     "bulkMode": "Hàng loạt",
-    "singleMode": "Đơn lẻ"
+    "singleMode": "Đơn lẻ",
+    "submitModeToggle": "Gửi đơn lẻ hoặc hàng loạt"
   },
   "auth": {
     "noVerificationToken": "Không có mã xác minh được cung cấp",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Âm thanh vẫn đang tải...",
       "loadingAudio": "Đang tải âm thanh...",
       "autoCorrect": "Tự động sửa lỗi",
-      "autoCorrectDesc": "Tạo các đề xuất sửa lỗi bằng cách so sánh bản chép lời với lời bài hát tham khảo. Sẽ không có thay đổi nào được áp dụng cho đến khi bạn chấp nhận từng đề xuất.",
+      "autoCorrectDesc": "So sánh bản phiên âm với lời bài hát tham chiếu và áp dụng các bản sửa lỗi ở cấp độ từ cho bạn. Các từ đã sửa được hiển thị màu tím.",
       "autoCorrectedCount": "Đã chỉnh sửa tự động · {count}",
       "autoCorrectedDesc": "Chúng tôi đã áp dụng {count, plural, =1 {# chỉnh sửa tự động} other {# chỉnh sửa tự động}} (hiển thị màu tím). Nhấp để xem chi tiết và hoàn tác những thay đổi mà bạn không đồng ý."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Các từ được tô sáng màu cam là các đoạn trống — các phần không thể khớp với lời bài hát tham khảo và có thể chứa lỗi (ví dụ: các từ có âm thanh giống nhau dễ bị nghe nhầm).",
       "useNAndP": "Sử dụng N và P để nhảy giữa các đoạn trống. Đối với mỗi đoạn trống, hãy nhấp vào phát bên cạnh dòng và so sánh những gì bạn nghe được với lời bài hát tham khảo ở bên phải, sau đó nhấp vào một từ để chỉnh sửa hoặc xóa nó.",
       "watchOutForPhantomWords": "Chú ý các từ thừa như \"and\" ở đầu hoặc cuối dòng — bản chép lời thường thêm những từ này.",
-      "tryTimelineView": "Hãy thử chế độ xem Dòng thời gian để phát hiện bất kỳ từ nào dài bất thường (hơn 10 giây), điều này thường cho thấy có vấn đề về thời gian.",
+      "tryTimelineView": "Các từ trên 2 giây và khoảng trống trên 2 giây được đánh dấu bằng thời lượng màu hổ phách — hãy kiểm tra chúng để xem có vấn đề về thời gian không. Chuyển sang chế độ Nâng cao để xem từng dòng được kéo dài thành một dòng thời gian.",
       "watchFullTutorial": "Xem toàn bộ hướng dẫn",
       "correctionHandlers": "Trình xử lý sửa lỗi",
       "anchorSequences": "Chuỗi neo",
@@ -1348,7 +1349,7 @@
       "close": "Đóng",
       "confidence_balanced": "Cân bằng",
       "compareHint": "Chậm hơn và tốn phí hơn, nhưng cho thấy các gợi ý được nhiều mô hình cùng đồng thuận",
-      "compareLabel": "So sánh nhiều mô hình AI",
+      "compareLabel": "So sánh nhiều mô hình",
       "conflictBadge": "biến thể",
       "conflictTooltip": "Có nhiều đề xuất khác nhau cho những từ này — khi chấp nhận một phương án, các phương án khác sẽ bị loại bỏ.",
       "consensusBadge": "{consensus}/{total} mô hình",

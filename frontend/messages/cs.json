@@ -241,7 +241,8 @@
     "noJobsYet": "Zatím žádné úlohy. Vytvoř nějakou a začni!",
     "referrals": "Doporučení",
     "bulkMode": "Hromadně",
-    "singleMode": "Jednotlivě"
+    "singleMode": "Jednotlivě",
+    "submitModeToggle": "Jednotlivé nebo hromadné odeslání"
   },
   "auth": {
     "noVerificationToken": "Nebyl poskytnut žádný ověřovací token",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Audio se stále načítá...",
       "loadingAudio": "Načítání audia...",
       "autoCorrect": "Automatická oprava",
-      "autoCorrectDesc": "Vygenerovat návrhy oprav porovnáním přepisu s referenčním textem. Nic se nezmění, dokud každý návrh nepřijmeš.",
+      "autoCorrectDesc": "Porovná přepis s referenčním textem a aplikuje za tebe opravy na úrovni slov. Opravená slova jsou zobrazena fialově.",
       "autoCorrectedCount": "Automaticky opraveno · {count}",
       "autoCorrectedDesc": "Provedli jsme {count, plural, one {# automatickou opravu} few {# automatické opravy} other {# automatických oprav}} (zobrazeno fialově). Kliknutím si můžeš zobrazit podrobnosti a vrátit zpět ty, se kterými nesouhlasíš."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "Oranžově zvýrazněná slova jsou mezery — části, které se nepodařilo spárovat s referenčním textem a mohou obsahovat chyby (např. špatně slyšená slova, která zní podobně).",
       "useNAndP": "Použij N a P pro přeskakování mezi mezerami. U každé z nich klikni na přehrát vedle řádku a porovnej, co slyšíš, s referenčním textem vpravo, pak klikni na slovo pro jeho úpravu nebo smazání.",
       "watchOutForPhantomWords": "Dávej pozor na fantomová slova jako \"and\" na začátku nebo na konci řádků — přepis je často přidává.",
-      "tryTimelineView": "Zkus zobrazení Časová osa, abys odhalil neobvykle dlouhá slova (10+ sekund), což obvykle značí problém s časováním.",
+      "tryTimelineView": "Slova delší než 2 s a mezery delší než 2 s jsou označeny oranžovou délkou — zkontroluj je kvůli problémům s časováním. Přepni na Pokročilé, abys viděl každý řádek roztažený na časové ose.",
       "watchFullTutorial": "Přehrát kompletní tutoriál",
       "correctionHandlers": "Obslužné rutiny oprav",
       "anchorSequences": "Kotevní sekvence",
@@ -1348,7 +1349,7 @@
       "close": "Zavřít",
       "confidence_balanced": "Vyvážená",
       "compareHint": "Pomalejší a dražší, ale ukáže, na kterých návrzích se shodne více modelů",
-      "compareLabel": "Porovnat více AI modelů",
+      "compareLabel": "Porovnat více modelů",
       "conflictBadge": "varianta",
       "conflictTooltip": "Pro tato slova existují různé návrhy — přijetím jedné varianty odmítneš ostatní.",
       "consensusBadge": "{consensus}/{total} modelů",

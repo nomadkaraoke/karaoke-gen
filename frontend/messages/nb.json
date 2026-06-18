@@ -241,7 +241,8 @@
     "noJobsYet": "Ingen jobber ennå. Opprett en for å komme i gang!",
     "referrals": "Henvisninger",
     "bulkMode": "Bulk",
-    "singleMode": "Enkel"
+    "singleMode": "Enkel",
+    "submitModeToggle": "Enkeltvis eller samlet innsending"
   },
   "auth": {
     "noVerificationToken": "Ingen bekreftelseskode oppgitt",
@@ -840,7 +841,7 @@
       "audioStillLoading": "Lyden laster fortsatt inn...",
       "loadingAudio": "Laster inn lyd...",
       "autoCorrect": "Autokorrektur",
-      "autoCorrectDesc": "Generer forslag til rettelser ved å sammenligne transkripsjonen med referanseteksten. Ingenting endres før du godtar hvert forslag.",
+      "autoCorrectDesc": "Sammenligner transkripsjonen med referanseteksten og utfører rettelser på ordnivå for deg. Rettede ord vises i lilla.",
       "autoCorrectedCount": "Autokorrigert · {count}",
       "autoCorrectedDesc": "Vi utførte {count, plural, =1 {# autokorrigering} other {# autokorrigeringer}} (vist i lilla). Klikk for å se detaljene og angre de du er uenig i."
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "De oransje fremhevede ordene er hull — seksjoner som ikke kunne matches med referanseteksten og kan inneholde feil (f.eks. feilhørte ord som høres like ut).",
       "useNAndP": "Bruk N og P for å hoppe mellom hull. For hvert hull, klikk spill av ved siden av linjen og sammenlign det du hører med referanseteksten til høyre, og klikk deretter på et ord for å redigere eller slette det.",
       "watchOutForPhantomWords": "Se opp for fantomord som \"og\" i starten eller slutten av linjer — transkripsjonen legger ofte til disse.",
-      "tryTimelineView": "Prøv tidslinjevisningen for å oppdage uvanlig lange ord (10+ sekunder), som vanligvis indikerer et timingproblem.",
+      "tryTimelineView": "Ord over 2s og pauser over 2s markeres med oransje varighet — sjekk disse for timing-problemer. Bytt til Avansert for å se hver linje strukket ut i en tidslinje.",
       "watchFullTutorial": "Se hele veiledningen",
       "correctionHandlers": "Korrigeringshåndterere",
       "anchorSequences": "Ankersekvenser",
@@ -1348,7 +1349,7 @@
       "close": "Lukk",
       "confidence_balanced": "Balansert",
       "compareHint": "Tar lengre tid og koster mer, men viser hvilke forslag flere modeller er enige om",
-      "compareLabel": "Sammenlign flere AI-modeller",
+      "compareLabel": "Sammenlign flere modeller",
       "conflictBadge": "variant",
       "conflictTooltip": "Det finnes forskjellige forslag for disse ordene — hvis du godtar én variant, avvises de andre.",
       "consensusBadge": "{consensus}/{total} modeller",

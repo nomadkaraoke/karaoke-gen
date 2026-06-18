@@ -241,7 +241,8 @@
     "noJobsYet": "まだジョブがありません。作成して始めましょう！",
     "referrals": "紹介",
     "bulkMode": "一括",
-    "singleMode": "シングル"
+    "singleMode": "シングル",
+    "submitModeToggle": "単一または一括送信"
   },
   "auth": {
     "noVerificationToken": "認証トークンが提供されていません",
@@ -840,7 +841,7 @@
       "audioStillLoading": "音声はまだ読み込み中です...",
       "loadingAudio": "音声を読み込み中...",
       "autoCorrect": "自動補正",
-      "autoCorrectDesc": "文字起こしした歌詞と参照用の歌詞を比較して、修正の提案を生成します。各提案を承認するまで変更は適用されません。",
+      "autoCorrectDesc": "文字起こしを参照用の歌詞と比較し、単語レベルの修正を自動的に適用します。修正された単語は紫色で表示されます。",
       "autoCorrectedCount": "自動修正済み · {count}",
       "autoCorrectedDesc": "{count, plural, =1 {#件の自動修正} other {#件の自動修正}}を適用しました（紫色で表示）。クリックして詳細を表示し、不要な修正は元に戻すことができます。"
     },
@@ -857,7 +858,7 @@
       "orangeHighlightedWords": "オレンジ色でハイライトされた単語はギャップです — 参照歌詞と一致せず、エラー（似たように聞こえる誤認識された単語など）が含まれている可能性があるセクションです。",
       "useNAndP": "N キーと P キーを使用してギャップ間をジャンプします。それぞれについて、行の横にある再生をクリックし、聞こえる音と右側の参照歌詞を比較してから、単語をクリックして編集または削除します。",
       "watchOutForPhantomWords": "行の最初や最後にある「and」などのファントムワード（存在しない単語）に注意してください — 文字起こしではこれらが追加されることがよくあります。",
-      "tryTimelineView": "タイムラインビューを試して、異常に長い単語（10秒以上）を見つけてください。これは通常、タイミングの問題を示しています。",
+      "tryTimelineView": "2秒以上の単語や2秒以上の空白は、オレンジ色でフラグが立てられます。タイミングの問題がないか確認してください。「詳細」に切り替えると、各行がタイムライン上に展開されて表示されます。",
       "watchFullTutorial": "完全なチュートリアルを見る",
       "correctionHandlers": "修正ハンドラー",
       "anchorSequences": "アンカーシーケンス",
@@ -1348,7 +1349,7 @@
       "close": "閉じる",
       "confidence_balanced": "バランス",
       "compareHint": "時間とコストはかかりますが、複数のモデルで一致した提案を確認できます。",
-      "compareLabel": "複数のAIモデルを比較する",
+      "compareLabel": "複数のモデルを比較する",
       "conflictBadge": "別案",
       "conflictTooltip": "これらの単語には複数の修正候補があります。1つの候補を承認すると、他の候補は破棄されます。",
       "consensusBadge": "{consensus}/{total} モデル",
