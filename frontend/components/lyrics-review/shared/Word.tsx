@@ -86,7 +86,7 @@ export const WordComponent = React.memo(function Word({
     <span
       id={id}
       className={cn(
-        hasDurationBadge ? 'inline-flex items-center' : 'inline-block',
+        hasDurationBadge ? 'inline-flex items-center gap-1' : 'inline-block',
         'transition-colors duration-200 cursor-pointer rounded-sm text-[0.85rem] leading-[1.2]',
         !isTimeline && 'mr-[0.25em]',
         padding,
