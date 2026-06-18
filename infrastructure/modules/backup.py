@@ -159,8 +159,10 @@ def create_backup_resources(all_secrets: dict) -> dict:
         service_config=cloudfunctionsv2.FunctionServiceConfigArgs(
             available_memory="2Gi",
             available_cpu="1",
-            # 30 min — matches the deployed value (was manually tuned down from
-            # 3600 in prod) and the scheduler's attempt_deadline below.
+            # Kept in lockstep with the scheduler's attempt_deadline (1800s, the
+            # Cloud Scheduler max) below. If the function could run longer than
+            # the scheduler waits, runs in that gap would re-trigger the very
+            # timeout→retry→"Path already exists" collision this aligns to avoid.
             timeout_seconds=1800,
             min_instance_count=0,
             max_instance_count=1,
@@ -215,9 +217,13 @@ def create_backup_resources(all_secrets: dict) -> dict:
         region=REGION,
         schedule="0 1 * * *",
         time_zone="America/New_York",
-        # 30 min — matches the deployed value (manually raised in prod from the
-        # provider default of 180s) so the scheduler waits for the long-running
-        # backup function instead of giving up after 3 min and retrying.
+        # The backup pipeline (esp. the Firestore export) runs for several
+        # minutes. Without an explicit deadline, Cloud Scheduler defaults to
+        # 180s, times out the HTTP call, and retries — while the original
+        # invocation keeps running to success. The retry then collides on the
+        # already-created firestore/<date>/ export path ("400 Path already
+        # exists"), producing a spurious FAILED backup report every night.
+        # 1800s (30m, the Scheduler max) lets it wait for the real result.
         attempt_deadline="1800s",
         http_target=cloudscheduler.JobHttpTargetArgs(
             uri=function.url,
