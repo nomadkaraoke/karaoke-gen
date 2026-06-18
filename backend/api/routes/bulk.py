@@ -10,6 +10,7 @@ Submission (POST /bulk/submit) and progress (GET /bulk/{batch_id}) live here too
 """
 
 import logging
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -199,3 +200,137 @@ async def bulk_availability(
         [{"artist": t.artist, "title": t.title} for t in body.tracks]
     )
     return AvailabilityResponse(results=[AvailabilityResult(**r) for r in results])
+
+
+# --- Submission -------------------------------------------------------------
+
+
+class BulkSong(BaseModel):
+    artist: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1)
+    display_artist: Optional[str] = None
+    display_title: Optional[str] = None
+
+
+class BulkSettings(BaseModel):
+    auto_select_if_lossless: bool = True
+    is_private: bool = False
+    skip_audio_edit: bool = True
+    skip_customization: bool = True
+
+
+class BulkSubmitRequest(BaseModel):
+    songs: list[BulkSong]
+    settings: BulkSettings = Field(default_factory=BulkSettings)
+
+
+class BulkSubmitResponse(BaseModel):
+    batch_id: str
+    job_ids: list[str]
+    total: int
+
+
+@router.post("/submit", response_model=BulkSubmitResponse)
+async def bulk_submit(
+    request: Request,
+    body: BulkSubmitRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """Create one job per song, gate on credits upfront, and dispatch the batch
+    search worker. Jobs start parked (auto_download=False) and the worker either
+    auto-selects a confident lossless match or leaves them awaiting selection."""
+    from backend.config import get_settings
+    from backend.exceptions import InsufficientCreditsError
+    from backend.models.job import JobCreate
+    from backend.services.job_manager import JobManager
+    from backend.services.job_defaults_service import resolve_cdg_txt_defaults
+    from backend.services.theme_service import get_theme_service
+    from backend.services.worker_service import get_worker_service
+
+    n = len(body.songs)
+    if n == 0:
+        raise HTTPException(status_code=422, detail="At least one song is required")
+    if n > MAX_BULK_SONGS:
+        raise HTTPException(status_code=422, detail=f"At most {MAX_BULK_SONGS} songs per batch")
+
+    user_email = auth_result.user_email
+    is_admin = bool(auth_result.is_admin)
+
+    # Upfront credit gate (1 credit/song minimum). Admins bypass.
+    if not is_admin and user_email:
+        from backend.services.user_service import get_user_service
+
+        available = get_user_service().check_credits(user_email)
+        if available < n:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "insufficient_credits",
+                    "message": "You don't have enough credits for this batch.",
+                    "credits_available": available,
+                    "credits_required": n,
+                },
+            )
+
+    settings = get_settings()
+    theme_service = get_theme_service()
+    theme_id = theme_service.get_default_theme_id()
+    resolved_cdg, resolved_txt = resolve_cdg_txt_defaults(theme_id, None, None)
+
+    batch_id = uuid.uuid4().hex[:12]
+    bulk_settings = body.settings.model_dump()
+    job_manager = JobManager()
+    job_ids: list[str] = []
+
+    for song in body.songs:
+        display_artist = (song.display_artist or song.artist).strip()
+        display_title = (song.display_title or song.title).strip()
+        request_metadata = {
+            "created_from": "bulk",
+            "batch_id": batch_id,
+            "user_email": user_email,
+        }
+        job_create = JobCreate(
+            artist=display_artist,
+            title=display_title,
+            theme_id=theme_id,
+            enable_cdg=resolved_cdg,
+            enable_txt=resolved_txt,
+            user_email=user_email,
+            audio_search_artist=song.artist.strip(),
+            audio_search_title=song.title.strip(),
+            auto_download=False,
+            is_private=body.settings.is_private,
+            brand_prefix=settings.default_brand_prefix,
+            enable_youtube_upload=settings.default_enable_youtube_upload,
+            youtube_description=settings.default_youtube_description,
+            discord_webhook_url=settings.default_discord_webhook_url,
+            dropbox_path=settings.default_dropbox_path,
+            gdrive_folder_id=settings.default_gdrive_folder_id,
+            request_metadata=request_metadata,
+        )
+        try:
+            job = job_manager.create_job(job_create, is_admin=is_admin)
+        except InsufficientCreditsError:
+            # Ran out mid-batch (e.g. concurrent spend after the gate). Stop here;
+            # already-created jobs are valid and will proceed.
+            logger.warning("[batch:%s] ran out of credits after %d/%d jobs", batch_id, len(job_ids), n)
+            break
+
+        job_manager.update_job(
+            job.job_id,
+            {
+                "state_data.batch_id": batch_id,
+                "state_data.bulk_settings": bulk_settings,
+                "state_data.bulk_pending_search": True,
+            },
+        )
+        job_ids.append(job.job_id)
+
+    if not job_ids:
+        raise HTTPException(status_code=402, detail="No jobs could be created")
+
+    await get_worker_service().trigger_bulk_search_worker(batch_id)
+    logger.info("[batch:%s] created %d jobs, dispatched bulk-search worker", batch_id, len(job_ids))
+
+    return BulkSubmitResponse(batch_id=batch_id, job_ids=job_ids, total=len(job_ids))

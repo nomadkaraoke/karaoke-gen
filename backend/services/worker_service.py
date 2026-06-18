@@ -379,6 +379,47 @@ class WorkerService:
             worker_module="audio_download_worker",
         )
 
+    async def trigger_bulk_search_worker(self, batch_id: str) -> bool:
+        """Trigger the Bulk Mode search worker for a whole batch as a Cloud Run Job.
+
+        The worker processes every job stamped with ``batch_id``: it runs each
+        audio search, auto-selects confident lossless matches, and parks the rest
+        in AWAITING_AUDIO_SELECTION. Uses a Cloud Run Job (not BackgroundTasks) so
+        the batch survives API instance scale-down and the user can close the tab.
+        """
+        try:
+            from google.cloud import run_v2
+
+            project = self.settings.google_cloud_project
+            if not project:
+                logger.error("GOOGLE_CLOUD_PROJECT not set, cannot trigger bulk search job")
+                return False
+
+            location = self.settings.gcp_region
+            job_name = f"projects/{project}/locations/{location}/jobs/bulk-search-job"
+            client = run_v2.JobsClient()
+            request = run_v2.RunJobRequest(
+                name=job_name,
+                overrides=run_v2.RunJobRequest.Overrides(
+                    container_overrides=[
+                        run_v2.RunJobRequest.Overrides.ContainerOverride(
+                            args=[
+                                "python", "-m", "backend.workers.bulk_search_worker",
+                                "--batch-id", batch_id,
+                            ],
+                        )
+                    ]
+                ),
+            )
+            operation = client.run_job(request=request)
+            logger.info(f"[batch:{batch_id}] Started Cloud Run Job bulk-search-job: {operation.metadata}")
+            return True
+        except Exception as e:
+            logger.error(
+                f"[batch:{batch_id}] Failed to trigger bulk-search-job: {e}", exc_info=True
+            )
+            return False
+
     async def trigger_audio_worker(self, job_id: str) -> bool:
         """
         Trigger audio separation worker.
