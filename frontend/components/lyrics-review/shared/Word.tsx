@@ -22,6 +22,7 @@ export const WordComponent = React.memo(function Word({
   aiTimingEstimated,
   longWordSeconds,
   timelineGrow,
+  fallbackGapColor,
   padding = 'px-[3px] py-[1px]',
   onClick,
   id,
@@ -47,7 +48,9 @@ export const WordComponent = React.memo(function Word({
             ? HIGHLIGHT_CLASSES.corrected
             : isUncorrectedGap
               ? HIGHLIGHT_CLASSES.uncorrectedGap
-              : ''
+              : fallbackGapColor
+                ? HIGHLIGHT_CLASSES.uncorrectedGap
+                : ''
 
   // Estimated-timing AI words (a word split into several, or an inserted word)
   // almost always need a timing nudge — flag them with a dashed amber underline

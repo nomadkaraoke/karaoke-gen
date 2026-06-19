@@ -372,6 +372,11 @@ export interface WordProps {
   /** Advanced mode: flex-grow weight (= duration) so the word pill takes a
    *  share of the segment's full width proportional to how long it lasts. */
   timelineGrow?: number
+  /** No reference lyrics for this song → no anchors/gaps/corrections classify
+   *  any word, so plain pills would render uncoloured. When true, a plain word
+   *  falls back to the gap-orange highlight so the line stays colour-scannable.
+   *  Lowest precedence — any real classification colour still wins. */
+  fallbackGapColor?: boolean
   padding?: string
   onClick?: () => void
   id?: string

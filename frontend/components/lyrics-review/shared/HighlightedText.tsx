@@ -72,6 +72,10 @@ export interface HighlightedTextProps {
   timelineGrowByWordId?: Map<string, number>
   // Advanced mode: gap (seconds) before a word → a proportional flex spacer
   timelineGapByWordId?: Map<string, number>
+  // No reference lyrics → no anchors/gaps classify any word, so plain pills
+  // render uncoloured. When true, plain words fall back to the gap-orange
+  // highlight so the line stays colour-scannable (both Simple and Advanced).
+  noReferenceFallback?: boolean
 }
 
 export function HighlightedText({
@@ -109,6 +113,7 @@ export function HighlightedText({
   timelineLayout = false,
   timelineGrowByWordId,
   timelineGapByWordId,
+  noReferenceFallback = false,
 }: HighlightedTextProps) {
   const tTiming = useTranslations('lyricsReview.transcription')
   const { handleWordClick } = useWordClick({
@@ -357,6 +362,7 @@ export function HighlightedText({
               aiTimingEstimated={aiEstimatedWordIds?.has(wordPos.word.id)}
               longWordSeconds={longWordByWordId?.get(wordPos.word.id)}
               timelineGrow={wordGrow}
+              fallbackGapColor={noReferenceFallback}
               id={`word-${wordPos.word.id}`}
               onClick={() =>
                 handleWordClick(
@@ -476,6 +482,7 @@ export function HighlightedText({
                     aiOriginalText={aiOriginalTextByWordId?.get(word.id)}
                     aiTimingEstimated={aiEstimatedWordIds?.has(word.id)}
                     longWordSeconds={longWordByWordId?.get(word.id)}
+                    fallbackGapColor={noReferenceFallback}
                     id={`word-${word.id}`}
                     onClick={() => handleWordClick(word.text, word.id, anchor, sequence)}
                     correction={correctionInfo}
