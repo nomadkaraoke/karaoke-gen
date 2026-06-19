@@ -49,6 +49,12 @@ export default function TranscriptionView({
   const { ready: audioReady } = useAudioReady()
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
 
+  // With no reference lyrics, nothing classifies words as anchor/gap/corrected,
+  // so every pill would render uncoloured and the line loses the colour-scanning
+  // we rely on. Fall back to the gap-orange highlight for plain words in that
+  // case (applies to both Simple and Advanced via HighlightedText).
+  const hasReferenceLyrics = Object.keys(data.reference_lyrics ?? {}).length > 0
+
   // Timing warnings (shown in both Simple and Advanced): any word longer than
   // 2s, and any gap longer than 2s between consecutive words in a segment.
   // These are the issues the old Timeline view existed to surface.
@@ -262,6 +268,7 @@ export default function TranscriptionView({
                       timelineLayout={advancedMode}
                       timelineGrowByWordId={advancedMode ? timelineGrowByWordId : undefined}
                       timelineGapByWordId={advancedMode ? timelineGapByWordId : undefined}
+                      noReferenceFallback={!hasReferenceLyrics}
                     />
                   </div>
                 </div>
