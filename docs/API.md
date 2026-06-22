@@ -2279,11 +2279,11 @@ routes require auth.
 
 - `GET /api/bulk/album/artists?q=<name>` → `[{mbid,name,disambiguation,type,country}]`
 - `GET /api/bulk/album/albums?artist_mbid=<mbid>` → `[{release_group_mbid,title,primary_type,secondary_types,first_release_date,is_studio}]` (studio albums first)
-- `GET /api/bulk/album/tracklist?artist=<name>&release_group_mbid=<mbid>` (or `&release_mbid=<mbid>` for a specific edition) → `{release_mbid,canonical_release_mbid,title,date,tracks:[{position,title,recording_mbid,length_ms,is_extra,extra_reason,available,brands}],editions:[{release_mbid,title,status,date,country,track_count}]}`. Each track is enriched with KaraokeNerds community-version availability (`available`/`brands`); enrichment is best-effort and never fatal.
+- `GET /api/bulk/album/tracklist?artist=<name>&release_group_mbid=<mbid>` (or `&release_mbid=<mbid>` for a specific edition; optional `&locale=<code>` biases representative-pressing choice) → `{release_mbid,canonical_release_mbid,selected_variant_mbid,title,date,tracks:[{position,title,recording_mbid,length_ms,is_extra,extra_reason,available,brands,versions:[{brand,url}]}],editions:[{release_mbid,title,status,date,country,track_count}],variants:[{representative_release_mbid,label,track_count,year,pressing_count,delta_vs_original}]}`. `variants` collapses the release-group's country pressings into distinct tracklists grouped by track count (label `Original`/`Reissue`, `Original` = earliest); load one via its `representative_release_mbid` as `release_mbid`. Each track is enriched with KaraokeNerds community-version availability — `available`/`brands` plus `versions` (per-version `{brand,url}` YouTube links for clickable preview); enrichment is best-effort and never fatal.
 
 ### Availability (text mode)
 
-- `POST /api/bulk/availability` body `{tracks:[{artist,title}]}` (≤100) → `{results:[{artist,title,available,brands,brand_count}]}`. Backed by the existing KaraokeNerds community-version scraper (1h cache, bounded concurrency).
+- `POST /api/bulk/availability` body `{tracks:[{artist,title}]}` (≤100) → `{results:[{artist,title,available,brands,brand_count,versions:[{brand,url}]}]}`. Backed by the existing KaraokeNerds community-version scraper (1h cache, bounded concurrency). `versions` carries per-version YouTube links for clickable preview.
 
 ### Submit
 
