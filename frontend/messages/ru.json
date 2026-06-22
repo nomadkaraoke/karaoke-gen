@@ -1648,6 +1648,12 @@
     "artist": "Исполнитель",
     "buyCredits": "Купить кредиты",
     "removeRow": "Удалить",
-    "trackCount": "{count} треков"
+    "trackCount": "{count} треков",
+    "changeEdition": "Изменить",
+    "existingVersions": "Существующие версии:",
+    "usingRelease": "Используется {label} · {year} · {tracks}",
+    "variantBonus": "+{count} бонус",
+    "variantOriginal": "Оригинал",
+    "variantReissue": "Переиздание"
   }
 }

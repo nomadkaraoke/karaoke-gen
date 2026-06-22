@@ -1648,6 +1648,12 @@
     "artist": "Kunstner",
     "buyCredits": "Køb kreditter",
     "removeRow": "Fjern",
-    "trackCount": "{count} numre"
+    "trackCount": "{count} numre",
+    "changeEdition": "Skift",
+    "existingVersions": "Eksisterende versioner:",
+    "usingRelease": "Bruger {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Genudgivelse"
   }
 }

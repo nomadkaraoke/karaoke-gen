@@ -1648,6 +1648,12 @@
     "artist": "Artiest",
     "buyCredits": "Credits kopen",
     "removeRow": "Verwijderen",
-    "trackCount": "{count} tracks"
+    "trackCount": "{count} tracks",
+    "changeEdition": "Wijzigen",
+    "existingVersions": "Bestaande versies:",
+    "usingRelease": "Gebruikt {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Origineel",
+    "variantReissue": "Heruitgave"
   }
 }

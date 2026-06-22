@@ -1648,6 +1648,12 @@
     "artist": "Artist",
     "buyCredits": "Köp krediter",
     "removeRow": "Ta bort",
-    "trackCount": "{count} spår"
+    "trackCount": "{count} spår",
+    "changeEdition": "Ändra",
+    "existingVersions": "Befintliga versioner:",
+    "usingRelease": "Använder {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Nyutgåva"
   }
 }

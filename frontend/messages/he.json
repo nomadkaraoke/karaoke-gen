@@ -1648,6 +1648,12 @@
     "artist": "אומן",
     "buyCredits": "רכישת קרדיטים",
     "removeRow": "הסרה",
-    "trackCount": "{count} רצועות"
+    "trackCount": "{count} רצועות",
+    "changeEdition": "שינוי",
+    "existingVersions": "גרסאות קיימות:",
+    "usingRelease": "שימוש ב-{label} · {year} · {tracks}",
+    "variantBonus": "+{count} בונוס",
+    "variantOriginal": "מקורי",
+    "variantReissue": "הוצאה מחודשת"
   }
 }

@@ -44,6 +44,36 @@ _RETRY_BACKOFF_S = 0.5
 # Country preference for canonical-release tie-breaks (worldwide / Europe / US / UK).
 _PREFERRED_COUNTRIES = ["XW", "XE", "US", "GB"]
 
+# Locale → ordered country preference for picking which pressing backs a variant.
+# Biases the representative release toward the user's likely region; falls back to
+# the worldwide default for anything unmapped. Keyed by the language part of the
+# locale (region suffix is ignored, e.g. "en-US" → "en").
+_LOCALE_COUNTRY_PREFS: Dict[str, List[str]] = {
+    "en": ["GB", "US", "AU", "CA", "IE", "NZ"],
+    "es": ["ES", "MX", "AR"],
+    "fr": ["FR", "CA", "BE"],
+    "de": ["DE", "AT", "CH"],
+    "it": ["IT"],
+    "pt": ["PT", "BR"],
+    "nl": ["NL", "BE"],
+    "sv": ["SE"],
+    "ja": ["JP"],
+    "ko": ["KR"],
+    "zh": ["CN", "TW", "HK"],
+}
+
+
+def country_prefs_for_locale(locale: Optional[str]) -> List[str]:
+    """Map a next-intl locale to an ordered country preference list.
+
+    Returns a copy of the worldwide default (``_PREFERRED_COUNTRIES``) for an
+    empty/unknown locale so callers can mutate freely.
+    """
+    if not locale:
+        return list(_PREFERRED_COUNTRIES)
+    base = re.split(r"[-_]", locale)[0].lower()
+    return list(_LOCALE_COUNTRY_PREFS.get(base, _PREFERRED_COUNTRIES))
+
 # "Extra" track qualifier keywords. Matched only inside (), [], or after " - "
 # so we don't misfire on legitimate titles that happen to contain a word.
 _EXTRA_KEYWORDS = [
@@ -210,14 +240,19 @@ class MusicBrainzService:
         return editions
 
     @staticmethod
-    def pick_canonical_edition(editions: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def pick_canonical_edition(
+        editions: List[Dict[str, Any]],
+        preferred_countries: Optional[List[str]] = None,
+    ) -> Optional[Dict[str, Any]]:
         """Pick the standard edition: official, modal track count, earliest, preferred country.
 
         Choosing the most common track count avoids deluxe/remaster editions that
-        tack bonus tracks on the end.
+        tack bonus tracks on the end. ``preferred_countries`` overrides the default
+        worldwide-first tie-break (used for locale-aware selection).
         """
         if not editions:
             return None
+        prefs = preferred_countries or _PREFERRED_COUNTRIES
         official = [e for e in editions if e.get("status") == "Official"] or editions
         with_tracks = [e for e in official if e.get("track_count", 0) > 0] or official
         counts = Counter(e["track_count"] for e in with_tracks if e.get("track_count", 0) > 0)
@@ -229,10 +264,64 @@ class MusicBrainzService:
 
         def country_rank(e: Dict[str, Any]) -> int:
             c = e.get("country")
-            return _PREFERRED_COUNTRIES.index(c) if c in _PREFERRED_COUNTRIES else len(_PREFERRED_COUNTRIES)
+            return prefs.index(c) if c in prefs else len(prefs)
 
         candidates.sort(key=lambda e: (e.get("date") or "9999", country_rank(e)))
         return candidates[0]
+
+    @staticmethod
+    def build_variants(
+        editions: List[Dict[str, Any]],
+        preferred_countries: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Collapse a release-group's editions into distinct tracklist *variants*.
+
+        Country pressings are irrelevant for karaoke (we only need the track names),
+        so editions are grouped by ``track_count`` — within one release-group, same
+        count ≈ same songs. Each variant exposes a representative release (earliest +
+        preferred-country), the earliest year, how many pressings collapsed in, and a
+        label/delta relative to the "Original" (earliest) variant. Editions without a
+        track count are dropped. See
+        ``docs/archive/2026-06-22-bulk-edition-collapse-and-community-versions-design.md``.
+        """
+        if not editions:
+            return []
+        official = [e for e in editions if e.get("status") == "Official"] or editions
+        with_tracks = [e for e in official if (e.get("track_count") or 0) > 0]
+        if not with_tracks:
+            return []
+
+        groups: Dict[int, List[Dict[str, Any]]] = {}
+        for e in with_tracks:
+            groups.setdefault(e["track_count"], []).append(e)
+
+        variants: List[Dict[str, Any]] = []
+        for track_count, group in groups.items():
+            rep = MusicBrainzService.pick_canonical_edition(group, preferred_countries)
+            earliest = min((e.get("date") or "9999") for e in group)
+            year = earliest[:4] if earliest and earliest != "9999" else ""
+            variants.append(
+                {
+                    "representative_release_mbid": rep["release_mbid"],
+                    "track_count": track_count,
+                    "year": year,
+                    "pressing_count": len(group),
+                    "_earliest": earliest,
+                }
+            )
+
+        # Original = earliest release, then most pressings, then fewest tracks.
+        variants.sort(key=lambda v: (v["_earliest"], -v["pressing_count"], v["track_count"]))
+        original = variants[0]
+        original_tc = original["track_count"]
+        for v in variants:
+            v["delta_vs_original"] = v["track_count"] - original_tc
+            v["label"] = "Original" if v is original else "Reissue"
+            del v["_earliest"]
+
+        # Display order: Original first, then by year ascending, then track count.
+        variants.sort(key=lambda v: (v["label"] != "Original", v["year"] or "9999", v["track_count"]))
+        return variants
 
     async def get_release_tracklist(self, release_mbid: str) -> Dict[str, Any]:
         """Fetch a release's tracklist with per-track extra detection."""
@@ -264,15 +353,31 @@ class MusicBrainzService:
             "tracks": tracks,
         }
 
-    async def get_album_tracklist(self, release_group_mbid: str) -> Dict[str, Any]:
-        """Resolve the canonical edition of an album and return its tracklist + editions."""
+    async def get_album_tracklist(
+        self,
+        release_group_mbid: str,
+        preferred_countries: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Resolve the canonical edition of an album and return its tracklist, the raw
+        editions, and the collapsed tracklist ``variants``. ``preferred_countries``
+        biases representative selection (locale-aware)."""
         editions = await self._list_editions(release_group_mbid)
-        canonical = self.pick_canonical_edition(editions)
+        canonical = self.pick_canonical_edition(editions, preferred_countries)
+        variants = self.build_variants(editions, preferred_countries)
         if not canonical:
-            return {"release_mbid": None, "title": None, "tracks": [], "editions": editions}
+            return {
+                "release_mbid": None,
+                "title": None,
+                "tracks": [],
+                "editions": editions,
+                "variants": variants,
+                "selected_variant_mbid": None,
+            }
         tracklist = await self.get_release_tracklist(canonical["release_mbid"])
         tracklist["editions"] = editions
         tracklist["canonical_release_mbid"] = canonical["release_mbid"]
+        tracklist["variants"] = variants
+        tracklist["selected_variant_mbid"] = canonical["release_mbid"]
         return tracklist
 
 

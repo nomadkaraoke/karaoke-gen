@@ -1648,6 +1648,12 @@
     "artist": "فنان",
     "buyCredits": "شراء رصيد",
     "removeRow": "إزالة",
-    "trackCount": "{count} مقاطع"
+    "trackCount": "{count} مقاطع",
+    "changeEdition": "تغيير",
+    "existingVersions": "الإصدارات الحالية:",
+    "usingRelease": "استخدام {label} · {year} · {tracks}",
+    "variantBonus": "+{count} إضافي",
+    "variantOriginal": "أصلي",
+    "variantReissue": "إعادة إصدار"
   }
 }

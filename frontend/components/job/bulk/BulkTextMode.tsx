@@ -6,7 +6,7 @@ import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, X } from "lucide-react"
-import { AvailabilityBadge } from "./AvailabilityBadge"
+import { CommunityVersions } from "./CommunityVersions"
 import { BulkSongRow, newRow } from "./types"
 
 interface BulkTextModeProps {
@@ -57,7 +57,7 @@ export function BulkTextMode({ rows, onChange, maxSongs, disabled }: BulkTextMod
         onChange(
           rows.map((r) => {
             const hit = byKey.get(`${r.artist.trim()}|||${r.title.trim()}`)
-            return hit ? { ...r, available: hit.available, brands: hit.brands } : r
+            return hit ? { ...r, available: hit.available, brands: hit.brands, versions: hit.versions } : r
           })
         )
       } catch {
@@ -76,31 +76,31 @@ export function BulkTextMode({ rows, onChange, maxSongs, disabled }: BulkTextMod
     <div className="space-y-2">
       <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("textModeHint", { max: maxSongs })}</p>
       {rows.map((row) => (
-        <div key={row.key} className="flex items-center gap-2">
-          <Input
-            placeholder={t("artist")}
-            value={row.artist}
-            disabled={disabled}
-            onChange={(e) => update(row.key, { artist: e.target.value, available: null })}
-            className="flex-1"
-          />
-          <Input
-            placeholder={t("title")}
-            value={row.title}
-            disabled={disabled}
-            onChange={(e) => update(row.key, { title: e.target.value, available: null })}
-            className="flex-1"
-          />
-          <div className="w-40 shrink-0">
-            <AvailabilityBadge available={row.available} brands={row.brands} />
+        <div key={row.key}>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder={t("artist")}
+              value={row.artist}
+              disabled={disabled}
+              onChange={(e) => update(row.key, { artist: e.target.value, available: null })}
+              className="flex-1"
+            />
+            <Input
+              placeholder={t("title")}
+              value={row.title}
+              disabled={disabled}
+              onChange={(e) => update(row.key, { title: e.target.value, available: null })}
+              className="flex-1"
+            />
+            <Button
+              variant="ghost" size="sm" disabled={disabled}
+              onClick={() => removeRow(row.key)}
+              aria-label={t("removeRow")}
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost" size="sm" disabled={disabled}
-            onClick={() => removeRow(row.key)}
-            aria-label={t("removeRow")}
-          >
-            <X className="w-4 h-4" />
-          </Button>
+          <CommunityVersions available={row.available} versions={row.versions} />
         </div>
       ))}
       <div className="flex items-center justify-between">

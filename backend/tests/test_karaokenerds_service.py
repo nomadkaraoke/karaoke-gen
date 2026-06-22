@@ -9,6 +9,7 @@ from backend.services.karaokenerds_service import (
     parse_results,
     _clean_youtube_url,
     _parse_single_track,
+    check_community_versions_batch,
 )
 from bs4 import BeautifulSoup
 
@@ -207,3 +208,59 @@ def test_parse_results_empty_html():
 
 def test_parse_results_no_table():
     assert parse_results("<div>No results</div>") == []
+
+
+# --- Batch availability: per-version data with YouTube URLs (Bulk Mode) ---
+
+
+@pytest.mark.asyncio
+async def test_batch_returns_versions_with_urls_deduped_by_brand(monkeypatch):
+    """Each result carries `versions: [{brand, url}]` (community only), deduped by
+    brand keeping the first URL, alongside the existing brands/brand_count."""
+
+    async def fake_check(artist, title):
+        return {
+            "has_community": True,
+            "songs": [
+                {
+                    "title": title,
+                    "artist": artist,
+                    "community_tracks": [
+                        {"brand_name": "SNDL Karaoke", "brand_code": "SNDL",
+                         "youtube_url": "https://www.youtube.com/watch?v=aaa", "is_community": True},
+                        {"brand_name": "Nomad Karaoke", "brand_code": "NK",
+                         "youtube_url": "https://www.youtube.com/watch?v=bbb", "is_community": True},
+                        # Duplicate brand — should be collapsed, keeping the first URL.
+                        {"brand_name": "SNDL Karaoke", "brand_code": "SNDL",
+                         "youtube_url": "https://www.youtube.com/watch?v=ccc", "is_community": True},
+                    ],
+                }
+            ],
+            "best_youtube_url": "https://www.youtube.com/watch?v=aaa",
+        }
+
+    monkeypatch.setattr(
+        "backend.services.karaokenerds_service.check_community_versions", fake_check
+    )
+
+    results = await check_community_versions_batch(
+        [{"artist": "ABBA", "title": "Dancing Queen"}]
+    )
+
+    assert len(results) == 1
+    r = results[0]
+    assert r["available"] is True
+    assert r["versions"] == [
+        {"brand": "SNDL Karaoke", "url": "https://www.youtube.com/watch?v=aaa"},
+        {"brand": "Nomad Karaoke", "url": "https://www.youtube.com/watch?v=bbb"},
+    ]
+    # Back-compat retained.
+    assert r["brands"] == ["SNDL Karaoke", "Nomad Karaoke"]
+    assert r["brand_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_batch_empty_song_has_empty_versions():
+    results = await check_community_versions_batch([{"artist": "", "title": ""}])
+    assert results[0]["available"] is False
+    assert results[0]["versions"] == []

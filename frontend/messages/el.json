@@ -1648,6 +1648,12 @@
     "artist": "Καλλιτέχνης",
     "buyCredits": "Αγορά μονάδων",
     "removeRow": "Αφαίρεση",
-    "trackCount": "{count} κομμάτια"
+    "trackCount": "{count} κομμάτια",
+    "changeEdition": "Αλλαγή",
+    "existingVersions": "Υπάρχουσες εκδόσεις:",
+    "usingRelease": "Χρησιμοποιείς {label} · {year} · {tracks}",
+    "variantBonus": "+{count} μπόνους",
+    "variantOriginal": "Πρωτότυπο",
+    "variantReissue": "Επανέκδοση"
   }
 }

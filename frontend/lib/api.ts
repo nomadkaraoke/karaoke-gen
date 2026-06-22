@@ -477,6 +477,22 @@ export interface BulkEdition {
   track_count: number;
 }
 
+/** An existing community karaoke version the user can preview on YouTube. */
+export interface CommunityVersion {
+  brand: string;
+  url: string;
+}
+
+/** A distinct tracklist variant (country pressings collapsed by track count). */
+export interface BulkEditionVariant {
+  representative_release_mbid: string;
+  label: string; // "Original" | "Reissue"
+  track_count: number;
+  year: string;
+  pressing_count: number;
+  delta_vs_original: number;
+}
+
 export interface BulkTrack {
   position: number | null;
   title: string;
@@ -486,15 +502,18 @@ export interface BulkTrack {
   extra_reason: string;
   available: boolean;
   brands: string[];
+  versions: CommunityVersion[];
 }
 
 export interface BulkTracklist {
   release_mbid: string | null;
   canonical_release_mbid: string | null;
+  selected_variant_mbid: string | null;
   title: string | null;
   date: string;
   tracks: BulkTrack[];
   editions: BulkEdition[];
+  variants: BulkEditionVariant[];
 }
 
 export interface BulkAvailabilityResult {
@@ -503,6 +522,7 @@ export interface BulkAvailabilityResult {
   available: boolean;
   brands: string[];
   brand_count: number;
+  versions: CommunityVersion[];
 }
 
 export interface BulkSettings {
@@ -1283,10 +1303,12 @@ export const api = {
     artist: string;
     releaseGroupMbid?: string;
     releaseMbid?: string;
+    locale?: string;
   }): Promise<BulkTracklist> {
     const qs = new URLSearchParams({ artist: params.artist });
     if (params.releaseGroupMbid) qs.set('release_group_mbid', params.releaseGroupMbid);
     if (params.releaseMbid) qs.set('release_mbid', params.releaseMbid);
+    if (params.locale) qs.set('locale', params.locale);
     const response = await fetch(`${API_BASE_URL}/api/bulk/album/tracklist?${qs.toString()}`, {
       headers: { ...getAuthHeaders() },
     });

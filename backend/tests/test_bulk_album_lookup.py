@@ -75,7 +75,7 @@ class TestAlbumTracklistRoute:
         from backend.services import karaokenerds_service as kn
 
         class FakeMB:
-            async def get_album_tracklist(self, rg):
+            async def get_album_tracklist(self, rg, preferred_countries=None):
                 return {
                     "release_mbid": "rel1",
                     "canonical_release_mbid": "rel1",
@@ -112,3 +112,62 @@ class TestAlbumTracklistRoute:
     def test_tracklist_requires_an_id(self, client):
         resp = client.get("/api/bulk/album/tracklist", params={"artist": "X"})
         assert resp.status_code == 422
+
+
+class TestVariantsAndVersions:
+    def test_tracklist_returns_variants_versions_and_passes_locale(self, client, monkeypatch):
+        from backend.services import musicbrainz_service as mbs
+        from backend.services import karaokenerds_service as kn
+
+        captured = {}
+
+        class FakeMB:
+            async def get_album_tracklist(self, rg, preferred_countries=None):
+                captured["prefs"] = preferred_countries
+                return {
+                    "release_mbid": "rel1", "canonical_release_mbid": "rel1",
+                    "selected_variant_mbid": "rel1", "title": "Arrival", "date": "1976",
+                    "tracks": [{"position": 1, "title": "Dancing Queen", "recording_mbid": "r1",
+                                "length_ms": 230000, "is_extra": False, "extra_reason": ""}],
+                    "editions": [],
+                    "variants": [
+                        {"representative_release_mbid": "rel1", "label": "Original",
+                         "track_count": 10, "year": "1976", "pressing_count": 6, "delta_vs_original": 0},
+                        {"representative_release_mbid": "rel2", "label": "Reissue",
+                         "track_count": 12, "year": "2014", "pressing_count": 1, "delta_vs_original": 2},
+                    ],
+                }
+
+        async def fake_batch(songs, concurrency=5):
+            return [{"artist": s["artist"], "title": s["title"], "available": True,
+                     "brands": ["SNDL Karaoke"], "brand_count": 1,
+                     "versions": [{"brand": "SNDL Karaoke", "url": "https://youtu.be/x"}]}
+                    for s in songs]
+
+        monkeypatch.setattr(mbs, "get_musicbrainz_service", lambda: FakeMB())
+        monkeypatch.setattr(kn, "check_community_versions_batch", fake_batch)
+
+        resp = client.get("/api/bulk/album/tracklist",
+                          params={"artist": "ABBA", "release_group_mbid": "rg", "locale": "ja"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["variants"]) == 2
+        assert data["variants"][0]["label"] == "Original"
+        assert data["variants"][1]["delta_vs_original"] == 2
+        assert data["selected_variant_mbid"] == "rel1"
+        assert data["tracks"][0]["versions"] == [{"brand": "SNDL Karaoke", "url": "https://youtu.be/x"}]
+        # Japanese locale → JP country preference threaded to MB service.
+        assert captured["prefs"] == ["JP"]
+
+    def test_availability_returns_versions(self, client, monkeypatch):
+        from backend.services import karaokenerds_service as kn
+
+        async def fake_batch(songs, concurrency=5):
+            return [{"artist": s["artist"], "title": s["title"], "available": True,
+                     "brands": ["KV"], "brand_count": 1,
+                     "versions": [{"brand": "KV", "url": "https://youtu.be/kv"}]} for s in songs]
+
+        monkeypatch.setattr(kn, "check_community_versions_batch", fake_batch)
+        resp = client.post("/api/bulk/availability", json={"tracks": [{"artist": "A", "title": "B"}]})
+        assert resp.status_code == 200
+        assert resp.json()["results"][0]["versions"] == [{"brand": "KV", "url": "https://youtu.be/kv"}]

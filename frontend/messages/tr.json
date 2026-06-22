@@ -1648,6 +1648,12 @@
     "artist": "Sanatçı",
     "buyCredits": "Kredi satın al",
     "removeRow": "Kaldır",
-    "trackCount": "{count} parça"
+    "trackCount": "{count} parça",
+    "changeEdition": "Değiştir",
+    "existingVersions": "Mevcut sürümler:",
+    "usingRelease": "{label} · {year} · {tracks} kullanılıyor",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Orijinal",
+    "variantReissue": "Yeniden basım"
   }
 }

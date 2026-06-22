@@ -1648,6 +1648,12 @@
     "artist": "Előadó",
     "buyCredits": "Kredit vásárlása",
     "removeRow": "Eltávolítás",
-    "trackCount": "{count} szám"
+    "trackCount": "{count} szám",
+    "changeEdition": "Módosítás",
+    "existingVersions": "Meglévő verziók:",
+    "usingRelease": "Használatban: {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bónusz",
+    "variantOriginal": "Eredeti",
+    "variantReissue": "Újrakiadás"
   }
 }

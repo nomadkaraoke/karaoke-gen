@@ -1648,6 +1648,12 @@
     "artist": "Виконавець",
     "buyCredits": "Купити кредити",
     "removeRow": "Видалити",
-    "trackCount": "{count} треків"
+    "trackCount": "{count} треків",
+    "changeEdition": "Змінити",
+    "existingVersions": "Наявні версії:",
+    "usingRelease": "Використовується {label} · {year} · {tracks}",
+    "variantBonus": "+{count} бонус",
+    "variantOriginal": "Оригінал",
+    "variantReissue": "Перевидання"
   }
 }

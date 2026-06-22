@@ -1648,6 +1648,12 @@
     "artist": "아티스트",
     "buyCredits": "크레딧 구매",
     "removeRow": "제거",
-    "trackCount": "{count} 트랙"
+    "trackCount": "{count} 트랙",
+    "changeEdition": "변경",
+    "existingVersions": "기존 버전:",
+    "usingRelease": "{label} · {year} · {tracks} 사용 중",
+    "variantBonus": "+{count} 보너스",
+    "variantOriginal": "오리지널",
+    "variantReissue": "재발매"
   }
 }

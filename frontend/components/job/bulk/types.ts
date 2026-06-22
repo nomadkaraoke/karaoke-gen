@@ -1,3 +1,5 @@
+import type { CommunityVersion } from "@/lib/api"
+
 export interface BulkSongRow {
   key: string
   artist: string
@@ -7,8 +9,10 @@ export interface BulkSongRow {
   selected: boolean
   available?: boolean | null
   brands?: string[]
+  versions?: CommunityVersion[]
   is_extra?: boolean
   length_ms?: number | null
+  position?: number | null
 }
 
 /**

@@ -1648,6 +1648,12 @@
     "artist": "Umělec",
     "buyCredits": "Koupit kredity",
     "removeRow": "Odstranit",
-    "trackCount": "{count} skladeb"
+    "trackCount": "{count} skladeb",
+    "changeEdition": "Změnit",
+    "existingVersions": "Existující verze:",
+    "usingRelease": "Používá se {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Originál",
+    "variantReissue": "Reedice"
   }
 }
