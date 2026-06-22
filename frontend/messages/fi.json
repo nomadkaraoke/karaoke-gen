@@ -1648,6 +1648,12 @@
     "artist": "Artisti",
     "buyCredits": "Osta krediittejä",
     "removeRow": "Poista",
-    "trackCount": "{count} raitaa"
+    "trackCount": "{count} raitaa",
+    "changeEdition": "Vaihda",
+    "existingVersions": "Olemassa olevat versiot:",
+    "usingRelease": "Käytössä {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonusta",
+    "variantOriginal": "Alkuperäinen",
+    "variantReissue": "Uudelleenjulkaisu"
   }
 }

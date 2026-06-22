@@ -1648,6 +1648,12 @@
     "artist": "Artista",
     "buyCredits": "Compra crèdits",
     "removeRow": "Elimina",
-    "trackCount": "{count} pistes"
+    "trackCount": "{count} pistes",
+    "changeEdition": "Canvia",
+    "existingVersions": "Versions existents:",
+    "usingRelease": "Utilitzant {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Reedició"
   }
 }

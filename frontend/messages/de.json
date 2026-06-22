@@ -1648,6 +1648,12 @@
     "artist": "Künstler",
     "buyCredits": "Guthaben kaufen",
     "removeRow": "Entfernen",
-    "trackCount": "{count} Tracks"
+    "trackCount": "{count} Tracks",
+    "changeEdition": "Ändern",
+    "existingVersions": "Vorhandene Versionen:",
+    "usingRelease": "Verwende {label} · {year} · {tracks}",
+    "variantBonus": "+{count} Bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Neuauflage"
   }
 }

@@ -1648,6 +1648,12 @@
     "artist": "歌手",
     "buyCredits": "购买点数",
     "removeRow": "移除",
-    "trackCount": "{count} 首曲目"
+    "trackCount": "{count} 首曲目",
+    "changeEdition": "更改",
+    "existingVersions": "现有版本：",
+    "usingRelease": "使用 {label} · {year} · {tracks}",
+    "variantBonus": "+{count} 附加曲目",
+    "variantOriginal": "原版",
+    "variantReissue": "再版"
   }
 }

@@ -1648,6 +1648,12 @@
     "artist": "アーティスト",
     "buyCredits": "クレジットを購入",
     "removeRow": "削除",
-    "trackCount": "{count}トラック"
+    "trackCount": "{count}トラック",
+    "changeEdition": "変更",
+    "existingVersions": "既存のバージョン:",
+    "usingRelease": "{label} · {year} · {tracks} を使用",
+    "variantBonus": "+{count} ボーナス",
+    "variantOriginal": "オリジナル",
+    "variantReissue": "リイシュー"
   }
 }

@@ -1648,6 +1648,12 @@
     "artist": "Izvođač",
     "buyCredits": "Kupi kredite",
     "removeRow": "Ukloni",
-    "trackCount": "{count} pjesama"
+    "trackCount": "{count} pjesama",
+    "changeEdition": "Promijeni",
+    "existingVersions": "Postojeće verzije:",
+    "usingRelease": "Koristiš {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Reizdanje"
   }
 }

@@ -11,7 +11,7 @@ Submission (POST /bulk/submit) and progress (GET /bulk/{batch_id}) live here too
 
 import logging
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -55,6 +55,24 @@ class BulkEdition(BaseModel):
     track_count: int = 0
 
 
+class BulkEditionVariant(BaseModel):
+    """A distinct tracklist variant (country pressings collapsed by track count)."""
+
+    representative_release_mbid: str
+    label: Literal["Original", "Reissue"] = "Original"
+    track_count: int = 0
+    year: str = ""
+    pressing_count: int = 0
+    delta_vs_original: int = 0
+
+
+class CommunityVersion(BaseModel):
+    """An existing community karaoke version the user can preview on YouTube."""
+
+    brand: str
+    url: str
+
+
 class BulkTrack(BaseModel):
     position: Optional[int] = None
     title: str
@@ -65,15 +83,18 @@ class BulkTrack(BaseModel):
     # Availability (filled from KaraokeNerds); available=True => already exists
     available: bool = False
     brands: list[str] = []
+    versions: list[CommunityVersion] = []
 
 
 class BulkTracklistResponse(BaseModel):
     release_mbid: Optional[str] = None
     canonical_release_mbid: Optional[str] = None
+    selected_variant_mbid: Optional[str] = None
     title: Optional[str] = None
     date: str = ""
     tracks: list[BulkTrack] = []
     editions: list[BulkEdition] = []
+    variants: list[BulkEditionVariant] = []
 
 
 class AvailabilityItem(BaseModel):
@@ -91,6 +112,7 @@ class AvailabilityResult(BaseModel):
     available: bool
     brands: list[str] = []
     brand_count: int = 0
+    versions: list[CommunityVersion] = []
 
 
 class AvailabilityResponse(BaseModel):
@@ -140,11 +162,21 @@ async def album_tracklist(
     artist: str = Query(..., min_length=1, description="Artist name for availability checks"),
     release_group_mbid: Optional[str] = Query(None),
     release_mbid: Optional[str] = Query(None, description="Specific edition to load"),
+    locale: Optional[str] = Query(None, description="UI locale → biases representative-pressing choice"),
     auth_result: AuthResult = Depends(require_auth),
 ):
     """Resolve an album's canonical tracklist (or a specific edition) and enrich
-    each track with KaraokeNerds community-version availability."""
-    from backend.services.musicbrainz_service import get_musicbrainz_service
+    each track with KaraokeNerds community-version availability.
+
+    Response shape note: ``variants`` is only populated on the ``release_group_mbid``
+    path (the initial album load). When loading a specific edition via
+    ``release_mbid`` it is intentionally ``[]`` — the client already holds the
+    variant list from the initial load and only needs the chosen edition's tracks.
+    """
+    from backend.services.musicbrainz_service import (
+        get_musicbrainz_service,
+        country_prefs_for_locale,
+    )
     from backend.services.karaokenerds_service import check_community_versions_batch
 
     if not release_group_mbid and not release_mbid:
@@ -153,11 +185,16 @@ async def album_tracklist(
     mb = get_musicbrainz_service()
     try:
         if release_mbid:
+            # Loading a specific variant — variants already known to the client.
             tracklist = await mb.get_release_tracklist(release_mbid)
             tracklist.setdefault("editions", [])
             tracklist.setdefault("canonical_release_mbid", release_mbid)
+            tracklist.setdefault("variants", [])
+            tracklist.setdefault("selected_variant_mbid", release_mbid)
         else:
-            tracklist = await mb.get_album_tracklist(release_group_mbid)
+            tracklist = await mb.get_album_tracklist(
+                release_group_mbid, preferred_countries=country_prefs_for_locale(locale)
+            )
     except Exception as e:  # noqa: BLE001
         logger.warning("MusicBrainz tracklist failed: %r", e, exc_info=True)
         raise HTTPException(status_code=502, detail="Tracklist lookup is temporarily unavailable")
@@ -171,16 +208,19 @@ async def album_tracklist(
         for t, a in zip(tracks, avail):
             t["available"] = a["available"]
             t["brands"] = a["brands"]
+            t["versions"] = a.get("versions", [])
     except Exception as e:  # noqa: BLE001
         logger.warning("Availability enrichment failed (non-fatal): %s", e)
 
     return BulkTracklistResponse(
         release_mbid=tracklist.get("release_mbid"),
         canonical_release_mbid=tracklist.get("canonical_release_mbid"),
+        selected_variant_mbid=tracklist.get("selected_variant_mbid"),
         title=tracklist.get("title"),
         date=tracklist.get("date", ""),
         tracks=[BulkTrack(**t) for t in tracks],
         editions=[BulkEdition(**e) for e in tracklist.get("editions", [])],
+        variants=[BulkEditionVariant(**v) for v in tracklist.get("variants", [])],
     )
 
 

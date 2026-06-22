@@ -211,8 +211,11 @@ async def check_community_versions_batch(
 
     ``songs`` is a list of ``{"artist": str, "title": str}``. Returns a list in the
     same order, each ``{"artist", "title", "available": bool, "brands": [str],
-    "brand_count": int}``. Bounded concurrency keeps us polite to karaokenerds.com;
-    per-song results reuse the existing 1h cache. A failed lookup degrades to
+    "brand_count": int, "versions": [{"brand": str, "url": str}]}``. ``versions`` is
+    the per-community-version detail (deduped by brand, first YouTube URL kept) the UI
+    uses to render clickable links; ``brands``/``brand_count`` are retained for
+    back-compat. Bounded concurrency keeps us polite to karaokenerds.com; per-song
+    results reuse the existing 1h cache. A failed lookup degrades to
     ``available=False`` (the track simply stays selectable) — never raises.
     """
     sem = asyncio.Semaphore(max(1, concurrency))
@@ -221,21 +224,32 @@ async def check_community_versions_batch(
         artist = (song.get("artist") or "").strip()
         title = (song.get("title") or "").strip()
         if not artist or not title:
-            return {"artist": artist, "title": title, "available": False, "brands": [], "brand_count": 0}
+            return {"artist": artist, "title": title, "available": False,
+                    "brands": [], "brand_count": 0, "versions": []}
         async with sem:
             res = await check_community_versions(artist, title)
+        versions: list[dict] = []
+        versioned_brands: set[str] = set()
         brands: list[str] = []
         for matched in res.get("songs", []):
             for track in matched.get("community_tracks", []):
                 name = track.get("brand_name")
-                if name and name not in brands:
+                if not name:
+                    continue
+                if name not in brands:
                     brands.append(name)
+                # A clickable version needs a URL; brand still counts as "exists" without one.
+                url = track.get("youtube_url")
+                if url and name not in versioned_brands:
+                    versioned_brands.add(name)
+                    versions.append({"brand": name, "url": url})
         return {
             "artist": artist,
             "title": title,
             "available": bool(res.get("has_community")),
             "brands": brands,
             "brand_count": len(brands),
+            "versions": versions,
         }
 
     return await asyncio.gather(*[_one(s) for s in songs])

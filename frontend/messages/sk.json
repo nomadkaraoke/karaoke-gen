@@ -1648,6 +1648,12 @@
     "artist": "Interpret",
     "buyCredits": "Kúpiť kredity",
     "removeRow": "Odstrániť",
-    "trackCount": "{count} skladieb"
+    "trackCount": "{count} skladieb",
+    "changeEdition": "Zmeniť",
+    "existingVersions": "Existujúce verzie:",
+    "usingRelease": "Používa sa {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Originál",
+    "variantReissue": "Reedícia"
   }
 }

@@ -1648,6 +1648,12 @@
     "artist": "Artist",
     "buyCredits": "Kjøp kreditter",
     "removeRow": "Fjern",
-    "trackCount": "{count} spor"
+    "trackCount": "{count} spor",
+    "changeEdition": "Endre",
+    "existingVersions": "Eksisterende versjoner:",
+    "usingRelease": "Bruker {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Nyutgivelse"
   }
 }

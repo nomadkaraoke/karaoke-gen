@@ -1648,6 +1648,12 @@
     "artist": "Artis",
     "buyCredits": "Beli kredit",
     "removeRow": "Hapus",
-    "trackCount": "{count} trek"
+    "trackCount": "{count} trek",
+    "changeEdition": "Ubah",
+    "existingVersions": "Versi yang ada:",
+    "usingRelease": "Menggunakan {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Rilis ulang"
   }
 }

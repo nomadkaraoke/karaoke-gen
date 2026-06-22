@@ -1648,6 +1648,12 @@
     "artist": "ศิลปิน",
     "buyCredits": "ซื้อเครดิต",
     "removeRow": "นำออก",
-    "trackCount": "{count} แทร็ก"
+    "trackCount": "{count} แทร็ก",
+    "changeEdition": "เปลี่ยน",
+    "existingVersions": "เวอร์ชันที่มีอยู่:",
+    "usingRelease": "กำลังใช้ {label} · {year} · {tracks}",
+    "variantBonus": "+{count} โบนัส",
+    "variantOriginal": "ต้นฉบับ",
+    "variantReissue": "วางจำหน่ายใหม่"
   }
 }

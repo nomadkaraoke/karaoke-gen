@@ -1648,6 +1648,12 @@
     "artist": "कलाकार",
     "buyCredits": "क्रेडिट्स खरीदो",
     "removeRow": "हटाओ",
-    "trackCount": "{count} ट्रैक्स"
+    "trackCount": "{count} ट्रैक्स",
+    "changeEdition": "बदलो",
+    "existingVersions": "मौजूदा संस्करण:",
+    "usingRelease": "{label} · {year} · {tracks} का इस्तेमाल कर रहे हो",
+    "variantBonus": "+{count} बोनस",
+    "variantOriginal": "मूल",
+    "variantReissue": "रीइश्यू"
   }
 }

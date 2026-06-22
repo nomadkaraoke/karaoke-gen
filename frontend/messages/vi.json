@@ -1648,6 +1648,12 @@
     "artist": "Nghệ sĩ",
     "buyCredits": "Mua credit",
     "removeRow": "Xóa",
-    "trackCount": "{count} bản nhạc"
+    "trackCount": "{count} bản nhạc",
+    "changeEdition": "Thay đổi",
+    "existingVersions": "Các phiên bản hiện có:",
+    "usingRelease": "Đang sử dụng {label} · {year} · {tracks}",
+    "variantBonus": "+{count} tặng kèm",
+    "variantOriginal": "Bản gốc",
+    "variantReissue": "Tái bản"
   }
 }

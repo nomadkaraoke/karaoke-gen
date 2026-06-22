@@ -52,6 +52,88 @@ class TestPickCanonical:
         assert MusicBrainzService.pick_canonical_edition([]) is None
 
 
+class TestBuildVariants:
+    """Collapse a release-group's editions into distinct tracklist variants."""
+
+    def test_same_track_count_editions_collapse_to_one_variant(self):
+        editions = [
+            {"release_mbid": "us76", "status": "Official", "date": "1976", "country": "US", "track_count": 10},
+            {"release_mbid": "se76", "status": "Official", "date": "1976", "country": "SE", "track_count": 10},
+            {"release_mbid": "nl76", "status": "Official", "date": "1976", "country": "NL", "track_count": 10},
+        ]
+        variants = MusicBrainzService.build_variants(editions)
+        assert len(variants) == 1
+        v = variants[0]
+        assert v["track_count"] == 10
+        assert v["pressing_count"] == 3
+        assert v["label"] == "Original"
+        assert v["year"] == "1976"
+        assert v["delta_vs_original"] == 0
+        # earliest date (all 1976) then preferred country US over SE/NL
+        assert v["representative_release_mbid"] == "us76"
+
+    def test_distinct_track_counts_form_separate_variants_sorted_original_first(self):
+        editions = [
+            {"release_mbid": "reissue2014", "status": "Official", "date": "2014", "country": "XW", "track_count": 12},
+            {"release_mbid": "orig1976", "status": "Official", "date": "1976", "country": "US", "track_count": 10},
+        ]
+        variants = MusicBrainzService.build_variants(editions)
+        assert [v["representative_release_mbid"] for v in variants] == ["orig1976", "reissue2014"]
+        assert variants[0]["label"] == "Original"
+        assert variants[0]["delta_vs_original"] == 0
+        assert variants[1]["label"] == "Reissue"
+        assert variants[1]["delta_vs_original"] == 2
+        assert variants[1]["year"] == "2014"
+
+    def test_single_edition_is_one_original_variant(self):
+        editions = [{"release_mbid": "only", "status": "Official", "date": "1990", "country": "GB", "track_count": 11}]
+        variants = MusicBrainzService.build_variants(editions)
+        assert len(variants) == 1
+        assert variants[0]["label"] == "Original"
+        assert variants[0]["pressing_count"] == 1
+
+    def test_no_editions_no_variants(self):
+        assert MusicBrainzService.build_variants([]) == []
+
+    def test_editions_without_tracks_excluded(self):
+        editions = [
+            {"release_mbid": "real", "status": "Official", "date": "1976", "country": "US", "track_count": 10},
+            {"release_mbid": "empty", "status": "Official", "date": "1976", "country": "GB", "track_count": 0},
+        ]
+        variants = MusicBrainzService.build_variants(editions)
+        assert len(variants) == 1
+        assert variants[0]["representative_release_mbid"] == "real"
+
+    def test_preferred_countries_override_picks_representative(self):
+        editions = [
+            {"release_mbid": "us76", "status": "Official", "date": "1976", "country": "US", "track_count": 10},
+            {"release_mbid": "jp76", "status": "Official", "date": "1976", "country": "JP", "track_count": 10},
+        ]
+        variants = MusicBrainzService.build_variants(editions, preferred_countries=["JP"])
+        assert variants[0]["representative_release_mbid"] == "jp76"
+
+
+class TestLocaleCountryPrefs:
+    def test_english_locale_prefers_anglophone_countries(self):
+        from backend.services.musicbrainz_service import country_prefs_for_locale
+        assert country_prefs_for_locale("en") == ["GB", "US", "AU", "CA", "IE", "NZ"]
+
+    def test_region_suffix_is_stripped(self):
+        from backend.services.musicbrainz_service import country_prefs_for_locale
+        assert country_prefs_for_locale("en-US") == ["GB", "US", "AU", "CA", "IE", "NZ"]
+
+    def test_japanese_locale(self):
+        from backend.services.musicbrainz_service import country_prefs_for_locale
+        assert country_prefs_for_locale("ja") == ["JP"]
+
+    def test_unknown_and_none_fall_back_to_default(self):
+        from backend.services.musicbrainz_service import country_prefs_for_locale
+        default = ["XW", "XE", "US", "GB"]
+        assert country_prefs_for_locale("zz") == default
+        assert country_prefs_for_locale(None) == default
+        assert country_prefs_for_locale("") == default
+
+
 @pytest.mark.asyncio
 class TestServiceCalls:
     async def _svc_with(self, monkeypatch, responses):
@@ -129,6 +211,14 @@ class TestServiceCalls:
         assert result["tracks"][0]["is_extra"] is False
         assert result["tracks"][2]["is_extra"] is True  # the (Live) track
         assert len(result["editions"]) == 2
+        # Variants: 3-track original + 5-track reissue; selected = canonical.
+        variants = result["variants"]
+        assert len(variants) == 2
+        assert variants[0]["label"] == "Original"
+        assert variants[0]["track_count"] == 3
+        assert variants[1]["label"] == "Reissue"
+        assert variants[1]["delta_vs_original"] == 2
+        assert result["selected_variant_mbid"] == result["canonical_release_mbid"]
 
 
 import httpx as _httpx
