@@ -29,19 +29,30 @@ export function CommunityVersions({ available, versions }: CommunityVersionsProp
     <div className="ps-7 mt-0.5 space-y-0.5">
       <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("existingVersions")}</p>
       <ul className="space-y-0.5">
-        {list.map((v) => (
-          <li key={v.url}>
-            <a
-              href={v.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-amber-500 hover:underline"
-            >
-              <Youtube className="w-3.5 h-3.5 shrink-0" />
-              <span>{v.brand}</span>
-            </a>
-          </li>
-        ))}
+        {list.map((v) => {
+          // Only ever render http(s) hrefs — never an attacker-controlled scheme.
+          const safe = /^https?:\/\//i.test(v.url)
+          return (
+            <li key={`${v.brand}-${v.url}`}>
+              {safe ? (
+                <a
+                  href={v.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-amber-500 hover:underline"
+                >
+                  <Youtube className="w-3.5 h-3.5 shrink-0" />
+                  <span>{v.brand}</span>
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs text-amber-500/80">
+                  <Youtube className="w-3.5 h-3.5 shrink-0" />
+                  <span>{v.brand}</span>
+                </span>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

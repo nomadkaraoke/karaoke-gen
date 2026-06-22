@@ -11,7 +11,7 @@ Submission (POST /bulk/submit) and progress (GET /bulk/{batch_id}) live here too
 
 import logging
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -59,7 +59,7 @@ class BulkEditionVariant(BaseModel):
     """A distinct tracklist variant (country pressings collapsed by track count)."""
 
     representative_release_mbid: str
-    label: str = "Original"        # "Original" | "Reissue"
+    label: Literal["Original", "Reissue"] = "Original"
     track_count: int = 0
     year: str = ""
     pressing_count: int = 0
@@ -166,7 +166,13 @@ async def album_tracklist(
     auth_result: AuthResult = Depends(require_auth),
 ):
     """Resolve an album's canonical tracklist (or a specific edition) and enrich
-    each track with KaraokeNerds community-version availability."""
+    each track with KaraokeNerds community-version availability.
+
+    Response shape note: ``variants`` is only populated on the ``release_group_mbid``
+    path (the initial album load). When loading a specific edition via
+    ``release_mbid`` it is intentionally ``[]`` — the client already holds the
+    variant list from the initial load and only needs the chosen edition's tracks.
+    """
     from backend.services.musicbrainz_service import (
         get_musicbrainz_service,
         country_prefs_for_locale,

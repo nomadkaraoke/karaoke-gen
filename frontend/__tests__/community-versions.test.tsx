@@ -23,7 +23,7 @@ describe('CommunityVersions', () => {
     const sndl = screen.getByRole('link', { name: /SNDL Karaoke/ })
     expect(sndl).toHaveAttribute('href', 'https://www.youtube.com/watch?v=aaa')
     expect(sndl).toHaveAttribute('target', '_blank')
-    expect(sndl).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    expect(sndl).toHaveAttribute('rel', 'noopener noreferrer')
 
     const nomad = screen.getByRole('link', { name: /Nomad Karaoke/ })
     expect(nomad).toHaveAttribute('href', 'https://www.youtube.com/watch?v=bbb')
