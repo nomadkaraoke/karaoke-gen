@@ -9,6 +9,7 @@ from backend.services.karaokenerds_service import (
     parse_results,
     _clean_youtube_url,
     _parse_single_track,
+    check_community_versions,
     check_community_versions_batch,
 )
 from bs4 import BeautifulSoup
@@ -264,3 +265,112 @@ async def test_batch_empty_song_has_empty_versions():
     results = await check_community_versions_batch([{"artist": "", "title": ""}])
     assert results[0]["available"] is False
     assert results[0]["versions"] == []
+
+
+# --- check_community_versions: overlong-query fallback (KaraokeNerds term cap) ---
+
+
+def _community_song(title, artist, brand="Nomad Karaoke", url="https://youtu.be/x"):
+    return {
+        "title": title,
+        "artist": artist,
+        "tracks": [
+            {"brand_name": brand, "brand_code": "NK", "youtube_url": url, "is_community": True}
+        ],
+    }
+
+
+@pytest.fixture(autouse=True)
+def _clear_community_cache():
+    """check_community_versions caches in-process; isolate each test."""
+    from backend.services import karaokenerds_service as svc
+    svc._cache.clear()
+    yield
+    svc._cache.clear()
+
+
+@pytest.mark.asyncio
+async def test_overlong_query_falls_back_to_title_only(monkeypatch):
+    """An overlong "artist title" query that returns nothing retries title-only
+    and matches by artist (the ABBA 'I Do, I Do, I Do, I Do, I Do' bug)."""
+    title = "I Do, I Do, I Do, I Do, I Do"
+    calls = []
+
+    async def fake_search(query):
+        calls.append(query)
+        if query == f"ABBA {title}":
+            return []  # combined query is too long -> KaraokeNerds returns nothing
+        if query == title:
+            return [_community_song("I Do I Do I Do I Do I Do", "ABBA")]
+        return []
+
+    monkeypatch.setattr(
+        "backend.services.karaokenerds_service._search_songs", fake_search
+    )
+
+    result = await check_community_versions("ABBA", title)
+
+    assert result["has_community"] is True
+    assert result["songs"][0]["artist"] == "ABBA"
+    assert calls == [f"ABBA {title}", title]  # combined first, then title-only fallback
+
+
+@pytest.mark.asyncio
+async def test_fallback_filters_out_wrong_artist(monkeypatch):
+    """Title-only fallback is broader, so same-titled songs by other artists
+    must be discarded — no false positive."""
+    title = "I Do, I Do, I Do, I Do, I Do"
+
+    async def fake_search(query):
+        if query == title:
+            return [_community_song("I Do I Do I Do I Do I Do", "Some Other Band")]
+        return []
+
+    monkeypatch.setattr(
+        "backend.services.karaokenerds_service._search_songs", fake_search
+    )
+
+    result = await check_community_versions("ABBA", title)
+
+    assert result["has_community"] is False
+    assert result["songs"] == []
+
+
+@pytest.mark.asyncio
+async def test_short_empty_query_does_not_fall_back(monkeypatch):
+    """A short query that legitimately returns nothing must NOT trigger a second
+    request (avoids doubling load for songs with no community version)."""
+    calls = []
+
+    async def fake_search(query):
+        calls.append(query)
+        return []
+
+    monkeypatch.setattr(
+        "backend.services.karaokenerds_service._search_songs", fake_search
+    )
+
+    result = await check_community_versions("ABBA", "Dancing Queen")
+
+    assert result["has_community"] is False
+    assert calls == ["ABBA Dancing Queen"]  # no fallback request
+
+
+@pytest.mark.asyncio
+async def test_nonempty_combined_result_skips_fallback(monkeypatch):
+    """If the combined query returns results, never fall back even when long."""
+    title = "I Do, I Do, I Do, I Do, I Do"
+    calls = []
+
+    async def fake_search(query):
+        calls.append(query)
+        return [_community_song("I Do I Do I Do I Do I Do", "ABBA")]
+
+    monkeypatch.setattr(
+        "backend.services.karaokenerds_service._search_songs", fake_search
+    )
+
+    result = await check_community_versions("ABBA", title)
+
+    assert result["has_community"] is True
+    assert calls == [f"ABBA {title}"]  # only the combined query ran
