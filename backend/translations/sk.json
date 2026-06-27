@@ -93,7 +93,8 @@
     "searchAudioError": "Chyba pri vyhľadávaní zvuku: {error}",
     "searchCreatedSuccessfully": "Úloha bola vytvorená. Vyhľadáva sa zvuk...",
     "autoDownloadStarted": "Najlepší výsledok bol vybraný automaticky. Sťahovanie sa začína...",
-    "drmUrlUnsupported": "Odkazy z {platform} sú chránené proti kopírovaniu a nedajú sa stiahnuť. Namiesto toho vlož odkaz na YouTube, alebo použi vyhľadávanie zvuku na nájdenie tejto piesne."
+    "drmUrlUnsupported": "Odkazy {platform} sú chránené proti kopírovaniu, takže ich nemôžeme stiahnuť priamo. Skús najprv stiahnuť zvuk pomocou nástroja tretej strany a potom sem nahraj zvukový súbor. Môžeš tiež vložiť odkaz na YouTube alebo použiť vyhľadávanie zvuku na nájdenie tejto piesne.",
+    "drmUrlUnsupportedWithLink": "Odkazy {platform} sú chránené proti kopírovaniu, takže ich nemôžeme stiahnuť priamo. Skladbu si môžeš stiahnuť z {downloader} a potom sem nahrať zvukový súbor. Môžeš tiež vložiť odkaz na YouTube alebo použiť vyhľadávanie zvuku na nájdenie tejto piesne."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

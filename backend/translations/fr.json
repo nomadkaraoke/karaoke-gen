@@ -93,7 +93,8 @@
     "searchAudioError": "Erreur lors de la recherche audio : {error}",
     "searchCreatedSuccessfully": "Tâche créée. Recherche de l'audio en cours...",
     "autoDownloadStarted": "Meilleur résultat sélectionné automatiquement. Le téléchargement commence...",
-    "drmUrlUnsupported": "Les liens {platform} sont protégés contre la copie et ne peuvent pas être téléchargés. Colle plutôt un lien YouTube, ou utilise la Recherche Audio pour trouver cette chanson."
+    "drmUrlUnsupported": "Les liens {platform} sont protégés par le droit d'auteur, nous ne pouvons donc pas les télécharger directement. Essaie d'abord de télécharger l'audio avec un outil tiers, puis téléverse le fichier audio ici. Tu peux aussi coller un lien YouTube, ou utiliser la Recherche Audio pour trouver cette chanson.",
+    "drmUrlUnsupportedWithLink": "Les liens {platform} sont protégés par le droit d'auteur, nous ne pouvons donc pas les télécharger directement. Tu peux télécharger le morceau depuis {downloader}, puis téléverser le fichier audio ici. Tu peux aussi coller un lien YouTube, ou utiliser la Recherche Audio pour trouver cette chanson."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

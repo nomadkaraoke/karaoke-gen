@@ -47,6 +47,13 @@ URL-download failure (private/geo YouTube, transient flacfetch errors), not just
   `create-from-url` endpoint now returns **400** with a friendly i18n message
   (`audioSearch.drmUrlUnsupported`, translated to all 33 locales) before a job is created.
   YouTube Music (`music.youtube.com`) is deliberately *not* blocked (it's downloadable).
+  - The message suggests downloading the audio with a third-party tool and then
+    uploading the file. For platforms with a verified downloader
+    (`_DRM_DOWNLOADER_SUGGESTIONS`) it links to it — Apple Music →
+    `https://am-dl.pages.dev` — via the `drmUrlUnsupportedWithLink` variant.
+  - URLs in submit-error messages are now clickable via a new
+    `LinkifiedText` component (`frontend/components/ui/linkified-text.tsx`), wired
+    into the guided flow and the URL-tab submit error.
 - **Bug B:** the retry "restart from beginning" branch is now gated on
   `job.input_media_gcs_path` only. URL jobs without downloaded audio fall through to the
   existing clean **"resubmit"** 400 instead of firing doomed workers — matching the

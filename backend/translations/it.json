@@ -93,7 +93,8 @@
     "searchAudioError": "Errore durante la ricerca dell'audio: {error}",
     "searchCreatedSuccessfully": "Lavoro creato. Ricerca dell'audio in corso...",
     "autoDownloadStarted": "Miglior risultato selezionato automaticamente. Avvio del download...",
-    "drmUrlUnsupported": "I link di {platform} sono protetti da copyright e non possono essere scaricati. Incolla invece un link di YouTube, oppure usa la Ricerca Audio per trovare questa canzone."
+    "drmUrlUnsupported": "I link di {platform} sono protetti da copyright, quindi non possiamo scaricarli direttamente. Prova prima a scaricare l'audio con uno strumento di terze parti, poi carica il file audio qui. Puoi anche incollare un link di YouTube, oppure usare la Ricerca Audio per trovare questa canzone.",
+    "drmUrlUnsupportedWithLink": "I link di {platform} sono protetti da copyright, quindi non possiamo scaricarli direttamente. Puoi scaricare la traccia da {downloader}, poi caricare il file audio qui. Puoi anche incollare un link di YouTube, oppure usare la Ricerca Audio per trovare questa canzone."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

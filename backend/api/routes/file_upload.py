@@ -1601,6 +1601,13 @@ _UNSUPPORTED_DRM_HOSTS = {
     'pandora.com': 'Pandora',
 }
 
+# Third-party tools that can download audio from a DRM platform, which the user
+# can then upload to us. Only listed where we've verified one works; platforms
+# without an entry get a generic "download elsewhere, then upload" suggestion.
+_DRM_DOWNLOADER_SUGGESTIONS = {
+    'Apple Music': 'https://am-dl.pages.dev',
+}
+
 
 def _unsupported_url_platform(url: Optional[str]) -> Optional[str]:
     """
@@ -1679,10 +1686,18 @@ async def create_job_from_url(
         # into a futile retry storm.
         unsupported_platform = _unsupported_url_platform(body.url)
         if unsupported_platform:
-            raise HTTPException(
-                status_code=400,
-                detail=t(locale, "audioSearch.drmUrlUnsupported", platform=unsupported_platform),
-            )
+            downloader = _DRM_DOWNLOADER_SUGGESTIONS.get(unsupported_platform)
+            if downloader:
+                detail = t(
+                    locale, "audioSearch.drmUrlUnsupportedWithLink",
+                    platform=unsupported_platform, downloader=downloader,
+                )
+            else:
+                detail = t(
+                    locale, "audioSearch.drmUrlUnsupported",
+                    platform=unsupported_platform,
+                )
+            raise HTTPException(status_code=400, detail=detail)
 
         # Validate URL
         if not _validate_url(body.url):

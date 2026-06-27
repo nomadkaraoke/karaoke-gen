@@ -1321,6 +1321,21 @@ class TestUnsupportedDrmUrl:
         for url in ok_urls:
             assert _unsupported_url_platform(url) is None, url
 
+    def test_downloader_suggestions_are_valid(self):
+        """Every downloader suggestion must map a real platform to an https URL."""
+        from backend.api.routes.file_upload import (
+            _DRM_DOWNLOADER_SUGGESTIONS,
+            _UNSUPPORTED_DRM_HOSTS,
+        )
+
+        known_platforms = set(_UNSUPPORTED_DRM_HOSTS.values()) | {"Amazon Music"}
+        for platform, url in _DRM_DOWNLOADER_SUGGESTIONS.items():
+            assert platform in known_platforms, f"{platform} is not a known DRM platform"
+            assert url.startswith("https://"), f"{platform} downloader must be https"
+
+        # Apple Music is the verified case driving this feature.
+        assert _DRM_DOWNLOADER_SUGGESTIONS.get("Apple Music") == "https://am-dl.pages.dev"
+
 
 class TestCreateJobFromUrlRequest:
     """Test CreateJobFromUrlRequest Pydantic model."""
