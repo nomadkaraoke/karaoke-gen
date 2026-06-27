@@ -545,7 +545,8 @@
     "matchChecking": "Проверка данных песни…",
     "matchUseCorrection": "использовать исправление",
     "matchUseTidied": "использовать отформатированную версию",
-    "matchUsingTyped": "Используем твой вариант: {value}"
+    "matchUsingTyped": "Используем твой вариант: {value}",
+    "checkingUrl": "Проверка…"
   },
   "jobStatus": {
     "settingUp": "Настройка",

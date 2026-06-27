@@ -545,7 +545,8 @@
     "matchChecking": "Vérification des détails de la chanson…",
     "matchUseCorrection": "utiliser la correction",
     "matchUseTidied": "utiliser la version nettoyée",
-    "matchUsingTyped": "Utilisation de ce que tu as tapé : {value}"
+    "matchUsingTyped": "Utilisation de ce que tu as tapé : {value}",
+    "checkingUrl": "Vérification…"
   },
   "jobStatus": {
     "settingUp": "Configuration",

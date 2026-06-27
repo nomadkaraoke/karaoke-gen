@@ -545,7 +545,8 @@
     "matchChecking": "正在检查歌曲详情…",
     "matchUseCorrection": "使用修正内容",
     "matchUseTidied": "使用整理后的版本",
-    "matchUsingTyped": "使用您输入的内容：{value}"
+    "matchUsingTyped": "使用您输入的内容：{value}",
+    "checkingUrl": "检查中…"
   },
   "jobStatus": {
     "settingUp": "设置中",

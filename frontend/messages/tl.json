@@ -545,7 +545,8 @@
     "matchChecking": "Sinusuri ang mga detalye ng kanta…",
     "matchUseCorrection": "gamitin ang itinama",
     "matchUseTidied": "gamitin ang inayos na bersyon",
-    "matchUsingTyped": "Ginagamit ang iyong nai-type: {value}"
+    "matchUsingTyped": "Ginagamit ang iyong nai-type: {value}",
+    "checkingUrl": "Sinusuri…"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",

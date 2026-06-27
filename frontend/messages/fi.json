@@ -545,7 +545,8 @@
     "matchChecking": "Tarkistetaan kappaleen tietoja…",
     "matchUseCorrection": "käytä korjausta",
     "matchUseTidied": "käytä siistittyä versiota",
-    "matchUsingTyped": "Käytetään kirjoittamaasi: {value}"
+    "matchUsingTyped": "Käytetään kirjoittamaasi: {value}",
+    "checkingUrl": "Tarkistetaan…"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",

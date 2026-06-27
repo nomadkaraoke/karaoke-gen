@@ -545,7 +545,8 @@
     "matchChecking": "Kontrollerar låtdetaljer…",
     "matchUseCorrection": "använd korrigeringen",
     "matchUseTidied": "använd rensad version",
-    "matchUsingTyped": "Använder det du skrev: {value}"
+    "matchUsingTyped": "Använder det du skrev: {value}",
+    "checkingUrl": "Kontrollerar…"
   },
   "jobStatus": {
     "settingUp": "Ställer in",

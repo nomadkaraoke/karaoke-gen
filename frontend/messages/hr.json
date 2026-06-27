@@ -545,7 +545,8 @@
     "matchChecking": "Provjera detalja pjesme…",
     "matchUseCorrection": "koristi ispravak",
     "matchUseTidied": "koristi uređenu verziju",
-    "matchUsingTyped": "Koristimo ono što si upisao: {value}"
+    "matchUsingTyped": "Koristimo ono što si upisao: {value}",
+    "checkingUrl": "Provjera…"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",

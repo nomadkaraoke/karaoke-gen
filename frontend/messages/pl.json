@@ -545,7 +545,8 @@
     "matchChecking": "Sprawdzanie szczegółów utworu…",
     "matchUseCorrection": "użyj poprawki",
     "matchUseTidied": "użyj uporządkowanej wersji",
-    "matchUsingTyped": "Używam wpisanego tekstu: {value}"
+    "matchUsingTyped": "Używam wpisanego tekstu: {value}",
+    "checkingUrl": "Sprawdzanie…"
   },
   "jobStatus": {
     "settingUp": "Konfigurowanie",

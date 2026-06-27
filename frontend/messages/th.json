@@ -545,7 +545,8 @@
     "matchChecking": "กำลังตรวจสอบรายละเอียดเพลง…",
     "matchUseCorrection": "ใช้ตามที่แก้ไข",
     "matchUseTidied": "ใช้เวอร์ชันที่จัดระเบียบแล้ว",
-    "matchUsingTyped": "ใช้ข้อความที่คุณพิมพ์: {value}"
+    "matchUsingTyped": "ใช้ข้อความที่คุณพิมพ์: {value}",
+    "checkingUrl": "กำลังตรวจสอบ…"
   },
   "jobStatus": {
     "settingUp": "กำลังตั้งค่า",

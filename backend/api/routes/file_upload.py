@@ -1676,6 +1676,45 @@ def _unsupported_url_platform(url: Optional[str]) -> Optional[str]:
     return None
 
 
+class ValidateUrlRequest(BaseModel):
+    """Request to pre-validate a URL before submitting a job."""
+    url: str = Field(..., description="The URL the user intends to submit")
+
+
+class ValidateUrlResponse(BaseModel):
+    """Whether a URL can be used for a job, with a friendly reason if not."""
+    supported: bool
+    detail: Optional[str] = None
+
+
+@router.post("/jobs/validate-url", response_model=ValidateUrlResponse)
+async def validate_job_url(
+    request: Request,
+    body: ValidateUrlRequest,
+    auth_result: AuthResult = Depends(require_auth),
+) -> ValidateUrlResponse:
+    """
+    Lightweight pre-flight check for a job URL, used by the guided submission
+    flow so unsupported links are caught at the "Use this URL" step instead of
+    only at final submit. Mirrors the URL validation in create_job_from_url.
+    """
+    locale = get_locale_from_request(request)
+
+    platform = _unsupported_url_platform(body.url)
+    if platform:
+        return ValidateUrlResponse(
+            supported=False, detail=_drm_unsupported_detail(locale, platform)
+        )
+
+    if not _validate_url(body.url):
+        return ValidateUrlResponse(
+            supported=False,
+            detail="Invalid URL. Please provide a valid YouTube, Vimeo, SoundCloud, or other supported video URL.",
+        )
+
+    return ValidateUrlResponse(supported=True)
+
+
 @router.post("/jobs/create-from-url", response_model=CreateJobFromUrlResponse)
 async def create_job_from_url(
     request: Request,

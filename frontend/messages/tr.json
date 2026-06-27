@@ -545,7 +545,8 @@
     "matchChecking": "Şarkı detayları kontrol ediliyor…",
     "matchUseCorrection": "düzeltmeyi kullan",
     "matchUseTidied": "düzenlenmiş sürümü kullan",
-    "matchUsingTyped": "Yazdığın kullanılıyor: {value}"
+    "matchUsingTyped": "Yazdığın kullanılıyor: {value}",
+    "checkingUrl": "Kontrol ediliyor…"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",

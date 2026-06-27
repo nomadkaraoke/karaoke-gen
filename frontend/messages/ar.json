@@ -545,7 +545,8 @@
     "matchChecking": "جارٍ التحقق من تفاصيل الأغنية…",
     "matchUseCorrection": "استخدام التصحيح",
     "matchUseTidied": "استخدام النسخة المنقحة",
-    "matchUsingTyped": "استخدام ما كتبته: {value}"
+    "matchUsingTyped": "استخدام ما كتبته: {value}",
+    "checkingUrl": "جاري التحقق..."
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",

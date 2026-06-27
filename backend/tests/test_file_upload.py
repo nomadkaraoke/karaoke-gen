@@ -1362,6 +1362,50 @@ class TestUnsupportedDrmUrl:
         assert "Tidal" in detail
 
 
+class TestValidateJobUrlEndpoint:
+    """The /jobs/validate-url pre-flight check used by the guided submission flow."""
+
+    def _call(self, url):
+        import asyncio
+        from unittest.mock import MagicMock, patch
+        from backend.api.routes.file_upload import validate_job_url, ValidateUrlRequest
+
+        req = MagicMock()
+        req.headers = {}
+        with patch("backend.api.routes.file_upload.get_locale_from_request", return_value="en"):
+            return asyncio.run(
+                validate_job_url(
+                    request=req,
+                    body=ValidateUrlRequest(url=url),
+                    auth_result=MagicMock(),
+                )
+            )
+
+    def test_apple_music_rejected_with_links(self):
+        r = self._call("https://music.apple.com/us/album/x/1?i=2")
+        assert r.supported is False
+        assert "am-dl.pages.dev" in r.detail
+
+    def test_spotify_rejected_with_links(self):
+        r = self._call("https://open.spotify.com/track/abc")
+        assert r.supported is False
+        assert "spotdown.org" in r.detail
+
+    def test_tidal_rejected_with_search_link(self):
+        r = self._call("https://tidal.com/browse/track/123")
+        assert r.supported is False
+        assert "google.com/search" in r.detail
+
+    def test_youtube_supported(self):
+        r = self._call("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        assert r.supported is True
+        assert r.detail is None
+
+    def test_garbage_url_rejected(self):
+        r = self._call("not a real url")
+        assert r.supported is False
+
+
 class TestCreateJobFromUrlRequest:
     """Test CreateJobFromUrlRequest Pydantic model."""
     

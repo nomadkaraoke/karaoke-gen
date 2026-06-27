@@ -917,7 +917,27 @@ export const api = {
 
     return handleResponse(response);
   },
-  
+
+  /**
+   * Pre-validate a URL before submitting a job. Used by the guided flow so
+   * unsupported links (e.g. DRM streaming services) are caught at the
+   * "Use this URL" step instead of only at final submit.
+   */
+  async validateJobUrl(
+    url: string
+  ): Promise<{ supported: boolean; detail: string | null }> {
+    const response = await fetch(`${API_BASE_URL}/api/jobs/validate-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    return handleResponse(response);
+  },
+
   /**
    * Get review data for lyrics review
    */

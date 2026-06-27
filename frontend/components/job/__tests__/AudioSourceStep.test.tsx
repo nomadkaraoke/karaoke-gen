@@ -25,6 +25,7 @@ jest.mock("@/lib/api", () => ({
     checkCommunityVersions: jest.fn(),
     matchJudge: jest.fn(),
     createJobFromSearch: jest.fn(),
+    validateJobUrl: jest.fn().mockResolvedValue({ supported: true, detail: null }),
   },
   ApiError: class ApiError extends Error {
     status: number
@@ -145,6 +146,41 @@ describe("AudioSourceStep", () => {
     await waitFor(() => {
       expect(mockApi.searchStandalone).toHaveBeenCalledWith("ABBA", "Waterloo")
     })
+  })
+
+  it("blocks an unsupported (DRM) URL at 'Use This URL' and shows guidance without advancing", async () => {
+    mockApi.validateJobUrl.mockResolvedValue({
+      supported: false,
+      detail:
+        "Apple Music links are copy-protected, so we can't download them directly. " +
+        "You can download the track using a tool like https://am-dl.pages.dev, " +
+        "https://aplmate.com and then upload the audio file here.",
+    })
+
+    const user = userEvent.setup()
+    render(<AudioSourceStep {...defaultProps} />)
+
+    // Open the "paste a link" fallback form (appears once search settles).
+    const pasteLink = await screen.findByRole("button", { name: /Paste a link/i })
+    await user.click(pasteLink)
+
+    const input = screen.getByPlaceholderText(/youtube\.com\/watch/i)
+    const appleUrl = "https://music.apple.com/us/album/x/1?i=2"
+    await user.type(input, appleUrl)
+
+    const useUrlBtn = screen.getByRole("button", { name: /Use This URL/i })
+    await waitFor(() => expect(useUrlBtn).not.toBeDisabled())
+    await user.click(useUrlBtn)
+
+    await waitFor(() => {
+      expect(mockApi.validateJobUrl).toHaveBeenCalledWith(appleUrl)
+    })
+
+    // Guidance is shown with a clickable downloader link, and we did NOT advance.
+    expect(await screen.findByText(/copy-protected/i)).toBeInTheDocument()
+    const link = screen.getByRole("link", { name: "https://am-dl.pages.dev" })
+    expect(link).toHaveAttribute("href", "https://am-dl.pages.dev")
+    expect(defaultProps.onUrlReady).not.toHaveBeenCalled()
   })
 
   it("fires a fast catalog-only pass on mount (parallel with search)", async () => {

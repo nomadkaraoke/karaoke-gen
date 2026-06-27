@@ -545,7 +545,8 @@
     "matchChecking": "Controllo dei dettagli del brano…",
     "matchUseCorrection": "usa la correzione",
     "matchUseTidied": "usa la versione ripulita",
-    "matchUsingTyped": "Uso quello che hai digitato: {value}"
+    "matchUsingTyped": "Uso quello che hai digitato: {value}",
+    "checkingUrl": "Controllo in corso…"
   },
   "jobStatus": {
     "settingUp": "Configurazione",

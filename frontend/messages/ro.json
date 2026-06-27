@@ -545,7 +545,8 @@
     "matchChecking": "Se verifică detaliile melodiei…",
     "matchUseCorrection": "folosește corecția",
     "matchUseTidied": "folosește versiunea curățată",
-    "matchUsingTyped": "Folosim ce ai tastat: {value}"
+    "matchUsingTyped": "Folosim ce ai tastat: {value}",
+    "checkingUrl": "Se verifică…"
   },
   "jobStatus": {
     "settingUp": "Se configurează",

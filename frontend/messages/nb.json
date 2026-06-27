@@ -545,7 +545,8 @@
     "matchChecking": "Sjekker sangdetaljer…",
     "matchUseCorrection": "bruk rettelsen",
     "matchUseTidied": "bruk oppryddet versjon",
-    "matchUsingTyped": "Bruker det du skrev inn: {value}"
+    "matchUsingTyped": "Bruker det du skrev inn: {value}",
+    "checkingUrl": "Sjekker…"
   },
   "jobStatus": {
     "settingUp": "Setter opp",

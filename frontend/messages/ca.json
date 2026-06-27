@@ -545,7 +545,8 @@
     "matchChecking": "Comprovant els detalls de la cançó…",
     "matchUseCorrection": "utilitza la correcció",
     "matchUseTidied": "utilitza la versió polida",
-    "matchUsingTyped": "Utilitzant el que has escrit: {value}"
+    "matchUsingTyped": "Utilitzant el que has escrit: {value}",
+    "checkingUrl": "Comprovant…"
   },
   "jobStatus": {
     "settingUp": "Configurant",
