@@ -545,7 +545,8 @@
     "matchChecking": "Menyemak butiran lagu…",
     "matchUseCorrection": "gunakan pembetulan",
     "matchUseTidied": "gunakan versi yang dikemaskan",
-    "matchUsingTyped": "Menggunakan apa yang anda taip: {value}"
+    "matchUsingTyped": "Menggunakan apa yang anda taip: {value}",
+    "checkingUrl": "Menyemak…"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",

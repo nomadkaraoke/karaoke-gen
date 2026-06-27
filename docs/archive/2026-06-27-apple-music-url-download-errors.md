@@ -54,6 +54,21 @@ URL-download failure (private/geo YouTube, transient flacfetch errors), not just
   - URLs in submit-error messages are now clickable via a new
     `LinkifiedText` component (`frontend/components/ui/linkified-text.tsx`), wired
     into the guided flow and the URL-tab submit error.
+  - **v0.188.3:** `_DRM_DOWNLOADER_SUGGESTIONS` now maps each platform to a *list*
+    of downloader links (Apple Music → `am-dl.pages.dev`, `aplmate.com`; Spotify →
+    `spotdown.org`, `spotmate.online`). Platforms without a known tool (Tidal,
+    Amazon Music, Deezer, Pandora) fall back to a Google search link for
+    "`<platform> downloader`" via the new `drmUrlUnsupportedSearch` message. The
+    `_drm_unsupported_detail(locale, platform)` helper builds the right message;
+    `LinkifiedText` renders the multiple URLs as clickable links (no frontend
+    change needed).
+  - **v0.188.3 (early validation):** the guided flow previously only surfaced the
+    DRM rejection at *final submit* — after the user walked the whole flow. Added
+    a lightweight `POST /api/jobs/validate-url` endpoint (reuses
+    `_unsupported_url_platform` + `_drm_unsupported_detail`, single source of
+    truth) that `AudioSourceStep`'s "Use this URL" button now calls, showing the
+    guidance immediately (with a "Checking…" spinner) and blocking advancement.
+    Fails open on network error — the final submit still validates server-side.
 - **Bug B:** the retry "restart from beginning" branch is now gated on
   `job.input_media_gcs_path` only. URL jobs without downloaded audio fall through to the
   existing clean **"resubmit"** 400 instead of firing doomed workers — matching the

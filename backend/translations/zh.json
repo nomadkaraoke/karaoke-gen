@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "任务已创建。正在搜索音频...",
     "autoDownloadStarted": "已自动选择最佳结果。开始下载...",
     "drmUrlUnsupported": "{platform} 链接受版权保护，因此我们无法直接下载。请先尝试使用第三方工具下载音频，然后在此处上传音频文件。您也可以粘贴 YouTube 链接，或者使用音频搜索来查找这首歌。",
-    "drmUrlUnsupportedWithLink": "{platform} 链接受版权保护，因此我们无法直接下载。您可以从 {downloader} 下载该曲目，然后在此处上传音频文件。您也可以粘贴 YouTube 链接，或者使用音频搜索来查找这首歌。"
+    "drmUrlUnsupportedWithLink": "{platform} 链接受版权保护，因此我们无法直接下载。您可以使用 {downloader} 等工具下载该曲目，然后在此处上传音频文件。您也可以粘贴 YouTube 链接，或使用“音频搜索”来查找这首歌。",
+    "drmUrlUnsupportedSearch": "{platform} 链接受防复制保护，因此我们无法直接下载。请在网上搜索“{platform} downloader”来获取音频——例如 {searchUrl} ——然后在此处上传音频文件。您也可以粘贴 YouTube 链接，或者使用音频搜索来查找这首歌。"
   },
   "users": {
     "disposableEmailBlocked": "不允许使用一次性邮箱",

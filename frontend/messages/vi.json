@@ -545,7 +545,8 @@
     "matchChecking": "Đang kiểm tra chi tiết bài hát…",
     "matchUseCorrection": "sử dụng bản sửa đổi",
     "matchUseTidied": "sử dụng bản đã tinh chỉnh",
-    "matchUsingTyped": "Sử dụng nội dung bạn đã nhập: {value}"
+    "matchUsingTyped": "Sử dụng nội dung bạn đã nhập: {value}",
+    "checkingUrl": "Đang kiểm tra…"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",

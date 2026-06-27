@@ -1602,11 +1602,39 @@ _UNSUPPORTED_DRM_HOSTS = {
 }
 
 # Third-party tools that can download audio from a DRM platform, which the user
-# can then upload to us. Only listed where we've verified one works; platforms
-# without an entry get a generic "download elsewhere, then upload" suggestion.
+# can then upload to us. Listed where we know of working options; platforms
+# without an entry fall back to a web-search link for "<platform> downloader".
 _DRM_DOWNLOADER_SUGGESTIONS = {
-    'Apple Music': 'https://am-dl.pages.dev',
+    'Apple Music': ['https://am-dl.pages.dev', 'https://aplmate.com'],
+    'Spotify': ['https://spotdown.org', 'https://spotmate.online'],
 }
+
+
+def _drm_unsupported_detail(locale: str, platform: str) -> str:
+    """
+    Build the user-facing 400 message for a rejected DRM streaming URL.
+
+    Platforms with known downloader tools get a "download from {tools}, then
+    upload" message linking each tool; everything else gets a "search the web
+    for a '<platform> downloader'" message linking a Google search. Either way
+    the goal is to guide the user to obtain the audio and upload it themselves.
+    """
+    downloaders = _DRM_DOWNLOADER_SUGGESTIONS.get(platform)
+    if downloaders:
+        # Join with commas (locale-neutral) rather than an English "or"; the
+        # message wording frames them as options and LinkifiedText makes each
+        # URL clickable in the frontend.
+        return t(
+            locale, "audioSearch.drmUrlUnsupportedWithLink",
+            platform=platform, downloader=", ".join(downloaders),
+        )
+
+    from urllib.parse import quote_plus
+    search_url = "https://www.google.com/search?q=" + quote_plus(f"{platform} downloader")
+    return t(
+        locale, "audioSearch.drmUrlUnsupportedSearch",
+        platform=platform, searchUrl=search_url,
+    )
 
 
 def _unsupported_url_platform(url: Optional[str]) -> Optional[str]:
@@ -1624,13 +1652,14 @@ def _unsupported_url_platform(url: Optional[str]) -> Optional[str]:
 
     from urllib.parse import urlparse
     try:
-        domain = urlparse(url).netloc.lower()
+        # .hostname is already lowercased and strips userinfo, port, and IPv6
+        # brackets, so it's safer than parsing .netloc by hand.
+        domain = (urlparse(url).hostname or "").lower()
     except (ValueError, TypeError):
         return None
 
-    # Remove port if present
-    if ':' in domain:
-        domain = domain.split(':')[0]
+    if not domain:
+        return None
     # Normalise leading www.
     if domain.startswith('www.'):
         domain = domain[4:]
@@ -1645,6 +1674,45 @@ def _unsupported_url_platform(url: Optional[str]) -> Optional[str]:
         return 'Amazon Music'
 
     return None
+
+
+class ValidateUrlRequest(BaseModel):
+    """Request to pre-validate a URL before submitting a job."""
+    url: str = Field(..., description="The URL the user intends to submit")
+
+
+class ValidateUrlResponse(BaseModel):
+    """Whether a URL can be used for a job, with a friendly reason if not."""
+    supported: bool
+    detail: Optional[str] = None
+
+
+@router.post("/jobs/validate-url", response_model=ValidateUrlResponse)
+async def validate_job_url(
+    request: Request,
+    body: ValidateUrlRequest,
+    auth_result: AuthResult = Depends(require_auth),
+) -> ValidateUrlResponse:
+    """
+    Lightweight pre-flight check for a job URL, used by the guided submission
+    flow so unsupported links are caught at the "Use this URL" step instead of
+    only at final submit. Mirrors the URL validation in create_job_from_url.
+    """
+    locale = get_locale_from_request(request)
+
+    platform = _unsupported_url_platform(body.url)
+    if platform:
+        return ValidateUrlResponse(
+            supported=False, detail=_drm_unsupported_detail(locale, platform)
+        )
+
+    if not _validate_url(body.url):
+        return ValidateUrlResponse(
+            supported=False,
+            detail="Invalid URL. Please provide a valid YouTube, Vimeo, SoundCloud, or other supported video URL.",
+        )
+
+    return ValidateUrlResponse(supported=True)
 
 
 @router.post("/jobs/create-from-url", response_model=CreateJobFromUrlResponse)
@@ -1686,18 +1754,10 @@ async def create_job_from_url(
         # into a futile retry storm.
         unsupported_platform = _unsupported_url_platform(body.url)
         if unsupported_platform:
-            downloader = _DRM_DOWNLOADER_SUGGESTIONS.get(unsupported_platform)
-            if downloader:
-                detail = t(
-                    locale, "audioSearch.drmUrlUnsupportedWithLink",
-                    platform=unsupported_platform, downloader=downloader,
-                )
-            else:
-                detail = t(
-                    locale, "audioSearch.drmUrlUnsupported",
-                    platform=unsupported_platform,
-                )
-            raise HTTPException(status_code=400, detail=detail)
+            raise HTTPException(
+                status_code=400,
+                detail=_drm_unsupported_detail(locale, unsupported_platform),
+            )
 
         # Validate URL
         if not _validate_url(body.url):

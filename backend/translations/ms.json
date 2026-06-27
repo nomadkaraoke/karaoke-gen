@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "Tugasan dicipta. Sedang mencari audio...",
     "autoDownloadStarted": "Hasil terbaik dipilih secara automatik. Muat turun bermula...",
     "drmUrlUnsupported": "Pautan {platform} dilindungi hak cipta, jadi kami tidak dapat memuat turunnya secara terus. Cuba muat turun audio menggunakan alat pihak ketiga terlebih dahulu, kemudian muat naik fail audio di sini. Anda juga boleh menampal pautan YouTube, atau menggunakan Carian Audio untuk mencari lagu ini.",
-    "drmUrlUnsupportedWithLink": "Pautan {platform} dilindungi hak cipta, jadi kami tidak dapat memuat turunnya secara terus. Anda boleh memuat turun trek tersebut dari {downloader}, kemudian muat naik fail audio di sini. Anda juga boleh menampal pautan YouTube, atau menggunakan Carian Audio untuk mencari lagu ini."
+    "drmUrlUnsupportedWithLink": "Pautan {platform} dilindungi hak cipta, jadi kami tidak dapat memuat turunnya secara terus. Anda boleh memuat turun trek tersebut menggunakan alat seperti {downloader} dan kemudian muat naik fail audio di sini. Anda juga boleh menampal pautan YouTube, atau menggunakan Carian Audio untuk mencari lagu ini.",
+    "drmUrlUnsupportedSearch": "Pautan {platform} dilindungi hak cipta, jadi kami tidak dapat memuat turunnya secara terus. Cari di web untuk \"{platform} downloader\" untuk mendapatkan audio — contohnya {searchUrl} — kemudian muat naik fail audio di sini. Anda juga boleh menampal pautan YouTube, atau guna Carian Audio untuk mencari lagu ini."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

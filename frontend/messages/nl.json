@@ -545,7 +545,8 @@
     "matchChecking": "Nummergegevens controleren…",
     "matchUseCorrection": "gebruik de correctie",
     "matchUseTidied": "gebruik opgeschoonde versie",
-    "matchUsingTyped": "We gebruiken wat je hebt getypt: {value}"
+    "matchUsingTyped": "We gebruiken wat je hebt getypt: {value}",
+    "checkingUrl": "Controleren…"
   },
   "jobStatus": {
     "settingUp": "Instellen",

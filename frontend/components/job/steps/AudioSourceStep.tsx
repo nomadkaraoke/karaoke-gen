@@ -20,6 +20,7 @@ import {
 } from "@/lib/audio-search-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { LinkifiedText } from "@/components/ui/linkified-text"
 import { Loader2, ChevronDown, ChevronUp, Upload, Youtube, ArrowLeft, Check, AlertTriangle, CheckCircle2, Lightbulb, Info, X, Scissors, Zap } from "lucide-react"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 
@@ -147,6 +148,9 @@ export function AudioSourceStep({
   const [results, setResults] = useState<ExtendedAudioSearchResult[]>([])
   const [searchStatus, setSearchStatus] = useState<SearchStatus>({ phase: 'searching', attempt: 1 })
   const [pendingChoice, setPendingChoice] = useState<PendingChoice | null>(null)
+  // Pre-flight URL validation (caught at "Use this URL", before advancing).
+  const [urlValidating, setUrlValidating] = useState(false)
+  const [urlError, setUrlError] = useState("")
 
   // Derived from searchStatus for rendering convenience
   const isSearching = searchStatus.phase === 'searching'
@@ -398,10 +402,27 @@ export function AudioSourceStep({
     setPendingChoice({ type: "file", file: uploadFile })
   }
 
-  function handleUrlSubmit(e: React.FormEvent) {
+  async function handleUrlSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!youtubeUrl.trim()) return
-    setPendingChoice({ type: "url", url: youtubeUrl.trim() })
+    const url = youtubeUrl.trim()
+    if (!url) return
+    setUrlError("")
+    setUrlValidating(true)
+    try {
+      const result = await api.validateJobUrl(url)
+      if (!result.supported) {
+        // e.g. a DRM streaming link — show the guidance here instead of letting
+        // the user walk the whole flow only to fail at final submit.
+        setUrlError(result.detail || "This URL isn't supported.")
+        return
+      }
+    } catch (err) {
+      // Fail open: the final submit still validates server-side.
+      console.warn("URL pre-validation failed, proceeding:", err)
+    } finally {
+      setUrlValidating(false)
+    }
+    setPendingChoice({ type: "url", url })
   }
 
   function handleAudioEditAnswer(wantsEdit: boolean) {
@@ -622,6 +643,9 @@ export function AudioSourceStep({
             locked={!gateReleased}
             onUrlSubmit={handleUrlSubmit}
             onUploadSubmit={handleUploadSubmit}
+            urlError={urlError}
+            urlValidating={urlValidating}
+            onUrlChange={() => setUrlError("")}
           />
         </>
       )}
@@ -663,6 +687,9 @@ export function AudioSourceStep({
           locked={!gateReleased}
           onUrlSubmit={handleUrlSubmit}
           onUploadSubmit={handleUploadSubmit}
+          urlError={urlError}
+          urlValidating={urlValidating}
+          onUrlChange={() => setUrlError("")}
         />
       )}
     </div>
@@ -1231,6 +1258,9 @@ function FallbackSection({
   locked,
   onUrlSubmit,
   onUploadSubmit,
+  urlError,
+  urlValidating,
+  onUrlChange,
 }: {
   tier: number
   hasResults: boolean
@@ -1244,6 +1274,9 @@ function FallbackSection({
   locked?: boolean
   onUrlSubmit: (e: React.FormEvent) => void
   onUploadSubmit: (e: React.FormEvent) => void
+  urlError?: string
+  urlValidating?: boolean
+  onUrlChange?: () => void
 }) {
   const t = useTranslations('jobFlow')
   const isTier3WithResults = tier === 3 && hasResults
@@ -1294,7 +1327,8 @@ function FallbackSection({
               type="url"
               placeholder="https://youtube.com/watch?v=..."
               value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
+              onChange={(e) => { setYoutubeUrl(e.target.value); onUrlChange?.() }}
+              disabled={urlValidating}
               className="pl-10 text-xs"
               style={{ backgroundColor: 'var(--background)', borderColor: 'var(--card-border)', color: 'var(--text)' }}
               autoFocus
@@ -1315,11 +1349,20 @@ function FallbackSection({
           <Button
             type="submit"
             size="sm"
-            disabled={!youtubeUrl.trim() || noCredits || locked}
+            disabled={!youtubeUrl.trim() || noCredits || locked || urlValidating}
             className="w-full bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white"
           >
-            {t('useThisUrl')}
+            {urlValidating ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('checkingUrl')}</>
+            ) : (
+              t('useThisUrl')
+            )}
           </Button>
+          {urlError && (
+            <div className="text-xs text-red-400 bg-red-500/10 rounded p-2">
+              <LinkifiedText text={urlError} />
+            </div>
+          )}
         </form>
       )}
 

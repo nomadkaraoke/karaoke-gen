@@ -545,7 +545,8 @@
     "matchChecking": "노래 세부 정보 확인 중…",
     "matchUseCorrection": "수정본 사용하기",
     "matchUseTidied": "정리된 버전 사용하기",
-    "matchUsingTyped": "입력한 내용 사용: {value}"
+    "matchUsingTyped": "입력한 내용 사용: {value}",
+    "checkingUrl": "확인 중…"
   },
   "jobStatus": {
     "settingUp": "설정 중",

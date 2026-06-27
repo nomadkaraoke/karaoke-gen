@@ -545,7 +545,8 @@
     "matchChecking": "Перевіряємо деталі пісні…",
     "matchUseCorrection": "використати виправлення",
     "matchUseTidied": "використати впорядковану версію",
-    "matchUsingTyped": "Використовуємо введений тобою текст: {value}"
+    "matchUsingTyped": "Використовуємо введений тобою текст: {value}",
+    "checkingUrl": "Перевірка…"
   },
   "jobStatus": {
     "settingUp": "Налаштування",

@@ -545,7 +545,8 @@
     "matchChecking": "Kontrolujú sa detaily skladby…",
     "matchUseCorrection": "použiť opravu",
     "matchUseTidied": "použiť upravenú verziu",
-    "matchUsingTyped": "Používam to, čo si zadal: {value}"
+    "matchUsingTyped": "Používam to, čo si zadal: {value}",
+    "checkingUrl": "Kontroluje sa…"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",

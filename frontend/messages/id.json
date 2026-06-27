@@ -545,7 +545,8 @@
     "matchChecking": "Memeriksa detail lagu…",
     "matchUseCorrection": "gunakan koreksi",
     "matchUseTidied": "gunakan versi yang dirapikan",
-    "matchUsingTyped": "Menggunakan yang Anda ketik: {value}"
+    "matchUsingTyped": "Menggunakan yang Anda ketik: {value}",
+    "checkingUrl": "Memeriksa…"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",

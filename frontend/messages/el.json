@@ -545,7 +545,8 @@
     "matchChecking": "Έλεγχος λεπτομερειών τραγουδιού…",
     "matchUseCorrection": "χρησιμοποίησε τη διόρθωση",
     "matchUseTidied": "χρησιμοποίησε την καθαρισμένη έκδοση",
-    "matchUsingTyped": "Χρησιμοποιείται αυτό που πληκτρολόγησες: {value}"
+    "matchUsingTyped": "Χρησιμοποιείται αυτό που πληκτρολόγησες: {value}",
+    "checkingUrl": "Έλεγχος…"
   },
   "jobStatus": {
     "settingUp": "Ρύθμιση",

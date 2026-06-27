@@ -545,7 +545,8 @@
     "matchChecking": "בודקים את פרטי השיר…",
     "matchUseCorrection": "להשתמש בתיקון",
     "matchUseTidied": "להשתמש בגרסה המסודרת",
-    "matchUsingTyped": "משתמשים במה שהקלדת: {value}"
+    "matchUsingTyped": "משתמשים במה שהקלדת: {value}",
+    "checkingUrl": "בודק…"
   },
   "jobStatus": {
     "settingUp": "מגדיר",

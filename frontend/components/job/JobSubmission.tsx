@@ -440,7 +440,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
 
           {error && activeTab === "upload" && (
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
-              <p>{error}</p>
+              <p><LinkifiedText text={error} /></p>
               {isCreditError && (
                 <button onClick={() => setShowBuyCreditsDialog(true)} className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</button>
               )}
@@ -684,7 +684,7 @@ export function JobSubmission({ onJobCreated }: JobSubmissionProps) {
 
           {error && activeTab === "search" && (
             <div className="text-sm text-red-400 bg-red-500/10 rounded p-2">
-              <p>{error}</p>
+              <p><LinkifiedText text={error} /></p>
               {isCreditError && (
                 <button onClick={() => setShowBuyCreditsDialog(true)} className="inline-block mt-1 font-medium underline" style={{ color: 'var(--brand-pink)' }}>Buy Credits</button>
               )}

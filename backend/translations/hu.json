@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "Feladat létrehozva. Hang keresése...",
     "autoDownloadStarted": "A legjobb eredmény automatikusan kiválasztva. Letöltés indítása...",
     "drmUrlUnsupported": "A(z) {platform} linkek másolásvédettek, így nem tudjuk őket közvetlenül letölteni. Próbáld meg először letölteni a hanganyagot egy külső eszközzel, majd töltsd fel ide a hangfájlt. Beilleszthetsz egy YouTube linket is, vagy használd az Audio Search funkciót a dal megtalálásához.",
-    "drmUrlUnsupportedWithLink": "A(z) {platform} linkek másolásvédettek, így nem tudjuk őket közvetlenül letölteni. Letöltheted a számot a(z) {downloader} segítségével, majd feltöltheted ide a hangfájlt. Beilleszthetsz egy YouTube linket is, vagy használd az Audio Search funkciót a dal megtalálásához."
+    "drmUrlUnsupportedWithLink": "A(z) {platform} linkek másolásvédettek, ezért nem tudjuk őket közvetlenül letölteni. A számot letöltheted egy olyan eszközzel, mint a(z) {downloader}, majd feltöltheted ide a hangfájlt. Beilleszthetsz egy YouTube linket is, vagy használhatod a Hangkeresést a dal megtalálásához.",
+    "drmUrlUnsupportedSearch": "A(z) {platform} linkek másolásvédettek, így nem tudjuk őket közvetlenül letölteni. Keress rá a weben egy „{platform} downloader” kifejezésre a hanganyag letöltéséhez — például: {searchUrl} —, majd töltsd fel ide az audiofájlt. Beilleszthetsz egy YouTube linket is, vagy használd a Hangkeresőt a dal megtalálásához."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

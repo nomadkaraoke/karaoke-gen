@@ -545,7 +545,8 @@
     "matchChecking": "A dal adatainak ellenőrzése…",
     "matchUseCorrection": "javítás használata",
     "matchUseTidied": "letisztított verzió használata",
-    "matchUsingTyped": "Az általad beírtak használata: {value}"
+    "matchUsingTyped": "Az általad beírtak használata: {value}",
+    "checkingUrl": "Ellenőrzés…"
   },
   "jobStatus": {
     "settingUp": "Beállítás",

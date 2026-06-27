@@ -1322,19 +1322,88 @@ class TestUnsupportedDrmUrl:
             assert _unsupported_url_platform(url) is None, url
 
     def test_downloader_suggestions_are_valid(self):
-        """Every downloader suggestion must map a real platform to an https URL."""
+        """Every downloader suggestion maps a real platform to a list of https URLs."""
         from backend.api.routes.file_upload import (
             _DRM_DOWNLOADER_SUGGESTIONS,
             _UNSUPPORTED_DRM_HOSTS,
         )
 
         known_platforms = set(_UNSUPPORTED_DRM_HOSTS.values()) | {"Amazon Music"}
-        for platform, url in _DRM_DOWNLOADER_SUGGESTIONS.items():
+        for platform, urls in _DRM_DOWNLOADER_SUGGESTIONS.items():
             assert platform in known_platforms, f"{platform} is not a known DRM platform"
-            assert url.startswith("https://"), f"{platform} downloader must be https"
+            assert isinstance(urls, list) and urls, f"{platform} must list downloaders"
+            for url in urls:
+                assert url.startswith("https://"), f"{platform} downloader must be https"
 
-        # Apple Music is the verified case driving this feature.
-        assert _DRM_DOWNLOADER_SUGGESTIONS.get("Apple Music") == "https://am-dl.pages.dev"
+        # The verified cases driving this feature.
+        assert "https://am-dl.pages.dev" in _DRM_DOWNLOADER_SUGGESTIONS["Apple Music"]
+        assert "https://aplmate.com" in _DRM_DOWNLOADER_SUGGESTIONS["Apple Music"]
+        assert "https://spotdown.org" in _DRM_DOWNLOADER_SUGGESTIONS["Spotify"]
+        assert "https://spotmate.online" in _DRM_DOWNLOADER_SUGGESTIONS["Spotify"]
+
+    def test_drm_detail_links_known_downloaders(self):
+        """Platforms with known tools get a message naming each downloader URL."""
+        from backend.api.routes.file_upload import _drm_unsupported_detail
+
+        apple = _drm_unsupported_detail("en", "Apple Music")
+        assert "https://am-dl.pages.dev" in apple
+        assert "https://aplmate.com" in apple
+
+        spotify = _drm_unsupported_detail("en", "Spotify")
+        assert "https://spotdown.org" in spotify
+        assert "https://spotmate.online" in spotify
+
+    def test_drm_detail_falls_back_to_web_search(self):
+        """Platforms without a known tool get a Google search link for a downloader."""
+        from backend.api.routes.file_upload import _drm_unsupported_detail
+
+        detail = _drm_unsupported_detail("en", "Tidal")
+        assert "https://www.google.com/search?q=Tidal+downloader" in detail
+        assert "Tidal" in detail
+
+
+class TestValidateJobUrlEndpoint:
+    """The /jobs/validate-url pre-flight check used by the guided submission flow."""
+
+    def _call(self, url):
+        import asyncio
+        from unittest.mock import MagicMock, patch
+        from backend.api.routes.file_upload import validate_job_url, ValidateUrlRequest
+
+        req = MagicMock()
+        req.headers = {}
+        with patch("backend.api.routes.file_upload.get_locale_from_request", return_value="en"):
+            return asyncio.run(
+                validate_job_url(
+                    request=req,
+                    body=ValidateUrlRequest(url=url),
+                    auth_result=MagicMock(),
+                )
+            )
+
+    def test_apple_music_rejected_with_links(self):
+        r = self._call("https://music.apple.com/us/album/x/1?i=2")
+        assert r.supported is False
+        assert "am-dl.pages.dev" in r.detail
+
+    def test_spotify_rejected_with_links(self):
+        r = self._call("https://open.spotify.com/track/abc")
+        assert r.supported is False
+        assert "spotdown.org" in r.detail
+
+    def test_tidal_rejected_with_search_link(self):
+        r = self._call("https://tidal.com/browse/track/123")
+        assert r.supported is False
+        assert "google.com/search" in r.detail
+
+    def test_youtube_supported(self):
+        r = self._call("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        assert r.supported is True
+        assert r.detail is None
+
+    def test_garbage_url_rejected(self):
+        r = self._call("not a real url")
+        assert r.supported is False
 
 
 class TestCreateJobFromUrlRequest:

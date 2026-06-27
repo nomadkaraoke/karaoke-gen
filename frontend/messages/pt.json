@@ -545,7 +545,8 @@
     "matchChecking": "Verificando detalhes da música…",
     "matchUseCorrection": "usar a correção",
     "matchUseTidied": "usar a versão ajustada",
-    "matchUsingTyped": "Usando o que você digitou: {value}"
+    "matchUsingTyped": "Usando o que você digitou: {value}",
+    "checkingUrl": "Verificando…"
   },
   "jobStatus": {
     "settingUp": "Configurando",
