@@ -1322,19 +1322,44 @@ class TestUnsupportedDrmUrl:
             assert _unsupported_url_platform(url) is None, url
 
     def test_downloader_suggestions_are_valid(self):
-        """Every downloader suggestion must map a real platform to an https URL."""
+        """Every downloader suggestion maps a real platform to a list of https URLs."""
         from backend.api.routes.file_upload import (
             _DRM_DOWNLOADER_SUGGESTIONS,
             _UNSUPPORTED_DRM_HOSTS,
         )
 
         known_platforms = set(_UNSUPPORTED_DRM_HOSTS.values()) | {"Amazon Music"}
-        for platform, url in _DRM_DOWNLOADER_SUGGESTIONS.items():
+        for platform, urls in _DRM_DOWNLOADER_SUGGESTIONS.items():
             assert platform in known_platforms, f"{platform} is not a known DRM platform"
-            assert url.startswith("https://"), f"{platform} downloader must be https"
+            assert isinstance(urls, list) and urls, f"{platform} must list downloaders"
+            for url in urls:
+                assert url.startswith("https://"), f"{platform} downloader must be https"
 
-        # Apple Music is the verified case driving this feature.
-        assert _DRM_DOWNLOADER_SUGGESTIONS.get("Apple Music") == "https://am-dl.pages.dev"
+        # The verified cases driving this feature.
+        assert "https://am-dl.pages.dev" in _DRM_DOWNLOADER_SUGGESTIONS["Apple Music"]
+        assert "https://aplmate.com" in _DRM_DOWNLOADER_SUGGESTIONS["Apple Music"]
+        assert "https://spotdown.org" in _DRM_DOWNLOADER_SUGGESTIONS["Spotify"]
+        assert "https://spotmate.online" in _DRM_DOWNLOADER_SUGGESTIONS["Spotify"]
+
+    def test_drm_detail_links_known_downloaders(self):
+        """Platforms with known tools get a message naming each downloader URL."""
+        from backend.api.routes.file_upload import _drm_unsupported_detail
+
+        apple = _drm_unsupported_detail("en", "Apple Music")
+        assert "https://am-dl.pages.dev" in apple
+        assert "https://aplmate.com" in apple
+
+        spotify = _drm_unsupported_detail("en", "Spotify")
+        assert "https://spotdown.org" in spotify
+        assert "https://spotmate.online" in spotify
+
+    def test_drm_detail_falls_back_to_web_search(self):
+        """Platforms without a known tool get a Google search link for a downloader."""
+        from backend.api.routes.file_upload import _drm_unsupported_detail
+
+        detail = _drm_unsupported_detail("en", "Tidal")
+        assert "https://www.google.com/search?q=Tidal+downloader" in detail
+        assert "Tidal" in detail
 
 
 class TestCreateJobFromUrlRequest:

@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "Job criado. Pesquisando áudio...",
     "autoDownloadStarted": "Melhor resultado selecionado automaticamente. Iniciando download...",
     "drmUrlUnsupported": "Os links do {platform} são protegidos contra cópia, então não podemos baixá-los diretamente. Tente baixar o áudio com uma ferramenta de terceiros primeiro e depois faça o upload do arquivo de áudio aqui. Você também pode colar um link do YouTube ou usar a Pesquisa de Áudio para encontrar esta música.",
-    "drmUrlUnsupportedWithLink": "Os links do {platform} são protegidos contra cópia, então não podemos baixá-los diretamente. Você pode baixar a faixa do {downloader} e depois fazer o upload do arquivo de áudio aqui. Você também pode colar um link do YouTube ou usar a Pesquisa de Áudio para encontrar esta música."
+    "drmUrlUnsupportedWithLink": "Os links do {platform} são protegidos contra cópia, então não podemos baixá-los diretamente. Você pode baixar a faixa usando uma ferramenta como o {downloader} e depois fazer o upload do arquivo de áudio aqui. Você também pode colar um link do YouTube ou usar a Pesquisa de Áudio para encontrar esta música.",
+    "drmUrlUnsupportedSearch": "Os links do {platform} são protegidos contra cópia, então não podemos baixá-los diretamente. Pesquise na web por um \"{platform} downloader\" para obter o áudio — por exemplo, {searchUrl} — e depois faça o upload do arquivo de áudio aqui. Você também pode colar um link do YouTube ou usar a Pesquisa de Áudio para encontrar esta música."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

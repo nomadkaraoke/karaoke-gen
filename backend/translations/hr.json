@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "Zadatak je kreiran. Pretražujem zvuk...",
     "autoDownloadStarted": "Najbolji rezultat je automatski odabran. Preuzimanje započinje...",
     "drmUrlUnsupported": "{platform} poveznice su zaštićene od kopiranja, pa ih ne možemo izravno preuzeti. Pokušaj prvo preuzeti zvuk pomoću alata treće strane, a zatim ovdje prenesi audio datoteku. Također možeš zalijepiti YouTube poveznicu ili koristiti pretraživanje zvuka da pronađeš ovu pjesmu.",
-    "drmUrlUnsupportedWithLink": "{platform} poveznice su zaštićene od kopiranja, pa ih ne možemo izravno preuzeti. Možeš preuzeti pjesmu s {downloader}, a zatim ovdje prenijeti audio datoteku. Također možeš zalijepiti YouTube poveznicu ili koristiti pretraživanje zvuka da pronađeš ovu pjesmu."
+    "drmUrlUnsupportedWithLink": "{platform} poveznice su zaštićene od kopiranja, pa ih ne možemo izravno preuzeti. Pjesmu možeš preuzeti pomoću alata kao što je {downloader} i zatim ovdje učitati audio datoteku. Također možeš zalijepiti YouTube poveznicu ili upotrijebiti Audio pretraživanje da pronađeš ovu pjesmu.",
+    "drmUrlUnsupportedSearch": "{platform} poveznice su zaštićene od kopiranja, pa ih ne možemo izravno preuzeti. Potraži na webu \"{platform} downloader\" kako bi preuzeo/la audio — na primjer {searchUrl} — a zatim ovdje prenesi audio datoteku. Također možeš zalijepiti YouTube poveznicu ili koristiti Pretraživanje zvuka da pronađeš ovu pjesmu."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

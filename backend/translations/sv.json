@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "Jobbet har skapats. Söker efter ljud...",
     "autoDownloadStarted": "Bästa resultatet valdes automatiskt. Nedladdningen startar...",
     "drmUrlUnsupported": "{platform}-länkar är kopieringsskyddade, så vi kan inte ladda ner dem direkt. Försök att ladda ner ljudet med ett tredjepartsverktyg först och ladda sedan upp ljudfilen här. Du kan också klistra in en YouTube-länk eller använda Ljudsökning för att hitta den här låten.",
-    "drmUrlUnsupportedWithLink": "{platform}-länkar är kopieringsskyddade, så vi kan inte ladda ner dem direkt. Du kan ladda ner spåret från {downloader} och sedan ladda upp ljudfilen här. Du kan också klistra in en YouTube-länk eller använda Ljudsökning för att hitta den här låten."
+    "drmUrlUnsupportedWithLink": "{platform}-länkar är kopieringsskyddade, så vi kan inte ladda ner dem direkt. Du kan ladda ner låten med ett verktyg som {downloader} och sedan ladda upp ljudfilen här. Du kan också klistra in en YouTube-länk, eller använda Audio Search för att hitta den här låten.",
+    "drmUrlUnsupportedSearch": "{platform}-länkar är kopieringsskyddade, så vi kan inte ladda ner dem direkt. Sök på nätet efter en \"{platform} downloader\" för att hämta ljudet — till exempel {searchUrl} — och ladda sedan upp ljudfilen här. Du kan också klistra in en YouTube-länk, eller använda Audio Search för att hitta den här låten."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

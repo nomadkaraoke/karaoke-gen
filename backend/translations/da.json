@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "Jobbet er oprettet. Søger efter lyd...",
     "autoDownloadStarted": "Det bedste resultat blev valgt automatisk. Download starter...",
     "drmUrlUnsupported": "{platform}-links er kopibeskyttede, så vi kan ikke downloade dem direkte. Prøv at downloade lyden med et tredjepartsværktøj først, og upload derefter lydfilen her. Du kan også indsætte et YouTube-link eller bruge Audio Search til at finde denne sang.",
-    "drmUrlUnsupportedWithLink": "{platform}-links er kopibeskyttede, så vi kan ikke downloade dem direkte. Du kan downloade nummeret fra {downloader} og derefter uploade lydfilen her. Du kan også indsætte et YouTube-link eller bruge Audio Search til at finde denne sang."
+    "drmUrlUnsupportedWithLink": "{platform}-links er kopibeskyttede, så vi kan ikke downloade dem direkte. Du kan downloade nummeret ved hjælp af et værktøj som {downloader} og derefter uploade lydfilen her. Du kan også indsætte et YouTube-link eller bruge Lydsøgning til at finde denne sang.",
+    "drmUrlUnsupportedSearch": "{platform}-links er kopibeskyttede, så vi kan ikke downloade dem direkte. Søg på nettet efter en \"{platform} downloader\" for at hente lyden — for eksempel {searchUrl} — og upload derefter lydfilen her. Du kan også indsætte et YouTube-link eller bruge Lydsøgning til at finde denne sang."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

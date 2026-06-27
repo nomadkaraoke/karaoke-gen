@@ -94,7 +94,8 @@
     "searchCreatedSuccessfully": "Työ luotu. Etsitään ääntä...",
     "autoDownloadStarted": "Paras tulos valittu automaattisesti. Lataus alkaa...",
     "drmUrlUnsupported": "{platform}-linkit ovat kopiosuojattuja, joten emme voi ladata niitä suoraan. Kokeile ladata ääni ensin kolmannen osapuolen työkalulla ja lataa äänitiedosto sitten tänne. Voit myös liittää YouTube-linkin tai etsiä tämän kappaleen Äänihaun avulla.",
-    "drmUrlUnsupportedWithLink": "{platform}-linkit ovat kopiosuojattuja, joten emme voi ladata niitä suoraan. Voit ladata kappaleen palvelusta {downloader} ja ladata äänitiedoston sitten tänne. Voit myös liittää YouTube-linkin tai etsiä tämän kappaleen Äänihaun avulla."
+    "drmUrlUnsupportedWithLink": "{platform}-linkit ovat kopiosuojattuja, joten emme voi ladata niitä suoraan. Voit ladata kappaleen esimerkiksi {downloader}-työkalulla ja ladata äänitiedoston sitten tänne. Voit myös liittää YouTube-linkin tai etsiä kappaleen Äänihaun avulla.",
+    "drmUrlUnsupportedSearch": "{platform}-linkit ovat kopiosuojattuja, joten emme voi ladata niitä suoraan. Etsi netistä \"{platform} downloader\" saadaksesi äänen — esimerkiksi {searchUrl} — ja lataa äänitiedosto sitten tänne. Voit myös liittää YouTube-linkin tai käyttää äänihakua löytääksesi tämän kappaleen."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",
