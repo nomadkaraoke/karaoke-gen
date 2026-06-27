@@ -92,7 +92,9 @@
     "selectAudioError": "为任务 {job_id} 选择音频时出错：{error}",
     "searchAudioError": "搜索音频时出错：{error}",
     "searchCreatedSuccessfully": "任务已创建。正在搜索音频...",
-    "autoDownloadStarted": "已自动选择最佳结果。开始下载..."
+    "autoDownloadStarted": "已自动选择最佳结果。开始下载...",
+    "drmUrlUnsupported": "{platform} 链接受版权保护，因此我们无法直接下载。请先尝试使用第三方工具下载音频，然后在此处上传音频文件。您也可以粘贴 YouTube 链接，或者使用音频搜索来查找这首歌。",
+    "drmUrlUnsupportedWithLink": "{platform} 链接受版权保护，因此我们无法直接下载。您可以从 {downloader} 下载该曲目，然后在此处上传音频文件。您也可以粘贴 YouTube 链接，或者使用音频搜索来查找这首歌。"
   },
   "users": {
     "disposableEmailBlocked": "不允许使用一次性邮箱",

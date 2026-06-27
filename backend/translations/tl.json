@@ -92,7 +92,9 @@
     "selectAudioError": "Error sa pagpili ng audio para sa job {job_id}: {error}",
     "searchAudioError": "Error sa paghahanap ng audio: {error}",
     "searchCreatedSuccessfully": "Nagawa na ang job. Naghahanap ng audio...",
-    "autoDownloadStarted": "Awtomatikong napili ang pinakamagandang resulta. Nagsisimula na ang pag-download..."
+    "autoDownloadStarted": "Awtomatikong napili ang pinakamagandang resulta. Nagsisimula na ang pag-download...",
+    "drmUrlUnsupported": "Ang mga link ng {platform} ay copy-protected, kaya hindi namin ito direktang ma-download. Subukan munang i-download ang audio gamit ang isang third-party na tool, pagkatapos ay i-upload ang audio file dito. Maaari ka ring mag-paste ng YouTube link, o gamitin ang Audio Search para hanapin ang kantang ito.",
+    "drmUrlUnsupportedWithLink": "Ang mga link ng {platform} ay copy-protected, kaya hindi namin ito direktang ma-download. Maaari mong i-download ang track mula sa {downloader}, pagkatapos ay i-upload ang audio file dito. Maaari ka ring mag-paste ng YouTube link, o gamitin ang Audio Search para hanapin ang kantang ito."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

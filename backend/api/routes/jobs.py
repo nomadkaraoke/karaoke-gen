@@ -1982,9 +1982,18 @@ async def retry_job(
                 "retry_stage": "screens_generation"
             }
         
-        # If we have input audio (uploaded or from URL), restart from beginning
-        elif job.input_media_gcs_path or job.url:
-            logger.info(f"Job {job_id}: Has input audio, restarting from beginning")
+        # If the input audio is already in GCS (an uploaded file, or a URL whose
+        # download succeeded), restart from beginning — the audio/lyrics workers
+        # re-fetch it from GCS.
+        #
+        # A URL job whose download never succeeded has only `job.url` and NO
+        # audio in GCS, so it must NOT take this branch: triggering the workers
+        # would just fail with "Failed to download audio file" and Cloud Run
+        # would retry them repeatedly (see job 7f36304a — an Apple Music link).
+        # Such jobs fall through to the "resubmit" refusal below, since there is
+        # no worker that re-downloads a generic URL.
+        elif job.input_media_gcs_path:
+            logger.info(f"Job {job_id}: Has input audio in GCS, restarting from beginning")
 
             # Clear error state and any partial progress
             job_manager.update_job(job_id, {

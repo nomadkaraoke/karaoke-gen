@@ -92,7 +92,9 @@
     "selectAudioError": "Ralat memilih audio untuk tugasan {job_id}: {error}",
     "searchAudioError": "Ralat mencari audio: {error}",
     "searchCreatedSuccessfully": "Tugasan dicipta. Sedang mencari audio...",
-    "autoDownloadStarted": "Hasil terbaik dipilih secara automatik. Muat turun bermula..."
+    "autoDownloadStarted": "Hasil terbaik dipilih secara automatik. Muat turun bermula...",
+    "drmUrlUnsupported": "Pautan {platform} dilindungi hak cipta, jadi kami tidak dapat memuat turunnya secara terus. Cuba muat turun audio menggunakan alat pihak ketiga terlebih dahulu, kemudian muat naik fail audio di sini. Anda juga boleh menampal pautan YouTube, atau menggunakan Carian Audio untuk mencari lagu ini.",
+    "drmUrlUnsupportedWithLink": "Pautan {platform} dilindungi hak cipta, jadi kami tidak dapat memuat turunnya secara terus. Anda boleh memuat turun trek tersebut dari {downloader}, kemudian muat naik fail audio di sini. Anda juga boleh menampal pautan YouTube, atau menggunakan Carian Audio untuk mencari lagu ini."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

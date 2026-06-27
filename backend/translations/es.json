@@ -92,7 +92,9 @@
     "selectAudioError": "Error al seleccionar el audio para el trabajo {job_id}: {error}",
     "searchAudioError": "Error al buscar audio: {error}",
     "searchCreatedSuccessfully": "Trabajo creado. Buscando audio...",
-    "autoDownloadStarted": "Mejor resultado seleccionado automáticamente. Iniciando descarga..."
+    "autoDownloadStarted": "Mejor resultado seleccionado automáticamente. Iniciando descarga...",
+    "drmUrlUnsupported": "Los enlaces de {platform} están protegidos contra copia, así que no podemos descargarlos directamente. Intenta descargar el audio con una herramienta de terceros primero, y luego sube el archivo de audio aquí. También puedes pegar un enlace de YouTube, o usar la Búsqueda de Audio para encontrar esta canción.",
+    "drmUrlUnsupportedWithLink": "Los enlaces de {platform} están protegidos contra copia, así que no podemos descargarlos directamente. Puedes descargar la pista desde {downloader}, y luego subir el archivo de audio aquí. También puedes pegar un enlace de YouTube, o usar la Búsqueda de Audio para encontrar esta canción."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

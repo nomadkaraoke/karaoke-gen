@@ -92,7 +92,9 @@
     "selectAudioError": "Feil ved valg av lyd for jobb {job_id}: {error}",
     "searchAudioError": "Feil ved søk etter lyd: {error}",
     "searchCreatedSuccessfully": "Jobb opprettet. Søker etter lyd...",
-    "autoDownloadStarted": "Beste resultat valgt automatisk. Nedlasting starter..."
+    "autoDownloadStarted": "Beste resultat valgt automatisk. Nedlasting starter...",
+    "drmUrlUnsupported": "{platform}-lenker er kopibeskyttet, så vi kan ikke laste dem ned direkte. Prøv å laste ned lyden med et tredjepartsverktøy først, og last deretter opp lydfilen her. Du kan også lime inn en YouTube-lenke, eller bruke Lydsøk for å finne denne sangen.",
+    "drmUrlUnsupportedWithLink": "{platform}-lenker er kopibeskyttet, så vi kan ikke laste dem ned direkte. Du kan laste ned sporet fra {downloader}, og deretter laste opp lydfilen her. Du kan også lime inn en YouTube-lenke, eller bruke Lydsøk for å finne denne sangen."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

@@ -92,7 +92,9 @@
     "selectAudioError": "Lỗi khi chọn âm thanh cho công việc {job_id}: {error}",
     "searchAudioError": "Lỗi khi tìm kiếm âm thanh: {error}",
     "searchCreatedSuccessfully": "Đã tạo công việc. Đang tìm kiếm âm thanh...",
-    "autoDownloadStarted": "Kết quả tốt nhất được chọn tự động. Đang bắt đầu tải xuống..."
+    "autoDownloadStarted": "Kết quả tốt nhất được chọn tự động. Đang bắt đầu tải xuống...",
+    "drmUrlUnsupported": "Các liên kết {platform} được bảo vệ bản quyền, vì vậy chúng tôi không thể tải chúng xuống trực tiếp. Hãy thử tải âm thanh bằng công cụ của bên thứ ba trước, sau đó tải tệp âm thanh lên đây. Bạn cũng có thể dán liên kết YouTube hoặc sử dụng Tìm kiếm Âm thanh để tìm bài hát này.",
+    "drmUrlUnsupportedWithLink": "Các liên kết {platform} được bảo vệ bản quyền, vì vậy chúng tôi không thể tải chúng xuống trực tiếp. Bạn có thể tải bản nhạc từ {downloader}, sau đó tải tệp âm thanh lên đây. Bạn cũng có thể dán liên kết YouTube hoặc sử dụng Tìm kiếm Âm thanh để tìm bài hát này."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

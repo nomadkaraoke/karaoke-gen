@@ -92,7 +92,9 @@
     "selectAudioError": "Error en seleccionar l'àudio per a la tasca {job_id}: {error}",
     "searchAudioError": "Error en cercar l'àudio: {error}",
     "searchCreatedSuccessfully": "Tasca creada. Cercant àudio...",
-    "autoDownloadStarted": "Millor resultat seleccionat automàticament. Iniciant la descàrrega..."
+    "autoDownloadStarted": "Millor resultat seleccionat automàticament. Iniciant la descàrrega...",
+    "drmUrlUnsupported": "Els enllaços de {platform} estan protegits contra còpia, així que no els podem descarregar directament. Prova de descarregar l'àudio amb una eina de tercers primer i, a continuació, puja el fitxer d'àudio aquí. També pots enganxar un enllaç de YouTube o utilitzar la Cerca d'àudio per trobar aquesta cançó.",
+    "drmUrlUnsupportedWithLink": "Els enllaços de {platform} estan protegits contra còpia, així que no els podem descarregar directament. Pots descarregar la pista des de {downloader} i, a continuació, pujar el fitxer d'àudio aquí. També pots enganxar un enllaç de YouTube o utilitzar la Cerca d'àudio per trobar aquesta cançó."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

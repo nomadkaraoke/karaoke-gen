@@ -92,7 +92,9 @@
     "selectAudioError": "{job_id} işi için ses seçme hatası: {error}",
     "searchAudioError": "Ses arama hatası: {error}",
     "searchCreatedSuccessfully": "İş oluşturuldu. Ses aranıyor...",
-    "autoDownloadStarted": "En iyi sonuç otomatik olarak seçildi. İndirme başlıyor..."
+    "autoDownloadStarted": "En iyi sonuç otomatik olarak seçildi. İndirme başlıyor...",
+    "drmUrlUnsupported": "{platform} bağlantıları kopya korumalı olduğu için onları doğrudan indiremiyoruz. Sesi önce üçüncü taraf bir araçla indirmeyi dene, ardından ses dosyasını buraya yükle. Ayrıca bir YouTube bağlantısı yapıştırabilir veya bu şarkıyı bulmak için Ses Arama'yı kullanabilirsin.",
+    "drmUrlUnsupportedWithLink": "{platform} bağlantıları kopya korumalı olduğu için onları doğrudan indiremiyoruz. Parçayı {downloader} üzerinden indirebilir, ardından ses dosyasını buraya yükleyebilirsin. Ayrıca bir YouTube bağlantısı yapıştırabilir veya bu şarkıyı bulmak için Ses Arama'yı kullanabilirsin."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",
