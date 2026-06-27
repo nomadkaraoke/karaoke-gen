@@ -92,7 +92,8 @@
     "selectAudioError": "เกิดข้อผิดพลาดในการเลือกเสียงสำหรับงาน {job_id}: {error}",
     "searchAudioError": "เกิดข้อผิดพลาดในการค้นหาเสียง: {error}",
     "searchCreatedSuccessfully": "สร้างงานแล้ว กำลังค้นหาเสียง...",
-    "autoDownloadStarted": "เลือกผลลัพธ์ที่ดีที่สุดโดยอัตโนมัติ กำลังเริ่มดาวน์โหลด..."
+    "autoDownloadStarted": "เลือกผลลัพธ์ที่ดีที่สุดโดยอัตโนมัติ กำลังเริ่มดาวน์โหลด...",
+    "drmUrlUnsupported": "ลิงก์จาก {platform} มีการป้องกันการคัดลอกและไม่สามารถดาวน์โหลดได้ โปรดวางลิงก์ YouTube แทน หรือใช้ Audio Search เพื่อค้นหาเพลงนี้"
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

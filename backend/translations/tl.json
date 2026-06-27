@@ -92,7 +92,8 @@
     "selectAudioError": "Error sa pagpili ng audio para sa job {job_id}: {error}",
     "searchAudioError": "Error sa paghahanap ng audio: {error}",
     "searchCreatedSuccessfully": "Nagawa na ang job. Naghahanap ng audio...",
-    "autoDownloadStarted": "Awtomatikong napili ang pinakamagandang resulta. Nagsisimula na ang pag-download..."
+    "autoDownloadStarted": "Awtomatikong napili ang pinakamagandang resulta. Nagsisimula na ang pag-download...",
+    "drmUrlUnsupported": "Copy-protected ang mga {platform} link at hindi pwedeng i-download. Paki-paste na lang ng YouTube link, o gamitin ang Audio Search para hanapin ang kantang ito."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

@@ -92,7 +92,8 @@
     "selectAudioError": "Lỗi khi chọn âm thanh cho công việc {job_id}: {error}",
     "searchAudioError": "Lỗi khi tìm kiếm âm thanh: {error}",
     "searchCreatedSuccessfully": "Đã tạo công việc. Đang tìm kiếm âm thanh...",
-    "autoDownloadStarted": "Kết quả tốt nhất được chọn tự động. Đang bắt đầu tải xuống..."
+    "autoDownloadStarted": "Kết quả tốt nhất được chọn tự động. Đang bắt đầu tải xuống...",
+    "drmUrlUnsupported": "Liên kết {platform} được bảo vệ bản quyền và không thể tải xuống. Thay vào đó, bạn vui lòng dán liên kết YouTube, hoặc sử dụng Tìm kiếm Âm thanh để tìm bài hát này."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

@@ -92,7 +92,8 @@
     "selectAudioError": "Chyba při výběru zvuku pro úlohu {job_id}: {error}",
     "searchAudioError": "Chyba při vyhledávání zvuku: {error}",
     "searchCreatedSuccessfully": "Úloha vytvořena. Vyhledávám zvuk...",
-    "autoDownloadStarted": "Nejlepší výsledek byl vybrán automaticky. Začíná stahování..."
+    "autoDownloadStarted": "Nejlepší výsledek byl vybrán automaticky. Začíná stahování...",
+    "drmUrlUnsupported": "Odkazy z {platform} jsou chráněny proti kopírování a nelze je stáhnout. Místo toho prosím vlož odkaz na YouTube, nebo použij Vyhledávání zvuku k nalezení této písničky."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

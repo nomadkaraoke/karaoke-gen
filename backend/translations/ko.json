@@ -92,7 +92,8 @@
     "selectAudioError": "작업 {job_id}의 오디오 선택 중 오류 발생: {error}",
     "searchAudioError": "오디오 검색 중 오류 발생: {error}",
     "searchCreatedSuccessfully": "작업이 생성되었습니다. 오디오를 검색하는 중...",
-    "autoDownloadStarted": "가장 적합한 결과가 자동으로 선택되었습니다. 다운로드를 시작합니다..."
+    "autoDownloadStarted": "가장 적합한 결과가 자동으로 선택되었습니다. 다운로드를 시작합니다...",
+    "drmUrlUnsupported": "{platform} 링크는 복사 방지가 적용되어 있어 다운로드할 수 없습니다. 대신 YouTube 링크를 붙여넣거나 오디오 검색을 사용하여 이 노래를 찾아보세요."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

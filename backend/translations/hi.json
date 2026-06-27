@@ -92,7 +92,8 @@
     "selectAudioError": "जॉब {job_id} के लिए ऑडियो चुनने में त्रुटि: {error}",
     "searchAudioError": "ऑडियो खोजने में त्रुटि: {error}",
     "searchCreatedSuccessfully": "जॉब बन गई। ऑडियो खोजा जा रहा है...",
-    "autoDownloadStarted": "सबसे अच्छा रिज़ल्ट अपने आप चुन लिया गया। डाउनलोड शुरू हो रहा है..."
+    "autoDownloadStarted": "सबसे अच्छा रिज़ल्ट अपने आप चुन लिया गया। डाउनलोड शुरू हो रहा है...",
+    "drmUrlUnsupported": "{platform} लिंक्स कॉपी-प्रोटेक्टेड हैं और इन्हें डाउनलोड नहीं किया जा सकता। कृपया इसके बजाय YouTube लिंक पेस्ट करो, या इस गाने को खोजने के लिए Audio Search का उपयोग करो।"
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

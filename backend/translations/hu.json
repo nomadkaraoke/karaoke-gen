@@ -92,7 +92,8 @@
     "selectAudioError": "Hiba a hang kiválasztásakor a(z) {job_id} feladatnál: {error}",
     "searchAudioError": "Hiba a hang keresésekor: {error}",
     "searchCreatedSuccessfully": "Feladat létrehozva. Hang keresése...",
-    "autoDownloadStarted": "A legjobb eredmény automatikusan kiválasztva. Letöltés indítása..."
+    "autoDownloadStarted": "A legjobb eredmény automatikusan kiválasztva. Letöltés indítása...",
+    "drmUrlUnsupported": "A(z) {platform} linkek másolásvédettek és nem tölthetők le. Kérlek, inkább egy YouTube linket illessz be, vagy használd az Audio Keresőt a dal megtalálásához."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

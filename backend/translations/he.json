@@ -92,7 +92,8 @@
     "selectAudioError": "שגיאה בבחירת אודיו עבור המשימה {job_id}: {error}",
     "searchAudioError": "שגיאה בחיפוש אודיו: {error}",
     "searchCreatedSuccessfully": "המשימה נוצרה. מחפש אודיו...",
-    "autoDownloadStarted": "התוצאה הטובה ביותר נבחרה אוטומטית. ההורדה מתחילה..."
+    "autoDownloadStarted": "התוצאה הטובה ביותר נבחרה אוטומטית. ההורדה מתחילה...",
+    "drmUrlUnsupported": "קישורי {platform} מוגנים מפני העתקה ולא ניתנים להורדה. אנא הדביקו קישור של YouTube במקום זאת, או השתמשו בחיפוש אודיו כדי למצוא את השיר הזה."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

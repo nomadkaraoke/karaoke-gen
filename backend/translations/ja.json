@@ -92,7 +92,8 @@
     "selectAudioError": "ジョブ {job_id} のオーディオ選択中にエラーが発生しました: {error}",
     "searchAudioError": "オーディオの検索中にエラーが発生しました: {error}",
     "searchCreatedSuccessfully": "ジョブが作成されました。オーディオを検索しています...",
-    "autoDownloadStarted": "最適な結果が自動的に選択されました。ダウンロードを開始します..."
+    "autoDownloadStarted": "最適な結果が自動的に選択されました。ダウンロードを開始します...",
+    "drmUrlUnsupported": "{platform}のリンクはコピー保護されているため、ダウンロードできません。代わりにYouTubeのリンクを貼り付けるか、オーディオ検索を使ってこの曲を探してください。"
   },
   "users": {
     "disposableEmailBlocked": "使い捨てメールアドレスは許可されていません",

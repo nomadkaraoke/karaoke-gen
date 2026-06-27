@@ -1581,9 +1581,63 @@ def _validate_url(url: Optional[str]) -> bool:
     for supported in supported_domains:
         if domain == supported or domain.endswith('.' + supported):
             return True
-    
+
     # For other URLs, let yt-dlp try (it supports many more sites)
     return True
+
+
+# Streaming services whose catalogue is DRM-protected and therefore cannot be
+# downloaded by yt-dlp / flacfetch. Submitting one of these only creates a job
+# that fails deep in the download stage with a cryptic "Unsupported URL" error
+# (and lets the user trigger a futile retry), so we reject them at submission
+# time with a clear, actionable message. Maps host -> friendly platform name;
+# matching is suffix-based, so e.g. "spotify.com" also covers open./play.
+_UNSUPPORTED_DRM_HOSTS = {
+    'music.apple.com': 'Apple Music',
+    'itunes.apple.com': 'Apple Music',
+    'spotify.com': 'Spotify',
+    'tidal.com': 'Tidal',
+    'deezer.com': 'Deezer',
+    'pandora.com': 'Pandora',
+}
+
+
+def _unsupported_url_platform(url: Optional[str]) -> Optional[str]:
+    """
+    Return a friendly platform name if the URL belongs to a known DRM-protected
+    streaming service that cannot be downloaded, else None.
+
+    These links (Apple Music, Spotify, Tidal, Amazon Music, Deezer, Pandora) are
+    rejected at submission time instead of being allowed to create a job that
+    always fails deep in the download stage. Note: YouTube Music
+    (music.youtube.com) is downloadable and is deliberately NOT included.
+    """
+    if not url or not isinstance(url, str):
+        return None
+
+    from urllib.parse import urlparse
+    try:
+        domain = urlparse(url).netloc.lower()
+    except (ValueError, TypeError):
+        return None
+
+    # Remove port if present
+    if ':' in domain:
+        domain = domain.split(':')[0]
+    # Normalise leading www.
+    if domain.startswith('www.'):
+        domain = domain[4:]
+
+    for host, platform in _UNSUPPORTED_DRM_HOSTS.items():
+        if domain == host or domain.endswith('.' + host):
+            return platform
+
+    # Amazon Music spans many country domains (music.amazon.com, .co.uk, .co.jp,
+    # .fr, .de, ...), so match the music.amazon.* prefix generically.
+    if domain == 'music.amazon' or domain.startswith('music.amazon.'):
+        return 'Amazon Music'
+
+    return None
 
 
 @router.post("/jobs/create-from-url", response_model=CreateJobFromUrlResponse)
@@ -1619,6 +1673,17 @@ async def create_job_from_url(
         )
 
     try:
+        # Reject DRM-protected streaming links upfront (Apple Music, Spotify,
+        # Tidal, etc.). These can never be downloaded, so creating a job would
+        # only fail deep in the pipeline with a cryptic error and tempt the user
+        # into a futile retry storm.
+        unsupported_platform = _unsupported_url_platform(body.url)
+        if unsupported_platform:
+            raise HTTPException(
+                status_code=400,
+                detail=t(locale, "audioSearch.drmUrlUnsupported", platform=unsupported_platform),
+            )
+
         # Validate URL
         if not _validate_url(body.url):
             raise HTTPException(

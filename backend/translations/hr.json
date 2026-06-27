@@ -92,7 +92,8 @@
     "selectAudioError": "Pogreška pri odabiru zvuka za zadatak {job_id}: {error}",
     "searchAudioError": "Pogreška pri pretraživanju zvuka: {error}",
     "searchCreatedSuccessfully": "Zadatak je kreiran. Pretražujem zvuk...",
-    "autoDownloadStarted": "Najbolji rezultat je automatski odabran. Preuzimanje započinje..."
+    "autoDownloadStarted": "Najbolji rezultat je automatski odabran. Preuzimanje započinje...",
+    "drmUrlUnsupported": "{platform} poveznice zaštićene su od kopiranja i ne mogu se preuzeti. Umjesto toga zalijepi YouTube poveznicu ili upotrijebi Audio pretraživanje za pronalazak ove pjesme."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

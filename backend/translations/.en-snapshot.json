@@ -83,6 +83,7 @@
     "invalidSelectionIndex": "Invalid selection index {selection_index}. Valid range: 0-{max}",
     "selectionError": "Error during audio selection for job {job_id}: {error}",
     "youtubeDownloadError": "YouTube download failed: {error}",
+    "drmUrlUnsupported": "{platform} links are copy-protected and can't be downloaded. Please paste a YouTube link instead, or use Audio Search to find this song.",
     "torrentDownloadError": "Cannot download from {source} without remote flacfetch service. Configure FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "No source_id or remote_search_id available for {source} download",
     "remoteDownloadCompleteNoPath": "Remote download completed but no file path returned",

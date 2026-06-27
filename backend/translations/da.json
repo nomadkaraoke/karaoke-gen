@@ -92,7 +92,8 @@
     "selectAudioError": "Fejl ved valg af lyd for job {job_id}: {error}",
     "searchAudioError": "Fejl ved søgning efter lyd: {error}",
     "searchCreatedSuccessfully": "Jobbet er oprettet. Søger efter lyd...",
-    "autoDownloadStarted": "Det bedste resultat blev valgt automatisk. Download starter..."
+    "autoDownloadStarted": "Det bedste resultat blev valgt automatisk. Download starter...",
+    "drmUrlUnsupported": "{platform}-links er kopibeskyttede og kan ikke downloades. Indsæt et YouTube-link i stedet, eller brug Lydsøgning til at finde denne sang."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

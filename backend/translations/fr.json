@@ -92,7 +92,8 @@
     "selectAudioError": "Erreur lors de la sélection de l'audio pour la tâche {job_id} : {error}",
     "searchAudioError": "Erreur lors de la recherche audio : {error}",
     "searchCreatedSuccessfully": "Tâche créée. Recherche de l'audio en cours...",
-    "autoDownloadStarted": "Meilleur résultat sélectionné automatiquement. Le téléchargement commence..."
+    "autoDownloadStarted": "Meilleur résultat sélectionné automatiquement. Le téléchargement commence...",
+    "drmUrlUnsupported": "Les liens {platform} sont protégés contre la copie et ne peuvent pas être téléchargés. Colle plutôt un lien YouTube, ou utilise la Recherche Audio pour trouver cette chanson."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

@@ -397,9 +397,90 @@ class TestRetryEndpoint:
             file_urls={}
         )
 
-        # This job has no input audio - should not be retryable
-        has_input = job.input_media_gcs_path or job.url
-        assert not has_input
+        # This job has no input audio - should not be retryable.
+        # Restart-from-beginning is gated on audio actually being in GCS, NOT on
+        # job.url (a URL whose download failed has no audio to re-fetch).
+        has_input_audio_in_gcs = job.input_media_gcs_path
+        assert not has_input_audio_in_gcs
+
+
+class TestRetryUrlJobWithoutDownload:
+    """Regression tests for the retry routing fix (incident: job 7f36304a).
+
+    A URL job whose download failed has `job.url` set but NO audio in GCS.
+    Retrying it must NOT trigger the audio/lyrics workers (which would fail with
+    "Failed to download audio file" and be retried by Cloud Run); it must refuse
+    cleanly with a 400 telling the user to resubmit.
+    """
+
+    def _call_retry(self, job, mock_jm, mock_ws, background_tasks):
+        import asyncio
+        from backend.api.routes.jobs import retry_job
+
+        mock_jm.get_job.return_value = job
+        mock_request = MagicMock()
+        mock_request.headers = {}
+
+        async def _run():
+            return await retry_job(
+                job_id=job.job_id,
+                request=mock_request,
+                background_tasks=background_tasks,
+                auth_result=MagicMock(is_admin=True, user_email="t@t.com"),
+            )
+
+        with patch("backend.api.routes.jobs.job_manager", mock_jm), \
+             patch("backend.api.routes.jobs.worker_service", mock_ws), \
+             patch("backend.api.routes.jobs._check_job_ownership", return_value=True), \
+             patch("backend.api.routes.jobs._is_auto_retry_pending", return_value=False), \
+             patch("backend.api.routes.jobs.get_locale_from_request", return_value="en"):
+            return asyncio.run(_run())
+
+    def _make_url_job(self, *, input_media_gcs_path=None):
+        return Job(
+            job_id="urljob1",
+            status=JobStatus.FAILED,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Hailey Whitters",
+            title="Gone Country",
+            url="https://music.apple.com/us/album/gone-country/1752594347?i=1752594711",
+            input_media_gcs_path=input_media_gcs_path,
+            file_urls={},
+        )
+
+    def test_url_job_without_download_refuses_and_triggers_no_workers(self):
+        """URL job with no downloaded audio → 400 resubmit, no workers triggered."""
+        from fastapi import HTTPException
+
+        job = self._make_url_job(input_media_gcs_path=None)
+        mock_jm, mock_ws = MagicMock(), MagicMock()
+        background_tasks = MagicMock()
+
+        with pytest.raises(HTTPException) as exc:
+            self._call_retry(job, mock_jm, mock_ws, background_tasks)
+
+        assert exc.value.status_code == 400
+        assert "resubmit" in str(exc.value.detail).lower()
+        # The doomed workers must NOT have been scheduled.
+        scheduled = [c.args[0] for c in background_tasks.add_task.call_args_list]
+        assert mock_ws.trigger_audio_worker not in scheduled
+        assert mock_ws.trigger_lyrics_worker not in scheduled
+
+    def test_url_job_with_downloaded_audio_restarts_from_beginning(self):
+        """URL job whose download succeeded (audio in GCS) → restarts + workers."""
+        job = self._make_url_job(input_media_gcs_path="uploads/urljob1/audio/in.flac")
+        mock_jm, mock_ws = MagicMock(), MagicMock()
+        mock_jm.transition_to_state.return_value = True
+        background_tasks = MagicMock()
+
+        result = self._call_retry(job, mock_jm, mock_ws, background_tasks)
+
+        assert result["status"] == "success"
+        assert result["retry_stage"] == "from_beginning"
+        scheduled = [c.args[0] for c in background_tasks.add_task.call_args_list]
+        assert mock_ws.trigger_audio_worker in scheduled
+        assert mock_ws.trigger_lyrics_worker in scheduled
 
 
 class TestCompleteReviewWithInstrumentalSelection:

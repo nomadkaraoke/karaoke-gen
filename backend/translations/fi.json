@@ -92,7 +92,8 @@
     "selectAudioError": "Virhe valittaessa ääntä työlle {job_id}: {error}",
     "searchAudioError": "Virhe haettaessa ääntä: {error}",
     "searchCreatedSuccessfully": "Työ luotu. Etsitään ääntä...",
-    "autoDownloadStarted": "Paras tulos valittu automaattisesti. Lataus alkaa..."
+    "autoDownloadStarted": "Paras tulos valittu automaattisesti. Lataus alkaa...",
+    "drmUrlUnsupported": "{platform}-linkit ovat kopiosuojattuja, eikä niitä voi ladata. Liitä sen sijaan YouTube-linkki tai käytä Audio Search -toimintoa tämän kappaleen etsimiseen."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

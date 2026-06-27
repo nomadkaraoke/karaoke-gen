@@ -92,7 +92,8 @@
     "selectAudioError": "خطأ في تحديد الصوت للمهمة {job_id}: {error}",
     "searchAudioError": "خطأ في البحث عن الصوت: {error}",
     "searchCreatedSuccessfully": "تم إنشاء المهمة. جاري البحث عن الصوت...",
-    "autoDownloadStarted": "تم تحديد أفضل نتيجة تلقائيًا. جاري بدء التنزيل..."
+    "autoDownloadStarted": "تم تحديد أفضل نتيجة تلقائيًا. جاري بدء التنزيل...",
+    "drmUrlUnsupported": "روابط {platform} محمية بحقوق الطبع والنشر ولا يمكن تنزيلها. يرجى لصق رابط YouTube بدلاً من ذلك، أو استخدام البحث الصوتي للعثور على هذه الأغنية."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

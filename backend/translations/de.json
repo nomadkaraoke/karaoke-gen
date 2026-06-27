@@ -92,7 +92,8 @@
     "selectAudioError": "Fehler bei der Audioauswahl für Auftrag {job_id}: {error}",
     "searchAudioError": "Fehler bei der Audiosuche: {error}",
     "searchCreatedSuccessfully": "Auftrag erstellt. Suche nach Audio...",
-    "autoDownloadStarted": "Bestes Ergebnis automatisch ausgewählt. Download startet..."
+    "autoDownloadStarted": "Bestes Ergebnis automatisch ausgewählt. Download startet...",
+    "drmUrlUnsupported": "{platform}-Links sind kopiergeschützt und können nicht heruntergeladen werden. Bitte füge stattdessen einen YouTube-Link ein oder nutze die Audiosuche, um diesen Song zu finden."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

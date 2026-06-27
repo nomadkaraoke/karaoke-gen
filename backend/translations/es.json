@@ -92,7 +92,8 @@
     "selectAudioError": "Error al seleccionar el audio para el trabajo {job_id}: {error}",
     "searchAudioError": "Error al buscar audio: {error}",
     "searchCreatedSuccessfully": "Trabajo creado. Buscando audio...",
-    "autoDownloadStarted": "Mejor resultado seleccionado automáticamente. Iniciando descarga..."
+    "autoDownloadStarted": "Mejor resultado seleccionado automáticamente. Iniciando descarga...",
+    "drmUrlUnsupported": "Los enlaces de {platform} están protegidos por derechos de autor y no se pueden descargar. Por favor, pega un enlace de YouTube en su lugar, o usa la Búsqueda de audio para encontrar esta canción."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

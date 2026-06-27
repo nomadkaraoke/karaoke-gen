@@ -92,7 +92,8 @@
     "selectAudioError": "Eroare la selectarea fișierului audio pentru jobul {job_id}: {error}",
     "searchAudioError": "Eroare la căutarea audio: {error}",
     "searchCreatedSuccessfully": "Job creat. Se caută fișierul audio...",
-    "autoDownloadStarted": "Cel mai bun rezultat a fost selectat automat. Descărcarea începe..."
+    "autoDownloadStarted": "Cel mai bun rezultat a fost selectat automat. Descărcarea începe...",
+    "drmUrlUnsupported": "Linkurile {platform} sunt protejate de drepturi de autor și nu pot fi descărcate. Lipește în schimb un link YouTube sau folosește Căutarea Audio pentru a găsi această melodie."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

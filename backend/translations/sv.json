@@ -92,7 +92,8 @@
     "selectAudioError": "Fel vid val av ljud för jobb {job_id}: {error}",
     "searchAudioError": "Fel vid sökning efter ljud: {error}",
     "searchCreatedSuccessfully": "Jobbet har skapats. Söker efter ljud...",
-    "autoDownloadStarted": "Bästa resultatet valdes automatiskt. Nedladdningen startar..."
+    "autoDownloadStarted": "Bästa resultatet valdes automatiskt. Nedladdningen startar...",
+    "drmUrlUnsupported": "{platform}-länkar är kopieringsskyddade och kan inte laddas ner. Klistra in en YouTube-länk istället, eller använd Ljudsökning för att hitta den här låten."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

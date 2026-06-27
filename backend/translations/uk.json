@@ -92,7 +92,8 @@
     "selectAudioError": "Помилка вибору аудіо для завдання {job_id}: {error}",
     "searchAudioError": "Помилка пошуку аудіо: {error}",
     "searchCreatedSuccessfully": "Завдання створено. Шукаємо аудіо...",
-    "autoDownloadStarted": "Найкращий результат вибрано автоматично. Починається завантаження..."
+    "autoDownloadStarted": "Найкращий результат вибрано автоматично. Починається завантаження...",
+    "drmUrlUnsupported": "Посилання з {platform} захищені від копіювання, і їх неможливо завантажити. Будь ласка, встав посилання на YouTube замість цього або скористайся Аудіопошуком, щоб знайти цю пісню."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

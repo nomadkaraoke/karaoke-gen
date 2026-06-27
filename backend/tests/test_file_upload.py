@@ -1249,7 +1249,7 @@ class TestURLValidation:
     def test_other_supported_platforms(self):
         """Test other supported video platforms."""
         from backend.api.routes.file_upload import _validate_url
-        
+
         valid_urls = [
             "https://twitter.com/user/status/123",
             "https://x.com/user/status/123",
@@ -1257,9 +1257,69 @@ class TestURLValidation:
             "https://www.instagram.com/reel/abc123/",
             "https://www.tiktok.com/@user/video/123",
         ]
-        
+
         for url in valid_urls:
             assert _validate_url(url), f"URL should be valid: {url}"
+
+
+class TestUnsupportedDrmUrl:
+    """Test detection of DRM-protected streaming URLs that can't be downloaded."""
+
+    def test_apple_music_urls_detected(self):
+        from backend.api.routes.file_upload import _unsupported_url_platform
+
+        urls = [
+            # The exact URL from the prod incident (job 7f36304a)
+            "https://music.apple.com/us/album/gone-country-apple-music-sessions/1752594347?i=1752594711",
+            "https://music.apple.com/gb/album/whatever/123",
+            "https://itunes.apple.com/us/album/whatever/123",
+        ]
+        for url in urls:
+            assert _unsupported_url_platform(url) == "Apple Music", url
+
+    def test_spotify_urls_detected(self):
+        from backend.api.routes.file_upload import _unsupported_url_platform
+
+        urls = [
+            "https://open.spotify.com/track/abc123",
+            "https://play.spotify.com/track/abc123",
+            "https://spotify.com/track/abc123",
+        ]
+        for url in urls:
+            assert _unsupported_url_platform(url) == "Spotify", url
+
+    def test_other_drm_platforms_detected(self):
+        from backend.api.routes.file_upload import _unsupported_url_platform
+
+        cases = {
+            "https://tidal.com/browse/track/123": "Tidal",
+            "https://listen.tidal.com/track/123": "Tidal",
+            "https://music.amazon.com/albums/B0ABC": "Amazon Music",
+            "https://music.amazon.co.uk/albums/B0ABC": "Amazon Music",
+            "https://music.amazon.co.jp/albums/B0ABC": "Amazon Music",
+            "https://music.amazon.fr/albums/B0ABC": "Amazon Music",
+            "https://www.deezer.com/track/123": "Deezer",
+            "https://www.pandora.com/artist/song": "Pandora",
+        }
+        for url, platform in cases.items():
+            assert _unsupported_url_platform(url) == platform, url
+
+    def test_supported_urls_not_flagged(self):
+        from backend.api.routes.file_upload import _unsupported_url_platform
+
+        # YouTube Music IS downloadable and must NOT be flagged.
+        ok_urls = [
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://youtu.be/dQw4w9WgXcQ",
+            "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://vimeo.com/123",
+            "https://soundcloud.com/artist/track",
+            "https://example.com/some/audio.mp3",
+            "",
+            None,
+        ]
+        for url in ok_urls:
+            assert _unsupported_url_platform(url) is None, url
 
 
 class TestCreateJobFromUrlRequest:
