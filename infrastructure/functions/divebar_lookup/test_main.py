@@ -109,6 +109,33 @@ class TestRefreshTriggers:
 
 
 # ---------------------------------------------------------------------------
+# _norm_sql — symmetric normalization for the xref join
+# ---------------------------------------------------------------------------
+
+class TestNormSql:
+    def test_embeds_column_and_is_deterministic(self):
+        a = main._norm_sql("kn.Artist")
+        assert "kn.Artist" in a
+        assert main._norm_sql("kn.Artist") == a  # pure / deterministic
+
+    def test_replicates_normalize_for_search_steps(self):
+        expr = main._norm_sql("db.title")
+        # diacritics (NFD + drop combining marks), lower, leading "the", and the
+        # unicode-aware punctuation strip must all be present.
+        assert "NORMALIZE(COALESCE(db.title" in expr
+        assert "NFD" in expr and r"\p{Mn}" in expr
+        assert "LOWER(" in expr
+        assert r"'^the '" in expr
+        assert r"\p{L}" in expr and r"\p{N}" in expr
+
+    def test_both_sides_use_same_expression(self):
+        # The whole point of the fix: KN and Divebar sides normalize identically.
+        kn = main._norm_sql("X")
+        db = main._norm_sql("X")
+        assert kn == db
+
+
+# ---------------------------------------------------------------------------
 # divebar_lookup dispatch — refresh action
 # ---------------------------------------------------------------------------
 

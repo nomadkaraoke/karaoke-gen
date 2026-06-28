@@ -8,6 +8,8 @@ Creates:
 - Cloud Scheduler to rebuild xref daily (after mirror + KN sync complete)
 """
 
+from pathlib import Path
+
 import pulumi
 import pulumi_gcp as gcp
 from pulumi_gcp import (
@@ -72,6 +74,17 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
     )
     resources["source_bucket"] = source_bucket
 
+    # Content-hashed source archive so `pulumi up` redeploys the function on code
+    # changes (a static object name never triggered a redeploy).
+    source_dir = Path(__file__).parent.parent / "functions" / "divebar_lookup"
+    source_archive = storage.BucketObject(
+        "divebar-lookup-source",
+        bucket=source_bucket.name,
+        name="divebar-lookup-source.zip",
+        source=pulumi.FileArchive(str(source_dir)),
+    )
+    resources["source_archive"] = source_archive
+
     # ==================== BigQuery: Cross-Reference Table ====================
 
     xref_table = bigquery.Table(
@@ -103,7 +116,8 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
             source=cloudfunctionsv2.FunctionBuildConfigSourceArgs(
                 storage_source=cloudfunctionsv2.FunctionBuildConfigSourceStorageSourceArgs(
                     bucket=source_bucket.name,
-                    object="divebar-lookup-source.zip",
+                    object=source_archive.name,
+                    generation=source_archive.generation,
                 ),
             ),
         ),

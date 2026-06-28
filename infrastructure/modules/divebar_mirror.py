@@ -10,6 +10,8 @@ Creates:
 - BigQuery table for the Divebar catalog index
 """
 
+from pathlib import Path
+
 import pulumi
 import pulumi_gcp as gcp
 from pulumi_gcp import (
@@ -99,6 +101,18 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
     )
     resources["source_bucket"] = source_bucket
 
+    # Zip the function source and upload it as a content-hashed object so that
+    # `pulumi up` redeploys the function whenever the code changes (the previous
+    # static object name never triggered a redeploy on code edits).
+    source_dir = Path(__file__).parent.parent / "functions" / "divebar_mirror"
+    source_archive = storage.BucketObject(
+        "divebar-mirror-source",
+        bucket=source_bucket.name,
+        name="divebar-mirror-source.zip",
+        source=pulumi.FileArchive(str(source_dir)),
+    )
+    resources["source_archive"] = source_archive
+
     # ==================== BigQuery Table ====================
 
     # The table is in the karaoke_decide dataset (managed by karaoke-decide Pulumi).
@@ -143,7 +157,11 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
             source=cloudfunctionsv2.FunctionBuildConfigSourceArgs(
                 storage_source=cloudfunctionsv2.FunctionBuildConfigSourceStorageSourceArgs(
                     bucket=source_bucket.name,
-                    object="divebar-mirror-source.zip",
+                    object=source_archive.name,
+                    # Pin to the object generation so replacing the source bundle
+                    # (a code change) registers as a diff on the Function and
+                    # forces a redeploy, instead of silently serving the old copy.
+                    generation=source_archive.generation,
                 ),
             ),
         ),

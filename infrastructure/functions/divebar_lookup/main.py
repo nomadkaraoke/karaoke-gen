@@ -177,16 +177,51 @@ def _lookup_kn_ids(kn_ids: list[int]) -> dict[int, list[dict]]:
     return result
 
 
+def _norm_sql(col: str) -> str:
+    """A BigQuery expression replicating divebar_mirror's normalize_for_search.
+
+    Both the KaraokeNerds side and the Divebar side of the xref join are passed
+    through this so the comparison is symmetric. Previously the join compared the
+    KN side (only LOWER+TRIM) against the Divebar side's fully-normalized columns
+    (diacritics / leading "the " / punctuation stripped), so most rows could never
+    match. Steps mirror normalize_for_search: strip diacritics (NFD + drop combining
+    marks), lower/trim, strip a trailing karaoke tag, strip a leading "the ", drop
+    non-word chars (keeping unicode letters/digits/underscore), collapse whitespace.
+    """
+    return (
+        "TRIM(REGEXP_REPLACE("
+        "REGEXP_REPLACE("
+        "REGEXP_REPLACE("
+        "REGEXP_REPLACE("
+        "LOWER(TRIM(REGEXP_REPLACE(NORMALIZE(COALESCE(" + col + ", ''), NFD), r'\\p{Mn}', ''))),"
+        r" r'\s*[\(\[]\s*(?:[^)\]]*karaoke[^)\]]*|(?:instrumental|backing track|no vocals?|kj version|with vocals?|demo)[^)\]]*)[\)\]]\s*$', ''),"
+        r" r'^the ', ''),"
+        r" r'[^\p{L}\p{N}_\s]', ''),"
+        r" r'\s+', ' '))"
+    )
+
+
 def _rebuild_xref() -> dict:
-    """Rebuild the KN ↔ Divebar cross-reference index using exact + fuzzy matching."""
+    """Rebuild the KN ↔ Divebar cross-reference index by exact normalized match.
+
+    Both sides are normalized through the identical `_norm_sql` expression, so a
+    KN song links to a Divebar file only when their artist AND title agree after
+    normalization. (The previous "brand_match" branch matched on brand_code +
+    artist only — with no title constraint it was a Cartesian product that linked
+    every KN song by an artist/brand to every Divebar file by the same
+    artist/brand, i.e. wrong-song links. Constraining it by title would make it a
+    strict subset of the exact match, so it was removed.)
+    """
     client = bigquery.Client(project=GCP_PROJECT_ID)
     start = time.time()
 
-    # Step 1: Exact match on normalized artist + title
+    kn_artist, kn_title = _norm_sql("kn.Artist"), _norm_sql("kn.Title")
+    db_artist, db_title = _norm_sql("db.artist"), _norm_sql("db.title")
+
     exact_sql = f"""
         CREATE OR REPLACE TABLE `{GCP_PROJECT_ID}.{DATASET}.kn_divebar_xref` AS
 
-        -- Exact normalized match (high confidence)
+        -- Exact match on symmetrically-normalized artist + title (high confidence)
         SELECT DISTINCT
             kn.Id AS kn_id,
             db.file_id AS divebar_file_id,
@@ -195,40 +230,10 @@ def _rebuild_xref() -> dict:
             CURRENT_TIMESTAMP() AS matched_at
         FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_raw` kn
         JOIN `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db
-            ON LOWER(TRIM(kn.Artist)) = db.artist_normalized
-            AND LOWER(TRIM(kn.Title)) = db.title_normalized
-        WHERE db.artist_normalized IS NOT NULL
-            AND db.artist_normalized != ''
-            AND db.title_normalized IS NOT NULL
-            AND db.title_normalized != ''
-
-        UNION ALL
-
-        -- Community brand match: KN community track brand matches Divebar folder brand code
-        SELECT DISTINCT
-            kn.Id AS kn_id,
-            db.file_id AS divebar_file_id,
-            'brand_match' AS match_type,
-            0.90 AS confidence,
-            CURRENT_TIMESTAMP() AS matched_at
-        FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community` c
-        JOIN `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_raw` kn
-            ON LOWER(TRIM(c.Artist)) = LOWER(TRIM(kn.Artist))
-            AND LOWER(TRIM(c.Title)) = LOWER(TRIM(kn.Title))
-        JOIN `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db
-            ON LOWER(c.Brand) = LOWER(COALESCE(db.brand_code, ''))
-            AND LOWER(TRIM(c.Artist)) = db.artist_normalized
-        WHERE c.Brand IS NOT NULL
-            AND c.Brand != ''
-            AND db.artist_normalized IS NOT NULL
-            AND db.artist_normalized != ''
-            -- Exclude exact matches (already captured above)
-            AND NOT EXISTS (
-                SELECT 1 FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db2
-                WHERE LOWER(TRIM(kn.Artist)) = db2.artist_normalized
-                AND LOWER(TRIM(kn.Title)) = db2.title_normalized
-                AND db2.file_id = db.file_id
-            )
+            ON {kn_artist} = {db_artist}
+            AND {kn_title} = {db_title}
+        WHERE {db_artist} != ''
+            AND {db_title} != ''
     """
 
     logger.info("Rebuilding cross-reference index...")
