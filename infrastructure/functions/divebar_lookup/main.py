@@ -202,20 +202,26 @@ def _norm_sql(col: str) -> str:
 
 
 def _rebuild_xref() -> dict:
-    """Rebuild the KN ↔ Divebar cross-reference index using exact + fuzzy matching."""
+    """Rebuild the KN ↔ Divebar cross-reference index by exact normalized match.
+
+    Both sides are normalized through the identical `_norm_sql` expression, so a
+    KN song links to a Divebar file only when their artist AND title agree after
+    normalization. (The previous "brand_match" branch matched on brand_code +
+    artist only — with no title constraint it was a Cartesian product that linked
+    every KN song by an artist/brand to every Divebar file by the same
+    artist/brand, i.e. wrong-song links. Constraining it by title would make it a
+    strict subset of the exact match, so it was removed.)
+    """
     client = bigquery.Client(project=GCP_PROJECT_ID)
     start = time.time()
 
     kn_artist, kn_title = _norm_sql("kn.Artist"), _norm_sql("kn.Title")
     db_artist, db_title = _norm_sql("db.artist"), _norm_sql("db.title")
-    db2_artist, db2_title = _norm_sql("db2.artist"), _norm_sql("db2.title")
-    c_artist = _norm_sql("c.Artist")
 
-    # Step 1: Exact match on symmetrically-normalized artist + title
     exact_sql = f"""
         CREATE OR REPLACE TABLE `{GCP_PROJECT_ID}.{DATASET}.kn_divebar_xref` AS
 
-        -- Exact normalized match (high confidence)
+        -- Exact match on symmetrically-normalized artist + title (high confidence)
         SELECT DISTINCT
             kn.Id AS kn_id,
             db.file_id AS divebar_file_id,
@@ -228,33 +234,6 @@ def _rebuild_xref() -> dict:
             AND {kn_title} = {db_title}
         WHERE {db_artist} != ''
             AND {db_title} != ''
-
-        UNION ALL
-
-        -- Community brand match: KN community track brand matches Divebar folder brand code
-        SELECT DISTINCT
-            kn.Id AS kn_id,
-            db.file_id AS divebar_file_id,
-            'brand_match' AS match_type,
-            0.90 AS confidence,
-            CURRENT_TIMESTAMP() AS matched_at
-        FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community` c
-        JOIN `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_raw` kn
-            ON LOWER(TRIM(c.Artist)) = LOWER(TRIM(kn.Artist))
-            AND LOWER(TRIM(c.Title)) = LOWER(TRIM(kn.Title))
-        JOIN `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db
-            ON LOWER(c.Brand) = LOWER(COALESCE(db.brand_code, ''))
-            AND {c_artist} = {db_artist}
-        WHERE c.Brand IS NOT NULL
-            AND c.Brand != ''
-            AND {db_artist} != ''
-            -- Exclude exact matches (already captured above)
-            AND NOT EXISTS (
-                SELECT 1 FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db2
-                WHERE {kn_artist} = {db2_artist}
-                AND {kn_title} = {db2_title}
-                AND db2.file_id = db.file_id
-            )
     """
 
     logger.info("Rebuilding cross-reference index...")
