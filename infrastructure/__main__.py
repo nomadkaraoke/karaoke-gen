@@ -485,12 +485,25 @@ divebar_sync_scheduler = cloudscheduler.Job(
     schedule="0 3 * * *",  # 3:00 AM ET (after index refresh at 2 AM)
     time_zone="America/New_York",
     http_target=cloudscheduler.JobHttpTargetArgs(
-        uri=divebar_sync_instance.self_link.apply(
-            lambda link: f"https://compute.googleapis.com/compute/v1/{link}/start"
+        # Build the compute.instances.start endpoint from the instance name.
+        # NOTE: instance.self_link already resolves to a FULL URL
+        # (https://www.googleapis.com/compute/v1/projects/.../instances/divebar-sync),
+        # so prepending another host produced a doubled URL that 404'd (NOT_FOUND),
+        # silently stopping the nightly Drive->GCS byte sync. Construct the URL
+        # explicitly from project/zone/name to avoid depending on self_link's format.
+        uri=divebar_sync_instance.name.apply(
+            lambda name: (
+                f"https://compute.googleapis.com/compute/v1/"
+                f"projects/{PROJECT_ID}/zones/{ZONE}/instances/{name}/start"
+            )
         ),
         http_method="POST",
-        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+        # compute.googleapis.com is a native Google API, so it requires an OAuth 2.0
+        # access token (cloud-platform scope) — NOT an OIDC identity token. Using
+        # oidc_token here caused HTTP 401 UNAUTHENTICATED once the URL was correct.
+        oauth_token=cloudscheduler.JobHttpTargetOauthTokenArgs(
             service_account_email=divebar_mirror_resources["service_account"].email,
+            scope="https://www.googleapis.com/auth/cloud-platform",
         ),
     ),
     retry_config=cloudscheduler.JobRetryConfigArgs(
