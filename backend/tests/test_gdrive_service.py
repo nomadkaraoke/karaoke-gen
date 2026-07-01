@@ -928,6 +928,56 @@ class TestFindFilesByBrandCode:
         with pytest.raises(RuntimeError, match="search incomplete"):
             service.find_files_by_brand_code("root-folder", "NOMAD-1271")
 
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_recovers_from_transient_connection_error(self, mock_get_settings):
+        """A transient BrokenPipe/SSL EOF within a subfolder search is retried, not fatal.
+
+        Regression for the "GDrive brand_code search incomplete: 2/3 subfolder(s) failed"
+        alerts caused by [SSL: UNEXPECTED_EOF_WHILE_READING] / [Errno 32] Broken pipe
+        against idle Cloud Run containers.
+        """
+        service = self._make_service(mock_get_settings)
+        # Prevent _reset_service (called in before_sleep) from nulling our mock.
+        service._reset_service = Mock()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        mock_list_result.execute.side_effect = [
+            {"files": [{"id": "cdg-folder"}]},             # CDG subfolder found
+            BrokenPipeError("Errno 32 Broken pipe"),       # transient drop mid-search
+            {"files": [{"id": "cdg-folder"}]},             # retry: subfolder found again
+            {"files": [{"id": "cdg-file-1", "name": "NOMAD-1271 - piri - dog.zip"}]},
+            {"files": []},                                 # MP4 not found
+            {"files": []},                                 # MP4-720p not found
+        ]
+        mock_files_api.list.return_value = mock_list_result
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+
+        result = service.find_files_by_brand_code("root-folder", "NOMAD-1271")
+
+        assert result == ["cdg-file-1"]
+        service._reset_service.assert_called()  # a retry actually happened
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_persistent_transient_error_still_raises_incomplete(self, mock_get_settings):
+        """If retries are exhausted, the search is still reported as incomplete (not clean)."""
+        service = self._make_service(mock_get_settings)
+        service._reset_service = Mock()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        # Every call drops the connection — retries exhaust for all subfolders.
+        mock_list_result.execute.side_effect = BrokenPipeError("Errno 32 Broken pipe")
+        mock_files_api.list.return_value = mock_list_result
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+
+        with pytest.raises(RuntimeError, match="search incomplete"):
+            service.find_files_by_brand_code("root-folder", "NOMAD-1271")
+
 
 class TestGetGdriveService:
     """Test get_gdrive_service singleton."""

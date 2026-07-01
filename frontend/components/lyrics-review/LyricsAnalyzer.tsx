@@ -44,6 +44,7 @@ import {
   deleteWord,
 } from '@/lib/lyrics-review/utils/segmentOperations'
 import { generateStorageKey } from '@/lib/lyrics-review/utils/localStorage'
+import { countUntimedWords } from '@/lib/lyrics-review/utils/timingCompleteness'
 import { createLocalSessionStore, type LocalSessionStore } from '@/lib/lyrics-review/utils/localSessionStore'
 import {
   setupKeyboardHandlers,
@@ -988,6 +989,18 @@ export default function LyricsAnalyzer({
   // Submit to server (save corrections, don't complete review yet)
   const handleSubmitToServer = useCallback(async () => {
     if (!apiClient) return
+
+    // Block submission of lyrics that still have no timing (e.g. custom lyrics
+    // pasted into the synchronizer but never tap-synced). These otherwise reach
+    // the render pipeline and fail the job with a cryptic NoneType error; catch
+    // it here with an actionable message so the user can synchronize first.
+    const untimed = countUntimedWords(data.corrected_segments)
+    if (untimed > 0) {
+      toast.error(
+        `${untimed} lyric word(s) have no timing yet. Open the synchronizer and tap each line to the beat before generating the video.`
+      )
+      return
+    }
 
     setIsSubmitting(true)
     try {

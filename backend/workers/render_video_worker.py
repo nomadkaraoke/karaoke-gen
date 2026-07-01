@@ -57,6 +57,10 @@ RENDER_WORKER_SHUTDOWN_CODE = "WORKER_SHUTDOWN"
 # Import from lyrics_transcriber (submodule)
 from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
 from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
+from karaoke_gen.lyrics_transcriber.output.timing_validation import (
+    LyricsTimingError,
+    validate_segment_timing,
+)
 from karaoke_gen.lyrics_transcriber.types import CorrectionResult
 from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
 from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
@@ -361,6 +365,19 @@ async def process_render_video(job_id: str) -> bool:
 
                         job_log.info(f"Loaded CorrectionResult with {len(correction_result.corrected_segments)} segments")
                         logger.info(f"Job {job_id}: Loaded CorrectionResult with {len(correction_result.corrected_segments)} segments")
+
+                        # 4b. Reject untimed lyrics BEFORE any expensive work or encoder
+                        # dispatch. Custom/replaced lyrics that were never tap-synced carry
+                        # None start/end times and otherwise crash the encoder with a cryptic
+                        # "'<' not supported between instances of 'NoneType' and 'float'".
+                        # Failing here gives the user an actionable message and never sends a
+                        # broken job to the GCE encoder (which runs its own pinned wheel).
+                        try:
+                            validate_segment_timing(correction_result.corrected_segments)
+                        except LyricsTimingError as timing_err:
+                            job_log.error(f"Render rejected — lyrics not synchronized: {timing_err}")
+                            logger.error(f"Job {job_id}: Render rejected — lyrics not synchronized: {timing_err}")
+                            raise ValueError(str(timing_err)) from timing_err
 
                         # 5. Download audio file
                         audio_path = os.path.join(temp_dir, "audio.flac")
