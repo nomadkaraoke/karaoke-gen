@@ -185,6 +185,7 @@ def _synthesized_segments(target_lines: list[str]) -> list[dict]:
 from karaoke_gen.lyrics_transcriber.types import CorrectionResult
 from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
+from karaoke_gen.lyrics_transcriber.output.timing_validation import LyricsTimingError
 
 # Import from the unified style loader
 from karaoke_gen.style_loader import load_styles_from_gcs
@@ -1226,6 +1227,13 @@ async def generate_preview_video(
 
                     return {"status": "success", "preview_hash": preview_hash}
 
+            except LyricsTimingError as timing_err:
+                # Untimed lyrics (e.g. custom lyrics not yet tap-synced) — this is a
+                # user-fixable input problem, not a server fault. Return 422 with an
+                # actionable message instead of a cryptic 500.
+                logger.warning(f"Job {job_id}: Preview blocked — lyrics not synchronized: {timing_err}")
+                span.set_attribute("error", "lyrics_not_synchronized")
+                raise HTTPException(status_code=422, detail=str(timing_err)) from timing_err
             except Exception as e:
                 logger.error(f"Job {job_id}: Failed to generate preview video: {e}", exc_info=True)
                 span.set_attribute("error", str(e))

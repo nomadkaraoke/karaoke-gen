@@ -74,6 +74,30 @@ def test_resized_words_stay_within_parent_bounds():
             assert w.end_time <= 18.04 + 1e-6, f"word '{w.text}' end {w.end_time} > parent end 18.04"
 
 
+def test_input_output_logging_tolerates_none_timing(caplog):
+    """A debug log line must never crash on None timing.
+
+    Regression for job 231806a4: ``_log_input_segments`` did
+    ``f"{segment.start_time:.2f}"`` which raises
+    ``unsupported format string passed to NoneType.__format__`` when timing is
+    None (untimed custom lyrics), crashing the whole preview/render.
+    """
+    resizer = SegmentResizer(max_line_length=36, logger=logging.getLogger("test"))
+    untimed = LyricsSegment(
+        id="segment-0-1782928225732",
+        text="Vor's veninde er blevet gift",
+        words=[
+            Word(id="w0", text="Vor's", start_time=None, end_time=None),
+            Word(id="w1", text="veninde", start_time=None, end_time=None),
+        ],
+        start_time=None,
+        end_time=None,
+    )
+    # Must not raise.
+    resizer._log_input_segments([untimed])
+    resizer._log_output_segments([untimed])
+
+
 def test_valid_timings_are_left_untouched():
     """Sanitation must not perturb already-valid word timings."""
     resizer = SegmentResizer(max_line_length=36, logger=logging.getLogger("test"))

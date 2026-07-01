@@ -530,6 +530,15 @@ class SegmentResizer:
 
         return break_points
 
+    @staticmethod
+    def _fmt_time(value: Optional[float]) -> str:
+        """Format a timing value for logging, tolerating None.
+
+        A debug log line must never crash the pipeline: ``f"{None:.2f}"`` raises
+        ``unsupported format string passed to NoneType.__format__``.
+        """
+        return f"{value:.2f}" if value is not None else "None"
+
     def _log_input_segments(self, segments: List[LyricsSegment]) -> None:
         """Log input segment information."""
         self.logger.info(f"Starting segment resize. Input: {len(segments)} segments")
@@ -537,7 +546,7 @@ class SegmentResizer:
             self.logger.debug(
                 f"Input segment {idx}: text='{segment.text}', "
                 f"words={len(segment.words)} words, "
-                f"time={segment.start_time:.2f}-{segment.end_time:.2f}"
+                f"time={self._fmt_time(segment.start_time)}-{self._fmt_time(segment.end_time)}"
             )
 
     def _log_output_segments(self, segments: List[LyricsSegment]) -> None:
@@ -547,5 +556,5 @@ class SegmentResizer:
             self.logger.debug(
                 f"Output segment {idx}: text='{segment.text}', "
                 f"words={len(segment.words)} words, "
-                f"time={segment.start_time:.2f}-{segment.end_time:.2f}"
+                f"time={self._fmt_time(segment.start_time)}-{self._fmt_time(segment.end_time)}"
             )
