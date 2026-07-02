@@ -127,48 +127,71 @@ def get_sync_stats(bq_client):
     }
 
 
-def download_and_upload(drive_service, gcs_bucket, file_id, gcs_path, expected_size=None):
+# Transient download failures (network blips, Drive 5xx) are retried within the
+# run so a single sync reliably drains the worklist to zero instead of leaving a
+# small tail that lingers across nights. A 404/410 is permanent and never retried.
+DOWNLOAD_MAX_ATTEMPTS = 3
+DOWNLOAD_BACKOFF_BASE = 2  # seconds between attempts: 2, then 4
+
+
+def _http_status(err):
+    """Best-effort HTTP status from a googleapiclient HttpError (or None)."""
+    status = getattr(err, "status_code", None)
+    if status is None:
+        status = getattr(getattr(err, "resp", None), "status", None)
+    try:
+        return int(status)
+    except (TypeError, ValueError):
+        return None
+
+
+def download_and_upload(drive_service, gcs_bucket, file_id, gcs_path,
+                        expected_size=None, max_attempts=DOWNLOAD_MAX_ATTEMPTS):
     """Download a file from Drive and upload to GCS.
 
     Returns ``(ok, actual_size, gone)``. ``gone`` is True when Drive reports the
-    file no longer exists (HTTP 404/410) — a permanent failure the caller should
-    record so it stops counting as "pending" and isn't retried every run.
-    Any other error returns ``gone=False`` (transient — safe to retry).
+    file no longer exists (HTTP 404/410) — a permanent failure the caller records
+    so it stops counting as "pending" and isn't retried every run; it is returned
+    immediately without retrying. Any other failure (5xx, network, timeout) is
+    transient: retried up to ``max_attempts`` with exponential backoff, and if
+    still failing returns ``gone=False`` (left NULL to retry on the next run).
     """
-    try:
-        # Download from Drive
-        request = drive_service.files().get_media(fileId=file_id)
-        buffer = io.BytesIO()
-        downloader = MediaIoBaseDownload(buffer, request)
-
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
-
-        buffer.seek(0)
-        actual_size = buffer.getbuffer().nbytes
-
-        # Upload to GCS
-        blob = gcs_bucket.blob(gcs_path)
-        blob.upload_from_file(buffer, timeout=300)
-
-        return True, actual_size, False
-
-    except HttpError as e:
-        status = getattr(e, "status_code", None)
-        if status is None:
-            status = getattr(getattr(e, "resp", None), "status", None)
+    last_err = None
+    for attempt in range(1, max_attempts + 1):
         try:
-            status = int(status)
-        except (TypeError, ValueError):
-            status = None
-        gone = status in (404, 410)
-        logger.error("Failed %s: %s", gcs_path, e)
-        return False, 0, gone
+            # Download from Drive
+            request = drive_service.files().get_media(fileId=file_id)
+            buffer = io.BytesIO()
+            downloader = MediaIoBaseDownload(buffer, request)
 
-    except Exception as e:
-        logger.error("Failed %s: %s", gcs_path, e)
-        return False, 0, False
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+
+            buffer.seek(0)
+            actual_size = buffer.getbuffer().nbytes
+
+            # Upload to GCS
+            blob = gcs_bucket.blob(gcs_path)
+            blob.upload_from_file(buffer, timeout=300)
+
+            return True, actual_size, False
+
+        except HttpError as e:
+            if _http_status(e) in (404, 410):
+                # Permanent — file no longer exists on Drive. Do not retry.
+                logger.error("Gone %s: %s", gcs_path, e)
+                return False, 0, True
+            last_err = e
+        except Exception as e:
+            last_err = e
+
+        # Transient failure — back off and retry (except after the last attempt).
+        if attempt < max_attempts:
+            time.sleep(DOWNLOAD_BACKOFF_BASE ** attempt)
+
+    logger.error("Failed %s after %d attempts: %s", gcs_path, max_attempts, last_err)
+    return False, 0, False
 
 
 def update_gcs_path(bq_client, file_id, gcs_path):

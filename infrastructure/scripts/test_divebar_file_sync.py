@@ -51,6 +51,12 @@ class _Row:
         self.drive_md5 = "abc"
 
 
+@pytest.fixture(autouse=True)
+def _no_sleep(monkeypatch):
+    """Retries back off with time.sleep — no-op it so tests stay fast."""
+    monkeypatch.setattr(mod.time, "sleep", lambda *a, **k: None)
+
+
 # ---- download_and_upload: classify the failure ----
 
 def test_download_404_is_gone(monkeypatch):
@@ -79,6 +85,39 @@ def test_download_generic_error_is_not_gone(monkeypatch):
     monkeypatch.setattr(mod, "MediaIoBaseDownload", MagicMock(return_value=inst))
     ok, size, gone = mod.download_and_upload(MagicMock(), MagicMock(), "fid", "files/x")
     assert (ok, gone) == (False, False)
+
+
+# ---- download_and_upload: retry behaviour ----
+
+def test_transient_failure_is_retried_then_succeeds(monkeypatch):
+    # First attempt raises a 503, second attempt's downloader completes.
+    bad = MagicMock(); bad.next_chunk.side_effect = _HttpError(503)
+    good = MagicMock(); good.next_chunk.return_value = (None, True)  # done immediately
+    ctor = MagicMock(side_effect=[bad, good])
+    monkeypatch.setattr(mod, "MediaIoBaseDownload", ctor)
+    bucket = MagicMock()
+    ok, _, gone = mod.download_and_upload(MagicMock(), bucket, "fid", "files/x")
+    assert (ok, gone) == (True, False)
+    assert ctor.call_count == 2  # retried once
+    bucket.blob.return_value.upload_from_file.assert_called_once()
+
+
+def test_transient_failure_retries_then_gives_up(monkeypatch):
+    inst = MagicMock(); inst.next_chunk.side_effect = _HttpError(503)
+    ctor = MagicMock(return_value=inst)
+    monkeypatch.setattr(mod, "MediaIoBaseDownload", ctor)
+    ok, size, gone = mod.download_and_upload(MagicMock(), MagicMock(), "fid", "files/x", max_attempts=3)
+    assert (ok, size, gone) == (False, 0, False)  # left NULL to retry next run
+    assert ctor.call_count == 3
+
+
+def test_404_is_not_retried(monkeypatch):
+    inst = MagicMock(); inst.next_chunk.side_effect = _HttpError(404)
+    ctor = MagicMock(return_value=inst)
+    monkeypatch.setattr(mod, "MediaIoBaseDownload", ctor)
+    _, _, gone = mod.download_and_upload(MagicMock(), MagicMock(), "fid", "files/x", max_attempts=3)
+    assert gone is True
+    assert ctor.call_count == 1  # permanent — returned immediately, no retry
 
 
 # ---- sync_file: record the outcome in BigQuery ----
