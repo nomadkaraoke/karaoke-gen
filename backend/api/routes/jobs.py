@@ -2279,14 +2279,6 @@ async def cleanup_distribution(
                         "status": "success" if all_success else "partial",
                         "files": delete_results,
                     }
-
-                # Remove the Nomad 720p master(s) from the GCS fast-sync mirror too, so a
-                # re-finalise (incl. artist/title rename) doesn't leave the old cut on
-                # kjbox. Prefix-keyed by brand_code (covers renames); the subsequent
-                # re-run's push re-adds the new master. Non-fatal, Nomad-only.
-                if brand_code:
-                    from backend.services.nomad_master_mirror import cleanup_nomad_masters
-                    cleanup_nomad_masters(brand_code)
                     if gdrive_method:
                         results["gdrive"]["method"] = gdrive_method
                 else:
@@ -2295,6 +2287,14 @@ async def cleanup_distribution(
                         "status": "skipped",
                         "reason": "no files found to delete",
                     }
+
+                # Remove the Nomad 720p master(s) from the GCS fast-sync mirror too, so a
+                # re-finalise (incl. artist/title rename) doesn't leave the old cut on
+                # kjbox. Prefix-keyed by brand_code (covers renames); the subsequent
+                # re-run's push re-adds the new master. Non-fatal, Nomad-only.
+                if brand_code:
+                    from backend.services.nomad_master_mirror import cleanup_nomad_masters
+                    cleanup_nomad_masters(brand_code)
             else:
                 results["gdrive"] = {
                     "status": "failed",
