@@ -4,8 +4,16 @@ from backend.main import app
 from backend.api.dependencies import require_admin
 
 
+def _admin_result():
+    from backend.services.auth_service import AuthResult, UserType
+    return AuthResult(is_valid=True, user_type=UserType.ADMIN, remaining_uses=-1,
+                      message="ok", user_email="a@nomadkaraoke.com", is_admin=True)
+
+
 def test_parse_route_happy_path(monkeypatch):
-    # conftest's autouse fixture already overrides require_admin -> admin.
+    # Self-contained: set our own admin override rather than relying on the
+    # conftest autouse fixture (which can be disturbed by earlier tests in a
+    # full-suite run and leave the endpoint returning 401).
     from backend.api.routes import parse_titles as route
 
     async def fake_parse(items, **kw):
@@ -13,13 +21,21 @@ def test_parse_route_happy_path(monkeypatch):
                  "title": "Bohemian Rhapsody", "confidence": 0.9} for it in items]
 
     monkeypatch.setattr(route, "parse_titles", fake_parse)
-    client = TestClient(app)
-    resp = client.post("/api/parse-karaoke-titles", json={
-        "items": [{"id": "1", "filename": "x.mp4", "source": "youtube"}]})
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["results"][0]["id"] == "1"
-    assert body["results"][0]["artist"] == "Queen"
+    original = app.dependency_overrides.get(require_admin)
+    app.dependency_overrides[require_admin] = _admin_result
+    try:
+        client = TestClient(app)
+        resp = client.post("/api/parse-karaoke-titles", json={
+            "items": [{"id": "1", "filename": "x.mp4", "source": "youtube"}]})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["results"][0]["id"] == "1"
+        assert body["results"][0]["artist"] == "Queen"
+    finally:
+        if original is not None:
+            app.dependency_overrides[require_admin] = original
+        else:
+            app.dependency_overrides.pop(require_admin, None)
 
 
 def test_parse_route_requires_admin():
