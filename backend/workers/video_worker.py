@@ -1123,6 +1123,7 @@ async def _handle_native_distribution(
                     brand_code=upload_brand_code,
                     base_name=base_name,
                     output_files=output_files,
+                    warnings=result.setdefault('distribution_warnings', []),
                 )
                 
                 result['gdrive_files'] = uploaded

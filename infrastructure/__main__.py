@@ -460,6 +460,20 @@ retry_pending_render_jobs_scheduler = cloudscheduler.Job(
 
 divebar_mirror_resources = divebar_mirror.create_divebar_mirror_resources(all_secrets)
 
+# Grant the karaoke-backend SA write+delete on the Divebar files bucket so it can
+# fast-sync freshly-published Nomad 720p masters straight into the GCS mirror that
+# kjbox pulls from every 5 min (nomad-master fast-sync). objectAdmin (not just
+# objectCreator) because the edit/rename/delete path removes stale objects too.
+# Scoped in code to the "files/Nomad Karaoke/MP4-720p/" prefix + NOMAD brand only.
+gcp.storage.BucketIAMMember(
+    "backend-divebar-files-master-writer",
+    bucket=divebar_mirror_resources["files_bucket"].name,
+    role="roles/storage.objectAdmin",
+    member=backend_service_account.email.apply(
+        lambda email: f"serviceAccount:{email}"
+    ),
+)
+
 # ==================== KaraokeNerds Data Sync (Phase 2) ====================
 # Daily sync of KN catalog and community data to BigQuery/GCS
 

@@ -266,6 +266,7 @@ class GoogleDriveService:
         brand_code: str,
         base_name: str,
         output_files: dict,
+        warnings: Optional[list] = None,
     ) -> Dict[str, str]:
         """
         Upload final files to public share folder structure.
@@ -322,6 +323,18 @@ class GoogleDriveService:
             uploaded_files["mp4_720p"] = file_id
             logger.info(f"Uploaded 720p MP4 to MP4-720p/ folder")
 
+            # Fast-sync the 720p master straight to the Divebar GCS mirror so kjbox
+            # (which mirrors that folder every 5 min) picks it up within minutes,
+            # instead of waiting for the nightly Drive->GCS VM. Nomad-brand only,
+            # best-effort, never fatal to the Drive upload. A failure is surfaced as
+            # a distribution warning (drives the admin alert) so this can't silently
+            # rot into "nightly VM only" — the nightly VM stays the backfill net.
+            fast_sync_warning = self._fast_sync_nomad_master(
+                brand_code, mp4_720p_path, f"{filename_base}.mp4"
+            )
+            if fast_sync_warning and warnings is not None:
+                warnings.append(fast_sync_warning)
+
         # Upload CDG ZIP to CDG/
         cdg_zip_path = output_files.get("final_karaoke_cdg_zip")
         if cdg_zip_path and os.path.exists(cdg_zip_path):
@@ -336,6 +349,42 @@ class GoogleDriveService:
 
         logger.info(f"Public share upload complete: {len(uploaded_files)} files uploaded")
         return uploaded_files
+
+    def _fast_sync_nomad_master(
+        self, brand_code: str, local_720p_path: str, filename: str
+    ) -> Optional[str]:
+        """Best-effort push of a freshly-published Nomad 720p master to the Divebar
+        GCS mirror so kjbox picks it up within minutes (vs the nightly VM).
+
+        No-op unless the fast-sync is enabled and this is a public Nomad release
+        (``NOMAD-####``, excluding ``NOMADNP`` private tracks). Never raises — the
+        Drive upload has already succeeded and the nightly VM is the backfill net.
+
+        Returns a human-readable warning string on failure (so the caller can surface
+        it via ``distribution_warnings`` / the admin alert), or ``None`` on
+        success or when skipped.
+        """
+        try:
+            from backend.config import settings
+            from backend.services.nomad_master_mirror import (
+                NomadMasterMirror,
+                is_nomad_public_brand,
+            )
+
+            if not settings.nomad_master_fast_sync_enabled:
+                return None
+            if not is_nomad_public_brand(brand_code):
+                return None
+
+            if NomadMasterMirror().push_720p(local_720p_path, filename):
+                return None
+            return (
+                f"Nomad master fast-sync to the GCS mirror failed for {filename} "
+                f"(the nightly Drive->GCS VM will backfill it)"
+            )
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning(f"Nomad master fast-sync skipped (unexpected error): {e}")
+            return f"Nomad master fast-sync errored for {filename}: {e}"
 
     def delete_file(self, file_id: str) -> bool:
         """
