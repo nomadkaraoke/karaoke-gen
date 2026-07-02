@@ -55,7 +55,11 @@ REFRESH_SECRET_ID = os.environ.get("DIVEBAR_REFRESH_SECRET_ID", "divebar-refresh
 # just-published track was indexed but not byte-synced to GCS until the next nightly
 # run. Chaining from the index's actual completion removes that race.
 REFRESH_SCHEDULER_JOBS = [
-    "divebar-mirror-daily",  # Drive -> BigQuery index; chains sync-VM + xref when done
+    # Refresh-only mirror trigger: its request body sets chain_downstream, so the
+    # index chains the sync-VM + xref itself on completion. (divebar-mirror-daily,
+    # the nightly cron, omits the flag and leaves the standalone nightly sync/xref
+    # schedules alone — so refreshing never double-runs the nightly pipeline.)
+    "divebar-mirror-refresh",
 ]
 
 

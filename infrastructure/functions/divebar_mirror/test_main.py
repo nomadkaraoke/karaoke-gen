@@ -80,3 +80,30 @@ def test_index_dependent_jobs_are_the_ones_removed_from_refresh():
         "divebar-sync-vm-daily",
         "divebar-xref-rebuild-daily",
     ]
+
+
+class _Req:
+    """Minimal stand-in for a functions_framework request."""
+
+    def __init__(self, json=None, args=None):
+        self._json = json
+        self.args = args or {}
+
+    def get_json(self, silent=False):
+        return self._json
+
+
+def test_wants_chain_true_from_json_body():
+    assert main._wants_downstream_chain(_Req(json={"chain_downstream": True})) is True
+
+
+def test_wants_chain_from_query_param():
+    assert main._wants_downstream_chain(_Req(args={"chain_downstream": "true"})) is True
+
+
+def test_does_not_chain_when_flag_absent():
+    # The nightly mirror cron sends no flag -> must NOT chain (else it double-runs the
+    # standalone nightly sync/xref schedules).
+    assert main._wants_downstream_chain(_Req(json={})) is False
+    assert main._wants_downstream_chain(_Req(json=None)) is False
+    assert main._wants_downstream_chain(_Req(json={"chain_downstream": False})) is False

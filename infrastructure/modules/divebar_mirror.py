@@ -10,6 +10,7 @@ Creates:
 - BigQuery table for the Divebar catalog index
 """
 
+import base64
 from pathlib import Path
 
 import pulumi
@@ -226,5 +227,36 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
         ),
     )
     resources["scheduler"] = scheduler
+
+    # Refresh-only trigger. The manual "Refresh catalog" action force-runs THIS job
+    # (via run_job) instead of divebar-mirror-daily. Its body sets chain_downstream,
+    # so the index — on completion — chains the file-sync VM + xref rebuild, fixing
+    # the race where those ran before the fresh index existed. The nightly mirror cron
+    # omits the flag, so it leaves the standalone nightly sync/xref schedules to run
+    # once (no double-run). The cron below is a parked placeholder (Cloud Scheduler
+    # requires a schedule); this job is driven by run_job, not the clock.
+    refresh_scheduler = cloudscheduler.Job(
+        "divebar-mirror-refresh-scheduler",
+        name="divebar-mirror-refresh",
+        description="On-demand Divebar index refresh that chains the sync VM + xref (run via forceRun)",
+        region=REGION,
+        schedule="0 4 1 1 *",  # parked (Jan 1); driven by run_job, not the clock
+        time_zone="America/New_York",
+        http_target=cloudscheduler.JobHttpTargetArgs(
+            uri=function.url,
+            http_method="POST",
+            headers={"Content-Type": "application/json"},
+            body=base64.b64encode(b'{"chain_downstream": true}').decode("utf-8"),
+            oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+                service_account_email=sa.email,
+            ),
+        ),
+        retry_config=cloudscheduler.JobRetryConfigArgs(
+            retry_count=2,
+            min_backoff_duration="60s",
+            max_backoff_duration="300s",
+        ),
+    )
+    resources["refresh_scheduler"] = refresh_scheduler
 
     return resources

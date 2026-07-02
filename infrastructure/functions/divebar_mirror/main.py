@@ -46,10 +46,29 @@ DOWNSTREAM_SCHEDULER_JOBS = [
 ]
 
 
+def _wants_downstream_chain(request) -> bool:
+    """True only when the caller explicitly asked to chain the index-dependent jobs.
+
+    The manual "Refresh catalog" path triggers a dedicated scheduler job whose body
+    sets ``chain_downstream``. The nightly mirror cron does NOT set it, so the nightly
+    pipeline keeps its own staggered sync/xref schedules and we never double-run them.
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        if isinstance(body, dict) and body.get("chain_downstream"):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return str(request.args.get("chain_downstream", "")).lower() in ("1", "true", "yes")
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _trigger_downstream_jobs():
-    """Force-run the index-dependent scheduler jobs. Best-effort: a failure here is
-    logged and reported but never fails the index build itself (the nightly
-    schedulers remain a backstop)."""
+    """Force-run the index-dependent scheduler jobs (file-sync VM + xref rebuild).
+    Best-effort: a failure here is logged and reported but never fails the index
+    build itself."""
     from google.cloud import scheduler_v1
 
     client = scheduler_v1.CloudSchedulerClient()
@@ -127,11 +146,14 @@ def sync_divebar_index(request):
             "total_duration_s": round(total_duration, 1),
         }
 
-        # Chain the index-dependent jobs now that the fresh catalog is loaded. This
-        # runs at the index's actual completion (which can outlast the caller's HTTP
-        # timeout), so a manual "Refresh catalog" reliably syncs just-published files
-        # instead of racing the file-sync VM ahead of the index.
-        result["downstream"] = _trigger_downstream_jobs()
+        # Chain the index-dependent jobs (file-sync VM + xref) ONLY when the caller
+        # asked for it — the manual "Refresh catalog" path. Firing here, at the index's
+        # actual completion (which outlasts the caller's HTTP timeout), is what makes a
+        # refresh reliably sync just-published files instead of racing the sync VM ahead
+        # of the index. The nightly mirror cron doesn't set the flag, so it leaves the
+        # standalone nightly sync/xref schedules to run once — no double-run.
+        if _wants_downstream_chain(request):
+            result["downstream"] = _trigger_downstream_jobs()
 
         logger.info("Sync complete: %s", json.dumps(result))
         return _json_response(result)

@@ -107,20 +107,24 @@ class TestRefreshTriggers:
         assert len(result["failed"]) == 1
         assert result["failed"][0]["job"] == main.REFRESH_SCHEDULER_JOBS[0]
 
-    def test_refresh_triggers_only_the_index_not_sync_or_xref(self, _reset_scheduler):
+    def test_refresh_triggers_only_the_refresh_mirror_not_sync_or_xref(self, _reset_scheduler):
         # Regression: the file-sync VM and xref rebuild are chained by the index
-        # function on completion (see divebar_mirror._trigger_downstream_jobs).
-        # Triggering them here concurrently raced the sync VM ahead of the index,
-        # so a just-published track was indexed but never byte-synced to GCS until
-        # the next nightly run. Refresh must fire ONLY the index.
-        assert main.REFRESH_SCHEDULER_JOBS == ["divebar-mirror-daily"]
+        # function on completion (see divebar_mirror._trigger_downstream_jobs), NOT
+        # fired here. Firing them here concurrently raced the sync VM ahead of the
+        # index, so a just-published track was indexed but never byte-synced to GCS
+        # until the next nightly run. Refresh must fire ONLY the flag-carrying mirror
+        # trigger, which chains the rest.
+        assert main.REFRESH_SCHEDULER_JOBS == ["divebar-mirror-refresh"]
         assert "divebar-sync-vm-daily" not in main.REFRESH_SCHEDULER_JOBS
         assert "divebar-xref-rebuild-daily" not in main.REFRESH_SCHEDULER_JOBS
+        # Must NOT use the nightly cron job (which omits the chain flag).
+        assert "divebar-mirror-daily" not in main.REFRESH_SCHEDULER_JOBS
 
         main._refresh(TOKEN)
         called_paths = [c.kwargs["name"] for c in _reset_scheduler.run_job.call_args_list]
         assert all("divebar-sync-vm-daily" not in p for p in called_paths)
         assert all("divebar-xref-rebuild-daily" not in p for p in called_paths)
+        assert any("divebar-mirror-refresh" in p for p in called_paths)
 
 
 # ---------------------------------------------------------------------------
