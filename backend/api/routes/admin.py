@@ -1709,6 +1709,12 @@ async def delete_job_outputs(
             logger.error(f"Error deleting Google Drive files for job {job_id}: {e}", exc_info=True)
             results["gdrive"] = {"status": "error", "error": str(e)}
 
+    # Remove the Nomad 720p master(s) from the GCS fast-sync mirror too (prefix-keyed
+    # by brand_code, covers renames). Non-fatal, Nomad-only, no-op otherwise.
+    if brand_code:
+        from backend.services.nomad_master_mirror import cleanup_nomad_masters
+        cleanup_nomad_masters(brand_code)
+
     # Clean up GCS finals folder - prevents stale files from being picked up during re-encoding
     try:
         from backend.services.storage_service import StorageService

@@ -396,6 +396,11 @@ async def edit_completed_track(
                 delete_results = gdrive.delete_files(file_ids)
                 all_success = all(delete_results.values())
                 cleanup_results["gdrive"] = {"status": "success" if all_success else "partial", "files": delete_results}
+                # Also remove the Nomad 720p master from the GCS fast-sync mirror
+                # (prefix-keyed by brand_code, so it covers renames). Non-fatal,
+                # Nomad-brand only, no-op otherwise.
+                from backend.services.nomad_master_mirror import cleanup_nomad_masters
+                cleanup_nomad_masters(brand_code)
             else:
                 cleanup_results["gdrive"] = {"status": "skipped", "reason": "Google Drive not configured"}
         except Exception as e:
@@ -2274,6 +2279,14 @@ async def cleanup_distribution(
                         "status": "success" if all_success else "partial",
                         "files": delete_results,
                     }
+
+                # Remove the Nomad 720p master(s) from the GCS fast-sync mirror too, so a
+                # re-finalise (incl. artist/title rename) doesn't leave the old cut on
+                # kjbox. Prefix-keyed by brand_code (covers renames); the subsequent
+                # re-run's push re-adds the new master. Non-fatal, Nomad-only.
+                if brand_code:
+                    from backend.services.nomad_master_mirror import cleanup_nomad_masters
+                    cleanup_nomad_masters(brand_code)
                     if gdrive_method:
                         results["gdrive"]["method"] = gdrive_method
                 else:

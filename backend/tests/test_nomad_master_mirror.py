@@ -87,3 +87,69 @@ def test_delete_720p_is_non_fatal_on_error():
     blob.delete.side_effect = RuntimeError("boom")
 
     assert mirror.delete_720p("NOMAD-9 - X - Y.mp4") is False
+
+
+# --- delete_masters_by_brand (prefix delete; covers renames) ---
+
+def _mirror_with_blobs(names):
+    blobs = []
+    for n in names:
+        b = MagicMock()
+        b.name = n
+        blobs.append(b)
+    bucket = MagicMock()
+    bucket.list_blobs.return_value = blobs
+    client = MagicMock()
+    client.bucket.return_value = bucket
+    return NomadMasterMirror(client=client), bucket, blobs
+
+
+def test_delete_masters_by_brand_deletes_all_matching_by_prefix():
+    # Two objects for the same release (e.g. an old + renamed title) both go.
+    mirror, bucket, blobs = _mirror_with_blobs([
+        "files/Nomad Karaoke/MP4-720p/NOMAD-1500 - Rush - Spirit of Radio.mp4",
+        "files/Nomad Karaoke/MP4-720p/NOMAD-1500 - Rush - The Spirit of Radio.mp4",
+    ])
+    n = mirror.delete_masters_by_brand("NOMAD-1500")
+    assert n == 2
+    bucket.list_blobs.assert_called_once_with(
+        prefix="files/Nomad Karaoke/MP4-720p/NOMAD-1500 - "
+    )
+    for b in blobs:
+        b.delete.assert_called_once()
+
+
+@pytest.mark.parametrize("brand", ["NOMADNP-1500", "VOCALSTAR-1", "", None, "NOMAD"])
+def test_delete_masters_by_brand_refuses_non_nomad_or_bare(brand):
+    # Must never list/delete for a non-Nomad or bare brand — a broad prefix could
+    # wipe unrelated objects.
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    assert mirror.delete_masters_by_brand(brand) == 0
+    bucket.list_blobs.assert_not_called()
+
+
+def test_delete_masters_by_brand_is_non_fatal_on_list_error():
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    bucket.list_blobs.side_effect = RuntimeError("gcs down")
+    assert mirror.delete_masters_by_brand("NOMAD-1500") == 0
+
+
+def test_cleanup_nomad_masters_delegates_for_nomad(monkeypatch):
+    from backend.services import nomad_master_mirror as mod
+
+    called = {}
+    inst = MagicMock()
+    inst.delete_masters_by_brand.return_value = 3
+    monkeypatch.setattr(mod, "NomadMasterMirror", lambda: inst)
+
+    assert mod.cleanup_nomad_masters("NOMAD-1500") == 3
+    inst.delete_masters_by_brand.assert_called_once_with("NOMAD-1500")
+
+
+@pytest.mark.parametrize("brand", ["NOMADNP-1", "OTHER-1", "", None])
+def test_cleanup_nomad_masters_noop_for_non_nomad(brand, monkeypatch):
+    from backend.services import nomad_master_mirror as mod
+
+    # Must not even construct the mirror (no GCS client) for non-Nomad brands.
+    monkeypatch.setattr(mod, "NomadMasterMirror", lambda: (_ for _ in ()).throw(AssertionError("should not construct")))
+    assert mod.cleanup_nomad_masters(brand) == 0
