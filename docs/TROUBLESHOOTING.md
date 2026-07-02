@@ -230,7 +230,9 @@ done
 
 **Configuration knobs:** `MAX_PER_TICK = 1` and `MAX_WAIT_SECONDS = 24*3600` constants in `backend/api/routes/internal.py::retry_pending_render_jobs`.
 
-**Not an incident:** a *primary* warmup hitting `503 SERVICE_UNAVAILABLE` / capacity exhaustion is self-healing — the encoding flow's `ensure_any_running()` falls back to an alternate-zone worker and the job completes. As of 0.174.12 the `/internal/encoding-worker/warmup` endpoint logs this at **WARNING** (`"Primary encoding worker warmup failed (...); encoding will fall back..."`), specifically so it stays below the error monitor's `severity>=ERROR` filter and does **not** page Discord. Only a genuine, unexpected warmup failure (non-`EncodingWorkerStartError`) logs at ERROR. If you see the WARNING in logs with a job that still completed, no action is needed.
+**Not an incident:** a *primary* warmup hitting `503 SERVICE_UNAVAILABLE` / capacity exhaustion is self-healing — the encoding flow's `ensure_any_running()` falls back to an alternate-zone worker and the job completes. As of 0.174.12 the `/internal/encoding-worker/warmup/{job_id}` endpoint logs this at **WARNING** (`"Primary encoding worker warmup failed (...); encoding will fall back..."`), specifically so it stays below the error monitor's `severity>=ERROR` filter and does **not** page Discord. Only a genuine, unexpected warmup failure (non-`EncodingWorkerStartError`) logs at ERROR. If you see the WARNING in logs with a job that still completed, no action is needed.
+
+**403 on `/internal/encoding-worker/warmup` or `/heartbeat`:** as of 0.188.9 these endpoints are `{job_id}`-scoped and gated on `require_review_auth` (not `require_admin`). The lyrics-review page calls them on load / while editing so the encoding VM is warm by the time the reviewer previews a render. If you see 403s in the browser console, the caller lacks review access to that job — before 0.188.9 they required admin, so **every non-admin customer 403'd and the JIT pre-warm never fired** (renders paid the full cold-boot latency).
 
 ---
 

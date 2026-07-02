@@ -387,22 +387,25 @@ export default function LyricsAnalyzer({
     setSessionRestoreOpen(true)
   }, [sessionClient])
 
-  // Warm up encoding worker VM when lyrics review page loads
+  // Warm up encoding worker VM when lyrics review page loads.
+  // Only in cloud mode (jobId present) — the endpoint is review-auth scoped to
+  // the job, and there's no cloud encoding VM to warm in local mode.
   useEffect(() => {
-    if (!isReadOnly) {
-      warmupEncodingWorker()
+    if (!isReadOnly && jobId) {
+      warmupEncodingWorker(jobId)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced heartbeat — keeps VM alive during active editing
   const lastHeartbeat = useRef(0)
   const sendHeartbeat = useCallback(() => {
+    if (!jobId) return
     const now = Date.now()
     if (now - lastHeartbeat.current > 60_000) {
       lastHeartbeat.current = now
-      heartbeatEncodingWorker()
+      heartbeatEncodingWorker(jobId)
     }
-  }, [])
+  }, [jobId])
 
   // Heartbeat the encoding worker as the reviewer works. Crash recovery /
   // restore now flows entirely through review sessions (server in cloud mode,

@@ -2,13 +2,21 @@
 Encoding worker lifecycle endpoints.
 
 Provides warmup and heartbeat endpoints for the blue-green
-encoding worker VMs. Called by the frontend to ensure the
-primary VM is running before encoding requests.
+encoding worker VMs. Called by the lyrics-review frontend to ensure the
+primary VM is running before the reviewer previews a render.
+
+Auth: these are gated on ``require_review_auth`` (review access to a specific
+job), NOT ``require_admin``. The callers are ordinary customers on the
+lyrics-review page — gating on admin makes every non-admin caller 403, which
+silently defeats the JIT pre-warm. Scoping to the job being reviewed keeps the
+abuse posture identical to the rest of the review surface: you can only warm
+the shared encoding VM if you already have review access to a real job.
 """
 
 import logging
+from typing import Tuple
 from fastapi import APIRouter, Depends
-from backend.api.dependencies import require_admin
+from backend.api.dependencies import require_review_auth
 from backend.services.encoding_worker_manager import EncodingWorkerManager
 from backend.services.encoding_errors import EncodingWorkerStartError
 
@@ -36,12 +44,17 @@ def get_worker_manager():
     return _manager
 
 
-@router.post("/warmup")
+@router.post("/warmup/{job_id}")
 async def warmup_encoding_worker(
-    _admin=Depends(require_admin),
+    job_id: str,
+    _auth: Tuple[str, str] = Depends(require_review_auth),
     manager=Depends(get_worker_manager),
 ):
-    """Start the primary encoding worker VM if it's stopped."""
+    """Start the primary encoding worker VM if it's stopped.
+
+    Called on lyrics-review page load so the VM is warm by the time the
+    reviewer previews a render. ``job_id`` scopes auth to the job under review.
+    """
     try:
         result = manager.ensure_primary_running()
         if result["started"]:
@@ -64,12 +77,17 @@ async def warmup_encoding_worker(
         return {"started": False, "error": str(e)}
 
 
-@router.post("/heartbeat")
+@router.post("/heartbeat/{job_id}")
 async def heartbeat_encoding_worker(
-    _admin=Depends(require_admin),
+    job_id: str,
+    _auth: Tuple[str, str] = Depends(require_review_auth),
     manager=Depends(get_worker_manager),
 ):
-    """Update activity timestamp to prevent idle shutdown."""
+    """Update activity timestamp to prevent idle shutdown.
+
+    Called periodically while the reviewer works. ``job_id`` scopes auth to the
+    job under review.
+    """
     try:
         manager.update_activity()
         return {"status": "ok"}

@@ -3507,10 +3507,16 @@ export const lyricsReviewApi = {
 /**
  * Signal the backend to start the encoding worker VM.
  * Fire-and-forget — doesn't wait for the VM to boot.
+ *
+ * Scoped to the job being reviewed: the endpoint authorizes via the same
+ * review access as the rest of the lyrics-review page (require_review_auth),
+ * so getAuthHeaders() supplies the reviewer's token. Passing an admin-only
+ * token was the previous behaviour and 403'd for every non-admin customer.
  */
-export async function warmupEncodingWorker(): Promise<void> {
+export async function warmupEncodingWorker(jobId: string): Promise<void> {
+  if (!jobId) return
   try {
-    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/warmup`, {
+    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/warmup/${encodeURIComponent(jobId)}`, {
       method: 'POST',
       headers: getAuthHeaders(),
     })
@@ -3521,10 +3527,12 @@ export async function warmupEncodingWorker(): Promise<void> {
 
 /**
  * Send heartbeat to keep encoding worker alive during active session.
+ * Scoped to the job being reviewed (see warmupEncodingWorker).
  */
-export async function heartbeatEncodingWorker(): Promise<void> {
+export async function heartbeatEncodingWorker(jobId: string): Promise<void> {
+  if (!jobId) return
   try {
-    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/heartbeat`, {
+    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/heartbeat/${encodeURIComponent(jobId)}`, {
       method: 'POST',
       headers: getAuthHeaders(),
     })
