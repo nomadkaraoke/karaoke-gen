@@ -108,6 +108,24 @@ class TestDeleteOutputsSuccess:
             assert data["job_id"] == "test-job-123"
             assert "outputs_deleted_at" in data
 
+    def test_delete_outputs_removes_nomad_gcs_master(self, client, mock_complete_job):
+        """Deleting a NOMAD job's outputs must also remove its 720p master from the
+        GCS fast-sync mirror (wiring guard for the delete side)."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.nomad_master_mirror.cleanup_nomad_masters') as mock_cleanup:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job  # brand_code = "NOMAD-1234"
+            mock_jm_class.return_value = mock_jm
+            mock_db = Mock()
+            mock_db.collection.return_value.document.return_value = Mock()
+            mock_user_service.return_value.db = mock_db
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            assert response.status_code == 200
+            mock_cleanup.assert_called_once_with("NOMAD-1234")
+
     def test_delete_outputs_clears_state_data_keys(self, client, mock_complete_job):
         """Test that output-related state_data keys are listed as cleared."""
         with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
