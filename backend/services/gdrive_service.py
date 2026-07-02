@@ -322,6 +322,14 @@ class GoogleDriveService:
             uploaded_files["mp4_720p"] = file_id
             logger.info(f"Uploaded 720p MP4 to MP4-720p/ folder")
 
+            # Fast-sync the 720p master straight to the Divebar GCS mirror so kjbox
+            # (which mirrors that folder every 5 min) picks it up within minutes,
+            # instead of waiting for the nightly Drive->GCS VM. Nomad-brand only,
+            # best-effort, never fatal to the Drive upload.
+            self._fast_sync_nomad_master(
+                brand_code, mp4_720p_path, f"{filename_base}.mp4"
+            )
+
         # Upload CDG ZIP to CDG/
         cdg_zip_path = output_files.get("final_karaoke_cdg_zip")
         if cdg_zip_path and os.path.exists(cdg_zip_path):
@@ -336,6 +344,32 @@ class GoogleDriveService:
 
         logger.info(f"Public share upload complete: {len(uploaded_files)} files uploaded")
         return uploaded_files
+
+    def _fast_sync_nomad_master(
+        self, brand_code: str, local_720p_path: str, filename: str
+    ) -> None:
+        """Best-effort push of a freshly-published Nomad 720p master to the Divebar
+        GCS mirror so kjbox picks it up within minutes (vs the nightly VM).
+
+        No-op unless the fast-sync is enabled and this is a public Nomad release
+        (``NOMAD-####``, excluding ``NOMADNP`` private tracks). Never raises — the
+        Drive upload has already succeeded and the nightly VM is the backfill net.
+        """
+        try:
+            from backend.config import settings
+            from backend.services.nomad_master_mirror import (
+                NomadMasterMirror,
+                is_nomad_public_brand,
+            )
+
+            if not settings.nomad_master_fast_sync_enabled:
+                return
+            if not is_nomad_public_brand(brand_code):
+                return
+
+            NomadMasterMirror().push_720p(local_720p_path, filename)
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning(f"Nomad master fast-sync skipped (unexpected error): {e}")
 
     def delete_file(self, file_id: str) -> bool:
         """

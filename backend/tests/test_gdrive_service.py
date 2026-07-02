@@ -419,10 +419,11 @@ class TestUploadToPublicShare:
         cdg_file.write_bytes(b"cdg package")
         
         service = GoogleDriveService()
-        
+
         # Mock methods
-        with patch.object(service, "get_or_create_folder") as mock_get_folder:
-            with patch.object(service, "upload_file") as mock_upload:
+        with patch.object(service, "get_or_create_folder") as mock_get_folder, \
+             patch.object(service, "upload_file") as mock_upload, \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
                 mock_get_folder.side_effect = [
                     "mp4-folder-id",
                     "mp4-720-folder-id",
@@ -433,30 +434,91 @@ class TestUploadToPublicShare:
                     "720p-file-id",
                     "cdg-file-id",
                 ]
-                
+
                 output_files = {
                     "final_karaoke_lossy_mp4": str(mp4_file),
                     "final_karaoke_lossy_720p_mp4": str(mp4_720_file),
                     "final_karaoke_cdg_zip": str(cdg_file),
                 }
-                
+
                 result = service.upload_to_public_share(
                     root_folder_id="root-123",
                     brand_code="NOMAD-1163",
                     base_name="Artist - Title",
                     output_files=output_files,
                 )
-                
+
                 # Should have created/found 3 folders
                 assert mock_get_folder.call_count == 3
-                
+
                 # Should have uploaded 3 files
                 assert mock_upload.call_count == 3
-                
+
                 # Check result
                 assert result["mp4"] == "mp4-file-id"
                 assert result["mp4_720p"] == "720p-file-id"
                 assert result["cdg"] == "cdg-file-id"
+
+                # Nomad brand → the 720p master is fast-synced to the Divebar GCS
+                # mirror with the exact "{brand_code} - {base_name}.mp4" object name.
+                mock_mirror_cls.return_value.push_720p.assert_called_once_with(
+                    str(mp4_720_file), "NOMAD-1163 - Artist - Title.mp4"
+                )
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_no_fast_sync_for_non_nomad_brand(self, mock_get_settings, tmp_path):
+        """Non-Nomad brands (and NOMADNP privates) must NOT touch the divebar mirror."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        mp4_720_file = tmp_path / "output_720p.mp4"
+        mp4_720_file.write_bytes(b"720p video")
+
+        service = GoogleDriveService()
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            for brand in ("VOCALSTAR-12", "NOMADNP-1163"):
+                service.upload_to_public_share(
+                    root_folder_id="root-123",
+                    brand_code=brand,
+                    base_name="Artist - Title",
+                    output_files={"final_karaoke_lossy_720p_mp4": str(mp4_720_file)},
+                )
+            mock_mirror_cls.assert_not_called()
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_fast_sync_failure_is_non_fatal(self, mock_get_settings, tmp_path):
+        """A mirror failure must never break the (already-succeeded) Drive upload."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        mp4_720_file = tmp_path / "output_720p.mp4"
+        mp4_720_file.write_bytes(b"720p video")
+
+        service = GoogleDriveService()
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="720p-file-id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror",
+                   side_effect=RuntimeError("gcs down")):
+            result = service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMAD-1163",
+                base_name="Artist - Title",
+                output_files={"final_karaoke_lossy_720p_mp4": str(mp4_720_file)},
+            )
+            # Drive upload still reports success despite the mirror blowing up.
+            assert result["mp4_720p"] == "720p-file-id"
     
     @patch("backend.services.gdrive_service.get_settings")
     def test_upload_to_public_share_skips_missing_files(

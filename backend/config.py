@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     gcs_temp_bucket: str = os.getenv("GCS_TEMP_BUCKET", "karaoke-gen-temp")
     gcs_output_bucket: str = os.getenv("GCS_OUTPUT_BUCKET", "karaoke-gen-outputs")
     firestore_collection: str = os.getenv("FIRESTORE_COLLECTION", "jobs")
+
+    # Nomad master fast-sync: push freshly-published Nomad 720p masters straight to the
+    # Divebar GCS mirror so kjbox (which mirrors that folder every 5 min) picks them up
+    # within minutes instead of waiting for the nightly Drive->GCS VM. Nomad-brand only.
+    divebar_files_bucket: str = os.getenv("DIVEBAR_FILES_BUCKET", "nomadkaraoke-divebar-files")
+    nomad_master_gcs_prefix: str = os.getenv("NOMAD_MASTER_GCS_PREFIX", "files/Nomad Karaoke/MP4-720p")
+    nomad_master_fast_sync_enabled: bool = os.getenv("NOMAD_MASTER_FAST_SYNC_ENABLED", "true").lower() == "true"
     
     # Audio Separator API (for GPU processing)
     audio_separator_api_url: Optional[str] = os.getenv("AUDIO_SEPARATOR_API_URL")
