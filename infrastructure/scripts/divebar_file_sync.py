@@ -42,6 +42,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from google.auth import default
 from google.cloud import bigquery, storage
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload
 
 logging.basicConfig(
@@ -107,9 +108,10 @@ def get_sync_stats(bq_client):
     query = f"""
         SELECT
             COUNT(*) as total,
-            COUNTIF(gcs_path IS NOT NULL) as synced,
+            COUNTIF(gcs_path LIKE 'gs://%') as synced,
             COUNTIF(gcs_path IS NULL) as pending,
-            ROUND(SUM(CASE WHEN gcs_path IS NOT NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as synced_gb,
+            COUNTIF(gcs_path IS NOT NULL AND gcs_path NOT LIKE 'gs://%') as unavailable,
+            ROUND(SUM(CASE WHEN gcs_path LIKE 'gs://%' THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as synced_gb,
             ROUND(SUM(CASE WHEN gcs_path IS NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as pending_gb
         FROM `{PROJECT_ID}.{DATASET}.{TABLE}`
     """
@@ -118,13 +120,21 @@ def get_sync_stats(bq_client):
         "total": row.total,
         "synced": row.synced,
         "pending": row.pending,
+        # Sentinel gcs_path values (missing:*/skipped:*) — non-null but not in GCS.
+        "unavailable": row.unavailable,
         "synced_gb": row.synced_gb,
         "pending_gb": row.pending_gb,
     }
 
 
 def download_and_upload(drive_service, gcs_bucket, file_id, gcs_path, expected_size=None):
-    """Download a file from Drive and upload to GCS. Returns True on success."""
+    """Download a file from Drive and upload to GCS.
+
+    Returns ``(ok, actual_size, gone)``. ``gone`` is True when Drive reports the
+    file no longer exists (HTTP 404/410) — a permanent failure the caller should
+    record so it stops counting as "pending" and isn't retried every run.
+    Any other error returns ``gone=False`` (transient — safe to retry).
+    """
     try:
         # Download from Drive
         request = drive_service.files().get_media(fileId=file_id)
@@ -142,11 +152,23 @@ def download_and_upload(drive_service, gcs_bucket, file_id, gcs_path, expected_s
         blob = gcs_bucket.blob(gcs_path)
         blob.upload_from_file(buffer, timeout=300)
 
-        return True, actual_size
+        return True, actual_size, False
+
+    except HttpError as e:
+        status = getattr(e, "status_code", None)
+        if status is None:
+            status = getattr(getattr(e, "resp", None), "status", None)
+        try:
+            status = int(status)
+        except (TypeError, ValueError):
+            status = None
+        gone = status in (404, 410)
+        logger.error("Failed %s: %s", gcs_path, e)
+        return False, 0, gone
 
     except Exception as e:
         logger.error("Failed %s: %s", gcs_path, e)
-        return False, 0
+        return False, 0, False
 
 
 def update_gcs_path(bq_client, file_id, gcs_path):
@@ -179,24 +201,25 @@ def sync_file(gcs_bucket, bq_client, row):
     file_size = row.file_size or 0
     size_mb = file_size / 1024 / 1024
 
-    # Skip files too large to buffer in memory (would OOM the VM)
+    # Skip files too large to buffer in memory (would OOM the VM). Marked
+    # unsyncable so they don't count as pending or get retried every run.
     if file_size > MAX_FILE_SIZE:
         update_gcs_path(bq_client, file_id, "skipped:too_large")
         logger.warning("  ⏭ %s skipped (%.0f MB > 3 GB limit)", drive_path, size_mb)
-        return True, 0
+        return True, 0, True
 
     # Check if file already exists in GCS (avoids re-downloading)
     blob = gcs_bucket.blob(gcs_path)
     if blob.exists():
         update_gcs_path(bq_client, file_id, full_gcs_path)
         logger.info("  ⏭ %s already in GCS, updated gcs_path", drive_path)
-        return True, 0
+        return True, 0, False
 
     logger.info("Downloading %s (%.1f MB)...", drive_path, size_mb)
     start = time.time()
 
     drive_service = get_drive_service()
-    ok, actual_size = download_and_upload(
+    ok, actual_size, gone = download_and_upload(
         drive_service, gcs_bucket, file_id, gcs_path, row.file_size
     )
 
@@ -208,9 +231,17 @@ def sync_file(gcs_bucket, bq_client, row):
             "  ✓ %s (%.1f MB in %.1fs, %.1f MB/s)",
             drive_path, actual_size / 1024 / 1024, duration, speed,
         )
-        return True, actual_size
+        return True, actual_size, False
+    elif gone:
+        # File no longer exists in Drive (deleted/moved since it was indexed).
+        # Mark unsyncable so it stops counting as pending and isn't retried
+        # every night; a genuinely new upload gets a fresh file_id + row.
+        update_gcs_path(bq_client, file_id, "missing:drive_404")
+        logger.warning("  ✗ %s unavailable on Drive (404/410) — marked unsyncable", drive_path)
+        return False, 0, True
     else:
-        return False, 0
+        # Transient failure (network, 5xx, timeout) — leave gcs_path NULL to retry.
+        return False, 0, False
 
 
 def main():
@@ -227,10 +258,10 @@ def main():
     # Show current progress
     stats = get_sync_stats(bq_client)
     logger.info(
-        "Sync status: %d/%d files synced (%.1f/%.1f GB), %d pending (%.1f GB)",
+        "Sync status: %d/%d files synced (%.1f/%.1f GB), %d pending (%.1f GB), %d unavailable",
         stats["synced"], stats["total"], stats["synced_gb"],
         stats["synced_gb"] + stats["pending_gb"],
-        stats["pending"], stats["pending_gb"],
+        stats["pending"], stats["pending_gb"], stats["unavailable"],
     )
 
     # Get unsynced files
@@ -261,12 +292,17 @@ def main():
     downloaded = 0
     recovered = 0
     failed = 0
+    unavailable = 0
     bytes_synced = 0
     overall_start = time.time()
 
-    def _tally(ok, size):
-        nonlocal downloaded, recovered, failed, bytes_synced
-        if ok:
+    def _tally(ok, size, is_unavailable=False):
+        nonlocal downloaded, recovered, failed, unavailable, bytes_synced
+        if is_unavailable:
+            # Permanently unsyncable (Drive 404/410 or too-large) — recorded in
+            # BigQuery via a sentinel gcs_path, so not a retry-worthy failure.
+            unavailable += 1
+        elif ok:
             if size > 0:
                 downloaded += 1
                 bytes_synced += size
@@ -278,8 +314,8 @@ def main():
     def _log_progress():
         elapsed = time.time() - overall_start
         logger.info(
-            "Progress: %d downloaded, %d recovered, %d failed (of %d), %.1f GB, %.0f s",
-            downloaded, recovered, failed, len(files),
+            "Progress: %d downloaded, %d recovered, %d unavailable, %d failed (of %d), %.1f GB, %.0f s",
+            downloaded, recovered, unavailable, failed, len(files),
             bytes_synced / 1024 / 1024 / 1024, elapsed,
         )
 
@@ -291,7 +327,7 @@ def main():
             }
             for future in as_completed(futures):
                 _tally(*future.result())
-                if (downloaded + recovered + failed) % 50 == 0:
+                if (downloaded + recovered + failed + unavailable) % 50 == 0:
                     _log_progress()
     else:
         for i, row in enumerate(files):
@@ -301,8 +337,8 @@ def main():
 
     elapsed = time.time() - overall_start
     logger.info(
-        "Done: %d downloaded, %d recovered from GCS, %d failed, %.1f GB in %.0f s",
-        downloaded, recovered, failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
+        "Done: %d downloaded, %d recovered from GCS, %d unavailable (marked), %d failed, %.1f GB in %.0f s",
+        downloaded, recovered, unavailable, failed, bytes_synced / 1024 / 1024 / 1024, elapsed,
     )
 
 
