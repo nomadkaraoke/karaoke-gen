@@ -269,6 +269,12 @@ class VisibilityChangeService:
             except Exception as e:
                 logger.warning(f"[job:{job_id}] Failed to delete Google Drive files: {e}")
 
+        # A track going private should also leave the public Nomad GCS fast-sync mirror
+        # (and thus kjbox). Prefix-keyed by brand_code, non-fatal, Nomad-only.
+        if brand_code:
+            from backend.services.nomad_master_mirror import cleanup_nomad_masters
+            cleanup_nomad_masters(brand_code)
+
         # Delete GCS finals if requested
         if not keep_gcs_finals:
             try:

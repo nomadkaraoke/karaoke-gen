@@ -76,3 +76,56 @@ class NomadMasterMirror:
         except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
             logger.warning("Nomad master mirror delete failed for %s: %s", blob_name, e)
             return False
+
+    def delete_masters_by_brand(self, brand_code: str) -> int:
+        """Delete ALL 720p master objects for a Nomad release, matched by the unique
+        ``{brand_code} - `` filename prefix.
+
+        Keying on the brand_code prefix (rather than a reconstructed title) covers
+        renames for free: every artist/title variant a release was ever published
+        under shares the same ``NOMAD-#### - `` prefix. Best-effort; returns the count
+        deleted. Refuses to run for a non-Nomad / empty brand code so a broad prefix
+        can never match unrelated objects.
+        """
+        if not is_nomad_public_brand(brand_code):
+            return 0
+        # Require a full ``NOMAD-####`` code (non-empty suffix after the hyphen) so the
+        # delete prefix is always specific to one release — never a bare ``NOMAD``.
+        suffix = brand_code.split("-", 1)[1] if "-" in brand_code else ""
+        if not suffix.strip():
+            return 0
+        prefix = f"{settings.nomad_master_gcs_prefix.strip('/')}/{brand_code} - "
+        deleted = 0
+        try:
+            for blob in self._bucket.list_blobs(prefix=prefix):
+                try:
+                    blob.delete()
+                    deleted += 1
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("Failed to delete mirror object %s: %s", blob.name, e)
+            if deleted:
+                logger.info(
+                    "Removed %d Nomad master object(s) from gs://%s/%s*",
+                    deleted, settings.divebar_files_bucket, prefix,
+                )
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning("Nomad master mirror prefix-delete failed for %s: %s", prefix, e)
+        return deleted
+
+
+def cleanup_nomad_masters(brand_code: Optional[str]) -> int:
+    """Best-effort removal of a Nomad release's 720p master(s) from the GCS mirror,
+    keyed by brand_code prefix (covers renames). No-op for non-Nomad / ``NOMADNP``
+    brands or when fast-sync is disabled. Never raises — a cleanup failure must not
+    break job delete/edit flows (the object just lingers until overwritten). Call this
+    wherever the pipeline deletes a job's Drive/Dropbox outputs.
+    """
+    try:
+        if not settings.nomad_master_fast_sync_enabled:
+            return 0
+        if not is_nomad_public_brand(brand_code):
+            return 0
+        return NomadMasterMirror().delete_masters_by_brand(brand_code)
+    except Exception as e:  # noqa: BLE001 - never fatal to the caller
+        logger.warning("Nomad master mirror cleanup skipped: %s", e)
+        return 0
