@@ -164,3 +164,56 @@ class TestRefreshDispatch:
         body, status, _ = main.divebar_lookup(MockRequest({"action": "refresh"}))
         assert status == 403
         _reset_scheduler.run_job.assert_not_called()
+
+
+def _stats_row(**overrides):
+    """A fake BigQuery result row for _get_full_stats (attribute access)."""
+    defaults = dict(
+        total_files=50249, total_brands=63, with_metadata=50072,
+        total_gb=876.4, gcs_synced=50031, gcs_pending=0, gcs_unavailable=218,
+        gcs_synced_gb=874.7, gcs_pending_gb=0.0, gcs_unavailable_gb=1.6,
+        last_index_sync=None, total_matches=38435, unique_kn_songs=1,
+        unique_divebar_files=1, last_xref_rebuild=None, kn_songs=1, kn_community=1,
+    )
+    defaults.update(overrides)
+    row = MagicMock()
+    for k, v in defaults.items():
+        setattr(row, k, v)
+    return row
+
+
+def _patch_bq(monkeypatch, row):
+    """Make main.bigquery.Client().query().result() yield [row] then [] (formats)."""
+    client = MagicMock()
+    client.query.return_value.result.side_effect = [[row], []]
+    monkeypatch.setattr(main.bigquery, "Client", lambda project=None: client)
+
+
+class TestFullStatsPercent:
+    def test_percent_100_when_no_pending(self, monkeypatch):
+        # All syncable files mirrored; the only non-synced rows are unavailable.
+        _patch_bq(monkeypatch, _stats_row(gcs_synced=50031, gcs_pending=0, gcs_unavailable=218))
+        g = main._get_full_stats()["gcs_mirror"]
+        assert g["pending"] == 0
+        assert g["unavailable"] == 218
+        assert g["syncable_total"] == 50031
+        assert g["percent"] == 100.0  # green
+
+    def test_pending_keeps_percent_below_100(self, monkeypatch):
+        # Real pending work (null gcs_path) legitimately holds it under 100.
+        _patch_bq(monkeypatch, _stats_row(gcs_synced=50031, gcs_pending=217, gcs_unavailable=1))
+        g = main._get_full_stats()["gcs_mirror"]
+        assert g["pending"] == 217
+        assert g["percent"] == 99.6
+
+    def test_unavailable_excluded_from_denominator(self, monkeypatch):
+        # 90 synced, 10 unavailable, 0 pending -> 100% (not 90%).
+        _patch_bq(monkeypatch, _stats_row(total_files=100, gcs_synced=90, gcs_pending=0, gcs_unavailable=10))
+        g = main._get_full_stats()["gcs_mirror"]
+        assert g["syncable_total"] == 90
+        assert g["percent"] == 100.0
+
+    def test_zero_syncable_is_zero_not_crash(self, monkeypatch):
+        _patch_bq(monkeypatch, _stats_row(total_files=5, gcs_synced=0, gcs_pending=0, gcs_unavailable=5))
+        g = main._get_full_stats()["gcs_mirror"]
+        assert g["percent"] == 0

@@ -323,19 +323,21 @@ def _get_full_stats() -> dict:
             SELECT
                 COUNT(*) as total_files,
                 COUNT(DISTINCT brand) as total_brands,
-                COUNTIF(gcs_path IS NOT NULL) as gcs_synced,
+                COUNTIF(gcs_path LIKE 'gs://%') as gcs_synced,
                 COUNTIF(gcs_path IS NULL) as gcs_pending,
+                COUNTIF(gcs_path IS NOT NULL AND gcs_path NOT LIKE 'gs://%') as gcs_unavailable,
                 COUNTIF(artist IS NOT NULL AND title IS NOT NULL) as with_metadata,
                 ROUND(SUM(file_size) / 1024/1024/1024, 1) as total_gb,
-                ROUND(SUM(CASE WHEN gcs_path IS NOT NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_synced_gb,
+                ROUND(SUM(CASE WHEN gcs_path LIKE 'gs://%' THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_synced_gb,
                 ROUND(SUM(CASE WHEN gcs_path IS NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_pending_gb,
+                ROUND(SUM(CASE WHEN gcs_path IS NOT NULL AND gcs_path NOT LIKE 'gs://%' THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_unavailable_gb,
                 MAX(synced_at) as last_index_sync
             FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
         ),
         format_stats AS (
             SELECT format, COUNT(*) as count,
                 ROUND(SUM(file_size) / 1024/1024/1024, 1) as gb,
-                COUNTIF(gcs_path IS NOT NULL) as in_gcs
+                COUNTIF(gcs_path LIKE 'gs://%') as in_gcs
             FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
             GROUP BY format
             ORDER BY count DESC
@@ -365,7 +367,7 @@ def _get_full_stats() -> dict:
     fmt_sql = f"""
         SELECT format, COUNT(*) as count,
             ROUND(SUM(file_size) / 1024/1024/1024, 1) as gb,
-            COUNTIF(gcs_path IS NOT NULL) as in_gcs
+            COUNTIF(gcs_path LIKE 'gs://%') as in_gcs
         FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
         GROUP BY format ORDER BY count DESC
     """
@@ -376,6 +378,9 @@ def _get_full_stats() -> dict:
             "gb": fmt_row.gb,
             "in_gcs": fmt_row.in_gcs,
         }
+
+    # Files that can actually be mirrored (exclude permanently-unavailable ones).
+    syncable = row.total_files - row.gcs_unavailable
 
     return {
         "catalog": {
@@ -388,9 +393,18 @@ def _get_full_stats() -> dict:
         "gcs_mirror": {
             "synced": row.gcs_synced,
             "pending": row.gcs_pending,
+            # Files that can never be mirrored: no longer on Drive (404/410) or
+            # too large to buffer. Marked with a sentinel gcs_path by the sync VM.
+            "unavailable": row.gcs_unavailable,
+            "syncable_total": syncable,
             "synced_gb": row.gcs_synced_gb,
             "pending_gb": row.gcs_pending_gb,
-            "percent": round(row.gcs_synced / row.total_files * 100, 1) if row.total_files else 0,
+            "unavailable_gb": row.gcs_unavailable_gb,
+            # Percent of *syncable* files mirrored. Reaches 100% once every file
+            # that can be synced is in GCS — unavailable files are excluded from
+            # the denominator so a healthy, fully-caught-up mirror reads 100%
+            # (green) instead of being pinned below by permanently-dead links.
+            "percent": round(row.gcs_synced / syncable * 100, 1) if syncable else 0,
         },
         "formats": formats,
         "cross_reference": {
