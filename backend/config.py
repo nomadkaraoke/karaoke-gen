@@ -117,6 +117,15 @@ class Settings(BaseSettings):
     # call still runs off the critical path and degrades to "none" on timeout.
     match_judge_timeout_ms: int = int(os.getenv("MATCH_JUDGE_TIMEOUT_MS", "12000"))
 
+    # Batch karaoke-filename parser (kjbox download-naming). Reuses the Vertex
+    # Gemini stack. Larger timeout than match_judge because it batches ~200 items.
+    parse_titles_enabled: bool = os.getenv("PARSE_TITLES_ENABLED", "true").lower() in (
+        "1", "true", "yes",
+    )
+    parse_titles_model: str = os.getenv("PARSE_TITLES_MODEL", "gemini-3.5-flash")
+    parse_titles_timeout_ms: int = int(os.getenv("PARSE_TITLES_TIMEOUT_MS", "20000"))
+    parse_titles_max_items: int = int(os.getenv("PARSE_TITLES_MAX_ITEMS", "200"))
+
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
     # When disabled (default), workers are triggered via direct HTTP (for development)
