@@ -5,5 +5,8 @@ google-auth>=2.23.0
 # BigQuery
 google-cloud-bigquery>=3.13.0
 
+# Cloud Scheduler (chain index-dependent jobs on completion)
+google-cloud-scheduler>=2.13.0
+
 # Cloud Functions framework
 functions-framework>=3.0.0

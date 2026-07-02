@@ -174,6 +174,9 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
             environment_variables={
                 "DIVEBAR_FOLDER_ID": DIVEBAR_FOLDER_ID,
                 "GCP_PROJECT_ID": PROJECT_ID,
+                # Region the divebar scheduler jobs live in — the index function
+                # chains the sync-VM + xref jobs (via run_job) on completion.
+                "GCP_REGION": REGION,
             },
         ),
     )
