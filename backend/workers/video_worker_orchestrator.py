@@ -876,6 +876,7 @@ class VideoWorkerOrchestrator:
                 brand_code=brand_code,
                 base_name=base_name,
                 output_files=output_files,
+                warnings=self.result.distribution_warnings,
             )
 
             self.result.gdrive_files = uploaded

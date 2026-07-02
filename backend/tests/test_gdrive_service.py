@@ -507,6 +507,7 @@ class TestUploadToPublicShare:
         mp4_720_file.write_bytes(b"720p video")
 
         service = GoogleDriveService()
+        warnings: list = []
         with patch.object(service, "get_or_create_folder", return_value="f"), \
              patch.object(service, "upload_file", return_value="720p-file-id"), \
              patch("backend.services.nomad_master_mirror.NomadMasterMirror",
@@ -516,9 +517,13 @@ class TestUploadToPublicShare:
                 brand_code="NOMAD-1163",
                 base_name="Artist - Title",
                 output_files={"final_karaoke_lossy_720p_mp4": str(mp4_720_file)},
+                warnings=warnings,
             )
-            # Drive upload still reports success despite the mirror blowing up.
+            # Drive upload still reports success despite the mirror blowing up...
             assert result["mp4_720p"] == "720p-file-id"
+            # ...and the failure is surfaced as a distribution warning (admin alert),
+            # not silently swallowed.
+            assert any("fast-sync" in w for w in warnings)
     
     @patch("backend.services.gdrive_service.get_settings")
     def test_upload_to_public_share_skips_missing_files(
