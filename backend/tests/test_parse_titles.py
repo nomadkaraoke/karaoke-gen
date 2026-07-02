@@ -86,3 +86,89 @@ def test_parse_titles_happy_path(monkeypatch):
 
 def test_parse_titles_empty_returns_empty():
     assert asyncio.run(service.parse_titles([])) == []
+
+
+# --- auto-chunking: large batches must not ride one >20s Gemini call ---
+
+def _items(n):
+    return [{"id": str(i), "filename": f"file {i}.mp4"} for i in range(n)]
+
+
+def _ok_results(model, system, user):
+    """Echo one parsed result per '- id=' line in the user prompt."""
+    ids = [line.split("id='", 1)[1].split("'", 1)[0]
+           for line in user.splitlines() if line.startswith("- id=")]
+    return {"results": [{"id": i, "artist": f"A{i}", "title": f"T{i}",
+                         "confidence": 0.9} for i in ids]}
+
+
+def test_settings_parse_titles_chunk_size_default():
+    from backend.config import Settings
+    assert Settings().parse_titles_chunk_size == 10
+
+
+def test_parse_titles_chunks_large_batches(monkeypatch):
+    from backend.config import settings
+    monkeypatch.setattr(settings, "parse_titles_enabled", True)
+    calls = []
+
+    async def gen(model, system, user):
+        n = sum(1 for line in user.splitlines() if line.startswith("- id="))
+        calls.append(n)
+        return _ok_results(model, system, user)
+
+    out = asyncio.run(service.parse_titles(_items(25), generate=gen))
+    assert sorted(calls, reverse=True) == [10, 10, 5]   # 25 items -> 3 Gemini calls
+    assert [r["id"] for r in out] == [str(i) for i in range(25)]  # id-aligned
+    assert all(r["artist"] == f'A{r["id"]}' for r in out)
+
+
+def test_parse_titles_chunk_failure_degrades_only_that_chunk(monkeypatch):
+    from backend.config import settings
+    monkeypatch.setattr(settings, "parse_titles_enabled", True)
+
+    async def gen(model, system, user):
+        if "id='10'" in user:  # the middle chunk (items 10-19)
+            raise RuntimeError("vertex timeout")
+        return _ok_results(model, system, user)
+
+    out = asyncio.run(service.parse_titles(_items(25), generate=gen))
+    assert out[0]["artist"] == "A0" and out[24]["artist"] == "A24"
+    assert all(out[i]["artist"] == "" and out[i]["confidence"] == 0.0
+               for i in range(10, 20))                   # only that chunk blank
+    assert [r["id"] for r in out] == [str(i) for i in range(25)]
+
+
+def test_parse_titles_chunks_run_concurrently(monkeypatch):
+    """The chunks must be issued in parallel — a 100-item batch shouldn't pay
+    10 sequential Gemini round-trips."""
+    from backend.config import settings
+    monkeypatch.setattr(settings, "parse_titles_enabled", True)
+    started = 0
+    all_started = asyncio.Event()
+
+    async def gen(model, system, user):
+        nonlocal started
+        started += 1
+        if started == 3:
+            all_started.set()
+        # Sequential execution would deadlock here on the first chunk.
+        await asyncio.wait_for(all_started.wait(), timeout=5)
+        return _ok_results(model, system, user)
+
+    out = asyncio.run(service.parse_titles(_items(25), generate=gen))
+    assert len(out) == 25 and out[0]["artist"] == "A0"
+
+
+def test_parse_titles_respects_configured_chunk_size(monkeypatch):
+    from backend.config import settings
+    monkeypatch.setattr(settings, "parse_titles_enabled", True)
+    monkeypatch.setattr(settings, "parse_titles_chunk_size", 4, raising=False)
+    calls = []
+
+    async def gen(model, system, user):
+        calls.append(sum(1 for line in user.splitlines() if line.startswith("- id=")))
+        return _ok_results(model, system, user)
+
+    asyncio.run(service.parse_titles(_items(10), generate=gen))
+    assert sorted(calls, reverse=True) == [4, 4, 2]
