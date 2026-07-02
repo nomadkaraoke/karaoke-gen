@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     parse_titles_model: str = os.getenv("PARSE_TITLES_MODEL", "gemini-3.5-flash")
     parse_titles_timeout_ms: int = int(os.getenv("PARSE_TITLES_TIMEOUT_MS", "20000"))
     parse_titles_max_items: int = int(os.getenv("PARSE_TITLES_MAX_ITEMS", "200"))
+    # Items per Gemini call: large client batches are split into concurrent
+    # chunks of this size so one call never outgrows parse_titles_timeout_ms
+    # (a 100-item single call did, blanking the whole batch).
+    parse_titles_chunk_size: int = int(os.getenv("PARSE_TITLES_CHUNK_SIZE", "10"))
 
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
