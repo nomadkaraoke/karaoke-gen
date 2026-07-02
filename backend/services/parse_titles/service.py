@@ -30,7 +30,9 @@ async def parse_titles(
         enabled = getattr(settings, "parse_titles_enabled", True)
         max_items = int(getattr(settings, "parse_titles_max_items", 200))
     except Exception:  # pragma: no cover
-        enabled, max_items = True, 200
+        # Fail closed: if config can't load, don't reach for the external AI.
+        logger.warning("parse_titles settings unavailable; disabling parser")
+        enabled, max_items = False, 200
     if not enabled:
         return _blanks(items)
 
@@ -39,5 +41,10 @@ async def parse_titles(
         results = await ai.ai_parse(head, model=model, generate=generate)
     except Exception as exc:
         logger.warning("parse_titles degraded (%s); returning blanks", exc)
+        return _blanks(items)
+    # ai_parse is id-aligned by construction; guard the contract defensively so a
+    # future refactor can't silently return a mis-aligned/short batch.
+    if len(results) != len(head):
+        logger.warning("parse_titles length mismatch; returning blanks")
         return _blanks(items)
     return results + _blanks(tail)
