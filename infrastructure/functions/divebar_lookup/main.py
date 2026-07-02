@@ -48,12 +48,18 @@ GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 DATASET = "karaoke_decide"
 REFRESH_SECRET_ID = os.environ.get("DIVEBAR_REFRESH_SECRET_ID", "divebar-refresh-token")
 
-# Cloud Scheduler jobs the `refresh` action force-runs, in pipeline order.
-# Each carries its own OIDC identity/target, so we only need run permission.
+# The `refresh` action force-runs ONLY the index job. The index function chains the
+# index-dependent jobs (file-sync VM + xref rebuild) itself, on completion — see
+# divebar_mirror._trigger_downstream_jobs. Firing all three here concurrently used to
+# race: the sync VM finished before the index had the newly-published rows, so a
+# just-published track was indexed but not byte-synced to GCS until the next nightly
+# run. Chaining from the index's actual completion removes that race.
 REFRESH_SCHEDULER_JOBS = [
-    "divebar-mirror-daily",        # Drive -> BigQuery index (track first appears)
-    "divebar-sync-vm-daily",       # Drive -> GCS file sync (upgrades to fast URL)
-    "divebar-xref-rebuild-daily",  # KN <-> Divebar cross-reference rebuild
+    # Refresh-only mirror trigger: its request body sets chain_downstream, so the
+    # index chains the sync-VM + xref itself on completion. (divebar-mirror-daily,
+    # the nightly cron, omits the flag and leaves the standalone nightly sync/xref
+    # schedules alone — so refreshing never double-runs the nightly pipeline.)
+    "divebar-mirror-refresh",
 ]
 
 

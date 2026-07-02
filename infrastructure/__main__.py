@@ -484,6 +484,19 @@ kn_data_sync_resources = kn_data_sync.create_kn_data_sync_resources(all_secrets)
 
 divebar_lookup_resources = divebar_lookup.create_divebar_lookup_resources(all_secrets)
 
+# The index function (divebar_mirror) chains the index-dependent scheduler jobs
+# (file-sync VM + xref rebuild) on completion, so its SA needs run permission on
+# those jobs — same least-privilege custom role the lookup SA uses for on-demand
+# refresh. Fixes the "Refresh catalog" race (sync VM ran before the index finished).
+gcp.projects.IAMMember(
+    "divebar-mirror-scheduler-runner",
+    project=PROJECT_ID,
+    role=divebar_lookup_resources["scheduler_runner_role"].id,
+    member=divebar_mirror_resources["service_account"].email.apply(
+        lambda email: f"serviceAccount:{email}"
+    ),
+)
+
 # ==================== Divebar File Sync VM ====================
 # Divebar File Sync VM (downloads karaoke files from Drive to GCS)
 divebar_sync_instance = divebar_sync_vm.create_divebar_sync_vm(
