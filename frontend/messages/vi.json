@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Chúng tôi không tìm thấy liên kết đó",
     "resendSuccessBody": "Chúng tôi đã gửi một liên kết đăng nhập mới đến {maskedEmail}. Liên kết này có hiệu lực trong 24 giờ tới.",
     "resendSuccessTitle": "Kiểm tra email của bạn",
-    "resending": "Đang gửi..."
+    "resending": "Đang gửi...",
+    "confirmBody": "Để bảo mật, vui lòng nhấp vào nút bên dưới để hoàn tất đăng nhập. Bước bổ sung này giúp ngăn các trình quét email tự động kích hoạt liên kết trước khi bạn sử dụng.",
+    "confirmButton": "Hoàn tất đăng nhập",
+    "confirmTitle": "Hoàn tất đăng nhập"
   },
   "payment": {
     "title": "Thanh toán thành công!",

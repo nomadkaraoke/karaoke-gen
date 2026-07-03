@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Não conseguimos encontrar esse link",
     "resendSuccessBody": "Enviamos um novo link de login para {maskedEmail}. Ele é válido pelas próximas 24 horas.",
     "resendSuccessTitle": "Verifique seu e-mail",
-    "resending": "Enviando..."
+    "resending": "Enviando...",
+    "confirmBody": "Para sua segurança, clique no botão abaixo para concluir o login. Este passo extra impede que scanners automáticos de e-mail usem o seu link antes de você.",
+    "confirmButton": "Concluir Login",
+    "confirmTitle": "Conclua seu login"
   },
   "payment": {
     "title": "Pagamento Bem-sucedido!",

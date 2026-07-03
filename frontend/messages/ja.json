@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "リンクが見つかりませんでした",
     "resendSuccessBody": "新しいサインインリンクを {maskedEmail} 宛に送信しました。リンクの有効期限は24時間です。",
     "resendSuccessTitle": "メールをご確認ください",
-    "resending": "送信中..."
+    "resending": "送信中...",
+    "confirmBody": "セキュリティのため、下のボタンをクリックしてサインインを完了してください。このステップにより、自動メールスキャナーなどによってお客様より先にリンクが無効になってしまうのを防ぎます。",
+    "confirmButton": "サインインを完了する",
+    "confirmTitle": "サインインの完了"
   },
   "payment": {
     "title": "支払いが完了しました！",

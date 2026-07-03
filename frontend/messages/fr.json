@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Nous n'avons pas trouvé ce lien",
     "resendSuccessBody": "Nous avons envoyé un nouveau lien de connexion à {maskedEmail}. Il est valable pendant 24 heures.",
     "resendSuccessTitle": "Vérifie tes e-mails",
-    "resending": "Envoi en cours..."
+    "resending": "Envoi en cours...",
+    "confirmBody": "Pour ta sécurité, clique sur le bouton ci-dessous pour terminer ta connexion. Cette étape supplémentaire empêche les scanners d'e-mails automatisés d'utiliser ton lien avant toi.",
+    "confirmButton": "Terminer la connexion",
+    "confirmTitle": "Termine ta connexion"
   },
   "payment": {
     "title": "Paiement réussi !",

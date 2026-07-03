@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "No pudimos encontrar ese enlace",
     "resendSuccessBody": "Hemos enviado un nuevo enlace de inicio de sesión a {maskedEmail}. Es válido durante las próximas 24 horas.",
     "resendSuccessTitle": "Revisa tu correo",
-    "resending": "Enviando..."
+    "resending": "Enviando...",
+    "confirmBody": "Por tu seguridad, haz clic en el botón de abajo para terminar de iniciar sesión. Este paso adicional evita que los escáneres automáticos de correo electrónico usen tu enlace antes que tú.",
+    "confirmButton": "Completar inicio de sesión",
+    "confirmTitle": "Completa tu inicio de sesión"
   },
   "payment": {
     "title": "¡Pago exitoso!",

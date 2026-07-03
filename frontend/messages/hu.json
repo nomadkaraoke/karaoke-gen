@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Nem találtuk ezt a linket",
     "resendSuccessBody": "Küldtünk egy új bejelentkezési linket a(z) {maskedEmail} címre. A link 24 óráig érvényes.",
     "resendSuccessTitle": "Ellenőrizd a postaládádat",
-    "resending": "Küldés..."
+    "resending": "Küldés...",
+    "confirmBody": "A biztonságod érdekében kattints az alábbi gombra a bejelentkezés befejezéséhez. Ez a plusz lépés megakadályozza, hogy az automatikus e-mail szkennerek felhasználják a linkedet, mielőtt te rákattintanál.",
+    "confirmButton": "Bejelentkezés befejezése",
+    "confirmTitle": "Fejezd be a bejelentkezést"
   },
   "payment": {
     "title": "Sikeres fizetés!",

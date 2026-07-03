@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Bağlantıyı bulamadık",
     "resendSuccessBody": "{maskedEmail} adresine yeni bir giriş bağlantısı gönderdik. Bu bağlantı 24 saat boyunca geçerlidir.",
     "resendSuccessTitle": "E-postanı kontrol et",
-    "resending": "Gönderiliyor..."
+    "resending": "Gönderiliyor...",
+    "confirmBody": "Güvenliğin için, giriş işlemini tamamlamak üzere aşağıdaki butona tıkla. Bu ekstra adım, otomatik e-posta tarayıcılarının bağlantını senden önce kullanmasını engeller.",
+    "confirmButton": "Girişi Tamamla",
+    "confirmTitle": "Girişini tamamla"
   },
   "payment": {
     "title": "Ödeme Başarılı!",

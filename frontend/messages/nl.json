@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "We konden die link niet vinden",
     "resendSuccessBody": "We hebben een nieuwe inloglink naar {maskedEmail} gestuurd. Deze is de komende 24 uur geldig.",
     "resendSuccessTitle": "Check je e-mail",
-    "resending": "Verzenden..."
+    "resending": "Verzenden...",
+    "confirmBody": "Klik voor je eigen veiligheid op de onderstaande knop om het inloggen te voltooien. Deze extra stap voorkomt dat geautomatiseerde e-mailscanners je link gebruiken voordat jij dat doet.",
+    "confirmButton": "Inloggen voltooien",
+    "confirmTitle": "Voltooi het inloggen"
   },
   "payment": {
     "title": "Betaling succesvol!",

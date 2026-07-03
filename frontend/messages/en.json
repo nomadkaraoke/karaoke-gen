@@ -246,6 +246,9 @@
   },
   "auth": {
     "noVerificationToken": "No verification token provided",
+    "confirmTitle": "Complete your sign-in",
+    "confirmBody": "For your security, click the button below to finish signing in. This extra step keeps automated email scanners from using up your link before you do.",
+    "confirmButton": "Complete Sign-In",
     "verifying": "Verifying your sign-in link...",
     "verifyingWait": "Please wait while we sign you in.",
     "preparingAccount": "Preparing your account...",

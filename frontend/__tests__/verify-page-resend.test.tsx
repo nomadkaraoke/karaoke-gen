@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from 'react'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { NextIntlClientProvider } from 'next-intl'
 import messages from '@/messages/en.json'
 
@@ -56,6 +56,50 @@ function wrap(ui: React.ReactElement) {
   )
 }
 
+/**
+ * The verify page gates verification behind an explicit click so that
+ * automated email link-scanners (which render the page but never click)
+ * cannot burn the single-use token before the real user acts.
+ * Every flow that needs a verification result must click through this gate.
+ */
+async function clickConfirmToVerify() {
+  const confirmButton = await screen.findByRole('button', { name: /Complete Sign-?In/i })
+  // Wrap in act + await so the async verify() state updates flush inside act.
+  await act(async () => {
+    fireEvent.click(confirmButton)
+  })
+}
+
+describe('VerifyMagicLinkPage — scanner-safety gate', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    resendMock.mockReset()
+    verifyMagicLinkMock.mockClear()
+  })
+
+  it('does NOT verify the token on mount (link-scanners must not burn it)', async () => {
+    render(wrap(<VerifyMagicLinkPage />))
+
+    // The confirm prompt is shown...
+    expect(
+      await screen.findByRole('button', { name: /Complete Sign-?In/i }),
+    ).toBeInTheDocument()
+
+    // ...and crucially, no verification happened without a user gesture.
+    expect(verifyMagicLinkMock).not.toHaveBeenCalled()
+  })
+
+  it('verifies with the token only after the user clicks Complete Sign-In', async () => {
+    render(wrap(<VerifyMagicLinkPage />))
+
+    await clickConfirmToVerify()
+
+    await waitFor(() =>
+      expect(verifyMagicLinkMock).toHaveBeenCalledWith(tokenParam),
+    )
+  })
+})
+
 describe('VerifyMagicLinkPage — resend recovery flow', () => {
   beforeEach(() => {
     pushMock.mockClear()
@@ -65,6 +109,8 @@ describe('VerifyMagicLinkPage — resend recovery flow', () => {
 
   it('shows "Email me a new link" button after verification fails', async () => {
     render(wrap(<VerifyMagicLinkPage />))
+
+    await clickConfirmToVerify()
 
     await waitFor(() => {
       expect(screen.getByText('Sign-in failed')).toBeInTheDocument()
@@ -84,6 +130,8 @@ describe('VerifyMagicLinkPage — resend recovery flow', () => {
 
     render(wrap(<VerifyMagicLinkPage />))
 
+    await clickConfirmToVerify()
+
     const button = await screen.findByRole('button', { name: /Email me a new link/i })
     fireEvent.click(button)
 
@@ -102,6 +150,8 @@ describe('VerifyMagicLinkPage — resend recovery flow', () => {
 
     render(wrap(<VerifyMagicLinkPage />))
 
+    await clickConfirmToVerify()
+
     fireEvent.click(await screen.findByRole('button', { name: /Email me a new link/i }))
 
     expect(
@@ -113,6 +163,8 @@ describe('VerifyMagicLinkPage — resend recovery flow', () => {
     resendMock.mockRejectedValue(new Error('network down'))
 
     render(wrap(<VerifyMagicLinkPage />))
+
+    await clickConfirmToVerify()
 
     fireEvent.click(await screen.findByRole('button', { name: /Email me a new link/i }))
 

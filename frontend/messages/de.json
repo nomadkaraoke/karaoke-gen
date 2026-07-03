@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Wir konnten diesen Link nicht finden",
     "resendSuccessBody": "Wir haben einen neuen Anmeldelink an {maskedEmail} gesendet. Er ist für die nächsten 24 Stunden gültig.",
     "resendSuccessTitle": "Überprüfe deine E-Mails",
-    "resending": "Wird gesendet..."
+    "resending": "Wird gesendet...",
+    "confirmBody": "Klicke zu deiner Sicherheit auf den Button unten, um deine Anmeldung abzuschließen. Dieser zusätzliche Schritt verhindert, dass automatisierte E-Mail-Scanner deinen Link verbrauchen, bevor du ihn nutzen kannst.",
+    "confirmButton": "Anmeldung abschließen",
+    "confirmTitle": "Schließe deine Anmeldung ab"
   },
   "payment": {
     "title": "Zahlung erfolgreich!",

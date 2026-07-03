@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Vi kunne ikke finde det link",
     "resendSuccessBody": "Vi har sendt et nyt login-link til {maskedEmail}. Det er gyldigt i de næste 24 timer.",
     "resendSuccessTitle": "Tjek din e-mail",
-    "resending": "Sender..."
+    "resending": "Sender...",
+    "confirmBody": "Af hensyn til din sikkerhed skal du klikke på knappen nedenfor for at fuldføre dit login. Dette ekstra trin forhindrer automatiske e-mail-scannere i at bruge dit link, før du selv gør det.",
+    "confirmButton": "Fuldfør login",
+    "confirmTitle": "Fuldfør dit login"
   },
   "payment": {
     "title": "Betaling gennemført!",

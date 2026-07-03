@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Nie znaleźliśmy tego linku",
     "resendSuccessBody": "Wysłaliśmy nowy link do logowania na adres {maskedEmail}. Jest ważny przez najbliższe 24 godziny.",
     "resendSuccessTitle": "Sprawdź swój e-mail",
-    "resending": "Wysyłanie..."
+    "resending": "Wysyłanie...",
+    "confirmBody": "Dla Twojego bezpieczeństwa kliknij poniższy przycisk, aby dokończyć logowanie. Ten dodatkowy krok sprawia, że automatyczne skanery e-mail nie wykorzystają linku przed Tobą.",
+    "confirmButton": "Dokończ logowanie",
+    "confirmTitle": "Dokończ logowanie"
   },
   "payment": {
     "title": "Płatność zakończona sukcesem!",

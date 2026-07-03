@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Vi fant ikke den lenken",
     "resendSuccessBody": "Vi har sendt en ny innloggingslenke til {maskedEmail}. Den er gyldig i 24 timer.",
     "resendSuccessTitle": "Sjekk e-posten din",
-    "resending": "Sender..."
+    "resending": "Sender...",
+    "confirmBody": "Av sikkerhetshensyn ber vi deg klikke på knappen nedenfor for å fullføre innloggingen. Dette ekstra trinnet forhindrer at automatiserte e-postskannere bruker opp lenken din før deg.",
+    "confirmButton": "Fullfør innlogging",
+    "confirmTitle": "Fullfør innloggingen"
   },
   "payment": {
     "title": "Betaling vellykket!",

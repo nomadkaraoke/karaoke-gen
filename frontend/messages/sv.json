@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Vi kunde inte hitta den länken",
     "resendSuccessBody": "Vi har skickat en ny inloggningslänk till {maskedEmail}. Den är giltig i 24 timmar.",
     "resendSuccessTitle": "Kolla din e-post",
-    "resending": "Skickar..."
+    "resending": "Skickar...",
+    "confirmBody": "Av säkerhetsskäl ber vi dig klicka på knappen nedan för att slutföra inloggningen. Detta extra steg förhindrar att automatiserade e-postskannrar förbrukar din länk innan du hinner använda den.",
+    "confirmButton": "Slutför inloggning",
+    "confirmTitle": "Slutför din inloggning"
   },
   "payment": {
     "title": "Betalning lyckades!",

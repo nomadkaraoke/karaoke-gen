@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "无法找到该链接",
     "resendSuccessBody": "我们已将新的登录链接发送至 {maskedEmail}，该链接在24小时内有效。",
     "resendSuccessTitle": "请查收邮件",
-    "resending": "发送中..."
+    "resending": "发送中...",
+    "confirmBody": "为了您的账号安全，请点击下方按钮完成登录。这一额外步骤可防止自动邮件扫描程序在您点击之前使链接失效。",
+    "confirmButton": "完成登录",
+    "confirmTitle": "完成登录"
   },
   "payment": {
     "title": "付款成功！",
