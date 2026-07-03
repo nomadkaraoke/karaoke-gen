@@ -1542,6 +1542,19 @@ export const api = {
   /**
    * Verify a magic link token and get a session
    */
+  /**
+   * Read-only status check for a magic link — does NOT consume the token.
+   * Used by the verify page on load to show the correct UI upfront (the
+   * "Complete Sign-In" gate for a valid link, or an already-used/expired
+   * message for a dead one) without making the user click only to then fail.
+   */
+  async getMagicLinkStatus(token: string): Promise<{ status: 'valid' | 'used' | 'expired' | 'invalid' }> {
+    const response = await fetch(`${API_BASE_URL}/api/users/auth/link-status?token=${encodeURIComponent(token)}`, {
+      method: 'GET',
+    })
+    return handleResponse(response)
+  },
+
   async verifyMagicLink(token: string, referralCode?: string | null): Promise<VerifyMagicLinkResponse> {
     const headers: HeadersInit = {};
     if (referralCode) {

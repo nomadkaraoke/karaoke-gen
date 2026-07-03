@@ -37,10 +37,13 @@ jest.mock('@/lib/auth', () => {
 // Referral helper is incidental.
 jest.mock('@/lib/referral', () => ({ setReferralCode: jest.fn() }))
 
-// API client — only the resend method matters here.
+// API client. getMagicLinkStatus decides the initial UI (gate vs. dead-link);
+// resendMagicLinkFromToken drives the recovery flow.
 const resendMock = jest.fn()
+const getStatusMock = jest.fn()
 jest.mock('@/lib/api', () => ({
   api: {
+    getMagicLinkStatus: (token: string) => getStatusMock(token),
     resendMagicLinkFromToken: (token: string) => resendMock(token),
   },
 }))
@@ -70,22 +73,25 @@ async function clickConfirmToVerify() {
   })
 }
 
-describe('VerifyMagicLinkPage — scanner-safety gate', () => {
+describe('VerifyMagicLinkPage — scanner-safety gate (valid link)', () => {
   beforeEach(() => {
     pushMock.mockClear()
     resendMock.mockReset()
     verifyMagicLinkMock.mockClear()
+    getStatusMock.mockReset()
+    getStatusMock.mockResolvedValue({ status: 'valid' })
   })
 
   it('does NOT verify the token on mount (link-scanners must not burn it)', async () => {
     render(wrap(<VerifyMagicLinkPage />))
 
-    // The confirm prompt is shown...
+    // The confirm prompt is shown for a valid link...
     expect(
       await screen.findByRole('button', { name: /Complete Sign-?In/i }),
     ).toBeInTheDocument()
 
-    // ...and crucially, no verification happened without a user gesture.
+    // ...the status check is read-only, and no verification happened.
+    expect(getStatusMock).toHaveBeenCalledWith(tokenParam)
     expect(verifyMagicLinkMock).not.toHaveBeenCalled()
   })
 
@@ -100,11 +106,51 @@ describe('VerifyMagicLinkPage — scanner-safety gate', () => {
   })
 })
 
+describe('VerifyMagicLinkPage — already-used / expired link', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    resendMock.mockReset()
+    verifyMagicLinkMock.mockClear()
+    getStatusMock.mockReset()
+  })
+
+  it('shows the failure UI upfront (no gate, no verify) when the link is already used', async () => {
+    getStatusMock.mockResolvedValue({ status: 'used' })
+
+    render(wrap(<VerifyMagicLinkPage />))
+
+    // Failure UI + one-click resend appear without the user clicking anything.
+    expect(await screen.findByText('Sign-in failed')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Email me a new link/i }),
+    ).toBeInTheDocument()
+
+    // No "Complete Sign-In" gate, and the token was never sent to verify.
+    expect(
+      screen.queryByRole('button', { name: /Complete Sign-?In/i }),
+    ).not.toBeInTheDocument()
+    expect(verifyMagicLinkMock).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the gate if the status check itself errors (never block a valid user)', async () => {
+    getStatusMock.mockRejectedValue(new Error('status endpoint down'))
+
+    render(wrap(<VerifyMagicLinkPage />))
+
+    expect(
+      await screen.findByRole('button', { name: /Complete Sign-?In/i }),
+    ).toBeInTheDocument()
+    expect(verifyMagicLinkMock).not.toHaveBeenCalled()
+  })
+})
+
 describe('VerifyMagicLinkPage — resend recovery flow', () => {
   beforeEach(() => {
     pushMock.mockClear()
     resendMock.mockReset()
     verifyMagicLinkMock.mockClear()
+    getStatusMock.mockReset()
+    getStatusMock.mockResolvedValue({ status: 'valid' })
   })
 
   it('shows "Email me a new link" button after verification fails', async () => {

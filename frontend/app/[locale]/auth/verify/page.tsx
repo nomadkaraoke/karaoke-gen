@@ -10,19 +10,21 @@ import { setReferralCode } from "@/lib/referral"
 import { api } from "@/lib/api"
 import { useTranslations } from "next-intl"
 
-type VerifyState = "confirm" | "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
+type VerifyState = "checking" | "confirm" | "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
 type ResendState = "idle" | "sending" | "sent" | "no_token" | "failed"
 
 function VerifyMagicLinkContent() {
   const t = useTranslations('auth')
   const router = useRouter()
   const searchParams = useSearchParams()
-  // Start in a "confirm" gate that requires an explicit click before we spend
-  // the single-use token. Automated email link-scanners (Gmail/Safe-Browsing,
-  // corporate security proxies) render this page and run its JS, but they do
-  // NOT click buttons — so gating verification behind a user gesture stops them
-  // from burning the token before the real user can use it.
-  const [state, setState] = useState<VerifyState>("confirm")
+  // Start in "checking": a read-only status probe runs on mount to decide the
+  // initial UI. A VALID link shows the "Complete Sign-In" gate — an explicit
+  // click is required before we spend the single-use token, so automated email
+  // link-scanners (Gmail/Safe-Browsing, corporate security proxies) that render
+  // this page and run its JS can't burn the token (they don't click). A DEAD
+  // link (already used / expired) shows the failure UI upfront, so the user
+  // isn't offered a button that will only fail when clicked.
+  const [state, setState] = useState<VerifyState>("checking")
   const [errorMessage, setErrorMessage] = useState("")
   const [creditsGranted, setCreditsGranted] = useState(0)
   const [creditStatus, setCreditStatus] = useState<string>("not_applicable")
@@ -34,9 +36,11 @@ function VerifyMagicLinkContent() {
 
   const { verifyMagicLink, user, error } = useAuth()
 
-  // Mount-time setup only — deliberately does NOT verify the token. Storing the
-  // referral code and remembering the token are side-effect-free reads; the
-  // token is spent only when the user clicks "Complete Sign-In".
+  // Mount-time setup — deliberately does NOT verify (consume) the token. It
+  // stores the referral code, remembers the token, and runs a READ-ONLY status
+  // probe to pick the initial UI. The status check does not mutate the token,
+  // so a scanner rendering this page can't burn a valid link; consumption still
+  // happens only when the user clicks "Complete Sign-In".
   useEffect(() => {
     if (hasSetup.current) return
     hasSetup.current = true
@@ -58,6 +62,20 @@ function VerifyMagicLinkContent() {
     // Remember the original token so both the confirm action and the failure
     // UI's one-click resend can use it without re-entering an email.
     setOriginalToken(token)
+
+    // Read-only probe: show the gate for a valid link, or the failure UI upfront
+    // for an already-used/expired one. If the probe itself fails, fall back to
+    // the gate so a transient error never blocks a user with a valid link.
+    api.getMagicLinkStatus(token)
+      .then(({ status }) => {
+        if (status === "valid") {
+          setState("confirm")
+        } else {
+          setState("error")
+          setErrorMessage(t('linkExpiredOrUsed'))
+        }
+      })
+      .catch(() => setState("confirm"))
   }, [searchParams, t])
 
   const handleConfirm = async () => {
@@ -141,6 +159,19 @@ function VerifyMagicLinkContent() {
 
   return (
     <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
+      {/* Checking link status (read-only probe, does not consume the token) */}
+      {state === "checking" && (
+        <>
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-foreground mb-2">
+            {t('pleaseWait')}
+          </h1>
+          <p className="text-muted-foreground">
+            {t('verifyingWait')}
+          </p>
+        </>
+      )}
+
       {/* Confirm gate — an explicit click is required before we spend the
           single-use token, so automated email link-scanners that render this
           page (but never click) can't burn the link before the real user. */}
