@@ -6,6 +6,23 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Magic-link auth vs. email link-scanners (Jul 2026)
+
+- **Never auto-consume a single-use token on page render.** `/auth/verify` used to
+  call `verifyMagicLink(token)` from a `useEffect` on mount (no user gesture) against
+  the state-mutating `GET /api/users/auth/verify`. Any agent that renders the page and
+  runs its JS — Gmail/Safe-Browsing scanners, corporate security proxies — burns the
+  token and creates a throwaway session, so the real user then sees "This link has
+  already been used." Diagnosed for one user whose links were consumed within ~60s by
+  Google LLC IPs (`2607:f8b0…`), his own click losing a sub-second race in Cloud Run logs.
+- **Fix pattern:** gate verification behind an explicit "Complete Sign-In" click
+  (`frontend/app/[locale]/auth/verify/page.tsx`). Scanners render but don't click, so
+  the token survives. Switching GET→POST alone does NOT help — a JS-executing scanner
+  runs the fetch regardless of method; the user-gesture gate is the robust mitigation.
+- **Still latent:** the admin one-click login path (`/app?admin_token=…`,
+  `frontend/app/[locale]/app/page.tsx`) auto-verifies the same way. Admin-only/low-volume,
+  so not yet gated — apply the same pattern if it ever bites.
+
 ## Bulk Mode (Jun 2026)
 
 - **Auto-pick "tier 1" rule is duplicated** between `frontend/lib/audio-search-utils.ts`
