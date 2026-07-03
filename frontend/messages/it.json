@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Non siamo riusciti a trovare quel link",
     "resendSuccessBody": "Abbiamo inviato un nuovo link di accesso a {maskedEmail}. È valido per le prossime 24 ore.",
     "resendSuccessTitle": "Controlla la tua email",
-    "resending": "Invio in corso..."
+    "resending": "Invio in corso...",
+    "confirmBody": "Per la tua sicurezza, clicca sul pulsante qui sotto per completare l'accesso. Questo passaggio aggiuntivo impedisce agli scanner automatici di email di utilizzare il tuo link prima di te.",
+    "confirmButton": "Completa l'accesso",
+    "confirmTitle": "Completa il tuo accesso"
   },
   "payment": {
     "title": "Pagamento riuscito!",

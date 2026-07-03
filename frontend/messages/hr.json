@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Nismo mogli pronaći tu poveznicu",
     "resendSuccessBody": "Poslali smo novu poveznicu za prijavu na {maskedEmail}. Vrijedi sljedeća 24 sata.",
     "resendSuccessTitle": "Provjeri svoju e-poštu",
-    "resending": "Slanje..."
+    "resending": "Slanje...",
+    "confirmBody": "Radi tvoje sigurnosti, klikni gumb u nastavku za dovršetak prijave. Ovaj dodatni korak sprječava automatizirane skenere e-pošte da iskoriste tvoju poveznicu prije tebe.",
+    "confirmButton": "Dovrši prijavu",
+    "confirmTitle": "Dovrši svoju prijavu"
   },
   "payment": {
     "title": "Plaćanje uspješno!",

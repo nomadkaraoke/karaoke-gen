@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Kami tidak dapat menemukan tautan tersebut",
     "resendSuccessBody": "Kami telah mengirimkan tautan masuk baru ke {maskedEmail}. Tautan ini berlaku selama 24 jam ke depan.",
     "resendSuccessTitle": "Cek email Anda",
-    "resending": "Mengirim..."
+    "resending": "Mengirim...",
+    "confirmBody": "Demi keamanan Anda, klik tombol di bawah untuk menyelesaikan login. Langkah tambahan ini mencegah pemindai email otomatis menggunakan tautan Anda sebelum Anda sempat menggunakannya.",
+    "confirmButton": "Selesaikan Login",
+    "confirmTitle": "Selesaikan login Anda"
   },
   "payment": {
     "title": "Pembayaran Berhasil!",

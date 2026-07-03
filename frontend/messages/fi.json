@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Emme löytäneet kyseistä linkkiä",
     "resendSuccessBody": "Lähetimme uuden kirjautumislinkin osoitteeseen {maskedEmail}. Se on voimassa seuraavat 24 tuntia.",
     "resendSuccessTitle": "Tarkista sähköpostisi",
-    "resending": "Lähetetään..."
+    "resending": "Lähetetään...",
+    "confirmBody": "Viimeistele kirjautuminen turvallisesti klikkaamalla alla olevaa painiketta. Tämä ylimääräinen vaihe estää automaattisia sähköpostiskannereita käyttämästä linkkiäsi ennen sinua.",
+    "confirmButton": "Viimeistele kirjautuminen",
+    "confirmTitle": "Viimeistele kirjautumisesi"
   },
   "payment": {
     "title": "Maksu onnistui!",

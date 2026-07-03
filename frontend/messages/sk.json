@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Tento odkaz sme nenašli",
     "resendSuccessBody": "Poslali sme nový prihlasovací odkaz na {maskedEmail}. Je platný nasledujúcich 24 hodín.",
     "resendSuccessTitle": "Skontroluj si e-mail",
-    "resending": "Odosiela sa..."
+    "resending": "Odosiela sa...",
+    "confirmBody": "Pre tvoju bezpečnosť klikni na tlačidlo nižšie a dokonči prihlásenie. Tento krok navyše zabráni automatickým e-mailovým skenerom použiť tvoj odkaz skôr, než to stihneš ty.",
+    "confirmButton": "Dokončiť prihlásenie",
+    "confirmTitle": "Dokonči prihlásenie"
   },
   "payment": {
     "title": "Platba úspešná!",

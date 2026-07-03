@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "No hem pogut trobar aquest enllaç",
     "resendSuccessBody": "Hem enviat un enllaç d'inici de sessió nou a {maskedEmail}. És vàlid durant les pròximes 24 hores.",
     "resendSuccessTitle": "Comprova el teu correu electrònic",
-    "resending": "Enviant..."
+    "resending": "Enviant...",
+    "confirmBody": "Per a la teva seguretat, fes clic al botó de sota per acabar d'iniciar sessió. Aquest pas addicional evita que els escàners de correu automatitzats utilitzin el teu enllaç abans que tu.",
+    "confirmButton": "Completa l'inici de sessió",
+    "confirmTitle": "Completa el teu inici de sessió"
   },
   "payment": {
     "title": "Pagament completat amb èxit!",

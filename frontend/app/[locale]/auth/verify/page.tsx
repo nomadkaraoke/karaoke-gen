@@ -10,27 +10,36 @@ import { setReferralCode } from "@/lib/referral"
 import { api } from "@/lib/api"
 import { useTranslations } from "next-intl"
 
-type VerifyState = "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
+type VerifyState = "confirm" | "verifying" | "preparing" | "credits_granted" | "credits_denied" | "credits_pending" | "success" | "error"
 type ResendState = "idle" | "sending" | "sent" | "no_token" | "failed"
 
 function VerifyMagicLinkContent() {
   const t = useTranslations('auth')
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [state, setState] = useState<VerifyState>("verifying")
+  // Start in a "confirm" gate that requires an explicit click before we spend
+  // the single-use token. Automated email link-scanners (Gmail/Safe-Browsing,
+  // corporate security proxies) render this page and run its JS, but they do
+  // NOT click buttons — so gating verification behind a user gesture stops them
+  // from burning the token before the real user can use it.
+  const [state, setState] = useState<VerifyState>("confirm")
   const [errorMessage, setErrorMessage] = useState("")
   const [creditsGranted, setCreditsGranted] = useState(0)
   const [creditStatus, setCreditStatus] = useState<string>("not_applicable")
   const [originalToken, setOriginalToken] = useState<string | null>(null)
   const [resendState, setResendState] = useState<ResendState>("idle")
   const [resendMaskedEmail, setResendMaskedEmail] = useState<string | null>(null)
+  const hasSetup = useRef(false)
   const hasVerified = useRef(false)
 
   const { verifyMagicLink, user, error } = useAuth()
 
+  // Mount-time setup only — deliberately does NOT verify the token. Storing the
+  // referral code and remembering the token are side-effect-free reads; the
+  // token is spent only when the user clicks "Complete Sign-In".
   useEffect(() => {
-    if (hasVerified.current) return
-    hasVerified.current = true
+    if (hasSetup.current) return
+    hasSetup.current = true
 
     const token = searchParams.get("token")
 
@@ -46,9 +55,21 @@ function VerifyMagicLinkContent() {
       return
     }
 
-    // Remember the original token so the failure UI can offer a one-click
-    // resend without forcing the user to re-enter their email.
+    // Remember the original token so both the confirm action and the failure
+    // UI's one-click resend can use it without re-entering an email.
     setOriginalToken(token)
+  }, [searchParams, t])
+
+  const handleConfirm = async () => {
+    // Guard against double-clicks / re-entrancy — the token is single-use.
+    if (hasVerified.current) return
+    const token = originalToken ?? searchParams.get("token")
+    if (!token) {
+      setState("error")
+      setErrorMessage(t('noVerificationToken'))
+      return
+    }
+    hasVerified.current = true
 
     const verify = async () => {
       // Show "preparing your account" while the backend runs AI evaluation
@@ -96,8 +117,8 @@ function VerifyMagicLinkContent() {
       }
     }
 
-    verify()
-  }, [searchParams, verifyMagicLink, router, t])
+    await verify()
+  }
 
   const goToApp = () => router.push("/app")
   const goToBuy = () => router.push("/app?buy=true")
@@ -120,7 +141,28 @@ function VerifyMagicLinkContent() {
 
   return (
     <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
-      {/* Verifying token */}
+      {/* Confirm gate — an explicit click is required before we spend the
+          single-use token, so automated email link-scanners that render this
+          page (but never click) can't burn the link before the real user. */}
+      {state === "confirm" && (
+        <>
+          <Mail className="w-12 h-12 text-primary mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-foreground mb-2">
+            {t('confirmTitle')}
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            {t('confirmBody')}
+          </p>
+          <Button
+            onClick={handleConfirm}
+            className="w-full bg-primary hover:bg-primary/90"
+          >
+            {t('confirmButton')}
+          </Button>
+        </>
+      )}
+
+      {/* Verifying token (transient, after the user confirms) */}
       {state === "verifying" && (
         <>
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />

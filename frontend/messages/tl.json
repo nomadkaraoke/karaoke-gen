@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Hindi namin mahanap ang link na iyon",
     "resendSuccessBody": "Nagpadala kami ng bagong sign-in link sa {maskedEmail}. Valid ito sa loob ng 24 oras.",
     "resendSuccessTitle": "I-check ang iyong email",
-    "resending": "Ipinapadala..."
+    "resending": "Ipinapadala...",
+    "confirmBody": "Para sa iyong seguridad, i-click ang button sa ibaba para tapusin ang pag-sign in. Pinipigilan ng karagdagang hakbang na ito ang mga automated email scanner na magamit ang iyong link bago mo pa ito magawa.",
+    "confirmButton": "Kumpletuhin ang Pag-sign In",
+    "confirmTitle": "Kumpletuhin ang iyong pag-sign in"
   },
   "payment": {
     "title": "Matagumpay ang Pagbabayad!",

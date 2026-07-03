@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Kami tidak dapat mencari pautan tersebut",
     "resendSuccessBody": "Kami telah menghantar pautan log masuk baharu ke {maskedEmail}. Ia sah selama 24 jam seterusnya.",
     "resendSuccessTitle": "Semak e-mel anda",
-    "resending": "Menghantar..."
+    "resending": "Menghantar...",
+    "confirmBody": "Untuk keselamatan anda, klik butang di bawah untuk melengkapkan log masuk. Langkah tambahan ini menghalang pengimbas e-mel automatik daripada menggunakan pautan anda sebelum anda berbuat demikian.",
+    "confirmButton": "Lengkapkan Log Masuk",
+    "confirmTitle": "Lengkapkan log masuk anda"
   },
   "payment": {
     "title": "Pembayaran Berjaya!",

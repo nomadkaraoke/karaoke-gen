@@ -314,7 +314,10 @@
     "resendNoTokenTitle": "Nu am putut găsi acel link",
     "resendSuccessBody": "Am trimis un nou link de conectare la {maskedEmail}. Este valabil pentru următoarele 24 de ore.",
     "resendSuccessTitle": "Verifică-ți emailul",
-    "resending": "Se trimite..."
+    "resending": "Se trimite...",
+    "confirmBody": "Pentru securitatea ta, apasă pe butonul de mai jos pentru a finaliza conectarea. Acest pas suplimentar împiedică scanerele automate de e-mail să îți folosească linkul înaintea ta.",
+    "confirmButton": "Finalizează conectarea",
+    "confirmTitle": "Finalizează conectarea"
   },
   "payment": {
     "title": "Plată realizată cu succes!",
