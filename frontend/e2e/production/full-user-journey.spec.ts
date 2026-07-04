@@ -1,5 +1,6 @@
 import { test, expect, Page, APIRequestContext } from '@playwright/test';
 import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-testing';
+import { clickCompleteSignInGate } from '../helpers/auth';
 
 /**
  * Production E2E Test - Full User Journey
@@ -234,6 +235,10 @@ test.describe('Production E2E - Full User Journey', () => {
           throw new Error('Could not extract magic link from email');
         }
         await page.goto(magicLinkUrl);
+
+        // Click the "Complete Sign-In" gate (verify page no longer auto-consumes
+        // the token on mount — see #870). This spends the single-use token.
+        await clickCompleteSignInGate(page);
 
         // Wait for successful verification and redirect
         await expect(

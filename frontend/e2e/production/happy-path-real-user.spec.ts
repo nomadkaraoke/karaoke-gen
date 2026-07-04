@@ -1,5 +1,6 @@
 import { test, expect, Page, BrowserContext } from '@playwright/test';
 import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-testing';
+import { clickCompleteSignInGate } from '../helpers/auth';
 
 /**
  * E2E Happy Path Test - Real User Journey with Full UI Interactions
@@ -334,6 +335,11 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         // Navigate to the magic link URL to verify and authenticate
         await page.goto(magicLinkUrl);
         console.log('  Navigated to magic link verification page');
+
+        // Click the "Complete Sign-In" gate (verify page no longer auto-consumes
+        // the token on mount — see #870). This spends the single-use token.
+        await clickCompleteSignInGate(page);
+        console.log('  Clicked "Complete Sign-In" gate');
 
         // Wait for verification to complete — new users see a credit interstitial
         // (credits_granted, credits_denied, or credits_pending), returning users
