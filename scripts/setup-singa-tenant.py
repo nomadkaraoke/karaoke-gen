@@ -586,7 +586,7 @@ def create_tenant_config() -> dict:
             "youtube_description_template": None,
         },
         "auth": {
-            "allowed_email_domains": ["singa.com", "nomadkaraoke.com"],
+            "allowed_email_domains": ["singa.com", "nomadkaraoke.com", "inbox.testmail.app"],
             "require_email_domain": True,
             "fixed_token_ids": [],
             "sender_email": "singa@nomadkaraoke.com",
