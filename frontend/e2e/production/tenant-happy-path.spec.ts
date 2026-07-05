@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
+import * as path from 'path';
+import * as fs from 'fs';
 import { createEmailHelper, isEmailTestingAvailable, EmailHelper } from '../helpers/email-testing';
 import { clickCompleteSignInGate } from '../helpers/auth';
+
+// Real test audio (mixed + instrumental), gitignored under e2e/fixtures.
+// Populate with scripts/e2e/fetch_test_audio.sh (CI + local).
+const MIXED_AUDIO = path.resolve(__dirname, '../fixtures/e2e-mixed.mp3');
+const INSTRUMENTAL_AUDIO = path.resolve(__dirname, '../fixtures/e2e-instrumental.mp3');
 
 /**
  * Tenant Portal Happy Path — Production E2E (frontend journey)
@@ -42,9 +49,10 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
 
   test.afterAll(async () => {
     if (createdJobId && ADMIN_TOKEN) {
-      await fetch(`${API_URL}/api/admin/jobs/${createdJobId}`, {
+      // DELETE /api/jobs/{id} uses require_auth + ownership; admins bypass.
+      await fetch(`${API_URL}/api/jobs/${createdJobId}`, {
         method: 'DELETE',
-        headers: { 'X-Admin-Token': ADMIN_TOKEN },
+        headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
       }).catch(() => {});
       console.log(`[${TENANT_ID}] Cleaned up job ${createdJobId}`);
     }
@@ -52,7 +60,23 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
 
   test('Full tenant journey: login -> submit -> review -> render -> distribution', async ({ page }) => {
     test.skip(!emailHelper, 'Email testing not configured (TESTMAIL_API_KEY/NAMESPACE)');
+    test.skip(
+      !fs.existsSync(MIXED_AUDIO) || !fs.existsSync(INSTRUMENTAL_AUDIO),
+      'Test audio missing — run scripts/e2e/fetch_test_audio.sh',
+    );
     test.setTimeout(T.full);
+
+    // The shared prod config sets a global `x-playwright-test` header on every
+    // request (playwright.production.config.ts). On the cross-origin PUT to the
+    // GCS signed URL that header makes the browser's CORS preflight request an
+    // extra header the bucket's CORS policy (Content-Type only) doesn't allow,
+    // so the upload fails — a test-harness artifact, not a product bug (verified
+    // the same PUT succeeds in a real browser). Strip it only for GCS uploads.
+    await page.route('https://storage.googleapis.com/**', async (route) => {
+      const headers = { ...route.request().headers() };
+      delete headers['x-playwright-test'];
+      await route.continue({ headers });
+    });
 
     // =====================================================================
     // Sign in via the tenant portal magic-link UI
@@ -111,5 +135,21 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     const token = await page.evaluate(() => localStorage.getItem('karaoke_access_token'));
     expect(token, 'authenticated token present after magic-link login').toBeTruthy();
     console.log(`[${TENANT_ID}] Signed in via magic-link UI (${verifyResult})`);
+
+    // =====================================================================
+    // Submit a track through the tenant portal form
+    // =====================================================================
+    const uniqueTitle = `E2E ${TENANT_ID} ${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    await page.getByLabel('Artist').fill('Nomad E2E');
+    await page.getByLabel('Title').fill(uniqueTitle);
+    await page.locator('#tenant-mixed-audio').setInputFiles(MIXED_AUDIO);
+    await page.locator('#tenant-instrumental-audio').setInputFiles(INSTRUMENTAL_AUDIO);
+    await page.getByRole('button', { name: /submit track/i }).click();
+
+    await expect(page.getByText(/track submitted/i)).toBeVisible({ timeout: 120_000 });
+    const jobIdText = await page.locator('[data-testid="created-job-id"]').textContent();
+    createdJobId = (jobIdText || '').replace(/^ID:\s*/i, '').trim() || null;
+    expect(createdJobId, 'created job id captured from tenant submit').toBeTruthy();
+    console.log(`[${TENANT_ID}] Submitted job ${createdJobId}: ${uniqueTitle}`);
   });
 });
