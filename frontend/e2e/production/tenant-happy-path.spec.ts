@@ -151,5 +151,123 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     createdJobId = (jobIdText || '').replace(/^ID:\s*/i, '').trim() || null;
     expect(createdJobId, 'created job id captured from tenant submit').toBeTruthy();
     console.log(`[${TENANT_ID}] Submitted job ${createdJobId}: ${uniqueTitle}`);
+
+    // =====================================================================
+    // Wait for transcription, then open the review UI (fires warmup)
+    // =====================================================================
+    await page.goto(`${PORTAL_URL}/app`, { waitUntil: 'domcontentloaded' });
+    let reviewLink = null;
+    const reviewDeadline = Date.now() + T.transcription;
+    while (Date.now() < reviewDeadline) {
+      const link = page.getByRole('link', { name: /review lyrics/i }).first();
+      // waitFor (not instant isVisible) so the client-side job-list fetch has
+      // time to render each iteration; reload + retry if not ready yet.
+      try {
+        await link.waitFor({ state: 'visible', timeout: 15_000 });
+        reviewLink = link;
+        break;
+      } catch {
+        await page.reload({ waitUntil: 'domcontentloaded' });
+      }
+    }
+    expect(reviewLink, 'Review Lyrics link appeared before transcription timeout').not.toBeNull();
+    console.log(`[${TENANT_ID}] Job ready for review`);
+
+    const reviewHref = await reviewLink!.getAttribute('href');
+    const reviewUrl = reviewHref!.startsWith('http') ? reviewHref! : `${PORTAL_URL}${reviewHref}`;
+
+    // The review page must fire the encoding-worker warmup on load — this is
+    // what keeps the encoder alive for the render (and what the old API-driven
+    // test skipped, causing stuck-render orphans).
+    const warmupReq = page.waitForRequest(
+      (r) => r.url().includes('/api/internal/encoding-worker/warmup/'),
+      { timeout: 60_000 },
+    );
+    await page.goto(reviewUrl, { waitUntil: 'domcontentloaded' });
+    await warmupReq;
+    console.log(`[${TENANT_ID}] Review page fired encoding-worker warmup`);
+
+    // =====================================================================
+    // Approve the review through the UI (Preview -> Instrumental -> Confirm)
+    // =====================================================================
+    // Preview Video (bottom of the review page) — generates a preview using the
+    // now-warm encoder, then opens a modal with a "Proceed to Instrumental" CTA.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const previewBtn = page.getByRole('button', { name: /preview video/i });
+    await expect(previewBtn).toBeVisible({ timeout: T.action });
+    await previewBtn.click();
+
+    const modal = page.getByRole('dialog');
+    await expect(modal).toBeVisible({ timeout: T.action });
+    // Preview generation can take a bit; don't fail the journey if it's slow.
+    await page.getByText(/generating preview video/i)
+      .waitFor({ state: 'hidden', timeout: 180_000 })
+      .catch(() => {});
+
+    const proceedBtn = page.getByRole('button', { name: /proceed to instrumental/i });
+    await expect(proceedBtn).toBeVisible({ timeout: T.action });
+    await proceedBtn.click();
+
+    const sessionToken = await page.evaluate(() => localStorage.getItem('karaoke_access_token'));
+    const getJob = async () => {
+      const r = await fetch(`${API_URL}/api/jobs/${createdJobId}`, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      if (!r.ok) throw new Error(`GET job ${createdJobId}: ${r.status}`);
+      return r.json();
+    };
+
+    // For a pre-supplied (tenant) instrumental there is nothing to pick, so
+    // "Proceed to Instrumental Review" completes the review directly and the
+    // instrumental route redirects to /app. For a selectable instrumental an
+    // InstrumentalSelector (#submit-btn) renders instead. Handle both.
+    const submitBtn = page.locator('#submit-btn');
+    if (await submitBtn.isVisible({ timeout: 20_000 }).catch(() => false)) {
+      const opt = page.locator('.selection-option').first();
+      if (await opt.isVisible().catch(() => false)) await opt.click();
+      await submitBtn.click();
+      console.log(`[${TENANT_ID}] Instrumental confirmed`);
+    }
+
+    // Confirm the review actually advanced (left awaiting_review) before waiting
+    // on the render — otherwise a silent no-op would masquerade as a render hang.
+    let left = false;
+    for (let i = 0; i < 8; i++) {
+      const s = (await getJob()).status;
+      if (s !== 'awaiting_review' && s !== 'in_review' && s !== 'reviewing') { left = true; break; }
+      await new Promise((res) => setTimeout(res, 5_000));
+    }
+    expect(left, 'review completed (job left awaiting_review)').toBeTruthy();
+    console.log(`[${TENANT_ID}] Review approved -> render started`);
+
+    // =====================================================================
+    // Wait for the render to complete, then assert tenant distribution
+    // =====================================================================
+
+    let job: any = null;
+    const renderDeadline = Date.now() + T.render;
+    while (Date.now() < renderDeadline) {
+      job = await getJob();
+      if (job.status === 'complete') break;
+      if (job.status === 'failed' || job.status === 'error') {
+        throw new Error(`Render failed: status=${job.status} ${JSON.stringify(job.state_data?.error || '')}`);
+      }
+      await new Promise((res) => setTimeout(res, 15_000));
+    }
+    expect(job?.status, 'job reached complete before render timeout').toBe('complete');
+    console.log(`[${TENANT_ID}] Render complete`);
+
+    // Tenant distribution invariants (field paths per the proven tenant flow:
+    // dropbox_link + youtube_url live in state_data; downloads in file_urls).
+    const sd = job.state_data || {};
+    const fileUrls = job.file_urls || {};
+    const finals = Object.keys(fileUrls.finals || {});
+    const packages = Object.keys(fileUrls.packages || {});
+    expect(sd.dropbox_link || job.dropbox_link, 'Dropbox link present').toBeTruthy();
+    expect(sd.youtube_url || job.youtube_url || null, 'no YouTube upload for tenant').toBeFalsy();
+    for (const f of ['lossy_4k_mp4', 'lossy_720p_mp4', 'with_vocals_mp4']) expect(finals).toContain(f);
+    for (const p of ['cdg_zip', 'txt_zip']) expect(packages).toContain(p);
+    expect(job.is_private, 'tenant job is private').toBeTruthy();
+    console.log(`[${TENANT_ID}] PASSED — complete, Dropbox present, no YouTube, downloads available`);
   });
 });
