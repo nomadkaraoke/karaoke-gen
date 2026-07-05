@@ -222,7 +222,14 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     // instrumental route redirects to /app. For a selectable instrumental an
     // InstrumentalSelector (#submit-btn) renders instead. Handle both.
     const submitBtn = page.locator('#submit-btn');
-    if (await submitBtn.isVisible({ timeout: 20_000 }).catch(() => false)) {
+    let hasInstrumentalStep = false;
+    try {
+      // waitFor actually blocks up to the timeout (isVisible would not); if the
+      // selector never appears the review already completed on "Proceed".
+      await submitBtn.waitFor({ state: 'visible', timeout: 15_000 });
+      hasInstrumentalStep = true;
+    } catch { /* pre-supplied tenant instrumental: review completed directly */ }
+    if (hasInstrumentalStep) {
       const opt = page.locator('.selection-option').first();
       if (await opt.isVisible().catch(() => false)) await opt.click();
       await submitBtn.click();

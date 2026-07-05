@@ -27,14 +27,20 @@ E2E_DOMAIN = "inbox.testmail.app"
 def update(tenant_id: str) -> None:
     client = storage.Client(project="nomadkaraoke")
     blob = client.bucket(BUCKET).blob(f"tenants/{tenant_id}/config.json")
-    cfg = json.loads(blob.download_as_text())
+    cfg = json.loads(blob.download_as_text())  # populates blob.generation
     auth = cfg.setdefault("auth", {})
     domains = auth.setdefault("allowed_email_domains", [])
     if E2E_DOMAIN in domains:
         print(f"{tenant_id}: already allowlisted ({domains})")
         return
     domains.append(E2E_DOMAIN)
-    blob.upload_from_string(json.dumps(cfg, indent=2), content_type="application/json")
+    # Optimistic concurrency: only write if the object hasn't changed since read,
+    # so a parallel edit to the tenant config isn't silently clobbered.
+    blob.upload_from_string(
+        json.dumps(cfg, indent=2),
+        content_type="application/json",
+        if_generation_match=blob.generation,
+    )
     print(f"{tenant_id}: added {E2E_DOMAIN} -> {domains}")
 
 
