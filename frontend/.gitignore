@@ -23,3 +23,4 @@ messages/.en-snapshot.json
 
 # Generated at build time by scripts/write-version.mjs
 public/version.json
+e2e/fixtures/*.mp3
