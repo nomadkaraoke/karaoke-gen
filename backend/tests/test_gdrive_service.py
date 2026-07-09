@@ -524,7 +524,97 @@ class TestUploadToPublicShare:
             # ...and the failure is surfaced as a distribution warning (admin alert),
             # not silently swallowed.
             assert any("fast-sync" in w for w in warnings)
-    
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_pushes_vocals_guide_for_nomad(self, mock_get_settings, tmp_path):
+        """A pre-built original-vocals guide is pushed to the vocals prefix with the exact
+        "{brand_code} - {base_name}.flac" object name (matches the master's naming)."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        mp4_720_file = tmp_path / "output_720p.mp4"
+        mp4_720_file.write_bytes(b"720p video")
+        guide_file = tmp_path / "original_vocals_guide.flac"
+        guide_file.write_bytes(b"guide flac")
+
+        service = GoogleDriveService()
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            mock_mirror_cls.return_value.push_vocals_guide.return_value = True
+            service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMAD-1163",
+                base_name="Artist - Title",
+                output_files={
+                    "final_karaoke_lossy_720p_mp4": str(mp4_720_file),
+                    "original_vocals_guide": str(guide_file),
+                },
+            )
+            mock_mirror_cls.return_value.push_vocals_guide.assert_called_once_with(
+                str(guide_file), "NOMAD-1163 - Artist - Title.flac"
+            )
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_no_vocals_guide_for_non_nomad(self, mock_get_settings, tmp_path):
+        """Non-Nomad / NOMADNP brands must never push a guide to the public mirror."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        guide_file = tmp_path / "original_vocals_guide.flac"
+        guide_file.write_bytes(b"guide flac")
+
+        service = GoogleDriveService()
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMADNP-1163",
+                base_name="Artist - Title",
+                output_files={"original_vocals_guide": str(guide_file)},
+            )
+            mock_mirror_cls.assert_not_called()
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_vocals_guide_failure_is_non_fatal(self, mock_get_settings, tmp_path):
+        """A guide push failure surfaces a warning but never breaks the Drive upload."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        guide_file = tmp_path / "original_vocals_guide.flac"
+        guide_file.write_bytes(b"guide flac")
+
+        service = GoogleDriveService()
+        warnings: list = []
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            mock_mirror_cls.return_value.push_vocals_guide.return_value = False
+            service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMAD-1163",
+                base_name="Artist - Title",
+                output_files={"original_vocals_guide": str(guide_file)},
+                warnings=warnings,
+            )
+            assert any("guide" in w.lower() for w in warnings)
+
     @patch("backend.services.gdrive_service.get_settings")
     def test_upload_to_public_share_skips_missing_files(
         self, mock_get_settings, tmp_path

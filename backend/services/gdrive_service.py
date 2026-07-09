@@ -335,6 +335,18 @@ class GoogleDriveService:
             if fast_sync_warning and warnings is not None:
                 warnings.append(fast_sync_warning)
 
+        # Push the padded original-vocals guide (silence[intro] + mixed_vocals) to the
+        # vocals prefix in the same Divebar mirror, so kjbox can layer it under the master
+        # at the "Original Vocals" slider. Same Nomad-brand gating + best-effort contract
+        # as the 720p push; the guide was pre-built by the orchestrator when available.
+        guide_path = output_files.get("original_vocals_guide")
+        if guide_path and os.path.exists(guide_path):
+            guide_warning = self._fast_sync_vocals_guide(
+                brand_code, guide_path, f"{filename_base}.flac"
+            )
+            if guide_warning and warnings is not None:
+                warnings.append(guide_warning)
+
         # Upload CDG ZIP to CDG/
         cdg_zip_path = output_files.get("final_karaoke_cdg_zip")
         if cdg_zip_path and os.path.exists(cdg_zip_path):
@@ -385,6 +397,38 @@ class GoogleDriveService:
         except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
             logger.warning(f"Nomad master fast-sync skipped (unexpected error): {e}")
             return f"Nomad master fast-sync errored for {filename}: {e}"
+
+    def _fast_sync_vocals_guide(
+        self, brand_code: str, local_path: str, filename: str
+    ) -> Optional[str]:
+        """Best-effort push of a freshly-built original-vocals guide to the Divebar GCS
+        mirror's vocals prefix so kjbox can pull it into ``NOMAD-vocals-padded/``.
+
+        No-op unless the fast-sync is enabled and this is a public Nomad release
+        (``NOMAD-####``, excluding ``NOMADNP``). Never raises — nothing downstream
+        depends on the guide. Returns a human-readable warning on failure (surfaced via
+        ``distribution_warnings`` / the admin alert), or ``None`` on success or skip.
+        """
+        try:
+            from backend.config import settings
+            from backend.services.nomad_master_mirror import (
+                NomadMasterMirror,
+                is_nomad_public_brand,
+            )
+
+            if not settings.nomad_master_fast_sync_enabled:
+                return None
+            if not is_nomad_public_brand(brand_code):
+                return None
+
+            if NomadMasterMirror().push_vocals_guide(local_path, filename):
+                return None
+            return (
+                f"Original-vocals guide sync to the GCS mirror failed for {filename}"
+            )
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning(f"Original-vocals guide sync skipped (unexpected error): {e}")
+            return f"Original-vocals guide sync errored for {filename}: {e}"
 
     def delete_file(self, file_id: str) -> bool:
         """

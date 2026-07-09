@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     divebar_files_bucket: str = os.getenv("DIVEBAR_FILES_BUCKET", "nomadkaraoke-divebar-files")
     nomad_master_gcs_prefix: str = os.getenv("NOMAD_MASTER_GCS_PREFIX", "files/Nomad Karaoke/MP4-720p")
     nomad_master_fast_sync_enabled: bool = os.getenv("NOMAD_MASTER_FAST_SYNC_ENABLED", "true").lower() == "true"
+    # Original-vocals guide: a padded isolated-vocals file (silence[intro] + vocals) pushed to
+    # a sibling prefix in the same Divebar bucket, which kjbox mirrors into NOMAD-vocals-padded/
+    # to power the "Original Vocals" sing-along slider. Same brand gating as the master push.
+    nomad_vocals_guide_gcs_prefix: str = os.getenv("NOMAD_VOCALS_GUIDE_GCS_PREFIX", "files/Nomad Karaoke/vocals-padded")
     
     # Audio Separator API (for GPU processing)
     audio_separator_api_url: Optional[str] = os.getenv("AUDIO_SEPARATOR_API_URL")

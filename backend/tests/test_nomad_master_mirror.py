@@ -134,16 +134,69 @@ def test_delete_masters_by_brand_is_non_fatal_on_list_error():
     assert mirror.delete_masters_by_brand("NOMAD-1500") == 0
 
 
+# --- vocals guide push / delete (parallel to the master methods) ---
+
+def test_push_vocals_guide_uses_vocals_prefix_and_uploads():
+    mirror, bucket, blob = _mirror_with_mock()
+
+    ok = mirror.push_vocals_guide(
+        "/tmp/out/NOMAD-1500 - Rush - The Spirit of Radio.flac",
+        "NOMAD-1500 - Rush - The Spirit of Radio.flac",
+    )
+
+    assert ok is True
+    bucket.blob.assert_called_once_with(
+        "files/Nomad Karaoke/vocals-padded/NOMAD-1500 - Rush - The Spirit of Radio.flac"
+    )
+    blob.upload_from_filename.assert_called_once_with(
+        "/tmp/out/NOMAD-1500 - Rush - The Spirit of Radio.flac"
+    )
+
+
+def test_push_vocals_guide_is_non_fatal_on_error():
+    mirror, _bucket, blob = _mirror_with_mock()
+    blob.upload_from_filename.side_effect = RuntimeError("boom")
+    assert mirror.push_vocals_guide("/tmp/x.flac", "NOMAD-1 - A - B.flac") is False
+
+
+def test_delete_vocals_guides_by_brand_deletes_all_matching_by_prefix():
+    mirror, bucket, blobs = _mirror_with_blobs([
+        "files/Nomad Karaoke/vocals-padded/NOMAD-1500 - Rush - Spirit of Radio.flac",
+        "files/Nomad Karaoke/vocals-padded/NOMAD-1500 - Rush - The Spirit of Radio.flac",
+    ])
+    n = mirror.delete_vocals_guides_by_brand("NOMAD-1500")
+    assert n == 2
+    bucket.list_blobs.assert_called_once_with(
+        prefix="files/Nomad Karaoke/vocals-padded/NOMAD-1500 - "
+    )
+    for b in blobs:
+        b.delete.assert_called_once()
+
+
+@pytest.mark.parametrize("brand", ["NOMADNP-1500", "VOCALSTAR-1", "", None, "NOMAD"])
+def test_delete_vocals_guides_by_brand_refuses_non_nomad_or_bare(brand):
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    assert mirror.delete_vocals_guides_by_brand(brand) == 0
+    bucket.list_blobs.assert_not_called()
+
+
+def test_delete_vocals_guides_by_brand_is_non_fatal_on_list_error():
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    bucket.list_blobs.side_effect = RuntimeError("gcs down")
+    assert mirror.delete_vocals_guides_by_brand("NOMAD-1500") == 0
+
+
 def test_cleanup_nomad_masters_delegates_for_nomad(monkeypatch):
     from backend.services import nomad_master_mirror as mod
 
-    called = {}
     inst = MagicMock()
     inst.delete_masters_by_brand.return_value = 3
     monkeypatch.setattr(mod, "NomadMasterMirror", lambda: inst)
 
     assert mod.cleanup_nomad_masters("NOMAD-1500") == 3
     inst.delete_masters_by_brand.assert_called_once_with("NOMAD-1500")
+    # Brand recycle must also clear the release's original-vocals guide(s).
+    inst.delete_vocals_guides_by_brand.assert_called_once_with("NOMAD-1500")
 
 
 @pytest.mark.parametrize("brand", ["NOMADNP-1", "OTHER-1", "", None])
