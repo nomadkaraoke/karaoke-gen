@@ -2103,3 +2103,32 @@ class TestOriginalVocalsGuideEmit:
     async def test_resolve_intro_seconds_defaults_to_5_without_job_manager(self):
         orch = self._orch(job_manager=None)
         assert await orch._resolve_intro_seconds() == 5.0
+
+    @pytest.mark.asyncio
+    async def test_resolve_intro_seconds_preserves_explicit_zero(self):
+        # A style with no title card (video_duration=0) must NOT collapse to the 5s
+        # default — that would push the guide's vocals 5s late.
+        orch = self._orch(job_manager=MagicMock())
+        orch.job_manager.get_job.return_value = MagicMock()
+        fake_style = MagicMock()
+        fake_style.get_intro_format.return_value = {"video_duration": 0}
+
+        async def fake_load(*a, **k):
+            return fake_style
+
+        with patch("backend.workers.style_helper.load_style_config", side_effect=fake_load):
+            assert await orch._resolve_intro_seconds() == 0.0
+
+    @pytest.mark.asyncio
+    async def test_resolve_intro_seconds_honors_long_intro_style(self):
+        # A long-intro style (e.g. 8s) must be read, not assumed to be 5s.
+        orch = self._orch(job_manager=MagicMock())
+        orch.job_manager.get_job.return_value = MagicMock()
+        fake_style = MagicMock()
+        fake_style.get_intro_format.return_value = {"video_duration": 8}
+
+        async def fake_load(*a, **k):
+            return fake_style
+
+        with patch("backend.workers.style_helper.load_style_config", side_effect=fake_load):
+            assert await orch._resolve_intro_seconds() == 8.0

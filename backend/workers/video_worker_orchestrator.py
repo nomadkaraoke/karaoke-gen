@@ -948,18 +948,20 @@ class VideoWorkerOrchestrator:
 
     async def _resolve_intro_seconds(self) -> float:
         """The master's silent title-card length = the job's style intro ``video_duration``
-        (default 5s). Read the *actual* value — long-intro styles exist. Falls back to 5s."""
+        (default 5s). Read the *actual* value — long-intro styles exist. Falls back to 5s
+        (``get_intro_format`` raises when no theme is loaded — that's the fallback path)."""
         try:
-            from backend.workers.style_helper import StyleHelper
+            from backend.workers.style_helper import load_style_config
             import tempfile
 
             job = self.job_manager.get_job(self.config.job_id) if self.job_manager else None
             if job is None:
                 return 5.0
-            helper = StyleHelper(job, self.storage, tempfile.mkdtemp(prefix="style_"))
-            await helper.load()
-            intro = (helper.get_intro_format() or {}).get("video_duration", 5)
-            return float(intro) if intro else 5.0
+            style = await load_style_config(job, self.storage, tempfile.mkdtemp(prefix="style_"))
+            # Preserve an intentional 0 (a style with no title card); only None/absent
+            # falls back to the 5s default. A truthiness check would misalign the guide.
+            intro = style.get_intro_format().get("video_duration", 5)
+            return float(intro) if intro is not None else 5.0
         except Exception as e:  # noqa: BLE001
             self.job_log.warning(f"Original-vocals guide: intro-duration lookup fell back to 5s: {e}")
             return 5.0
