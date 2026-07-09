@@ -43,6 +43,10 @@ class NomadMasterMirror:
         prefix = settings.nomad_master_gcs_prefix.strip("/")
         return f"{prefix}/{filename}"
 
+    def _vocals_blob_name(self, filename: str) -> str:
+        prefix = settings.nomad_vocals_guide_gcs_prefix.strip("/")
+        return f"{prefix}/{filename}"
+
     def push_720p(self, local_path: str, filename: str) -> bool:
         """Upload a 720p master to the divebar GCS mirror. Best-effort; returns success."""
         blob_name = self._blob_name(filename)
@@ -76,6 +80,51 @@ class NomadMasterMirror:
         except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
             logger.warning("Nomad master mirror delete failed for %s: %s", blob_name, e)
             return False
+
+    def push_vocals_guide(self, local_path: str, filename: str) -> bool:
+        """Upload a padded original-vocals guide to the divebar GCS mirror's vocals
+        prefix (which kjbox pulls into ``NOMAD-vocals-padded/``). Best-effort."""
+        blob_name = self._vocals_blob_name(filename)
+        try:
+            blob = self._bucket.blob(blob_name)
+            blob.upload_from_filename(local_path)
+            logger.info(
+                "Pushed original-vocals guide to gs://%s/%s",
+                settings.divebar_files_bucket,
+                blob_name,
+            )
+            return True
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning("Vocals-guide push failed for %s: %s", blob_name, e)
+            return False
+
+    def delete_vocals_guides_by_brand(self, brand_code: str) -> int:
+        """Delete ALL original-vocals guide objects for a Nomad release, matched by the
+        unique ``{brand_code} - `` filename prefix (covers renames). Best-effort; returns
+        the count deleted. Refuses a non-Nomad / bare brand code (same guardrail as the
+        master prefix-delete) so a broad prefix can never wipe unrelated objects."""
+        if not is_nomad_public_brand(brand_code):
+            return 0
+        suffix = brand_code.split("-", 1)[1] if "-" in brand_code else ""
+        if not suffix.strip():
+            return 0
+        prefix = f"{settings.nomad_vocals_guide_gcs_prefix.strip('/')}/{brand_code} - "
+        deleted = 0
+        try:
+            for blob in self._bucket.list_blobs(prefix=prefix):
+                try:
+                    blob.delete()
+                    deleted += 1
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("Failed to delete vocals-guide object %s: %s", blob.name, e)
+            if deleted:
+                logger.info(
+                    "Removed %d original-vocals guide object(s) from gs://%s/%s*",
+                    deleted, settings.divebar_files_bucket, prefix,
+                )
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning("Vocals-guide mirror prefix-delete failed for %s: %s", prefix, e)
+        return deleted
 
     def delete_masters_by_brand(self, brand_code: str) -> int:
         """Delete ALL 720p master objects for a Nomad release, matched by the unique
@@ -125,7 +174,13 @@ def cleanup_nomad_masters(brand_code: Optional[str]) -> int:
             return 0
         if not is_nomad_public_brand(brand_code):
             return 0
-        return NomadMasterMirror().delete_masters_by_brand(brand_code)
+        mirror = NomadMasterMirror()
+        deleted = mirror.delete_masters_by_brand(brand_code)
+        # A recycled brand must not keep serving its old original-vocals guide, so remove
+        # the GCS guide(s) too. (Note: with the device's additive-only vocals sync this
+        # won't auto-remove an already-downloaded device copy — a documented limitation.)
+        mirror.delete_vocals_guides_by_brand(brand_code)
+        return deleted
     except Exception as e:  # noqa: BLE001 - never fatal to the caller
         logger.warning("Nomad master mirror cleanup skipped: %s", e)
         return 0

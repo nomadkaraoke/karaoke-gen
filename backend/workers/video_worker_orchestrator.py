@@ -871,6 +871,13 @@ class VideoWorkerOrchestrator:
                 'final_karaoke_cdg_zip': self.result.final_karaoke_cdg_zip,
             }
 
+            # Emit the padded original-vocals guide for public NOMAD releases so kjbox can
+            # layer it under the master at the "Original Vocals" slider. Best-effort: a
+            # failure just omits the guide (the upload layer pushes it if present).
+            guide_path = await self._emit_original_vocals_guide(brand_code)
+            if guide_path:
+                output_files['original_vocals_guide'] = guide_path
+
             uploaded = gdrive.upload_to_public_share(
                 root_folder_id=self.config.gdrive_folder_id,
                 brand_code=brand_code,
@@ -886,6 +893,76 @@ class VideoWorkerOrchestrator:
             self.job_log.error(f"Google Drive upload failed: {e}")
             self.result.distribution_warnings.append(f"Google Drive upload failed: {e}")
             # Don't fail the pipeline - GDrive is optional
+
+    async def _emit_original_vocals_guide(self, brand_code) -> Optional[str]:
+        """Build the padded original-vocals guide (silence[intro] + mixed_vocals, capped to
+        the master's duration) for a public NOMAD release, and return its local path.
+
+        The mixed-vocals stem is a byproduct of the karaoke separation (uploaded to
+        ``jobs/{job_id}/stems/vocals_clean.flac``) and the intro offset is the job's own
+        style ``intro_video_duration`` — so no correlation/review is needed. Best-effort:
+        returns ``None`` (and never raises) for non-NOMAD brands, a missing stem, or any
+        build failure — the guide simply won't be distributed.
+        """
+        try:
+            from backend.services.nomad_master_mirror import is_nomad_public_brand
+            if not is_nomad_public_brand(brand_code):
+                return None
+            master_720p = self.result.final_video_720p
+            if not master_720p or not os.path.exists(master_720p):
+                return None
+            if not self.storage:
+                return None
+
+            import tempfile
+            from backend.services.original_vocals_guide import (
+                build_original_vocals_guide,
+                probe_duration,
+            )
+
+            work_dir = tempfile.mkdtemp(prefix="vocals_guide_")
+            stem_gcs = f"jobs/{self.config.job_id}/stems/vocals_clean.flac"
+            local_stem = os.path.join(work_dir, "vocals_clean.flac")
+            try:
+                self.storage.download_file(stem_gcs, local_stem)
+            except Exception as e:  # noqa: BLE001
+                self.job_log.warning(
+                    f"Original-vocals guide: mixed-vocals stem unavailable ({stem_gcs}): {e}"
+                )
+                return None
+
+            intro_seconds = await self._resolve_intro_seconds()
+            master_duration = probe_duration(master_720p)
+            dest = os.path.join(work_dir, "original_vocals_guide.flac")
+            guide = build_original_vocals_guide(
+                local_stem, intro_seconds, dest, master_duration=master_duration
+            )
+            if guide:
+                self.job_log.info(
+                    f"Built original-vocals guide for {brand_code} (intro={intro_seconds}s)"
+                )
+            return guide
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            self.job_log.warning(f"Original-vocals guide emit skipped: {e}")
+            return None
+
+    async def _resolve_intro_seconds(self) -> float:
+        """The master's silent title-card length = the job's style intro ``video_duration``
+        (default 5s). Read the *actual* value — long-intro styles exist. Falls back to 5s."""
+        try:
+            from backend.workers.style_helper import StyleHelper
+            import tempfile
+
+            job = self.job_manager.get_job(self.config.job_id) if self.job_manager else None
+            if job is None:
+                return 5.0
+            helper = StyleHelper(job, self.storage, tempfile.mkdtemp(prefix="style_"))
+            await helper.load()
+            intro = (helper.get_intro_format() or {}).get("video_duration", 5)
+            return float(intro) if intro else 5.0
+        except Exception as e:  # noqa: BLE001
+            self.job_log.warning(f"Original-vocals guide: intro-duration lookup fell back to 5s: {e}")
+            return 5.0
 
     async def _run_notifications(self):
         """Run the notifications stage (Discord)."""

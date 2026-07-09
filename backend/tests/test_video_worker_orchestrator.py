@@ -2049,3 +2049,57 @@ class TestStageOriginalAudio:
             # Must not raise
             orch._stage_original_audio_for_upload()
             assert any("Original audio" in w for w in orch.result.distribution_warnings)
+
+
+class TestOriginalVocalsGuideEmit:
+    """The write-path emit of the padded original-vocals guide at finalize."""
+
+    def _orch(self, brand="NOMAD-1500", video_720p=None, job_manager=None):
+        config = OrchestratorConfig(
+            job_id="job-1", artist="A", title="B",
+            title_video_path="/t.mov", karaoke_video_path="/k.mov",
+            instrumental_audio_path="/a.flac",
+        )
+        orch = VideoWorkerOrchestrator(config, job_manager=job_manager, storage=MagicMock())
+        orch.result.brand_code = brand
+        orch.result.final_video_720p = video_720p
+        return orch
+
+    @pytest.mark.asyncio
+    async def test_emit_skips_non_nomad(self, tmp_path):
+        v = tmp_path / "v.mp4"; v.write_bytes(b"x")
+        orch = self._orch(brand="VOCALSTAR-1", video_720p=str(v))
+        assert await orch._emit_original_vocals_guide("VOCALSTAR-1") is None
+        orch.storage.download_file.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_emit_none_when_no_720p(self):
+        orch = self._orch(brand="NOMAD-1500", video_720p=None)
+        assert await orch._emit_original_vocals_guide("NOMAD-1500") is None
+
+    @pytest.mark.asyncio
+    async def test_emit_builds_guide_for_nomad(self, tmp_path):
+        v = tmp_path / "v.mp4"; v.write_bytes(b"video")
+        orch = self._orch(brand="NOMAD-1500", video_720p=str(v), job_manager=None)
+        with patch("backend.services.original_vocals_guide.build_original_vocals_guide",
+                   return_value="/tmp/guide.flac") as mb, \
+             patch("backend.services.original_vocals_guide.probe_duration", return_value=200.0):
+            out = await orch._emit_original_vocals_guide("NOMAD-1500")
+        assert out == "/tmp/guide.flac"
+        # The mixed-vocals stem is pulled from the job's GCS stems path.
+        assert orch.storage.download_file.call_args[0][0] == "jobs/job-1/stems/vocals_clean.flac"
+        # Built with the resolved intro (5s fallback, no job_manager) capped to master dur.
+        assert mb.call_args[0][1] == 5.0
+        assert mb.call_args.kwargs.get("master_duration") == 200.0
+
+    @pytest.mark.asyncio
+    async def test_emit_none_when_stem_download_fails(self, tmp_path):
+        v = tmp_path / "v.mp4"; v.write_bytes(b"video")
+        orch = self._orch(brand="NOMAD-1500", video_720p=str(v))
+        orch.storage.download_file.side_effect = RuntimeError("gone")
+        assert await orch._emit_original_vocals_guide("NOMAD-1500") is None
+
+    @pytest.mark.asyncio
+    async def test_resolve_intro_seconds_defaults_to_5_without_job_manager(self):
+        orch = self._orch(job_manager=None)
+        assert await orch._resolve_intro_seconds() == 5.0
