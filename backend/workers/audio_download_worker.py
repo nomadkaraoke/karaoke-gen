@@ -80,6 +80,15 @@ DOWNLOAD_ALREADY_DONE_STATUSES = frozenset({
     JobStatus.CANCELLED,
 })
 
+# How long to wait for a flacfetch download before giving up. This MUST stay
+# strictly below the Cloud Run task `timeout` for audio-download-job (see
+# infrastructure/modules/cloud_run.py::create_audio_download_job). If they are
+# equal, Cloud Run SIGKILLs the task before this timeout can fire, so the
+# worker never records retry-pending or fails gracefully — leaving an in-flight
+# auto-retry that races manual retries (job 1cd29294). The headroom below the
+# task timeout covers the final GCS upload + state transition.
+DOWNLOAD_WAIT_TIMEOUT_SECONDS = 1080  # task timeout is 1200s
+
 
 def _current_task_attempt() -> int:
     """Read CLOUD_RUN_TASK_ATTEMPT env var injected by Cloud Run Jobs.
@@ -227,6 +236,22 @@ async def process_audio_download(job_id: str) -> bool:
             storage_service=storage_service,
         )
 
+        # Concurrency guard: a second download run may have completed while we
+        # were downloading — e.g. a manual /retry racing this task's Cloud Run
+        # auto-retry. Re-read status now (it was read once at entry, before a
+        # potentially minutes-long download). If another run already advanced
+        # the job, treat this as an idempotent success: don't re-write the input
+        # path, don't re-transition (that would be an invalid
+        # downloading -> downloading), and don't re-trigger downstream workers.
+        # The winning run owns all of that.
+        latest = job_manager.get_job(job_id)
+        if latest and latest.status in DOWNLOAD_ALREADY_DONE_STATUSES:
+            logger.info(
+                f"[job:{job_id}] Another run already advanced the job "
+                f"(status={latest.status}); skipping duplicate transition/triggers"
+            )
+            return True
+
         # Update job with GCS path
         job_manager.update_job(job_id, {
             'input_media_gcs_path': audio_gcs_path,
@@ -241,13 +266,32 @@ async def process_audio_download(job_id: str) -> bool:
         # previous error so the UI stops showing a resolved failure.
         _clear_retry_pending_and_error(job_manager, job_id)
 
-        # Transition from DOWNLOADING_AUDIO to DOWNLOADING
-        job_manager.transition_to_state(
+        # Transition from DOWNLOADING_AUDIO (or FAILED, on recovery) to
+        # DOWNLOADING. Use raise_on_invalid=False so a tight race that slipped
+        # past the guard above (another run advancing the job between our
+        # re-read and here) does NOT raise into the generic except and fail_job
+        # a job another run already succeeded on.
+        transitioned = job_manager.transition_to_state(
             job_id=job_id,
             new_status=JobStatus.DOWNLOADING,
             progress=15,
-            message="Audio downloaded, starting processing"
+            message="Audio downloaded, starting processing",
+            raise_on_invalid=False,
         )
+        if not transitioned:
+            latest = job_manager.get_job(job_id)
+            if latest and latest.status in DOWNLOAD_ALREADY_DONE_STATUSES:
+                logger.info(
+                    f"[job:{job_id}] Concurrent run advanced job during transition "
+                    f"(status={latest.status}); treating as idempotent success"
+                )
+                return True
+            # Genuinely unexpected state (not a concurrency case) — surface it
+            # through the normal failure path so retry-pending is recorded.
+            raise DownloadError(
+                f"Could not transition to DOWNLOADING "
+                f"(status={latest.status if latest else 'missing'})"
+            )
 
         # Check if audio editing was requested — enter blocking state instead of processing
         job = job_manager.get_job(job_id)
@@ -423,7 +467,7 @@ async def _download_torrent(
 
     final_status = await flacfetch_client.wait_for_download(
         download_id,
-        timeout=600,
+        timeout=DOWNLOAD_WAIT_TIMEOUT_SECONDS,
     )
 
     filepath = final_status.get("gcs_path") or final_status.get("output_path")
@@ -461,7 +505,7 @@ async def _download_spotify(
 
     final_status = await flacfetch_client.wait_for_download(
         download_id,
-        timeout=600,
+        timeout=DOWNLOAD_WAIT_TIMEOUT_SECONDS,
     )
 
     filepath = final_status.get("gcs_path") or final_status.get("output_path")

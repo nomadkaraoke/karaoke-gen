@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -35,9 +36,63 @@ VALID_CATEGORIES = {
 
 
 class AutoCorrectServiceError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400) -> None:
+    def __init__(
+        self, message: str, *, status_code: int = 400, retryable: bool = False
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        # True for transient provider conditions (rate limits, overload) the
+        # caller may safely retry; drives backoff in _call_model.
+        self.retryable = retryable
+
+
+# Retry knobs for a single model call. Vertex 429 RESOURCE_EXHAUSTED is a
+# recurring, transient condition; a short app-level backoff lets quota recover
+# where the SDK's fast internal retry cannot. Kept small so a request never
+# stalls the review UI for long. Parsed defensively: a malformed env override
+# clamps to a safe value with a warning rather than crashing the backend at
+# import or breaking the retry loop.
+def _env_number(name: str, default: float, *, minimum: float, is_int: bool) -> float:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        val: float = int(raw) if is_int else float(raw)
+    except ValueError:
+        logger.warning("invalid %s=%r; using default %s", name, raw, default)
+        return default
+    import math as _math
+
+    if not _math.isfinite(val) or val < minimum:
+        logger.warning(
+            "%s=%s out of range (min %s); clamping to %s", name, val, minimum, minimum
+        )
+        return minimum
+    return val
+
+
+_MODEL_CALL_MAX_ATTEMPTS = int(
+    _env_number("AUTO_CORRECT_MODEL_MAX_ATTEMPTS", 3, minimum=1, is_int=True)
+)
+_MODEL_CALL_BACKOFF_SECONDS = float(
+    _env_number("AUTO_CORRECT_MODEL_BACKOFF_SECONDS", 2.0, minimum=0.0, is_int=False)
+)
+
+
+def _is_transient_model_error(exc: BaseException) -> bool:
+    """True when a provider exception is a retryable rate-limit/overload.
+
+    Matches both structured status codes (google-genai ClientError/ServerError
+    expose ``code``; Anthropic errors expose ``status_code``) and, as a
+    fallback, the textual markers Vertex/Anthropic use — so detection survives
+    SDK exception-class churn.
+    """
+    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    if isinstance(code, int) and code in {429, 500, 502, 503, 529}:
+        return True
+    text = str(exc).upper()
+    markers = ("RESOURCE_EXHAUSTED", "UNAVAILABLE", "OVERLOADED", "429", "503", "529")
+    return any(m in text for m in markers)
 
 
 @dataclass
@@ -388,10 +443,33 @@ class AutoCorrectService:
     def _call_model(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
     ) -> tuple[Any, Optional[TokenUsage]]:
-        """Return (parsed_json, token_usage). Usage is None if unreadable."""
-        if model.startswith("claude"):
-            return self._call_anthropic(model, system_prompt, user_prompt, job_id=job_id)
-        return self._call_gemini(model, system_prompt, user_prompt, job_id=job_id)
+        """Return (parsed_json, token_usage). Usage is None if unreadable.
+
+        Transient provider errors (rate limits / overload, flagged
+        ``retryable``) are retried with exponential backoff. Permanent errors
+        (misconfig, malformed output) fail fast.
+        """
+        for attempt in range(1, _MODEL_CALL_MAX_ATTEMPTS + 1):
+            try:
+                if model.startswith("claude"):
+                    return self._call_anthropic(
+                        model, system_prompt, user_prompt, job_id=job_id
+                    )
+                return self._call_gemini(
+                    model, system_prompt, user_prompt, job_id=job_id
+                )
+            except AutoCorrectServiceError as exc:
+                if not exc.retryable or attempt == _MODEL_CALL_MAX_ATTEMPTS:
+                    raise
+                backoff = _MODEL_CALL_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    "auto-correct model call transient failure job=%s model=%s "
+                    "attempt=%d/%d; retrying in %.1fs (%s)",
+                    job_id, model, attempt, _MODEL_CALL_MAX_ATTEMPTS, backoff, exc,
+                )
+                time.sleep(backoff)
+        # Unreachable: the loop either returns or raises on the final attempt.
+        raise AssertionError("retry loop exited without returning or raising")
 
     @staticmethod
     def _anthropic_usage(response: Any) -> Optional[TokenUsage]:
@@ -440,8 +518,6 @@ class AutoCorrectService:
     def _call_anthropic(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
     ) -> tuple[Any, Optional[TokenUsage]]:
-        import os
-
         import anthropic
 
         if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -478,6 +554,16 @@ class AutoCorrectService:
                 output_config={"format": {"type": "json_schema", "schema": strict_schema}},
             )
         except Exception as exc:
+            if _is_transient_model_error(exc):
+                logger.warning(
+                    "auto-correct model rate-limited/overloaded job=%s model=%s (%s)",
+                    job_id, model, exc,
+                )
+                raise AutoCorrectServiceError(
+                    "AI model is temporarily rate-limited",
+                    status_code=429,
+                    retryable=True,
+                ) from exc
             logger.exception("auto-correct model call failed job=%s model=%s", job_id, model)
             raise AutoCorrectServiceError(
                 "AI model call failed", status_code=502
@@ -520,6 +606,16 @@ class AutoCorrectService:
                 ),
             )
         except Exception as exc:  # surface as 502, never a stuck job
+            if _is_transient_model_error(exc):
+                logger.warning(
+                    "auto-correct model rate-limited/overloaded job=%s model=%s (%s)",
+                    job_id, model, exc,
+                )
+                raise AutoCorrectServiceError(
+                    "AI model is temporarily rate-limited",
+                    status_code=429,
+                    retryable=True,
+                ) from exc
             logger.exception("auto-correct model call failed job=%s model=%s", job_id, model)
             raise AutoCorrectServiceError(
                 "AI model call failed", status_code=502

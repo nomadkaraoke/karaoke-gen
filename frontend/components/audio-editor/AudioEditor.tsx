@@ -495,6 +495,9 @@ export function AudioEditor({ job }: AudioEditorProps) {
   const seekTo = useCallback((time: number) => {
     const audio = audioRef.current
     if (!audio) return
+    // Math.min/max propagate NaN, so a non-finite input still throws on the
+    // currentTime assignment — reject it before clamping.
+    if (!Number.isFinite(time)) return
     audio.currentTime = Math.max(0, Math.min(time, audio.duration || currentDuration))
     setCurrentTime(audio.currentTime)
   }, [currentDuration])
