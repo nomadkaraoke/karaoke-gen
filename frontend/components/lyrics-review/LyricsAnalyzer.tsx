@@ -1070,6 +1070,9 @@ export default function LyricsAnalyzer({
       if (typeof window !== 'undefined' && window.seekAndPlayAudio) {
         const adjustedStartTime =
           timingOffsetMs !== 0 ? startTime + timingOffsetMs / 1000 : startTime
+        // A caller can resolve to a non-finite time (e.g. an untimed segment or
+        // a zero-width timeline click); don't forward it to the media element.
+        if (!Number.isFinite(adjustedStartTime)) return
         window.seekAndPlayAudio(adjustedStartTime)
       }
     },

@@ -134,6 +134,9 @@ export default function AudioPlayer({ audioUrl, onTimeUpdate }: AudioPlayerProps
   const handleSeek = (value: number[]) => {
     if (!audioRef.current || !isReadyRef.current) return
     const time = value[0]
+    // Non-finite (NaN/Infinity) throws "The provided double value is
+    // non-finite" when assigned to currentTime — guard the sink.
+    if (!Number.isFinite(time)) return
     audioRef.current.currentTime = time
     setCurrentTime(time)
   }
@@ -146,6 +149,9 @@ export default function AudioPlayer({ audioUrl, onTimeUpdate }: AudioPlayerProps
 
   const seekAndPlay = useCallback((time: number) => {
     if (!audioRef.current || !isReadyRef.current) return
+    // A non-finite target (e.g. a click that resolved to NaN/Infinity) throws
+    // on assignment to currentTime; drop it rather than crash the review UI.
+    if (!Number.isFinite(time)) return
 
     audioRef.current.currentTime = time
     setCurrentTime(time)

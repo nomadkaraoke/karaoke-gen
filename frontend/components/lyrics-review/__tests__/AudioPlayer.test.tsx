@@ -75,6 +75,30 @@ describe('AudioPlayer readiness gating', () => {
     expect(created[0].currentTime).toBe(12)
   })
 
+  it('ignores non-finite seek targets instead of crashing the media element', () => {
+    renderPlayer()
+    fireOnAudio('canplaythrough')
+    expect(window.isAudioReady).toBe(true)
+
+    // NaN / Infinity would throw "The provided double value is non-finite"
+    // in a real browser. The guard must no-op: never seek, never play.
+    act(() => {
+      window.seekAndPlayAudio?.(Number.NaN)
+    })
+    act(() => {
+      window.seekAndPlayAudio?.(Number.POSITIVE_INFINITY)
+    })
+    expect(created[0].play).not.toHaveBeenCalled()
+    expect(Number.isFinite(created[0].currentTime)).toBe(true)
+
+    // A finite target still works.
+    act(() => {
+      window.seekAndPlayAudio?.(7)
+    })
+    expect(created[0].currentTime).toBe(7)
+    expect(created[0].play).toHaveBeenCalledTimes(1)
+  })
+
   it('reveals playback controls and publishes ready once canplaythrough fires', () => {
     const onReady = jest.fn()
     window.addEventListener(AUDIO_READY_EVENT, onReady)

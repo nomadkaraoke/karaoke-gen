@@ -630,7 +630,9 @@ best-effort — storage failures degrade to a normal uncached run.
 
 `op` is `replace` | `delete` | `insert_after` (for `insert_after`, `word_ids`
 holds the anchor word). Errors: `422` when no reference lyrics are available,
-`400` for invalid settings, `502` when the model call fails or returns
+`400` for invalid settings, `429` when the model provider is temporarily
+rate-limited (transient — retryable; the service already retries with backoff
+before surfacing this), `502` when the model call otherwise fails or returns
 malformed output. Design/eval background:
 `docs/archive/2026-06-10-lyrics-auto-correction-reeval-plan.md`.
 

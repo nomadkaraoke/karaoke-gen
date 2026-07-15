@@ -377,7 +377,12 @@ def create_audio_download_job(
                     )
                 ],
                 service_account=service_account.email,
-                timeout="600s",  # 10 minutes max (downloads typically < 5 min)
+                # 20 min max. Slow torrent (RED/OPS) downloads can exceed 10 min;
+                # a SIGKILL at the old 600s bypassed graceful failure handling and
+                # left in-flight auto-retries racing manual retries (job 1cd29294).
+                # The worker's DOWNLOAD_WAIT_TIMEOUT_SECONDS (1080s) is kept
+                # strictly below this so it fails cleanly before Cloud Run kills it.
+                timeout="1200s",
                 max_retries=2,
                 vpc_access=vpc_access,
             ),
