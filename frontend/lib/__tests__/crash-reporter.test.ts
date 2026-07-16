@@ -30,11 +30,20 @@ describe('isBenignError', () => {
 })
 
 describe('reportClientError', () => {
+  // jsdom has no global fetch to spyOn, so assign directly — but save and
+  // restore the original so the mock never leaks into other suites.
+  let fetchSpy: jest.Mock
+  let originalFetch: typeof global.fetch
   beforeEach(() => {
     __resetForTest()
-    global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch
+    originalFetch = global.fetch
+    fetchSpy = jest.fn().mockResolvedValue({ ok: true } as Response)
+    global.fetch = fetchSpy as unknown as typeof fetch
   })
-  afterEach(() => jest.restoreAllMocks())
+  afterEach(() => {
+    global.fetch = originalFetch
+    jest.restoreAllMocks()
+  })
 
   const ctx = {
     href: 'https://gen.nomadkaraoke.com/en/app/jobs/',
@@ -47,7 +56,7 @@ describe('reportClientError', () => {
       source: 'window.onerror',
       context: ctx,
     })
-    expect(global.fetch).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it('POSTs a genuine error', async () => {
@@ -56,6 +65,6 @@ describe('reportClientError', () => {
       source: 'window.onerror',
       context: ctx,
     })
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 })
