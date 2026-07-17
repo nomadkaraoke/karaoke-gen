@@ -1,7 +1,47 @@
 /**
  * @jest-environment jsdom
  */
-import { isStale, hardReload, __resetForTest, __setBuildShaForTest } from '@/lib/version-check'
+import {
+  isStale,
+  hardReload,
+  isChunkLoadError,
+  __resetForTest,
+  __setBuildShaForTest,
+} from '@/lib/version-check'
+
+describe('version-check.isChunkLoadError', () => {
+  it('matches webpack ChunkLoadError by name', () => {
+    const e = new Error('boom')
+    e.name = 'ChunkLoadError'
+    expect(isChunkLoadError(e)).toBe(true)
+  })
+
+  it('matches webpack "Loading chunk <id> failed" message', () => {
+    expect(isChunkLoadError(new Error('Loading chunk 429 failed'))).toBe(true)
+  })
+
+  it.each([
+    // Turbopack (Next.js 16 default) — a plain Error, no ChunkLoadError name.
+    'Failed to load chunk /_next/static/chunks/e66613528f386db8.js from module 64893',
+    'Failed to load chunk /_next/static/chunks/abc.js as a runtime dependency of chunk 12',
+    'Failed to load chunk /_next/static/chunks/abc.js from an HMR update',
+  ])('matches Turbopack chunk-load message: %s', (msg) => {
+    expect(isChunkLoadError(new Error(msg))).toBe(true)
+  })
+
+  it('matches native ESM dynamic-import failures', () => {
+    expect(
+      isChunkLoadError(new Error('Failed to fetch dynamically imported module: https://x/y.js')),
+    ).toBe(true)
+    expect(isChunkLoadError(new Error('Importing a module script failed.'))).toBe(true)
+  })
+
+  it('ignores unrelated errors and falsy input', () => {
+    expect(isChunkLoadError(new Error('Cannot read properties of undefined'))).toBe(false)
+    expect(isChunkLoadError(null)).toBe(false)
+    expect(isChunkLoadError(undefined)).toBe(false)
+  })
+})
 
 describe('version-check.isStale', () => {
   const fetchMock = jest.fn()
