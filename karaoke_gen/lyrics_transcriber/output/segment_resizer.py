@@ -1,9 +1,46 @@
 import logging
 import re
+import unicodedata
 from typing import List, Optional
 
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
+
+
+# East-Asian Wide ('W') and Fullwidth ('F') glyphs are far wider than a Latin
+# character in the karaoke render. ``max_line_length`` (40) was calibrated for Latin
+# text — measuring the real fonts confirms ~41 Latin chars fill the 4K frame width at
+# the effective render size (libass renders at ~0.70x the nominal Fontsize; see
+# lyrics_line.ASS_FONT_SCALE). So a raw character count badly under-estimates CJK
+# width: a line well under 40 *characters* is far wider than the frame, and libass
+# smart-wraps it onto a second physical row that overlaps the slot below — the lyrics
+# overlap this metric fixes.
+#
+# Calibration: a CJK glyph plus the space the renderer emits after every word token
+# (lyrics_line.py `transformed_text + " "`) measures ~2.5x the average width of a
+# Latin character (Hiragino/Noto vs Montserrat-Bold, consistent at 175px and 250px).
+# The CJK glyph advance itself is ~1em for any CJK font (full-width by design), so the
+# only per-font variance is the space glyph; WIDE_RATIO = 2.7 adds ~15% headroom over
+# the measured 2.5 to stay clear of the frame edge with the production Noto Sans CJK
+# Bold font (~14 glyphs/line, ~3.2k of 3840px). Pure-Latin text — where display width
+# equals ``len`` — is unchanged.
+WIDE_RATIO = 2.7
+
+
+def _char_width(ch: str) -> float:
+    """Width of a single character in half-width units (Wide/Fullwidth → WIDE_RATIO)."""
+    return WIDE_RATIO if unicodedata.east_asian_width(ch) in ("W", "F") else 1.0
+
+
+def display_width(text: str) -> float:
+    """Approximate rendered width of ``text`` in half-width character units.
+
+    East-Asian Wide ('W') and Fullwidth ('F') code points count as ``WIDE_RATIO``
+    units; every other character counts as 1. For pure ASCII/Latin/European text this
+    equals ``len(text)`` exactly, so text without wide glyphs is treated identically to
+    before this metric existed.
+    """
+    return sum(_char_width(ch) for ch in text)
 
 
 class SegmentResizer:
@@ -43,6 +80,36 @@ class SegmentResizer:
         self.max_line_length = max_line_length
         self.logger = logger or logging.getLogger(__name__)
 
+    def _display_width(self, text: str) -> float:
+        """Visual width of ``text`` in half-width units (see module ``display_width``)."""
+        return display_width(text)
+
+    def _max_prefix_index(self, line: str) -> int:
+        """Largest index ``i`` where ``display_width(line[:i]) <= max_line_length``.
+
+        Always returns at least 1 so an over-budget line still makes progress (a lone
+        wide glyph that already exceeds the budget is not split further).
+        """
+        total = 0.0
+        idx = 0
+        for i, ch in enumerate(line):
+            total += _char_width(ch)
+            if total > self.max_line_length:
+                break
+            idx = i + 1
+        return max(1, idx)
+
+    def _last_wide_boundary(self, line: str, max_index: int) -> Optional[int]:
+        """Largest split index in ``(0, max_index]`` immediately following a wide glyph.
+
+        Splitting right after a full-width character keeps CJK runs on glyph
+        boundaries and avoids cutting through a narrow (Latin) word.
+        """
+        for i in range(max_index, 0, -1):
+            if unicodedata.east_asian_width(line[i - 1]) in ("W", "F"):
+                return i
+        return None
+
     def resize_segments(self, segments: List[LyricsSegment]) -> List[LyricsSegment]:
         """Main entry point for resizing segments.
 
@@ -76,8 +143,9 @@ class SegmentResizer:
         for segment_idx, segment in enumerate(segments):
             cleaned_segment = self._create_cleaned_segment(segment)
 
-            # Only split if the segment is longer than max_line_length
-            if len(cleaned_segment.text) <= self.max_line_length:
+            # Only split if the segment is wider than max_line_length (visual width,
+            # so full-width CJK glyphs are counted at ~2x a Latin character)
+            if self._display_width(cleaned_segment.text) <= self.max_line_length:
                 resized_segments.append(cleaned_segment)
                 continue
 
@@ -286,7 +354,7 @@ class SegmentResizer:
         for word in words:
             word_text = self._clean_text(word.text)
             candidate = f"{current_text} {word_text}".strip() if current_text else word_text
-            if current_words and len(candidate) > self.max_line_length:
+            if current_words and self._display_width(candidate) > self.max_line_length:
                 segments.append(self._create_segment_from_words(current_text, current_words, singer=singer))
                 current_words = [word]
                 current_text = word_text
@@ -368,7 +436,7 @@ class SegmentResizer:
             self.logger.debug(f"Remaining text to process: '{remaining_text}'")
 
             # If remaining text is within limit, add it and we're done
-            if len(remaining_text) <= self.max_line_length:
+            if self._display_width(remaining_text) <= self.max_line_length:
                 processed_lines.append(remaining_text)
                 break
 
@@ -381,7 +449,12 @@ class SegmentResizer:
             # 1. We found a valid split point
             # 2. First part isn't too long
             # 3. Both parts are non-empty
-            if split_point < len(remaining_text) and len(first_part) <= self.max_line_length and first_part and second_part:
+            if (
+                split_point < len(remaining_text)
+                and self._display_width(first_part) <= self.max_line_length
+                and first_part
+                and second_part
+            ):
 
                 processed_lines.append(first_part)
                 remaining_text = second_part
@@ -396,8 +469,8 @@ class SegmentResizer:
         """Find the best split point that creates natural, well-balanced segments."""
         self.logger.debug(f"Finding best split point for line: '{line}' (length: {len(line)})")
 
-        # If line is within max length, don't split
-        if len(line) <= self.max_line_length:
+        # If line is within max width, don't split
+        if self._display_width(line) <= self.max_line_length:
             return len(line)
 
         break_points = self._find_break_points(line)
@@ -412,8 +485,8 @@ class SegmentResizer:
 
                 first_part = line[:point].strip()
 
-                # Skip if first part is too long
-                if len(first_part) > self.max_line_length:
+                # Skip if first part is too wide
+                if self._display_width(first_part) > self.max_line_length:
                     continue
 
                 # Score this break point
@@ -422,13 +495,25 @@ class SegmentResizer:
                     best_score = score
                     best_point = point
 
-        # If no good break points found, fall back to last space before max_length
+        # No natural break (sentence/clause/comma/conjunction/preposition) fit the
+        # width budget. Fall back to the widest prefix that still fits, preferring not
+        # to cut through a run of narrow (Latin) characters.
         if best_point is None:
-            last_space = line.rfind(" ", 0, self.max_line_length)
+            budget_idx = self._max_prefix_index(line)
+            # Last space at/before the budget keeps Latin words intact. For ASCII text
+            # budget_idx == max_line_length, so this reproduces the previous
+            # ``rfind(" ", 0, max_line_length)`` fallback exactly (no English change).
+            last_space = line.rfind(" ", 0, budget_idx)
             if last_space != -1:
                 return last_space
+            # No space in range (e.g. space-less CJK): break on a wide-glyph boundary
+            # if one is within budget, else hard-cut at the budget index.
+            wide_boundary = self._last_wide_boundary(line, budget_idx)
+            if wide_boundary is not None:
+                return wide_boundary
+            return budget_idx
 
-        return best_point if best_point is not None else self.max_line_length
+        return best_point
 
     def _score_break_point(self, line: str, point: int, priority: int) -> float:
         """Score a potential break point based on multiple factors.
@@ -451,16 +536,21 @@ class SegmentResizer:
         first_segment = line[:point].strip()
         second_segment = line[point:].strip()
 
+        # Widths in half-width units so CJK lines are balanced by visual width, not
+        # character count (identical to len() for ASCII/Latin text).
+        first_width = self._display_width(first_segment)
+        second_width = self._display_width(second_segment)
+
         # Base score starts with priority
         score = 100 - (priority * 20)  # Priorities 0-4 give scores 100,80,60,40,20
 
         # Length ratio bonus
-        length_ratio = min(len(first_segment), len(second_segment)) / max(len(first_segment), len(second_segment))
+        length_ratio = min(first_width, second_width) / max(first_width, second_width)
         score += length_ratio * 10
 
         # Target length bonus
         target_length = self.max_line_length * 0.7
-        first_length_score = 1 - abs(len(first_segment) - target_length) / self.max_line_length
+        first_length_score = 1 - abs(first_width - target_length) / self.max_line_length
         score += first_length_score * 5
 
         return score
