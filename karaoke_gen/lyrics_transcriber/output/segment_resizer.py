@@ -257,6 +257,15 @@ class SegmentResizer:
 
         self.logger.info(f"Processing oversized segment {segment_idx}: '{segment_text}'")
 
+        # A segment with no Word tokens cannot be split by word timing: both the CJK
+        # packer and the text-position splitter map zero words and drop the line
+        # entirely. Preserve it intact — an over-wide line is far better than silently
+        # losing lyrics. (This also guards the pre-existing char-count path, where a
+        # wordless segment longer than max_line_length would have been dropped.)
+        if not segment.words:
+            self.logger.warning(f"Oversized segment {segment_idx} has no words; preserving intact: '{segment_text}'")
+            return [self._create_cleaned_segment(segment)]
+
         # Wide-script (CJK) text has no reliable whitespace break points, and the
         # text-position splitter re-matches Word tokens by substring — a width-based
         # cut can land inside a multi-character token (e.g. 立ち向かう), desyncing the
@@ -264,7 +273,7 @@ class SegmentResizer:
         # and display-width aware (each token measured with the inter-token space the
         # renderer emits). Latin/European text (no wide glyphs) keeps the original
         # natural-break text splitter, so its output is unchanged.
-        if segment.words and self._contains_wide(segment_text):
+        if self._contains_wide(segment_text):
             packed = self._pack_words_into_lines(segment.words, singer=segment.singer)
             self.logger.debug(f"CJK segment packed into {len(packed)} lines by word token")
             return packed

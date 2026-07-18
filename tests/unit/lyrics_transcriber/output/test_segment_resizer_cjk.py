@@ -134,6 +134,21 @@ def test_short_japanese_line_not_split():
     assert result[0].text == jp
 
 
+def test_wordless_wide_segment_is_preserved_not_dropped():
+    """A segment whose text is wide (display width > budget) but that carries no Word
+    tokens must never be dropped. The display-width gate marks it oversized, but with
+    no words neither splitter can map anything — without a guard it would return [] and
+    silently lose the lyrics. It must be preserved intact instead."""
+    r = _resizer(36)
+    text = "漢" * 20  # display width 54 > 36, but only 20 characters (<= char budget)
+    seg = LyricsSegment(id="s", text=text, words=[], start_time=1.0, end_time=5.0)
+
+    result = r.resize_segments([seg])
+
+    assert len(result) == 1
+    assert result[0].text == text  # lyrics preserved verbatim, not dropped
+
+
 def test_multichar_cjk_tokens_never_fragmented():
     """A CJK Word token can span several characters (e.g. 立ち向かう, 不可信にて —
     both real single tokens in job 4dcca2d6). Splitting must never cut inside such a
