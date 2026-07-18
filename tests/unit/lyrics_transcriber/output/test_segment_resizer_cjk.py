@@ -134,14 +134,39 @@ def test_short_japanese_line_not_split():
     assert result[0].text == jp
 
 
+def test_multichar_cjk_tokens_never_fragmented():
+    """A CJK Word token can span several characters (e.g. 立ち向かう, 不可信にて —
+    both real single tokens in job 4dcca2d6). Splitting must never cut inside such a
+    token: every input token must survive whole and in order, with no multi-word line
+    over budget. Uses space-less text (the worst case for the old text-position
+    splitter, which re-matched tokens by substring and dropped fragments)."""
+    r = _resizer(36)
+    tokens = ["立ち向かう", "神明", "不可信にて", "悪霊退散", "悪霊退散",
+              "本能", "ごろ", "び", "こまった", "科学", "の", "力", "では"]
+    seg = LyricsSegment(
+        id="s",
+        text="".join(tokens),  # space-less
+        words=[Word(id=f"w{i}", text=t, start_time=i * 0.4, end_time=i * 0.4 + 0.3) for i, t in enumerate(tokens)],
+        start_time=0.0,
+        end_time=len(tokens) * 0.4,
+    )
+    result = r.resize_segments([seg])
+
+    # Tokens preserved whole and in order (no fragmentation, no loss, no reorder).
+    assert [w.text for s in result for w in s.words] == tokens
+    # Each multi-word line respects the display-width budget.
+    over = [s.text for s in result if display_width(s.text) > r.max_line_length and len(s.words) > 1]
+    assert not over, f"Lines exceeding display-width budget: {over}"
+
+
 # --------------------------------------------------------------------------- #
 # English / Latin regression guard: output must be unchanged by the width metric
 # --------------------------------------------------------------------------- #
 
-def test_english_output_matches_char_count_behavior():
-    """For ASCII, display_width == len, so splitting is identical to the pre-fix
-    char-count behavior. Assert every produced line is within the char budget and
-    words are preserved — the exact guarantee the old metric provided."""
+def test_english_output_is_byte_for_byte_unchanged():
+    """The fix must not alter Latin/European output at all. Lines without wide glyphs
+    never enter the CJK packing path and the natural-break text splitter is untouched,
+    so the produced line texts must match the exact pre-fix output for this fixture."""
     r = _resizer(36)
     text = "I have been searching for a reason to believe in something more than this"
     words = text.split()
@@ -157,8 +182,12 @@ def test_english_output_matches_char_count_behavior():
         ]
     )
 
+    # Exact line texts as produced on main before the fix (char-count splitter).
+    assert [s.text for s in result] == [
+        "I have been searching for",
+        "a reason to believe",
+        "in something more than this",
+    ]
     for s in result:
         assert display_width(s.text) == len(s.text)  # no wide glyphs => identical metric
-        if len(s.words) > 1:
-            assert len(s.text) <= r.max_line_length
     assert [w.text for s in result for w in s.words] == words
