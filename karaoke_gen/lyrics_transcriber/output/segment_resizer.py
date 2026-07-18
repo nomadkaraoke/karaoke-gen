@@ -1,9 +1,46 @@
 import logging
 import re
+import unicodedata
 from typing import List, Optional
 
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
+
+
+# East-Asian Wide ('W') and Fullwidth ('F') glyphs are far wider than a Latin
+# character in the karaoke render. ``max_line_length`` (40) was calibrated for Latin
+# text — measuring the real fonts confirms ~41 Latin chars fill the 4K frame width at
+# the effective render size (libass renders at ~0.70x the nominal Fontsize; see
+# lyrics_line.ASS_FONT_SCALE). So a raw character count badly under-estimates CJK
+# width: a line well under 40 *characters* is far wider than the frame, and libass
+# smart-wraps it onto a second physical row that overlaps the slot below — the lyrics
+# overlap this metric fixes.
+#
+# Calibration: a CJK glyph plus the space the renderer emits after every word token
+# (lyrics_line.py `transformed_text + " "`) measures ~2.5x the average width of a
+# Latin character (Hiragino/Noto vs Montserrat-Bold, consistent at 175px and 250px).
+# The CJK glyph advance itself is ~1em for any CJK font (full-width by design), so the
+# only per-font variance is the space glyph; WIDE_RATIO = 2.7 adds ~15% headroom over
+# the measured 2.5 to stay clear of the frame edge with the production Noto Sans CJK
+# Bold font (~14 glyphs/line, ~3.2k of 3840px). Pure-Latin text — where display width
+# equals ``len`` — is unchanged.
+WIDE_RATIO = 2.7
+
+
+def _char_width(ch: str) -> float:
+    """Width of a single character in half-width units (Wide/Fullwidth → WIDE_RATIO)."""
+    return WIDE_RATIO if unicodedata.east_asian_width(ch) in ("W", "F") else 1.0
+
+
+def display_width(text: str) -> float:
+    """Approximate rendered width of ``text`` in half-width character units.
+
+    East-Asian Wide ('W') and Fullwidth ('F') code points count as ``WIDE_RATIO``
+    units; every other character counts as 1. For pure ASCII/Latin/European text this
+    equals ``len(text)`` exactly, so text without wide glyphs is treated identically to
+    before this metric existed.
+    """
+    return sum(_char_width(ch) for ch in text)
 
 
 class SegmentResizer:
@@ -43,6 +80,15 @@ class SegmentResizer:
         self.max_line_length = max_line_length
         self.logger = logger or logging.getLogger(__name__)
 
+    def _display_width(self, text: str) -> float:
+        """Visual width of ``text`` in half-width units (see module ``display_width``)."""
+        return display_width(text)
+
+    @staticmethod
+    def _contains_wide(text: str) -> bool:
+        """True if ``text`` has any East-Asian Wide/Fullwidth (CJK) glyph."""
+        return any(unicodedata.east_asian_width(ch) in ("W", "F") for ch in text)
+
     def resize_segments(self, segments: List[LyricsSegment]) -> List[LyricsSegment]:
         """Main entry point for resizing segments.
 
@@ -76,8 +122,9 @@ class SegmentResizer:
         for segment_idx, segment in enumerate(segments):
             cleaned_segment = self._create_cleaned_segment(segment)
 
-            # Only split if the segment is longer than max_line_length
-            if len(cleaned_segment.text) <= self.max_line_length:
+            # Only split if the segment is wider than max_line_length (visual width,
+            # so full-width CJK glyphs are counted at ~2x a Latin character)
+            if self._display_width(cleaned_segment.text) <= self.max_line_length:
                 resized_segments.append(cleaned_segment)
                 continue
 
@@ -209,6 +256,28 @@ class SegmentResizer:
         segment_text = self._clean_text(segment.text)
 
         self.logger.info(f"Processing oversized segment {segment_idx}: '{segment_text}'")
+
+        # A segment with no Word tokens cannot be split by word timing: both the CJK
+        # packer and the text-position splitter map zero words and drop the line
+        # entirely. Preserve it intact — an over-wide line is far better than silently
+        # losing lyrics. (This also guards the pre-existing char-count path, where a
+        # wordless segment longer than max_line_length would have been dropped.)
+        if not segment.words:
+            self.logger.warning(f"Oversized segment {segment_idx} has no words; preserving intact: '{segment_text}'")
+            return [self._create_cleaned_segment(segment)]
+
+        # Wide-script (CJK) text has no reliable whitespace break points, and the
+        # text-position splitter re-matches Word tokens by substring — a width-based
+        # cut can land inside a multi-character token (e.g. 立ち向かう), desyncing the
+        # matcher. Pack directly by Word token instead: boundary-safe by construction
+        # and display-width aware (each token measured with the inter-token space the
+        # renderer emits). Latin/European text (no wide glyphs) keeps the original
+        # natural-break text splitter, so its output is unchanged.
+        if self._contains_wide(segment_text):
+            packed = self._pack_words_into_lines(segment.words, singer=segment.singer)
+            self.logger.debug(f"CJK segment packed into {len(packed)} lines by word token")
+            return packed
+
         split_lines = self._process_segment_text(segment_text)
         self.logger.debug(f"Split into {len(split_lines)} lines: {split_lines}")
 
@@ -286,7 +355,7 @@ class SegmentResizer:
         for word in words:
             word_text = self._clean_text(word.text)
             candidate = f"{current_text} {word_text}".strip() if current_text else word_text
-            if current_words and len(candidate) > self.max_line_length:
+            if current_words and self._display_width(candidate) > self.max_line_length:
                 segments.append(self._create_segment_from_words(current_text, current_words, singer=singer))
                 current_words = [word]
                 current_text = word_text

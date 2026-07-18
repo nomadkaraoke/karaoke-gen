@@ -1368,3 +1368,34 @@ can recover via the review UI's "Search All Providers" control with
 `force_sources=["spotify"]` (registered at
 `/api/review/{job_id}/search-lyrics`); no code change to the filter is
 warranted.
+
+## CJK Lyrics: Line-Splitting Must Use Display Width, Not Character Count (Jul 2026)
+
+**Symptom:** A Japanese karaoke video (job `4dcca2d6`) rendered with lyric
+lines overlapping and running off both screen edges.
+
+**Root cause:** `SegmentResizer` gated/split lines on raw character count
+(`len(text) <= max_line_length`, budget calibrated for Latin at 4K). East-Asian
+*Wide/Fullwidth* glyphs render ~2.5× a Latin character, and CJK has no
+inter-word spaces, so a Japanese line well under the *character* budget was ~2×
+too wide for the frame. The karaoke ASS sets **no `WrapStyle`**, so libass
+smart-wraps (style 0) a too-wide line onto a second physical row — which lands
+on the next slot's fixed `y = first_pos + i*line_height` position and overlaps it.
+
+**Fix:** Measure an **East-Asian display width** (`unicodedata.east_asian_width`
+W/F → `WIDE_RATIO=2.7` units, else 1). For pure ASCII/Latin `display_width == len`,
+so Latin/European output is byte-for-byte unchanged. Only the oversize *gate* uses
+display width; wide-script segments are then split by **word-token packing**
+(`_pack_words_into_lines`), which is boundary-safe (never cuts inside a multi-char
+CJK token like `立ち向かう`) and counts the inter-token space the renderer emits.
+
+**Gotchas for next time:**
+- libass renders at ~0.70× the nominal ASS `Fontsize` — calibrate widths against
+  that effective size (`lyrics_line.ASS_FONT_SCALE`), not the nominal 250px.
+- The renderer emits a space after **every** word token (`lyrics_line.py`
+  `transformed_text + " "`), which both inflates CJK width ~25% and is why CJK
+  text looks oddly spaced-out. Dropping inter-CJK spaces is a separate improvement.
+- A wordless oversized segment must be **preserved**, not split — the word-matching
+  splitters map zero words and would return `[]`, silently dropping lyrics.
+- The CJK font is a **system fallback** (Noto Sans CJK); the configured karaoke
+  font (Montserrat/Avenir) has no CJK glyphs. See `video_generator._find_cjk_font`.
