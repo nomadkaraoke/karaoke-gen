@@ -8,3 +8,5 @@ config:
     secure: AAABAGX6zpucCw1NvaYSCCg5YDFVuf5Thw+HL8njNfGiLoT8qpY9UhleyJy6rsnTwFo42AKUntWTK2hCAZq7VN55vBKiuHZa3NqJ37/yjpoz4EAssA==
   edge:enabled: "true"
   edge:proxyStaging: "true"
+  edge:rolloutStage: prod
+  edge:proxyProdApi: "true"
