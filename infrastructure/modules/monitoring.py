@@ -68,16 +68,30 @@ def create_alert_policies(
     notification_channels = _channel_names(channels)
     alerts = {}
 
-    # Alert: High Error Rate (>10% of requests returning errors)
+    # Alert: Sustained server errors (5xx).
+    #
+    # NOTE on semantics: with ALIGN_RATE + REDUCE_SUM the threshold is a request
+    # *rate* (requests/second), NOT a true percentage — the old "Error rate >
+    # 10%" name was a misnomer. It also matched ALL non-2xx codes, so a burst of
+    # 404s from an internet vuln-scanner (2026-07-20: 0.167 req/s of 404s from a
+    # single IP hammering /.env, /.ssh/... ) tripped it despite the service being
+    # perfectly healthy.
+    #
+    # Fix: scope to `response_code_class="5xx"` so only genuine *server* errors
+    # count — client/bot 404s never page us. WAF/rate-limiting at the Cloudflare
+    # edge (see modules/edge_security.py) is the primary defense that keeps that
+    # scan traffic off the metric entirely. Threshold = >0.1 5xx req/s sustained
+    # over 5 min. With COMPARISON_GT the boundary is strict: 6 errors/min
+    # (=0.1/s) does NOT fire; >=7/min sustained for 5 min does → real regression.
     alerts["error_rate"] = gcp.monitoring.AlertPolicy(
         "high-error-rate-alert",
-        display_name="Karaoke Backend - High Error Rate",
+        display_name="Karaoke Backend - High Server-Error Rate (5xx)",
         combiner="OR",
         conditions=[
             gcp.monitoring.AlertPolicyConditionArgs(
-                display_name="Error rate > 10%",
+                display_name="Sustained 5xx server errors > 0.1/s (5 min)",
                 condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
-                    filter='resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND metric.type="run.googleapis.com/request_count" AND metric.labels.response_code_class!="2xx"',
+                    filter='resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND metric.type="run.googleapis.com/request_count" AND metric.labels.response_code_class="5xx"',
                     comparison="COMPARISON_GT",
                     threshold_value=0.1,
                     duration="300s",
@@ -98,7 +112,7 @@ def create_alert_policies(
             auto_close="3600s",
         ),
         documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
-            content="High error rate detected on karaoke-backend. Check Cloud Run logs for details.\n\nDashboard: https://console.cloud.google.com/run/detail/us-central1/karaoke-backend/logs?project=nomadkaraoke",
+            content="Sustained 5xx server errors on karaoke-backend (not client/bot 404s). Check Cloud Run logs for crashes, timeouts, or dependency failures.\n\nDashboard: https://console.cloud.google.com/run/detail/us-central1/karaoke-backend/logs?project=nomadkaraoke",
             mime_type="text/markdown",
         ),
         enabled=True,

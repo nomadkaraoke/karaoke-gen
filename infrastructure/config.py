@@ -118,6 +118,142 @@ class SecretNames:
 
     GITHUB_RUNNER_PAT = "github-runner-pat"
     GITHUB_WEBHOOK_SECRET = "github-webhook-secret"
+    # Shared secret Cloudflare injects as a header on proxied requests; the
+    # backend edge-auth middleware rejects requests to public routes that lack
+    # it (blocks direct-to-origin bypass of the Cloudflare edge). See
+    # modules/edge_security.py and backend/middleware/edge_auth.py.
+    EDGE_ORIGIN_SECRET = "edge-origin-secret"
+
+
+class CloudflareConfig:
+    """
+    Configuration for the Cloudflare edge (WAF / rate limiting / origin lock).
+
+    Non-secret values (zone/account ids, hostnames) are read from Pulumi config
+    so they are version-controlled per stack without hardcoding account details.
+    The API token is a Pulumi *secret* config under the provider key
+    ``cloudflare:apiToken`` (set with ``pulumi config set --secret``).
+
+    Set the ids once known:
+        pulumi config set edge:cloudflareZoneId    <zone-id-for-nomadkaraoke.com>
+        pulumi config set edge:cloudflareAccountId <account-id>
+        pulumi config set --secret cloudflare:apiToken <token>   # Zone WAF:Edit + DNS:Edit
+    """
+
+    # Production backend host (already a Cloud Run domain mapping today).
+    PROD_API_HOST = "api.nomadkaraoke.com"
+    # Throwaway staging host used to validate the full edge stack against the
+    # SAME Cloud Run service before touching the prod `api` record. Torn down
+    # after cutover. See docs/archive/2026-07-20-edge-security-hardening-plan.md.
+    STAGING_API_HOST = "api-edge-test.nomadkaraoke.com"
+    # Cloud Run domain mappings both target this service origin.
+    DOMAIN_MAPPING_ROUTE = "karaoke-backend"
+    ORIGIN_CNAME_TARGET = "ghs.googlehosted.com"
+
+    # Header name Cloudflare injects and the backend checks (value = secret).
+    ORIGIN_AUTH_HEADER = "X-Edge-Auth"
+
+    # Rate limit: block a client IP that exceeds this many requests/period.
+    # Free plan constraints (enforced by the Cloudflare API): period must be 10s,
+    # and mitigation_timeout must equal the period (10s). A single flood control
+    # rule — the WAF path block (below) is the primary defense against the
+    # scanner class; this catches volumetric abuse. ~50 req / 10s = 5 req/s per
+    # IP, comfortably above legit page-load bursts to a control-plane API.
+    RATE_LIMIT_REQUESTS = 50
+    RATE_LIMIT_PERIOD_SECONDS = 10
+    RATE_LIMIT_MITIGATION_SECONDS = 10
+
+    # Paths that must never be rate-limited / header-gated at the edge:
+    # scheduler cron hits (OIDC-authed) to /api/internal/*.
+    INTERNAL_PATH_PREFIX = "/api/internal/"
+
+    @staticmethod
+    def managed_waf_enabled():
+        """
+        Whether to deploy the Cloudflare Managed (OWASP-style) Ruleset.
+
+        The nomadkaraoke.com zone is on the **Free** plan, where managed
+        rulesets are NOT available (Pro+ only) — deploying one errors. So this
+        defaults to False. The custom exploit-path rules + rate limiting +
+        origin lock + bot mitigation (all Free-tier) already cover the
+        path-scanning threat this was built for. If the zone is upgraded to
+        Pro, set ``edge:managedWafEnabled true`` to turn on the OWASP ruleset.
+        """
+        return pulumi.Config("edge").get_bool("managedWafEnabled") or False
+
+    # Cloudflare zone id for nomadkaraoke.com (not sensitive). Overridable via
+    # Pulumi config `edge:cloudflareZoneId`; defaults to the known zone so the
+    # edge module activates as soon as a WAF/DNS-scoped `cloudflare:apiToken`
+    # is set. NOTE: the zone is on the **Free** plan (managed WAF ruleset is
+    # Pro+; see managed_waf_enabled).
+    DEFAULT_ZONE_ID = "807f07f458f9cd38251f3b7948d55172"
+
+    @staticmethod
+    def enabled():
+        """
+        Master activation switch for the Cloudflare edge module
+        (``edge:enabled`` bool, default False).
+
+        MUST stay False until a WAF/DNS-scoped ``cloudflare:apiToken`` is set —
+        otherwise `pulumi up` would try to create Cloudflare resources with an
+        unauthorized token and fail, blocking all infra deploys. Flip to True
+        only after the token + config are in place (see the cutover runbook).
+        """
+        return pulumi.Config("edge").get_bool("enabled") or False
+
+    @staticmethod
+    def zone_id():
+        """Cloudflare zone id for nomadkaraoke.com."""
+        return pulumi.Config("edge").get("cloudflareZoneId") or CloudflareConfig.DEFAULT_ZONE_ID
+
+    @staticmethod
+    def account_id():
+        """Cloudflare account id (from Pulumi config)."""
+        return pulumi.Config("edge").get("cloudflareAccountId")
+
+    @staticmethod
+    def rollout_stage():
+        """
+        Which hosts the edge WAF/rate-limit/header rules apply to (from Pulumi
+        config ``edge:rolloutStage``):
+          - "staging" : rules scoped to the staging host only.
+          - "prod"    : rules apply to the prod host too (staging kept for soak).
+        Defaults to "staging" so a first apply is non-disruptive to prod.
+
+        NOTE: this does NOT flip the prod DNS proxy — that's a SEPARATE switch
+        (``proxy_prod_api``), so production edge rules can be provisioned and
+        verified while the API is still DNS-only, then the proxy flipped in an
+        isolated second apply (and rolled back without tearing down the rules).
+        """
+        stage = pulumi.Config("edge").get("rolloutStage") or "staging"
+        return "prod" if stage in ("prod", "cutover") else "staging"
+
+    @staticmethod
+    def proxy_staging_api():
+        """
+        Whether the staging ``api-edge-test`` record is proxied (``edge:proxyStaging``
+        bool, default False).
+
+        THE SSL DRAGON: a Cloud Run domain mapping provisions its Google-managed
+        cert via ACME, which needs the hostname to resolve DIRECTLY to
+        ``ghs.googlehosted.com``. While the record is proxied (orange-cloud) DNS
+        resolves to Cloudflare, so ACME can't validate and the cert never issues.
+        Sequence: create grey (proxied=False) → wait for cert → set this True.
+        """
+        return pulumi.Config("edge").get_bool("proxyStaging") or False
+
+    @staticmethod
+    def proxy_prod_api():
+        """
+        Whether the prod ``api`` DNS record is proxied through Cloudflare
+        (``edge:proxyProdApi`` bool, default False).
+
+        This is the ONE prod-affecting, instantly-reversible flip. Sequence:
+          1. rolloutStage=prod, apply  → prod edge rules live; api still DNS-only.
+          2. proxyProdApi=true, apply   → api proxied (only this record changes).
+        Rollback = proxyProdApi=false, apply (edge rules stay provisioned).
+        """
+        return pulumi.Config("edge").get_bool("proxyProdApi") or False
 
 # GitHub repository for runner registration
 GITHUB_REPO_OWNER = "nomadkaraoke"
