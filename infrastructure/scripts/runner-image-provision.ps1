@@ -99,7 +99,13 @@ try {
         # bucket. Enumerate GRID*/ dirs newest-first and take the first one
         # containing a Windows Server 2022 installer.
         $api = "https://storage.googleapis.com/storage/v1/b/nvidia-drivers-us-public/o"
-        $dirs = (& curl.exe -fsSL "$api`?prefix=GRID/&delimiter=/" | ConvertFrom-Json).prefixes
+        # Object DOWNLOADS are anonymous, but LISTING requires any
+        # authenticated Google identity (anonymous list = 401). Use the VM
+        # service account's token from the metadata server.
+        $mdToken = (Invoke-RestMethod -Headers @{ "Metadata-Flavor" = "Google" } `
+            -Uri "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token").access_token
+        $auth = "Authorization: Bearer $mdToken"
+        $dirs = (& curl.exe -fsSL -H $auth "$api`?prefix=GRID/&delimiter=/" | ConvertFrom-Json).prefixes
         if (-not $dirs) { throw "could not list GRID driver directories" }
         # Sort by the leading numeric version (e.g. "GRID/GRID18.1/" -> 18.1);
         # tolerate any dir naming by falling back to 0 for non-numeric.
@@ -109,7 +115,7 @@ try {
         } -Descending
         $installerUrl = $null
         foreach ($d in $dirs) {
-            $objs = (& curl.exe -fsSL "$api`?prefix=$d" | ConvertFrom-Json).items
+            $objs = (& curl.exe -fsSL -H $auth "$api`?prefix=$d" | ConvertFrom-Json).items
             $match = $objs | Where-Object { $_.name -like "*server2022*.exe" } | Select-Object -First 1
             if ($match) {
                 $installerUrl = "https://storage.googleapis.com/nvidia-drivers-us-public/$($match.name)"
