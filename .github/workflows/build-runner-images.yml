@@ -8,7 +8,7 @@ name: Build GHA Runner Images
 #   1. Create a temporary build VM from the variant's base image with the
 #      variant's provisioning script as its startup script:
 #        - Linux variants:  debian-12 + runner-image-provision.sh (startup-script)
-#        - gpu-windows:     windows-server-2022-dc + runner-image-provision.ps1
+#        - gpu-windows:     windows-2022 + runner-image-provision.ps1
 #                           (windows-startup-script-ps1)
 #   2. Poll the serial console for the READY/FAILED marker (survives reboots).
 #   3. Stop the VM, snapshot its boot disk to a new image in the `gha-runner-<variant>`
@@ -117,7 +117,7 @@ jobs:
               machine="n1-standard-4"
               disk_size="100"
               accel="--maintenance-policy=TERMINATE --accelerator=type=nvidia-tesla-t4,count=1"
-              image_flag="--image-family=windows-server-2022-dc --image-project=windows-cloud"
+              image_flag="--image-family=windows-2022 --image-project=windows-cloud"
               metadata_file="windows-startup-script-ps1=infrastructure/scripts/runner-image-provision.ps1"
               ;;
             *)

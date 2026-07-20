@@ -45,10 +45,14 @@ function Phase-Done([string]$name) { Test-Path "$MARKER_DIR\$name" }
 function Mark-Phase([string]$name) { New-Item -ItemType File -Force -Path "$MARKER_DIR\$name" | Out-Null }
 
 function Download([string]$url, [string]$dest) {
-    if ((Test-Path $dest) -and ((Get-Item $dest).Length -gt 0)) { return }
+    # Completed downloads are renamed from .part, so an existing $dest is
+    # always complete (a reboot mid-download leaves only the .part file).
+    if (Test-Path $dest) { return }
     Write-Output "  -> $(Split-Path -Leaf $dest)"
-    & curl.exe -fSL --retry 3 --connect-timeout 30 -o $dest $url
+    $tmp = "$dest.part"
+    & curl.exe -fSL --retry 3 --connect-timeout 30 -o $tmp $url
     if ($LASTEXITCODE -ne 0) { throw "download failed: $url" }
+    Move-Item -Force $tmp $dest
 }
 
 function Add-MachinePath([string]$dir) {
@@ -122,6 +126,11 @@ try {
             throw "GRID driver installer exited with $($p.ExitCode)"
         }
         Mark-Phase "grid-driver"
+        if ($p.ExitCode -eq 1) {
+            Write-Output "GRID installer requests a reboot; rebooting before WDDM check"
+            Restart-Computer -Force
+            exit 0   # provisioning resumes on next boot
+        }
     }
 
     # ================= Verify WDDM mode (DirectML requirement) ============
@@ -135,9 +144,12 @@ try {
         $model = & $smi --query-gpu=driver_model.current --format=csv,noheader
         Write-Output "Driver model: $model"
         if ($model -notmatch "WDDM") {
-            Write-Output "GPU is in TCC mode; switching to WDDM and rebooting"
+            $attemptsFile = "$MARKER_DIR\wddm-attempts"
+            $attempts = if (Test-Path $attemptsFile) { [int](Get-Content $attemptsFile) } else { 0 }
+            if ($attempts -ge 3) { throw "WDDM switch did not take effect after $attempts reboot attempts" }
+            Set-Content -Path $attemptsFile -Value ($attempts + 1)
+            Write-Output "GPU is in TCC mode; switching to WDDM and rebooting (attempt $($attempts + 1)/3)"
             & $smi -fdm 0
-            Mark-Phase "wddm-pending-reboot"
             Restart-Computer -Force
             exit 0   # provisioning resumes on next boot
         }
