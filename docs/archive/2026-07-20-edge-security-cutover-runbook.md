@@ -73,9 +73,17 @@ CI env) is already in this branch.
    pulumi preview   # expect: NEW staging resources only; prod `api` record NOT in the plan
    pulumi up        # (use --target on the edge URNs if the stack has unrelated drift)
    ```
+   > The staging `api-edge-test` record is created **grey-cloud (proxied=False)**
+   > on purpose — see step 6 (the SSL dragon). It gets flipped to orange after the
+   > cert issues.
    > Zone `security_level` (already "medium") is set via `cloudflare.ZoneSetting`
    > — it adopts the current value (no-op). If preview errors that it "exists",
    > import it: `pulumi import cloudflare:index/zoneSetting:ZoneSetting zone-security-level 807f07f458f9cd38251f3b7948d55172/security_level`.
+   >
+   > **Free-plan gotchas already handled in code (learned 2026-07-20 apply):**
+   > WAF uses the `contains` operator not regex `matches` (regex = Business+);
+   > rate-limit `period` must be 10s and `characteristics` MUST include
+   > `cf.colo.id`. Managed OWASP ruleset stays off (Pro+).
 
 ---
 
@@ -90,14 +98,22 @@ CI env) is already in this branch.
 
 ## Phase B — Validate everything on staging 🟢 ✅
 
-6. Wait for the staging Cloud Run managed cert to provision (proves ACME works
-   under our setup):
+6. **The SSL dragon (grey → provision → orange).** With the record grey-cloud,
+   wait for the Cloud Run managed cert to provision (DNS must resolve to `ghs`
+   for ACME — a proxied record blocks issuance):
    ```bash
    gcloud beta run domain-mappings describe --domain api-edge-test.nomadkaraoke.com \
      --region us-central1 --project nomadkaraoke \
      --format='value(status.conditions[].type, status.conditions[].status)'
-   # wait until CertificateProvisioned / Ready = True
+   # wait until Ready=True / CertificateProvisioned=True (~15 min)
    ```
+   Then flip the staging record to **orange-cloud** and choose SSL mode:
+   ```bash
+   pulumi config set edge:proxyStaging true
+   pulumi up --target 'urn:...:DnsRecord::api-edge-test-dns'
+   ```
+   Zone SSL/TLS mode should be **Full (strict)**; if the proxied host then throws
+   525/handshake, step down the ladder (step 8).
 7. Run the verification suite against **staging** (`HOST=api-edge-test.nomadkaraoke.com`):
    ```bash
    HOST=api-edge-test.nomadkaraoke.com
