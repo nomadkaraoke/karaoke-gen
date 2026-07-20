@@ -75,6 +75,14 @@ New-Item -ItemType Directory -Force -Path $MARKER_DIR, $WORK | Out-Null
 try {
     Ck "starting variant=$VARIANT"
 
+    # ================= Long paths (pip/onnx exceed 260-char MAX_PATH) =====
+    if (-not (Phase-Done "longpaths")) {
+        Ck "phase: enable long paths"
+        Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' `
+            -Name LongPathsEnabled -Value 1 -Type DWord
+        Mark-Phase "longpaths"
+    }
+
     # ================= Windows Update off (bake determinism) ==============
     if (-not (Phase-Done "wu-off")) {
         Ck "phase: disable windows update"
