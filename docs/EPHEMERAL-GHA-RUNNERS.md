@@ -216,7 +216,7 @@ re-deploy).
 
 ## Image families
 
-Three GCE image families are maintained by
+Four GCE image families are maintained by
 [`.github/workflows/build-runner-images.yml`](../.github/workflows/build-runner-images.yml):
 
 | Family | Base | Bakes | Built on |
@@ -224,6 +224,19 @@ Three GCE image families are maintained by
 | `gha-runner-general` | Debian 12 | Docker, gcloud, runner v2.332, Python 3.13 (pyenv), Node 20, Java 21, FFmpeg, Poetry | n2-standard-8, 50GB pd-balanced |
 | `gha-runner-build` | Debian 12 | Same as general + pre-pulled `karaoke-backend-base`/`:latest` + `fake-gcs-server` | n2-standard-8, 50GB pd-balanced |
 | `gha-runner-gpu` | Debian 12 | NVIDIA driver + CUDA 12.4, Python 3.13 (compiled), FFmpeg+libsamplerate, audio-separator models (~14GB at `/opt/audio-separator-models`) | n1-standard-4 + T4, 200GB pd-balanced |
+| `gha-runner-gpu-windows` | Windows Server 2022 | NVIDIA **GRID** driver (WDDM — required for DirectML; datacenter driver = TCC = no DirectX), Python 3.12, Git, FFmpeg, Poetry, runner (win-x64), DirectML test models at `C:\audio-separator-models` | n1-standard-4 + T4, 100GB pd-balanced |
+
+The Windows variant is provisioned by
+[`runner-image-provision.ps1`](../infrastructure/scripts/runner-image-provision.ps1)
+delivered via the `windows-startup-script-ps1` metadata key (Windows ignores
+`startup-script`). It exists for python-audio-separator's `windows-directml`
+integration tests (RoFormer-on-Windows, issue #292 there).
+
+**Label routing**: runners advertise `self-hosted, <os>, x64, gcp[, gpu]`.
+The dispatcher resolves families with precedence windows → gpu → build →
+general, so jobs MUST include an OS label in `runs-on`
+(`[self-hosted, linux, gpu]` / `[self-hosted, windows, gpu]`) — GitHub
+schedules onto any runner whose labels are a superset of the job's.
 
 Each image is tagged `gha-runner-<variant>-<YYYYMMDD-HHMMSS>` and joined to the
 matching image family. The dispatcher always selects from the family, so the
@@ -235,7 +248,7 @@ Build cadence: monthly cron (`0 2 1 * *` UTC) + `workflow_dispatch`. Manual:
 ```bash
 gh workflow run build-runner-images.yml -f variants=general,build
 gh workflow run build-runner-images.yml -f variants=gpu
-gh workflow run build-runner-images.yml          # all three
+gh workflow run build-runner-images.yml          # all variants
 ```
 
 Pulumi does **not** manage images — they're produced by the GHA workflow. The

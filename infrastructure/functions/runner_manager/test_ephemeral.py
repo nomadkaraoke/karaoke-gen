@@ -94,6 +94,23 @@ class TestResolveFamily:
         fam = ep.resolve_family(["Self-Hosted", "Linux", "GPU"])
         assert fam.name == "gpu"
 
+    def test_windows_gpu_routes_to_windows_family(self):
+        ep = _fresh_module()
+        fam = ep.resolve_family(["self-hosted", "windows", "gpu"])
+        assert fam.name == "gpu-windows"
+
+    def test_windows_without_gpu_still_routes_to_windows_family(self):
+        # Only one Windows family exists; better to run the job on it than
+        # let a [self-hosted, windows] job queue forever.
+        ep = _fresh_module()
+        fam = ep.resolve_family(["self-hosted", "windows"])
+        assert fam.name == "gpu-windows"
+
+    def test_linux_gpu_does_not_route_to_windows(self):
+        ep = _fresh_module()
+        fam = ep.resolve_family(["self-hosted", "linux", "gpu"])
+        assert fam.name == "gpu"
+
 
 class TestRunnerLabelsFor:
     def test_general_labels_include_existing_set(self):
@@ -115,6 +132,14 @@ class TestRunnerLabelsFor:
     def test_gpu_labels_include_gpu(self):
         ep = _fresh_module()
         labels = ep.runner_labels_for(ep.FAMILIES["gpu"])
+        assert "gpu" in labels
+        assert "linux" in labels
+
+    def test_windows_labels_advertise_windows_not_linux(self):
+        ep = _fresh_module()
+        labels = ep.runner_labels_for(ep.FAMILIES["gpu-windows"])
+        assert "windows" in labels
+        assert "linux" not in labels
         assert "gpu" in labels
 
 
@@ -238,6 +263,10 @@ class TestSchedulingPerFamily:
 
     def test_gpu_keeps_terminate(self):
         kwargs = self._build_for("gpu")
+        assert kwargs.get("on_host_maintenance") == "TERMINATE"
+
+    def test_gpu_windows_keeps_terminate(self):
+        kwargs = self._build_for("gpu-windows")
         assert kwargs.get("on_host_maintenance") == "TERMINATE"
 
 
@@ -435,6 +464,52 @@ class TestStartupScript:
         assert "config.sh" not in ep.STARTUP_SCRIPT
         # Should pull the JIT config from instance metadata
         assert "metadata.google.internal" in ep.STARTUP_SCRIPT
+
+    def test_windows_startup_script_uses_jitconfig_and_shuts_down(self):
+        ep = _fresh_module()
+        ps1 = ep.WINDOWS_STARTUP_SCRIPT_PS1
+        assert "--jitconfig" in ps1
+        assert "run.cmd" in ps1
+        assert "shutdown /s" in ps1
+        assert "metadata.google.internal" in ps1
+        # finally-block shutdown must survive a runner crash
+        assert "finally" in ps1
+
+
+class TestStartupMetadataKeyPerFamily:
+    """Windows VMs only execute `windows-startup-script-ps1`; Linux VMs only
+    execute `startup-script`. Passing the wrong key silently does nothing and
+    the VM never registers."""
+
+    def _metadata_keys_for(self, family_name):
+        ep = _fresh_module()
+        _compute_stub.Items.reset_mock()
+        ep._build_instance(
+            name=f"gha-{family_name}-test",
+            family=ep.FAMILIES[family_name],
+            zone="us-central1-a",
+            jit_config="JIT",
+            image_self_link="projects/p/global/images/family/x",
+            use_external_ip=False,
+        )
+        return {c.kwargs.get("key"): c.kwargs.get("value") for c in _compute_stub.Items.call_args_list}
+
+    def test_linux_families_use_startup_script(self):
+        for fam in ("general", "build", "gpu"):
+            keys = self._metadata_keys_for(fam)
+            assert "startup-script" in keys, fam
+            assert "windows-startup-script-ps1" not in keys, fam
+
+    def test_windows_family_uses_ps1_key(self):
+        keys = self._metadata_keys_for("gpu-windows")
+        assert "windows-startup-script-ps1" in keys
+        assert "startup-script" not in keys
+        assert "run.cmd" in keys["windows-startup-script-ps1"]
+
+    def test_jit_config_present_for_all_families(self):
+        for fam in ("general", "build", "gpu", "gpu-windows"):
+            keys = self._metadata_keys_for(fam)
+            assert keys.get("jit-config") == "JIT", fam
 
 
 class TestSchedulerAuthGate:

@@ -53,6 +53,10 @@ class FamilySpec:
     extra_runner_labels: tuple[str, ...]
     has_gpu: bool
     needs_external_ip_in_fallback_zone: bool
+    # Advertised OS label; also selects the startup-script metadata key —
+    # Windows VMs only execute scripts under `windows-startup-script-ps1`
+    # and silently ignore `startup-script`.
+    os_label: str = "linux"
 
 
 FAMILIES: dict[str, FamilySpec] = {
@@ -87,6 +91,18 @@ FAMILIES: dict[str, FamilySpec] = {
         # rare fallback case rather than provisioning region-wide NAT.
         needs_external_ip_in_fallback_zone=True,
     ),
+    "gpu-windows": FamilySpec(
+        name="gpu-windows",
+        machine_type="n1-standard-4",
+        # Windows Server base image is 50GB; the bake uses a 100GB disk
+        # (models + drivers), so the disk we create here must be >= 100GB.
+        disk_size_gb=100,
+        image_family="gha-runner-gpu-windows",
+        extra_runner_labels=("x64", "gcp", "gpu"),
+        has_gpu=True,
+        needs_external_ip_in_fallback_zone=True,
+        os_label="windows",
+    ),
 }
 
 
@@ -107,6 +123,24 @@ fi
 cd /home/runner/actions-runner
 # --jitconfig implies --ephemeral: runs one job, deregisters, exits.
 sudo -u runner ./run.sh --jitconfig "$JIT"
+"""
+
+
+# Windows equivalent, delivered via the `windows-startup-script-ps1` metadata
+# key. Runs as SYSTEM on every boot — fine for a single-use VM. The finally
+# block guarantees shutdown even if the runner crashes, so the orphan-cleanup
+# pass can delete the stopped VM.
+WINDOWS_STARTUP_SCRIPT_PS1 = r"""$ErrorActionPreference = "Stop"
+try {
+    $jit = Invoke-RestMethod -Headers @{ "Metadata-Flavor" = "Google" } `
+        -Uri "http://metadata.google.internal/computeMetadata/v1/instance/attributes/jit-config"
+    if (-not $jit) { throw "jit-config metadata missing" }
+    Set-Location "C:\actions-runner"
+    # --jitconfig implies --ephemeral: runs one job, deregisters, exits.
+    & .\run.cmd --jitconfig "$jit"
+} finally {
+    shutdown /s /t 30
+}
 """
 
 
@@ -132,11 +166,16 @@ def get_compute_client() -> compute_v1.InstancesClient:
 def resolve_family(labels: Iterable[str]) -> FamilySpec:
     """Pick the right image family for a queued job's labels.
 
-    Precedence: gpu → build → general. A job that asks for both ``gpu`` and
-    ``docker-build`` shouldn't exist today; if it ever does we'd want a separate
-    image, not a coin-flip.
+    Precedence: windows → gpu → build → general. A job that asks for both
+    ``gpu`` and ``docker-build`` shouldn't exist today; if it ever does we'd
+    want a separate image, not a coin-flip.
+
+    Any ``windows`` job routes to the (only) Windows family — gpu-windows —
+    even without a ``gpu`` label, so it runs rather than queueing forever.
     """
     label_set = {label.lower() for label in labels}
+    if "windows" in label_set:
+        return FAMILIES["gpu-windows"]
     if "gpu" in label_set:
         return FAMILIES["gpu"]
     if "docker-build" in label_set:
@@ -146,7 +185,7 @@ def resolve_family(labels: Iterable[str]) -> FamilySpec:
 
 def runner_labels_for(family: FamilySpec) -> list[str]:
     """Compose the labels advertised to GitHub by this runner."""
-    return ["self-hosted", "linux", *family.extra_runner_labels]
+    return ["self-hosted", family.os_label, *family.extra_runner_labels]
 
 
 # ---------------------------------------------------------------------------
@@ -277,10 +316,17 @@ def _build_instance(
             compute_v1.AccessConfig(name="External NAT", type_="ONE_TO_ONE_NAT"),
         ]
 
+    if family.os_label == "windows":
+        startup_item = compute_v1.Items(
+            key="windows-startup-script-ps1", value=WINDOWS_STARTUP_SCRIPT_PS1
+        )
+    else:
+        startup_item = compute_v1.Items(key="startup-script", value=STARTUP_SCRIPT)
+
     metadata = compute_v1.Metadata(
         items=[
             compute_v1.Items(key="jit-config", value=jit_config),
-            compute_v1.Items(key="startup-script", value=STARTUP_SCRIPT),
+            startup_item,
             compute_v1.Items(key="enable-oslogin", value="TRUE"),
         ]
     )
