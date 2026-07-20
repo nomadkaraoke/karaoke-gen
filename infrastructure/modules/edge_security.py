@@ -146,6 +146,9 @@ def create_dns_records(zone_id: str) -> dict[str, cloudflare.DnsRecord]:
     records: dict[str, cloudflare.DnsRecord] = {}
     proxy_prod = CloudflareConfig.proxy_prod_api()
 
+    # Created grey-cloud (proxied=False) so the Cloud Run managed cert can
+    # provision via ACME; flip to proxied=True (edge:proxyStaging) once the cert
+    # is issued. See CloudflareConfig.proxy_staging_api (the SSL "dragon").
     records["staging"] = cloudflare.DnsRecord(
         "api-edge-test-dns",
         zone_id=zone_id,
@@ -153,7 +156,7 @@ def create_dns_records(zone_id: str) -> dict[str, cloudflare.DnsRecord]:
         type="CNAME",
         content=CloudflareConfig.ORIGIN_CNAME_TARGET,
         ttl=1,
-        proxied=True,
+        proxied=CloudflareConfig.proxy_staging_api(),
         comment="Edge-security staging host → karaoke-backend (throwaway; see edge_security.py)",
     )
 

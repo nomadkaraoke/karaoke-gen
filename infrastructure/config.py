@@ -229,6 +229,20 @@ class CloudflareConfig:
         return "prod" if stage in ("prod", "cutover") else "staging"
 
     @staticmethod
+    def proxy_staging_api():
+        """
+        Whether the staging ``api-edge-test`` record is proxied (``edge:proxyStaging``
+        bool, default False).
+
+        THE SSL DRAGON: a Cloud Run domain mapping provisions its Google-managed
+        cert via ACME, which needs the hostname to resolve DIRECTLY to
+        ``ghs.googlehosted.com``. While the record is proxied (orange-cloud) DNS
+        resolves to Cloudflare, so ACME can't validate and the cert never issues.
+        Sequence: create grey (proxied=False) → wait for cert → set this True.
+        """
+        return pulumi.Config("edge").get_bool("proxyStaging") or False
+
+    @staticmethod
     def proxy_prod_api():
         """
         Whether the prod ``api`` DNS record is proxied through Cloudflare
