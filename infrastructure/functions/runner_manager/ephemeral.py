@@ -516,8 +516,12 @@ def _log_serial_tail(zone: str, name: str) -> None:
     requiring an Ops Agent on the image.
     """
     try:
+        # No port kwarg: the deployed google-cloud-compute client rejects it
+        # (TypeError: unexpected keyword argument 'port', seen 2026-07-20 in
+        # prod logs — it silently disabled ALL serial capture). Port 1 is the
+        # API default anyway.
         out = get_compute_client().get_serial_port_output(
-            project=PROJECT_ID, zone=zone, instance=name, port=1
+            project=PROJECT_ID, zone=zone, instance=name
         )
         contents = out.contents or ""
         tail = contents[-_SERIAL_TAIL_BYTES:]
