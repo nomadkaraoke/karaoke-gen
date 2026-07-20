@@ -62,34 +62,20 @@ CI env) is already in this branch.
    > ⚠️ The CI deploy references `edge-origin-secret:latest` — a backend deploy
    > will fail until this version exists. Add it **before** this branch merges.
 
-4a. **Import the existing `api` DNS record** — it ALREADY exists in Cloudflare
-   (id `6c31cba0080ff334a85cfff6c2927219`), so Pulumi must adopt it instead of
-   creating a duplicate. Import format is `<zone-id>/<record-id>`:
+4. **Activate + apply the edge module (staging scope)** — creates the staging
+   Cloud Run mapping + staging DNS + WAF/rate-limit/header-transform/zone-settings,
+   all scoped to `api-edge-test.nomadkaraoke.com` only. The live prod `api` record
+   is NOT managed at this stage (the module only manages it once rolloutStage=prod),
+   so there is nothing to import yet and zero risk to prod DNS:
    ```bash
-   # edge:enabled must be true so the resource exists in the program (next step
-   # sets it) — run the import AFTER `pulumi config set edge:enabled true`, or
-   # temporarily enable, import, then continue.
-   pulumi config set edge:enabled true
-   pulumi import cloudflare:index/dnsRecord:DnsRecord api-dns \
-     807f07f458f9cd38251f3b7948d55172/6c31cba0080ff334a85cfff6c2927219
+   pulumi config set --secret cloudflare:apiToken "$CLOUDFLARE_API_TOKEN"
+   pulumi config set edge:enabled true          # rolloutStage defaults to "staging"
+   pulumi preview   # expect: NEW staging resources only; prod `api` record NOT in the plan
+   pulumi up        # (use --target on the edge URNs if the stack has unrelated drift)
    ```
-   > The Pulumi resource name is `api-dns` (the `cloudflare.DnsRecord` in
-   > `edge_security.create_dns_records`). If your program nests it, use the fully
-   > qualified URN Pulumi prints. After import, `pulumi preview` should show the
-   > record with **no changes** (proxied=False, ttl=1, content=ghs.googlehosted.com).
-   > Zone `security_level` (already "medium") is set via `cloudflare.ZoneSetting`;
-   > if preview wants to "create" it and errors that it exists, import similarly.
-
-4b. **Activate + apply the edge module** (creates staging mapping + DNS + WAF +
-   rate limit + header transform + zone settings, all scoped to the staging host
-   only — prod `api` still DNS-only because `edge:rolloutStage=staging`):
-   ```bash
-   pulumi preview      # expect additions for the STAGING host; prod api record proxied=False, ttl=1 (UNCHANGED)
-   pulumi up
-   ```
-   ✅ `pulumi preview` shows the imported prod `api` DnsRecord as **proxied=False**
-   with no diff, and no replacement of existing resources. If the token is
-   under-scoped, this fails cleanly (nothing prod-affecting changed) — fix and retry.
+   > Zone `security_level` (already "medium") is set via `cloudflare.ZoneSetting`
+   > — it adopts the current value (no-op). If preview errors that it "exists",
+   > import it: `pulumi import cloudflare:index/zoneSetting:ZoneSetting zone-security-level 807f07f458f9cd38251f3b7948d55172/security_level`.
 
 ---
 
@@ -166,16 +152,21 @@ edge rules and the DNS proxy flip are now **separate** switches
 the rules while the API is still DNS-only, then flip the proxy on its own.
 
 12. **Provision prod edge rules (still DNS-only)** 🟢 — extends the WAF /
-    rate-limit / header-transform rules to the prod host without changing where
-    `api` points:
+    rate-limit / header-transform rules to the prod host AND brings the prod
+    `api` record under management (still proxied=False). Because the record
+    already exists in Cloudflare, IMPORT it first so Pulumi adopts it instead of
+    creating a duplicate:
     ```bash
     cd infrastructure
     pulumi config set edge:rolloutStage prod
-    pulumi preview   # expect: edge rules add api.nomadkaraoke.com; api DnsRecord UNCHANGED (proxied=False)
+    # Import the existing prod `api` CNAME (only now does the module manage it):
+    pulumi import cloudflare:index/dnsRecord:DnsRecord api-dns \
+      807f07f458f9cd38251f3b7948d55172/6c31cba0080ff334a85cfff6c2927219
+    pulumi preview   # expect: edge rules add api.nomadkaraoke.com; api DnsRecord = NO diff (proxied=False, ttl=1)
     pulumi up
     ```
     ✅ `api` still resolves direct to `ghs` (no cf-ray); prod WAF/header rules now
-    exist. Nothing user-facing changed.
+    exist; the `api` record is managed with proxied=False. Nothing user-facing changed.
 
 13. Set backend `EDGE_AUTH_MODE=warn` in prod and redeploy (observe, don't
     block). This is inert until step 14 makes CF inject the header, but staging

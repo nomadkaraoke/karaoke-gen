@@ -133,6 +133,12 @@ def create_dns_records(zone_id: str) -> dict[str, cloudflare.DnsRecord]:
         comment="Edge-security staging host → karaoke-backend (throwaway; see edge_security.py)",
     )
 
+    # The prod `api` record is only brought under Pulumi management once we're
+    # provisioning for prod (rollout_stage="prod") — during staging validation
+    # we leave the live record completely untouched (no import needed yet).
+    if CloudflareConfig.rollout_stage() != "prod":
+        return records
+
     # The prod `api` record ALREADY EXISTS in Cloudflare (id
     # 6c31cba0080ff334a85cfff6c2927219, ttl=1/auto, proxied=False). Pulumi must
     # IMPORT it into this resource before the first apply, otherwise it tries to
