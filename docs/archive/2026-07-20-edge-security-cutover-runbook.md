@@ -130,14 +130,18 @@ CI env) is already in this branch.
    - add a Cloudflare **Origin Rule** overriding origin host + SNI to
      `karaoke-backend-ipzqd2k4yq-uc.a.run.app` (always-valid `*.run.app` cert).
 
-9. **Origin-lock check** — deploy backend with `EDGE_AUTH_MODE=enforce` scoped
-   to staging (or test with a temporary override), then:
+9. **Origin-lock check** — deploy backend with `EDGE_AUTH_MODE=enforce` (test
+   env / temporary override), then hit a **non-exempt** path directly on the
+   origin. Exempt paths are only `/`, `/api/health`, `/api/health/*` (probes) —
+   testing those would return 200 and prove nothing, so use a real endpoint:
    ```bash
-   curl -sI https://karaoke-backend-ipzqd2k4yq-uc.a.run.app/ | head -1   # expect 403 (direct origin)
-   curl -sI https://api-edge-test.nomadkaraoke.com/api/health | head -1  # expect 200 (via edge)
+   RUNAPP=karaoke-backend-ipzqd2k4yq-uc.a.run.app
+   curl -s -o /dev/null -w '%{http_code}\n' https://$RUNAPP/api/jobs            # expect 403 (direct, non-exempt)
+   curl -s -o /dev/null -w '%{http_code}\n' https://$RUNAPP/api/health          # expect 200 (exempt probe path)
+   curl -s -o /dev/null -w '%{http_code}\n' https://api-edge-test.nomadkaraoke.com/api/jobs  # expect NOT 403 (via edge → has header)
    ```
-   ✅ Direct-origin blocked, edge-proxied allowed. Health/root still 200 direct
-   (exempt).
+   ✅ Non-exempt path blocked direct-to-origin (403); same path via the edge is
+   allowed; health/root stay 200 direct (exempt for probes).
 
 10. **Soak** staging proxied for a few days; watch for delayed cert/525 issues
     and any WAF false positives (Cloudflare Firewall Events / Security dashboard).
@@ -154,33 +158,50 @@ CI env) is already in this branch.
 
 ---
 
-## Phase D — Prod cutover 🔴 (instantly reversible)
+## Phase D — Prod cutover (two isolated steps)
 
-Pick a low-traffic window. `gen.nomadkaraoke.com` depends on this API.
+Pick a low-traffic window. `gen.nomadkaraoke.com` depends on this API. The prod
+edge rules and the DNS proxy flip are now **separate** switches
+(`edge:rolloutStage=prod` vs `edge:proxyProdApi=true`) so we provision + verify
+the rules while the API is still DNS-only, then flip the proxy on its own.
 
-12. Set backend `EDGE_AUTH_MODE=warn` in prod first (observe, don't block) and
-    redeploy. Watch logs: after cutover, requests via CF carry the header; if you
-    see many "missing header" warnings for legit traffic, DO NOT enforce yet.
-13. Flip prod to proxied:
+12. **Provision prod edge rules (still DNS-only)** 🟢 — extends the WAF /
+    rate-limit / header-transform rules to the prod host without changing where
+    `api` points:
     ```bash
     cd infrastructure
-    pulumi config set edge:rolloutStage cutover
-    pulumi preview        # expect: api DnsRecord proxied False->True; edge rules add prod host
+    pulumi config set edge:rolloutStage prod
+    pulumi preview   # expect: edge rules add api.nomadkaraoke.com; api DnsRecord UNCHANGED (proxied=False)
     pulumi up
     ```
-14. Verify against **prod** (`HOST=api.nomadkaraoke.com`) — same suite as step 7,
+    ✅ `api` still resolves direct to `ghs` (no cf-ray); prod WAF/header rules now
+    exist. Nothing user-facing changed.
+
+13. Set backend `EDGE_AUTH_MODE=warn` in prod and redeploy (observe, don't
+    block). This is inert until step 14 makes CF inject the header, but staging
+    it now means the very first proxied requests are only warned, not blocked.
+
+14. **Flip the prod DNS proxy** 🔴 (the single reversible change):
+    ```bash
+    pulumi config set edge:proxyProdApi true
+    pulumi preview   # expect: ONLY the api DnsRecord proxied False->True; no other diffs
+    pulumi up
+    ```
+15. Verify against **prod** (`HOST=api.nomadkaraoke.com`) — same suite as step 7,
     plus a real product smoke test (load `gen.nomadkaraoke.com`, start a job,
     confirm signed-URL upload to GCS still works — uploads bypass CF so must be
-    unaffected).
-    ✅ cf-ray present, exploit paths 403, product works end-to-end.
-15. Once stable (minutes-hours), set `EDGE_AUTH_MODE=enforce` in prod + redeploy.
-    ✅ `curl -sI https://karaoke-backend-ipzqd2k4yq-uc.a.run.app/` → 403.
+    unaffected). Watch backend logs for `edge-auth` warn lines from any legit
+    caller missing the header (incl. tenants) before enforcing.
+    ✅ cf-ray present, exploit paths 403, product works end-to-end, no warn spam.
+16. Once stable (minutes-hours) and warn logs are clean, set
+    `EDGE_AUTH_MODE=enforce` in prod + redeploy.
+    ✅ `curl -s -o /dev/null -w '%{http_code}\n' https://karaoke-backend-ipzqd2k4yq-uc.a.run.app/api/jobs` → 403.
 
 ### 🔴 Rollback (any time within Phase D)
 ```bash
 cd infrastructure
-pulumi config set edge:rolloutStage staging   # prod api record → proxied=False
-pulumi up                                      # reverts within one DNS TTL
+pulumi config set edge:proxyProdApi false   # prod api record → proxied=False (rules stay provisioned)
+pulumi up                                    # reverts within one DNS TTL
 ```
 And/or set `EDGE_AUTH_MODE=off` + redeploy backend. Uploads (signed-URL→GCS) are
 never affected either way.
@@ -189,7 +210,7 @@ never affected either way.
 
 ## Phase E — Cleanup 🟢
 
-16. After prod is stable for ~1 week, remove the staging scaffold: delete
+17. After prod is stable for ~1 week, remove the staging scaffold: delete
     `create_staging_domain_mapping()` + the staging DnsRecord from
     `edge_security.py` (and drop `STAGING_API_HOST` from the rule host lists),
     `pulumi up`. Keep everything else.
@@ -207,8 +228,8 @@ never affected either way.
   Pages frontends that call `api.nomadkaraoke.com` with an `X-Tenant-ID` header
   (their own `/api/*` 404s at Cloudflare — no backend passthrough). So they get
   the `X-Edge-Auth` header via the proxied `api` host like everyone else and are
-  NOT expected to break. `warn` mode (step 12) is the safety net — if any tenant
-  request shows up in the missing-header logs, fix before `enforce`. Downtime
-  tolerable per Andrew.
+  NOT expected to break. `warn` mode (steps 13/15) is the safety net — if any
+  tenant request shows up in the missing-header logs, fix before `enforce`.
+  Downtime tolerable per Andrew.
 - The error-rate alert is a **rate** (req/s), not a true %. Now scoped to 5xx so
   client/bot 404s never page.

@@ -117,9 +117,23 @@ def test_warn_allows_valid_header(client, monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
-# fail-open on misconfiguration — enforce but no secret set
+# misconfiguration — enforce but no secret set
 # --------------------------------------------------------------------------- #
-def test_enforce_without_secret_fails_open(client, monkeypatch):
+def test_enforce_without_secret_fails_closed(client, monkeypatch):
+    # A security control must fail closed: enforce with no secret → 503, not open.
     _set(monkeypatch, mode="enforce", secret=None)
-    # Must NOT take the API down due to a missing secret.
+    resp = client.get("/api/test")
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "Origin authentication unavailable"
+
+
+def test_enforce_without_secret_still_exempts_health(client, monkeypatch):
+    # Health/root stay reachable even in the misconfigured state (probes).
+    _set(monkeypatch, mode="enforce", secret=None)
+    assert client.get("/api/health").status_code == 200
+
+
+def test_warn_without_secret_allows(client, monkeypatch):
+    # warn mode is observational only — never blocks, even with no secret.
+    _set(monkeypatch, mode="warn", secret=None)
     assert client.get("/api/test").status_code == 200

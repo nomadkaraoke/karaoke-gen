@@ -17,8 +17,10 @@ Modes (env ``EDGE_AUTH_MODE``, default ``off``):
     enforce  - reject requests missing/failing the header with 403.
 
 Secret: env ``EDGE_ORIGIN_SECRET`` (same value Cloudflare injects). If enforce
-mode is set but the secret is unconfigured, the middleware FAILS OPEN and logs
-an error — a misconfiguration must not take the API down.
+mode is set but the secret is unconfigured, the middleware FAILS CLOSED (503) —
+a security control must not silently allow direct-origin traffic. (Low risk:
+Cloud Run won't start a revision whose secret ref is missing, and enforce is
+only enabled after staging confirms the secret.) In warn mode it still allows.
 
 Exemptions (always allowed, even in enforce mode):
     * Health / root endpoints and Cloud Run probes, which hit the origin
@@ -72,13 +74,21 @@ class EdgeAuthMiddleware(BaseHTTPMiddleware):
 
         secret = os.environ.get("EDGE_ORIGIN_SECRET", "")
         if not secret:
-            # Fail open on misconfiguration — never take the API down because a
-            # secret wasn't wired up. Loud error so it's caught in staging.
+            # Misconfiguration: enforce is requested but no secret is wired up.
+            # In enforce mode, fail CLOSED (503) — a security control must not
+            # silently allow direct-origin traffic when it can't do its job.
+            # This is low-risk operationally: Cloud Run won't even start a
+            # revision whose --set-secrets ref is missing, and enforce is only
+            # turned on after staging confirms the secret. In warn mode we still
+            # allow (observational only).
             logger.error(
-                "EDGE_AUTH_MODE=%s but EDGE_ORIGIN_SECRET is unset — failing "
-                "open (allowing request). Origin lock is NOT active.",
-                mode,
+                "EDGE_AUTH_MODE=%s but EDGE_ORIGIN_SECRET is unset.", mode,
             )
+            if mode == "enforce":
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Origin authentication unavailable"},
+                )
             return await call_next(request)
 
         provided = request.headers.get(EDGE_AUTH_HEADER, "")

@@ -672,10 +672,11 @@ pulumi.export("backend_default_url", "https://karaoke-backend-ipzqd2k4yq-uc.a.ru
 
 # Cloudflare edge (DNS records, WAF, rate limiting, origin lock) — now managed
 # in modules/edge_security.py rather than hand-configured in the dashboard. The
-# `api` CNAME is proxied only when `edge:rolloutStage=cutover`; otherwise it
-# stays DNS-only, exactly as before.
+# `api` CNAME is proxied only when `edge:proxyProdApi=true`; otherwise it stays
+# DNS-only, exactly as before. Edge rules scope to prod via `edge:rolloutStage`.
 if edge_resources:
     pulumi.export("edge_rollout_stage", edge_resources.get("stage"))
+    pulumi.export("edge_proxy_prod", edge_resources.get("proxy_prod"))
     pulumi.export("edge_protected_hosts", edge_resources.get("hosts"))
     pulumi.export(
         "edge_staging_domain",

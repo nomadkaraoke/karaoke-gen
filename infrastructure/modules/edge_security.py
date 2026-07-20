@@ -13,21 +13,28 @@ WHY THIS EXISTS
     domain.
 
 ZERO-DOWNTIME ROLLOUT (see docs/archive/2026-07-20-edge-security-hardening-plan.md)
-    Everything here is driven by ``CloudflareConfig.rollout_stage()``:
+    Driven by TWO independent switches so provisioning and the DNS flip are
+    separate (``CloudflareConfig.rollout_stage()`` + ``.proxy_prod_api()``):
 
-      stage="staging" (default, NON-disruptive):
+      rolloutStage="staging" (default, NON-disruptive):
         * adds a *second* Cloud Run domain mapping + DNS record for
           ``api-edge-test.nomadkaraoke.com`` (proxied) → same karaoke-backend
         * edge rules (WAF / rate-limit / header inject) are scoped to the
           staging host ONLY
         * the prod ``api`` record is left exactly as today (DNS-only)
-        → we validate the whole Cloud-Run-×-Cloudflare interaction (incl. the
+        → validate the whole Cloud-Run-×-Cloudflare interaction (incl. the
           managed-cert / SSL "dragon") without any prod impact.
 
-      stage="cutover" (the single prod-affecting change, instantly reversible):
-        * the prod ``api`` record flips to proxied=True
-        * edge rules apply to the prod host too
-        → rollback = set stage back to "staging" (or proxied=False) + `pulumi up`.
+      rolloutStage="prod" (still non-disruptive):
+        * edge rules additionally apply to the prod host, but the prod ``api``
+          record is STILL DNS-only (proxied stays False).
+        → provision + verify prod WAF/header rules before touching DNS.
+
+      proxyProdApi=true (the single prod-affecting change, instantly reversible):
+        * flips ONLY the prod ``api`` record to proxied=True.
+        * requires rolloutStage=prod first (guarded) so the header transform +
+          rules cover the prod host before traffic is routed through the edge.
+        → rollback = proxyProdApi=false + `pulumi up` (edge rules stay in place).
 
 PROVIDER
     pulumi-cloudflare 6.x (see infrastructure/requirements.txt). Resource arg
@@ -66,7 +73,7 @@ EXPLOIT_PATH_REGEX = (
 
 def _hosts_for_stage() -> list[str]:
     """Which hostnames the edge rules apply to, per rollout stage."""
-    if CloudflareConfig.rollout_stage() == "cutover":
+    if CloudflareConfig.rollout_stage() == "prod":
         return [CloudflareConfig.PROD_API_HOST, CloudflareConfig.STAGING_API_HOST]
     return [CloudflareConfig.STAGING_API_HOST]
 
@@ -106,14 +113,14 @@ def create_dns_records(zone_id: str) -> dict[str, cloudflare.DnsRecord]:
     Manage the ``api`` (prod) and ``api-edge-test`` (staging) CNAMEs.
 
     - staging: always proxied=True (that's the whole point — test the proxy).
-    - prod ``api``: proxied only once rollout_stage == "cutover"; until then it
+    - prod ``api``: proxied only once ``proxy_prod_api()`` is true; until then it
       stays DNS-only, byte-for-byte the behaviour we have today.
 
     NOTE: ``ttl`` must be 1 (automatic) whenever proxied=True — Cloudflare
     rejects an explicit TTL on a proxied record.
     """
     records: dict[str, cloudflare.DnsRecord] = {}
-    cutover = CloudflareConfig.rollout_stage() == "cutover"
+    proxy_prod = CloudflareConfig.proxy_prod_api()
 
     records["staging"] = cloudflare.DnsRecord(
         "api-edge-test-dns",
@@ -131,6 +138,9 @@ def create_dns_records(zone_id: str) -> dict[str, cloudflare.DnsRecord]:
     # IMPORT it into this resource before the first apply, otherwise it tries to
     # create a duplicate / errors. Runbook has the import command. ttl is kept at
     # 1 (auto) to match the live record and because a proxied record requires it.
+    # `proxied` is gated on its OWN switch (proxy_prod_api), independent of
+    # rollout_stage, so prod edge rules can be provisioned first and the proxy
+    # flip done (and rolled back) as an isolated one-record change.
     records["prod"] = cloudflare.DnsRecord(
         "api-dns",
         zone_id=zone_id,
@@ -138,8 +148,8 @@ def create_dns_records(zone_id: str) -> dict[str, cloudflare.DnsRecord]:
         type="CNAME",
         content=CloudflareConfig.ORIGIN_CNAME_TARGET,
         ttl=1,
-        proxied=cutover,
-        comment="karaoke-backend (Cloud Run). Proxied via Cloudflare at cutover.",
+        proxied=proxy_prod,
+        comment="karaoke-backend (Cloud Run). Proxied via Cloudflare when proxyProdApi=true.",
     )
 
     return records
@@ -330,8 +340,23 @@ def configure_edge_security() -> dict:
         return {}
 
     zone_id = CloudflareConfig.zone_id()
+    # Guard the cutover ordering: proxying prod before the prod host is covered
+    # by the edge rules (esp. the X-Edge-Auth header transform) would send
+    # header-less requests to the origin — enforce mode would then 403 all prod
+    # traffic. Require rollout_stage=prod (rules provisioned + verified) first.
+    if CloudflareConfig.proxy_prod_api() and CloudflareConfig.rollout_stage() != "prod":
+        raise Exception(
+            "edge_security: edge:proxyProdApi=true requires edge:rolloutStage=prod "
+            "first (so prod-host WAF + X-Edge-Auth header rules exist before the "
+            "DNS proxy flip). Set rolloutStage=prod, apply, verify, THEN proxyProdApi=true."
+        )
+
     hosts = _hosts_for_stage()
-    resources: dict = {"stage": CloudflareConfig.rollout_stage(), "hosts": hosts}
+    resources: dict = {
+        "stage": CloudflareConfig.rollout_stage(),
+        "proxy_prod": CloudflareConfig.proxy_prod_api(),
+        "hosts": hosts,
+    }
 
     # Staging domain mapping only needs to exist while we're validating; keep it
     # through cutover for soak, remove later.

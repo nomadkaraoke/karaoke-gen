@@ -209,14 +209,32 @@ class CloudflareConfig:
     @staticmethod
     def rollout_stage():
         """
-        Staged rollout switch (from Pulumi config ``edge:rolloutStage``):
-          - "staging"  : create staging mapping + record + edge rules scoped to
-                         the staging host only. Prod `api` stays DNS-only.
-          - "cutover"  : prod `api` record flips to proxied and edge rules apply
-                         to the prod host too. (Staging may remain for soak.)
+        Which hosts the edge WAF/rate-limit/header rules apply to (from Pulumi
+        config ``edge:rolloutStage``):
+          - "staging" : rules scoped to the staging host only.
+          - "prod"    : rules apply to the prod host too (staging kept for soak).
         Defaults to "staging" so a first apply is non-disruptive to prod.
+
+        NOTE: this does NOT flip the prod DNS proxy — that's a SEPARATE switch
+        (``proxy_prod_api``), so production edge rules can be provisioned and
+        verified while the API is still DNS-only, then the proxy flipped in an
+        isolated second apply (and rolled back without tearing down the rules).
         """
-        return pulumi.Config("edge").get("rolloutStage") or "staging"
+        stage = pulumi.Config("edge").get("rolloutStage") or "staging"
+        return "prod" if stage in ("prod", "cutover") else "staging"
+
+    @staticmethod
+    def proxy_prod_api():
+        """
+        Whether the prod ``api`` DNS record is proxied through Cloudflare
+        (``edge:proxyProdApi`` bool, default False).
+
+        This is the ONE prod-affecting, instantly-reversible flip. Sequence:
+          1. rolloutStage=prod, apply  → prod edge rules live; api still DNS-only.
+          2. proxyProdApi=true, apply   → api proxied (only this record changes).
+        Rollback = proxyProdApi=false, apply (edge rules stay provisioned).
+        """
+        return pulumi.Config("edge").get_bool("proxyProdApi") or False
 
 # GitHub repository for runner registration
 GITHUB_REPO_OWNER = "nomadkaraoke"

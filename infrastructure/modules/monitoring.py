@@ -81,7 +81,8 @@ def create_alert_policies(
     # count — client/bot 404s never page us. WAF/rate-limiting at the Cloudflare
     # edge (see modules/edge_security.py) is the primary defense that keeps that
     # scan traffic off the metric entirely. Threshold = >0.1 5xx req/s sustained
-    # over 5 min (~6+ server errors/min for 5 min) → a real regression, not noise.
+    # over 5 min. With COMPARISON_GT the boundary is strict: 6 errors/min
+    # (=0.1/s) does NOT fire; >=7/min sustained for 5 min does → real regression.
     alerts["error_rate"] = gcp.monitoring.AlertPolicy(
         "high-error-rate-alert",
         display_name="Karaoke Backend - High Server-Error Rate (5xx)",

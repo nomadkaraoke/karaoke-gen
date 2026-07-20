@@ -179,15 +179,21 @@ Current: counts all non-2xx, `threshold=0.1`, no volume floor.
   so a few requests can't trip the ratio.
 - Update/add regression test if alert tests exist.
 
-### Phase F — Prod cutover (the only prod-affecting step; instant rollback)
-Preconditions: Phases B–E green; middleware live in `warn`/`enforce` in prod.
-1. In a low-traffic window, set the **prod `api` DnsRecord `proxied=True`** (Full
-   mode proven on staging) and `pulumi up`.
-2. Run the §6 verification suite against `api.nomadkaraoke.com`.
-3. If anything is off → **`proxied=False` + `pulumi up`** reverts within one TTL
-   (record `ttl=1`/auto). Real-client upload flow (signed-URL→GCS) is unaffected
-   throughout.
-4. Once stable, flip middleware to `enforce` (if not already) and remove the
+### Phase F — Prod cutover (two isolated steps; instant rollback)
+Preconditions: Phases B–E green; middleware live in `warn` in prod. The prod
+edge rules and the DNS proxy flip are **separate** switches so we never change
+both at once (per CodeRabbit review):
+1. **Provision prod rules, still DNS-only** (non-disruptive): `edge:rolloutStage=prod`
+   + `pulumi up`. Prod WAF/rate-limit/header rules now exist; `api` still resolves
+   direct to `ghs` (unchanged).
+2. **Flip the DNS proxy** (the only prod-affecting change): `edge:proxyProdApi=true`
+   + `pulumi up` — this changes ONLY the `api` record to proxied.
+3. Run the §6 verification suite against `api.nomadkaraoke.com`; watch `edge-auth`
+   warn logs for legit callers missing the header.
+4. Rollback if needed → **`edge:proxyProdApi=false` + `pulumi up`** reverts within
+   one TTL (`ttl=1`/auto), leaving the edge rules provisioned. Upload flow
+   (signed-URL→GCS) is unaffected throughout.
+5. Once stable + warn logs clean, flip middleware to `enforce`; remove the
    temporary Phase-0b block (now covered by the codified rules).
 
 ## 6. Verification suite (run against staging, then prod)
