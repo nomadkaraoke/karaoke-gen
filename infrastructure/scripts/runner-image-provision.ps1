@@ -83,6 +83,16 @@ try {
         Mark-Phase "longpaths"
     }
 
+    # ================= VC++ runtime (torch/onnxruntime DLLs need it) ======
+    if (-not (Phase-Done "vcredist")) {
+        Ck "phase: vc++ runtime"
+        Download "https://aka.ms/vs/17/release/vc_redist.x64.exe" "$WORK\vc_redist.x64.exe"
+        $p = Start-Process -FilePath "$WORK\vc_redist.x64.exe" -ArgumentList "/install", "/quiet", "/norestart" -Wait -PassThru
+        # 0 = ok, 1638 = newer version already installed, 3010 = ok-needs-reboot
+        if ($p.ExitCode -notin 0, 1638, 3010) { throw "vc_redist exited with $($p.ExitCode)" }
+        Mark-Phase "vcredist"
+    }
+
     # ================= Windows Update off (bake determinism) ==============
     if (-not (Phase-Done "wu-off")) {
         Ck "phase: disable windows update"
