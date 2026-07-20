@@ -5,3 +5,8 @@ pulumi>=3.0.0,<4.0.0
 # REPLACEMENT of the encoding-worker VMs on `pulumi up`. Bump this deliberately
 # (and handle any VM replacement in a maintenance window) — never let it float.
 pulumi-gcp==9.22.0
+# Cloudflare edge (WAF / rate limiting / origin lock) for api.nomadkaraoke.com.
+# Pin exactly — Cloudflare restructures ruleset schemas between majors; bump
+# deliberately and re-run `pulumi preview`. Resource arg shapes in
+# modules/edge_security.py were introspected against 6.18.0.
+pulumi-cloudflare==6.18.0

@@ -40,6 +40,7 @@ from modules import database, storage as storage_module, artifact_registry, secr
 from modules import cloud_tasks, cloud_run, monitoring, networking, runner_manager
 from modules import divebar_mirror, kn_data_sync, divebar_lookup, backup
 from modules import audio_separator_service
+from modules import edge_security
 from modules import gpu_artifact_registry
 from modules import encoding_worker_manager
 from modules import error_monitor as error_monitor_module
@@ -173,6 +174,13 @@ github_runner_iam_bindings = worker_sas.grant_github_runner_permissions(github_r
 
 # Domain mapping for api.nomadkaraoke.com
 domain_mapping = cloud_run.create_domain_mapping()
+
+# Cloudflare edge security (WAF / rate limiting / origin lock) for the backend.
+# No-op until `edge:cloudflareZoneId` + `cloudflare:apiToken` are set in Pulumi
+# config. Rollout is staged via `edge:rolloutStage` (staging|cutover); the
+# default "staging" is non-disruptive to the live `api` record. See
+# docs/archive/2026-07-20-edge-security-hardening-plan.md.
+edge_resources = edge_security.configure_edge_security()
 
 # Cloud Run Jobs for batch processing
 # These use Cloud Run Jobs instead of Cloud Tasks to avoid instance termination
@@ -662,16 +670,17 @@ pulumi.export("bulk_search_job", bulk_search_job.name)
 pulumi.export("backend_url", "https://api.nomadkaraoke.com")
 pulumi.export("backend_default_url", "https://karaoke-backend-ipzqd2k4yq-uc.a.run.app")
 
-# DNS configuration for Cloudflare
-domain_mapping.statuses.apply(
-    lambda statuses: pulumi.export("dns_records", {
-        "type": "CNAME",
-        "name": "api",
-        "value": "ghs.googlehosted.com",
-        "ttl": 300,
-        "proxied": False,
-    })
-)
+# Cloudflare edge (DNS records, WAF, rate limiting, origin lock) — now managed
+# in modules/edge_security.py rather than hand-configured in the dashboard. The
+# `api` CNAME is proxied only when `edge:rolloutStage=cutover`; otherwise it
+# stays DNS-only, exactly as before.
+if edge_resources:
+    pulumi.export("edge_rollout_stage", edge_resources.get("stage"))
+    pulumi.export("edge_protected_hosts", edge_resources.get("hosts"))
+    pulumi.export(
+        "edge_staging_domain",
+        edge_resources["staging_domain_mapping"].name,
+    )
 
 # Alert policies
 pulumi.export("error_rate_alert_id", alert_policies["error_rate"].name)

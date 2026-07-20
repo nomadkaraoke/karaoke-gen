@@ -74,6 +74,14 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # an otherwise-public endpoint that re-runs the mirror/sync/xref
         # scheduler jobs on demand, so it's anti-abuse, not data-sensitive.
         "divebar-refresh-token",
+
+        # Cloudflare edge origin lock: shared secret Cloudflare injects as the
+        # X-Edge-Auth header on proxied requests; the backend edge-auth
+        # middleware rejects public requests that lack it (blocks direct-to-
+        # origin bypass of the WAF). Value added manually; also provided to
+        # Pulumi as `edge:originSecret` for the Cloudflare header transform.
+        # See modules/edge_security.py.
+        "edge-origin-secret",
     ]
 
     secrets = {}

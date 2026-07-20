@@ -18,6 +18,7 @@ from backend.services.nltk_preloader import preload_all_nltk_resources
 from backend.services.langfuse_preloader import preload_langfuse_handler
 from backend.middleware.audit_logging import AuditLoggingMiddleware
 from backend.middleware.tenant import TenantMiddleware
+from backend.middleware.edge_auth import EdgeAuthMiddleware
 from backend.workers.registry import worker_registry
 
 
@@ -169,6 +170,12 @@ app.add_middleware(AuditLoggingMiddleware)
 
 # Add tenant detection middleware (extracts tenant from subdomain/headers)
 app.add_middleware(TenantMiddleware)
+
+# Edge origin lock (added last = outermost, runs first). Rejects direct-to-origin
+# requests that bypassed the Cloudflare edge, before tenant/audit middleware do
+# any work. No-op unless EDGE_AUTH_MODE is warn/enforce. See
+# backend/middleware/edge_auth.py.
+app.add_middleware(EdgeAuthMiddleware)
 
 # Include routers
 app.include_router(health.router, prefix="/api")
