@@ -307,9 +307,10 @@ class TestSecureBootPerFamily:
         assert kwargs["enable_integrity_monitoring"] is True
 
 
-def _make_instance(name, age_minutes, zone="us-central1-a"):
+def _make_instance(name, age_minutes, zone="us-central1-a", status="RUNNING"):
     inst = MagicMock()
     inst.name = name
+    inst.status = status
     created = datetime.now(timezone.utc) - timedelta(minutes=age_minutes)
     inst.creation_timestamp = created.isoformat().replace("+00:00", "Z")
     return inst
@@ -405,6 +406,39 @@ class TestCleanupOrphans:
 
         dereg.assert_called_once_with("ghp_test", 99)
         assert result["deregistered_runners"] == ["gha-general-zombie"]
+
+    def test_terminated_vm_deleted_immediately_even_when_young_and_registered(self):
+        # A self-shutdown ephemeral VM still holds GPU quota until deleted;
+        # it must be reaped on the next pass regardless of age/registration.
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-gpu-done", age_minutes=3, status="TERMINATED"))]
+        runners = [{"name": "gha-gpu-done", "id": 12, "status": "offline"}]
+
+        with self._patch_listing(ep, vms), patch.object(
+            ep, "list_org_runners", return_value=runners
+        ), patch.object(
+            ep, "_delete_vm", return_value=("gha-gpu-done", "deleted")
+        ), patch.object(ep, "_log_serial_tail") as serial_mock:
+            result = ep.cleanup_orphans("ghp_test")
+
+        assert "gha-gpu-done" in result["deleted_vms"]
+        # Registered VM ran its job normally — no serial dump needed.
+        serial_mock.assert_not_called()
+
+    def test_terminated_unregistered_vm_dumps_serial_before_delete(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-gpu-neverran", age_minutes=5, status="TERMINATED"))]
+        runners = []
+
+        with self._patch_listing(ep, vms), patch.object(
+            ep, "list_org_runners", return_value=runners
+        ), patch.object(
+            ep, "_delete_vm", return_value=("gha-gpu-neverran", "deleted")
+        ), patch.object(ep, "_log_serial_tail") as serial_mock:
+            result = ep.cleanup_orphans("ghp_test")
+
+        assert "gha-gpu-neverran" in result["deleted_vms"]
+        serial_mock.assert_called_once_with("us-central1-a", "gha-gpu-neverran")
 
     def test_delete_failure_is_recorded(self):
         ep = _fresh_module()

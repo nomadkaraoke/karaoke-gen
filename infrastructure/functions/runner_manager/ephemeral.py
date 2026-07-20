@@ -571,8 +571,20 @@ def cleanup_orphans(pat: str) -> dict:
     for zone, instance in vms:
         age = _vm_age_minutes(instance)
         registered = instance.name in runner_by_name
+        status = getattr(instance, "status", "")
 
-        if age >= MAX_VM_LIFETIME_MINUTES:
+        if status == "TERMINATED":
+            # Ephemeral runners self-shutdown after their single job — a
+            # stopped VM will never work again, but its attached GPU still
+            # counts against NVIDIA_T4_GPUS quota until the VM is DELETED.
+            # Leaving corpses for the age-based rules below meant back-to-back
+            # CI waves exhausted quota and the (fire-and-forget) dispatcher
+            # silently stranded queued jobs. Reap immediately.
+            print(f"{instance.name}: TERMINATED — deleting immediately to release GPU quota")
+            if not registered:
+                _log_serial_tail(zone, instance.name)
+            to_delete.append((zone, instance.name))
+        elif age >= MAX_VM_LIFETIME_MINUTES:
             print(f"{instance.name}: age={age:.1f}min > max, deleting")
             to_delete.append((zone, instance.name))
         elif not registered and age >= ORPHAN_GRACE_MINUTES:
