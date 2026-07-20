@@ -62,13 +62,37 @@ from config import CloudflareConfig, REGION, PROJECT_ID
 # protections). This id is stable across all Cloudflare accounts.
 CLOUDFLARE_MANAGED_RULESET_ID = "efb7b8c949ac4650a09736fc376e9aee"
 
-# Regex of exploit / secret-exposure paths to hard-block at the edge regardless
-# of source. Matches the 2026-07-20 scanner signature and common web probes.
-EXPLOIT_PATH_REGEX = (
-    r"(?i)(^|/)(\.env|\.git/|\.aws/|\.ssh/|\.mysql_history|\.bash_history|"
-    r"wp-config\.php|wp-login\.php|wp-admin|configuration\.php|"
-    r"etc/(passwd|shadow|hosts)|proc/(self|net)|var/log/)"
-)
+# Exploit / secret-exposure path substrings to hard-block at the edge regardless
+# of source (2026-07-20 scanner signature + common web probes). We use the
+# `contains` operator (not regex `matches`) because the regex operator requires a
+# Business/WAF-Advanced plan; `contains` works on Free. Scanners use lowercase
+# paths, matching these lowercase tokens.
+EXPLOIT_PATH_TOKENS = [
+    "/.env",
+    "/.git/",
+    "/.aws/",
+    "/.ssh/",
+    "/etc/passwd",
+    "/etc/shadow",
+    "/etc/hosts",
+    "/proc/self",
+    "/proc/net",
+    "/var/log/",
+    "wp-config",
+    "wp-login",
+    "wp-admin",
+    "configuration.php",
+    ".mysql_history",
+    ".bash_history",
+]
+
+
+def _exploit_path_expression(host_expr: str) -> str:
+    """Free-plan-safe firewall expression: host match AND any exploit substring."""
+    ors = " or ".join(
+        f'http.request.uri.path contains "{t}"' for t in EXPLOIT_PATH_TOKENS
+    )
+    return f"{host_expr} and ({ors})"
 
 
 def _hosts_for_stage() -> list[str]:
@@ -180,10 +204,7 @@ def create_waf_rulesets(zone_id: str, hosts: list[str]) -> dict[str, cloudflare.
             cloudflare.RulesetRuleArgs(
                 action="block",
                 description="Block exploit / secret-exposure paths",
-                expression=(
-                    f'{host_expr} and '
-                    f'(http.request.uri.path matches "{EXPLOIT_PATH_REGEX}")'
-                ),
+                expression=_exploit_path_expression(host_expr),
                 enabled=True,
             ),
         ],
@@ -248,6 +269,8 @@ def create_rate_limit_ruleset(zone_id: str, hosts: list[str]) -> cloudflare.Rule
                 expression=expression,
                 enabled=True,
                 ratelimit=cloudflare.RulesetRuleRatelimitArgs(
+                    # cf.colo.id is REQUIRED by Cloudflare (counting is processed
+                    # per-colocation); ip.src makes it per source IP.
                     characteristics=["ip.src", "cf.colo.id"],
                     period=CloudflareConfig.RATE_LIMIT_PERIOD_SECONDS,
                     requests_per_period=CloudflareConfig.RATE_LIMIT_REQUESTS,

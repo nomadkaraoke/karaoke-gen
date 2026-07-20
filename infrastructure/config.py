@@ -154,9 +154,14 @@ class CloudflareConfig:
     ORIGIN_AUTH_HEADER = "X-Edge-Auth"
 
     # Rate limit: block a client IP that exceeds this many requests/period.
-    RATE_LIMIT_REQUESTS = 60
-    RATE_LIMIT_PERIOD_SECONDS = 60
-    RATE_LIMIT_MITIGATION_SECONDS = 600  # how long to keep blocking after trip
+    # Free plan constraints (enforced by the Cloudflare API): period must be 10s,
+    # and mitigation_timeout must equal the period (10s). A single flood control
+    # rule — the WAF path block (below) is the primary defense against the
+    # scanner class; this catches volumetric abuse. ~50 req / 10s = 5 req/s per
+    # IP, comfortably above legit page-load bursts to a control-plane API.
+    RATE_LIMIT_REQUESTS = 50
+    RATE_LIMIT_PERIOD_SECONDS = 10
+    RATE_LIMIT_MITIGATION_SECONDS = 10
 
     # Paths that must never be rate-limited / header-gated at the edge:
     # scheduler cron hits (OIDC-authed) to /api/internal/*.
