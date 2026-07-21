@@ -2,6 +2,13 @@
 
 Base URL: `https://api.nomadkaraoke.com` (production) or `http://localhost:8000` (local)
 
+> **Edge:** production traffic must go through `https://api.nomadkaraoke.com`
+> (proxied by Cloudflare — WAF + rate limiting). The Cloud Run origin is
+> **origin-locked**: requests hitting the raw `*.run.app` URL directly are
+> rejected with `403` unless they carry the Cloudflare-injected `X-Edge-Auth`
+> header (`/` and `/api/health*` are exempt for probes). See
+> [ARCHITECTURE.md § Edge Security](ARCHITECTURE.md#edge-security-cloudflare).
+
 ## Authentication
 
 All endpoints except `/health` and `/api/themes` require authentication.

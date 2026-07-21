@@ -11,9 +11,17 @@
                             │ HTTPS
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
+│  Cloudflare edge  (api.nomadkaraoke.com proxied — orange-cloud) │
+│  WAF (exploit-path block) + rate limit + injects X-Edge-Auth    │
+│  header. See § Edge Security (Cloudflare).                      │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ HTTPS (SSL "full")
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
 │  Backend API (Cloud Run)                                        │
 │  FastAPI + Python 3.12                                          │
-│  https://api.nomadkaraoke.com                                   │
+│  https://api.nomadkaraoke.com  (origin lock: rejects direct-    │
+│  to-origin requests lacking X-Edge-Auth, health/root exempt)    │
 │                                                                 │
 │  Workers:                                                       │
 │  • Audio Worker    - Stem separation via Cloud Run GPU (L4)              │
@@ -60,6 +68,37 @@ collection with `service="frontend"` so they flow through the existing
 Discord-alerting pipeline. `ChunkLoadError` after deploy triggers an automatic
 hard reload; the `CrashReport` card also checks `/version.json` and shows an
 "Update now" CTA when the running bundle is stale.
+
+## Edge Security (Cloudflare)
+
+`api.nomadkaraoke.com` is proxied through Cloudflare (orange-cloud) — the same
+zone that already fronts the marketing site, `gen`, `decide`, and the tenant
+portals. Cut over 2026-07-20 after a vuln-scanner hammered the previously
+directly-exposed Cloud Run origin. Managed as IaC in
+`infrastructure/modules/edge_security.py` (`pulumi_cloudflare`).
+
+**Request path:** client → Cloudflare edge → Cloud Run. At the edge:
+- **WAF** (`http_request_firewall_custom`) blocks exploit/secret-exposure paths
+  (`/.env`, `/.git/`, `/.ssh/`, `wp-config`, `/etc/passwd`, …) — uses the
+  `contains` operator (regex `matches` needs a Business plan; zone is Free).
+- **Rate limiting** (`http_ratelimit`) — per-IP flood control (Free-plan limits:
+  `period=10s`, characteristics must include `cf.colo.id`). Excludes
+  `/api/internal/*` (scheduler/Cloud-Tasks cron).
+- **Origin lock** — a Transform Rule injects a secret `X-Edge-Auth` header
+  (`http_request_late_transform`); the backend's `EdgeAuthMiddleware`
+  (`backend/middleware/edge_auth.py`, `EDGE_AUTH_MODE=enforce`) rejects public
+  requests lacking it, so hitting the raw `*.run.app` origin directly is blocked
+  (health/root exempt for Cloud Run probes). Internal callers reach the backend
+  via `api.nomadkaraoke.com` (Cloud Tasks use `CLOUD_RUN_SERVICE_URL`), so they
+  traverse the edge and carry the header.
+
+**SSL:** zone TLS mode is **"full"** (not strict). The Cloud Run domain-mapping
+managed cert cannot provision behind Cloudflare (ACME challenge not visible), but
+"full" mode doesn't validate the origin cert, so the edge works and is
+**renewal-safe** — no run.app Origin Rule or load balancer needed. **Never switch
+the zone to "full (strict)".** Full rationale + cutover runbook:
+`docs/archive/2026-07-20-edge-security-hardening-plan.md` and
+`docs/archive/2026-07-20-edge-security-cutover-runbook.md`.
 
 ## Processing Pipeline
 

@@ -43,6 +43,7 @@
 | **i18n / Multilingual (frontend)** | Working (next-intl, en/es/de, 1062 strings, [locale] routing) |
 | **Referral system** | Working (referral links with configurable discounts, 20% cash kickback via Stripe Connect, auto-payout at $20) |
 | **Error monitor** | New (Cloud Run Job every 15 min — log collection, normalization, LLM dedup/grouping, Discord alerts, auto-resolution, daily digest) |
+| **Edge security (Cloudflare)** | Working (api.nomadkaraoke.com proxied — WAF + rate limit + origin lock enforced; 2026-07-20) |
 
 ## Known Issues
 
@@ -53,6 +54,8 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Cloudflare Edge Security for the Backend API** (2026-07-20): `api.nomadkaraoke.com` is now proxied through Cloudflare (WAF + rate limiting + origin lock), after a vuln-scanner hammered the previously directly-exposed Cloud Run origin. WAF blocks exploit/secret-exposure paths (`contains` operator — regex needs a Business plan); per-IP rate limiting excludes `/api/internal/*`; a Transform Rule injects a secret `X-Edge-Auth` header that the backend's `EdgeAuthMiddleware` (`EDGE_AUTH_MODE=enforce`) requires, blocking direct-to-`*.run.app` bypass (health/root exempt). Key finding: the Cloud Run managed cert can't provision behind Cloudflare, but zone SSL mode "full" (not strict) doesn't validate the origin cert, so it works and is renewal-safe — **never switch the zone to "full (strict)".** Managed as IaC in `infrastructure/modules/edge_security.py`. Also retuned the "High Error Rate" alert to 5xx-only (scanner 404s no longer page). See [ARCHITECTURE.md § Edge Security](ARCHITECTURE.md#edge-security-cloudflare), [LESSONS-LEARNED.md](LESSONS-LEARNED.md#cloudflare-edge-in-front-of-cloud-run--the-ssl-dragon-jul-2026), and [archive/2026-07-20-edge-security-cutover-runbook.md](archive/2026-07-20-edge-security-cutover-runbook.md).
 
 - **AI Auto-Correct Suggestions** (2026-06-11): Opt-in AI correction suggestions in the lyrics review UI — the third attempt at lyrics auto-correction, redesigned around the failures that led to disabling it in PR #321 (Jan 2026). One whole-song LLM call (default Gemini 3.1 Pro via Vertex, `AUTO_CORRECT_MODEL` env) compares the working transcription against reference lyrics and returns word-id-keyed suggestions; nothing is applied until the reviewer accepts each one (or accept-all) in a dedicated panel with per-row undo. New `POST /api/review/{job_id}/auto-correct` endpoint + `backend/services/auto_correct/`; frontend `useAutoCorrect` hook, `AutoCorrectModal` (knobs: adlib removal, insertions, confidence filter), `AutoCorrectPanel`. Accept/reject decisions land in the EditLog (`ai_suggestion_*` ops) to measure real accept rates. 5-model offline eval over 30 real jobs with human ground truth picked the default (Fable 5 ≈ Gemini 3.1 Pro ≫ GPT-5.2, which made lyrics worse). See [archive/2026-06-10-lyrics-auto-correction-reeval-plan.md](archive/2026-06-10-lyrics-auto-correction-reeval-plan.md).
 

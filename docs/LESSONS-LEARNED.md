@@ -6,6 +6,44 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Cloudflare edge in front of Cloud Run — the SSL "dragon" (Jul 2026)
+
+Putting `api.nomadkaraoke.com` behind Cloudflare (WAF/rate-limit/origin-lock)
+surfaced several non-obvious gotchas. See `infrastructure/modules/edge_security.py`
+and `docs/archive/2026-07-20-edge-security-*.md`.
+
+- **Cloud Run domain-mapping managed certs cannot provision behind Cloudflare.**
+  Even with a correct grey-cloud CNAME → `ghs.googlehosted.com` (right DNS,
+  propagated, no CAA), Google's ACME challenge is "not visible through the public
+  internet" and the cert stays `pending` forever. Recreating the mapping doesn't
+  help. **This does not matter** because the zone SSL mode is **"full" (not
+  strict)**: Cloudflare encrypts to the origin but doesn't validate its cert, so
+  the edge works regardless and is **renewal-safe** (a never-provisioning /
+  never-renewing cert can't cause a 525 when the cert isn't checked). **Rule:
+  keep the zone on "full", never "full (strict)".** The much-feared run.app
+  SNI-override Origin Rule and a GCP load balancer are both unnecessary — and the
+  Origin Rule is blocked anyway by the zone's singleton `http_request_origin`
+  entrypoint (already holds a flacfetch prod rule).
+- **A proxied (orange) record blocks cert issuance** (DNS points at Cloudflare,
+  not `ghs`) — so if you ever DO need the managed cert, create grey → provision →
+  flip orange. For the prod cutover this was moot: `api`'s cert already existed
+  and "full" mode tolerates it, so the cutover was just the grey→orange flip.
+- **Cloudflare Free-plan WAF/rate-limit constraints (fail at apply time):** the
+  regex `matches` operator needs Business+ (use `contains`); rate-limit `period`
+  must be `10`s and `characteristics` MUST include `cf.colo.id` (per-colo
+  counting); managed OWASP ruleset is Pro+ only.
+- **Origin lock without breaking internal callers:** all internal traffic (Cloud
+  Tasks via `CLOUD_RUN_SERVICE_URL`, schedulers, frontend) reaches the backend
+  through `api.nomadkaraoke.com`, so it traverses Cloudflare and carries the
+  injected `X-Edge-Auth` header. Validated by running the prod E2E in `warn` mode
+  first and confirming **zero** missing-header warnings before flipping to
+  `enforce`. Health/root paths are exempt (Cloud Run probes hit the origin
+  directly).
+- **Applying from a worktree:** the prod Pulumi stack shows benign cross-worktree
+  Cloud Function source-archive drift (last applied from a different worktree) —
+  apply edge changes with `pulumi up --target <urn>` to avoid touching it. CI
+  does NOT auto-run `pulumi up` (apply locally before merge).
+
 ## Magic-link auth vs. email link-scanners (Jul 2026)
 
 - **Never auto-consume a single-use token on page render.** `/auth/verify` used to
