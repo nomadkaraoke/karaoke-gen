@@ -150,6 +150,15 @@ class CloudflareConfig:
     DOMAIN_MAPPING_ROUTE = "karaoke-backend"
     ORIGIN_CNAME_TARGET = "ghs.googlehosted.com"
 
+    # SSL/TLS NOTE (validated on staging 2026-07-20): the zone SSL mode is
+    # "full" (not strict). In "full" mode Cloudflare encrypts to the origin but
+    # does NOT validate the origin cert, so the Cloud Run domain-mapping managed
+    # cert's provisioning/renewal status is irrelevant through the proxy — the
+    # edge works even while that cert shows "pending". This sidesteps the 525
+    # "dragon" (which only bites in "full (strict)") WITHOUT needing a run.app
+    # Origin Rule. Keep the zone on "full" (never flip to strict without first
+    # provisioning/renewing the managed cert, which cannot issue behind CF).
+
     # Header name Cloudflare injects and the backend checks (value = secret).
     ORIGIN_AUTH_HEADER = "X-Edge-Auth"
 
