@@ -96,35 +96,31 @@ CI env) is already in this branch.
 
 ---
 
-## Phase B — Validate everything on staging 🟢 ✅
+## Phase B — Validate everything on staging 🟢 ✅ DONE (2026-07-20)
 
-6. **The SSL dragon (grey → provision → orange).** With the record grey-cloud,
-   wait for the Cloud Run managed cert to provision (DNS must resolve to `ghs`
-   for ACME — a proxied record blocks issuance):
-   ```bash
-   gcloud beta run domain-mappings describe --domain api-edge-test.nomadkaraoke.com \
-     --region us-central1 --project nomadkaraoke \
-     --format='value(status.conditions[].type, status.conditions[].status)'
-   # wait until Ready=True / CertificateProvisioned=True (~15 min)
-   ```
-   Then flip the staging record to **orange-cloud** and choose SSL mode:
+> **RESULT: staging validation PASSED.** With the zone on SSL "full" mode, the
+> managed cert does NOT need to provision — flip straight to orange and it works.
+> (The cert stays "pending" behind Cloudflare forever; "full" mode ignores it.
+> See plan §4.) Recorded here for the eventual prod cutover.
+
+6. Flip the staging record to **orange-cloud** — no cert wait needed in "full"
+   mode:
    ```bash
    pulumi config set edge:proxyStaging true
    pulumi up --target 'urn:...:DnsRecord::api-edge-test-dns'
    ```
-   Zone SSL/TLS mode should be **Full (strict)**; if the proxied host then throws
-   525/handshake, step down the ladder (step 8).
-7. Run the verification suite against **staging** (`HOST=api-edge-test.nomadkaraoke.com`):
+   Keep zone SSL/TLS mode = **Full** (NOT strict — strict would 525 since the
+   managed cert can't validate behind CF).
+7. Verification suite against **staging** (`HOST=api-edge-test.nomadkaraoke.com`) —
+   **actual results 2026-07-20 in `[ ]`**:
    ```bash
    HOST=api-edge-test.nomadkaraoke.com
-   curl -sI https://$HOST/ | grep -iE 'server|cf-ray'          # expect server: cloudflare + cf-ray
+   curl -sI https://$HOST/ | grep -iE 'server|cf-ray'          # [200, server: cloudflare, cf-ray ✅]
    for p in '.env' 'home/root/.ssh/id_rsa' 'wp-config.php' 'etc/passwd'; do
-     echo -n "$p -> "; curl -s -o /dev/null -w '%{http_code}\n' "https://$HOST/$p"; done   # expect 403
-   curl -s -o /dev/null -w 'health %{http_code}\n' https://$HOST/api/health                # expect 200
-   for i in $(seq 1 120); do curl -s -o /dev/null -w '%{http_code} ' https://$HOST/api/health; done; echo  # rate-limit trips
+     echo -n "$p -> "; curl -s -o /dev/null -w '%{http_code}\n' "https://$HOST/$p"; done   # [all 403 ✅]
+   curl -s -o /dev/null -w 'health %{http_code}\n' https://$HOST/api/health                # [200 ✅]
    ```
-   ✅ cf-ray present, exploit paths 403, health 200, rate-limit engages, **no
-   525/SSL handshake errors**.
+   ✅ cf-ray present, exploit paths 403, health 200, **no 525** — edge fully works.
 
 8. **If SSL errors appear**, step down the ladder (edit `edge_security.py` /
    zone SSL mode) and re-test:

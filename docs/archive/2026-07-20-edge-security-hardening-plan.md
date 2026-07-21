@@ -87,37 +87,36 @@ without re-architecting.
   (default false), so merging it can't make `pulumi up` attempt Cloudflare calls
   with the wrong token.
 
-## 4. The dragon: Cloud Run domain mapping × Cloudflare proxy (TLS)
+## 4. The dragon: Cloud Run domain mapping × Cloudflare proxy (TLS) — RESOLVED
 
-The reason the API is grey-cloud today is almost certainly the **managed-cert ×
-proxy interaction**:
+**Investigated + resolved live on staging 2026-07-20.** The theory:
+- A Cloud Run domain mapping provisions a Google-managed cert via ACME, which
+  needs the host to resolve directly to `ghs` — a proxied (orange) record blocks
+  issuance; and renewal (~90d) could fail behind the proxy → delayed 525/526.
 
-- A Cloud Run domain mapping provisions a **Google-managed TLS cert** via ACME,
-  which needs the hostname to resolve to `ghs.googlehosted.com` for validation.
-- With Cloudflare orange-cloud + **Full (strict)**, Cloudflare connects to the
-  origin over TLS and validates the origin cert for `api.nomadkaraoke.com`. Works
-  **while the cert is valid**.
-- **The delayed failure:** the managed cert must **renew** (~every 90d). Renewal
-  validation traffic can be broken by the proxy terminating TLS/ALPN → renewal
-  fails weeks later → **525/526 SSL errors** even though it "worked at first."
-  This matches the "it worked then broke" memory.
+**What we actually found (staging `api-edge-test.nomadkaraoke.com`):**
+- Fresh managed-cert provisioning genuinely **does not work** behind Cloudflare
+  even grey-cloud — the ACME challenge is never "visible" (confirmed correct DNS,
+  propagation, no CAA; recreating the mapping didn't help). So the managed cert
+  stays "pending" indefinitely.
+- **BUT the zone SSL mode is "full" (not strict)** — and in "full" mode Cloudflare
+  encrypts to the origin **without validating the origin cert**. So through the
+  proxy, the managed cert's status is **irrelevant**: `ghs` serves the request
+  over TLS that "full" mode accepts, and Cloud Run routes via the domain mapping.
+- **Result: the proxied edge works end-to-end** — `GET /` → 200 + `cf-ray` + real
+  backend JSON; exploit paths → 403 (WAF); `/api/health` → 200.
 
-**Mitigation = an SSL fallback ladder, proven on staging (§5, Phase B):**
+**Conclusion — no ladder, no run.app Origin Rule, no LB needed.** "Full" mode is
+inherently renewal-safe (a never-provisioning / never-renewing managed cert can't
+525 when the cert isn't validated). The only rule: **keep the zone on "full"; do
+NOT switch to "full (strict)"** unless the managed cert is actually valid (it
+can't be, behind CF). The run.app-SNI-override (Origin Rule) was implemented and
+then removed — it's blocked anyway by the zone's singleton `http_request_origin`
+entrypoint (already used by a flacfetch prod rule) and adds no benefit over "full".
 
-1. **Full (strict) on the existing mapping** — simplest; test first.
-2. **Full (not strict)** — Cloudflare encrypts to origin but skips strict cert
-   validation, so a renewal hiccup won't 525. Slightly weaker (CF↔Google hop),
-   low risk on Google's network.
-3. **SNI-override to the `*.run.app` origin** (most robust): a Cloudflare **Origin
-   Rule** sets origin host + SNI to `karaoke-backend-…-uc.a.run.app` (whose
-   Google cert is always valid and never our concern), while the public host stays
-   `api.nomadkaraoke.com`. Sidesteps the managed-cert dependency entirely. Requires
-   the backend to accept the run.app Host (ingress=all already does) and CORS to
-   allow the public origin (already `*`).
-
-We pick the highest rung that passes on staging and **leave staging proxied for a
-few days** to smoke-test before prod cutover. If we want to fully eliminate the
-cert dragon long-term, the follow-up is a GCP HTTPS LB (deferred — cost/scope).
+**Prod cutover is therefore simple:** the prod `api` domain mapping already has a
+(historically-provisioned) cert, and "full" mode tolerates it regardless — so the
+cutover is just the DNS proxy flip; no cert wait, no 525 risk.
 
 ## 5. Phased plan (zero-downtime by construction)
 
