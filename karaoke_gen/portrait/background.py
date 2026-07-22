@@ -61,10 +61,15 @@ def _gradient(cfg: PortraitBrandConfig) -> Image.Image:
     return img
 
 
-def _load_font(cfg: PortraitBrandConfig, size: int) -> ImageFont.FreeTypeFont:
+def _load_font(cfg: PortraitBrandConfig, size: int):
     if cfg.font_path and os.path.isfile(cfg.font_path):
         return ImageFont.truetype(cfg.font_path, size)
-    return ImageFont.load_default()
+    # Pillow >= 10.1 supports a sized default font, so the no-custom-font fallback
+    # still respects the layout's intended scaling instead of the tiny legacy bitmap.
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
 
 
 def _paste_wordmark(img: Image.Image, cfg: PortraitBrandConfig, top: int) -> int:

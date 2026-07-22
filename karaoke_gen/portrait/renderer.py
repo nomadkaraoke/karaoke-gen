@@ -53,7 +53,7 @@ def _ffprobe_duration(path: str) -> float:
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "default=noprint_wrappers=1:nokey=1", path],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, check=True, timeout=60,
     ).stdout.strip()
     return float(out)
 
@@ -219,7 +219,12 @@ def render_portrait_video(
             os.path.abspath(output_path),
         ]
         logger.info(f"Rendering portrait video ({w}x{h}, body {body_dur:.1f}s) -> {output_path}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        try:
+            # A full song encodes in well under a minute; 30 min is a generous ceiling
+            # so a stalled ffmpeg can never hang the encoding worker indefinitely.
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"Portrait ffmpeg timed out after {exc.timeout}s") from exc
         if result.returncode != 0:
             raise RuntimeError(f"Portrait ffmpeg failed: {result.stderr[-2000:]}")
         if not os.path.isfile(output_path):
