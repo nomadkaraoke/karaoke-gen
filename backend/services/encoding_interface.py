@@ -71,6 +71,11 @@ class EncodingOutput:
     title_mov_path: Optional[str] = None  # "<artist> - <title> (Title).mov"
     end_mov_path: Optional[str] = None  # "<artist> - <title> (End).mov"
 
+    # Portrait (9:16) karaoke video for phone viewing / social sharing. Additive;
+    # distributed to GCS + Dropbox only (never Drive/YouTube). May be absent when the
+    # portrait render is disabled or fails (it is best-effort).
+    portrait_mp4_path: Optional[str] = None  # "<artist> - <title> (Final Karaoke Portrait 1080x1920).mp4"
+
     # All output files as a dict for convenience
     output_files: Dict[str, str] = field(default_factory=dict)
 
@@ -387,6 +392,8 @@ class GCEEncodingBackend(EncodingBackend):
                             output_files["mp4_4k_lossless"] = path
                     elif "lossy 4k" in filename_lower:
                         output_files["mp4_4k_lossy"] = path
+                    elif "portrait" in filename_lower:
+                        output_files["portrait_mp4"] = path
                     elif "720p" in filename_lower:
                         output_files["mp4_720p"] = path
                     elif "with vocals" in filename_lower and filename.endswith(".mp4"):
@@ -408,6 +415,7 @@ class GCEEncodingBackend(EncodingBackend):
                 with_vocals_mp4_path=output_files.get("with_vocals_mp4"),
                 title_mov_path=output_files.get("title_mov"),
                 end_mov_path=output_files.get("end_mov"),
+                portrait_mp4_path=output_files.get("portrait_mp4"),
                 output_files=output_files,
                 encoding_time_seconds=encoding_time,
                 encoding_backend=self.name

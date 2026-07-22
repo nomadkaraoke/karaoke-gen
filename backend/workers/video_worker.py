@@ -362,6 +362,7 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                     'final_karaoke_txt_zip': result.final_karaoke_txt_zip,
                     'title_mov': result.title_mov,
                     'end_mov': result.end_mov,
+                    'portrait_video': result.portrait_video,
                 })
 
             # Store result metadata in job BEFORE transitioning to COMPLETE
@@ -1635,6 +1636,8 @@ async def _upload_results(
         # manifest and are verifiable (regression: missing from Dropbox folders)
         ('title_mov', 'finals', 'title_mov'),
         ('end_mov', 'finals', 'end_mov'),
+        # Portrait (9:16) karaoke — recorded in the admin files manifest.
+        ('portrait_video', 'finals', 'portrait_1080x1920'),
     ]
     
     for result_key, category, file_key in file_mappings:

@@ -126,6 +126,10 @@ class OrchestratorResult:
     title_mov: Optional[str] = None
     end_mov: Optional[str] = None
 
+    # Portrait (9:16) karaoke video. Downloaded so it lands in the Dropbox folder;
+    # intentionally excluded from YouTube/Drive uploads. Best-effort — may be None.
+    portrait_video: Optional[str] = None
+
     # Organization
     brand_code: Optional[str] = None
 
@@ -570,6 +574,9 @@ class VideoWorkerOrchestrator:
             # Standalone screen videos — pulled back so they reach the Dropbox folder
             ('title_mov_path', 'title_mov'),
             ('end_mov_path', 'end_mov'),
+            # Portrait karaoke — pulled back so it reaches the Dropbox folder (upload_folder
+            # sweeps the whole output dir); excluded from YouTube/Drive by design.
+            ('portrait_mp4_path', 'portrait_video'),
         ]
 
         downloaded_count = 0

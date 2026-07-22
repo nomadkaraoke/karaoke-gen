@@ -31,6 +31,42 @@ as `job_health_service` already did.
 
 ---
 
+## Portrait (9:16) video: re-render, never transform the finished video (Jul 2026)
+
+The karaoke video is `ffmpeg` compositing a background + audio + an `ass=` **subtitle
+filter**, and the generated ASS bakes **absolute pixel coordinates at 3840×2160**
+(`{\an8}{\pos(1920,Y)}` per line). That has a hard consequence for portrait output:
+you cannot post-process the finished 16:9 video into a good 9:16 one — letterboxing
+leaves the lyrics tiny in ~32% of the frame, and centre-cropping slices the start/end
+off **every** line. The only good option is to **re-render at portrait resolution with
+the lyrics re-wrapped** for the narrow frame.
+
+This is cheap because the generator is already parameterized: `SubtitlesGenerator` /
+`VideoGenerator` take a resolution tuple + font/line-height, and `SegmentResizer` wraps
+lines via `max_line_length`. The portrait module (`karaoke_gen/portrait/`) drives them
+directly at 1080×1920 from the same `corrections_updated.json` — so word-by-word timing
+is identical to the landscape video; only layout changes. Gotchas found while building it:
+
+- **Wrapping orphans:** `SegmentResizer` splits at natural breaks (commas), which in a
+  narrow frame can strand a one-word line ("No,"). A small merge-back pass
+  (`portrait/wrap.py`) fixes it without re-splitting (preserves per-word timing).
+- **Sync without countdown:** use the **un-padded** instrumental + **un-countdown-processed**
+  segments — they're inherently in sync (original transcription timing); the portrait
+  title card provides the lead-in. Don't reuse the landscape's padded instrumental with
+  un-shifted segments or they drift by the padding amount.
+- **Fonts on the GCE encoder:** libass resolves the lyrics font via fontconfig (the render
+  step registers the theme font on the VM), but the PIL-drawn header needs an actual
+  **file** — resolve it with `fc-match --format=%{file} "<family>"`.
+- **Integration is zero-plumbing on the distribution side:** the portrait file is written
+  into the encoder's `output_dir`, so it rides the existing `finals/` GCS upload, and
+  `_upload_to_dropbox` uploads the whole local output dir. Only the orchestrator's
+  explicit **download allowlist** (`_download_gce_encoded_files`) needed a new mapping —
+  YouTube/Drive use their own allowlists, which is exactly why the portrait file is
+  naturally excluded from them.
+
+Whole feature is additive + `PORTRAIT_RENDER_ENABLED`-gated + non-fatal: a portrait render
+failure logs and returns `None`, never blocking the landscape outputs or distribution.
+
 ## Cloudflare edge in front of Cloud Run — the SSL "dragon" (Jul 2026)
 
 Putting `api.nomadkaraoke.com` behind Cloudflare (WAF/rate-limit/origin-lock)
