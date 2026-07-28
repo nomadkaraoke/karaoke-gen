@@ -166,6 +166,9 @@ line-length = 140
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry.build]
+script = "scripts/pre-build.py"
+
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/integration", "backend/tests"]
 python_files = ["test_*.py"]
