@@ -46,8 +46,16 @@ export default function TimelineEditor({
       if (currentIndex === words.length) return false
 
       const nextWord = words[currentIndex + 1]
-      if (!nextWord || nextWord.start_time === null) return false
-      return proposedEnd > nextWord.start_time
+      if (nextWord && nextWord.start_time !== null && proposedEnd > nextWord.start_time) {
+        return true;
+      }
+
+      const previousWord = words[currentIndex - 1];
+      if (previousWord && previousWord.end_time !== null && proposedStart < previousWord.end_time) {
+        return true;
+      }
+
+      return false;
     }
 
     return words.some((word, index) => {
