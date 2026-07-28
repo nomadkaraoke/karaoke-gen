@@ -517,11 +517,12 @@ jobs:
 
       - name: Build package
         run: |
-          # Skip pre-build script, as it a) does work we already do in the pipeline,
-          # and b) forces poetry to generate the wheel only for the system the
-          # pipeline runs in.
+          # Remove pre-build script from pyproject.yaml, as it otherwise forces
+          # poetry to generate the wheel only for the system the pipeline runs in.
           # See https://github.com/python-poetry/poetry/issues/3509
           sed -i '/\[tool.poetry.build\]/,/^script = .*/d' pyproject.toml
+
+          python pre-build.py
 
           # Wheel-only: we ship a universal py3-none-any wheel. The sdist bundles
           # the 33-locale Next.js static export (~50 MB) as dead weight and pushed
@@ -841,12 +842,13 @@ jobs:
             venv-package-${{ runner.os }}-py3.13-
 
       - name: Build package
-        # 
         run: |
-          # Skip pre-build script, as it a) does work we already do in the pipeline,
-          # and b) forces poetry to generate the wheel only for the system the
-          # pipeline runs in.
+          # Remove pre-build script from pyproject.yaml, as it otherwise forces
+          # poetry to generate the wheel only for the system the pipeline runs in.
+          # See https://github.com/python-poetry/poetry/issues/3509
           sed -i '/\[tool.poetry.build\]/,/^script = .*/d' pyproject.toml
+
+          python pre-build.py
 
           # Wheel-only: we ship a universal py3-none-any wheel. The sdist bundles
           # the 33-locale Next.js static export (~50 MB) as dead weight and pushed
