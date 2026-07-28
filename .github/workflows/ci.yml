@@ -516,10 +516,17 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Build package
-        # Wheel-only: we ship a universal py3-none-any wheel. The sdist bundles
-        # the 33-locale Next.js static export (~50 MB) as dead weight and pushed
-        # the PyPI project over its 10 GB cap. pip always installs from the wheel.
-        run: poetry build --format wheel
+        run: |
+          # Skip pre-build script, as it a) does work we already do in the pipeline,
+          # and b) forces poetry to generate the wheel only for the system the
+          # pipeline runs in.
+          # See https://github.com/python-poetry/poetry/issues/3509
+          sed -i '/\[tool.poetry.build\]/,/^script = .*/d' pyproject.toml
+
+          # Wheel-only: we ship a universal py3-none-any wheel. The sdist bundles
+          # the 33-locale Next.js static export (~50 MB) as dead weight and pushed
+          # the PyPI project over its 10 GB cap. pip always installs from the wheel.
+          poetry build --format wheel
 
       - name: Test package installation
         run: |
@@ -834,12 +841,19 @@ jobs:
             venv-package-${{ runner.os }}-py3.13-
 
       - name: Build package
-        # Wheel-only: we publish a universal py3-none-any wheel to PyPI. The
-        # sdist bundled the 33-locale Next.js static export (~50 MB/release) as
-        # dead weight and pushed the project over PyPI's 10 GB storage cap.
-        # pip always installs from the wheel; nothing builds karaoke-gen from
-        # source (the GCE encoding worker pulls the wheel from GCS).
-        run: poetry build --format wheel
+        # 
+        run: |
+          # Skip pre-build script, as it a) does work we already do in the pipeline,
+          # and b) forces poetry to generate the wheel only for the system the
+          # pipeline runs in.
+          sed -i '/\[tool.poetry.build\]/,/^script = .*/d' pyproject.toml
+
+          # Wheel-only: we ship a universal py3-none-any wheel. The sdist bundles
+          # the 33-locale Next.js static export (~50 MB) as dead weight and pushed
+          # the PyPI project over its 10 GB cap.
+          # pip always installs from the wheel; nothing builds karaoke-gen from
+          # source (the GCE encoding worker pulls the wheel from GCS).
+          poetry build --format wheel
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
