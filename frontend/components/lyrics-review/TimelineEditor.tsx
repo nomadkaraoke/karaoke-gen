@@ -43,7 +43,7 @@ export default function TimelineEditor({
     isResize: boolean
   ): boolean => {
     if (isResize) {
-      if (currentIndex === words.length - 1) return false
+      if (currentIndex === words.length) return false
 
       const nextWord = words[currentIndex + 1]
       if (!nextWord || nextWord.start_time === null) return false
