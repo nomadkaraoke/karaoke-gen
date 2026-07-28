@@ -28,6 +28,7 @@ frontend/.swc/
 frontend/.turbo/
 frontend/build/
 frontend/dist/
+karaoke_gen/nextjs_frontend/out
 
 # Next.js specific
 frontend/*.tsbuildinfo
