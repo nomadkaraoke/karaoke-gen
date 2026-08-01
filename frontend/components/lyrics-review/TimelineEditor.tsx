@@ -302,7 +302,7 @@ export default function TimelineEditor({
 
       <VocalsAudioDataLoaderContext.Consumer>
         {({ audioData: vocalsAudioData }) => (
-          <WaveformVisualizer
+          vocalsAudioData && <WaveformVisualizer
             startTime={startTime}
             endTime={endTime}
             audioData={vocalsAudioData}
