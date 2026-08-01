@@ -410,7 +410,7 @@ export default function EditModal({
             </p>
           </div>
         ) : editedSegment ? (
-          <div className="flex-1 overflow-auto space-y-4">
+          <div className="flex flex-col flex-1 space-y-4 overflow-hidden">
             {timingFixCount > 0 && (
               <div
                 role="status"
@@ -445,20 +445,22 @@ export default function EditModal({
               />
             )}
 
-            {/* Word list */}
-            <EditWordList
-              words={editedSegment.words}
-              onWordUpdate={handleWordChange}
-              onSplitWord={handleSplitWord}
-              onMergeWords={handleMergeWords}
-              onAddWord={handleAddWord}
-              onRemoveWord={handleRemoveWord}
-              onReplaceAllWords={handleReplaceAllWords}
-              onSplitSegment={handleSplitSegment}
-              onAddSegment={handleAddSegmentAt}
-              onMergeSegment={handleMergeSegment}
-              isGlobal={isGlobal}
-            />
+            <div className="overflow-auto">
+              {/* Word list */}
+              <EditWordList
+                words={editedSegment.words}
+                onWordUpdate={handleWordChange}
+                onSplitWord={handleSplitWord}
+                onMergeWords={handleMergeWords}
+                onAddWord={handleAddWord}
+                onRemoveWord={handleRemoveWord}
+                onReplaceAllWords={handleReplaceAllWords}
+                onSplitSegment={handleSplitSegment}
+                onAddSegment={handleAddSegmentAt}
+                onMergeSegment={handleMergeSegment}
+                isGlobal={isGlobal}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center flex-1">
