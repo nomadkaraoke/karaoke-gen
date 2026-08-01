@@ -1,4 +1,5 @@
 import { HTMLProps, useCallback, useEffect, useRef, useState } from 'react'
+import colors from 'tailwindcss/colors'
 import { AudioData } from '@/lib/audio-data'
 import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
 
@@ -6,6 +7,7 @@ export interface WaveformVisualizerProps extends Omit<HTMLProps<HTMLCanvasElemen
 	startTime: number
 	endTime: number
 	audioData: AudioData | null
+	barColor?: string
 }
 
 export const WaveformVisualizer = ({
@@ -13,6 +15,7 @@ export const WaveformVisualizer = ({
 	endTime,
 	audioData,
 	className,
+	barColor = colors.yellow['500'],
 	... canvasProps
 }: WaveformVisualizerProps) => {
 	const containerRef = useRef<HTMLDivElement | null>(null)
@@ -57,7 +60,7 @@ export const WaveformVisualizer = ({
 
 		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-		ctx.fillStyle = 'orange'
+		ctx.fillStyle = barColor
 
 		const audioData = readAudioData(startTime, endTime)
 		if (!audioData) return
