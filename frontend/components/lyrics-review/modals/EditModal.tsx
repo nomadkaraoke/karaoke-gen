@@ -424,25 +424,27 @@ export default function EditModal({
 
             {/* Timeline editor with Tap To Sync */}
             {editedSegment.words.some((w) => w.start_time !== null) && (
-              <EditTimelineSection
-                words={editedSegment.words}
-                startTime={startTime}
-                endTime={endTime}
-                originalStartTime={originalSegment?.start_time ?? null}
-                originalEndTime={originalSegment?.end_time ?? null}
-                currentStartTime={editedSegment.start_time}
-                currentEndTime={editedSegment.end_time}
-                currentTime={currentTime}
-                isManualSyncing={isManualSyncing}
-                syncWordIndex={syncWordIndex}
-                isSpacebarPressed={isSpacebarPressed}
-                onWordUpdate={handleWordChange}
-                onPlaySegment={onPlaySegment}
-                startManualSync={startManualSync}
-                isGlobal={isGlobal}
-                onTapStart={handleTapStart}
-                onTapEnd={handleTapEnd}
-              />
+              <div className="flex-grow">
+                <EditTimelineSection
+                  words={editedSegment.words}
+                  startTime={startTime}
+                  endTime={endTime}
+                  originalStartTime={originalSegment?.start_time ?? null}
+                  originalEndTime={originalSegment?.end_time ?? null}
+                  currentStartTime={editedSegment.start_time}
+                  currentEndTime={editedSegment.end_time}
+                  currentTime={currentTime}
+                  isManualSyncing={isManualSyncing}
+                  syncWordIndex={syncWordIndex}
+                  isSpacebarPressed={isSpacebarPressed}
+                  onWordUpdate={handleWordChange}
+                  onPlaySegment={onPlaySegment}
+                  startManualSync={startManualSync}
+                  isGlobal={isGlobal}
+                  onTapStart={handleTapStart}
+                  onTapEnd={handleTapEnd}
+                />
+              </div>
             )}
 
             <div className="overflow-auto px-[12px]">
