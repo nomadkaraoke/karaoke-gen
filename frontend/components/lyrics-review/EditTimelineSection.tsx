@@ -111,7 +111,7 @@ export default function EditTimelineSection({
   return (
     <>
       {/* Timeline Editor */}
-      <div className={cn('mb-0', isMobile ? 'h-20' : 'h-[120px]')}>
+      <div className={cn('mb-0', isMobile ? 'h-30' : 'h-[120px]')}>
         <TimelineEditor
           words={words}
           startTime={startTime}
