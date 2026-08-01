@@ -17,7 +17,8 @@ export async function fetchAudioData(url: string): Promise<AudioData> {
 		for (let channelIdx = 1; channelIdx < decodedAudioBuffer.numberOfChannels; channelIdx++) {
 			const channelData = decodedAudioBuffer.getChannelData(channelIdx)
 			for (let i = 0; i < combinedAudioBuffer.length; i++) {
-				if (channelData[i] > combinedAudioBuffer[i]) {
+				const channelDataPoint = Math.abs(channelData[i])
+				if (channelDataPoint > combinedAudioBuffer[i]) {
 					combinedAudioBuffer[i] = channelData[i]
 				}
 			}
