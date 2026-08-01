@@ -445,7 +445,7 @@ export default function EditModal({
               />
             )}
 
-            <div className="overflow-auto">
+            <div className="overflow-auto px-[12px]">
               {/* Word list */}
               <EditWordList
                 words={editedSegment.words}
