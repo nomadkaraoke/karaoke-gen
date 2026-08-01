@@ -243,14 +243,14 @@ export default function TimelineEditor({
   return (
     <div
       ref={containerRef}
-      className="relative h-[115px] bg-card rounded my-2 px-2 border border-border"
+      className="relative bg-card rounded my-2 border border-border"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
       {/* Timeline ruler */}
       <div
-        className="absolute top-0 left-0 right-0 h-10 border-b border-border cursor-pointer"
+        className="h-10 border-b border-border cursor-pointer"
         onClick={handleTimelineClick}
       >
         {generateTimelineMarks()}
@@ -265,52 +265,54 @@ export default function TimelineEditor({
       )}
 
       {/* Word blocks */}
-      {words.map((word, index) => {
-        if (word.start_time === null || word.end_time === null) return null
+      <div className="relative h-[30px]">
+        {words.map((word, index) => {
+          if (word.start_time === null || word.end_time === null) return null
 
-        const leftPosition = timeToPosition(word.start_time)
-        const rightPosition = timeToPosition(word.end_time)
-        const width = rightPosition - leftPosition
+          const leftPosition = timeToPosition(word.start_time)
+          const rightPosition = timeToPosition(word.end_time)
+          const width = rightPosition - leftPosition
 
-        return (
-          <div
-            key={index}
-            className={cn(
-              'absolute h-[30px] top-10 bg-primary rounded text-primary-foreground px-2 py-1',
-              'cursor-move select-none flex items-center text-sm font-sans transition-colors',
-              isWordHighlighted(word) && 'bg-purple-500 dark:bg-purple-600'
-            )}
-            style={{
-              left: `${leftPosition}%`,
-              width: `${width}%`,
-              maxWidth: `calc(${100 - leftPosition}%)`,
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation()
-              handleMouseDown(e, index, 'move')
-            }}
-            onContextMenu={(e) => handleContextMenu(e, index)}
-          >
-            {/* Left resize handle */}
+          return (
             <div
-              className="absolute top-0 left-0 w-2.5 h-full cursor-col-resize hover:bg-primary-foreground/20 rounded-l"
+              key={index}
+              className={cn(
+                'absolute bg-primary rounded text-primary-foreground px-2 py-1',
+                'cursor-move select-none flex items-center text-sm font-sans transition-colors',
+                isWordHighlighted(word) && 'bg-purple-500 dark:bg-purple-600'
+              )}
+              style={{
+                left: `${leftPosition}%`,
+                width: `${width}%`,
+                maxWidth: `calc(${100 - leftPosition}%)`,
+              }}
               onMouseDown={(e) => {
                 e.stopPropagation()
-                handleMouseDown(e, index, 'resize-left')
+                handleMouseDown(e, index, 'move')
               }}
-            />
-            {word.text}
-            {/* Right resize handle */}
-            <div
-              className="absolute top-0 right-0 w-2.5 h-full cursor-col-resize hover:bg-primary-foreground/20 rounded-r"
-              onMouseDown={(e) => {
-                e.stopPropagation()
-                handleMouseDown(e, index, 'resize-right')
-              }}
-            />
-          </div>
-        )
-      })}
+              onContextMenu={(e) => handleContextMenu(e, index)}
+            >
+              {/* Left resize handle */}
+              <div
+                className="absolute top-0 left-0 w-2.5 h-full cursor-col-resize hover:bg-primary-foreground/20 rounded-l"
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  handleMouseDown(e, index, 'resize-left')
+                }}
+              />
+              {word.text}
+              {/* Right resize handle */}
+              <div
+                className="absolute top-0 right-0 w-2.5 h-full cursor-col-resize hover:bg-primary-foreground/20 rounded-r"
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  handleMouseDown(e, index, 'resize-right')
+                }}
+              />
+            </div>
+          )
+        })}
+      </div>
 
       <VocalsAudioDataLoaderContext.Consumer>
         {({ audioData: vocalsAudioData }) => (
@@ -318,7 +320,7 @@ export default function TimelineEditor({
             startTime={startTime}
             endTime={endTime}
             audioData={vocalsAudioData}
-            className="absolute top-[75px] left-0 w-[100%] h-[35px]"
+            className="w-[100%] h-[35px]"
           />
         )}
       </VocalsAudioDataLoaderContext.Consumer>
