@@ -66,10 +66,16 @@ export const WaveformVisualizer = ({
 		if (!audioData) return
 
 		for (let x = 0; x < ctx.canvas.width; x++) {
-			const dataPoint = audioData[Math.floor(x / ctx.canvas.width * audioData.length)]
-			const dataPointHeight = Math.abs(dataPoint) * ctx.canvas.height
+			const dataPointIndex = Math.floor((x - 0.5) / ctx.canvas.width * audioData.length)
+			const nextDataPointIndex = Math.floor((x + 0.5) / ctx.canvas.width * audioData.length)
 
-			ctx.fillRect(x, (ctx.canvas.height - dataPointHeight) / 2, 1, dataPointHeight)
+			const amplitude = audioData
+				.slice(dataPointIndex, nextDataPointIndex)
+				.reduce((maxAmplitude, point) => Math.max(maxAmplitude, Math.abs(point)), 0)
+
+			const barHeight = amplitude * ctx.canvas.height
+
+			ctx.fillRect(x, (ctx.canvas.height - barHeight) / 2, 1, barHeight)
 		}
 	}
 
