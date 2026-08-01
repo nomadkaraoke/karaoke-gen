@@ -213,11 +213,15 @@ def run_combined_review(
             backing_vocals_path = None
 
     clean_instrumental_path = None
+    vocals_path = None
     clean_result = separated.get("clean_instrumental", {})
     if isinstance(clean_result, dict) and clean_result.get("instrumental"):
         clean_instrumental_path = _resolve_path_for_cwd(clean_result["instrumental"], track_dir)
         if not os.path.exists(clean_instrumental_path):
             clean_instrumental_path = None
+        vocals_path = _resolve_path_for_cwd(clean_result["vocals"], track_dir)
+        if not os.path.exists(vocals_path):
+            raise Exception("Vocals audio not found")
 
     with_backing_path = None
     combined_result = separated.get("combined_instrumentals", {})
@@ -303,6 +307,7 @@ def run_combined_review(
             correction_result=correction_result,
             output_config=output_config,
             audio_filepath=resolved_audio or "",
+            vocals_filepath=vocals_path,
             logger=logger,
             # Instrumental review data
             instrumental_options=instrumental_options,

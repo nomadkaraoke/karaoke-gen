@@ -62,6 +62,7 @@ import AutoCorrectPanel from './AutoCorrectPanel'
 import { useAutoCorrect } from '@/hooks/useAutoCorrect'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
 import { applyOffsetToCorrectionData, applyOffsetToSegment } from '@/lib/lyrics-review/utils/timingUtils'
+import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
 
 // Add type for window augmentation
 declare global {
@@ -81,6 +82,7 @@ interface ApiClient {
   addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
   searchLyrics?: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
+  getVocalsAudioUrl: () => string
   generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
@@ -153,6 +155,8 @@ export default function LyricsAnalyzer({
   const [timingOffsetMs, setTimingOffsetMs] = useState(0)
   const [reviewMode, setReviewMode] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [vocalsAudioUrl, setVocalsAudioUrl] = useState<string | null>(null)
 
   // Success screen state (for auto-close after submission)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -569,6 +573,12 @@ export default function LyricsAnalyzer({
       window.location.href = `/app/jobs/local/instrumental`
     }
   }, [showInstrumentalReview, isLocalMode])
+
+  useEffect(() => {
+    if (!apiClient) return
+
+    setVocalsAudioUrl(apiClient.getVocalsAudioUrl())
+  }, [apiClient])
 
   // Countdown effect for success screen (auto-close/redirect after submission)
   useEffect(() => {
@@ -1352,330 +1362,332 @@ export default function LyricsAnalyzer({
   }
 
   return (
-    <div className="max-w-full overflow-x-hidden">
-      <Header
-        isReadOnly={isReadOnly}
-        onFileLoad={onFileLoad}
-        data={data}
-        onMetricClick={metricClickHandlers}
-        effectiveMode={effectiveMode}
-        onModeChange={setInteractionMode}
-        apiClient={apiClient}
-        audioHash={audioHash}
-        onTimeUpdate={setCurrentAudioTime}
-        onHandlerToggle={handleHandlerToggle}
-        isUpdatingHandlers={isUpdatingHandlers}
-        onHandlerClick={handleHandlerClick}
-        onFindReplace={() => setIsFindReplaceModalOpen(true)}
-        onEditAll={handleReplaceAllLyrics}
-        onTimingOffset={handleOpenTimingOffsetModal}
-        timingOffsetMs={timingOffsetMs}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onResetCorrections={handleResetCorrections}
-        statsVisible={statsVisible}
-        onStatsToggle={() => setStatsVisible((v) => !v)}
-        reviewMode={reviewMode}
-        onReviewModeToggle={setReviewMode}
-        onAcceptAllCorrections={handleAcceptAllCorrections}
-        onAcceptHighConfidenceCorrections={handleAcceptHighConfidenceCorrections}
-        onRevertAllCorrections={handleRevertAllCorrections}
-        isDuet={isDuet}
-        onToggleDuet={() => setIsDuet(d => !d)}
-        onAutoCorrect={
-          !isLocalMode && jobId
-            ? () =>
-                autoCorrect.acceptedCount > 0
-                  ? setAutoCorrectDetailsOpen((o) => !o)
-                  : setIsAutoCorrectModalOpen(true)
-            : undefined
-        }
-        autoCorrectedCount={autoCorrect.acceptedCount}
-      />
-
-      <AutoCorrectPanel
-        controller={autoCorrect}
-        isReadOnly={isReadOnly}
-        open={autoCorrectDetailsOpen}
-        onClose={() => setAutoCorrectDetailsOpen(false)}
-        onRerun={() => {
-          setAutoCorrectDetailsOpen(false)
-          setIsAutoCorrectModalOpen(true)
-        }}
-      />
-
-      <div className={cn('grid gap-2', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
-        <TranscriptionView
-          data={displayData}
-          mode={effectiveMode}
-          onElementClick={setModalContent}
-          onWordClick={handleWordClick}
-          flashingType={flashingType}
-          flashingHandler={flashingHandler}
-          highlightInfo={highlightInfo}
-          onPlaySegment={handlePlaySegment}
-          currentTime={isAnyModalOpen ? undefined : currentAudioTime}
-          anchors={data.anchor_sequences}
-          onDataChange={(updatedData) => {
-            updateDataWithHistory(updatedData, 'direct data change')
-          }}
+    <VocalsAudioDataLoader audioUrl={vocalsAudioUrl}>
+      <div className="max-w-full overflow-x-hidden">
+        <Header
+          isReadOnly={isReadOnly}
+          onFileLoad={onFileLoad}
+          data={data}
+          onMetricClick={metricClickHandlers}
+          effectiveMode={effectiveMode}
+          onModeChange={setInteractionMode}
+          apiClient={apiClient}
+          audioHash={audioHash}
+          onTimeUpdate={setCurrentAudioTime}
+          onHandlerToggle={handleHandlerToggle}
+          isUpdatingHandlers={isUpdatingHandlers}
+          onHandlerClick={handleHandlerClick}
+          onFindReplace={() => setIsFindReplaceModalOpen(true)}
+          onEditAll={handleReplaceAllLyrics}
+          onTimingOffset={handleOpenTimingOffsetModal}
+          timingOffsetMs={timingOffsetMs}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onResetCorrections={handleResetCorrections}
+          statsVisible={statsVisible}
+          onStatsToggle={() => setStatsVisible((v) => !v)}
           reviewMode={reviewMode}
-          onRevertCorrection={handleRevertCorrection}
-          onEditCorrection={handleEditCorrection}
-          onAcceptCorrection={handleAcceptCorrection}
-          onShowCorrectionDetail={handleShowCorrectionDetail}
-          activeGapWordIds={activeGapWordIds}
-          advancedMode={advancedMode}
-          onAdvancedModeToggle={handleAdvancedModeToggle}
-          editedWordIds={editedWordIds}
-          aiCorrectedWordIds={aiCorrectedWordIds}
-          aiOriginalTextByWordId={aiOriginalTextByWordId}
-          aiEstimatedWordIds={aiEstimatedWordIds}
+          onReviewModeToggle={setReviewMode}
+          onAcceptAllCorrections={handleAcceptAllCorrections}
+          onAcceptHighConfidenceCorrections={handleAcceptHighConfidenceCorrections}
+          onRevertAllCorrections={handleRevertAllCorrections}
           isDuet={isDuet}
-          onSegmentSingerChange={(segmentIdx, next) => {
-            const segments = [...data.corrected_segments]
-            segments[segmentIdx] = { ...segments[segmentIdx], singer: next }
-            updateDataWithHistory({ ...data, corrected_segments: segments }, 'singer change')
-          }}
-          onSegmentFocus={setFocusedSegmentIndex}
+          onToggleDuet={() => setIsDuet(d => !d)}
+          onAutoCorrect={
+            !isLocalMode && jobId
+              ? () =>
+                  autoCorrect.acceptedCount > 0
+                    ? setAutoCorrectDetailsOpen((o) => !o)
+                    : setIsAutoCorrectModalOpen(true)
+              : undefined
+          }
+          autoCorrectedCount={autoCorrect.acceptedCount}
         />
-        <ReferenceView
-          referenceSources={data.reference_lyrics}
-          anchors={data.anchor_sequences}
-          gaps={data.gap_sequences}
-          mode={effectiveMode}
-          onElementClick={setModalContent}
-          onWordClick={handleWordClick}
-          flashingType={flashingType}
-          highlightInfo={highlightInfo}
-          currentSource={currentSource}
-          onSourceChange={setCurrentSource}
-          corrected_segments={data.corrected_segments}
-          corrections={data.corrections}
-          onAddLyrics={() => setIsAddLyricsModalOpen(true)}
-          onAddLyricsInline={handleAddLyrics}
-          onSearchLyrics={handleSearchLyrics}
+
+        <AutoCorrectPanel
+          controller={autoCorrect}
+          isReadOnly={isReadOnly}
+          open={autoCorrectDetailsOpen}
+          onClose={() => setAutoCorrectDetailsOpen(false)}
+          onRerun={() => {
+            setAutoCorrectDetailsOpen(false)
+            setIsAutoCorrectModalOpen(true)
+          }}
+        />
+
+        <div className={cn('grid gap-2', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
+          <TranscriptionView
+            data={displayData}
+            mode={effectiveMode}
+            onElementClick={setModalContent}
+            onWordClick={handleWordClick}
+            flashingType={flashingType}
+            flashingHandler={flashingHandler}
+            highlightInfo={highlightInfo}
+            onPlaySegment={handlePlaySegment}
+            currentTime={isAnyModalOpen ? undefined : currentAudioTime}
+            anchors={data.anchor_sequences}
+            onDataChange={(updatedData) => {
+              updateDataWithHistory(updatedData, 'direct data change')
+            }}
+            reviewMode={reviewMode}
+            onRevertCorrection={handleRevertCorrection}
+            onEditCorrection={handleEditCorrection}
+            onAcceptCorrection={handleAcceptCorrection}
+            onShowCorrectionDetail={handleShowCorrectionDetail}
+            activeGapWordIds={activeGapWordIds}
+            advancedMode={advancedMode}
+            onAdvancedModeToggle={handleAdvancedModeToggle}
+            editedWordIds={editedWordIds}
+            aiCorrectedWordIds={aiCorrectedWordIds}
+            aiOriginalTextByWordId={aiOriginalTextByWordId}
+            aiEstimatedWordIds={aiEstimatedWordIds}
+            isDuet={isDuet}
+            onSegmentSingerChange={(segmentIdx, next) => {
+              const segments = [...data.corrected_segments]
+              segments[segmentIdx] = { ...segments[segmentIdx], singer: next }
+              updateDataWithHistory({ ...data, corrected_segments: segments }, 'singer change')
+            }}
+            onSegmentFocus={setFocusedSegmentIndex}
+          />
+          <ReferenceView
+            referenceSources={data.reference_lyrics}
+            anchors={data.anchor_sequences}
+            gaps={data.gap_sequences}
+            mode={effectiveMode}
+            onElementClick={setModalContent}
+            onWordClick={handleWordClick}
+            flashingType={flashingType}
+            highlightInfo={highlightInfo}
+            currentSource={currentSource}
+            onSourceChange={setCurrentSource}
+            corrected_segments={data.corrected_segments}
+            corrections={data.corrections}
+            onAddLyrics={() => setIsAddLyricsModalOpen(true)}
+            onAddLyricsInline={handleAddLyrics}
+            onSearchLyrics={handleSearchLyrics}
+            defaultArtist={data.metadata?.artist || ''}
+            defaultTitle={data.metadata?.title || ''}
+          />
+        </div>
+
+        {/* Spacer for sticky footer */}
+        {!isReadOnly && apiClient && <div className="h-16" />}
+
+        {/* Sticky footer bar */}
+        {!isReadOnly && apiClient && (
+          <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg py-3 px-4 z-50 flex justify-center items-center gap-4 flex-wrap">
+            <GapNavigator
+              currentGapIndex={currentGapIndex}
+              totalGaps={uncorrectedGaps.length}
+              onPrevGap={handlePrevGap}
+              onNextGap={handleNextGap}
+            />
+            {data.gap_sequences.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 rounded-full transition-all"
+                    style={{
+                      width: `${data.gap_sequences.length > 0 ? ((data.gap_sequences.length - uncorrectedGaps.length) / data.gap_sequences.length) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                {uncorrectedGaps.length === 0 ? (
+                  <span className="text-xs text-green-500 flex items-center gap-0.5">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    All gaps reviewed
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {data.gap_sequences.length - uncorrectedGaps.length}/{data.gap_sequences.length} gaps reviewed
+                  </span>
+                )}
+              </div>
+            )}
+            {apiClient?.saveReviewSession && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => saveSession('manual')}
+                  disabled={history.length <= 1}
+                >
+                  Save Progress
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenSessionBrowser}
+                >
+                  Session History
+                </Button>
+              </>
+            )}
+            <span className="text-sm text-muted-foreground">Lyrics look good?</span>
+            <Button onClick={handleFinishReview} disabled={isReviewComplete}>
+              {isReviewComplete ? 'Review Complete' : 'Preview Video'}
+              <Video className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Modals */}
+        <EditModal
+          open={Boolean(editModalSegment)}
+          onClose={() => {
+            setEditModalSegment(null)
+            handleSetModalSpacebarHandler(undefined)
+          }}
+          segment={
+            editModalSegment?.segment
+              ? timingOffsetMs !== 0
+                ? applyOffsetToSegment(editModalSegment.segment, timingOffsetMs)
+                : editModalSegment.segment
+              : null
+          }
+          segmentIndex={editModalSegment?.index ?? null}
+          originalSegment={
+            editModalSegment?.originalSegment
+              ? timingOffsetMs !== 0
+                ? applyOffsetToSegment(editModalSegment.originalSegment, timingOffsetMs)
+                : editModalSegment.originalSegment
+              : null
+          }
+          onSave={handleUpdateSegment}
+          onDelete={handleDeleteSegment}
+          onAddSegment={handleAddSegment}
+          onSplitSegment={handleSplitSegment}
+          onMergeSegment={handleMergeSegment}
+          onPlaySegment={handlePlaySegment}
+          currentTime={currentAudioTime}
+          originalTranscribedSegment={
+            editModalSegment?.segment &&
+            editModalSegment?.index !== null &&
+            originalData.original_segments
+              ? (() => {
+                  const origSegment =
+                    originalData.original_segments.find(
+                      (s: LyricsSegment) => s.id === editModalSegment.segment.id
+                    ) || null
+                  return origSegment && timingOffsetMs !== 0
+                    ? applyOffsetToSegment(origSegment, timingOffsetMs)
+                    : origSegment
+                })()
+              : null
+          }
+        />
+
+        <ReviewChangesModal
+          open={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          data={data}
+          onSubmit={handleSubmitToServer}
+          isSubmitting={isSubmitting}
+          apiClient={apiClient}
+          timingOffsetMs={timingOffsetMs}
+          isDuet={isDuet}
+        />
+
+        <AddLyricsModal
+          open={isAddLyricsModalOpen}
+          onClose={() => setIsAddLyricsModalOpen(false)}
+          onAdd={handleAddLyrics}
+          onSearch={handleSearchLyrics}
           defaultArtist={data.metadata?.artist || ''}
           defaultTitle={data.metadata?.title || ''}
         />
-      </div>
 
-      {/* Spacer for sticky footer */}
-      {!isReadOnly && apiClient && <div className="h-16" />}
+        <FindReplaceModal
+          open={isFindReplaceModalOpen}
+          onClose={() => setIsFindReplaceModalOpen(false)}
+          onReplace={handleFindReplace}
+          data={data}
+        />
 
-      {/* Sticky footer bar */}
-      {!isReadOnly && apiClient && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg py-3 px-4 z-50 flex justify-center items-center gap-4 flex-wrap">
-          <GapNavigator
-            currentGapIndex={currentGapIndex}
-            totalGaps={uncorrectedGaps.length}
-            onPrevGap={handlePrevGap}
-            onNextGap={handleNextGap}
+        <TimingOffsetModal
+          open={isTimingOffsetModalOpen}
+          onClose={() => setIsTimingOffsetModalOpen(false)}
+          currentOffset={timingOffsetMs}
+          onApply={handleApplyTimingOffset}
+        />
+
+        <ReplaceAllLyricsModal
+          open={isReplaceAllLyricsModalOpen}
+          onClose={() => setIsReplaceAllLyricsModalOpen(false)}
+          onSave={handleSaveReplaceAllLyrics}
+          onPlaySegment={handlePlaySegment}
+          currentTime={currentAudioTime}
+          setModalSpacebarHandler={handleSetModalSpacebarHandler}
+          existingSegments={data.corrected_segments}
+          jobId={jobId ?? ''}
+          artist={data.metadata?.artist}
+          title={data.metadata?.title}
+          authToken={getAccessToken() ?? undefined}
+        />
+
+        <AutoCorrectModal
+          open={isAutoCorrectModalOpen}
+          onClose={() => setIsAutoCorrectModalOpen(false)}
+          onRun={(settings) => void autoCorrect.run(settings)}
+          onCancelRun={autoCorrect.cancel}
+          status={autoCorrect.status}
+          error={autoCorrect.error}
+          hasReferences={autoCorrect.hasReferences}
+        />
+
+        <EditFeedbackBar
+          entry={lastEditEntry}
+          visible={showFeedbackBar}
+          onFeedback={handleEditFeedback}
+          onDismiss={() => setShowFeedbackBar(false)}
+        />
+
+        {selectedCorrection && (
+          <CorrectionDetailCard
+            open={correctionDetailOpen}
+            onClose={() => {
+              setCorrectionDetailOpen(false)
+              setSelectedCorrection(null)
+            }}
+            originalWord={selectedCorrection.originalWord}
+            correctedWord={selectedCorrection.correctedWord}
+            category={selectedCorrection.category}
+            confidence={selectedCorrection.confidence}
+            reason={selectedCorrection.reason}
+            handler={selectedCorrection.handler}
+            source={selectedCorrection.source}
+            onRevert={() => {
+              handleRevertCorrection(selectedCorrection.wordId)
+              setCorrectionDetailOpen(false)
+              setSelectedCorrection(null)
+            }}
+            onEdit={() => {
+              handleEditCorrection(selectedCorrection.wordId)
+              setCorrectionDetailOpen(false)
+              setSelectedCorrection(null)
+            }}
+            onAccept={() => {
+              handleAcceptCorrection(selectedCorrection.wordId)
+              setCorrectionDetailOpen(false)
+              setSelectedCorrection(null)
+            }}
           />
-          {data.gap_sequences.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-green-500 rounded-full transition-all"
-                  style={{
-                    width: `${data.gap_sequences.length > 0 ? ((data.gap_sequences.length - uncorrectedGaps.length) / data.gap_sequences.length) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-              {uncorrectedGaps.length === 0 ? (
-                <span className="text-xs text-green-500 flex items-center gap-0.5">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  All gaps reviewed
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {data.gap_sequences.length - uncorrectedGaps.length}/{data.gap_sequences.length} gaps reviewed
-                </span>
-              )}
-            </div>
-          )}
-          {apiClient?.saveReviewSession && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => saveSession('manual')}
-                disabled={history.length <= 1}
-              >
-                Save Progress
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenSessionBrowser}
-              >
-                Session History
-              </Button>
-            </>
-          )}
-          <span className="text-sm text-muted-foreground">Lyrics look good?</span>
-          <Button onClick={handleFinishReview} disabled={isReviewComplete}>
-            {isReviewComplete ? 'Review Complete' : 'Preview Video'}
-            <Video className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      )}
+        )}
 
-      {/* Modals */}
-      <EditModal
-        open={Boolean(editModalSegment)}
-        onClose={() => {
-          setEditModalSegment(null)
-          handleSetModalSpacebarHandler(undefined)
-        }}
-        segment={
-          editModalSegment?.segment
-            ? timingOffsetMs !== 0
-              ? applyOffsetToSegment(editModalSegment.segment, timingOffsetMs)
-              : editModalSegment.segment
-            : null
-        }
-        segmentIndex={editModalSegment?.index ?? null}
-        originalSegment={
-          editModalSegment?.originalSegment
-            ? timingOffsetMs !== 0
-              ? applyOffsetToSegment(editModalSegment.originalSegment, timingOffsetMs)
-              : editModalSegment.originalSegment
-            : null
-        }
-        onSave={handleUpdateSegment}
-        onDelete={handleDeleteSegment}
-        onAddSegment={handleAddSegment}
-        onSplitSegment={handleSplitSegment}
-        onMergeSegment={handleMergeSegment}
-        onPlaySegment={handlePlaySegment}
-        currentTime={currentAudioTime}
-        originalTranscribedSegment={
-          editModalSegment?.segment &&
-          editModalSegment?.index !== null &&
-          originalData.original_segments
-            ? (() => {
-                const origSegment =
-                  originalData.original_segments.find(
-                    (s: LyricsSegment) => s.id === editModalSegment.segment.id
-                  ) || null
-                return origSegment && timingOffsetMs !== 0
-                  ? applyOffsetToSegment(origSegment, timingOffsetMs)
-                  : origSegment
-              })()
-            : null
-        }
-      />
-
-      <ReviewChangesModal
-        open={isReviewModalOpen}
-        onClose={() => setIsReviewModalOpen(false)}
-        data={data}
-        onSubmit={handleSubmitToServer}
-        isSubmitting={isSubmitting}
-        apiClient={apiClient}
-        timingOffsetMs={timingOffsetMs}
-        isDuet={isDuet}
-      />
-
-      <AddLyricsModal
-        open={isAddLyricsModalOpen}
-        onClose={() => setIsAddLyricsModalOpen(false)}
-        onAdd={handleAddLyrics}
-        onSearch={handleSearchLyrics}
-        defaultArtist={data.metadata?.artist || ''}
-        defaultTitle={data.metadata?.title || ''}
-      />
-
-      <FindReplaceModal
-        open={isFindReplaceModalOpen}
-        onClose={() => setIsFindReplaceModalOpen(false)}
-        onReplace={handleFindReplace}
-        data={data}
-      />
-
-      <TimingOffsetModal
-        open={isTimingOffsetModalOpen}
-        onClose={() => setIsTimingOffsetModalOpen(false)}
-        currentOffset={timingOffsetMs}
-        onApply={handleApplyTimingOffset}
-      />
-
-      <ReplaceAllLyricsModal
-        open={isReplaceAllLyricsModalOpen}
-        onClose={() => setIsReplaceAllLyricsModalOpen(false)}
-        onSave={handleSaveReplaceAllLyrics}
-        onPlaySegment={handlePlaySegment}
-        currentTime={currentAudioTime}
-        setModalSpacebarHandler={handleSetModalSpacebarHandler}
-        existingSegments={data.corrected_segments}
-        jobId={jobId ?? ''}
-        artist={data.metadata?.artist}
-        title={data.metadata?.title}
-        authToken={getAccessToken() ?? undefined}
-      />
-
-      <AutoCorrectModal
-        open={isAutoCorrectModalOpen}
-        onClose={() => setIsAutoCorrectModalOpen(false)}
-        onRun={(settings) => void autoCorrect.run(settings)}
-        onCancelRun={autoCorrect.cancel}
-        status={autoCorrect.status}
-        error={autoCorrect.error}
-        hasReferences={autoCorrect.hasReferences}
-      />
-
-      <EditFeedbackBar
-        entry={lastEditEntry}
-        visible={showFeedbackBar}
-        onFeedback={handleEditFeedback}
-        onDismiss={() => setShowFeedbackBar(false)}
-      />
-
-      {selectedCorrection && (
-        <CorrectionDetailCard
-          open={correctionDetailOpen}
-          onClose={() => {
-            setCorrectionDetailOpen(false)
-            setSelectedCorrection(null)
-          }}
-          originalWord={selectedCorrection.originalWord}
-          correctedWord={selectedCorrection.correctedWord}
-          category={selectedCorrection.category}
-          confidence={selectedCorrection.confidence}
-          reason={selectedCorrection.reason}
-          handler={selectedCorrection.handler}
-          source={selectedCorrection.source}
-          onRevert={() => {
-            handleRevertCorrection(selectedCorrection.wordId)
-            setCorrectionDetailOpen(false)
-            setSelectedCorrection(null)
-          }}
-          onEdit={() => {
-            handleEditCorrection(selectedCorrection.wordId)
-            setCorrectionDetailOpen(false)
-            setSelectedCorrection(null)
-          }}
-          onAccept={() => {
-            handleAcceptCorrection(selectedCorrection.wordId)
-            setCorrectionDetailOpen(false)
-            setSelectedCorrection(null)
-          }}
-        />
-      )}
-
-      {!isReadOnly && (
-        <SessionRestoreDialog
-          open={sessionRestoreOpen}
-          onClose={() => setSessionRestoreOpen(false)}
-          onRestore={handleSessionRestore}
-          sessions={savedSessions}
-          apiClient={sessionClient as LyricsReviewApiClient}
-          isLoading={sessionsLoading}
-        />
-      )}
-    </div>
+        {!isReadOnly && (
+          <SessionRestoreDialog
+            open={sessionRestoreOpen}
+            onClose={() => setSessionRestoreOpen(false)}
+            onRestore={handleSessionRestore}
+            sessions={savedSessions}
+            apiClient={sessionClient as LyricsReviewApiClient}
+            isLoading={sessionsLoading}
+          />
+        )}
+      </div>
+    </VocalsAudioDataLoader>
   )
 }

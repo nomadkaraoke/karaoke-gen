@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react'
 import { Word } from '@/lib/lyrics-review/types'
 import { cn } from '@/lib/utils'
+import { WaveformVisualizer } from './WaveformVisualizer'
+import { VocalsAudioDataLoaderContext } from './VocalsAudioDataLoader'
 
 interface TimelineEditorProps {
   words: Word[]
@@ -227,7 +229,7 @@ export default function TimelineEditor({
   return (
     <div
       ref={containerRef}
-      className="relative h-[75px] bg-card rounded my-2 px-2 border border-border"
+      className="relative h-[115px] bg-card rounded my-2 px-2 border border-border"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
@@ -295,6 +297,17 @@ export default function TimelineEditor({
           </div>
         )
       })}
+
+      <VocalsAudioDataLoaderContext.Consumer>
+        {({ audioData: vocalsAudioData }) => (
+          <WaveformVisualizer
+            startTime={startTime}
+            endTime={endTime}
+            audioData={vocalsAudioData}
+            className="absolute top-[75px] left-0 w-[100%] h-[35px]"
+          />
+        )}
+      </VocalsAudioDataLoaderContext.Consumer>
     </div>
   )
 }
