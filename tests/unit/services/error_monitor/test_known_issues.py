@@ -417,6 +417,66 @@ class TestUnknownServiceMessages:
         assert result is None
 
 
+class TestEncodingWorkerCapacityRetry:
+    """The transient GCE capacity/503 VM-start failure is parked for auto-retry
+    by the render worker, so it must not page — it's known transient noise."""
+
+    _MSG = (
+        "[job:preview_ae5de3e5_3c4cdb053cbf] Encoding worker start failed, "
+        "aborting retries: VM encoding-worker-fallback-b start failed in "
+        "us-central1-b: 503 — SERVICE UNAVAILABLE"
+    )
+
+    def test_capacity_503_is_ignored(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        result = should_ignore("karaoke-backend", self._MSG)
+        assert result is not None
+        assert result.pattern_name == "encoding_worker_capacity_retry"
+
+    def test_capacity_ignored_regardless_of_job_id_shape(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        # plain job id form (the pre-existing May pattern) also suppressed
+        msg = (
+            "[job:1ea7effb] Encoding worker start failed, aborting retries: "
+            "VM encoding-worker-fallback-a start failed in us-central1-a: "
+            "503 — SERVICE UNAVAILABLE"
+        )
+        assert should_ignore("karaoke-backend", msg) is not None
+
+    def test_capacity_code_variant_is_ignored(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        msg = (
+            "[job:1ea7effb] Encoding worker start failed, aborting retries: "
+            "VM encoding-worker-fallback-a could not be started in us-central1-a: "
+            "ZONE_RESOURCE_POOL_EXHAUSTED — no resources available"
+        )
+        assert should_ignore("karaoke-backend", msg) is not None
+
+    def test_genuine_job_failure_still_alerts(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        # A real hard failure uses different wording and must NOT be suppressed.
+        assert should_ignore(
+            "karaoke-backend",
+            "[job:1ea7effb] Video render failed: encoder crashed",
+        ) is None
+
+    def test_non_transient_start_failure_still_alerts(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        # Same "aborting retries" prefix, but a non-transient GCE code — this is
+        # "something is actually broken" and must NOT be suppressed.
+        msg = (
+            "[job:1ea7effb] Encoding worker start failed, aborting retries: "
+            "VM encoding-worker-fallback-b start failed in us-central1-b: "
+            "PERMISSION_DENIED — the caller does not have permission"
+        )
+        assert should_ignore("karaoke-backend", msg) is None
+
+
 class TestCaseInsensitiveMatching:
     """All patterns should match case-insensitively."""
 

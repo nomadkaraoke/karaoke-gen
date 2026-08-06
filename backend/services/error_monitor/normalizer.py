@@ -79,6 +79,15 @@ _NORMALIZERS: list[tuple[re.Pattern, str]] = [
         re.compile(r"/jobs/[A-Za-z0-9]+"),
         "/jobs/<ID>",
     ),
+    # 9b. Preview render job IDs: preview_<jobid>_<renderid> (underscore-joined
+    #     hex runs). The generic hex rule (11) is \b-anchored and '_' is a word
+    #     char, so it can't reach these — leaving every preview render of the
+    #     same job as a distinct pattern (N alerts for one incident). Collapse
+    #     the whole token so they map to a single pattern.
+    (
+        re.compile(r"\bpreview_[0-9a-fA-F]{6,}(?:_[0-9a-fA-F]{6,})+\b"),
+        "preview_<ID>",
+    ),
     # 10. Firebase UIDs (20–28 mixed-case alphanumeric characters)
     #     Firebase Auth UIDs are typically 28 chars; allow 20-28 for flexibility.
     #     Must contain both letters and digits (to avoid replacing plain words).

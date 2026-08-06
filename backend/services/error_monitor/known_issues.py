@@ -57,6 +57,27 @@ _IGNORE_PATTERNS: list[tuple[str, re.Pattern, str]] = [
         "Encoding worker idle shutdown — expected behaviour when no jobs are queued",
     ),
     (
+        "encoding_worker_capacity_retry",
+        # Only the TRANSIENT start failures: GCE 503/SERVICE UNAVAILABLE or a
+        # capacity code (ZONE_RESOURCE_POOL_EXHAUSTED / STOCKOUT / QUOTA_EXCEEDED
+        # — see encoding_errors.CAPACITY_ERROR_CODES). The render worker parks
+        # these for auto-retry. A non-transient EncodingWorkerStartError (other /
+        # unknown code) shares the "aborting retries" prefix but must still page,
+        # so we require the transient signal, not just the prefix.
+        re.compile(
+            r"encoding worker start failed, aborting retries:[^\n]*?"
+            r"(?:503\b|service unavailable|zone_resource_pool_exhausted"
+            r"|stockout|quota_exceeded)",
+            re.IGNORECASE,
+        ),
+        (
+            "GCE encoding worker VM start hit a transient GCP condition (zone "
+            "capacity exhaustion or 503 SERVICE UNAVAILABLE) — the render worker "
+            "parks the job for auto-retry rather than failing it. Non-transient "
+            "start failures still alert."
+        ),
+    ),
+    (
         "health_check_404",
         re.compile(
             r"(?:GET|HEAD)\b[^\n]*?/health[^\n]*?\b(?:404|not found)\b",

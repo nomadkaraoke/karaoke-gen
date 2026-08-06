@@ -18,6 +18,8 @@ from backend.services.error_monitor.frontend_ingestion import (
     FrontendErrorReport,
     RateLimiter,
     build_pattern_data,
+    is_bot_user_agent,
+    sanitize_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,20 @@ def report_client_error(payload: ClientErrorPayload, request: Request) -> Client
     client_ip = request.client.host if request.client else "unknown"
     if not _limiter.allow(client_ip, time.monotonic()):
         raise HTTPException(status_code=429, detail="too many reports")
+
+    # Crawler/bot crashes are pure alert noise (bots run headless Chrome and trip
+    # DOM errors no real user hits). Accept the report so the client doesn't retry,
+    # but don't persist/alert on it.
+    if is_bot_user_agent(payload.user_agent):
+        # Log the bot UA (not sensitive) + sanitized URL (query/token stripped)
+        # for visibility into what's being dropped, without persisting/alerting.
+        logger.info(
+            "frontend_crash_ignored_bot ua=%r url=%s source=%s",
+            payload.user_agent[:120],
+            sanitize_url(payload.url),
+            payload.source,
+        )
+        return ClientErrorResponse(pattern_id="bot-ignored", is_new=False)
 
     report = FrontendErrorReport(
         message=payload.message,

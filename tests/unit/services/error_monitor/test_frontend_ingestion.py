@@ -3,12 +3,39 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
 from backend.services.error_monitor.frontend_ingestion import (
     FrontendErrorReport,
     RateLimiter,
     build_pattern_data,
+    is_bot_user_agent,
     sanitize_url,
 )
+
+
+@pytest.mark.parametrize("ua", [
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/136.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "Mozilla/5.0 (compatible; YandexBot/3.0)",
+    "facebookexternalhit/1.1",
+    "curl/8.4.0",
+    "python-requests/2.31.0",
+    "Some HeadlessChrome/120.0 build",
+])
+def test_is_bot_user_agent_true_for_crawlers(ua):
+    assert is_bot_user_agent(ua) is True
+
+
+@pytest.mark.parametrize("ua", [
+    "Mozilla/5.0 (Android 14; Mobile; rv:138.0) Gecko/138.0 Firefox/138.0",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0 Safari/537.36",
+    "",
+    None,
+])
+def test_is_bot_user_agent_false_for_real_browsers(ua):
+    assert is_bot_user_agent(ua) is False
 
 
 def test_sanitize_url_strips_query_and_fragment():

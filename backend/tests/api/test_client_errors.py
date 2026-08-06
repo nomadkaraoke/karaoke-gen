@@ -55,6 +55,18 @@ def test_accepts_valid_report_and_upserts(client):
     assert pd.resource_type == "browser"
 
 
+def test_bot_report_is_accepted_but_not_persisted(client):
+    bot_ua = (
+        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; "
+        "bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/136.0.0.0 Safari/537.36"
+    )
+    resp = client.post("/api/client-errors", json=_payload(user_agent=bot_ua))
+    # Accepted (so the bot won't retry) but never upserted / alerted.
+    assert resp.status_code == 202
+    assert resp.json()["is_new"] is False
+    client.fake_adapter.upsert_pattern.assert_not_called()
+
+
 def test_rejects_missing_message(client):
     resp = client.post("/api/client-errors", json=_payload(message=""))
     assert resp.status_code == 422
