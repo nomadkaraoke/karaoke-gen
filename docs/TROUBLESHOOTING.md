@@ -8,7 +8,9 @@ Operational runbooks for known production issues.
 
 **Cause:** Before v0.130.0, audio downloads ran as FastAPI BackgroundTasks. Cloud Run would terminate "idle" instances mid-download. Since v0.130.0, downloads use a Cloud Run Job (`audio-download-job`) and a Cloud Scheduler recovery job runs every 5 minutes to fail stuck downloads automatically.
 
-**Auto-recovery:** The `recover-stuck-downloads` scheduler detects jobs stuck in `downloading_audio` for >10 minutes and fails them. Use the admin retry button to re-attempt.
+**Auto-recovery:** The `recover-stuck-downloads` scheduler (`/api/internal/recover-stuck-jobs`, every 5 min) detects jobs stuck in `downloading_audio` for >10 minutes and, since v0.192.3:
+- **Torrent sources (RED/OPS)** → parks the job in `download_pending_retry` and keeps re-attempting the download for up to **24 hours** (handles rare tracks with few/intermittent seeders and transient tracker outages), then fails permanently with a clear message. No manual action needed. See `download_pending_retry` below.
+- **Other sources (YouTube/Spotify/URL)** → fails the job (deterministic); use the admin retry button to re-attempt.
 
 **Manual recovery:**
 
@@ -195,9 +197,29 @@ gcloud compute instances describe encoding-worker-a \
 
 ---
 
+## Job stuck at `rendering_video` (orphaned render)
+
+**Symptoms:** Job frozen at `rendering_video` (step 7/10) for a long time with **no error** and **no Retry button** (it's a processing state, not `failed`).
+
+**Cause:** The render worker started (VM up, rendering underway) then died mid-render — Cloud Run instance recycle / SIGKILL / OOM / lost GCE VM — without unregistering. `updated_at` stops advancing. Before v0.192.3 nothing recovered this: the capacity-retry cron only looks at `render_pending_capacity`, `recover-stuck-jobs` only looked at `downloading_audio`, and the render Cloud Task has finite attempts.
+
+**Auto-recovery (v0.192.3+):** `recover-stuck-jobs` (every 5 min) now flags a job in `rendering_video` with no progress for **>45 min** (`rendering_video_stuck`) and re-parks it into `render_pending_capacity`, so the existing `retry-pending-render-jobs` cron resets it to `review_complete` and re-renders (same 24h ceiling). No manual action needed.
+
+**Manual unstick (if needed):** don't re-trigger the render worker while status is `rendering_video` (it starts mid-state and fails with "Invalid state transition"). Instead let it fail (or re-park it), then use the admin **Retry** which resumes cleanly from `review_complete`. If a ghost `render_progress.stage='running'` blocks re-trigger, clear it first (`update({'state_data.render_progress': {'stage': 'pending'}})`).
+
+---
+
+## Job in `download_pending_retry`
+
+**Symptoms:** Job status is `download_pending_retry` (introduced v0.192.3), step 3/10, message *"Still finding a good source for this track — … We'll keep trying automatically for up to 24 hours; no action needed."*
+
+**Background:** A **torrent** (RED/OPS) download stalled (few/no seeders or a brief tracker outage). Rather than dead-end the job at `failed` after ~1h, `recover-stuck-jobs` parks it here and re-triggers the download on later ticks for up to **24h**, then fails permanently with a "too rare to source right now" message. This is expected, self-healing behaviour — a seedless release simply may never complete. `state_data.download_retry` holds `{first_seen_at, attempt_count}`. To source it a different way, retry with an alternate release/source.
+
+---
+
 ## Job stuck in `render_pending_capacity`
 
-**Symptoms:** Job status is `render_pending_capacity` (introduced 2026-05-05). User-facing message says *"Encoding capacity is temporarily unavailable. Your job will retry automatically — no action needed."*
+**Symptoms:** Job status is `render_pending_capacity` (introduced 2026-05-05). User-facing message says *"Encoding capacity is temporarily unavailable. Your job will retry automatically — no action needed."* (As of v0.192.3 a mid-render stall can also land here — see "orphaned render" above.)
 
 **Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM (primary in `us-central1-c`, plus capacity fallbacks in `-a` and `-b`). The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
 
