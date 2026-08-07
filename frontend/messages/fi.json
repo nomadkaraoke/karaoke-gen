@@ -592,7 +592,9 @@
     "correcting": "Korjataan",
     "lyricsDone": "Sanoitukset valmiit",
     "lyrics": "Sanoitukset",
-    "confirmDurationCost": "Vahvista hinta"
+    "confirmDurationCost": "Vahvista hinta",
+    "findingAudioSources": "Etsitään äänilähteitä (yritetään uudelleen)",
+    "waitingForCapacity": "Odotetaan kapasiteettia (yritetään uudelleen)"
   },
   "jobCard": {
     "actionNeeded": "Toimenpiteitä tarvitaan",

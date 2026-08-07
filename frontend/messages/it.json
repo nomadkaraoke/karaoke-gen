@@ -592,7 +592,9 @@
     "correcting": "Correzione",
     "lyricsDone": "Testo completato",
     "lyrics": "Testo",
-    "confirmDurationCost": "Conferma costo"
+    "confirmDurationCost": "Conferma costo",
+    "findingAudioSources": "Ricerca delle fonti audio (nuovo tentativo)",
+    "waitingForCapacity": "In attesa di disponibilità (nuovo tentativo)"
   },
   "jobCard": {
     "actionNeeded": "Azione richiesta",

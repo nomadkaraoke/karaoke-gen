@@ -592,7 +592,9 @@
     "correcting": "Διόρθωση",
     "lyricsDone": "Οι στίχοι ολοκληρώθηκαν",
     "lyrics": "Στίχοι",
-    "confirmDurationCost": "Επιβεβαίωση κόστους"
+    "confirmDurationCost": "Επιβεβαίωση κόστους",
+    "findingAudioSources": "Εύρεση πηγών ήχου (επαναπροσπάθεια)",
+    "waitingForCapacity": "Αναμονή για διαθεσιμότητα (επαναπροσπάθεια)"
   },
   "jobCard": {
     "actionNeeded": "Απαιτείται ενέργεια",

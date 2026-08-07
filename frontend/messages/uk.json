@@ -592,7 +592,9 @@
     "correcting": "Виправлення",
     "lyricsDone": "Текст готовий",
     "lyrics": "Текст",
-    "confirmDurationCost": "Підтвердити вартість"
+    "confirmDurationCost": "Підтвердити вартість",
+    "findingAudioSources": "Пошук джерел аудіо (повторна спроба)",
+    "waitingForCapacity": "Очікування вільних ресурсів (повторна спроба)"
   },
   "jobCard": {
     "actionNeeded": "Потрібна дія",

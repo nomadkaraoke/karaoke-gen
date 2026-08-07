@@ -592,7 +592,9 @@
     "correcting": "Javítás",
     "lyricsDone": "Dalszöveg kész",
     "lyrics": "Dalszöveg",
-    "confirmDurationCost": "Költség megerősítése"
+    "confirmDurationCost": "Költség megerősítése",
+    "findingAudioSources": "Hangforrások keresése (újrapróbálkozás)",
+    "waitingForCapacity": "Várakozás szabad kapacitásra (újrapróbálkozás)"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",

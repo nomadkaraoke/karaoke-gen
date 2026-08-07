@@ -592,7 +592,9 @@
     "correcting": "수정 중",
     "lyricsDone": "가사 완료",
     "lyrics": "가사",
-    "confirmDurationCost": "비용 확인"
+    "confirmDurationCost": "비용 확인",
+    "findingAudioSources": "오디오 소스 찾는 중 (재시도 중)",
+    "waitingForCapacity": "처리 용량 대기 중 (재시도 중)"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",

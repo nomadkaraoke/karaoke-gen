@@ -592,7 +592,9 @@
     "correcting": "Korrigerar",
     "lyricsDone": "Text klar",
     "lyrics": "Text",
-    "confirmDurationCost": "Bekräfta kostnad"
+    "confirmDurationCost": "Bekräfta kostnad",
+    "findingAudioSources": "Söker efter ljudkällor (försöker igen)",
+    "waitingForCapacity": "Väntar på kapacitet (försöker igen)"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",

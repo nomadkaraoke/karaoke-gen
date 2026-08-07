@@ -592,7 +592,9 @@
     "correcting": "Ispravljanje",
     "lyricsDone": "Tekst gotov",
     "lyrics": "Tekst",
-    "confirmDurationCost": "Potvrdi cijenu"
+    "confirmDurationCost": "Potvrdi cijenu",
+    "findingAudioSources": "Traženje izvora zvuka (ponovni pokušaj)",
+    "waitingForCapacity": "Čekanje na kapacitet (ponovni pokušaj)"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",

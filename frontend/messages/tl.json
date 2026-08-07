@@ -592,7 +592,9 @@
     "correcting": "Itinatama",
     "lyricsDone": "Tapos na ang lyrics",
     "lyrics": "Lyrics",
-    "confirmDurationCost": "Kumpirmahin ang halaga"
+    "confirmDurationCost": "Kumpirmahin ang halaga",
+    "findingAudioSources": "Naghahanap ng mga audio source (sinusubukang muli)",
+    "waitingForCapacity": "Naghihintay ng kapasidad (sinusubukang muli)"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",

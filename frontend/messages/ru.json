@@ -592,7 +592,9 @@
     "correcting": "Исправление",
     "lyricsDone": "Текст готов",
     "lyrics": "Текст",
-    "confirmDurationCost": "Подтвердить стоимость"
+    "confirmDurationCost": "Подтвердить стоимость",
+    "findingAudioSources": "Поиск аудиоисточников (повторная попытка)",
+    "waitingForCapacity": "Ожидание свободных ресурсов (повторная попытка)"
   },
   "jobCard": {
     "actionNeeded": "Требуется действие",

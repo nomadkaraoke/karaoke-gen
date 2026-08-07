@@ -796,56 +796,249 @@ async def recover_stuck_jobs(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
 ):
     """
-    Detect and recover jobs stuck in downloading_audio status.
+    Detect and recover jobs stuck in a processing status.
 
     Called by Cloud Scheduler (every 5 minutes) or manually from admin.
-    Finds jobs stuck in DOWNLOADING_AUDIO for >10 minutes and fails them
-    so they can be retried.
+    - DOWNLOADING_AUDIO stuck >10 min:
+        * torrent sources (RED/OPS) → park into DOWNLOAD_PENDING_RETRY and keep
+          auto-retrying for up to 24h (handles rare tracks with intermittent
+          seeders and transient tracker outages gracefully).
+        * other sources → fail so the user can retry.
+    - DOWNLOAD_PENDING_RETRY → re-trigger the download; permanently fail after 24h.
+    - RENDERING_VIDEO stuck with no progress (worker died mid-render) →
+      re-park into RENDER_PENDING_CAPACITY so the existing
+      retry-pending-render-jobs cron resumes it automatically. Closes the orphan
+      gap where a hard-killed render worker leaves the job frozen at
+      "rendering_video" forever with no error and no Retry button.
     """
     from backend.services.job_health_service import check_job_consistency
+    from backend.services.worker_service import get_worker_service
+    from backend.models.job import JobStatus
 
-    trace_context = extract_trace_context(dict(http_request.headers))
+    extract_trace_context(dict(http_request.headers))
     logger.info("RECOVER_STUCK_JOBS starting")
     add_span_attribute("operation", "recover_stuck_jobs")
 
     job_manager = JobManager()
+    worker_service = get_worker_service()
 
-    # Query jobs in downloading_audio status
     from google.cloud.firestore_v1 import FieldFilter
     jobs_ref = job_manager.firestore.db.collection("jobs")
+
+    recovered = []       # download jobs failed for user retry
+    download_parked = [] # transient torrent downloads parked for auto-retry
+    download_retried = []  # parked downloads re-triggered this tick
+    download_timed_out = []  # parked downloads that exceeded the 24h ceiling
+    reparked = []        # render jobs re-parked for auto-retry
+
+    # --- Stuck audio downloads: park torrents for auto-retry, else fail ---
     stuck_query = jobs_ref.where(
-        filter=FieldFilter("status", "==", "downloading_audio")
+        filter=FieldFilter("status", "==", JobStatus.DOWNLOADING_AUDIO.value)
     ).stream()
-
-    recovered = []
     for doc in stuck_query:
-        job_data = doc.to_dict()
-        job_id = job_data.get("job_id", doc.id)
-
-        # Use the health service to check if actually stuck
+        job_id = (doc.to_dict() or {}).get("job_id", doc.id)
         job = job_manager.get_job(job_id)
         if not job:
             continue
-
-        issues = check_job_consistency(job)
-        stuck_issues = [i for i in issues if "downloading_audio_stuck" in i]
-
-        if stuck_issues:
-            logger.warning(f"[job:{job_id}] Recovering stuck download: {stuck_issues[0]}")
+        if not any("downloading_audio_stuck" in i for i in check_job_consistency(job)):
+            continue
+        if _is_retryable_torrent_source(job):
+            logger.warning(f"[job:{job_id}] Parking stuck torrent download for auto-retry")
+            if _park_download_for_retry(job_manager, job_id, "download stalled (>10 min)"):
+                download_parked.append(job_id)
+        else:
+            logger.warning(f"[job:{job_id}] Recovering stuck download (non-torrent)")
             job_manager.fail_job(
                 job_id,
                 "Audio download timed out (stuck >10 minutes). Use retry to re-attempt."
             )
             recovered.append(job_id)
 
-    logger.info(f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} jobs")
-    add_span_event("recovery_complete", {"recovered_count": len(recovered)})
+    # --- Parked downloads: re-trigger, or permanently fail after 24h ---
+    retried_this_tick = 0
+    pending_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.DOWNLOAD_PENDING_RETRY.value)
+    ).limit(100).stream()
+    for doc in pending_query:
+        job_id = (doc.to_dict() or {}).get("job_id", doc.id)
+        job = job_manager.get_job(job_id)
+        if not job:
+            continue
+        meta = (job.state_data or {}).get("download_retry", {}) or {}
+        first_seen = meta.get("first_seen_at")
+        if _download_retry_expired(first_seen):
+            hours = int(DOWNLOAD_RETRY_MAX_SECONDS // 3600)
+            logger.error(f"[job:{job_id}] Download retries exhausted after {hours}h — failing")
+            job_manager.fail_job(
+                job_id,
+                f"Couldn't find a working source for this track after {hours}h of "
+                "automatic retries. It may be too rare to source right now — please "
+                "try a different version or contact support.",
+                error_details={"stage": "audio_download", "permanent_download_timeout": True},
+            )
+            download_timed_out.append(job_id)
+            continue
+        if retried_this_tick >= DOWNLOAD_RETRIES_PER_TICK:
+            continue
+        if await _retrigger_parked_download(job_manager, worker_service, job_id):
+            retried_this_tick += 1
+            download_retried.append(job_id)
+
+    # --- Orphaned renders: re-park for automatic retry ---
+    render_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.RENDERING_VIDEO.value)
+    ).stream()
+    for doc in render_query:
+        job_id = (doc.to_dict() or {}).get("job_id", doc.id)
+        job = job_manager.get_job(job_id)
+        if not job:
+            continue
+        if any("rendering_video_stuck" in i for i in check_job_consistency(job)):
+            logger.warning(f"[job:{job_id}] Re-parking orphaned render for auto-retry")
+            if _repark_stalled_render(job_manager, job_id):
+                reparked.append(job_id)
+
+    logger.info(
+        f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} "
+        f"download_parked={len(download_parked)} download_retried={len(download_retried)} "
+        f"download_timed_out={len(download_timed_out)} reparked={len(reparked)}"
+    )
+    add_span_event("recovery_complete", {
+        "recovered_count": len(recovered),
+        "download_parked_count": len(download_parked),
+        "download_retried_count": len(download_retried),
+        "download_timed_out_count": len(download_timed_out),
+        "reparked_count": len(reparked),
+    })
 
     return {
         "status": "success",
         "recovered_jobs": recovered,
         "recovered_count": len(recovered),
+        "download_parked_jobs": download_parked,
+        "download_retried_jobs": download_retried,
+        "download_timed_out_jobs": download_timed_out,
+        "reparked_render_jobs": reparked,
+        "reparked_render_count": len(reparked),
     }
+
+
+# Torrent sources whose downloads are worth auto-retrying over a long window —
+# they fail transiently when a rare release has few/intermittent seeders or the
+# private tracker is briefly unreachable. Non-torrent sources (YouTube/Spotify/
+# URL) fail deterministically, so they are not auto-retried here.
+RETRYABLE_TORRENT_SOURCES = frozenset({"RED", "OPS"})
+DOWNLOAD_RETRY_MAX_SECONDS = 24 * 60 * 60  # keep retrying a transient download for 24h
+DOWNLOAD_RETRIES_PER_TICK = 10             # cap re-triggers per 5-min tick
+
+
+def _is_retryable_torrent_source(job) -> bool:
+    """True if the job's audio came from a torrent tracker (RED/OPS)."""
+    return (getattr(job, "source_name", "") or "").upper() in RETRYABLE_TORRENT_SOURCES
+
+
+def _download_retry_expired(first_seen_at: Optional[str]) -> bool:
+    """True if the first parked failure is older than the 24h retry ceiling."""
+    if not first_seen_at:
+        return False
+    from datetime import datetime, UTC
+    try:
+        age = datetime.now(UTC) - datetime.fromisoformat(first_seen_at)
+    except (ValueError, TypeError):
+        return False
+    return age.total_seconds() > DOWNLOAD_RETRY_MAX_SECONDS
+
+
+def _park_download_for_retry(job_manager: JobManager, job_id: str, reason: str) -> bool:
+    """Park a transient torrent-download failure into DOWNLOAD_PENDING_RETRY.
+
+    The recover-stuck cron re-triggers parked downloads on later ticks (up to
+    24h) instead of dead-ending the job at FAILED after ~1h.
+    """
+    from datetime import datetime, UTC
+    from backend.models.job import JobStatus
+
+    now = datetime.now(UTC).isoformat()
+    job = job_manager.get_job(job_id)
+    existing = (job.state_data or {}).get("download_retry", {}) if job else {}
+    meta = {
+        "first_seen_at": existing.get("first_seen_at") or now,
+        "last_attempt_at": now,
+        "attempt_count": int(existing.get("attempt_count", 0)) + 1,
+        "last_reason": str(reason)[:300],
+    }
+    job_manager.update_state_data(job_id, "download_retry", meta)
+    # Clear any Cloud Run auto-retry marker so the UI reflects the parked state.
+    job_manager.update_state_data(job_id, "cloud_run_retry_pending", None)
+    return bool(job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.DOWNLOAD_PENDING_RETRY,
+        progress=12,
+        message=(
+            "Still finding a good source for this track — it may be rare, or a "
+            "source is temporarily offline. We'll keep trying automatically for up "
+            "to 24 hours; no action needed."
+        ),
+        raise_on_invalid=False,
+    ))
+
+
+async def _retrigger_parked_download(job_manager: JobManager, worker_service, job_id: str) -> bool:
+    """Re-trigger the audio download for a DOWNLOAD_PENDING_RETRY job."""
+    from backend.models.job import JobStatus
+
+    job_manager.update_job(job_id, {"error_message": None, "error_details": None})
+    if not job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.DOWNLOADING_AUDIO,
+        progress=12,
+        message="Retrying audio download — checking sources again",
+        raise_on_invalid=False,
+    ):
+        logger.warning(f"[job:{job_id}] Could not transition parked download for retry")
+        return False
+    try:
+        await worker_service.trigger_audio_download_worker(job_id)
+        logger.info(f"[job:{job_id}] Parked download re-triggered")
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[job:{job_id}] Failed to re-trigger parked download: {e}")
+        return False
+
+
+def _repark_stalled_render(job_manager: JobManager, job_id: str) -> bool:
+    """Re-park a render orphaned at RENDERING_VIDEO into RENDER_PENDING_CAPACITY.
+
+    Mirrors render_video_worker._park_job_for_capacity_retry but for a mid-render
+    stall (no EncodingWorkerStartError to carry). The existing
+    retry-pending-render-jobs cron then resets it to REVIEW_COMPLETE and
+    re-triggers the render, with the same 24h permanent-failure ceiling.
+    """
+    from datetime import datetime, UTC
+    from backend.models.job import JobStatus
+
+    now = datetime.now(UTC).isoformat()
+    job = job_manager.get_job(job_id)
+    existing = (job.state_data or {}).get("render_pending_capacity", {}) if job else {}
+    pending_meta = {
+        "first_seen_at": existing.get("first_seen_at") or now,
+        "last_attempt_at": now,
+        "attempt_count": int(existing.get("attempt_count", 0)) + 1,
+        "last_code": "render_stalled",
+        "last_zone": existing.get("last_zone", ""),
+        "last_vm": existing.get("last_vm", ""),
+    }
+    job_manager.update_state_data(job_id, "render_pending_capacity", pending_meta)
+    return bool(job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.RENDER_PENDING_CAPACITY,
+        progress=70,
+        message=(
+            "The render was interrupted (a worker was recycled). Your job will "
+            "retry automatically — no action needed."
+        ),
+        raise_on_invalid=False,
+    ))
 
 
 @router.get("/health")

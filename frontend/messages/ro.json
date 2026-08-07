@@ -592,7 +592,9 @@
     "correcting": "Se corectează",
     "lyricsDone": "Versuri terminate",
     "lyrics": "Versuri",
-    "confirmDurationCost": "Confirmă costul"
+    "confirmDurationCost": "Confirmă costul",
+    "findingAudioSources": "Căutare surse audio (reîncercare)",
+    "waitingForCapacity": "Așteptare resurse disponibile (reîncercare)"
   },
   "jobCard": {
     "actionNeeded": "Acțiune necesară",

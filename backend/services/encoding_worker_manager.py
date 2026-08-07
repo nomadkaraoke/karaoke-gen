@@ -27,6 +27,7 @@ Usage:
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, UTC
 from typing import Any, Optional
@@ -48,7 +49,35 @@ logger = logging.getLogger(__name__)
 # or returned an immediate error like ZONE_RESOURCE_POOL_EXHAUSTED.
 START_OPERATION_TIMEOUT_SECONDS = 30.0
 
+# A GCE instances.start returning 503 SERVICE_UNAVAILABLE (or 500/INTERNAL) is a
+# transient GCP control-plane error — distinct from a capacity STOCKOUT — and
+# usually succeeds on a quick retry. Retry the start a few times in-zone with
+# backoff before letting the caller fail over to another zone.
+START_TRANSIENT_MAX_RETRIES = 3
+START_TRANSIENT_BACKOFF_SECONDS = 5.0
+# Substrings (matched case-insensitively against the GCE error code/message)
+# that mark a retryable transient control-plane failure.
+_TRANSIENT_START_MARKERS = (
+    "503",
+    "service unavailable",
+    "internal error",
+    "internalerror",
+    "backenderror",
+    "500",
+)
+
 CONFIG_COLLECTION = "config"
+
+
+def _is_transient_start_error(error: "EncodingWorkerStartError") -> bool:
+    """True if a VM-start failure looks like a retryable transient GCP error.
+
+    Capacity errors (ZONE_RESOURCE_POOL_EXHAUSTED etc.) are NOT transient in the
+    same zone — retrying in-zone is pointless, the caller should fail over. Those
+    are a distinct subclass and are excluded by the caller.
+    """
+    haystack = f"{getattr(error, 'code', '') or ''} {error}".lower()
+    return any(marker in haystack for marker in _TRANSIENT_START_MARKERS)
 CONFIG_DOCUMENT = "encoding-worker"
 ENCODING_WORKER_PORT = 8080
 
@@ -322,6 +351,38 @@ class EncodingWorkerManager:
         }
 
     def ensure_any_running(self, candidates: list) -> dict:
+        """Start any candidate VM; retry the whole set on an all-zones transient blip.
+
+        Delegates to :meth:`_ensure_any_running_once` (one attempt per candidate).
+        If EVERY candidate fails with a *transient* error — e.g. a brief 503
+        SERVICE_UNAVAILABLE control-plane blip that hits all zones at once — and
+        none hit real capacity exhaustion, retry the whole candidate set a few
+        times with backoff before giving up. Capacity exhaustion is NOT spun on
+        here (retrying in seconds won't conjure hardware); the render worker parks
+        the job and the 24h auto-retry cron handles a sustained shortage.
+        """
+        if not candidates:
+            raise ValueError("ensure_any_running requires at least one candidate")
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                return self._ensure_any_running_once(candidates)
+            except EncodingWorkerCapacityError:
+                raise
+            except EncodingWorkerStartError as e:
+                if attempt <= START_TRANSIENT_MAX_RETRIES and _is_transient_start_error(e):
+                    backoff = START_TRANSIENT_BACKOFF_SECONDS * attempt
+                    logger.warning(
+                        "All encoding candidates failed transiently (pass %d/%d): %s — "
+                        "retrying whole set in %.0fs",
+                        attempt, START_TRANSIENT_MAX_RETRIES + 1, e, backoff,
+                    )
+                    time.sleep(backoff)
+                    continue
+                raise
+
+    def _ensure_any_running_once(self, candidates: list) -> dict:
         """Start the first candidate VM that GCE accepts; raise if all are exhausted.
 
         Iterates `candidates` in order, attempting to start each one. A

@@ -16,6 +16,15 @@ from backend.models.job import Job, JobStatus
 logger = logging.getLogger(__name__)
 
 
+# A render that started (status=rendering_video) but whose worker died mid-way
+# (Cloud Run instance recycle / SIGKILL / lost GCE VM) stops advancing
+# updated_at. The render worker's own timeout is ~1h, so if a job sits here far
+# longer than that with no update, no live worker is driving it — it's orphaned
+# and must be re-parked for retry. Kept above the worst-case gap between render
+# progress callbacks to avoid re-parking a slow-but-alive render.
+RENDERING_VIDEO_STUCK_MINUTES = 45
+
+
 # Jobs in these statuses should NOT have audio_complete flag set
 # (unless they're actively processing or beyond)
 STATUSES_BEFORE_AUDIO_START = {
@@ -139,6 +148,24 @@ def check_job_consistency(job: Job) -> List[str]:
             minutes = int(download_age.total_seconds() / 60)
             issues.append(
                 f"downloading_audio_stuck: status=downloading_audio for {minutes} min without update (updated_at={updated_at.isoformat()})"
+            )
+
+    # Check: job stuck in rendering_video status with no progress.
+    # If the render worker died mid-render (hard kill / lost VM), updated_at
+    # stops advancing and NO existing mechanism recovers it: the capacity-retry
+    # cron only looks at render_pending_capacity, recover-stuck-jobs only looked
+    # at downloading_audio, and the render Cloud Task has finite attempts. This
+    # detects that orphan so the recovery sweep can re-park it for auto-retry.
+    if status == JobStatus.RENDERING_VIDEO and job.updated_at:
+        now = datetime.now(timezone.utc)
+        updated_at = job.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        render_age = now - updated_at
+        if render_age > timedelta(minutes=RENDERING_VIDEO_STUCK_MINUTES):
+            minutes = int(render_age.total_seconds() / 60)
+            issues.append(
+                f"rendering_video_stuck: status=rendering_video for {minutes} min without update (updated_at={updated_at.isoformat()})"
             )
 
     return issues

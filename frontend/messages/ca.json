@@ -592,7 +592,9 @@
     "correcting": "Corregint",
     "lyricsDone": "Lletres fetes",
     "lyrics": "Lletres",
-    "confirmDurationCost": "Confirma el cost"
+    "confirmDurationCost": "Confirma el cost",
+    "findingAudioSources": "Cercant fonts d'àudio (reintentant)",
+    "waitingForCapacity": "Esperant disponibilitat (reintentant)"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",

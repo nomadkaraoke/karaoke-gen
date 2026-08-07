@@ -260,6 +260,16 @@ class TestVMLifecycle:
         manager.start_vm("encoding-worker-blue")
         mock_compute.start.assert_not_called()
 
+    def test_is_transient_start_error_classification(self):
+        from backend.services.encoding_worker_manager import _is_transient_start_error
+        from backend.services.encoding_errors import EncodingWorkerStartError
+        assert _is_transient_start_error(
+            EncodingWorkerStartError("VM x start failed: 503 — SERVICE UNAVAILABLE", code="503")
+        )
+        assert not _is_transient_start_error(
+            EncodingWorkerStartError("VM x start failed: PERMISSION_DENIED", code="PERMISSION_DENIED")
+        )
+
     def test_stop_vm_calls_compute_stop(self, manager, mock_compute):
         mock_instance = MagicMock()
         mock_instance.status = "RUNNING"
@@ -588,22 +598,74 @@ class TestEnsureAnyRunning:
         mock_instance.status = "TERMINATED"
         mock_compute.get.return_value = mock_instance
 
-        op_503 = MagicMock()
-        op_503.error_code = "503"
-        op_503.error_message = "SERVICE UNAVAILABLE"
-        op_503.result.return_value = None
-        mock_compute.start.side_effect = [op_503, op_503]
+        def _op_503():
+            op = MagicMock()
+            op.error_code = "503"
+            op.error_message = "SERVICE UNAVAILABLE"
+            op.result.return_value = None
+            return op
+
+        # All-transient: the whole candidate set is retried a few times before
+        # giving up, so provide enough operations for every pass.
+        mock_compute.start.side_effect = [_op_503() for _ in range(20)]
 
         candidates = [
             EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
             EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
         ]
 
-        with pytest.raises(EncodingWorkerStartError) as exc_info:
-            manager.ensure_any_running(candidates)
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep:
+            with pytest.raises(EncodingWorkerStartError) as exc_info:
+                manager.ensure_any_running(candidates)
         # Should NOT be a capacity error — there were none in this scenario.
         assert not isinstance(exc_info.value, EncodingWorkerCapacityError)
-        assert mock_compute.start.call_count == 2
+        # Retried the whole 2-candidate set across multiple passes before failing.
+        assert mock_compute.start.call_count > 2
+        assert sleep.called
+
+    def test_retries_whole_set_on_all_transient_then_succeeds(self, manager, mock_db, mock_compute):
+        """A brief all-zones 503 blip: first pass fails everywhere, retry succeeds."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        def _op_503():
+            op = MagicMock(); op.error_code = "503"; op.error_message = "SERVICE UNAVAILABLE"
+            op.result.return_value = None
+            return op
+
+        # Pass 1: both candidates 503. Pass 2: primary succeeds.
+        mock_compute.start.side_effect = [_op_503(), _op_503(), _ok_op()]
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep, \
+             patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 6, 17, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+        assert result["vm_name"] == "primary"
+        assert result["fell_back"] is False
+        assert mock_compute.start.call_count == 3
+        sleep.assert_called_once()
+
+    def test_does_not_retry_whole_set_on_capacity(self, manager, mock_db, mock_compute):
+        """Capacity exhaustion is not spun on — it raises immediately for the park path."""
+        from backend.services.encoding_errors import EncodingWorkerCapacityError
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.side_effect = [_capacity_op(), _capacity_op()]
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep:
+            with pytest.raises(EncodingWorkerCapacityError):
+                manager.ensure_any_running(candidates)
+        assert mock_compute.start.call_count == 2  # one pass only, no whole-set retry
+        sleep.assert_not_called()
 
     def test_prefers_capacity_error_when_mixed_failures(self, manager, mock_db, mock_compute):
         """When some candidates hit capacity and others hit generic errors, prefer raising
