@@ -1203,7 +1203,7 @@ async def reset_job(
     job_manager.update_job(job_id, updates)
 
     # Clear the state data keys and error state using direct Firestore update
-    from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
+    from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion, Increment
 
     job_ref = user_service.db.collection("jobs").document(job_id)
 
@@ -1218,6 +1218,14 @@ async def reset_job(
     # Always clear error state on reset (confusing to have old errors after reset)
     clear_updates["error_message"] = DELETE_FIELD
     clear_updates["error_details"] = DELETE_FIELD
+
+    # Advance the supersession fence: a reset is a "stop what you're doing" event.
+    # Any render/video worker still in flight (e.g. the operator hit "Review"
+    # mid-render) will observe the bumped generation and discard its stale result
+    # instead of overwriting fresh outputs or failing this reset. See
+    # backend/workers/supersede.py. Atomic with the clears above so an in-flight
+    # worker can never observe a half-applied reset.
+    clear_updates["state_data.worker_generation"] = Increment(1)
 
     # Add timeline event
     clear_updates["timeline"] = ArrayUnion([timeline_event])

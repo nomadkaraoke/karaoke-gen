@@ -32,6 +32,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from backend.models.job import JobStatus
+from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
@@ -422,6 +423,18 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             # This allows the worker to be re-triggered after admin reset
             job_manager.update_state_data(job_id, 'video_progress', {'stage': 'complete'})
             return True
+
+    except InvalidStateTransitionError as e:
+        # The job was reset/cancelled out from under us mid-encode (e.g. admin
+        # reset while generating_video/encoding). Discard our stale result quietly
+        # rather than failing a job the operator deliberately moved. See
+        # backend/workers/supersede.py and render_video_worker for the same guard.
+        duration = time.time() - start_time
+        logger.info(
+            f"[job:{job_id}] WORKER_END worker=video orchestrator=true status=superseded "
+            f"duration={duration:.1f}s reason={e}"
+        )
+        return False
 
     except Exception as e:
         duration = time.time() - start_time
@@ -957,6 +970,17 @@ async def generate_video_legacy(job_id: str) -> bool:
             job_manager.update_state_data(job_id, 'video_progress', {'stage': 'complete'})
             return True
 
+    except InvalidStateTransitionError as e:
+        # Job reset/cancelled out from under us mid-encode — discard the stale
+        # result quietly instead of failing the operator's reset (see the
+        # orchestrated path and render_video_worker for the same guard).
+        duration = time.time() - start_time
+        logger.info(
+            f"[job:{job_id}] WORKER_END worker=video status=superseded "
+            f"duration={duration:.1f}s reason={e}"
+        )
+        return False
+
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=video status=error duration={duration:.1f}s error={e}")
@@ -966,7 +990,7 @@ async def generate_video_legacy(job_id: str) -> bool:
             error_details={"stage": "video_generation", "error": str(e)}
         )
         return False
-        
+
     finally:
         # Restore original working directory
         os.chdir(original_cwd)

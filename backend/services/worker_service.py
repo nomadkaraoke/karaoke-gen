@@ -513,6 +513,7 @@ class WorkerService:
         uses Cloud Run Jobs for execution (supports >30 min encoding).
         Otherwise, uses Cloud Tasks or direct HTTP.
         """
+        self._bump_worker_generation(job_id)
         self._warmup_encoding_worker(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_video:
             return await self._trigger_cloud_run_job(job_id)
@@ -606,8 +607,26 @@ class WorkerService:
     
     async def trigger_render_video_worker(self, job_id: str) -> bool:
         """Trigger render video worker (post-review)."""
+        self._bump_worker_generation(job_id)
         self._warmup_encoding_worker(job_id)
         return await self.trigger_worker("render-video", job_id)
+
+    def _bump_worker_generation(self, job_id: str) -> None:
+        """
+        Advance the supersession fence before dispatching a render/video worker.
+
+        Bumping here (the single choke point for both workers) means every run
+        captures a unique generation at start. If an older run of the same stage
+        is still in flight — because an admin reset then re-triggered the job —
+        it will observe the newer generation and discard its stale result
+        instead of overwriting fresh outputs or failing the job. Best-effort:
+        a failed bump is logged and ignored (the status fence still applies).
+        """
+        try:
+            from backend.services.job_manager import JobManager
+            JobManager().bump_worker_generation(job_id)
+        except Exception as e:
+            logger.warning(f"[job:{job_id}] Failed to bump worker generation before trigger: {e}")
 
     async def schedule_idle_reminder(
         self,
