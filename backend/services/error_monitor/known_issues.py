@@ -64,8 +64,14 @@ _IGNORE_PATTERNS: list[tuple[str, re.Pattern, str]] = [
         # these for auto-retry. A non-transient EncodingWorkerStartError (other /
         # unknown code) shares the "aborting retries" prefix but must still page,
         # so we require the transient signal, not just the prefix.
+        # Bind the transient signal to the GCE error CODE field — which appears
+        # immediately after "start failed in <zone>: " / "could not be started in
+        # <zone>: " (see encoding_errors.classify_gce_error). Matching the code in
+        # position (not anywhere in the line) prevents a non-transient failure
+        # whose message text merely contains "503" from being suppressed.
         re.compile(
-            r"encoding worker start failed, aborting retries:[^\n]*?"
+            r"encoding worker start failed, aborting retries:.*?"
+            r"(?:start failed|could not be started) in [\w.-]+:\s*"
             r"(?:503\b|service unavailable|zone_resource_pool_exhausted"
             r"|stockout|quota_exceeded)",
             re.IGNORECASE,

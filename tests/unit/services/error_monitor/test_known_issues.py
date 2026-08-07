@@ -476,6 +476,19 @@ class TestEncodingWorkerCapacityRetry:
         )
         assert should_ignore("karaoke-backend", msg) is None
 
+    def test_non_transient_with_503_in_message_body_still_alerts(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        # The code field is PERMISSION_DENIED (non-transient); "503" only appears
+        # later in the free-text message. Must NOT be suppressed — the transient
+        # signal is bound to the code position, not "anywhere in the line".
+        msg = (
+            "[job:1ea7effb] Encoding worker start failed, aborting retries: "
+            "VM encoding-worker-fallback-b start failed in us-central1-b: "
+            "PERMISSION_DENIED — prior attempt returned 503 SERVICE UNAVAILABLE"
+        )
+        assert should_ignore("karaoke-backend", msg) is None
+
 
 class TestCaseInsensitiveMatching:
     """All patterns should match case-insensitively."""

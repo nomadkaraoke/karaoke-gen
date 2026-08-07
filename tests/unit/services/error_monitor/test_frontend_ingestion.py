@@ -31,6 +31,10 @@ def test_is_bot_user_agent_true_for_crawlers(ua):
     "Mozilla/5.0 (Android 14; Mobile; rv:138.0) Gecko/138.0 Firefox/138.0",
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0 Safari/537.36",
+    # "robot" must NOT be treated as a bot marker (the "bot" substring inside a
+    # normal word). Neither should "robot/" version-like text.
+    "Mozilla/5.0 MyRobot Browser robot build",
+    "Mozilla/5.0 (compatible; robot/1.0) Chrome/136.0",
     "",
     None,
 ])

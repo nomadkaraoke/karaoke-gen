@@ -26,7 +26,12 @@ MAX_URL_CHARS = 512
 # crawler tokens plus the generic bot/crawler/spider/headless markers that
 # well-behaved automated agents put in their UA string.
 _BOT_UA_RE = re.compile(
-    r"bot\b|bot/|spider|crawler|crawl\b|slurp|bingpreview|headless|"
+    # Generic markers. The bot forms are anchored so we never match the "bot"
+    # inside ordinary words like "robot": a standalone "bot" token (\bbot\b does
+    # not match inside "robot" — no word boundary there) or the crawler
+    # "<name>bot/<version>" convention, with "robot/" explicitly excluded.
+    r"\bbot\b|(?<!ro)bot/|spider|crawler|crawl\b|slurp|bingpreview|headless|"
+    # Explicit crawler names (some don't use the "/version" convention).
     r"googlebot|bingbot|applebot|yandex|baiduspider|duckduckbot|"
     r"ahrefs|semrush|petalbot|facebookexternalhit|"
     r"chrome-lighthouse|google page speed|python-requests|curl/|wget/",
