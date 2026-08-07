@@ -1437,3 +1437,43 @@ CJK token like `立ち向かう`) and counts the inter-token space the renderer 
   splitters map zero words and would return `[]`, silently dropping lyrics.
 - The CJK font is a **system fallback** (Noto Sans CJK); the configured karaoke
   font (Montserrat/Avenir) has no CJK glyphs. See `video_generator._find_cjk_font`.
+
+## Long-Running Workers Must Be Fenced Against Supersession (Aug 2026)
+
+**Symptom:** An operator reset a `rendering_video` job via the admin "Review"
+button, then the job flipped itself to `failed` seconds later with *"Invalid
+state transition … in_review -> instrumental_selected"* (job `7f457087`). The
+reset was fine; the job died on its own.
+
+**Root cause:** Admin reset hard-writes the status backwards but does **not**
+stop the render worker already running on the encoder. When that render
+finished it ran its normal terminal transition (`rendering_video ->
+instrumental_selected`), now illegal, and the worker's generic `except
+Exception` handler called `fail_job()` — clobbering the operator's reset. A
+classic stale-worker / lost-update race: whoever finishes last wins, and the
+loser is a perfectly good reset.
+
+**Fix (v0.192.4):** Fence long-running render/video workers against
+supersession with two independent nets (`backend/workers/supersede.py`):
+1. **Status fence** — re-read the job before writing outputs / transitioning;
+   if it's no longer in the status this worker owns, discard the result.
+2. **Generation fence** — `state_data.worker_generation`, atomically
+   `Increment`ed by every admin reset *and* every render/video trigger. A worker
+   captures it at start; if it later differs, a newer run took over.
+Plus a targeted `except InvalidStateTransitionError` **before** the generic
+handler in both workers: a terminal transition that became illegal is treated
+as supersession (log + `return False`), never `fail_job()`.
+
+**Principles for next time:**
+- A worker must **never** `fail_job()` because its *own* success transition
+  became illegal — that only happens when something deliberately moved the job.
+- Bump the fence at the **trigger choke point** (`trigger_render_video_worker` /
+  `trigger_video_worker`), so every run gets a unique generation without having
+  to hunt down every caller. Cloud Tasks/Run retries re-invoke the worker (not
+  the trigger), so they keep the same generation — correct, it's the same run.
+- Check the fence **before writing outputs**, not just before the terminal
+  transition — otherwise a stale render can overwrite a newer render's video.
+- Test-isolation gotcha: assert an atomic bump via
+  `patch("google.cloud.firestore_v1.Increment")` + `assert_called_once_with(1)`,
+  not `isinstance(..., Increment)` — another test in the suite replaces the
+  firestore module with a mock, so real-vs-mock class identity flakes.

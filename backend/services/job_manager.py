@@ -786,6 +786,34 @@ class JobManager:
         self.update_job(job_id, {'state_data': state_data})
         logger.debug(f"Job {job_id} state_data updated: {key} = {value}")
 
+    def bump_worker_generation(self, job_id: str) -> Optional[int]:
+        """
+        Atomically increment the ``state_data.worker_generation`` fence.
+
+        Every trigger of a long-running render/video worker bumps this counter.
+        A worker captures the value at start; if it later differs, a newer run
+        has superseded it and its (now stale) result must be discarded rather
+        than written back or used to fail the job. See
+        :mod:`backend.workers.supersede`.
+
+        Returns the new generation, or ``None`` if the update failed (best-effort
+        — a failed bump must never block triggering the worker).
+        """
+        try:
+            from google.cloud.firestore_v1 import Increment
+            self.firestore.update_job(job_id, {
+                'state_data.worker_generation': Increment(1),
+            })
+            job = self.get_job(job_id)
+            new_generation = (job.state_data or {}).get('worker_generation') if job else None
+            logger.info(f"Job {job_id}: bumped worker_generation to {new_generation}")
+            return new_generation
+        except Exception as e:
+            # Never let a fence bump block worker dispatch — the status fence
+            # (Layer A) still protects against the reset race on its own.
+            logger.warning(f"Job {job_id}: failed to bump worker_generation: {e}")
+            return None
+
     def update_processing_metadata(self, job_id: str, section: str, data) -> None:
         """
         Write data into processing_metadata[section] using Firestore dot-notation.

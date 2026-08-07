@@ -209,6 +209,18 @@ gcloud compute instances describe encoding-worker-a \
 
 ---
 
+## Job flips to `failed` right after an admin reset (reset/render race)
+
+**Symptoms:** An operator hit an admin **Reset** button (e.g. "Review") on a job that was `rendering_video`, and moments later the job went to `failed` with a message like *"Video render failed: Invalid state transition for job …: in_review -> instrumental_selected"*. The reset itself looked fine, but the job died on its own.
+
+**Cause (fixed in v0.192.4):** The reset moved the job backwards while the render worker was still running on the encoder. When that render finished it attempted its normal terminal transition (`rendering_video -> instrumental_selected`), which was now illegal, and the worker's generic error handler flipped the job to `failed` — clobbering the operator's reset. First seen on job `7f457087`.
+
+**Auto-handling (v0.192.4+):** Long-running render/video workers are now fenced against supersession — a reset or a newer trigger causes the in-flight worker to **discard its stale result quietly** instead of failing the job. Two nets: a **status fence** (job no longer in the status the worker owns) and a **generation fence** (`state_data.worker_generation`, bumped by every reset and every render/video trigger). An `InvalidStateTransitionError` at the terminal step is treated as supersession, not failure. So resetting a rendering job is now safe at any timing — no manual action needed.
+
+**If you still see a `failed` job from an older occurrence:** use the admin **Retry** endpoint. For a job that has corrections + screens but no committed `instrumental_selection`, it returns cleanly to `awaiting_review` so the review (and instrumental choice) can be re-submitted.
+
+---
+
 ## Job in `download_pending_retry`
 
 **Symptoms:** Job status is `download_pending_retry` (introduced v0.192.3), step 3/10, message *"Still finding a good source for this track — … We'll keep trying automatically for up to 24 hours; no action needed."*

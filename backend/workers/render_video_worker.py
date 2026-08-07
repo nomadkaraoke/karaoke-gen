@@ -35,9 +35,11 @@ from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
 from backend.models.job import JobStatus
+from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
+from backend.workers.supersede import capture_generation, check_superseded
 from backend.config import get_settings
 from backend.workers.registry import worker_registry
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
@@ -122,6 +124,12 @@ async def process_render_video(job_id: str) -> bool:
         logger.error(f"[job:{job_id}] Job not found in Firestore")
         job_log.error(f"Job {job_id} not found in Firestore!")
         return False
+
+    # Capture the supersession fence at start. If an admin reset (or a newer
+    # render trigger) advances the generation while we render, our result is
+    # stale and must be discarded instead of overwriting fresh outputs or
+    # failing the job. See backend/workers/supersede.py.
+    captured_generation = capture_generation(job)
 
     # Validate job status is appropriate for render video worker
     # This helps catch bugs where the worker is triggered incorrectly
@@ -215,6 +223,21 @@ async def process_render_video(job_id: str) -> bool:
 
                     job_log.info(f"GCE render_video complete in {render_duration:.1f}s")
                     logger.info(f"[job:{job_id}] GCE render_video complete in {render_duration:.1f}s")
+
+                    # Supersession fence: if the job was reset/cancelled or a newer
+                    # render was triggered while we rendered, discard this stale
+                    # result rather than overwriting fresh outputs or (below) failing
+                    # the job on an invalid terminal transition.
+                    superseded = check_superseded(
+                        job_manager, job_id, captured_generation, {JobStatus.RENDERING_VIDEO}
+                    )
+                    if superseded:
+                        job_log.warning(f"Render superseded, discarding stale GCE result: {superseded}")
+                        logger.info(
+                            f"[job:{job_id}] WORKER_END worker=render-video status=superseded "
+                            f"reason={superseded}"
+                        )
+                        return False
 
                     # Parse response and update Firestore
                     output_files = result.get("output_files", [])
@@ -479,6 +502,20 @@ async def process_render_video(job_id: str) -> bool:
                             title=job.title
                         )
 
+                        # Supersession fence: bail before overwriting outputs if
+                        # the job was reset/cancelled or a newer render started
+                        # while we rendered (mirrors the GCE path above).
+                        superseded = check_superseded(
+                            job_manager, job_id, captured_generation, {JobStatus.RENDERING_VIDEO}
+                        )
+                        if superseded:
+                            job_log.warning(f"Render superseded, discarding stale local result: {superseded}")
+                            logger.info(
+                                f"[job:{job_id}] WORKER_END worker=render-video status=superseded "
+                                f"reason={superseded}"
+                            )
+                            return False
+
                         # 9. Upload video to GCS
                         if outputs.video and os.path.exists(outputs.video):
                             video_size = os.path.getsize(outputs.video)
@@ -583,6 +620,22 @@ async def process_render_video(job_id: str) -> bool:
             f"duration={duration:.1f}s code={e.code} zone={e.zone} kind={'capacity' if is_capacity else 'start_error'}"
         )
         _park_job_for_capacity_retry(job_manager, job_id, e)
+        return False
+    except InvalidStateTransitionError as e:
+        # Safety net for the reset race: if our terminal transition became illegal
+        # because the job was reset/cancelled out from under us mid-render (e.g.
+        # admin "Review" reset while rendering_video -> the transition to
+        # instrumental_selected is no longer valid), the operator moved the job
+        # deliberately. Discard our stale result quietly instead of clobbering
+        # their reset with a spurious "failed" (the original 7f457087 incident).
+        # The generation/status fences above normally catch this first; this
+        # guarantees it even if the reset lands inside the transition window.
+        duration = time.time() - start_time
+        job_log.warning(f"Render superseded mid-transition, discarding stale result: {e}")
+        logger.info(
+            f"[job:{job_id}] WORKER_END worker=render-video status=superseded "
+            f"duration={duration:.1f}s reason={e}"
+        )
         return False
     except Exception as e:
         duration = time.time() - start_time
