@@ -420,6 +420,7 @@ class EncodingWorkerManager:
         # capacity exhaustion (transient, retry on a different VM/zone helps).
         last_capacity_error: Optional[EncodingWorkerCapacityError] = None
         last_start_error: Optional[EncodingWorkerStartError] = None
+        last_non_transient_error: Optional[EncodingWorkerStartError] = None
         for index, candidate in enumerate(candidates):
             try:
                 status = self.get_vm_status(candidate.vm_name, zone=candidate.zone)
@@ -466,12 +467,21 @@ class EncodingWorkerManager:
                     candidate.vm_name, candidate.zone, start_err.code or "no-code",
                 )
                 last_start_error = start_err
+                if not _is_transient_start_error(start_err):
+                    last_non_transient_error = start_err
                 continue
 
-        # Every candidate failed. Prefer raising the capacity error if any
-        # candidate hit one (more actionable for the caller / user message).
+        # Every candidate failed. Raise the most actionable / least-retryable
+        # representative error so the caller (ensure_any_running) retries the
+        # whole set ONLY when every failure was a transient blip:
+        #   capacity  > non-transient start error > transient start error
+        # A capacity error means a real shortage (park + 24h retry handles it);
+        # a non-transient error (e.g. PERMISSION_DENIED) means something is
+        # actually broken — neither should trigger the fast whole-set retry.
         if last_capacity_error is not None:
             raise last_capacity_error
+        if last_non_transient_error is not None:
+            raise last_non_transient_error
         assert last_start_error is not None
         raise last_start_error
 

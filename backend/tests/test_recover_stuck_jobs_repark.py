@@ -116,6 +116,32 @@ def test_parked_download_is_retriggered(client):
     mock_ws.trigger_audio_download_worker.assert_awaited_once_with("dl3")
 
 
+def test_parked_download_retry_cap_counts_failed_dispatches(client):
+    """Dispatch attempts count against the per-tick cap even when the audio
+    worker trigger fails, so an outage can't fan out to every queried job."""
+    import backend.api.routes.internal as mod
+
+    fresh = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    n = mod.DOWNLOAD_RETRIES_PER_TICK + 5
+    docs = [_doc(f"p{i}", JobStatus.DOWNLOAD_PENDING_RETRY) for i in range(n)]
+    jobs = {f"p{i}": _job(f"p{i}", JobStatus.DOWNLOAD_PENDING_RETRY,
+                          download_retry={"first_seen_at": fresh, "attempt_count": 1})
+            for i in range(n)}
+    mock_jm = _mock_jm(pending=docs, jobs=jobs)
+
+    mock_ws = MagicMock()
+    # Every dispatch raises → helper returns False, but attempts must still be capped.
+    mock_ws.trigger_audio_download_worker = AsyncMock(side_effect=RuntimeError("audio worker down"))
+    with patch("backend.api.routes.internal.JobManager", return_value=mock_jm), \
+         patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+        resp = client.post("/api/internal/recover-stuck-jobs")
+
+    assert resp.status_code == 200
+    # No more than the per-tick cap of dispatch attempts, despite n>cap parked jobs.
+    assert mock_ws.trigger_audio_download_worker.await_count == mod.DOWNLOAD_RETRIES_PER_TICK
+    assert resp.json()["download_retried_jobs"] == []  # all dispatches failed
+
+
 def test_parked_download_times_out_after_24h(client):
     """A parked download older than 24h is permanently failed."""
     job = _job("dl4", JobStatus.DOWNLOAD_PENDING_RETRY,

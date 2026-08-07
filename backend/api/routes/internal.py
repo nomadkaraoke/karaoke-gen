@@ -880,8 +880,11 @@ async def recover_stuck_jobs(
             continue
         if retried_this_tick >= DOWNLOAD_RETRIES_PER_TICK:
             continue
+        # Count the dispatch ATTEMPT against the per-tick cap before awaiting, so
+        # a failing audio-worker (helper returns False after an external dispatch)
+        # can't fan out to every queried job in one tick.
+        retried_this_tick += 1
         if await _retrigger_parked_download(job_manager, worker_service, job_id):
-            retried_this_tick += 1
             download_retried.append(job_id)
 
     # --- Orphaned renders: re-park for automatic retry ---

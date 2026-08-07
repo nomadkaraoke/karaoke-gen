@@ -650,6 +650,33 @@ class TestEnsureAnyRunning:
         assert mock_compute.start.call_count == 3
         sleep.assert_called_once()
 
+    def test_does_not_retry_whole_set_on_mixed_nontransient(self, manager, mock_db, mock_compute):
+        """If any candidate fails non-transiently (PERMISSION_DENIED), do NOT retry
+        the whole set even though the last failure was a transient 503."""
+        from backend.services.encoding_errors import EncodingWorkerStartError
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op_perm = MagicMock()
+        op_perm.error_code = "PERMISSION_DENIED"; op_perm.error_message = "denied"
+        op_perm.result.return_value = None
+        op_503 = MagicMock()
+        op_503.error_code = "503"; op_503.error_message = "SERVICE UNAVAILABLE"
+        op_503.result.return_value = None
+        # primary: PERMISSION_DENIED (non-transient); fallback: 503 (transient/last)
+        mock_compute.start.side_effect = [op_perm, op_503]
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep:
+            with pytest.raises(EncodingWorkerStartError) as exc:
+                manager.ensure_any_running(candidates)
+        assert exc.value.code == "PERMISSION_DENIED"  # non-transient surfaced
+        assert mock_compute.start.call_count == 2      # one pass only
+        sleep.assert_not_called()
+
     def test_does_not_retry_whole_set_on_capacity(self, manager, mock_db, mock_compute):
         """Capacity exhaustion is not spun on — it raises immediately for the park path."""
         from backend.services.encoding_errors import EncodingWorkerCapacityError
