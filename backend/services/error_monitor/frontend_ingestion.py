@@ -6,6 +6,7 @@ Cloud Run Job handle all alerting / Discord plumbing.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from urllib.parse import urlsplit, urlunsplit
@@ -18,6 +19,35 @@ from backend.services.error_monitor.normalizer import (
 
 MAX_SAMPLE_MESSAGE_CHARS = 4000
 MAX_URL_CHARS = 512
+
+# Crawlers/bots execute our JS (e.g. bingbot/Googlebot run headless Chrome) and
+# trip React DOM-reconciliation errors that no real user ever sees. Their reports
+# are pure alert-channel noise, so we drop them at ingestion. Matches the common
+# crawler tokens plus the generic bot/crawler/spider/headless markers that
+# well-behaved automated agents put in their UA string.
+_BOT_UA_RE = re.compile(
+    # Generic markers. The bot forms are anchored so we never match the "bot"
+    # inside ordinary words like "robot": a standalone "bot" token (\bbot\b does
+    # not match inside "robot" — no word boundary there) or the crawler
+    # "<name>bot/<version>" convention, with "robot/" explicitly excluded.
+    r"\bbot\b|(?<!ro)bot/|spider|crawler|crawl\b|slurp|bingpreview|headless|"
+    # Explicit crawler names (some don't use the "/version" convention).
+    r"googlebot|bingbot|applebot|yandex|baiduspider|duckduckbot|"
+    r"ahrefs|semrush|petalbot|facebookexternalhit|"
+    r"chrome-lighthouse|google page speed|python-requests|curl/|wget/",
+    re.IGNORECASE,
+)
+
+
+def is_bot_user_agent(user_agent: str | None) -> bool:
+    """Return True if the UA looks like a crawler/bot/automated agent.
+
+    Conservative: only matches explicit bot markers, so a real browser UA (which
+    never contains these tokens) is never misclassified.
+    """
+    if not user_agent:
+        return False
+    return bool(_BOT_UA_RE.search(user_agent))
 
 
 @dataclass

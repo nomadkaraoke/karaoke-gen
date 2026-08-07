@@ -3,6 +3,35 @@
 import pytest
 
 
+class TestPreviewJobIdReplacement:
+    """Underscore-joined preview render job IDs must collapse to one pattern.
+
+    Without this, every preview render of the same job (different render suffix)
+    hashes differently and pages separately — N alerts for one incident.
+    """
+
+    def test_preview_job_id_collapsed(self):
+        from backend.services.error_monitor.normalizer import normalize_message
+
+        msg = "[job:preview_ae5de3e5_3c4cdb053cbf] Encoding worker start failed"
+        result = normalize_message(msg)
+        assert "ae5de3e5" not in result
+        assert "3c4cdb053cbf" not in result
+        assert "preview_<ID>" in result
+
+    def test_two_renders_same_job_same_hash(self):
+        from backend.services.error_monitor.normalizer import (
+            compute_pattern_hash,
+            normalize_message,
+        )
+
+        a = "[job:preview_ae5de3e5_3c4cdb053cbf] Encoding worker start failed"
+        b = "[job:preview_ae5de3e5_f24cf1943a06] Encoding worker start failed"
+        ha = compute_pattern_hash("karaoke-backend", normalize_message(a))
+        hb = compute_pattern_hash("karaoke-backend", normalize_message(b))
+        assert ha == hb
+
+
 class TestUUIDReplacement:
     """UUID patterns should be replaced with <ID>."""
 
