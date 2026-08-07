@@ -592,7 +592,9 @@
     "correcting": "Opravuje sa",
     "lyricsDone": "Text hotový",
     "lyrics": "Text",
-    "confirmDurationCost": "Potvrdiť cenu"
+    "confirmDurationCost": "Potvrdiť cenu",
+    "findingAudioSources": "Hľadanie zdrojov zvuku (opakovaný pokus)",
+    "waitingForCapacity": "Čakanie na kapacitu (opakovaný pokus)"
   },
   "jobCard": {
     "actionNeeded": "Vyžaduje sa akcia",

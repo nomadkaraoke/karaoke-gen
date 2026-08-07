@@ -592,7 +592,9 @@
     "correcting": "Corrigeren",
     "lyricsDone": "Songteksten klaar",
     "lyrics": "Songteksten",
-    "confirmDurationCost": "Kosten bevestigen"
+    "confirmDurationCost": "Kosten bevestigen",
+    "findingAudioSources": "Audiobronnen zoeken (opnieuw proberen)",
+    "waitingForCapacity": "Wachten op capaciteit (opnieuw proberen)"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",

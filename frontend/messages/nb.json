@@ -592,7 +592,9 @@
     "correcting": "Korrigerer",
     "lyricsDone": "Tekst ferdig",
     "lyrics": "Tekst",
-    "confirmDurationCost": "Bekreft pris"
+    "confirmDurationCost": "Bekreft pris",
+    "findingAudioSources": "Finner lydkilder (prøver på nytt)",
+    "waitingForCapacity": "Venter på kapasitet (prøver på nytt)"
   },
   "jobCard": {
     "actionNeeded": "Handling kreves",

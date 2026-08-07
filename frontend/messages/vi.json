@@ -592,7 +592,9 @@
     "correcting": "Đang sửa",
     "lyricsDone": "Lời bài hát xong",
     "lyrics": "Lời bài hát",
-    "confirmDurationCost": "Xác nhận chi phí"
+    "confirmDurationCost": "Xác nhận chi phí",
+    "findingAudioSources": "Đang tìm nguồn âm thanh (đang thử lại)",
+    "waitingForCapacity": "Đang chờ tài nguyên (đang thử lại)"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",

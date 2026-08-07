@@ -592,7 +592,9 @@
     "correcting": "Memperbaiki",
     "lyricsDone": "Lirik selesai",
     "lyrics": "Lirik",
-    "confirmDurationCost": "Konfirmasi biaya"
+    "confirmDurationCost": "Konfirmasi biaya",
+    "findingAudioSources": "Mencari sumber audio (mencoba lagi)",
+    "waitingForCapacity": "Menunggu kapasitas (mencoba lagi)"
   },
   "jobCard": {
     "actionNeeded": "Perlu tindakan",

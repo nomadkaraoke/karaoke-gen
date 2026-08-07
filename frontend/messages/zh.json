@@ -592,7 +592,9 @@
     "correcting": "校对中",
     "lyricsDone": "歌词完成",
     "lyrics": "歌词",
-    "confirmDurationCost": "确认费用"
+    "confirmDurationCost": "确认费用",
+    "findingAudioSources": "正在查找音频源（重试中）",
+    "waitingForCapacity": "等待可用资源（重试中）"
   },
   "jobCard": {
     "actionNeeded": "需要操作",

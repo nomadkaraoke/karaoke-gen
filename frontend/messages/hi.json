@@ -592,7 +592,9 @@
     "correcting": "सही किया जा रहा है",
     "lyricsDone": "लिरिक्स हो गए",
     "lyrics": "लिरिक्स",
-    "confirmDurationCost": "लागत की पुष्टि करो"
+    "confirmDurationCost": "लागत की पुष्टि करो",
+    "findingAudioSources": "ऑडियो स्रोत खोज रहे हैं (फिर से कोशिश कर रहे हैं)",
+    "waitingForCapacity": "क्षमता का इंतज़ार कर रहे हैं (फिर से कोशिश कर रहे हैं)"
   },
   "jobCard": {
     "actionNeeded": "एक्शन की ज़रूरत है",

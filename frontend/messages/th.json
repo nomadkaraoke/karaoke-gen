@@ -592,7 +592,9 @@
     "correcting": "กำลังแก้ไข",
     "lyricsDone": "เนื้อเพลงเสร็จสิ้น",
     "lyrics": "เนื้อเพลง",
-    "confirmDurationCost": "ยืนยันค่าใช้จ่าย"
+    "confirmDurationCost": "ยืนยันค่าใช้จ่าย",
+    "findingAudioSources": "กำลังค้นหาแหล่งเสียง (กำลังลองอีกครั้ง)",
+    "waitingForCapacity": "กำลังรอระบบว่าง (กำลังลองอีกครั้ง)"
   },
   "jobCard": {
     "actionNeeded": "ต้องการการดำเนินการ",

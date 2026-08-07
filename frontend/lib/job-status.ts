@@ -62,6 +62,9 @@ export const STATUS_CONFIG: Record<
 
   // Step 3: Download
   downloading_audio: { step: 3, label: "downloadingAudio", isBlocking: false, color: "text-blue-400" },
+  // Transient torrent-download issue (rare track / few seeders / tracker blip);
+  // auto-retried for up to 24h by the recover-stuck cron. Not blocking — no user action.
+  download_pending_retry: { step: 3, label: "findingAudioSources", isBlocking: false, color: "text-amber-400" },
   downloading: { step: 3, label: "downloading", isBlocking: false, color: "text-blue-400" },
 
   // Step 3.5: Audio Editing (optional, BLOCKING)
@@ -91,6 +94,9 @@ export const STATUS_CONFIG: Record<
   // Step 7: Video Rendering
   review_complete: { step: 7, label: "startingRender", isBlocking: false, color: "text-teal-400" },
   rendering_video: { step: 7, label: "renderingVideo", isBlocking: false, color: "text-indigo-400" },
+  // Parked waiting for GCE encoding capacity (or re-parked after a mid-render
+  // stall); auto-retried by the scheduler. Not blocking — no user action.
+  render_pending_capacity: { step: 7, label: "waitingForCapacity", isBlocking: false, color: "text-amber-400" },
 
   // Step 8: Instrumental Selection (BLOCKING - requires user action)
   awaiting_instrumental_selection: { step: 8, label: "selectInstrumental", isBlocking: true, color: "text-amber-400" },

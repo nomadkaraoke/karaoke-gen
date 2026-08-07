@@ -556,6 +556,8 @@
     "searchingForAudio": "Searching for audio",
     "selectAudioSource": "Select audio source",
     "downloadingAudio": "Downloading audio",
+    "findingAudioSources": "Finding audio sources (retrying)",
+    "waitingForCapacity": "Waiting for capacity (retrying)",
     "downloading": "Downloading",
     "editAudio": "Edit audio",
     "editingAudio": "Editing audio",

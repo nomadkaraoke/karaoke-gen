@@ -592,7 +592,9 @@
     "correcting": "جاري التصحيح",
     "lyricsDone": "اكتملت الكلمات",
     "lyrics": "الكلمات",
-    "confirmDurationCost": "تأكيد التكلفة"
+    "confirmDurationCost": "تأكيد التكلفة",
+    "findingAudioSources": "جارٍ البحث عن مصادر الصوت (إعادة المحاولة)",
+    "waitingForCapacity": "في انتظار توفر السعة (إعادة المحاولة)"
   },
   "jobCard": {
     "actionNeeded": "إجراء مطلوب",

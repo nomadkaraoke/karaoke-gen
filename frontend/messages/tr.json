@@ -592,7 +592,9 @@
     "correcting": "Düzeltiliyor",
     "lyricsDone": "Sözler bitti",
     "lyrics": "Sözler",
-    "confirmDurationCost": "Maliyeti onayla"
+    "confirmDurationCost": "Maliyeti onayla",
+    "findingAudioSources": "Ses kaynakları aranıyor (yeniden deneniyor)",
+    "waitingForCapacity": "Kapasite bekleniyor (yeniden deneniyor)"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",

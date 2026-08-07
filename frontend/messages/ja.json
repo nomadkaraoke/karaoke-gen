@@ -592,7 +592,9 @@
     "correcting": "修正中",
     "lyricsDone": "歌詞完了",
     "lyrics": "歌詞",
-    "confirmDurationCost": "料金を確認"
+    "confirmDurationCost": "料金を確認",
+    "findingAudioSources": "音源を検索中（再試行中）",
+    "waitingForCapacity": "処理の空きを待機中（再試行中）"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",

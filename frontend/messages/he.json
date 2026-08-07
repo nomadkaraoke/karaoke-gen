@@ -592,7 +592,9 @@
     "correcting": "מתקן",
     "lyricsDone": "מילים הושלמו",
     "lyrics": "מילים",
-    "confirmDurationCost": "אישור עלות"
+    "confirmDurationCost": "אישור עלות",
+    "findingAudioSources": "מחפש מקורות שמע (מנסה שוב)",
+    "waitingForCapacity": "ממתין למשאבים פנויים (מנסה שוב)"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",
