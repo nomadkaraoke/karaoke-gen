@@ -207,6 +207,16 @@ async def process_render_video(job_id: str) -> bool:
                         # gets logged via the error monitor, and (2) flood the
                         # timeline with redundant "transitioned" events for
                         # every tick.
+                        #
+                        # Supersession guard: if the job was reset/cancelled or a
+                        # newer render took over while this (now stale) render is
+                        # still emitting ticks, don't stamp our progress onto the
+                        # job — that would drag a reset job's progress bar back to
+                        # ~75-82% while it sits in awaiting_review.
+                        if check_superseded(
+                            job_manager, job_id, captured_generation, {JobStatus.RENDERING_VIDEO}
+                        ):
+                            return
                         scaled = 75 + int(progress * 0.07)  # Map 0-100 to 75-82
                         job_manager.update_job(job_id, {
                             'progress': scaled,
@@ -226,8 +236,17 @@ async def process_render_video(job_id: str) -> bool:
 
                     # Supersession fence: if the job was reset/cancelled or a newer
                     # render was triggered while we rendered, discard this stale
-                    # result rather than overwriting fresh outputs or (below) failing
-                    # the job on an invalid terminal transition.
+                    # result rather than recording its file_urls / transitioning
+                    # (which would fail on an invalid terminal transition below).
+                    #
+                    # Residual (accepted): the GCE render already wrote the with_vocals
+                    # object under the shared jobs/{job_id}/ prefix before this check, so
+                    # a stale run can leave stale bytes there. A newer generation always
+                    # re-renders and overwrites the same object, so the worst case is a
+                    # transient stale object — never a failed job or a bad downstream
+                    # trigger (those are blocked here + by the InvalidStateTransition
+                    # guard). Fully closing the GCS window needs generation-scoped output
+                    # prefixes + a conditional promote on the encoder side (follow-up).
                     superseded = check_superseded(
                         job_manager, job_id, captured_generation, {JobStatus.RENDERING_VIDEO}
                     )

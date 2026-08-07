@@ -240,6 +240,54 @@ async def test_invalid_terminal_transition_is_graceful_not_failure():
 
 
 @pytest.mark.asyncio
+async def test_progress_callback_skips_update_when_superseded():
+    """A stale render's progress ticks must not drag a reset job's progress bar."""
+    from backend.workers import render_video_worker as rvw
+
+    job_start = _render_job(generation=1)
+    superseded = _render_job(generation=2)  # reset bumped the fence mid-render
+
+    jm = MagicMock()
+    calls = {"n": 0}
+
+    def _get_job(_job_id):
+        calls["n"] += 1
+        return job_start if calls["n"] == 1 else superseded
+
+    jm.get_job.side_effect = _get_job
+    jm.transition_to_state.return_value = True
+
+    async def _render(_job_id, _config, progress_callback=None):
+        progress_callback(50)  # encoder emits a tick on the now-stale job
+        return _gce_result()
+
+    encoding_service = MagicMock()
+    encoding_service.is_enabled = True
+    encoding_service.render_video_on_gce = AsyncMock(side_effect=_render)
+
+    storage = MagicMock()
+    storage.file_exists.return_value = False
+
+    with patch.object(rvw, "JobManager", return_value=jm), \
+         patch.object(rvw, "StorageService", return_value=storage), \
+         patch.object(rvw, "get_settings"), \
+         patch.object(rvw, "create_job_logger", return_value=MagicMock()), \
+         patch.object(rvw, "setup_job_logging", return_value=MagicMock()), \
+         patch.object(rvw, "validate_worker_can_run", return_value=None), \
+         patch.object(rvw, "get_encoding_service", return_value=encoding_service):
+        result = await rvw.process_render_video("7f457087")
+
+    assert result is False  # bails after render (superseded)
+    jm.fail_job.assert_not_called()
+    # No progress write happened during the superseded tick
+    progress_writes = [
+        c for c in jm.update_job.call_args_list
+        if len(c.args) > 1 and isinstance(c.args[1], dict) and "progress" in c.args[1]
+    ]
+    assert not progress_writes, "Superseded render must not stamp progress onto the job"
+
+
+@pytest.mark.asyncio
 async def test_normal_render_still_completes():
     """Un-superseded render must still write outputs and transition to INSTRUMENTAL_SELECTED."""
     job_start = _render_job(generation=1)
