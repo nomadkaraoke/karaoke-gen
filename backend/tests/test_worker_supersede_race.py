@@ -84,8 +84,9 @@ def test_bump_worker_generation_uses_atomic_increment():
 
     jm = JobManager.__new__(JobManager)  # bypass __init__/Firestore connect
     jm.firestore = MagicMock()
+    # Post-increment read reflects Increment(1) applied to a job at generation 5.
     bumped_job = MagicMock()
-    bumped_job.state_data = {"worker_generation": 5}
+    bumped_job.state_data = {"worker_generation": 6}
     jm.get_job = MagicMock(return_value=bumped_job)
 
     # Patch the Increment symbol the production code imports so this assertion is
@@ -95,7 +96,11 @@ def test_bump_worker_generation_uses_atomic_increment():
         mock_incr.return_value = "INCREMENT(1)"
         result = jm.bump_worker_generation("job-x")
 
-    assert result == 5
+    # The returned value is informational (logging only) — workers never consume
+    # it as a token; they compare their captured generation against the current
+    # one. Correctness therefore only needs the fence to CHANGE, not to hand back
+    # a unique per-dispatch token, so concurrent bumps sharing a read are benign.
+    assert result == 6
     mock_incr.assert_called_once_with(1)  # atomic +1, not a read-modify-write
     args, _ = jm.firestore.update_job.call_args
     payload = args[1]
@@ -213,15 +218,16 @@ async def test_render_superseded_by_generation_bump_does_not_fail_job():
 
 
 @pytest.mark.asyncio
-async def test_invalid_terminal_transition_is_graceful_not_failure():
+async def test_invalid_terminal_transition_is_graceful_when_superseded():
     """
-    The tight-window case: status/generation still look valid when we check, but
-    the reset lands during the terminal transition itself. transition_to_state
-    raises InvalidStateTransitionError — the worker must bail gracefully, exactly
-    reproducing and fixing the 7f457087 incident.
+    The reset lands during the terminal transition itself: transition_to_state
+    raises InvalidStateTransitionError AND a re-read confirms supersession (the
+    reset moved the job to awaiting_review). The worker must bail gracefully,
+    exactly reproducing and fixing the 7f457087 incident.
     """
     job_start = _render_job(generation=1)
-    job_after = _render_job(generation=1)  # not superseded by the pre-write checks
+    job_after = _render_job(generation=1)
+    job_after.status = "awaiting_review"  # reset confirmed on re-read in the handler
 
     invalid = InvalidStateTransitionError(
         "Invalid state transition for job 7f457087: in_review -> instrumental_selected",
@@ -237,6 +243,28 @@ async def test_invalid_terminal_transition_is_graceful_not_failure():
 
     assert result is False
     jm.fail_job.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_invalid_transition_when_not_superseded_still_fails():
+    """
+    An InvalidStateTransitionError that is NOT explained by supersession is a real
+    workflow defect — it must still fail the job (loudly) rather than be silently
+    swallowed and leave the job stuck. Guards against over-broad error suppression.
+    """
+    job_start = _render_job(generation=1)
+    job_after = _render_job(generation=1)  # same gen + still rendering_video => NOT superseded
+
+    invalid = InvalidStateTransitionError(
+        "Invalid state transition for job x: rendering_video -> instrumental_selected",
+        job_id="x",
+    )
+    result, jm = await _run_gce_render(
+        job_start, job_after, transition_side_effect=[True, invalid]
+    )
+
+    assert result is False
+    jm.fail_job.assert_called_once()
 
 
 @pytest.mark.asyncio

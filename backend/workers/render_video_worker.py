@@ -524,6 +524,17 @@ async def process_render_video(job_id: str) -> bool:
                         # Supersession fence: bail before overwriting outputs if
                         # the job was reset/cancelled or a newer render started
                         # while we rendered (mirrors the GCE path above).
+                        #
+                        # Same accepted residual as the GCE path: earlier writes in
+                        # this path (lyrics_metadata countdown padding, GCS objects
+                        # under the shared jobs/{job_id}/ prefix) can still land on a
+                        # newer generation in the narrow window before this check. A
+                        # newer render re-renders and overwrites them, and the
+                        # InvalidStateTransition guard blocks any bad downstream
+                        # trigger, so the worst case is transient stale bytes/metadata.
+                        # Fully closing it needs generation-scoped output paths +
+                        # conditional promote (deferred follow-up). NB: prod renders
+                        # via the GCE path; this local path is dev/fallback only.
                         superseded = check_superseded(
                             job_manager, job_id, captured_generation, {JobStatus.RENDERING_VIDEO}
                         )
@@ -647,14 +658,34 @@ async def process_render_video(job_id: str) -> bool:
         # instrumental_selected is no longer valid), the operator moved the job
         # deliberately. Discard our stale result quietly instead of clobbering
         # their reset with a spurious "failed" (the original 7f457087 incident).
-        # The generation/status fences above normally catch this first; this
-        # guarantees it even if the reset lands inside the transition window.
+        #
+        # But an InvalidStateTransitionError does NOT by itself prove supersession
+        # — it also fires for genuine workflow defects (a bad initial transition,
+        # a state-machine bug). CONFIRM supersession before swallowing the error;
+        # otherwise fall through to the real failure path so a non-superseded job
+        # surfaces instead of silently stalling.
         duration = time.time() - start_time
-        job_log.warning(f"Render superseded mid-transition, discarding stale result: {e}")
-        logger.info(
-            f"[job:{job_id}] WORKER_END worker=render-video status=superseded "
-            f"duration={duration:.1f}s reason={e}"
+        supersede_reason = check_superseded(
+            job_manager, job_id, captured_generation, {JobStatus.RENDERING_VIDEO}
         )
+        if supersede_reason:
+            job_log.warning(
+                f"Render superseded mid-transition, discarding stale result: "
+                f"{supersede_reason} ({e})"
+            )
+            logger.info(
+                f"[job:{job_id}] WORKER_END worker=render-video status=superseded "
+                f"duration={duration:.1f}s reason={supersede_reason}"
+            )
+            return False
+        # Not superseded: this is a real defect, not the reset race. Fail loudly.
+        error_text = str(e) or repr(e)
+        job_log.error(f"Video render failed (unexpected invalid transition): {error_text}")
+        logger.error(
+            f"[job:{job_id}] WORKER_END worker=render-video status=error "
+            f"duration={duration:.1f}s error={error_text}"
+        )
+        job_manager.fail_job(job_id, f"Video render failed: {error_text}")
         return False
     except Exception as e:
         duration = time.time() - start_time
