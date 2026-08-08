@@ -145,6 +145,7 @@ export interface Job {
   brand_prefix?: string;
   // Customer order fields
   customer_email?: string;
+  made_for_you?: boolean;
   // Request tracking metadata
   request_metadata?: Record<string, any>;
 }

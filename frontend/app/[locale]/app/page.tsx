@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select"
 import { Music2, RefreshCw, Loader2, Search, Gift, X, Shield, ShieldOff } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { sortJobsByDate } from "@/lib/job-status"
+import { sortJobsByDate, shouldShowJobOnDashboard } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
@@ -88,9 +88,10 @@ function AppPageContent() {
   // Check if user is admin (for exclude_test parameter)
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
 
-  // Filter out in-progress search jobs (managed by the guided flow, not standalone cards)
+  // Hide self-service jobs still in the guided-flow wizard, but keep made-for-you orders
+  // visible even at awaiting_audio_selection (see shouldShowJobOnDashboard).
   const jobs = useMemo(
-    () => allJobs.filter(job => job.status !== 'awaiting_audio_selection'),
+    () => allJobs.filter(shouldShowJobOnDashboard),
     [allJobs]
   )
 
@@ -99,6 +100,20 @@ function AppPageContent() {
     const timer = setTimeout(() => setSearchQuery(searchInput), 300)
     return () => clearTimeout(timer)
   }, [searchInput])
+
+  // Honor a `status` URL param (e.g. made-for-you admin email deep-links to
+  // /app/?admin_token=...&status=awaiting_audio_selection). Applied on mount before
+  // the admin_token handler strips the query string, so the actionable queue is shown.
+  useEffect(() => {
+    const statusParam = searchParams.get("status")
+    if (statusParam) {
+      setStatusFilter(statusParam)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("nomad-karaoke-status-filter", statusParam)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Memoize loadJobs for use with visibility refresh
   const loadJobs = useCallback(async () => {

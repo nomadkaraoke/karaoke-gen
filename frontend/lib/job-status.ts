@@ -322,3 +322,17 @@ export function sortJobsByDate(jobs: Job[]): Job[] {
   });
 }
 
+/**
+ * Whether a job should render as a standalone card on the main dashboard.
+ *
+ * Self-service jobs at `awaiting_audio_selection` are driven by the guided-flow
+ * wizard in the same browser session and must NOT appear as standalone cards
+ * (the wizard owns them). Made-for-you orders also sit at that status, but they
+ * are created server-side by the Stripe webhook with no active guided-flow
+ * session — so they'd otherwise be invisible to an admin. Keep those visible so
+ * their built-in "Open Audio Selection" action is reachable from the dashboard.
+ */
+export function shouldShowJobOnDashboard(job: Pick<Job, 'status' | 'made_for_you'>): boolean {
+  return job.status !== 'awaiting_audio_selection' || Boolean(job.made_for_you);
+}
+
