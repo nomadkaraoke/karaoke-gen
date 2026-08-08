@@ -662,6 +662,21 @@ class TestSummaryEndpoint:
                       'audio_source_type', 'source_name', 'source_id', 'target_file', 'download_url']:
             assert field in paths, f"{field} must be in summary projection for source details modal"
 
+    def test_summary_projection_includes_made_for_you(self):
+        """Verify SUMMARY_FIELD_PATHS includes made_for_you (and customer_email).
+
+        The dashboard needs made_for_you in the summary payload so it can keep
+        made-for-you orders (which sit at awaiting_audio_selection) visible as
+        cards instead of filtering them out with self-service guided-flow jobs.
+        """
+        from backend.services.firestore_service import FirestoreService
+        paths = FirestoreService.SUMMARY_FIELD_PATHS
+        assert 'made_for_you' in paths, (
+            "'made_for_you' must be in summary projection so the dashboard can "
+            "surface made-for-you orders awaiting audio selection"
+        )
+        assert 'customer_email' in paths
+
     def test_prune_file_urls_keeps_allowed_keys(self):
         """Verify _prune_file_urls keeps only dashboard-required keys."""
         from backend.api.routes.jobs import _prune_file_urls

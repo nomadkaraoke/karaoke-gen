@@ -1705,8 +1705,13 @@ class EmailService:
         # Use "ET" (Eastern Time) to be correct for both EST and EDT
         deadline_str = deadline_eastern.strftime("%B %d, %Y at %I:%M %p") + " ET"
 
-        # Link to /app/ with admin login token for one-click access
-        app_url = f"{self.frontend_url.rstrip('/')}/app/?admin_token={admin_login_token}"
+        # Link to /app/ with admin login token for one-click access, deep-linked to the
+        # awaiting-audio-selection queue so the made-for-you order is shown immediately
+        # (made-for-you cards render there; the status param pre-selects the filter).
+        app_url = (
+            f"{self.frontend_url.rstrip('/')}/app/"
+            f"?admin_token={admin_login_token}&status=awaiting_audio_selection"
+        )
 
         content = f"""
     <div class="order-info">

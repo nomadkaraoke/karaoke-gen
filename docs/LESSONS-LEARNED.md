@@ -1477,3 +1477,37 @@ as supersession (log + `return False`), never `fail_job()`.
   `patch("google.cloud.firestore_v1.Increment")` + `assert_called_once_with(1)`,
   not `isinstance(..., Increment)` — another test in the suite replaces the
   firestore module with a mock, so real-vs-mock class identity flakes.
+
+## Server-Created Jobs Must Fit the Dashboard's UI Assumptions (Aug 2026)
+
+**Symptom:** A paid "Made for you" Stripe order auto-created its job perfectly
+(webhook → `_handle_made_for_you_order`, job `b092648c` at
+`awaiting_audio_selection` with 10 audio sources found, admin notified) — yet
+the operator saw *nothing* on the dashboard and re-created the job by hand,
+producing a duplicate.
+
+**Root cause:** Two UI assumptions that only hold for *self-service* jobs:
+1. The dashboard filtered out **all** `awaiting_audio_selection` jobs, because
+   for a self-service user those are mid-wizard and owned by the guided-flow
+   component. Made-for-you jobs are created **server-side** by the Stripe
+   webhook, so they sit at that same status with **no active wizard session** —
+   and got silently dropped.
+2. The admin notification email's "Open Job" button linked to bare `/app/`,
+   i.e. the exact page that filters the job out.
+
+**Fix (v0.192.5):** `shouldShowJobOnDashboard()` keeps `made_for_you` jobs
+visible at `awaiting_audio_selection` (hiding only self-service ones); added
+`made_for_you`/`customer_email` to `SUMMARY_FIELD_PATHS` so the summary payload
+carries the flag; the email now deep-links to
+`/app/?admin_token=…&status=awaiting_audio_selection` (dashboard honors a
+`status` URL param).
+
+**Principles for next time:**
+- A UI filter written for one creation path (interactive wizard) will silently
+  swallow items from another path (server/webhook). When adding a server-created
+  job that reuses an interactive status, audit every place that status is
+  special-cased in the frontend.
+- A notification's action link must point at a view that actually **renders the
+  item** — verify the deep-link, don't assume "/app shows everything".
+- Any field a frontend filter branches on must be in `SUMMARY_FIELD_PATHS`, or
+  it arrives `undefined` and the branch silently takes the wrong path.
