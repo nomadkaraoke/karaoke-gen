@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection ไม่ถูกต้อง ต้องเป็นหนึ่งใน: {valid_selections}",
     "instrumentalSelected": "เลือกดนตรีบรรเลงแล้ว กำลังเริ่มสร้างวิดีโอ",
     "instrumentalSelectionError": "เกิดข้อผิดพลาดในการเลือกดนตรีบรรเลงสำหรับงาน {job_id}: {error}",
-    "downloadUrlsError": "เกิดข้อผิดพลาดในการรับ URL สำหรับดาวน์โหลด: {error}"
+    "downloadUrlsError": "เกิดข้อผิดพลาดในการรับ URL สำหรับดาวน์โหลด: {error}",
+    "fileNoLongerAvailable": "ไฟล์ไม่พร้อมใช้งานแล้ว"
   },
   "review": {
     "jobNotFound": "ไม่พบงาน",

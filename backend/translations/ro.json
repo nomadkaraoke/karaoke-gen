@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection invalid. Trebuie să fie unul dintre: {valid_selections}",
     "instrumentalSelected": "Instrumental selectat. A început generarea videoclipului.",
     "instrumentalSelectionError": "Eroare la selectarea instrumentalului pentru jobul {job_id}: {error}",
-    "downloadUrlsError": "Eroare la obținerea adreselor URL de descărcare: {error}"
+    "downloadUrlsError": "Eroare la obținerea adreselor URL de descărcare: {error}",
+    "fileNoLongerAvailable": "Fișierul nu mai este disponibil"
   },
   "review": {
     "jobNotFound": "Jobul nu a fost găsit",

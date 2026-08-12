@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Érvénytelen instrumental_selection. A következők egyike kell legyen: {valid_selections}",
     "instrumentalSelected": "Instrumentális sáv kiválasztva. A videó generálása megkezdődött.",
     "instrumentalSelectionError": "Hiba a(z) {job_id} feladat instrumentális sávjának kiválasztásakor: {error}",
-    "downloadUrlsError": "Hiba a letöltési URL-ek lekérésekor: {error}"
+    "downloadUrlsError": "Hiba a letöltési URL-ek lekérésekor: {error}",
+    "fileNoLongerAvailable": "A fájl már nem elérhető"
   },
   "review": {
     "jobNotFound": "A feladat nem található",

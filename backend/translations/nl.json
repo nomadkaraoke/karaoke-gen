@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Ongeldige instrumental_selection. Moet een van de volgende zijn: {valid_selections}",
     "instrumentalSelected": "Instrumental geselecteerd. Videogeneratie is gestart.",
     "instrumentalSelectionError": "Fout bij het selecteren van instrumental voor taak {job_id}: {error}",
-    "downloadUrlsError": "Fout bij het ophalen van download-URL's: {error}"
+    "downloadUrlsError": "Fout bij het ophalen van download-URL's: {error}",
+    "fileNoLongerAvailable": "Bestand niet meer beschikbaar"
   },
   "review": {
     "jobNotFound": "Taak niet gevonden",

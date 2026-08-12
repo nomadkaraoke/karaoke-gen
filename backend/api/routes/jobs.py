@@ -1778,7 +1778,7 @@ async def download_file(
         # doesn't trip the error-monitor.
         _cleanup_temp_file(tmp_path)
         logger.warning(f"Download requested for missing object {gcs_path}")
-        raise HTTPException(status_code=404, detail="File no longer available")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.fileNoLongerAvailable"))
     except Exception as e:
         _cleanup_temp_file(tmp_path)
         logger.error(f"Error downloading {gcs_path}: {e}")

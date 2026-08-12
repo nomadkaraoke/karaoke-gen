@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection không hợp lệ. Phải là một trong: {valid_selections}",
     "instrumentalSelected": "Đã chọn nhạc nền. Đã bắt đầu tạo video.",
     "instrumentalSelectionError": "Lỗi khi chọn nhạc nền cho công việc {job_id}: {error}",
-    "downloadUrlsError": "Lỗi khi lấy URL tải xuống: {error}"
+    "downloadUrlsError": "Lỗi khi lấy URL tải xuống: {error}",
+    "fileNoLongerAvailable": "Tệp không còn khả dụng"
   },
   "review": {
     "jobNotFound": "Không tìm thấy công việc",

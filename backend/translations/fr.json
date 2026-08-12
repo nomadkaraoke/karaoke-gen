@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection invalide. Doit être l'un de : {valid_selections}",
     "instrumentalSelected": "Instrumental sélectionné. La génération de la vidéo a commencé.",
     "instrumentalSelectionError": "Erreur lors de la sélection de l'instrumental pour la tâche {job_id} : {error}",
-    "downloadUrlsError": "Erreur lors de l'obtention des URL de téléchargement : {error}"
+    "downloadUrlsError": "Erreur lors de l'obtention des URL de téléchargement : {error}",
+    "fileNoLongerAvailable": "Le fichier n'est plus disponible"
   },
   "review": {
     "jobNotFound": "Tâche introuvable",

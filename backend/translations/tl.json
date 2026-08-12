@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Mali ang instrumental_selection. Dapat isa sa: {valid_selections}",
     "instrumentalSelected": "Napili na ang instrumental. Nagsimula na ang paggawa ng video.",
     "instrumentalSelectionError": "Error sa pagpili ng instrumental para sa job {job_id}: {error}",
-    "downloadUrlsError": "Error sa pagkuha ng mga download URL: {error}"
+    "downloadUrlsError": "Error sa pagkuha ng mga download URL: {error}",
+    "fileNoLongerAvailable": "Hindi na available ang file"
   },
   "review": {
     "jobNotFound": "Hindi nahanap ang job",

@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "잘못된 instrumental_selection입니다. 다음 중 하나여야 합니다: {valid_selections}",
     "instrumentalSelected": "반주가 선택되었습니다. 비디오 생성이 시작되었습니다.",
     "instrumentalSelectionError": "작업 {job_id}의 반주 선택 중 오류 발생: {error}",
-    "downloadUrlsError": "다운로드 URL을 가져오는 중 오류 발생: {error}"
+    "downloadUrlsError": "다운로드 URL을 가져오는 중 오류 발생: {error}",
+    "fileNoLongerAvailable": "파일을 더 이상 사용할 수 없습니다"
   },
   "review": {
     "jobNotFound": "작업을 찾을 수 없습니다",

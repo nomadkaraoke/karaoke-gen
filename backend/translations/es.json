@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection inválido. Debe ser uno de: {valid_selections}",
     "instrumentalSelected": "Instrumental seleccionado. Generación de video iniciada.",
     "instrumentalSelectionError": "Error al seleccionar el instrumental para el trabajo {job_id}: {error}",
-    "downloadUrlsError": "Error al obtener las URLs de descarga: {error}"
+    "downloadUrlsError": "Error al obtener las URLs de descarga: {error}",
+    "fileNoLongerAvailable": "El archivo ya no está disponible"
   },
   "review": {
     "jobNotFound": "Trabajo no encontrado",

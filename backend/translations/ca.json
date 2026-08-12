@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection no vàlid. Ha de ser un de: {valid_selections}",
     "instrumentalSelected": "Pista instrumental seleccionada. S'ha iniciat la generació del vídeo.",
     "instrumentalSelectionError": "Error en seleccionar la pista instrumental per a la tasca {job_id}: {error}",
-    "downloadUrlsError": "Error en obtenir els URL de descàrrega: {error}"
+    "downloadUrlsError": "Error en obtenir els URL de descàrrega: {error}",
+    "fileNoLongerAvailable": "El fitxer ja no està disponible"
   },
   "review": {
     "jobNotFound": "Tasca no trobada",

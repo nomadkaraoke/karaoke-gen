@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Ugyldig instrumental_selection. Skal være en af: {valid_selections}",
     "instrumentalSelected": "Instrumental valgt. Videogenerering er startet.",
     "instrumentalSelectionError": "Fejl ved valg af instrumental for job {job_id}: {error}",
-    "downloadUrlsError": "Fejl ved hentning af download-URL'er: {error}"
+    "downloadUrlsError": "Fejl ved hentning af download-URL'er: {error}",
+    "fileNoLongerAvailable": "Filen er ikke længere tilgængelig"
   },
   "review": {
     "jobNotFound": "Jobbet blev ikke fundet",

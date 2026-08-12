@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "अमान्य instrumental_selection। इनमें से एक होना चाहिए: {valid_selections}",
     "instrumentalSelected": "इंस्ट्रुमेंटल चुना गया। वीडियो जनरेशन शुरू हो गया है।",
     "instrumentalSelectionError": "जॉब {job_id} के लिए इंस्ट्रुमेंटल चुनने में त्रुटि: {error}",
-    "downloadUrlsError": "डाउनलोड URLs प्राप्त करने में त्रुटि: {error}"
+    "downloadUrlsError": "डाउनलोड URLs प्राप्त करने में त्रुटि: {error}",
+    "fileNoLongerAvailable": "फ़ाइल अब उपलब्ध नहीं है"
   },
   "review": {
     "jobNotFound": "जॉब नहीं मिली",
