@@ -74,15 +74,20 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   // Check if outputs have been deleted by admin
   const outputsDeleted = !!job.outputs_deleted_at
 
-  // A private -> public visibility change deletes the finals + distribution
-  // links while it re-renders, so any recorded download/output URLs are stale
-  // and would 404. Treat outputs as unavailable for the duration.
+  // A visibility change tears down the distribution links (YouTube/Dropbox) in
+  // BOTH directions while it redistributes, so any recorded external URLs are
+  // stale for the duration. The private -> public path additionally deletes the
+  // GCS finals and re-renders (status leaves "complete"); the fast public ->
+  // private path keeps the finals and stays "complete", so its downloads remain
+  // valid. Distinguish the two by status so we only hide GCS downloads during
+  // the re-render.
   const visibilityChangeInProgress = !!job.state_data?.visibility_change_in_progress
-  const outputsUnavailable = outputsDeleted || visibilityChangeInProgress
+  const visibilityReRenderInProgress = visibilityChangeInProgress && job.status !== "complete"
+  const outputsUnavailable = outputsDeleted || visibilityReRenderInProgress
 
   // Filter external links based on tenant features (and outputs available)
-  const showYoutubeLink = features.youtube_upload && youtubeUrl && !outputsUnavailable
-  const showDropboxLink = features.dropbox_upload && dropboxUrl && !outputsUnavailable
+  const showYoutubeLink = features.youtube_upload && youtubeUrl && !outputsDeleted && !visibilityChangeInProgress
+  const showDropboxLink = features.dropbox_upload && dropboxUrl && !outputsDeleted && !visibilityChangeInProgress
 
   // Visibility change: available for completed consumer jobs (not tenant)
   const isPrivate = !!job.is_private

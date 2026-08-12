@@ -86,21 +86,44 @@ describe('OutputLinks', () => {
       expect(screen.getByText('YouTube')).toBeInTheDocument()
     })
 
-    it('hides download + distribution links while a visibility change re-renders', () => {
-      // Finals + distribution outputs are deleted during private -> public
-      // re-processing, so their (now-stale) links must not be shown.
-      const inProgressJob: Job = {
+    it('hides GCS downloads + distribution links during a private->public re-render', () => {
+      // Making public deletes the finals and re-renders (status leaves
+      // "complete"), so the now-stale download + distribution links must go.
+      const reRenderJob: Job = {
         ...baseJob,
+        status: 'rendering_video',
         state_data: {
           ...baseJob.state_data,
           visibility_change_in_progress: true,
         },
       }
 
-      render(<OutputLinks job={inProgressJob} />)
+      render(<OutputLinks job={reRenderJob} />)
 
       expect(screen.queryByText('4K Video')).not.toBeInTheDocument()
       expect(screen.queryByText('720p Video')).not.toBeInTheDocument()
+      expect(screen.queryByText('YouTube')).not.toBeInTheDocument()
+      expect(screen.queryByText('Dropbox')).not.toBeInTheDocument()
+    })
+
+    it('keeps GCS downloads but hides distribution links during a public->private change', () => {
+      // Making private is the fast path: it keeps the GCS finals and stays
+      // "complete", only tearing down + redistributing YouTube/Dropbox.
+      const toPrivateJob: Job = {
+        ...baseJob,
+        status: 'complete',
+        state_data: {
+          ...baseJob.state_data,
+          visibility_change_in_progress: true,
+        },
+      }
+
+      render(<OutputLinks job={toPrivateJob} />)
+
+      // Finals still available for download
+      expect(screen.getByText('4K Video')).toBeInTheDocument()
+      expect(screen.getByText('720p Video')).toBeInTheDocument()
+      // Distribution links torn down / redistributing
       expect(screen.queryByText('YouTube')).not.toBeInTheDocument()
       expect(screen.queryByText('Dropbox')).not.toBeInTheDocument()
     })
