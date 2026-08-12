@@ -594,7 +594,7 @@
     "lyrics": "歌詞",
     "confirmDurationCost": "料金を確認",
     "findingAudioSources": "音源を検索中（再試行中）",
-    "waitingForCapacity": "処理の空きを待機中（再試行中）"
+    "waitingForCapacity": "エンコーディングサーバーの空きを待機中（再試行中）"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",
@@ -606,7 +606,9 @@
     "autoSelect": "自動選択されます",
     "willAutoSelectFirst": "最初を自動選択します",
     "noOutputsAvailable": "まだ利用可能な出力がありません",
-    "confirmCost": "料金を確認"
+    "confirmCost": "料金を確認",
+    "makingPublicInProgress": "このトラックを公開しています — デフォルトのブランディングで再レンダリングし、再公開しています。通常15〜30分ほどかかります。",
+    "waitingForEncodingServer": "（エンコーディングサーバーの空きを待機中）"
   },
   "jobActions": {
     "delete": "削除",

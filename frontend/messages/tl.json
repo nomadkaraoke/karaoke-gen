@@ -594,7 +594,7 @@
     "lyrics": "Lyrics",
     "confirmDurationCost": "Kumpirmahin ang halaga",
     "findingAudioSources": "Naghahanap ng mga audio source (sinusubukang muli)",
-    "waitingForCapacity": "Naghihintay ng kapasidad (sinusubukang muli)"
+    "waitingForCapacity": "Naghihintay sa encoding server (sinusubukan muli)"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",
@@ -606,7 +606,9 @@
     "autoSelect": "Awtomatikong pipili",
     "willAutoSelectFirst": "Awtomatikong pipiliin ang una",
     "noOutputsAvailable": "Wala pang available na outputs",
-    "confirmCost": "Kumpirmahin ang Halaga"
+    "confirmCost": "Kumpirmahin ang Halaga",
+    "makingPublicInProgress": "Ginagawang pampubliko ang track na ito — nire-render muli gamit ang default na branding at muling pina-publish. Karaniwan itong tumatagal ng 15–30 minuto.",
+    "waitingForEncodingServer": "(naghihintay na maging available ang encoding server)"
   },
   "jobActions": {
     "delete": "Tanggalin",

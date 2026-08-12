@@ -594,7 +594,7 @@
     "lyrics": "Sözler",
     "confirmDurationCost": "Maliyeti onayla",
     "findingAudioSources": "Ses kaynakları aranıyor (yeniden deneniyor)",
-    "waitingForCapacity": "Kapasite bekleniyor (yeniden deneniyor)"
+    "waitingForCapacity": "Kodlama sunucusu bekleniyor (yeniden deneniyor)"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",
@@ -606,7 +606,9 @@
     "autoSelect": "Otomatik seçecek",
     "willAutoSelectFirst": "İlkini otomatik seçecek",
     "noOutputsAvailable": "Henüz çıktı yok",
-    "confirmCost": "Ücreti Onayla"
+    "confirmCost": "Ücreti Onayla",
+    "makingPublicInProgress": "Bu parça herkese açık hale getiriliyor — varsayılan markalama ile yeniden işleniyor ve yeniden yayımlanıyor. Bu işlem genellikle 15–30 dakika sürer.",
+    "waitingForEncodingServer": "(kodlama sunucusunun müsait olması bekleniyor)"
   },
   "jobActions": {
     "delete": "Sil",

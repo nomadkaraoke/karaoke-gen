@@ -14,6 +14,7 @@
     "authError": "Authentication error: no user identity available",
     "noDefaultTheme": "No default theme configured. Please contact support or specify a theme_id.",
     "notFound": "Job not found",
+    "fileNoLongerAvailable": "File no longer available",
     "noPermissionAccess": "You don't have permission to access this job",
     "noPermissionEdit": "You don't have permission to edit this job",
     "noPermissionDelete": "You don't have permission to delete this job",

@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection tidak sah. Mesti salah satu daripada: {valid_selections}",
     "instrumentalSelected": "Instrumental dipilih. Penjanaan video bermula.",
     "instrumentalSelectionError": "Ralat memilih instrumental untuk tugasan {job_id}: {error}",
-    "downloadUrlsError": "Ralat mendapatkan URL muat turun: {error}"
+    "downloadUrlsError": "Ralat mendapatkan URL muat turun: {error}",
+    "fileNoLongerAvailable": "Fail tidak lagi tersedia"
   },
   "review": {
     "jobNotFound": "Tugasan tidak dijumpai",

@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Virheellinen instrumental_selection. Täytyy olla jokin näistä: {valid_selections}",
     "instrumentalSelected": "Instrumentaali valittu. Videon luonti aloitettu.",
     "instrumentalSelectionError": "Virhe valittaessa instrumentaalia työlle {job_id}: {error}",
-    "downloadUrlsError": "Virhe haettaessa latausosoitteita: {error}"
+    "downloadUrlsError": "Virhe haettaessa latausosoitteita: {error}",
+    "fileNoLongerAvailable": "Tiedosto ei ole enää saatavilla"
   },
   "review": {
     "jobNotFound": "Työtä ei löytynyt",

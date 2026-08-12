@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Ogiltigt instrumental_selection. Måste vara en av: {valid_selections}",
     "instrumentalSelected": "Instrumental vald. Videogenereringen har startat.",
     "instrumentalSelectionError": "Fel vid val av instrumental för jobb {job_id}: {error}",
-    "downloadUrlsError": "Fel vid hämtning av nedladdningslänkar: {error}"
+    "downloadUrlsError": "Fel vid hämtning av nedladdningslänkar: {error}",
+    "fileNoLongerAvailable": "Filen är inte längre tillgänglig"
   },
   "review": {
     "jobNotFound": "Jobbet hittades inte",

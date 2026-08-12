@@ -594,7 +594,7 @@
     "lyrics": "Text",
     "confirmDurationCost": "Potvrdit cenu",
     "findingAudioSources": "Hledání zdrojů zvuku (opakování pokusu)",
-    "waitingForCapacity": "Čekání na volnou kapacitu (opakování pokusu)"
+    "waitingForCapacity": "Čeká se na kódovací server (opakovaný pokus)"
   },
   "jobCard": {
     "actionNeeded": "Vyžadována akce",
@@ -606,7 +606,9 @@
     "autoSelect": "Automaticky se vybere",
     "willAutoSelectFirst": "Automaticky se vybere první",
     "noOutputsAvailable": "Zatím nejsou k dispozici žádné výstupy",
-    "confirmCost": "Potvrdit cenu"
+    "confirmCost": "Potvrdit cenu",
+    "makingPublicInProgress": "Zveřejňujeme tuto skladbu — znovu ji renderujeme s výchozím brandingem a publikujeme. Obvykle to trvá 15–30 minut.",
+    "waitingForEncodingServer": "(čeká se na dostupnost kódovacího serveru)"
   },
   "jobActions": {
     "delete": "Smazat",

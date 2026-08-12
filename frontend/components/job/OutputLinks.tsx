@@ -74,13 +74,23 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   // Check if outputs have been deleted by admin
   const outputsDeleted = !!job.outputs_deleted_at
 
-  // Filter external links based on tenant features (and outputs not deleted)
-  const showYoutubeLink = features.youtube_upload && youtubeUrl && !outputsDeleted
-  const showDropboxLink = features.dropbox_upload && dropboxUrl && !outputsDeleted
+  // A visibility change tears down the distribution links (YouTube/Dropbox) in
+  // BOTH directions while it redistributes, so any recorded external URLs are
+  // stale for the duration. The private -> public path additionally deletes the
+  // GCS finals and re-renders (status leaves "complete"); the fast public ->
+  // private path keeps the finals and stays "complete", so its downloads remain
+  // valid. Distinguish the two by status so we only hide GCS downloads during
+  // the re-render.
+  const visibilityChangeInProgress = !!job.state_data?.visibility_change_in_progress
+  const visibilityReRenderInProgress = visibilityChangeInProgress && job.status !== "complete"
+  const outputsUnavailable = outputsDeleted || visibilityReRenderInProgress
+
+  // Filter external links based on tenant features (and outputs available)
+  const showYoutubeLink = features.youtube_upload && youtubeUrl && !outputsDeleted && !visibilityChangeInProgress
+  const showDropboxLink = features.dropbox_upload && dropboxUrl && !outputsDeleted && !visibilityChangeInProgress
 
   // Visibility change: available for completed consumer jobs (not tenant)
   const isPrivate = !!job.is_private
-  const visibilityChangeInProgress = !!job.state_data?.visibility_change_in_progress
   const canChangeVisibility = job.status === "complete" && !tenantId && !visibilityChangeInProgress
 
   const copyToClipboard = useCallback(async (url: string) => {
@@ -178,10 +188,10 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
     }
   }, [job.job_id, isPrivate, onJobUpdated])
 
-  const hasOutputs = showYoutubeLink || showDropboxLink || (downloadUrls && Object.keys(downloadUrls).length > 0)
+  const hasOutputs = showYoutubeLink || showDropboxLink || (!outputsUnavailable && downloadUrls && Object.keys(downloadUrls).length > 0)
 
-  // Check if we have any downloads (and outputs haven't been deleted)
-  const hasDownloads = !outputsDeleted && downloadUrls && (
+  // Check if we have any downloads (and outputs are currently available)
+  const hasDownloads = !outputsUnavailable && downloadUrls && (
     downloadUrls?.finals?.lossy_720p_mp4 ||
     downloadUrls?.finals?.lossy_4k_mp4 ||
     downloadUrls?.finals?.with_vocals_mp4 ||

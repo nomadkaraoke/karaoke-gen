@@ -594,7 +594,7 @@
     "lyrics": "Tekst",
     "confirmDurationCost": "Potvrdi cijenu",
     "findingAudioSources": "Traženje izvora zvuka (ponovni pokušaj)",
-    "waitingForCapacity": "Čekanje na kapacitet (ponovni pokušaj)"
+    "waitingForCapacity": "Čeka se server za kodiranje (ponovni pokušaj)"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",
@@ -606,7 +606,9 @@
     "autoSelect": "Automatski će odabrati",
     "willAutoSelectFirst": "Automatski će odabrati prvo",
     "noOutputsAvailable": "Još nema dostupnih izlaza",
-    "confirmCost": "Potvrdi cijenu"
+    "confirmCost": "Potvrdi cijenu",
+    "makingPublicInProgress": "Objavljivanje ove pjesme — ponovno renderiranje sa zadanim brendiranjem i ponovno objavljivanje. To obično traje 15–30 minuta.",
+    "waitingForEncodingServer": "(čeka se dostupnost servera za kodiranje)"
   },
   "jobActions": {
     "delete": "Izbriši",

@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Geçersiz instrumental_selection. Şunlardan biri olmalıdır: {valid_selections}",
     "instrumentalSelected": "Enstrümantal seçildi. Video oluşturma başladı.",
     "instrumentalSelectionError": "{job_id} işi için enstrümantal seçme hatası: {error}",
-    "downloadUrlsError": "İndirme URL'lerini alma hatası: {error}"
+    "downloadUrlsError": "İndirme URL'lerini alma hatası: {error}",
+    "fileNoLongerAvailable": "Dosya artık mevcut değil"
   },
   "review": {
     "jobNotFound": "İş bulunamadı",

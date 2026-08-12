@@ -594,7 +594,7 @@
     "lyrics": "Tekst",
     "confirmDurationCost": "Bekreft pris",
     "findingAudioSources": "Finner lydkilder (prøver på nytt)",
-    "waitingForCapacity": "Venter på kapasitet (prøver på nytt)"
+    "waitingForCapacity": "Venter på kodingsserver (prøver på nytt)"
   },
   "jobCard": {
     "actionNeeded": "Handling kreves",
@@ -606,7 +606,9 @@
     "autoSelect": "Vil automatisk velge",
     "willAutoSelectFirst": "Vil automatisk velge første",
     "noOutputsAvailable": "Ingen utdata tilgjengelig ennå",
-    "confirmCost": "Bekreft kostnad"
+    "confirmCost": "Bekreft kostnad",
+    "makingPublicInProgress": "Gjør dette sporet offentlig — rendrer på nytt med standard profilering og publiserer på nytt. Dette tar vanligvis 15–30 minutter.",
+    "waitingForEncodingServer": "(venter på ledig kodingsserver)"
   },
   "jobActions": {
     "delete": "Slett",

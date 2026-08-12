@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Недійсний instrumental_selection. Має бути одним із: {valid_selections}",
     "instrumentalSelected": "Інструментал вибрано. Розпочато генерацію відео.",
     "instrumentalSelectionError": "Помилка вибору інструменталу для завдання {job_id}: {error}",
-    "downloadUrlsError": "Помилка отримання URL-адрес для завантаження: {error}"
+    "downloadUrlsError": "Помилка отримання URL-адрес для завантаження: {error}",
+    "fileNoLongerAvailable": "Файл більше недоступний"
   },
   "review": {
     "jobNotFound": "Завдання не знайдено",

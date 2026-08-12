@@ -594,7 +594,7 @@
     "lyrics": "Tekst",
     "confirmDurationCost": "Potwierdź koszt",
     "findingAudioSources": "Wyszukiwanie źródeł audio (ponawianie)",
-    "waitingForCapacity": "Oczekiwanie na wolne zasoby (ponawianie)"
+    "waitingForCapacity": "Oczekiwanie na serwer kodujący (ponawianie)"
   },
   "jobCard": {
     "actionNeeded": "Wymagane działanie",
@@ -606,7 +606,9 @@
     "autoSelect": "Zostanie automatycznie wybrane",
     "willAutoSelectFirst": "Automatycznie wybierze pierwsze",
     "noOutputsAvailable": "Brak dostępnych wyników",
-    "confirmCost": "Potwierdź koszt"
+    "confirmCost": "Potwierdź koszt",
+    "makingPublicInProgress": "Upublicznianie tego utworu — ponowne renderowanie z domyślnym brandingiem i ponowna publikacja. Zazwyczaj zajmuje to 15–30 minut.",
+    "waitingForEncodingServer": "(oczekiwanie na dostępność serwera kodującego)"
   },
   "jobActions": {
     "delete": "Usuń",

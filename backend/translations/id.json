@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection tidak valid. Harus salah satu dari: {valid_selections}",
     "instrumentalSelected": "Instrumental dipilih. Pembuatan video dimulai.",
     "instrumentalSelectionError": "Kesalahan saat memilih instrumental untuk tugas {job_id}: {error}",
-    "downloadUrlsError": "Kesalahan saat mendapatkan URL unduhan: {error}"
+    "downloadUrlsError": "Kesalahan saat mendapatkan URL unduhan: {error}",
+    "fileNoLongerAvailable": "File sudah tidak tersedia"
   },
   "review": {
     "jobNotFound": "Tugas tidak ditemukan",

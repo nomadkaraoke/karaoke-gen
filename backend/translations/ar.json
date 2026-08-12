@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection غير صالح. يجب أن يكون واحدًا من: {valid_selections}",
     "instrumentalSelected": "تم تحديد المسار الموسيقي. بدأ إنشاء الفيديو.",
     "instrumentalSelectionError": "خطأ في تحديد المسار الموسيقي للمهمة {job_id}: {error}",
-    "downloadUrlsError": "خطأ في الحصول على روابط التنزيل: {error}"
+    "downloadUrlsError": "خطأ في الحصول على روابط التنزيل: {error}",
+    "fileNoLongerAvailable": "الملف لم يعد متاحاً"
   },
   "review": {
     "jobNotFound": "المهمة غير موجودة",

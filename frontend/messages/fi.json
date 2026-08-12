@@ -594,7 +594,7 @@
     "lyrics": "Sanoitukset",
     "confirmDurationCost": "Vahvista hinta",
     "findingAudioSources": "Etsitään äänilähteitä (yritetään uudelleen)",
-    "waitingForCapacity": "Odotetaan kapasiteettia (yritetään uudelleen)"
+    "waitingForCapacity": "Odotetaan enkoodauspalvelinta (yritetään uudelleen)"
   },
   "jobCard": {
     "actionNeeded": "Toimenpiteitä tarvitaan",
@@ -606,7 +606,9 @@
     "autoSelect": "Valitsee automaattisesti",
     "willAutoSelectFirst": "Valitsee automaattisesti ensimmäisen",
     "noOutputsAvailable": "Ei tulosteita vielä saatavilla",
-    "confirmCost": "Vahvista hinta"
+    "confirmCost": "Vahvista hinta",
+    "makingPublicInProgress": "Kappaleesta tehdään julkinen — se renderöidään uudelleen oletusbrändäyksellä ja julkaistaan uudestaan. Tämä kestää yleensä 15–30 minuuttia.",
+    "waitingForEncodingServer": "(odotetaan enkoodauspalvelimen vapautumista)"
   },
   "jobActions": {
     "delete": "Poista",

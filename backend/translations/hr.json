@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Nevažeći instrumental_selection. Mora biti jedno od: {valid_selections}",
     "instrumentalSelected": "Instrumental je odabran. Generiranje videa je započelo.",
     "instrumentalSelectionError": "Pogreška pri odabiru instrumentala za zadatak {job_id}: {error}",
-    "downloadUrlsError": "Pogreška pri dohvaćanju URL-ova za preuzimanje: {error}"
+    "downloadUrlsError": "Pogreška pri dohvaćanju URL-ova za preuzimanje: {error}",
+    "fileNoLongerAvailable": "Datoteka više nije dostupna"
   },
   "review": {
     "jobNotFound": "Zadatak nije pronađen",

@@ -594,7 +594,7 @@
     "lyrics": "Lirik",
     "confirmDurationCost": "Sahkan kos",
     "findingAudioSources": "Mencari sumber audio (mencuba semula)",
-    "waitingForCapacity": "Menunggu kapasiti (mencuba semula)"
+    "waitingForCapacity": "Menunggu pelayan pengekodan (mencuba semula)"
   },
   "jobCard": {
     "actionNeeded": "Tindakan diperlukan",
@@ -606,7 +606,9 @@
     "autoSelect": "Akan pilih automatik",
     "willAutoSelectFirst": "Akan pilih automatik yang pertama",
     "noOutputsAvailable": "Tiada output tersedia lagi",
-    "confirmCost": "Sahkan Kos"
+    "confirmCost": "Sahkan Kos",
+    "makingPublicInProgress": "Menjadikan trek ini awam — merender semula dengan penjenamaan lalai dan menerbitkan semula. Proses ini biasanya mengambil masa 15–30 minit.",
+    "waitingForEncodingServer": "(menunggu ketersediaan pelayan pengekodan)"
   },
   "jobActions": {
     "delete": "Padam",

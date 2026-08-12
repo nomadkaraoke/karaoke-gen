@@ -594,7 +594,7 @@
     "lyrics": "Lirik",
     "confirmDurationCost": "Konfirmasi biaya",
     "findingAudioSources": "Mencari sumber audio (mencoba lagi)",
-    "waitingForCapacity": "Menunggu kapasitas (mencoba lagi)"
+    "waitingForCapacity": "Menunggu server encoding (mencoba lagi)"
   },
   "jobCard": {
     "actionNeeded": "Perlu tindakan",
@@ -606,7 +606,9 @@
     "autoSelect": "Akan memilih otomatis",
     "willAutoSelectFirst": "Akan memilih otomatis yang pertama",
     "noOutputsAvailable": "Belum ada output yang tersedia",
-    "confirmCost": "Konfirmasi Biaya"
+    "confirmCost": "Konfirmasi Biaya",
+    "makingPublicInProgress": "Menjadikan trek ini publik — merender ulang dengan branding bawaan dan memublikasikan ulang. Proses ini biasanya memakan waktu 15–30 menit.",
+    "waitingForEncodingServer": "(menunggu ketersediaan server encoding)"
   },
   "jobActions": {
     "delete": "Hapus",

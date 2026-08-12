@@ -594,7 +594,7 @@
     "lyrics": "Lletres",
     "confirmDurationCost": "Confirma el cost",
     "findingAudioSources": "Cercant fonts d'àudio (reintentant)",
-    "waitingForCapacity": "Esperant disponibilitat (reintentant)"
+    "waitingForCapacity": "Esperant el servidor de codificació (reintentant)"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",
@@ -606,7 +606,9 @@
     "autoSelect": "Se seleccionarà automàticament",
     "willAutoSelectFirst": "Se seleccionarà automàticament el primer",
     "noOutputsAvailable": "Encara no hi ha sortides disponibles",
-    "confirmCost": "Confirmar cost"
+    "confirmCost": "Confirmar cost",
+    "makingPublicInProgress": "Fent pública aquesta pista — renderitzant de nou amb la marca predeterminada i republicant. Això sol trigar 15–30 minuts.",
+    "waitingForEncodingServer": "(esperant la disponibilitat del servidor de codificació)"
   },
   "jobActions": {
     "delete": "Suprimeix",

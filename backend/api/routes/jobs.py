@@ -18,6 +18,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile, File
 
 from datetime import datetime, timezone
+from google.cloud.exceptions import NotFound
 from backend.utils.request_helpers import get_client_ip
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -1646,6 +1647,17 @@ DOWNLOAD_FILENAME_SUFFIXES = {
 }
 
 
+def _cleanup_temp_file(path: Optional[str]) -> None:
+    """Best-effort removal of a temp file created for a download that failed
+    before streaming started (so it never reaches the iterator's cleanup)."""
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
 @router.get("/{job_id}/download/{category}/{file_key}")
 async def download_file(
     job_id: str,
@@ -1719,6 +1731,11 @@ async def download_file(
     else:
         filename = gcs_path.split('/')[-1]  # Fallback to original
     
+    # Created below with delete=False; the streaming iterator's finally removes it
+    # on the happy path. If download/setup raises before streaming starts, the
+    # except handlers below unlink it so failed (e.g. 404) requests don't leak
+    # temp files and fill local disk.
+    tmp_path = None
     try:
         # Download to temp file and stream
         storage = StorageService()
@@ -1754,7 +1771,16 @@ async def download_file(
                 'Content-Disposition': content_disposition
             }
         )
+    except NotFound:
+        # The recorded output is gone from GCS (e.g. a stale download link hit
+        # mid-reprocess after a visibility change / edit deleted the finals). This
+        # is "not found", not a server error — return 404 and log at warning so it
+        # doesn't trip the error-monitor.
+        _cleanup_temp_file(tmp_path)
+        logger.warning(f"Download requested for missing object {gcs_path}")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.fileNoLongerAvailable"))
     except Exception as e:
+        _cleanup_temp_file(tmp_path)
         logger.error(f"Error downloading {gcs_path}: {e}")
         raise HTTPException(status_code=500, detail=f"Error downloading file: {e}")
 

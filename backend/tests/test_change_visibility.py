@@ -180,6 +180,37 @@ class TestChangeToPublic:
             mock_theme.assert_called_once_with(job_id="test-123", theme_id="nomad")
 
     @pytest.mark.asyncio
+    async def test_intermediate_deletes_ignore_missing(self):
+        """Best-effort deletes of intermediate render artifacts must pass
+        ignore_missing=True so absent .mov/.mkv files are a quiet no-op instead
+        of a noisy ERROR log that trips the error-monitor (regression)."""
+        mock_job_manager = MagicMock()
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+             patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)), \
+             patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
+
+            mock_storage = MagicMock()
+            mock_storage_cls.return_value = mock_storage
+            mock_worker = MagicMock()
+            mock_worker.trigger_screens_worker = AsyncMock(return_value=True)
+            mock_worker_svc.return_value = mock_worker
+
+            await service.change_to_public("test-123", job, "user@example.com")
+
+            assert mock_storage.delete_file.call_count > 0
+            for call in mock_storage.delete_file.call_args_list:
+                assert call.kwargs.get("ignore_missing") is True, (
+                    f"delete_file called without ignore_missing=True: {call}"
+                )
+
+    @pytest.mark.asyncio
     async def test_resets_styles_to_nomad_theme(self):
         mock_job_manager = MagicMock()
         mock_job_ref = MagicMock()

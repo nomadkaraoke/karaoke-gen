@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "无效的 instrumental_selection。必须是以下之一：{valid_selections}",
     "instrumentalSelected": "已选择伴奏。已开始生成视频。",
     "instrumentalSelectionError": "为任务 {job_id} 选择伴奏时出错：{error}",
-    "downloadUrlsError": "获取下载 URL 时出错：{error}"
+    "downloadUrlsError": "获取下载 URL 时出错：{error}",
+    "fileNoLongerAvailable": "文件已不可用"
   },
   "review": {
     "jobNotFound": "未找到任务",

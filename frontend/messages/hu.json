@@ -594,7 +594,7 @@
     "lyrics": "Dalszöveg",
     "confirmDurationCost": "Költség megerősítése",
     "findingAudioSources": "Hangforrások keresése (újrapróbálkozás)",
-    "waitingForCapacity": "Várakozás szabad kapacitásra (újrapróbálkozás)"
+    "waitingForCapacity": "Várakozás a kódoló szerverre (újrapróbálkozás)"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",
@@ -606,7 +606,9 @@
     "autoSelect": "Automatikusan kiválasztja",
     "willAutoSelectFirst": "Automatikusan kiválasztja az elsőt",
     "noOutputsAvailable": "Még nincsenek elérhető kimenetek",
-    "confirmCost": "Költség megerősítése"
+    "confirmCost": "Költség megerősítése",
+    "makingPublicInProgress": "A dal nyilvánossá tétele folyamatban — újrarenderelés az alapértelmezett arculattal és újraközzététel. Ez általában 15–30 percet vesz igénybe.",
+    "waitingForEncodingServer": "(várakozás a kódoló szerver elérhetőségére)"
   },
   "jobActions": {
     "delete": "Törlés",

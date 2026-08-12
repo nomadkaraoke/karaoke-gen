@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Neplatný výber inštrumentálu. Musí byť jeden z: {valid_selections}",
     "instrumentalSelected": "Inštrumentál bol vybraný. Začalo sa generovanie videa.",
     "instrumentalSelectionError": "Chyba pri výbere inštrumentálu pre úlohu {job_id}: {error}",
-    "downloadUrlsError": "Chyba pri získavaní adries URL na stiahnutie: {error}"
+    "downloadUrlsError": "Chyba pri získavaní adries URL na stiahnutie: {error}",
+    "fileNoLongerAvailable": "Súbor už nie je dostupný"
   },
   "review": {
     "jobNotFound": "Úloha sa nenašla",

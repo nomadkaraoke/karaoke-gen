@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "בחירת instrumental_selection לא חוקית. חייב להיות אחד מ: {valid_selections}",
     "instrumentalSelected": "הפלייבק נבחר. יצירת הווידאו התחילה.",
     "instrumentalSelectionError": "שגיאה בבחירת פלייבק עבור המשימה {job_id}: {error}",
-    "downloadUrlsError": "שגיאה בקבלת כתובות ההורדה: {error}"
+    "downloadUrlsError": "שגיאה בקבלת כתובות ההורדה: {error}",
+    "fileNoLongerAvailable": "הקובץ אינו זמין יותר"
   },
   "review": {
     "jobNotFound": "המשימה לא נמצאה",

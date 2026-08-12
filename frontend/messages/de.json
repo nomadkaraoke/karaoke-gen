@@ -594,7 +594,7 @@
     "lyrics": "Text",
     "confirmDurationCost": "Kosten bestätigen",
     "findingAudioSources": "Suche nach Audioquellen (erneuter Versuch)",
-    "waitingForCapacity": "Warten auf Kapazität (erneuter Versuch)"
+    "waitingForCapacity": "Warten auf Kodierungsserver (erneuter Versuch)"
   },
   "jobCard": {
     "actionNeeded": "Aktion erforderlich",
@@ -606,7 +606,9 @@
     "autoSelect": "Wird automatisch ausgewählt",
     "willAutoSelectFirst": "Wird automatisch das Erste auswählen",
     "noOutputsAvailable": "Noch keine Ausgaben verfügbar",
-    "confirmCost": "Kosten bestätigen"
+    "confirmCost": "Kosten bestätigen",
+    "makingPublicInProgress": "Dieser Track wird öffentlich gemacht — erneutes Rendern mit Standard-Branding und erneute Veröffentlichung. Das dauert in der Regel 15–30 Minuten.",
+    "waitingForEncodingServer": "(Warten auf Verfügbarkeit des Kodierungsservers)"
   },
   "jobActions": {
     "delete": "Löschen",

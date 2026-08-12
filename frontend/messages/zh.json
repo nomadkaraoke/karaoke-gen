@@ -594,7 +594,7 @@
     "lyrics": "歌词",
     "confirmDurationCost": "确认费用",
     "findingAudioSources": "正在查找音频源（重试中）",
-    "waitingForCapacity": "等待可用资源（重试中）"
+    "waitingForCapacity": "等待编码服务器 (正在重试)"
   },
   "jobCard": {
     "actionNeeded": "需要操作",
@@ -606,7 +606,9 @@
     "autoSelect": "将自动选择",
     "willAutoSelectFirst": "将自动选择第一个",
     "noOutputsAvailable": "暂无可用输出",
-    "confirmCost": "确认费用"
+    "confirmCost": "确认费用",
+    "makingPublicInProgress": "正在公开此曲目 — 使用默认品牌重新渲染并重新发布。这通常需要 15–30 分钟。",
+    "waitingForEncodingServer": "(等待编码服务器可用)"
   },
   "jobActions": {
     "delete": "删除",

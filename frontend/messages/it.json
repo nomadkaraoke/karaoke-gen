@@ -594,7 +594,7 @@
     "lyrics": "Testo",
     "confirmDurationCost": "Conferma costo",
     "findingAudioSources": "Ricerca delle fonti audio (nuovo tentativo)",
-    "waitingForCapacity": "In attesa di disponibilità (nuovo tentativo)"
+    "waitingForCapacity": "In attesa del server di codifica (nuovo tentativo)"
   },
   "jobCard": {
     "actionNeeded": "Azione richiesta",
@@ -606,7 +606,9 @@
     "autoSelect": "Selezionerà automaticamente",
     "willAutoSelectFirst": "Selezionerà automaticamente il primo",
     "noOutputsAvailable": "Nessun output ancora disponibile",
-    "confirmCost": "Conferma costo"
+    "confirmCost": "Conferma costo",
+    "makingPublicInProgress": "Stiamo rendendo pubblica questa traccia — nuovo rendering con il branding predefinito e ripubblicazione in corso. Di solito ci vogliono 15–30 minuti.",
+    "waitingForEncodingServer": "(in attesa della disponibilità del server di codifica)"
   },
   "jobActions": {
     "delete": "Elimina",

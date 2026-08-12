@@ -594,7 +594,7 @@
     "lyrics": "Sangtekster",
     "confirmDurationCost": "Bekræft pris",
     "findingAudioSources": "Finder lydkilder (prøver igen)",
-    "waitingForCapacity": "Venter på kapacitet (prøver igen)"
+    "waitingForCapacity": "Venter på kodningsserver (prøver igen)"
   },
   "jobCard": {
     "actionNeeded": "Handling påkrævet",
@@ -606,7 +606,9 @@
     "autoSelect": "Vil automatisk vælge",
     "willAutoSelectFirst": "Vil automatisk vælge første",
     "noOutputsAvailable": "Ingen outputs tilgængelige endnu",
-    "confirmCost": "Bekræft pris"
+    "confirmCost": "Bekræft pris",
+    "makingPublicInProgress": "Gør dette nummer offentligt — gen-renderer med standardbranding og genudgiver. Det tager normalt 15–30 minutter.",
+    "waitingForEncodingServer": "(venter på, at kodningsserveren bliver ledig)"
   },
   "jobActions": {
     "delete": "Slet",

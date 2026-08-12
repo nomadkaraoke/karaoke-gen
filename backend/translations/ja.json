@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "無効な instrumental_selection です。次のいずれかである必要があります: {valid_selections}",
     "instrumentalSelected": "インストゥルメンタルが選択されました。動画の生成を開始しました。",
     "instrumentalSelectionError": "ジョブ {job_id} のインストゥルメンタル選択中にエラーが発生しました: {error}",
-    "downloadUrlsError": "ダウンロードURLの取得中にエラーが発生しました: {error}"
+    "downloadUrlsError": "ダウンロードURLの取得中にエラーが発生しました: {error}",
+    "fileNoLongerAvailable": "ファイルはご利用いただけなくなりました"
   },
   "review": {
     "jobNotFound": "ジョブが見つかりません",

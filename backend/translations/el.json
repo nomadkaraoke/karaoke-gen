@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Μη έγκυρο instrumental_selection. Πρέπει να είναι ένα από τα: {valid_selections}",
     "instrumentalSelected": "Το instrumental επιλέχθηκε. Ξεκίνησε η δημιουργία βίντεο.",
     "instrumentalSelectionError": "Σφάλμα κατά την επιλογή instrumental για την εργασία {job_id}: {error}",
-    "downloadUrlsError": "Σφάλμα κατά τη λήψη των URL λήψης: {error}"
+    "downloadUrlsError": "Σφάλμα κατά τη λήψη των URL λήψης: {error}",
+    "fileNoLongerAvailable": "Το αρχείο δεν είναι πλέον διαθέσιμο"
   },
   "review": {
     "jobNotFound": "Η εργασία δεν βρέθηκε",

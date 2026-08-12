@@ -141,7 +141,11 @@ class VisibilityChangeService:
             f"jobs/{job_id}/videos/with_vocals.mov",
         ]:
             try:
-                storage.delete_file(path)
+                # Best-effort delete over a template of possible artifacts; many of
+                # these intermediates legitimately never existed for a given render
+                # path. ignore_missing keeps a 404 a quiet no-op instead of a noisy
+                # ERROR log (which would otherwise trip the error-monitor).
+                storage.delete_file(path, ignore_missing=True)
             except Exception:
                 pass
 

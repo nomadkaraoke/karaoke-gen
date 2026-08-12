@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Ungültige instrumental_selection. Muss eines der folgenden sein: {valid_selections}",
     "instrumentalSelected": "Instrumental ausgewählt. Video-Generierung gestartet.",
     "instrumentalSelectionError": "Fehler bei der Auswahl des Instrumentals für Auftrag {job_id}: {error}",
-    "downloadUrlsError": "Fehler beim Abrufen der Download-URLs: {error}"
+    "downloadUrlsError": "Fehler beim Abrufen der Download-URLs: {error}",
+    "fileNoLongerAvailable": "Datei nicht mehr verfügbar"
   },
   "review": {
     "jobNotFound": "Auftrag nicht gefunden",
