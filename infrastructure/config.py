@@ -48,6 +48,12 @@ class MachineTypes:
     GITHUB_BUILD_RUNNER = "e2-standard-8"  # 8 vCPU, 32GB RAM - dedicated Docker build runner
     GITHUB_GPU_RUNNER = "n1-standard-4"  # 4 vCPU, 15GB RAM - GPU runners need N1 series
     ENCODING_WORKER = "c4d-highcpu-32"  # 32 vCPU, AMD EPYC 9B45 Turin - 4.92x faster than c4-standard-8
+    # Capacity-fallback machine family, deliberately DIFFERENT from ENCODING_WORKER.
+    # c4d-highcpu-32 suffered a region-wide ZONE_RESOURCE_POOL_EXHAUSTED stockout across
+    # us-central1-a/-b/-c simultaneously (2026-08-12) which took out every same-family lane.
+    # n2-highcpu-32 (Intel Cascade/Ice Lake) draws from a much deeper, independent pool, so a
+    # c4d shortage cannot exhaust it. n2 does NOT support hyperdisk-balanced → uses pd-balanced.
+    ENCODING_WORKER_ALT = "n2-highcpu-32"  # 32 vCPU, Intel - deep-capacity fallback pool
     FLACFETCH = "e2-small"  # 0.5 vCPU, 2GB RAM
 
 
@@ -279,18 +285,45 @@ class EncodingWorkerConfig:
     FUNCTION_MEMORY = "512M"  # Increased from 256M — OOM with gRPC/Firestore/Compute client libs
     FUNCTION_TIMEOUT = 120  # 2 minutes
 
-    # Capacity-resilience fallback VMs in alternate zones.
-    # c4d-highcpu-32 is available in us-central1-a / -b / -c / -f. When the
-    # primary zone (-c) is exhausted, the manager falls back to -a or -b.
-    # us-central1-f was originally selected for the second fallback, but
-    # provisioning consistently failed there with ZONE_RESOURCE_POOL_EXHAUSTED
-    # at create time (2026-05-06) — capacity is too tight in -f for it to be
-    # useful as a fallback. -b has reliable capacity. These VMs are
-    # provisioned stopped (cost: ~$10/mo each for the boot disk) and only
-    # started by the application when the primary zone rejects capacity.
-    FALLBACK_VM_NAMES = ["encoding-worker-fallback-a", "encoding-worker-fallback-b"]
-    FALLBACK_IP_NAMES = ["encoding-worker-fallback-ip-a", "encoding-worker-fallback-ip-b"]
-    FALLBACK_ZONE_SUFFIXES = ["a", "b"]  # zones {REGION}-{suffix}
+    # Capacity-resilience fallback fleet. Each VM is provisioned STOPPED in an
+    # alternate zone / machine family and is started on demand only when the
+    # primary zone rejects a start with ZONE_RESOURCE_POOL_EXHAUSTED. Cost when
+    # stopped is just the boot disk (~$10/mo each).
+    #
+    # Machine-family diversity is DELIBERATE. The primary pair and the two c4d
+    # fallbacks are all c4d-highcpu-32, so a region-wide c4d stockout (observed
+    # 2026-08-12 across us-central1-a/-b/-c at once) exhausts every lane
+    # simultaneously and forces slow local encoding (→ 524 on preview, parked
+    # renders). The n2-highcpu-32 fallbacks draw from an independent, much deeper
+    # pool so a c4d shortage cannot take them out. n2 does not support
+    # hyperdisk-balanced, hence pd-balanced boot disks on those entries.
+    #
+    # Each entry: name/IP suffix, zone suffix ({REGION}-{zone_suffix}),
+    # machine_type, boot disk_type. ORDER MATTERS — IPs and VMs are zipped by
+    # position, and it defines candidate priority. Keep the c4d a/b entries
+    # first and byte-identical so Pulumi does not recreate the existing VMs.
+    FALLBACKS = [
+        {"suffix": "a", "zone_suffix": "a",
+         "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "b", "zone_suffix": "b",
+         "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "n2c", "zone_suffix": "c",
+         "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
+        {"suffix": "n2f", "zone_suffix": "f",
+         "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
+    ]
+
+    # Derived name lists (kept for readability / any external reference).
+    FALLBACK_VM_NAMES = [f"encoding-worker-fallback-{fb['suffix']}" for fb in FALLBACKS]
+    FALLBACK_IP_NAMES = [f"encoding-worker-fallback-ip-{fb['suffix']}" for fb in FALLBACKS]
+
+    @staticmethod
+    def fallback_vm_name(suffix: str) -> str:
+        return f"encoding-worker-fallback-{suffix}"
+
+    @staticmethod
+    def fallback_ip_name(suffix: str) -> str:
+        return f"encoding-worker-fallback-ip-{suffix}"
 
 
 class ErrorMonitorConfig:

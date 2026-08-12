@@ -233,7 +233,11 @@ gcloud compute instances describe encoding-worker-a \
 
 **Symptoms:** Job status is `render_pending_capacity` (introduced 2026-05-05). User-facing message says *"Encoding capacity is temporarily unavailable. Your job will retry automatically — no action needed."* (As of v0.192.3 a mid-render stall can also land here — see "orphaned render" above.)
 
-**Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM (primary in `us-central1-c`, plus capacity fallbacks in `-a` and `-b`). The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
+**Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM. The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
+
+The fallback fleet is diversified by **machine family** (since incident 2026-08-12): `c4d-highcpu-32` primaries in `us-central1-c` + `c4d` fallbacks in `-a`/`-b` + `n2-highcpu-32` fallbacks (`encoding-worker-fallback-n2c`/`-n2f`) in `-c`/`-f`. The n2 pool is much deeper, so a full `c4d` region-wide stockout (which took out a/b/c at once on 2026-08-12) should now still find n2 capacity. If you see EVERY candidate (c4d **and** n2) return stockout, that's a genuinely severe regional event — wait, or add a cross-region fallback.
+
+**Related symptom — preview 524 / "NetworkError":** the same capacity exhaustion also makes `POST /api/review/{id}/preview-video` fall back to slow local encoding (~130–160 s), which exceeds Cloudflare's ~100 s edge timeout → the browser shows a **524** or Firefox *"NetworkError when attempting to fetch resource"* even though the backend returns 200. If a user reports the review preview failing, check for a concurrent stockout; the already-rendered preview mp4 (if any) is fetchable via `GET /api/review/{id}/preview-video/{hash}` (302 → signed GCS URL) with a Bearer admin token. Completing the review does **not** require the preview.
 
 **Check how many retries have run:**
 ```bash
@@ -252,13 +256,27 @@ curl -X POST https://api.nomadkaraoke.com/api/internal/retry-pending-render-jobs
   -H "X-Admin-Token: $ADMIN_TOKEN"
 ```
 
-**Verify GCE has any capacity right now:**
+**Verify GCE has any capacity right now** (the real error reason is in the Compute op, not the app's "503"):
 ```bash
-# If this returns ZONE_RESOURCE_POOL_EXHAUSTED across all 4 zones, just wait
-for ZONE in us-central1-a us-central1-b us-central1-c us-central1-f; do
-  gcloud compute instances describe "encoding-worker-fallback-${ZONE##*-}" \
-    --zone=$ZONE --project=nomadkaraoke --format='value(status)' 2>/dev/null \
-    && echo "  ↑ in $ZONE"
+# See the actual stockout reason (ZONE_RESOURCE_POOL_EXHAUSTED / stockout) + vmType
+gcloud logging read 'protoPayload.methodName:"instances.start" AND "ZONE_RESOURCE_POOL_EXHAUSTED"' \
+  --project=nomadkaraoke --freshness=30m --limit=5 \
+  --format='value(timestamp, protoPayload.resourceName)'
+
+# Try starting a fallback in each family; if BOTH c4d and n2 refuse, it's severe — wait.
+# Synchronous (no --async) so the start op surfaces stockout inline, and we capture
+# gcloud's own exit status rather than piping (a pipe would return sed's status).
+for VM_ZONE in \
+  "encoding-worker-fallback-a:us-central1-a" \
+  "encoding-worker-fallback-b:us-central1-b" \
+  "encoding-worker-fallback-n2c:us-central1-c" \
+  "encoding-worker-fallback-n2f:us-central1-f"; do
+  VM="${VM_ZONE%%:*}"; ZONE="${VM_ZONE##*:}"
+  if OUT=$(gcloud compute instances start "$VM" --zone="$ZONE" --project=nomadkaraoke 2>&1); then
+    echo "$VM: OK (started — remember to stop it)"
+  else
+    echo "$VM: FAILED — $(echo "$OUT" | tr '\n' ' ')"
+  fi
 done
 ```
 
