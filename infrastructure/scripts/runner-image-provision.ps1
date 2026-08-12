@@ -28,7 +28,7 @@ $ProgressPreference = "SilentlyContinue"
 $VARIANT = "gpu-windows"
 $PYTHON_VERSION = "3.12.10"
 $GIT_VERSION = "2.45.2"
-$RUNNER_VERSION = "2.334.0"   # keep in sync with runner-image-provision.sh
+$RUNNER_VERSION = "2.336.0"   # keep in sync with runner-image-provision.sh
 
 $MARKER_DIR = "C:\provision-markers"
 $READY_FILE = "C:\runner-image-ready"
