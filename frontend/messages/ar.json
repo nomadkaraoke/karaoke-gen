@@ -594,7 +594,7 @@
     "lyrics": "الكلمات",
     "confirmDurationCost": "تأكيد التكلفة",
     "findingAudioSources": "جارٍ البحث عن مصادر الصوت (إعادة المحاولة)",
-    "waitingForCapacity": "في انتظار توفر السعة (إعادة المحاولة)"
+    "waitingForCapacity": "في انتظار خادم الترميز (جاري إعادة المحاولة)"
   },
   "jobCard": {
     "actionNeeded": "إجراء مطلوب",
@@ -606,7 +606,9 @@
     "autoSelect": "سيتم التحديد التلقائي",
     "willAutoSelectFirst": "سيتم التحديد التلقائي للأول",
     "noOutputsAvailable": "لا توجد مخرجات متاحة بعد",
-    "confirmCost": "تأكيد التكلفة"
+    "confirmCost": "تأكيد التكلفة",
+    "makingPublicInProgress": "يتم الآن جعل هذا المسار عاماً — تتم إعادة المعالجة بالعلامة التجارية الافتراضية وإعادة النشر. يستغرق هذا عادةً من 15 إلى 30 دقيقة.",
+    "waitingForEncodingServer": "(في انتظار توفر خادم الترميز)"
   },
   "jobActions": {
     "delete": "حذف",

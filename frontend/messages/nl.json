@@ -594,7 +594,7 @@
     "lyrics": "Songteksten",
     "confirmDurationCost": "Kosten bevestigen",
     "findingAudioSources": "Audiobronnen zoeken (opnieuw proberen)",
-    "waitingForCapacity": "Wachten op capaciteit (opnieuw proberen)"
+    "waitingForCapacity": "Wachten op encodingserver (opnieuw proberen)"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",
@@ -606,7 +606,9 @@
     "autoSelect": "Zal automatisch selecteren",
     "willAutoSelectFirst": "Zal automatisch de eerste selecteren",
     "noOutputsAvailable": "Nog geen outputs beschikbaar",
-    "confirmCost": "Kosten bevestigen"
+    "confirmCost": "Kosten bevestigen",
+    "makingPublicInProgress": "Deze track wordt openbaar gemaakt — opnieuw renderen met standaard branding en opnieuw publiceren. Dit duurt meestal 15–30 minuten.",
+    "waitingForEncodingServer": "(wachten op beschikbaarheid van de encodingserver)"
   },
   "jobActions": {
     "delete": "Verwijderen",

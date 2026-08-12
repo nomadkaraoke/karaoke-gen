@@ -594,7 +594,7 @@
     "lyrics": "Paroles",
     "confirmDurationCost": "Confirmer le coût",
     "findingAudioSources": "Recherche de sources audio (nouvelle tentative)",
-    "waitingForCapacity": "En attente de disponibilité (nouvelle tentative)"
+    "waitingForCapacity": "En attente du serveur d'encodage (nouvelle tentative)"
   },
   "jobCard": {
     "actionNeeded": "Action requise",
@@ -606,7 +606,9 @@
     "autoSelect": "Sélectionnera automatiquement",
     "willAutoSelectFirst": "Sélectionnera automatiquement le premier",
     "noOutputsAvailable": "Aucune sortie disponible pour le moment",
-    "confirmCost": "Confirmer le coût"
+    "confirmCost": "Confirmer le coût",
+    "makingPublicInProgress": "Nous rendons cette piste publique — nouveau rendu avec l'image de marque par défaut et republication. Cela prend généralement 15 à 30 minutes.",
+    "waitingForEncodingServer": "(en attente de la disponibilité du serveur d'encodage)"
   },
   "jobActions": {
     "delete": "Supprimer",

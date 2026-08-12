@@ -557,7 +557,7 @@
     "selectAudioSource": "Select audio source",
     "downloadingAudio": "Downloading audio",
     "findingAudioSources": "Finding audio sources (retrying)",
-    "waitingForCapacity": "Waiting for capacity (retrying)",
+    "waitingForCapacity": "Waiting for encoding server (retrying)",
     "downloading": "Downloading",
     "editAudio": "Edit audio",
     "editingAudio": "Editing audio",
@@ -598,6 +598,8 @@
   },
   "jobCard": {
     "actionNeeded": "Action needed",
+    "waitingForEncodingServer": "(waiting for encoding server availability)",
+    "makingPublicInProgress": "Making this track public — re-rendering with default branding and republishing. This usually takes 15–30 minutes.",
     "reviewLyrics": "Review Lyrics",
     "editAudio": "Edit Audio",
     "selectAudio": "Select Audio",

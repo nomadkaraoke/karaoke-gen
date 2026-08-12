@@ -594,7 +594,7 @@
     "lyrics": "Versuri",
     "confirmDurationCost": "Confirmă costul",
     "findingAudioSources": "Căutare surse audio (reîncercare)",
-    "waitingForCapacity": "Așteptare resurse disponibile (reîncercare)"
+    "waitingForCapacity": "Așteptăm serverul de codare (reîncercăm)"
   },
   "jobCard": {
     "actionNeeded": "Acțiune necesară",
@@ -606,7 +606,9 @@
     "autoSelect": "Se va selecta automat",
     "willAutoSelectFirst": "Se va selecta automat primul",
     "noOutputsAvailable": "Niciun rezultat disponibil încă",
-    "confirmCost": "Confirmă costul"
+    "confirmCost": "Confirmă costul",
+    "makingPublicInProgress": "Facem această piesă publică — o randăm din nou cu brandingul implicit și o republicăm. Acest lucru durează de obicei 15–30 de minute.",
+    "waitingForEncodingServer": "(așteptăm disponibilitatea serverului de codare)"
   },
   "jobActions": {
     "delete": "Șterge",

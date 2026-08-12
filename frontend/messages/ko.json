@@ -594,7 +594,7 @@
     "lyrics": "가사",
     "confirmDurationCost": "비용 확인",
     "findingAudioSources": "오디오 소스 찾는 중 (재시도 중)",
-    "waitingForCapacity": "처리 용량 대기 중 (재시도 중)"
+    "waitingForCapacity": "인코딩 서버 대기 중 (재시도 중)"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",
@@ -606,7 +606,9 @@
     "autoSelect": "자동 선택 예정",
     "willAutoSelectFirst": "첫 번째 항목 자동 선택 예정",
     "noOutputsAvailable": "아직 사용 가능한 출력이 없습니다",
-    "confirmCost": "비용 확인"
+    "confirmCost": "비용 확인",
+    "makingPublicInProgress": "이 트랙을 공개로 전환하는 중입니다 — 기본 브랜딩으로 재렌더링 및 재게시를 진행합니다. 보통 15~30분 정도 소요됩니다.",
+    "waitingForEncodingServer": "(인코딩 서버 대기 중)"
   },
   "jobActions": {
     "delete": "삭제",

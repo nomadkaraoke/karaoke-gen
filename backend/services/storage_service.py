@@ -55,6 +55,12 @@ class StorageService:
             blob.download_to_filename(destination_path)
             logger.info(f"Downloaded gs://{settings.gcs_bucket_name}/{source_path} to {destination_path}")
             return destination_path
+        except NotFound:
+            # A missing object is a routine "not found", not a server-side failure.
+            # Log at warning so it doesn't trip the error-monitor, and let the caller
+            # decide how to surface it (e.g. the download route returns HTTP 404).
+            logger.warning(f"Object not found downloading {source_path}")
+            raise
         except Exception as e:
             logger.error(f"Error downloading file {source_path}: {e}")
             raise

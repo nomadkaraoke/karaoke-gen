@@ -4,14 +4,14 @@ import { useState } from "react"
 import { useTranslations, useLocale } from 'next-intl'
 import { Job } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Zap } from "lucide-react"
+import { Zap, Globe } from "lucide-react"
 import { JobActions } from "./JobActions"
 import { AdminJobActions } from "./AdminJobActions"
 import { OutputLinks } from "./OutputLinks"
 import { AudioSearchDialog } from "../audio-search/AudioSearchDialog"
 import { DurationCostConfirm } from "./DurationCostConfirm"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
-import { getJobStep, formatStepIndicator, getJobProgressPercent } from "@/lib/job-status"
+import { getJobStep, formatStepIndicator, getJobProgressPercent, isWaitingForEncodingCapacity, isVisibilityChangeInProgress } from "@/lib/job-status"
 import { useAuth } from "@/lib/auth"
 import { useDurationConfirm } from "@/hooks/use-duration-confirm"
 
@@ -30,9 +30,22 @@ function StatusIndicator({ job }: { job: Job }) {
     : tStatus(label as any)
   const formattedStatus = formatStepIndicator(step, total, translatedLabel)
 
+  // When the render is parked waiting for GCE encoding capacity, the status label
+  // itself already reads "waiting for encoding server" (render_pending_capacity).
+  // During the brief in-flight retry attempts the status flips to rendering, so
+  // append a small note there too, keeping the user informed that the delay is
+  // capacity, not a hang.
+  const showCapacityNote =
+    isWaitingForEncodingCapacity(job) && job.status?.toLowerCase() !== "render_pending_capacity"
+
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className={color}>{formattedStatus}</span>
+      {showCapacityNote && (
+        <span className="text-amber-400/80 text-[11px]">
+          {t('waitingForEncodingServer')}
+        </span>
+      )}
       {isBlocking && (
         <span className="text-amber-400 text-[10px] font-medium uppercase tracking-wide">
           {t('actionNeeded')}
@@ -221,6 +234,17 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
 
       {/* Progress bar for active jobs */}
       <ProgressBar job={job} />
+
+      {/* Visibility change (private -> public) in progress: the track is being
+          re-rendered with default branding and republished. Outputs are deleted
+          for the duration, so set expectations up front (~15-30 min) rather than
+          letting a "complete" track silently revert to a generic processing state. */}
+      {isVisibilityChangeInProgress(job) && !isComplete && (
+        <div className="mt-2 text-xs bg-blue-500/10 text-blue-300 rounded p-2 flex items-start gap-2">
+          <Globe className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>{t('makingPublicInProgress')}</span>
+        </div>
+      )}
 
       {/* Error message — only shown when the job is actually in a failed
           state. Completed jobs may carry a stale error_message from a transient

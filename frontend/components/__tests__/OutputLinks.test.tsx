@@ -86,6 +86,25 @@ describe('OutputLinks', () => {
       expect(screen.getByText('YouTube')).toBeInTheDocument()
     })
 
+    it('hides download + distribution links while a visibility change re-renders', () => {
+      // Finals + distribution outputs are deleted during private -> public
+      // re-processing, so their (now-stale) links must not be shown.
+      const inProgressJob: Job = {
+        ...baseJob,
+        state_data: {
+          ...baseJob.state_data,
+          visibility_change_in_progress: true,
+        },
+      }
+
+      render(<OutputLinks job={inProgressJob} />)
+
+      expect(screen.queryByText('4K Video')).not.toBeInTheDocument()
+      expect(screen.queryByText('720p Video')).not.toBeInTheDocument()
+      expect(screen.queryByText('YouTube')).not.toBeInTheDocument()
+      expect(screen.queryByText('Dropbox')).not.toBeInTheDocument()
+    })
+
     it('shows Dropbox link when dropbox_link is in state_data', () => {
       render(<OutputLinks job={baseJob} />)
 

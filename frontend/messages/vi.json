@@ -594,7 +594,7 @@
     "lyrics": "Lời bài hát",
     "confirmDurationCost": "Xác nhận chi phí",
     "findingAudioSources": "Đang tìm nguồn âm thanh (đang thử lại)",
-    "waitingForCapacity": "Đang chờ tài nguyên (đang thử lại)"
+    "waitingForCapacity": "Đang chờ máy chủ mã hóa (đang thử lại)"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",
@@ -606,7 +606,9 @@
     "autoSelect": "Sẽ tự động chọn",
     "willAutoSelectFirst": "Sẽ tự động chọn đầu tiên",
     "noOutputsAvailable": "Chưa có đầu ra nào",
-    "confirmCost": "Xác nhận chi phí"
+    "confirmCost": "Xác nhận chi phí",
+    "makingPublicInProgress": "Đang chuyển bài hát này sang chế độ công khai — đang xuất lại video với thương hiệu mặc định và đăng tải lại. Quá trình này thường mất 15–30 phút.",
+    "waitingForEncodingServer": "(đang chờ máy chủ mã hóa khả dụng)"
   },
   "jobActions": {
     "delete": "Xóa",

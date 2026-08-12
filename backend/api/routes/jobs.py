@@ -18,6 +18,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile, File
 
 from datetime import datetime, timezone
+from google.cloud.exceptions import NotFound
 from backend.utils.request_helpers import get_client_ip
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -1754,6 +1755,13 @@ async def download_file(
                 'Content-Disposition': content_disposition
             }
         )
+    except NotFound:
+        # The recorded output is gone from GCS (e.g. a stale download link hit
+        # mid-reprocess after a visibility change / edit deleted the finals). This
+        # is "not found", not a server error — return 404 and log at warning so it
+        # doesn't trip the error-monitor.
+        logger.warning(f"Download requested for missing object {gcs_path}")
+        raise HTTPException(status_code=404, detail="File no longer available")
     except Exception as e:
         logger.error(f"Error downloading {gcs_path}: {e}")
         raise HTTPException(status_code=500, detail=f"Error downloading file: {e}")

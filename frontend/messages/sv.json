@@ -594,7 +594,7 @@
     "lyrics": "Text",
     "confirmDurationCost": "Bekräfta kostnad",
     "findingAudioSources": "Söker efter ljudkällor (försöker igen)",
-    "waitingForCapacity": "Väntar på kapacitet (försöker igen)"
+    "waitingForCapacity": "Väntar på kodningsserver (försöker igen)"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",
@@ -606,7 +606,9 @@
     "autoSelect": "Kommer att auto-välja",
     "willAutoSelectFirst": "Kommer att auto-välja första",
     "noOutputsAvailable": "Inga utdata tillgängliga ännu",
-    "confirmCost": "Bekräfta kostnad"
+    "confirmCost": "Bekräfta kostnad",
+    "makingPublicInProgress": "Gör det här spåret offentligt — renderar om med standardprofilering och publicerar på nytt. Detta tar vanligtvis 15–30 minuter.",
+    "waitingForEncodingServer": "(väntar på att kodningsservern ska bli tillgänglig)"
   },
   "jobActions": {
     "delete": "Ta bort",

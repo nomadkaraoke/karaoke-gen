@@ -594,7 +594,7 @@
     "lyrics": "Text",
     "confirmDurationCost": "Potvrdiť cenu",
     "findingAudioSources": "Hľadanie zdrojov zvuku (opakovaný pokus)",
-    "waitingForCapacity": "Čakanie na kapacitu (opakovaný pokus)"
+    "waitingForCapacity": "Čaká sa na kódovací server (opakovaný pokus)"
   },
   "jobCard": {
     "actionNeeded": "Vyžaduje sa akcia",
@@ -606,7 +606,9 @@
     "autoSelect": "Automaticky vyberie",
     "willAutoSelectFirst": "Automaticky vyberie prvé",
     "noOutputsAvailable": "Zatiaľ nie sú k dispozícii žiadne výstupy",
-    "confirmCost": "Potvrdiť cenu"
+    "confirmCost": "Potvrdiť cenu",
+    "makingPublicInProgress": "Zverejňovanie tejto skladby — opätovné renderovanie s predvoleným brandingom a opätovné publikovanie. Zvyčajne to trvá 15 – 30 minút.",
+    "waitingForEncodingServer": "(čaká sa na dostupnosť kódovacieho servera)"
   },
   "jobActions": {
     "delete": "Vymazať",

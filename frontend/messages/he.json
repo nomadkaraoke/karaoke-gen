@@ -594,7 +594,7 @@
     "lyrics": "מילים",
     "confirmDurationCost": "אישור עלות",
     "findingAudioSources": "מחפש מקורות שמע (מנסה שוב)",
-    "waitingForCapacity": "ממתין למשאבים פנויים (מנסה שוב)"
+    "waitingForCapacity": "ממתין לשרת הקידוד (מנסה שוב)"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",
@@ -606,7 +606,9 @@
     "autoSelect": "יבחר אוטומטית",
     "willAutoSelectFirst": "יבחר אוטומטית ראשון",
     "noOutputsAvailable": "אין פלטים זמינים עדיין",
-    "confirmCost": "אישור עלות"
+    "confirmCost": "אישור עלות",
+    "makingPublicInProgress": "הופך את הרצועה הזו לציבורית — מעבד מחדש עם מיתוג ברירת המחדל ומפרסם מחדש. זה בדרך כלל לוקח 15–30 דקות.",
+    "waitingForEncodingServer": "(ממתין לזמינות שרת הקידוד)"
   },
   "jobActions": {
     "delete": "מחק",

@@ -25,6 +25,40 @@ export function isAutoRetryPending(job: Pick<Job, 'state_data'>): boolean {
   return expiresAt > Date.now();
 }
 
+/**
+ * Returns true when a job is stuck waiting for GCE encoding-worker capacity.
+ *
+ * The canonical signal is the `render_pending_capacity` status (parked, auto-
+ * retried every 5 min). During the retry cycle the status briefly flips to
+ * `review_complete`/`rendering_video` while an attempt is in flight, so we also
+ * treat those as "waiting" when the persistent `state_data.render_pending_capacity`
+ * breadcrumb (attempt_count >= 1) is present. Scoped to the render step so the
+ * lingering breadcrumb never shows the note after the render succeeds and the
+ * job moves on to encoding/packaging/complete.
+ */
+export function isWaitingForEncodingCapacity(job: Pick<Job, 'status' | 'state_data'>): boolean {
+  const status = job.status?.toLowerCase() || "";
+  if (status === "render_pending_capacity") return true;
+  if (status === "review_complete" || status === "rendering_video") {
+    const meta = job.state_data?.render_pending_capacity as
+      | { attempt_count?: number }
+      | undefined;
+    return !!meta && Number(meta.attempt_count ?? 0) >= 1;
+  }
+  return false;
+}
+
+/**
+ * Returns true while a private -> public visibility change is re-rendering and
+ * republishing the track. Backed by `state_data.visibility_change_in_progress`,
+ * set synchronously when the change starts and cleared when the job completes.
+ * The track's outputs (finals, distribution links) are deleted for the duration,
+ * so download buttons must be suppressed and the user told to wait (~15-30 min).
+ */
+export function isVisibilityChangeInProgress(job: Pick<Job, 'state_data'>): boolean {
+  return !!job.state_data?.visibility_change_in_progress;
+}
+
 export interface JobStep {
   step: number;
   total: number;

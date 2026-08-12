@@ -594,7 +594,7 @@
     "lyrics": "Letras",
     "confirmDurationCost": "Confirmar costo",
     "findingAudioSources": "Buscando fuentes de audio (reintentando)",
-    "waitingForCapacity": "Esperando capacidad (reintentando)"
+    "waitingForCapacity": "Esperando al servidor de codificación (reintentando)"
   },
   "jobCard": {
     "actionNeeded": "Acción necesaria",
@@ -606,7 +606,9 @@
     "autoSelect": "Seleccionará automáticamente",
     "willAutoSelectFirst": "Seleccionará automáticamente el primero",
     "noOutputsAvailable": "No hay salidas disponibles aún",
-    "confirmCost": "Confirmar costo"
+    "confirmCost": "Confirmar costo",
+    "makingPublicInProgress": "Haciendo pública esta pista — re-renderizando con la marca predeterminada y republicando. Esto normalmente tarda de 15 a 30 minutos.",
+    "waitingForEncodingServer": "(esperando disponibilidad del servidor de codificación)"
   },
   "jobActions": {
     "delete": "Eliminar",
