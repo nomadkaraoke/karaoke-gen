@@ -165,7 +165,7 @@ usermod -aG docker runner
 echo "Setting up GitHub Actions Runner..."
 # Keep current with actions/runner releases — GitHub deprecates old versions
 # (HTTP 403 on broker poll). See runner-image-provision.sh for the full note.
-RUNNER_VERSION="2.334.0"
+RUNNER_VERSION="2.336.0"
 RUNNER_DIR="/home/runner/actions-runner"
 
 mkdir -p $RUNNER_DIR
