@@ -264,13 +264,19 @@ gcloud logging read 'protoPayload.methodName:"instances.start" AND "ZONE_RESOURC
   --format='value(timestamp, protoPayload.resourceName)'
 
 # Try starting a fallback in each family; if BOTH c4d and n2 refuse, it's severe — wait.
+# Synchronous (no --async) so the start op surfaces stockout inline, and we capture
+# gcloud's own exit status rather than piping (a pipe would return sed's status).
 for VM_ZONE in \
   "encoding-worker-fallback-a:us-central1-a" \
   "encoding-worker-fallback-b:us-central1-b" \
   "encoding-worker-fallback-n2c:us-central1-c" \
   "encoding-worker-fallback-n2f:us-central1-f"; do
-  gcloud compute instances start "${VM_ZONE%%:*}" --zone="${VM_ZONE##*:}" \
-    --project=nomadkaraoke --async 2>&1 | sed "s|^|${VM_ZONE%%:*}: |"
+  VM="${VM_ZONE%%:*}"; ZONE="${VM_ZONE##*:}"
+  if OUT=$(gcloud compute instances start "$VM" --zone="$ZONE" --project=nomadkaraoke 2>&1); then
+    echo "$VM: OK (started — remember to stop it)"
+  else
+    echo "$VM: FAILED — $(echo "$OUT" | tr '\n' ' ')"
+  fi
 done
 ```
 
