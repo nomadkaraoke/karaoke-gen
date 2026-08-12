@@ -258,7 +258,7 @@ When two sequential human review steps can be combined into one, do it. We origi
 
 3. **`compute.instances.start` returns `503 SERVICE_UNAVAILABLE` for transient backend stress, not just capacity.** Initial fix only classified `ZONE_RESOURCE_POOL_EXHAUSTED` as transient/recoverable; `503` got the generic `EncodingWorkerStartError` and never triggered multi-zone fallback. Either treat the `EncodingWorkerStartError` parent class as fallback-worthy (what we did, PR #750) or expand the capacity error code list.
 
-4. **GCE `c4d-highcpu-32` capacity in `us-central1-f` is unreliable enough to be useless as a fallback.** Provisioning failed there at create time on multiple attempts (the very thing the fallback is meant to mitigate). `-a` and `-b` are stable. (PR #749)
+4. **GCE `c4d-highcpu-32` capacity in `us-central1-f` is unreliable enough to be useless as a fallback.** Provisioning failed there at create time on multiple attempts (the very thing the fallback is meant to mitigate). `-a` and `-b` were stable *at the time*. (PR #749) — **Superseded 2026-08-12:** see "Machine-family diversification" below; `-a`/`-b` are NOT immune — the whole `c4d-highcpu-32` family stocked out region-wide (a/b/c at once).
 
 5. **`google-auth ≥ 2.40` uses mTLS-over-HTTPS for the GCE metadata server when `/run/google-mds-mtls/` certs exist on the VM.** Newer GCE images ship those certs; the mTLS handshake then fails with `SSL CERTIFICATE_VERIFY_FAILED` on freshly-provisioned VMs. The worker can't refresh its SA token, all GCS reads/writes break. Fix: set `GCE_METADATA_MTLS_MODE=none` in the systemd EnvironmentFile to force HTTP-on-port-80 metadata access. (PR #750)
 
@@ -266,8 +266,21 @@ When two sequential human review steps can be combined into one, do it. We origi
 
 7. **`_request_with_retry` captured the URL once before the retry loop.** When the warmup-fallback updated the active URL override (e.g., switching from a dead primary to a live fallback), the retry loop kept hitting the original (dead) URL for all 8 attempts. Fix: thread the relative `path` through and re-resolve `_get_worker_url() + path` on retries after warmup has fired. (PR #752)
 
+### Machine-family diversification (August 2026)
+
+**Incident 2026-08-12:** `c4d-highcpu-32` hit a **region-wide `ZONE_RESOURCE_POOL_EXHAUSTED` stockout across `us-central1-a`, `-b` AND `-c` simultaneously.** Because the primary pair *and* both fallbacks were all the same machine family, every lane in `ensure_any_running` failed at once. Effects:
+- **Preview** (`POST /api/review/{id}/preview-video`) fell through to slow local Cloud-Run encoding (~130–160 s), which **exceeds Cloudflare's ~100 s edge timeout** → browser got a **524 / "NetworkError when attempting to fetch resource"** even though the backend actually returned 200. The 524 and the NetworkError are the same event; backend logs showing 200 are misleading because the client was already disconnected.
+- **Render** parked in `RENDER_PENDING_CAPACITY` and auto-retried (safe only if capacity returns within 24 h).
+
+**Root lesson:** zone diversity is not enough — a stockout is per **(machine family × region)**, and it can take out *every* zone of a family in a region at once. The fallback fleet must diversify **machine family**, not just zone.
+
+**Fix (Option B):** added `n2-highcpu-32` capacity fallbacks (`encoding-worker-fallback-n2c`/`-n2f` in `us-central1-c`/`-f`) — an independent, much deeper capacity pool. Runtime needed **no change** (`ensure_any_running` already iterates arbitrary `{vm,zone,ip}` candidates; `start_vm(zone=...)` is zone-generic); it's purely `infrastructure/config.py::EncodingWorkerConfig.FALLBACKS` (now carries per-VM `machine_type` + `disk_type`) + `encoding_worker_vm.py` + a new `encoding-worker-fallback-vms` secret version. Gotchas:
+- **n2 does not support `hyperdisk-balanced`** → its fallbacks use `pd-balanced` boot disks (per-VM `disk_type`).
+- **Keep the existing `-a`/`-b` entries byte-identical** (including the IP `description` string!) — changing even the Address description forces the Address to replace, which cascades to *replacing the c4d VM* (needs the very capacity that's out). Always `pulumi preview` and confirm the diff is purely additive (`+N to create`, no `+-replace` on existing encoding-worker VMs) before `pulumi up`.
+- **Preview-timeout is a separate, still-open fragility:** a synchronous preval that outlives the ~100 s edge timeout gives users an opaque 524. Fast-follow options: make preview async/polling (like render), fail fast to local encode when all VM starts stock out, or raise the edge read-timeout for that route.
+
 **Architecture summary (post-fixes):**
-- 4 GCE encoding workers: 2 primaries in `us-central1-c` (blue-green) + 2 capacity fallbacks in `us-central1-a` and `us-central1-b`. All idle by default; started on demand.
+- 6 GCE encoding workers: 2 primaries in `us-central1-c` (blue-green, `c4d-highcpu-32`) + 2 `c4d` capacity fallbacks in `us-central1-a`/`-b` + 2 `n2-highcpu-32` fallbacks in `us-central1-c`/`-f`. All idle by default; started on demand.
 - `EncodingWorkerCandidate` list iterated in `ensure_any_running` — primary first, fallbacks in declared order. Capacity errors fall through to next candidate; non-capacity start errors also fall through (broadened in PR #750).
 - New `RENDER_PENDING_CAPACITY` job state for transient infra failures — different from `FAILED` (which is for unrecoverable bugs).
 - Cloud Scheduler fires `/api/internal/retry-pending-render-jobs` every 5 min; 24h hard timeout per job.

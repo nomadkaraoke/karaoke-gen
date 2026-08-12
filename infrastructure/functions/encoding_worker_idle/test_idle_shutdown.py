@@ -330,6 +330,46 @@ class TestFallbackVms:
         assert stop_calls[0].kwargs["instance"] == "encoding-worker-fallback-a"
         assert stop_calls[0].kwargs["zone"] == "us-central1-a"
 
+    def test_idle_n2_fallback_stopped_in_its_own_zone(self, mock_compute, mock_firestore, monkeypatch):
+        """The machine-family fallbacks (n2-highcpu-32 in us-central1-c/-f, added
+        2026-08-12 so a region-wide c4d stockout can't exhaust every lane) must be
+        reclaimed just like the c4d fallbacks. This guards that the idle sweep,
+        which is purely secret-driven, keeps working as the fleet grows — an
+        n2 fallback started during a capacity event must not leak."""
+        monkeypatch.setenv(
+            "ENCODING_WORKER_FALLBACK_VMS",
+            json.dumps([
+                {"vm": "encoding-worker-fallback-a", "zone": "us-central1-a", "ip": "1.1.1.1"},
+                {"vm": "encoding-worker-fallback-b", "zone": "us-central1-b", "ip": "2.2.2.2"},
+                {"vm": "encoding-worker-fallback-n2c", "zone": "us-central1-c", "ip": "3.3.3.3"},
+                {"vm": "encoding-worker-fallback-n2f", "zone": "us-central1-f", "ip": "4.4.4.4"},
+            ]),
+        )
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        _setup_firestore(mock_firestore, _make_config(last_activity_at=recent))
+
+        # Only the n2-f fallback is RUNNING+idle → it must be stopped in -f.
+        instances = {
+            "encoding-worker-a": _make_instance(status="RUNNING", ip="1.2.3.4"),
+            "encoding-worker-b": _make_instance(status="TERMINATED"),
+            "encoding-worker-fallback-a": _make_instance(status="TERMINATED"),
+            "encoding-worker-fallback-b": _make_instance(status="TERMINATED"),
+            "encoding-worker-fallback-n2c": _make_instance(status="TERMINATED"),
+            "encoding-worker-fallback-n2f": _make_instance(status="RUNNING", ip="4.4.4.4"),
+        }
+        mock_compute.get.side_effect = _zone_dispatching_get(instances)
+
+        with patch("main.check_active_jobs", return_value=0):
+            response, _ = main.idle_shutdown(MagicMock())
+
+        result = json.loads(response)
+        assert result["results"]["encoding-worker-fallback-n2f"] == "stopped"
+
+        stop_calls = mock_compute.stop.call_args_list
+        assert len(stop_calls) == 1
+        assert stop_calls[0].kwargs["instance"] == "encoding-worker-fallback-n2f"
+        assert stop_calls[0].kwargs["zone"] == "us-central1-f"
+
     def test_active_override_fallback_kept_alive_on_recent_activity(
         self, mock_compute, mock_firestore, fallback_env,
     ):

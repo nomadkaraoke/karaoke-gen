@@ -583,10 +583,12 @@ encoding_worker_instances = encoding_worker_vm.create_encoding_worker_vms(
     encoding_worker_ips, encoding_worker_sa
 )
 
-# Capacity-fallback Encoding Worker VMs in alternate zones
-# (us-central1-a, -f). Provisioned stopped; only started by the application
-# when the primary zone (us-central1-c) returns ZONE_RESOURCE_POOL_EXHAUSTED.
-# Cost when idle: ~$10/mo each for the boot disk.
+# Capacity-fallback Encoding Worker VMs — diversified across alternate zones
+# AND an alternate machine family (c4d in us-central1-a/-b + n2 in -c/-f) so a
+# region-wide c4d-highcpu-32 ZONE_RESOURCE_POOL_EXHAUSTED can't take out every
+# lane (incident 2026-08-12). Provisioned stopped; only started by the
+# application when the primary rejects a start. Cost when idle: ~$10/mo each.
+# See EncodingWorkerConfig.FALLBACKS for the fleet definition.
 encoding_worker_fallback_ips = encoding_worker_vm.create_encoding_worker_fallback_ips()
 encoding_worker_fallback_instances = encoding_worker_vm.create_encoding_worker_fallback_vms(
     encoding_worker_fallback_ips, encoding_worker_sa
