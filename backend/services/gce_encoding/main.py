@@ -968,7 +968,11 @@ async def process_job(job_id: str, request: EncodeRequest):
         # This means in-progress jobs continue with their version, new jobs get latest code.
         # Fail fast (retryable) if the environment isn't ready rather than proceeding into a
         # confusing "No module named ..." ImportError deep in encoding.
-        if not ensure_latest_wheel():
+        # ensure_latest_wheel() makes blocking subprocess calls (install can retry for many
+        # minutes) — run it in the thread pool so the async event loop keeps serving health
+        # checks and status polls.
+        loop = asyncio.get_event_loop()
+        if not await loop.run_in_executor(executor, ensure_latest_wheel):
             raise RuntimeError(
                 "karaoke-gen wheel/dependencies not ready on this worker after retries; "
                 "job should be retried on a healthy worker"
@@ -1072,7 +1076,10 @@ async def process_render_video_job(job_id: str, request: RenderVideoRequest):
         # Download and install latest wheel at job start (allows hot updates without restart).
         # Fail fast (retryable) if the environment isn't ready rather than proceeding into a
         # confusing "No module named 'tenacity'" ImportError inside render_video.
-        if not ensure_latest_wheel():
+        # Run in the thread pool: ensure_latest_wheel() blocks on subprocess installs (which
+        # can retry for many minutes) and must not stall the async event loop.
+        loop = asyncio.get_event_loop()
+        if not await loop.run_in_executor(executor, ensure_latest_wheel):
             raise RuntimeError(
                 "karaoke-gen wheel/dependencies not ready on this worker after retries; "
                 "job should be retried on a healthy worker"

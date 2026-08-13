@@ -119,9 +119,10 @@ gcloud compute instances list --project=nomadkaraoke --filter="name~encoding AND
 # Repair: install the latest versioned wheel WITH deps, then verify
 gcloud compute ssh <worker-name> --zone=<zone> --project=nomadkaraoke --tunnel-through-iap --command='
   V=$(gsutil ls "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl" | grep -v current | sort -V | tail -1)
-  gsutil cp "$V" /tmp/kg.whl.$(basename "$V")
-  sudo /opt/encoding-worker/venv/bin/python -m pip install --upgrade /tmp/kg.whl.$(basename "$V")
-  /opt/encoding-worker/venv/bin/python -c "import tenacity; from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator; print(\"OK\")"
+  WHEEL="/tmp/$(basename "$V")"   # keep the PEP 427 filename so pip accepts it
+  gsutil cp "$V" "$WHEEL"
+  sudo /opt/encoding-worker/venv/bin/python -m pip install --upgrade "$WHEEL"
+  /opt/encoding-worker/venv/bin/python -c "import tenacity; from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator; from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations; from backend.services.local_encoding_service import LocalEncodingService; print(\"OK\")"
 '
 ```
 
