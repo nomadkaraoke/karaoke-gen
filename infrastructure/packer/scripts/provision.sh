@@ -93,7 +93,15 @@ cd /opt/encoding-worker
 echo "Creating Python virtual environment..."
 /opt/python313/bin/python3.13 -m venv venv
 
-# Install base Python dependencies (wheel will add more at runtime)
+# Install ONLY the packages the worker needs to boot and serve HTTP. The full
+# karaoke-gen dependency tree (torch, langchain, tenacity, ...) is NOT baked
+# here — it is installed at the first job by ensure_latest_wheel() in
+# backend/services/gce_encoding/main.py, because startup.sh installs the wheel
+# with --no-deps (see #587: full resolution at boot crash-loops the service).
+#
+# Consequence: a freshly-provisioned worker's first job pays a one-time cost to
+# install the whole tree, and depends on that install succeeding. ensure_latest_wheel()
+# retries and verifies the import chain to keep that reliable.
 source venv/bin/activate
 pip install --upgrade pip
 pip install fastapi uvicorn google-cloud-storage aiofiles aiohttp packaging

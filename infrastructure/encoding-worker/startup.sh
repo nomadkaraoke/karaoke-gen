@@ -109,11 +109,16 @@ fi
 
 echo "Downloaded wheel as: ${WHEEL_NAME}"
 
-# 4. Install the wheel
-# Use --no-deps because the encoding worker venv has runtime deps pre-installed.
-# The wheel only needs to update the karaoke-gen code itself.
-# Full dependency resolution on the complex dep graph (langchain, CUDA, etc.)
-# can hit pip's "resolution-too-deep" error and prevent the service from starting.
+# 4. Install the wheel (code only)
+# Use --no-deps at boot because full dependency resolution on the complex dep
+# graph (langchain, CUDA, etc.) can hit pip's "resolution-too-deep" error and
+# crash-loop the service before it can serve health checks (see #587).
+#
+# The karaoke-gen dependency tree (torch, langchain, tenacity, ...) is therefore
+# NOT installed here. It is installed lazily at the first job by
+# ensure_latest_wheel() in backend/services/gce_encoding/main.py (which installs
+# WITH deps, retries, and verifies the import chain). Do not assume deps are
+# present just because this step succeeded.
 echo "[4/5] Installing wheel..."
 "${VENV}/bin/pip" install --upgrade --quiet --force-reinstall --no-deps "${WHEEL_PATH}"
 
