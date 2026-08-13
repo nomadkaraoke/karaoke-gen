@@ -1,5 +1,4 @@
 import asyncio
-import glob as glob_module
 import hashlib
 import json
 import logging
@@ -539,59 +538,152 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
         raise
 
 
+# Wheel install/verification tuning.
+#
+# On a freshly-provisioned worker the Packer image only pre-installs a handful
+# of packages (fastapi/uvicorn/gcs/...) and boot installs the wheel with
+# --no-deps, so the FIRST job's install here has to resolve the entire
+# karaoke-gen dependency tree (torch, langchain, tenacity, ...). That can take
+# well over 5 minutes and, if it times out or partially completes, leaves the
+# environment importable-but-broken (e.g. "No module named 'tenacity'"). We
+# therefore retry, and — critically — verify the import chain actually works
+# before declaring success, since pip can return 0 while a dependency is still
+# missing.
+WHEEL_INSTALL_TIMEOUT = int(os.environ.get("WHEEL_INSTALL_TIMEOUT", "900"))
+WHEEL_INSTALL_ATTEMPTS = int(os.environ.get("WHEEL_INSTALL_ATTEMPTS", "3"))
+
+# Modules exercised by the render (OutputGenerator) and encode
+# (LocalEncodingService) code paths. Importing these confirms the whole
+# dependency tree they pull in — including transitive deps like tenacity — is
+# actually present, not just that `pip install` exited 0.
+_WHEEL_IMPORT_CHECK = (
+    "import tenacity; "
+    "from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator; "
+    "from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations; "
+    "from backend.services.local_encoding_service import LocalEncodingService"
+)
+
+
+def verify_wheel_imports():
+    '''Verify the karaoke-gen render/encode import chain is fully importable.
+
+    Runs in a subprocess so a broken/partial install surfaces as a clean
+    boolean instead of crashing (or half-importing into) the worker process.
+    Returns True if every module imports, False otherwise.
+    '''
+    try:
+        check = subprocess.run(
+            [sys.executable, "-c", _WHEEL_IMPORT_CHECK],
+            capture_output=True, text=True, timeout=180,
+        )
+    except subprocess.TimeoutExpired:
+        logger.warning("Wheel import verification timed out")
+        return False
+    if check.returncode != 0:
+        # Tail of stderr carries the actionable ModuleNotFoundError.
+        logger.warning(f"Wheel import verification failed: {check.stderr.strip()[-500:]}")
+        return False
+    return True
+
+
 def ensure_latest_wheel():
-    '''Download and install latest karaoke-gen wheel from GCS.
+    '''Download, install, and verify the latest karaoke-gen wheel from GCS.
 
     Called at the start of each job to enable hot code updates without restart.
     In-progress jobs continue with their version, new jobs get latest code.
+
+    Retries the install and verifies the full import chain before returning, so
+    a transient/partial dependency install can't leave the worker running jobs
+    against a broken environment. Returns True only when the wheel is installed
+    AND its render/encode imports succeed.
     '''
     try:
         logger.info("Checking for latest karaoke-gen wheel in GCS...")
 
-        # Download latest wheel
-        result = subprocess.run(
-            ["gsutil", "cp", "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl", "/tmp/"],
-            capture_output=True, text=True, timeout=60
-        )
-
-        # Find the downloaded wheel (get the latest by version sorting)
-        wheels = glob_module.glob("/tmp/karaoke_gen-*.whl")
-        # Filter out karaoke_gen-current.whl (not a valid PEP 427 wheel name)
-        wheels = [w for w in wheels if '-current' not in w]
-
-        if not wheels:
-            logger.warning("No wheel found in GCS, using fallback encoding logic")
-            return False
-
-        # Sort to get latest version (by semantic version, not alphabetically)
+        # Sort helper: extract version from a wheel name/URI like
+        # karaoke_gen-0.116.1-py3-none-any.whl
         def extract_version(wheel_path):
-            """Extract version from wheel filename like karaoke_gen-0.116.1-py3-none-any.whl"""
             match = re.search(r'karaoke_gen-([0-9.]+)-', wheel_path)
             if match:
                 return Version(match.group(1))
             return Version("0.0.0")  # Fallback for unparseable filenames
 
-        wheels.sort(key=extract_version, reverse=True)
-        wheel_path = wheels[0]
-        logger.info(f"Installing wheel: {wheel_path}")
-
-        # Install (or upgrade) the wheel
-        # Use 5-minute timeout - first install at job start may need to resolve dependencies
-        # Subsequent installs are faster since dependencies are cached
-        install_result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", wheel_path],
-            capture_output=True, text=True, timeout=300
+        # List wheel names only (fast), then copy just the single latest one.
+        # NOTE: `gsutil cp gs://.../karaoke_gen-*.whl /tmp/` would download the
+        # ENTIRE wheels/ directory (hundreds of wheels, multiple GiB) on every
+        # job and blow the timeout on fresh workers — the historical cause of
+        # "no wheel found" / partial installs. Listing + single copy is ~2s.
+        ls_result = subprocess.run(
+            ["gsutil", "ls", "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl"],
+            capture_output=True, text=True, timeout=60
         )
+        # Filter out karaoke_gen-current.whl (not a valid PEP 427 wheel name)
+        wheel_uris = [
+            line.strip() for line in ls_result.stdout.splitlines()
+            if line.strip() and '-current' not in line
+        ]
 
-        if install_result.returncode != 0:
-            logger.warning(f"Wheel installation failed: {install_result.stderr}")
+        if not wheel_uris:
+            logger.warning("No versioned wheel found in GCS, using fallback encoding logic")
             return False
 
-        logger.info(f"Successfully installed wheel: {wheel_path}")
-        return True
+        wheel_uris.sort(key=extract_version)
+        latest_uri = wheel_uris[-1]
+        wheel_path = os.path.join("/tmp", latest_uri.rsplit("/", 1)[-1])
+
+        cp_result = subprocess.run(
+            ["gsutil", "cp", latest_uri, wheel_path],
+            capture_output=True, text=True, timeout=120
+        )
+        if cp_result.returncode != 0:
+            logger.warning(f"Failed to download wheel {latest_uri}: {cp_result.stderr.strip()[-500:]}")
+            return False
+
+        # Install (with deps), then verify the import chain is complete. Retry a
+        # failed or partial install: pip is resumable, so a second pass fills in
+        # dependencies a timed-out first pass left missing (e.g. tenacity).
+        for attempt in range(1, WHEEL_INSTALL_ATTEMPTS + 1):
+            logger.info(f"Installing wheel (attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS}): {wheel_path}")
+            try:
+                install_result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", wheel_path],
+                    capture_output=True, text=True, timeout=WHEEL_INSTALL_TIMEOUT
+                )
+            except subprocess.TimeoutExpired:
+                logger.warning(
+                    f"Wheel install timed out after {WHEEL_INSTALL_TIMEOUT}s "
+                    f"(attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS})"
+                )
+                install_result = None
+
+            if install_result is not None and install_result.returncode != 0:
+                logger.warning(
+                    f"Wheel installation failed (attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS}): "
+                    f"{install_result.stderr.strip()[-500:]}"
+                )
+            elif install_result is not None:
+                logger.info(f"pip install completed for wheel: {wheel_path}")
+
+            # A clean `pip install` exit is not sufficient — confirm the deps
+            # the render/encode paths need are actually importable before we let
+            # a job run against this environment.
+            if verify_wheel_imports():
+                logger.info(f"Successfully installed and verified wheel: {wheel_path}")
+                return True
+
+            logger.warning(
+                f"Wheel environment incomplete after attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS}; "
+                "dependencies are missing or failed to import"
+            )
+
+        logger.error(
+            f"Wheel not ready after {WHEEL_INSTALL_ATTEMPTS} attempts: import verification "
+            "still failing (environment is missing dependencies)"
+        )
+        return False
 
     except subprocess.TimeoutExpired:
-        logger.warning("Wheel download/install timed out, using fallback")
+        logger.warning("Wheel download timed out, using fallback")
         return False
     except Exception as e:
         logger.warning(f"Failed to ensure latest wheel: {e}")
@@ -873,8 +965,14 @@ async def process_job(job_id: str, request: EncodeRequest):
     # Process an encoding job asynchronously
     try:
         # Download and install latest wheel at job start (allows hot updates without restart)
-        # This means in-progress jobs continue with their version, new jobs get latest code
-        ensure_latest_wheel()
+        # This means in-progress jobs continue with their version, new jobs get latest code.
+        # Fail fast (retryable) if the environment isn't ready rather than proceeding into a
+        # confusing "No module named ..." ImportError deep in encoding.
+        if not ensure_latest_wheel():
+            raise RuntimeError(
+                "karaoke-gen wheel/dependencies not ready on this worker after retries; "
+                "job should be retried on a healthy worker"
+            )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             work_dir = Path(temp_dir) / "work"
@@ -971,8 +1069,14 @@ async def process_preview_job(job_id: str, request: EncodePreviewRequest):
 async def process_render_video_job(job_id: str, request: RenderVideoRequest):
     # Process a render-video job asynchronously
     try:
-        # Download and install latest wheel at job start (allows hot updates without restart)
-        ensure_latest_wheel()
+        # Download and install latest wheel at job start (allows hot updates without restart).
+        # Fail fast (retryable) if the environment isn't ready rather than proceeding into a
+        # confusing "No module named 'tenacity'" ImportError inside render_video.
+        if not ensure_latest_wheel():
+            raise RuntimeError(
+                "karaoke-gen wheel/dependencies not ready on this worker after retries; "
+                "job should be retried on a healthy worker"
+            )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             work_dir = Path(temp_dir) / "work"

@@ -102,6 +102,45 @@ gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
 
 ---
 
+## Render fails: `No module named '<pkg>'` (e.g. tenacity) on encoding worker
+
+**Symptoms:** A render fails with `OutputGenerator not available: No module named 'tenacity'. The karaoke-gen wheel must be installed. Check that ensure_latest_wheel() succeeded.` (or another missing package). Retries hit the same VM and fail identically.
+
+**Cause:** A freshly-provisioned encoding-worker VM comes up with only a handful of packages baked into the Packer image, and boot installs the wheel with `--no-deps`. The full karaoke-gen dependency tree (torch, langchain, tenacity, …) is installed lazily at the first job by `ensure_latest_wheel()`. If that install fails or partially completes, the venv is left importable-but-incomplete and the render dies on the first missing import. First seen 2026-08-13 (job 233b9536) on a fresh `n2-highcpu-32` fallback added in #903.
+
+**Fixed in v0.192.7:** `ensure_latest_wheel()` now downloads only the single latest wheel (was: copying the entire ~6 GiB `wheels/` dir every job with a 60 s timeout), retries the install (3× at 900 s), and **verifies the render/encode import chain** before returning — a clean `pip` exit is no longer trusted. Callers fail the job with a clear retryable error instead of proceeding. Fresh workers pick this up via the wheel-at-boot.
+
+**Manual repair (if a running VM is stuck on an old wheel):** the venv is root-owned, so use `sudo`:
+
+```bash
+# Identify the running worker
+gcloud compute instances list --project=nomadkaraoke --filter="name~encoding AND status=RUNNING"
+
+# Repair: install the latest versioned wheel WITH deps, then verify
+gcloud compute ssh <worker-name> --zone=<zone> --project=nomadkaraoke --tunnel-through-iap --command='
+  V=$(gsutil ls "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl" | grep -v current | sort -V | tail -1)
+  gsutil cp "$V" /tmp/kg.whl.$(basename "$V")
+  sudo /opt/encoding-worker/venv/bin/python -m pip install --upgrade /tmp/kg.whl.$(basename "$V")
+  /opt/encoding-worker/venv/bin/python -c "import tenacity; from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator; print(\"OK\")"
+'
+```
+
+**Re-render a job that already failed past review:** a failed job is terminal, and admin `/jobs/{id}/reset` has no `review_complete` target. Reset to `awaiting_review`, then re-submit the review (reuses the existing GCS corrections):
+
+```bash
+ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+curl -s -X POST "https://api.nomadkaraoke.com/api/admin/jobs/<id>/reset" \
+  -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"target_state": "awaiting_review"}'
+# instrumental_selection is "clean" or "with_backing" (read prior value from Firestore state_data before reset)
+curl -s -X POST "https://api.nomadkaraoke.com/api/review/<id>/complete?review_token=<token>" \
+  -H "Content-Type: application/json" -d '{"instrumental_selection": "with_backing"}'
+```
+
+Do **not** reset to `instrumental_selected` — that triggers the final video worker, which needs the (missing) lyrics video and fails "prerequisites not met"; and triggering render-video from `instrumental_selected` gets superseded (invalid `instrumental_selected → rendering_video`).
+
+---
+
 ## GDrive validator reports sequence gap
 
 **Symptoms:** Email from "Nomad Karaoke GDrive Validator" reporting `SEQUENCE GAPS: MP4: missing XXXX`.

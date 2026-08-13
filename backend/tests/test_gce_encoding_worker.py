@@ -555,3 +555,168 @@ class TestScreenVideoStaging:
 
         assert (outputs / "Artist - Title (Title).mov").is_file()
         assert not (outputs / "Artist - Title (End).mov").exists()
+
+
+class TestEnsureLatestWheelVerification:
+    """Test ensure_latest_wheel() install-retry + import-verification behavior.
+
+    Regression: a freshly-provisioned worker installs the wheel with --no-deps
+    at boot and relies on ensure_latest_wheel() to install the full dependency
+    tree at the first job. A transient/partial install could leave the env
+    importable-but-broken (`pip` exits 0 while `tenacity` is still missing),
+    and the return value was ignored, so the job proceeded and died with
+    "No module named 'tenacity'" deep inside render_video.
+
+    Fix: verify the render/encode import chain (via subprocess) and only return
+    True when it imports; retry a failed/partial install; callers fail fast.
+    """
+
+    # A couple of versioned wheels plus the (filtered-out) current wheel, as
+    # `gsutil ls` would emit them.
+    DEFAULT_LS = (
+        "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-0.192.5-py3-none-any.whl\n"
+        "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-0.192.6-py3-none-any.whl\n"
+        "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-current.whl\n"
+    )
+
+    def _completed(self, returncode=0, stdout="", stderr=""):
+        import subprocess
+        return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
+
+    def _side_effect(self, ls_stdout=None, ls_rc=0, cp_rc=0, install_rc=0, verify_results=None):
+        """Build a subprocess.run side_effect keyed on the command.
+
+        Models the download flow (gsutil ls -> gsutil cp of a single wheel),
+        the pip install, and the import-verification subprocess.
+
+        verify_results: list of booleans consumed in order, one per verify call
+        (True -> returncode 0). Lets a test model "install succeeded but imports
+        fail, then a retry fixes them".
+        """
+        import sys
+        ls = self.DEFAULT_LS if ls_stdout is None else ls_stdout
+        verify_iter = iter(verify_results or [])
+
+        def side_effect(cmd, *args, **kwargs):
+            if cmd and cmd[0] == "gsutil" and cmd[1] == "ls":
+                return self._completed(returncode=ls_rc, stdout=ls)
+            if cmd and cmd[0] == "gsutil" and cmd[1] == "cp":
+                return self._completed(returncode=cp_rc)
+            if len(cmd) >= 2 and cmd[0] == sys.executable and cmd[1] == "-m":
+                # pip install ...
+                return self._completed(returncode=install_rc)
+            if len(cmd) >= 2 and cmd[0] == sys.executable and cmd[1] == "-c":
+                # import verification subprocess
+                ok = next(verify_iter, False)
+                return self._completed(
+                    returncode=0 if ok else 1,
+                    stderr="" if ok else "ModuleNotFoundError: No module named 'tenacity'",
+                )
+            return self._completed(returncode=0)
+
+        return side_effect
+
+    def test_downloads_only_latest_single_wheel(self, monkeypatch):
+        """Must `gsutil cp` exactly one wheel (the latest version), not the whole dir."""
+        from backend.services.gce_encoding import main
+
+        cp_targets = []
+        base = self._side_effect(verify_results=[True])
+
+        def spy(cmd, *args, **kwargs):
+            if cmd and cmd[0] == "gsutil" and cmd[1] == "cp":
+                cp_targets.append(cmd[2])
+            return base(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(main.subprocess, "run", spy)
+
+        assert main.ensure_latest_wheel() is True
+        assert cp_targets == [
+            "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-0.192.6-py3-none-any.whl"
+        ]
+
+    def test_returns_true_when_install_and_imports_succeed(self, monkeypatch):
+        from backend.services.gce_encoding import main
+        monkeypatch.setattr(main.subprocess, "run", self._side_effect(verify_results=[True]))
+        assert main.ensure_latest_wheel() is True
+
+    def test_returns_false_when_pip_ok_but_imports_broken(self, monkeypatch):
+        """The core regression: pip exits 0 but a dependency is missing."""
+        from backend.services.gce_encoding import main
+        # install always "succeeds", verification always fails -> not ready.
+        monkeypatch.setattr(main.subprocess, "run",
+                            self._side_effect(install_rc=0, verify_results=[False, False, False]))
+        assert main.ensure_latest_wheel() is False
+
+    def test_retries_and_succeeds_after_partial_install(self, monkeypatch):
+        """First attempt leaves deps missing; a retry completes them."""
+        from backend.services.gce_encoding import main
+        monkeypatch.setattr(main.subprocess, "run", self._side_effect(verify_results=[False, True]))
+        assert main.ensure_latest_wheel() is True
+
+    def test_returns_false_when_no_wheel_found(self, monkeypatch):
+        """Only the current wheel exists (filtered out) -> no versioned wheel."""
+        from backend.services.gce_encoding import main
+        only_current = "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-current.whl\n"
+        monkeypatch.setattr(main.subprocess, "run", self._side_effect(ls_stdout=only_current))
+        assert main.ensure_latest_wheel() is False
+
+    def test_returns_false_when_download_fails(self, monkeypatch):
+        """A failed single-wheel copy is reported, not silently installed."""
+        from backend.services.gce_encoding import main
+        monkeypatch.setattr(main.subprocess, "run", self._side_effect(cp_rc=1))
+        assert main.ensure_latest_wheel() is False
+
+    def test_install_timeout_then_success(self, monkeypatch):
+        """A timed-out first install must not abort the whole routine."""
+        import sys
+        import subprocess
+        from backend.services.gce_encoding import main
+
+        state = {"install_calls": 0}
+        base = self._side_effect()
+
+        def side_effect(cmd, *args, **kwargs):
+            if len(cmd) >= 2 and cmd[0] == sys.executable and cmd[1] == "-m":
+                state["install_calls"] += 1
+                if state["install_calls"] == 1:
+                    raise subprocess.TimeoutExpired(cmd, main.WHEEL_INSTALL_TIMEOUT)
+                return self._completed(returncode=0)
+            if len(cmd) >= 2 and cmd[0] == sys.executable and cmd[1] == "-c":
+                # Imports fail after the timed-out first install, succeed after retry.
+                return self._completed(returncode=0 if state["install_calls"] >= 2 else 1,
+                                       stderr="ModuleNotFoundError")
+            return base(cmd, *args, **kwargs)
+
+        monkeypatch.setattr(main.subprocess, "run", side_effect)
+        assert main.ensure_latest_wheel() is True
+
+
+class TestVerifyWheelImports:
+    """Test the verify_wheel_imports() helper in isolation."""
+
+    def test_true_on_clean_import(self, monkeypatch):
+        import subprocess
+        from backend.services.gce_encoding import main
+        monkeypatch.setattr(main.subprocess, "run",
+                            lambda *a, **k: subprocess.CompletedProcess([], 0, "", ""))
+        assert main.verify_wheel_imports() is True
+
+    def test_false_on_import_error(self, monkeypatch):
+        import subprocess
+        from backend.services.gce_encoding import main
+        monkeypatch.setattr(
+            main.subprocess, "run",
+            lambda *a, **k: subprocess.CompletedProcess(
+                [], 1, "", "ModuleNotFoundError: No module named 'tenacity'"))
+        assert main.verify_wheel_imports() is False
+
+    def test_false_on_timeout(self, monkeypatch):
+        import subprocess
+        from backend.services.gce_encoding import main
+
+        def _timeout(*a, **k):
+            raise subprocess.TimeoutExpired(["python", "-c"], 180)
+
+        monkeypatch.setattr(main.subprocess, "run", _timeout)
+        assert main.verify_wheel_imports() is False
