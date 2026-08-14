@@ -6,6 +6,31 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Naive `datetime.utcnow()` → wrong timezone in the UI (Aug 2026)
+
+Job `created_at` and timeline/log timestamps were built from naive
+`datetime.utcnow()` and serialized via `model_dump(mode='json')` /
+`.isoformat()`, producing ISO strings with **no timezone offset**
+(`"2026-08-14T18:10:25.123456"`). Firestore stored them as plain strings and
+returned them verbatim. The frontend's `new Date(str)` parses an offset-less
+ISO date-time as **local** time, so the raw UTC wall-clock was shown
+unconverted — off by the viewer's UTC offset.
+
+Two-part fix:
+- **Display layer (`frontend/lib/utils.ts` → `parseServerDate`)**: treat
+  offset-less ISO date-times as UTC (append `Z`). This corrects *all* existing
+  data immediately, no migration. Use it for any backend timestamp before
+  `new Date()`/`toLocaleString()`.
+- **Write layer**: `datetime.now(timezone.utc)` so new strings carry `+00:00`.
+
+Takeaways: (1) never serialize a naive datetime to the client — always
+timezone-aware UTC; (2) fixing at the display layer beats a data migration when
+old rows are already ambiguous; (3) datetime arithmetic must guard for both
+naive and aware (`if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)`),
+as `job_health_service` already did.
+
+---
+
 ## Cloudflare edge in front of Cloud Run — the SSL "dragon" (Jul 2026)
 
 Putting `api.nomadkaraoke.com` behind Cloudflare (WAF/rate-limit/origin-lock)
