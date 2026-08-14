@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useTranslations } from 'next-intl'
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import {
   ExtendedAudioSearchResult,
   groupResults,
@@ -83,8 +83,14 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchArtist
       if ((data.results || []).length === 0) setFallbackMode(null)
     } catch (err: any) {
       // A parked job with no cached results returns 400 — that's the dead-end we
-      // are fixing, not a hard error. Show it as an empty state, not a red banner.
-      setResults([])
+      // are fixing, so render it as the empty state (with the refine bar), not a
+      // red banner. Any other failure (network / 5xx / session) is a real error.
+      if (err instanceof ApiError && err.status === 400) {
+        setResults([])
+      } else {
+        setResults([])
+        setError(err?.message || t('selectFailed'))
+      }
     } finally {
       setIsLoading(false)
     }
@@ -118,8 +124,8 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchArtist
       const fresh = (data.results || []) as ExtendedAudioSearchResult[]
       setResults(fresh)
       setExpandedCategories(new Set())
-      // Nothing found again → surface the own-audio fallback.
-      setFallbackMode(fresh.length === 0 ? (fallbackMode ?? null) : null)
+      // Nothing found again → auto-open the own-audio fallback; results → close it.
+      setFallbackMode(prev => (fresh.length === 0 ? (prev ?? "url") : null))
     } catch (err: any) {
       setActionError(err.message || t('researchFailed'))
     } finally {

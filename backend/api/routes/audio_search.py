@@ -253,6 +253,11 @@ class AttachUploadUrlsResponse(BaseModel):
     upload_url: str
 
 
+class AttachUploadCompleteRequest(BaseModel):
+    """Finalise an upload; gcs_path (from attach-upload-url) pins the exact file."""
+    gcs_path: Optional[str] = Field(None, description="The gcs_path returned by attach-upload-url")
+
+
 class AttachResponse(BaseModel):
     """Response after attaching a URL/file source to a parked job."""
     status: str
@@ -1152,6 +1157,7 @@ async def research_audio(
     pipeline runs on the corrected metadata.
     """
     locale = get_locale_from_request(request)
+    _require_audio_search_enabled(request, locale)
 
     job = job_manager.get_job(job_id)
     if not job:
@@ -1243,11 +1249,37 @@ async def research_audio(
     )
 
 
+# Audio formats accepted by the manual file-upload fallback (case-insensitive).
+_AUDIO_UPLOAD_EXTENSIONS = {".mp3", ".wav", ".flac", ".m4a", ".ogg"}
+
+# Upper bound on an inline (non-YouTube) URL download so a hung yt-dlp fetch can
+# never leave a parked job stuck in DOWNLOADING_AUDIO. Kept under typical proxy
+# request timeouts; YouTube URLs bypass this via the async download worker.
+URL_DOWNLOAD_TIMEOUT_SECONDS = 240
+
+
+def _require_audio_search_enabled(request: Request, locale: str) -> None:
+    """Apply the tenant `audio_search` feature gate (mirrors /search).
+
+    White-label portals that don't offer audio search must not be able to drive
+    the recovery endpoints (re-search / provide-url / upload) either.
+    """
+    tenant_config = get_tenant_config_from_request(request)
+    if tenant_config and not tenant_config.features.audio_search:
+        raise HTTPException(status_code=403, detail=t(locale, "audioSearch.notEnabled"))
+
+
 def _require_awaiting_selection(job_id: str, locale: str):
     """Load a job and assert it is parked awaiting audio selection.
 
     Shared guard for the manual-fallback endpoints (URL / file upload). Returns
     the job or raises 404 (missing) / 400 (wrong state).
+
+    Note: like the sibling /select endpoint (which Bulk Mode already relies on),
+    this does not enforce per-user job ownership — bulk jobs are owned by a
+    service account, so a per-user check here would lock the real submitter out
+    of recovering their own parked job. Ownership hardening, if desired, must be
+    applied uniformly across the whole audio-search surface, not just here.
     """
     job = job_manager.get_job(job_id)
     if not job:
@@ -1276,11 +1308,13 @@ async def provide_url_for_job(
     was already created and charged, so we do NOT create a new job or deduct
     base credits — the post-download duration reconcile handles final billing.
 
-    Mirrors create_job_from_url's inline download (so generic yt-dlp sites work),
-    but transitions the existing parked job AWAITING_AUDIO_SELECTION →
-    DOWNLOADING_AUDIO → DOWNLOADING rather than creating a job.
+    YouTube URLs are handed to the async audio-download Cloud Run Job (survives
+    request/instance shutdown, no long-blocking request). Generic yt-dlp URLs are
+    downloaded inline (the worker has no generic path) but bounded by a timeout so
+    a slow/hung download can never strand the job in DOWNLOADING_AUDIO.
     """
     locale = get_locale_from_request(request)
+    _require_audio_search_enabled(request, locale)
     # Validation helpers live in file_upload; import lazily to avoid a heavy
     # import at module load (and any import cycle).
     from backend.api.routes.file_upload import (
@@ -1306,9 +1340,10 @@ async def provide_url_for_job(
         )
 
     youtube_service = get_youtube_download_service()
+    is_youtube = _is_youtube_url(url)
 
     # For YouTube URLs, check availability early (geo/private/removed/bot/age).
-    if _is_youtube_url(url):
+    if is_youtube:
         availability = await youtube_service.check_availability(url)
         if availability and not availability.get("available"):
             if availability.get("is_geo_restricted"):
@@ -1327,8 +1362,15 @@ async def provide_url_for_job(
                 detail = f"This YouTube video is unavailable: {availability.get('error', 'unknown error')}"
             raise HTTPException(status_code=400, detail=detail)
 
-    # Transition into the download state BEFORE downloading so the job reflects
-    # progress and start_job_processing's DOWNLOADING_AUDIO → DOWNLOADING is valid.
+    # Point the job at the URL source and enter the download state. The
+    # audio-download worker (and generic inline path below) read these fields
+    # when selected_audio_index is unset (which it is for a parked job).
+    job_manager.update_job(job_id, {
+        'audio_source_type': 'url',
+        'url': url,
+        'source_name': 'YouTube' if is_youtube else 'url',
+        'download_url': url,
+    })
     job_manager.transition_to_state(
         job_id=job_id,
         new_status=JobStatus.DOWNLOADING_AUDIO,
@@ -1337,24 +1379,40 @@ async def provide_url_for_job(
         raise_on_invalid=False,
     )
 
-    try:
-        audio_gcs_path = await youtube_service.download(
-            url=url, job_id=job_id, artist=job.artist, title=job.title,
-        )
-    except YouTubeDownloadError as e:
-        # Put the job back in the queue so the user can retry / pick another source.
+    def _requeue(msg: str) -> None:
         job_manager.transition_to_state(
             job_id=job_id,
             new_status=JobStatus.AWAITING_AUDIO_SELECTION,
             progress=10,
-            message="Download from that URL failed. Try another URL or search again.",
+            message=msg,
             raise_on_invalid=False,
         )
+
+    if is_youtube:
+        # Async: the Cloud Run download job downloads + reconciles + triggers
+        # workers itself, so the request returns immediately.
+        worker_service = get_worker_service()
+        triggered = await worker_service.trigger_audio_download_worker(job_id)
+        if not triggered:
+            _requeue("Couldn't start the download. Please try again.")
+            raise HTTPException(status_code=502, detail="Failed to trigger audio download worker")
+        return AttachResponse(status="success", job_id=job_id, message="URL accepted, download started")
+
+    # Generic yt-dlp URL: no async worker path exists, so download inline —
+    # bounded so a hung download can't strand the job in DOWNLOADING_AUDIO.
+    try:
+        audio_gcs_path = await asyncio.wait_for(
+            youtube_service.download(url=url, job_id=job_id, artist=job.artist, title=job.title),
+            timeout=URL_DOWNLOAD_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        _requeue("That download took too long. Try another URL or search again.")
+        raise HTTPException(status_code=504, detail="Download timed out")
+    except YouTubeDownloadError as e:
+        _requeue("Download from that URL failed. Try another URL or search again.")
         raise HTTPException(status_code=502, detail=f"Download failed: {e}")
 
     job_manager.update_job(job_id, {
-        'audio_source_type': 'url',
-        'url': url,
         'input_media_gcs_path': audio_gcs_path,
         'filename': os.path.basename(audio_gcs_path),
     })
@@ -1383,9 +1441,20 @@ async def attach_upload_url(
     returned URL, then calls /attach-upload-complete. No job is created here.
     """
     locale = get_locale_from_request(request)
+    _require_audio_search_enabled(request, locale)
     _require_awaiting_selection(job_id, locale)
 
-    filename = os.path.basename((body.filename or "").strip()) or "audio"
+    # Normalise Windows separators before basename so "..\\evil.exe" can't be
+    # stored verbatim, then validate the extension against the audio allow-list.
+    raw = (body.filename or "").strip().replace("\\", "/")
+    filename = os.path.basename(raw) or "audio"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in _AUDIO_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported audio format. Use MP3, WAV, FLAC, M4A, or OGG.",
+        )
+
     gcs_path = f"uploads/{job_id}/audio/{filename}"
     upload_url = storage_service.generate_signed_upload_url(
         gcs_path, content_type=body.content_type or "application/octet-stream", expiration_minutes=60,
@@ -1398,6 +1467,7 @@ async def attach_upload_complete(
     job_id: str,
     request: Request,
     background_tasks: BackgroundTasks,
+    body: AttachUploadCompleteRequest = AttachUploadCompleteRequest(),
     auth_result: AuthResult = Depends(require_auth),
 ):
     """
@@ -1408,6 +1478,7 @@ async def attach_upload_complete(
     job was already created/charged, so no new job and no base-credit deduction.
     """
     locale = get_locale_from_request(request)
+    _require_audio_search_enabled(request, locale)
     from backend.api.routes.file_upload import _select_mixed_audio_files
 
     job = _require_awaiting_selection(job_id, locale)
@@ -1418,8 +1489,17 @@ async def attach_upload_complete(
     if not audio_files:
         raise HTTPException(status_code=400, detail="No uploaded audio file found. Upload the file first.")
 
-    selected = _select_mixed_audio_files(audio_files)
-    audio_gcs_path = selected[0] if isinstance(selected, list) and selected else (selected or audio_files[0])
+    # Prefer the exact object the client uploaded to (from attach-upload-url),
+    # validated to live under this job's prefix and to actually exist — never
+    # trust an arbitrary client path, and don't depend on list ordering.
+    requested = (body.gcs_path or "").strip()
+    if requested:
+        if not requested.startswith(prefix) or requested not in audio_files:
+            raise HTTPException(status_code=400, detail="Uploaded file not found for this job.")
+        audio_gcs_path = requested
+    else:
+        selected = _select_mixed_audio_files(audio_files)
+        audio_gcs_path = selected[0] if isinstance(selected, list) and selected else (selected or audio_files[0])
 
     job_manager.update_job(job_id, {
         'audio_source_type': 'upload',

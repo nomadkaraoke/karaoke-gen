@@ -1,16 +1,26 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AudioSearchDialog } from '../AudioSearchDialog'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 
-jest.mock('@/lib/api', () => ({
-  api: {
-    getAudioSearchResults: jest.fn(),
-    selectAudioResult: jest.fn(),
-    researchAudio: jest.fn(),
-    provideUrlForJob: jest.fn(),
-    attachUploadToJob: jest.fn(),
-  },
-}))
+jest.mock('@/lib/api', () => {
+  class ApiError extends Error {
+    status: number
+    constructor(message: string, status: number) {
+      super(message)
+      this.status = status
+    }
+  }
+  return {
+    ApiError,
+    api: {
+      getAudioSearchResults: jest.fn(),
+      selectAudioResult: jest.fn(),
+      researchAudio: jest.fn(),
+      provideUrlForJob: jest.fn(),
+      attachUploadToJob: jest.fn(),
+    },
+  }
+})
 
 const mockApi = api as jest.Mocked<typeof api>
 
@@ -105,7 +115,7 @@ describe('AudioSearchDialog recovery UX', () => {
   })
 
   it('treats a 400 (no cached results) as an empty state, not a red error', async () => {
-    mockApi.getAudioSearchResults.mockRejectedValue(new Error('No search results available'))
+    mockApi.getAudioSearchResults.mockRejectedValue(new ApiError('No search results available', 400))
 
     render(
       <AudioSearchDialog jobId="j1" open onClose={jest.fn()} onSelect={jest.fn()}
@@ -114,5 +124,18 @@ describe('AudioSearchDialog recovery UX', () => {
 
     await screen.findByText('No audio sources found')
     expect(screen.queryByText('No search results available')).not.toBeInTheDocument()
+  })
+
+  it('surfaces a non-400 (network/500) failure as an error banner', async () => {
+    mockApi.getAudioSearchResults.mockRejectedValue(new ApiError('Server exploded', 500))
+
+    render(
+      <AudioSearchDialog jobId="j1" open onClose={jest.fn()} onSelect={jest.fn()}
+        searchArtist="Arctic Monkeys" searchTitle="The View From the Afternoon" />
+    )
+
+    // Empty state still renders (refine bar available), but the real error shows too.
+    await screen.findByText('No audio sources found')
+    expect(screen.getByText('Server exploded')).toBeInTheDocument()
   })
 })

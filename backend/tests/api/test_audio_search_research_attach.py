@@ -200,16 +200,20 @@ class TestResearch:
 
 
 class TestProvideUrl:
-    def test_youtube_url_downloads_and_starts(self, mock_job_manager):
+    def test_youtube_url_uses_async_worker(self, mock_job_manager):
+        """YouTube URLs go through the async download worker (no blocking request)."""
         from fastapi.testclient import TestClient
         from backend.main import app
 
         yt = MagicMock()
         yt.check_availability = AsyncMock(return_value={"available": True})
-        yt.download = AsyncMock(return_value="uploads/park-1/audio/song.webm")
+        yt.download = AsyncMock()
+        ws = MagicMock()
+        ws.trigger_audio_download_worker = AsyncMock(return_value=True)
 
         with patch.multiple("backend.api.routes.audio_search", job_manager=mock_job_manager), \
-                patch("backend.api.routes.audio_search.get_youtube_download_service", return_value=yt):
+                patch("backend.api.routes.audio_search.get_youtube_download_service", return_value=yt), \
+                patch("backend.api.routes.audio_search.get_worker_service", return_value=ws):
             client = TestClient(app)
             resp = client.post(
                 "/api/audio-search/park-1/provide-url",
@@ -217,10 +221,54 @@ class TestProvideUrl:
             )
 
         assert resp.status_code == 200, resp.text
+        ws.trigger_audio_download_worker.assert_awaited_once_with("park-1")
+        yt.download.assert_not_awaited()  # async worker does the download, not inline
+        # job pointed at the URL source for the worker's job-level fallback
+        srcd = [c for c in mock_job_manager.update_job.call_args_list
+                if c.args[1].get("source_name") == "YouTube" and c.args[1].get("download_url")]
+        assert srcd
+
+    def test_youtube_worker_trigger_failure_requeues(self, mock_job_manager):
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        yt = MagicMock()
+        yt.check_availability = AsyncMock(return_value={"available": True})
+        ws = MagicMock()
+        ws.trigger_audio_download_worker = AsyncMock(return_value=False)
+
+        with patch.multiple("backend.api.routes.audio_search", job_manager=mock_job_manager), \
+                patch("backend.api.routes.audio_search.get_youtube_download_service", return_value=yt), \
+                patch("backend.api.routes.audio_search.get_worker_service", return_value=ws):
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audio-search/park-1/provide-url",
+                json={"url": "https://www.youtube.com/watch?v=abcdefghijk"},
+            )
+        assert resp.status_code == 502
+        statuses = [c.kwargs.get("new_status") for c in mock_job_manager.transition_to_state.call_args_list]
+        assert JobStatus.AWAITING_AUDIO_SELECTION in statuses
+
+    def test_generic_url_downloads_inline_and_starts(self, mock_job_manager):
+        """Non-YouTube (yt-dlp) URLs download inline, then start processing."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        yt = MagicMock()
+        yt.download = AsyncMock(return_value="uploads/park-1/audio/song.opus")
+
+        with patch.multiple("backend.api.routes.audio_search", job_manager=mock_job_manager), \
+                patch("backend.api.routes.audio_search.get_youtube_download_service", return_value=yt):
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audio-search/park-1/provide-url",
+                json={"url": "https://soundcloud.com/artist/track"},
+            )
+
+        assert resp.status_code == 200, resp.text
         yt.download.assert_awaited_once()
-        # pointed the job at the downloaded audio
         pathed = [c for c in mock_job_manager.update_job.call_args_list
-                  if c.args[1].get("input_media_gcs_path")]
+                  if c.args[1].get("input_media_gcs_path") == "uploads/park-1/audio/song.opus"]
         assert pathed
         mock_job_manager.start_job_processing.assert_awaited()
 
@@ -244,24 +292,25 @@ class TestProvideUrl:
 
         yt = MagicMock()
         yt.check_availability = AsyncMock(return_value={"available": False, "is_private": True})
-        yt.download = AsyncMock()
+        ws = MagicMock()
+        ws.trigger_audio_download_worker = AsyncMock(return_value=True)
 
         with patch.multiple("backend.api.routes.audio_search", job_manager=mock_job_manager), \
-                patch("backend.api.routes.audio_search.get_youtube_download_service", return_value=yt):
+                patch("backend.api.routes.audio_search.get_youtube_download_service", return_value=yt), \
+                patch("backend.api.routes.audio_search.get_worker_service", return_value=ws):
             client = TestClient(app)
             resp = client.post(
                 "/api/audio-search/park-1/provide-url",
                 json={"url": "https://www.youtube.com/watch?v=abcdefghijk"},
             )
         assert resp.status_code == 400
-        yt.download.assert_not_awaited()
+        ws.trigger_audio_download_worker.assert_not_awaited()
 
-    def test_download_failure_requeues_and_502(self, mock_job_manager):
+    def test_generic_download_failure_requeues_and_502(self, mock_job_manager):
         from fastapi.testclient import TestClient
         from backend.main import app
 
         yt = MagicMock()
-        yt.check_availability = AsyncMock(return_value={"available": True})
         yt.download = AsyncMock(side_effect=YouTubeDownloadError("dead"))
 
         with patch.multiple("backend.api.routes.audio_search", job_manager=mock_job_manager), \
@@ -269,7 +318,7 @@ class TestProvideUrl:
             client = TestClient(app)
             resp = client.post(
                 "/api/audio-search/park-1/provide-url",
-                json={"url": "https://www.youtube.com/watch?v=abcdefghijk"},
+                json={"url": "https://soundcloud.com/artist/track"},
             )
         assert resp.status_code == 502
         # restored to awaiting so the user can retry
@@ -317,6 +366,23 @@ class TestAttachUpload:
         assert data["gcs_path"] == "uploads/park-1/audio/my song.flac"
         assert data["upload_url"] == "https://signed.example/put"
 
+    def test_attach_upload_url_rejects_bad_extension(self, mock_job_manager):
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        storage = MagicMock()
+        storage.generate_signed_upload_url.return_value = "https://signed.example/put"
+
+        with patch.multiple("backend.api.routes.audio_search",
+                            job_manager=mock_job_manager, storage_service=storage):
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audio-search/park-1/attach-upload-url",
+                json={"filename": "..\\evil.exe", "content_type": "application/octet-stream"},
+            )
+        assert resp.status_code == 400
+        storage.generate_signed_upload_url.assert_not_called()
+
     def test_attach_complete_starts_processing(self, mock_job_manager):
         from fastapi.testclient import TestClient
         from backend.main import app
@@ -327,13 +393,33 @@ class TestAttachUpload:
         with patch.multiple("backend.api.routes.audio_search",
                             job_manager=mock_job_manager, storage_service=storage):
             client = TestClient(app)
-            resp = client.post("/api/audio-search/park-1/attach-upload-complete")
+            resp = client.post(
+                "/api/audio-search/park-1/attach-upload-complete",
+                json={"gcs_path": "uploads/park-1/audio/my_song.flac"},
+            )
 
         assert resp.status_code == 200, resp.text
         pathed = [c for c in mock_job_manager.update_job.call_args_list
                   if c.args[1].get("input_media_gcs_path") == "uploads/park-1/audio/my_song.flac"]
         assert pathed
         mock_job_manager.start_job_processing.assert_awaited()
+
+    def test_attach_complete_rejects_gcs_path_outside_prefix(self, mock_job_manager):
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        storage = MagicMock()
+        storage.list_files.return_value = ["uploads/park-1/audio/my_song.flac"]
+
+        with patch.multiple("backend.api.routes.audio_search",
+                            job_manager=mock_job_manager, storage_service=storage):
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audio-search/park-1/attach-upload-complete",
+                json={"gcs_path": "uploads/other-job/audio/steal.flac"},
+            )
+        assert resp.status_code == 400
+        mock_job_manager.start_job_processing.assert_not_awaited()
 
     def test_attach_complete_400_when_no_file(self, mock_job_manager):
         from fastapi.testclient import TestClient
@@ -345,6 +431,6 @@ class TestAttachUpload:
         with patch.multiple("backend.api.routes.audio_search",
                             job_manager=mock_job_manager, storage_service=storage):
             client = TestClient(app)
-            resp = client.post("/api/audio-search/park-1/attach-upload-complete")
+            resp = client.post("/api/audio-search/park-1/attach-upload-complete", json={})
         assert resp.status_code == 400
         mock_job_manager.start_job_processing.assert_not_awaited()

@@ -1487,11 +1487,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ filename: file.name, content_type: contentType }),
     });
-    const { upload_url } = await handleResponse<{ upload_url: string; gcs_path: string }>(signed);
+    const { upload_url, gcs_path } = await handleResponse<{ upload_url: string; gcs_path: string }>(signed);
     await this.uploadFileToSignedUrl(upload_url, file, contentType);
     const done = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/attach-upload-complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ gcs_path }),
     });
     return handleResponse(done);
   },
