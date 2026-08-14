@@ -10,7 +10,7 @@ This module handles the complete job lifecycle including:
 """
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
 from backend.config import settings
@@ -80,7 +80,10 @@ class JobManager:
 
         job_id = str(uuid.uuid4())[:8]
         
-        now = datetime.utcnow()
+        # Timezone-aware UTC so the serialized ISO string carries a "+00:00"
+        # offset. A naive datetime.utcnow() serializes with no offset, and the
+        # frontend's Date() parser then mis-reads it as local time.
+        now = datetime.now(timezone.utc)
         job = Job(
             job_id=job_id,
             status=JobStatus.PENDING,  # New state machine starts with PENDING

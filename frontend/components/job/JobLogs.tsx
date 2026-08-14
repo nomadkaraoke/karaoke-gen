@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { api, JobLog } from "@/lib/api"
 import { Loader2, AlertCircle } from "lucide-react"
+import { parseServerDate } from "@/lib/utils"
 
 interface JobLogsProps {
   jobId: string
@@ -73,7 +74,7 @@ export function JobLogs({ jobId, limit = 50 }: JobLogsProps) {
             style={log.level !== "ERROR" && log.level !== "WARNING" && log.level !== "INFO" ? { color: 'var(--text-muted)' } : undefined}
           >
             <span className="shrink-0" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
-              {new Date(log.timestamp).toLocaleTimeString()}
+              {parseServerDate(log.timestamp).toLocaleTimeString()}
             </span>
             <span className="shrink-0 font-semibold w-12">
               {log.level}

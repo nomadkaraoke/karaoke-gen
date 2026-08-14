@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { api, Job, getAccessToken } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useAdminSettings } from "@/lib/admin-settings"
+import { parseServerDate } from "@/lib/utils"
 import { useJobNotifications, useVisibilityRefresh } from "@/hooks/use-notifications"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -293,7 +294,7 @@ function AppPageContent() {
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {user.referred_by_code && <>Referred with code <strong>{user.referred_by_code}</strong> · </>}
-                Expires {new Date(user.referral_discount_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                Expires {parseServerDate(user.referral_discount_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
             <button
