@@ -760,7 +760,22 @@
     "views": "조회수 {count}회",
     "moreVersions": "+{count}개 더 보기",
     "select": "선택",
-    "creditCost": "{credits} 크레딧"
+    "creditCost": "{credits} 크레딧",
+    "chooseFile": "오디오 파일을 선택해 주세요 (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "오디오 소스를 찾을 수 없습니다. 위에서 아티스트나 제목을 수정하여 다시 검색하거나, URL 또는 파일 업로드로 직접 오디오를 추가해 주세요.",
+    "pasteUrl": "URL 붙여넣기",
+    "researchFailed": "검색에 실패했습니다. 다시 시도해 주세요.",
+    "searchAgain": "다시 검색하기",
+    "selectFailed": "오디오 선택에 실패했습니다",
+    "uploadFailed": "업로드에 실패했습니다. 다시 시도해 주세요.",
+    "urlFailed": "해당 URL은 사용할 수 없습니다. 다른 소스로 시도해 주세요.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "이 파일 사용하기",
+    "useThisUrl": "이 URL 사용하기",
+    "artistLabel": "아티스트",
+    "loading": "로딩 중...",
+    "titleLabel": "제목",
+    "uploadFileAction": "파일 업로드"
   },
   "audioEditor": {
     "loading": "오디오 편집기 불러오는 중...",

@@ -760,7 +760,22 @@
     "views": "{count} pregleda",
     "moreVersions": "+{count} više",
     "select": "Odaberi",
-    "creditCost": "{credits} kredita"
+    "creditCost": "{credits} kredita",
+    "chooseFile": "Odaberi audio datoteku (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Nismo uspjeli pronaći nijedan audio izvor. Pokušaj izmijeniti izvođača ili naslov iznad i pretražiti ponovno, ili dodaj vlastiti audio putem URL-a ili učitavanjem datoteke.",
+    "pasteUrl": "Zalijepi URL",
+    "researchFailed": "Pretraživanje nije uspjelo. Pokušaj ponovno.",
+    "searchAgain": "Pretraži ponovno",
+    "selectFailed": "Odabir audija nije uspio",
+    "uploadFailed": "Učitavanje nije uspjelo. Pokušaj ponovno.",
+    "urlFailed": "Nismo mogli upotrijebiti taj URL. Pokušaj s drugim izvorom.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Koristi ovu datoteku",
+    "useThisUrl": "Koristi ovaj URL",
+    "artistLabel": "Izvođač",
+    "loading": "Učitavanje...",
+    "titleLabel": "Naslov",
+    "uploadFileAction": "Prenesi datoteku"
   },
   "audioEditor": {
     "loading": "Učitavanje audio uređivača...",

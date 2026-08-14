@@ -760,7 +760,22 @@
     "views": "{count} visningar",
     "moreVersions": "+{count} fler",
     "select": "Välj",
-    "creditCost": "{credits} krediter"
+    "creditCost": "{credits} krediter",
+    "chooseFile": "Välj en ljudfil (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Vi kunde inte hitta några ljudkällor. Prova att ändra artist eller titel ovan och sök igen, eller lägg till ditt eget ljud via en URL eller filuppladdning.",
+    "pasteUrl": "Klistra in URL",
+    "researchFailed": "Sökningen misslyckades. Försök igen.",
+    "searchAgain": "Sök igen",
+    "selectFailed": "Det gick inte att välja ljud",
+    "uploadFailed": "Uppladdningen misslyckades. Försök igen.",
+    "urlFailed": "Det gick inte att använda den URL:en. Prova en annan källa.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Använd den här filen",
+    "useThisUrl": "Använd den här URL:en",
+    "artistLabel": "Artist",
+    "loading": "Laddar...",
+    "titleLabel": "Titel",
+    "uploadFileAction": "Ladda upp fil"
   },
   "audioEditor": {
     "loading": "Laddar ljudredigerare...",

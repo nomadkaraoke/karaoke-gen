@@ -760,7 +760,22 @@
     "views": "{count} tontonan",
     "moreVersions": "+{count} lagi",
     "select": "Pilih",
-    "creditCost": "{credits} kredit"
+    "creditCost": "{credits} kredit",
+    "chooseFile": "Pilih fail audio (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Kami tidak menemui sebarang sumber audio. Cuba sunting artis atau tajuk di atas dan cari semula, atau gunakan audio anda sendiri melalui URL atau muat naik fail.",
+    "pasteUrl": "Tampal URL",
+    "researchFailed": "Carian gagal. Sila cuba lagi.",
+    "searchAgain": "Cari semula",
+    "selectFailed": "Gagal memilih audio",
+    "uploadFailed": "Muat naik gagal. Sila cuba lagi.",
+    "urlFailed": "Tidak dapat menggunakan URL tersebut. Cuba sumber lain.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Gunakan fail ini",
+    "useThisUrl": "Gunakan URL ini",
+    "artistLabel": "Artis",
+    "loading": "Memuatkan...",
+    "titleLabel": "Tajuk",
+    "uploadFileAction": "Muat naik fail"
   },
   "audioEditor": {
     "loading": "Memuatkan editor audio...",

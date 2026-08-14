@@ -760,7 +760,22 @@
     "views": "{count} 次观看",
     "moreVersions": "还有 {count} 个",
     "select": "选择",
-    "creditCost": "{credits} 积分"
+    "creditCost": "{credits} 积分",
+    "chooseFile": "选择音频文件（MP3、WAV、FLAC、M4A、OGG）",
+    "noResultsHelp": "未能找到任何音频源。请尝试修改上方的歌手或歌曲名并重新搜索，或者通过提供网址或上传文件来使用您自己的音频。",
+    "pasteUrl": "粘贴网址",
+    "researchFailed": "搜索失败。请重试。",
+    "searchAgain": "重新搜索",
+    "selectFailed": "选择音频失败",
+    "uploadFailed": "上传失败。请重试。",
+    "urlFailed": "无法使用该网址。请尝试其他来源。",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "使用此文件",
+    "useThisUrl": "使用此网址",
+    "artistLabel": "歌手",
+    "loading": "加载中...",
+    "titleLabel": "标题",
+    "uploadFileAction": "上传文件"
   },
   "audioEditor": {
     "loading": "正在加载音频编辑器...",

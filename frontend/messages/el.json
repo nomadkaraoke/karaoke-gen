@@ -760,7 +760,22 @@
     "views": "{count} προβολές",
     "moreVersions": "+{count} ακόμα",
     "select": "Επιλογή",
-    "creditCost": "{credits} μονάδες"
+    "creditCost": "{credits} μονάδες",
+    "chooseFile": "Επίλεξε ένα αρχείο ήχου (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Δεν μπορέσαμε να βρούμε πηγές ήχου. Δοκίμασε να επεξεργαστείς τον καλλιτέχνη ή τον τίτλο παραπάνω και να αναζητήσεις ξανά, ή πρόσθεσε τον δικό σου ήχο με ένα URL ή ανεβάζοντας ένα αρχείο.",
+    "pasteUrl": "Επικόλληση URL",
+    "researchFailed": "Η αναζήτηση απέτυχε. Παρακαλώ δοκίμασε ξανά.",
+    "searchAgain": "Αναζήτησε ξανά",
+    "selectFailed": "Αποτυχία επιλογής ήχου",
+    "uploadFailed": "Το ανέβασμα απέτυχε. Παρακαλώ δοκίμασε ξανά.",
+    "urlFailed": "Δεν ήταν δυνατή η χρήση αυτού του URL. Δοκίμασε μια άλλη πηγή.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Χρησιμοποίησε αυτό το αρχείο",
+    "useThisUrl": "Χρησιμοποίησε αυτό το URL",
+    "artistLabel": "Καλλιτέχνης",
+    "loading": "Φόρτωση...",
+    "titleLabel": "Τίτλος",
+    "uploadFileAction": "Ανέβασμα αρχείου"
   },
   "audioEditor": {
     "loading": "Φόρτωση επεξεργαστή ήχου...",

@@ -760,7 +760,22 @@
     "views": "{count} 回視聴",
     "moreVersions": "他 {count} 件",
     "select": "選択",
-    "creditCost": "{credits} クレジット"
+    "creditCost": "{credits} クレジット",
+    "chooseFile": "音声ファイルを選択 (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "音源が見つかりませんでした。上のアーティスト名やタイトルを編集して再検索するか、URLまたはファイルのアップロードでご自身の音源を追加してみてください。",
+    "pasteUrl": "URLを貼り付け",
+    "researchFailed": "検索に失敗しました。もう一度お試しください。",
+    "searchAgain": "もう一度検索",
+    "selectFailed": "音源の選択に失敗しました",
+    "uploadFailed": "アップロードに失敗しました。もう一度お試しください。",
+    "urlFailed": "そのURLは使用できませんでした。別の音源をお試しください。",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "このファイルを使用",
+    "useThisUrl": "このURLを使用",
+    "artistLabel": "アーティスト",
+    "loading": "読み込み中...",
+    "titleLabel": "タイトル",
+    "uploadFileAction": "ファイルをアップロード"
   },
   "audioEditor": {
     "loading": "オーディオエディタを読み込み中...",

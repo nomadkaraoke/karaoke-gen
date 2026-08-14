@@ -760,7 +760,22 @@
     "views": "{count} просмотров",
     "moreVersions": "Еще +{count}",
     "select": "Выбрать",
-    "creditCost": "{credits} кредитов"
+    "creditCost": "{credits} кредитов",
+    "chooseFile": "Выбери аудиофайл (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Мы не смогли найти аудио. Попробуй изменить исполнителя или название выше и поискать снова, либо добавь свое аудио по URL или загрузи файл.",
+    "pasteUrl": "Вставь URL",
+    "researchFailed": "Ошибка поиска. Попробуй еще раз.",
+    "searchAgain": "Искать снова",
+    "selectFailed": "Не удалось выбрать аудио",
+    "uploadFailed": "Ошибка загрузки. Попробуй еще раз.",
+    "urlFailed": "Не удалось использовать этот URL. Попробуй другой источник.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Использовать этот файл",
+    "useThisUrl": "Использовать этот URL",
+    "artistLabel": "Исполнитель",
+    "loading": "Загрузка...",
+    "titleLabel": "Название",
+    "uploadFileAction": "Загрузить файл"
   },
   "audioEditor": {
     "loading": "Загрузка аудиоредактора...",

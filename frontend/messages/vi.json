@@ -760,7 +760,22 @@
     "views": "{count} lượt xem",
     "moreVersions": "+{count} phiên bản khác",
     "select": "Chọn",
-    "creditCost": "{credits} credit"
+    "creditCost": "{credits} credit",
+    "chooseFile": "Chọn tệp âm thanh (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Chúng tôi không tìm thấy nguồn âm thanh nào. Bạn hãy thử chỉnh sửa tên nghệ sĩ hoặc tiêu đề ở trên và tìm kiếm lại, hoặc tự cung cấp âm thanh bằng URL hoặc tải tệp lên.",
+    "pasteUrl": "Dán URL",
+    "researchFailed": "Tìm kiếm thất bại. Vui lòng thử lại.",
+    "searchAgain": "Tìm kiếm lại",
+    "selectFailed": "Không thể chọn âm thanh",
+    "uploadFailed": "Tải lên thất bại. Vui lòng thử lại.",
+    "urlFailed": "Không thể sử dụng URL đó. Bạn hãy thử một nguồn khác.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Sử dụng tệp này",
+    "useThisUrl": "Sử dụng URL này",
+    "artistLabel": "Nghệ sĩ",
+    "loading": "Đang tải...",
+    "titleLabel": "Tiêu đề",
+    "uploadFileAction": "Tải tệp lên"
   },
   "audioEditor": {
     "loading": "Đang tải trình chỉnh sửa âm thanh...",

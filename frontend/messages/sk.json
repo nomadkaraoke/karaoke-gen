@@ -760,7 +760,22 @@
     "views": "{count} zhliadnutí",
     "moreVersions": "+{count} ďalších",
     "select": "Vybrať",
-    "creditCost": "{credits} kreditov"
+    "creditCost": "{credits} kreditov",
+    "chooseFile": "Vyber zvukový súbor (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Nenašli sme žiadne zdroje zvuku. Skús upraviť interpreta alebo názov vyššie a vyhľadať znova, alebo pridaj vlastný zvuk pomocou URL adresy či nahratím súboru.",
+    "pasteUrl": "Vlož URL",
+    "researchFailed": "Vyhľadávanie zlyhalo. Skús to znova.",
+    "searchAgain": "Hľadať znova",
+    "selectFailed": "Nepodarilo sa vybrať zvuk",
+    "uploadFailed": "Nahrávanie zlyhalo. Skús to znova.",
+    "urlFailed": "Túto URL adresu nebolo možné použiť. Skús iný zdroj.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Použiť tento súbor",
+    "useThisUrl": "Použiť túto URL",
+    "artistLabel": "Interpret",
+    "loading": "Načítava sa...",
+    "titleLabel": "Názov",
+    "uploadFileAction": "Nahrať súbor"
   },
   "audioEditor": {
     "loading": "Načítava sa editor zvuku...",

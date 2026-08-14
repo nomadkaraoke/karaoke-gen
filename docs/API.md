@@ -956,6 +956,46 @@ post-download and may trigger an `AWAITING_DURATION_CONFIRM` pause if the actual
 server-computed credit total and returns 409 on mismatch. If omitted, the server deducts the
 computed cost without client confirmation.
 
+#### Recover a Parked Job (re-search / provide own audio)
+
+When a search returns nothing usable (0 results, a transient failure, or the auto-picked
+source is unusable) the job stays in `AWAITING_AUDIO_SELECTION` with no selectable sources.
+These endpoints let the user out of that dead-end without creating a new job or re-charging
+base credits (the job was already charged at creation; final duration billing is reconciled
+post-download). All require the job to be in `AWAITING_AUDIO_SELECTION` (else `400`).
+
+```http
+POST /api/audio-search/{job_id}/research
+Content-Type: application/json
+
+{ "artist": "Arctic Monkeys", "title": "The View From the Afternoon" }  // both optional
+```
+
+Re-runs the audio search. Blank/omitted fields re-use the job's existing search terms (a plain
+retry); provided values are applied to the job's search terms **and** display artist/title, then
+searched. Returns the same shape as `/search` (`results`, `results_count`). An empty result set is
+a normal `200` (not an error) so the client can offer the manual fallback below. `502` on a hard
+search-service error.
+
+```http
+POST /api/audio-search/{job_id}/provide-url
+Content-Type: application/json
+
+{ "url": "https://youtube.com/watch?v=..." }
+```
+
+Attaches a YouTube/yt-dlp URL to the parked job, downloads it, and starts processing
+(`AWAITING_AUDIO_SELECTION → DOWNLOADING_AUDIO → DOWNLOADING`). Rejects DRM/streaming links and
+unavailable videos with `400`; `502` if the download fails (the job is returned to the queue).
+
+```http
+POST /api/audio-search/{job_id}/attach-upload-url        // → { upload_url, gcs_path }
+POST /api/audio-search/{job_id}/attach-upload-complete   // after PUTting the file
+```
+
+Two-step manual file upload for a parked job: request a signed GCS upload URL, `PUT` the audio
+file to it, then call `attach-upload-complete` to point the job at the file and start processing.
+
 #### Standalone Search (Guided Flow — Step 2)
 
 ```http
@@ -2302,7 +2342,9 @@ routes require auth.
 
 ### Progress
 
-- `GET /api/bulk/{batch_id}` → `{batch_id,total,counts:{searching,awaiting_selection,processing,complete,failed},jobs:[{job_id,artist,title,status,auto_selected}]}`. Ownership-scoped (admins see any); `404` for another user's batch. Parked jobs are completed via the existing `/api/audio-search/{job_id}/select` flow.
+- `GET /api/bulk/{batch_id}` → `{batch_id,total,counts:{searching,awaiting_selection,processing,complete,failed},jobs:[{job_id,artist,title,status,auto_selected}]}`. Ownership-scoped (admins see any); `404` for another user's batch. Parked jobs are completed via the existing `/api/audio-search/{job_id}/select` flow, or recovered
+via `/research` (re-search / edit terms) and `/provide-url` · `/attach-upload-*` (own audio) when a
+search returned nothing usable.
 
 ## Webhooks
 

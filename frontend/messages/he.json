@@ -760,7 +760,22 @@
     "views": "{count} צפיות",
     "moreVersions": "+{count} נוספים",
     "select": "בחר",
-    "creditCost": "{credits} קרדיטים"
+    "creditCost": "{credits} קרדיטים",
+    "chooseFile": "בחירת קובץ שמע (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "לא הצלחנו למצוא מקורות שמע. נסו לערוך את שם האמן או השיר למעלה ולחפש שוב, או הוסיפו שמע משלכם באמצעות קישור או העלאת קובץ.",
+    "pasteUrl": "הדבקת קישור",
+    "researchFailed": "החיפוש נכשל. אנא נסו שוב.",
+    "searchAgain": "חיפוש מחדש",
+    "selectFailed": "בחירת השמע נכשלה",
+    "uploadFailed": "ההעלאה נכשלה. אנא נסו שוב.",
+    "urlFailed": "לא הצלחנו להשתמש בקישור הזה. נסו מקור אחר.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "שימוש בקובץ זה",
+    "useThisUrl": "שימוש בקישור זה",
+    "artistLabel": "אומן",
+    "loading": "טוען...",
+    "titleLabel": "כותרת",
+    "uploadFileAction": "העלאת קובץ"
   },
   "audioEditor": {
     "loading": "טוען עורך אודיו...",

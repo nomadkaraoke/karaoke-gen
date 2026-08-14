@@ -326,6 +326,10 @@ export interface AudioSearchResponse {
   job_id: string;
   results: AudioSearchResult[];
   total_results: number;
+  results_count?: number;
+  // Present on GET /results and POST /research — the job's current search terms.
+  artist?: string;
+  title?: string;
   message?: string;
 }
 
@@ -1440,6 +1444,59 @@ export const api = {
     return handleResponse(response);
   },
   
+  /**
+   * Re-run the audio search for a parked job, optionally with edited
+   * artist/title. Empty results are a normal 200 (no sources found), not an error.
+   */
+  async researchAudio(
+    jobId: string,
+    edits?: { artist?: string; title?: string }
+  ): Promise<AudioSearchResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/research`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ artist: edits?.artist, title: edits?.title }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Attach a YouTube/yt-dlp URL to a parked job and start processing.
+   * Manual fallback when audio search finds nothing usable.
+   */
+  async provideUrlForJob(
+    jobId: string,
+    url: string
+  ): Promise<{ status: string; job_id: string; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/provide-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ url }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Attach an uploaded audio file to a parked job:
+   * 1) request a signed upload URL, 2) PUT the file, 3) mark complete.
+   */
+  async attachUploadToJob(jobId: string, file: File): Promise<{ status: string; message: string }> {
+    const contentType = file.type || 'application/octet-stream';
+    const signed = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/attach-upload-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ filename: file.name, content_type: contentType }),
+    });
+    const { upload_url, gcs_path } = await handleResponse<{ upload_url: string; gcs_path: string }>(signed);
+    await this.uploadFileToSignedUrl(upload_url, file, contentType);
+    const done = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/attach-upload-complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ gcs_path }),
+    });
+    return handleResponse(done);
+  },
+
   /**
    * Get job logs
    */

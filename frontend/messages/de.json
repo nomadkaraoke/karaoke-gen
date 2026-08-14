@@ -760,7 +760,22 @@
     "views": "{count} Aufrufe",
     "moreVersions": "+{count} weitere",
     "select": "Auswählen",
-    "creditCost": "{credits} Guthaben"
+    "creditCost": "{credits} Guthaben",
+    "chooseFile": "Wähle eine Audiodatei (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Wir konnten keine Audioquellen finden. Versuche, den Künstler oder Titel oben zu bearbeiten und erneut zu suchen, oder verwende dein eigenes Audio per URL oder Datei-Upload.",
+    "pasteUrl": "URL einfügen",
+    "researchFailed": "Suche fehlgeschlagen. Bitte versuche es erneut.",
+    "searchAgain": "Erneut suchen",
+    "selectFailed": "Audio konnte nicht ausgewählt werden",
+    "uploadFailed": "Upload fehlgeschlagen. Bitte versuche es erneut.",
+    "urlFailed": "Diese URL konnte nicht verwendet werden. Versuche eine andere Quelle.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Diese Datei verwenden",
+    "useThisUrl": "Diese URL verwenden",
+    "artistLabel": "Künstler",
+    "loading": "Laden...",
+    "titleLabel": "Titel",
+    "uploadFileAction": "Datei hochladen"
   },
   "audioEditor": {
     "loading": "Lade Audio-Editor...",

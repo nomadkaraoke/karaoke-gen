@@ -760,7 +760,22 @@
     "views": "{count} weergaven",
     "moreVersions": "+{count} meer",
     "select": "Selecteren",
-    "creditCost": "{credits} credits"
+    "creditCost": "{credits} credits",
+    "chooseFile": "Kies een audiobestand (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "We konden geen audiobronnen vinden. Probeer de artiest of titel hierboven aan te passen en opnieuw te zoeken, of voeg je eigen audio toe via een URL of bestandsupload.",
+    "pasteUrl": "Plak URL",
+    "researchFailed": "Zoeken mislukt. Probeer het opnieuw.",
+    "searchAgain": "Opnieuw zoeken",
+    "selectFailed": "Audio selecteren mislukt",
+    "uploadFailed": "Uploaden mislukt. Probeer het opnieuw.",
+    "urlFailed": "We konden die URL niet gebruiken. Probeer een andere bron.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Gebruik dit bestand",
+    "useThisUrl": "Gebruik deze URL",
+    "artistLabel": "Artiest",
+    "loading": "Laden...",
+    "titleLabel": "Titel",
+    "uploadFileAction": "Bestand uploaden"
   },
   "audioEditor": {
     "loading": "Audio-editor laden...",

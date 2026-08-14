@@ -84,6 +84,7 @@ export function BulkBatchProgress({ batchId, onStartAnother, onJobsChanged }: Bu
         <AudioSearchDialog
           jobId={selectingJob.job_id}
           open={true}
+          searchArtist={selectingJob.artist}
           searchTitle={selectingJob.title}
           onClose={() => setSelectingJob(null)}
           onSelect={() => {

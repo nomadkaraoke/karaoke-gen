@@ -760,7 +760,22 @@
     "views": "{count} views",
     "moreVersions": "+{count} pa",
     "select": "Piliin",
-    "creditCost": "{credits} credits"
+    "creditCost": "{credits} credits",
+    "chooseFile": "Pumili ng audio file (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Wala kaming nahanap na audio sources. Subukang i-edit ang artist o pamagat sa itaas at maghanap ulit, o magbigay ng sarili mong audio gamit ang URL o file upload.",
+    "pasteUrl": "I-paste ang URL",
+    "researchFailed": "Nabigo ang paghahanap. Pakisubukan ulit.",
+    "searchAgain": "Maghanap ulit",
+    "selectFailed": "Hindi napili ang audio",
+    "uploadFailed": "Nabigo ang pag-upload. Pakisubukan ulit.",
+    "urlFailed": "Hindi magamit ang URL na iyon. Subukan ang ibang source.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Gamitin ang file na ito",
+    "useThisUrl": "Gamitin ang URL na ito",
+    "artistLabel": "Artist",
+    "loading": "Nagloload...",
+    "titleLabel": "Pamagat",
+    "uploadFileAction": "Mag-upload ng file"
   },
   "audioEditor": {
     "loading": "Nilo-load ang audio editor...",

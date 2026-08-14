@@ -760,7 +760,22 @@
     "views": "{count} visualitzacions",
     "moreVersions": "+{count} més",
     "select": "Selecciona",
-    "creditCost": "{credits} crèdits"
+    "creditCost": "{credits} crèdits",
+    "chooseFile": "Tria un fitxer d'àudio (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "No hem pogut trobar cap font d'àudio. Prova d'editar l'artista o el títol de dalt i torna a cercar, o afegeix el teu propi àudio amb un URL o pujant un fitxer.",
+    "pasteUrl": "Enganxa l'URL",
+    "researchFailed": "La cerca ha fallat. Si us plau, torna-ho a provar.",
+    "searchAgain": "Torna a cercar",
+    "selectFailed": "No s'ha pogut seleccionar l'àudio",
+    "uploadFailed": "La pujada ha fallat. Si us plau, torna-ho a provar.",
+    "urlFailed": "No s'ha pogut utilitzar aquest URL. Prova una altra font.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Utilitza aquest fitxer",
+    "useThisUrl": "Utilitza aquest URL",
+    "artistLabel": "Artista",
+    "loading": "Carregant...",
+    "titleLabel": "Títol",
+    "uploadFileAction": "Puja un fitxer"
   },
   "audioEditor": {
     "loading": "Carregant l'editor d'àudio...",
