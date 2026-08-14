@@ -760,7 +760,22 @@
     "views": "{count} ยอดดู",
     "moreVersions": "อีก +{count}",
     "select": "เลือก",
-    "creditCost": "{credits} เครดิต"
+    "creditCost": "{credits} เครดิต",
+    "chooseFile": "เลือกไฟล์เสียง (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "เราไม่พบแหล่งที่มาของเสียงเลย ลองแก้ไขชื่อศิลปินหรือชื่อเพลงด้านบนแล้วค้นหาอีกครั้ง หรือใช้ไฟล์เสียงของคุณเองโดยการระบุ URL หรืออัปโหลดไฟล์",
+    "pasteUrl": "วาง URL",
+    "researchFailed": "ค้นหาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+    "searchAgain": "ค้นหาอีกครั้ง",
+    "selectFailed": "เลือกไฟล์เสียงไม่สำเร็จ",
+    "uploadFailed": "อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+    "urlFailed": "ไม่สามารถใช้ URL นั้นได้ ลองใช้แหล่งที่มาอื่น",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "ใช้ไฟล์นี้",
+    "useThisUrl": "ใช้ URL นี้",
+    "artistLabel": "ศิลปิน",
+    "loading": "กำลังโหลด...",
+    "titleLabel": "ชื่อเพลง",
+    "uploadFileAction": "อัปโหลดไฟล์"
   },
   "audioEditor": {
     "loading": "กำลังโหลดโปรแกรมแก้ไขเสียง...",

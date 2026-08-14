@@ -14,8 +14,9 @@ import {
   checkFilenameMismatch,
 } from "@/lib/audio-search-utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Loader2, Music2, ChevronDown, ChevronUp, Lightbulb } from "lucide-react"
+import { Loader2, Music2, ChevronDown, ChevronUp, Lightbulb, Search, Youtube, Upload } from "lucide-react"
 import { ResultCostChip } from "./ResultCostChip"
 
 // Version from pyproject.toml (single source of truth)
@@ -26,10 +27,11 @@ interface AudioSearchDialogProps {
   open: boolean
   onClose: () => void
   onSelect: () => void
+  searchArtist?: string
   searchTitle?: string
 }
 
-export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle }: AudioSearchDialogProps) {
+export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchArtist, searchTitle }: AudioSearchDialogProps) {
   const t = useTranslations('audioSearch')
   const [results, setResults] = useState<ExtendedAudioSearchResult[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -38,33 +40,51 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [showGuidance, setShowGuidance] = useState(false)
 
-  // Debug: Log component version on mount
-  useEffect(() => {
-    console.log(`[AudioSearchDialog] App version: ${APP_VERSION}`)
-  }, [])
+  // Editable search terms + recovery actions (edit → re-search, or provide own audio).
+  const [editArtist, setEditArtist] = useState(searchArtist || "")
+  const [editTitle, setEditTitle] = useState(searchTitle || "")
+  const [isResearching, setIsResearching] = useState(false)
+  const [actionError, setActionError] = useState("")
+  // Fallback (own audio) — auto-opens when a search returns nothing.
+  const [fallbackMode, setFallbackMode] = useState<"url" | "upload" | null>(null)
+  const [youtubeUrl, setYoutubeUrl] = useState("")
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [isSubmittingSource, setIsSubmittingSource] = useState(false)
+
+  // The title used for filename-mismatch badges tracks the (possibly edited) terms.
+  const effectiveTitle = editTitle || searchTitle
 
   // Load results when dialog opens
   useEffect(() => {
     if (open) {
-      console.log(`[AudioSearchDialog v${APP_VERSION}] Dialog opened for job: ${jobId}`)
       loadResults()
       setExpandedCategories(new Set()) // Reset expanded state
       setShowGuidance(false)
+      setFallbackMode(null)
+      setActionError("")
+      setYoutubeUrl("")
+      setUploadFile(null)
+      // Seed editable terms from props; refined again from the API response below.
+      setEditArtist(searchArtist || "")
+      setEditTitle(searchTitle || "")
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, jobId])
 
   async function loadResults() {
     setIsLoading(true)
     setError("")
     try {
-      console.log(`[AudioSearchDialog v${APP_VERSION}] Loading results...`)
       const data = await api.getAudioSearchResults(jobId)
-      console.log(`[AudioSearchDialog v${APP_VERSION}] Raw API response:`, data)
-      console.log(`[AudioSearchDialog v${APP_VERSION}] Results count: ${data.results?.length || 0}`)
       setResults((data.results || []) as ExtendedAudioSearchResult[])
+      // Prefer the job's stored search terms so the edit fields reflect reality.
+      if (data.artist) setEditArtist(data.artist)
+      if (data.title) setEditTitle(data.title)
+      if ((data.results || []).length === 0) setFallbackMode(null)
     } catch (err: any) {
-      console.error(`[AudioSearchDialog v${APP_VERSION}] Failed to load search results:`, err)
-      setError(err.message || "Failed to load search results")
+      // A parked job with no cached results returns 400 — that's the dead-end we
+      // are fixing, not a hard error. Show it as an empty state, not a red banner.
+      setResults([])
     } finally {
       setIsLoading(false)
     }
@@ -72,8 +92,6 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
 
   // Group results by category
   const groupedResults = useMemo(() => groupResults(results), [results])
-
-  // Count total categories
   const totalCategories = groupedResults.length
 
   async function handleSelect(index: number) {
@@ -84,24 +102,73 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
       onSelect()
       onClose()
     } catch (err: any) {
-      console.error("Failed to select audio:", err)
-      setError(err.message || "Failed to select audio")
+      setError(err.message || t('selectFailed'))
     } finally {
       setIsSelecting(null)
+    }
+  }
+
+  async function handleResearch() {
+    if (!editArtist.trim() || !editTitle.trim() || isResearching) return
+    setIsResearching(true)
+    setActionError("")
+    setError("")
+    try {
+      const data = await api.researchAudio(jobId, { artist: editArtist.trim(), title: editTitle.trim() })
+      const fresh = (data.results || []) as ExtendedAudioSearchResult[]
+      setResults(fresh)
+      setExpandedCategories(new Set())
+      // Nothing found again → surface the own-audio fallback.
+      setFallbackMode(fresh.length === 0 ? (fallbackMode ?? null) : null)
+    } catch (err: any) {
+      setActionError(err.message || t('researchFailed'))
+    } finally {
+      setIsResearching(false)
+    }
+  }
+
+  async function handleProvideUrl() {
+    const url = youtubeUrl.trim()
+    if (!url || isSubmittingSource) return
+    setIsSubmittingSource(true)
+    setActionError("")
+    try {
+      await api.provideUrlForJob(jobId, url)
+      onSelect()
+      onClose()
+    } catch (err: any) {
+      setActionError(err.message || t('urlFailed'))
+    } finally {
+      setIsSubmittingSource(false)
+    }
+  }
+
+  async function handleUpload() {
+    if (!uploadFile || isSubmittingSource) return
+    setIsSubmittingSource(true)
+    setActionError("")
+    try {
+      await api.attachUploadToJob(jobId, uploadFile)
+      onSelect()
+      onClose()
+    } catch (err: any) {
+      setActionError(err.message || t('uploadFailed'))
+    } finally {
+      setIsSubmittingSource(false)
     }
   }
 
   function toggleCategory(category: string) {
     setExpandedCategories(prev => {
       const next = new Set(prev)
-      if (next.has(category)) {
-        next.delete(category)
-      } else {
-        next.add(category)
-      }
+      if (next.has(category)) next.delete(category)
+      else next.add(category)
       return next
     })
   }
+
+  const hasResults = results.length > 0
+  const busy = isResearching || isSubmittingSource
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
@@ -116,8 +183,113 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
           </DialogTitle>
         </div>
 
-        {/* Guidance header (collapsed by default) */}
-        {!isLoading && results.length > 0 && (
+        {/* Refine bar: edit the search terms and search again. Always available so a
+            wrong-track match or a no-results dead-end is never a trap. */}
+        <div className="px-4 py-2 border-b border-border bg-secondary/30 shrink-0 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+            <div className="flex-1 min-w-0">
+              <label className="block text-[10px] text-muted-foreground mb-0.5">{t('artistLabel')}</label>
+              <Input
+                value={editArtist}
+                onChange={(e) => setEditArtist(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleResearch() }}
+                placeholder={t('artistLabel')}
+                disabled={busy}
+                className="h-8 text-xs bg-background"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="block text-[10px] text-muted-foreground mb-0.5">{t('titleLabel')}</label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleResearch() }}
+                placeholder={t('titleLabel')}
+                disabled={busy}
+                className="h-8 text-xs bg-background"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={handleResearch}
+              disabled={busy || !editArtist.trim() || !editTitle.trim()}
+              className="h-8 text-xs bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white shrink-0"
+            >
+              {isResearching ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Search className="w-3.5 h-3.5 mr-1" />}
+              {t('searchAgain')}
+            </Button>
+          </div>
+
+          {/* Provide-your-own-audio fallback */}
+          <div className="flex items-center gap-3 text-[10px]">
+            <button
+              onClick={() => setFallbackMode(fallbackMode === "url" ? null : "url")}
+              className={`flex items-center gap-1 hover:text-foreground transition-colors ${fallbackMode === "url" ? 'text-[var(--brand-pink)]' : 'text-muted-foreground'}`}
+            >
+              <Youtube className="w-3 h-3" /> {t('pasteUrl')}
+            </button>
+            <button
+              onClick={() => setFallbackMode(fallbackMode === "upload" ? null : "upload")}
+              className={`flex items-center gap-1 hover:text-foreground transition-colors ${fallbackMode === "upload" ? 'text-[var(--brand-pink)]' : 'text-muted-foreground'}`}
+            >
+              <Upload className="w-3 h-3" /> {t('uploadFileAction')}
+            </button>
+          </div>
+
+          {fallbackMode === "url" && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                type="url"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleProvideUrl() }}
+                placeholder={t('urlPlaceholder')}
+                disabled={busy}
+                className="h-8 text-xs bg-background flex-1"
+              />
+              <Button
+                size="sm"
+                onClick={handleProvideUrl}
+                disabled={busy || !youtubeUrl.trim()}
+                className="h-8 text-xs bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white shrink-0"
+              >
+                {isSubmittingSource ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                {t('useThisUrl')}
+              </Button>
+            </div>
+          )}
+
+          {fallbackMode === "upload" && (
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+              <label className="flex-1 border border-dashed border-border rounded px-2 py-1.5 text-[10px] text-muted-foreground cursor-pointer hover:border-[var(--brand-pink)] truncate">
+                <input
+                  type="file"
+                  accept=".mp3,.wav,.flac,.m4a,.ogg,audio/*"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  className="sr-only"
+                  disabled={busy}
+                />
+                {uploadFile ? uploadFile.name : t('chooseFile')}
+              </label>
+              <Button
+                size="sm"
+                onClick={handleUpload}
+                disabled={busy || !uploadFile}
+                className="h-8 text-xs bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white shrink-0"
+              >
+                {isSubmittingSource ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                {t('useThisFile')}
+              </Button>
+            </div>
+          )}
+
+          {actionError && (
+            <p className="text-[10px] text-red-400">{actionError}</p>
+          )}
+        </div>
+
+        {/* Guidance header (collapsed by default) — only meaningful when there are results */}
+        {!isLoading && hasResults && (
           <div className="px-4 py-1.5 border-b border-border bg-secondary/30">
             <button
               onClick={() => setShowGuidance(!showGuidance)}
@@ -148,12 +320,13 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center py-12">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+            <span className="ml-2 text-sm text-muted-foreground">{t('loading')}</span>
           </div>
-        ) : results.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-muted-foreground">
+        ) : !hasResults ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-12 text-muted-foreground px-6 text-center">
             <Music2 className="w-8 h-8 mb-2 opacity-50" />
-            <p className="text-sm">{t('noAudioSources')}</p>
+            <p className="text-sm font-medium text-foreground">{t('noAudioSources')}</p>
+            <p className="text-xs mt-1.5 max-w-md">{t('noResultsHelp')}</p>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto min-h-0 p-4">
@@ -190,7 +363,7 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
                     {/* Results in category */}
                     <div className="divide-y divide-slate-700/50">
                       {displayResults.map((result) => {
-                        const mismatch = searchTitle ? checkFilenameMismatch(searchTitle, result) : null
+                        const mismatch = effectiveTitle ? checkFilenameMismatch(effectiveTitle, result) : null
                         const hasMismatch = mismatch?.isMismatch ?? false
 
                         return (
@@ -226,7 +399,7 @@ export function AudioSearchDialog({ jobId, open, onClose, onSelect, searchTitle 
                                 )}
                                 {hasMismatch && (
                                   <span
-                                    title={`Expected "${searchTitle}" but filename is "${mismatch!.filename}"${mismatch!.suggestedTrack ? ` (looks like "${mismatch!.suggestedTrack}")` : ''}`}
+                                    title={`Expected "${effectiveTitle}" but filename is "${mismatch!.filename}"${mismatch!.suggestedTrack ? ` (looks like "${mismatch!.suggestedTrack}")` : ''}`}
                                     className="text-[8px] px-1 py-0.5 rounded font-medium bg-yellow-600/20 text-yellow-400 cursor-help"
                                   >
                                     {t('wrongTrack')}

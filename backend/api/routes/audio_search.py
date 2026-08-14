@@ -235,6 +235,49 @@ class AudioSelectRequest(BaseModel):
     acknowledged_credits: Optional[int] = Field(None, description="Expected total credits after this selection (anti-mismatch guard)")
 
 
+class ProvideUrlRequest(BaseModel):
+    """Request to attach a YouTube/yt-dlp URL to an existing parked job."""
+    url: str = Field(..., description="Audio source URL (YouTube, SoundCloud, or other yt-dlp supported site)")
+
+
+class AttachUploadUrlsRequest(BaseModel):
+    """Request for a signed upload URL to attach a file to an existing parked job."""
+    filename: str = Field(..., description="Original filename with extension")
+    content_type: str = Field("application/octet-stream", description="MIME type of the file")
+
+
+class AttachUploadUrlsResponse(BaseModel):
+    """Signed URL to upload an audio file for an existing job."""
+    job_id: str
+    gcs_path: str
+    upload_url: str
+
+
+class AttachResponse(BaseModel):
+    """Response after attaching a URL/file source to a parked job."""
+    status: str
+    job_id: str
+    message: str
+
+
+class ResearchRequest(BaseModel):
+    """Request to re-run the audio search for an existing parked job.
+
+    Both fields are optional: when a caller edits the artist/title (e.g. to fix
+    a typo or shorten an over-long title that returned nothing), the corrected
+    values are used for the search AND applied to the job. When omitted, the
+    job's existing search terms are re-used (a plain retry of a failed search).
+    """
+    artist: Optional[str] = Field(None, description="Corrected artist to search + apply (blank = keep existing)")
+    title: Optional[str] = Field(None, description="Corrected title to search + apply (blank = keep existing)")
+
+    @validator('artist', 'title')
+    def normalize_text_fields(cls, v):
+        if v is not None and isinstance(v, str):
+            return normalize_text(v)
+        return v
+
+
 class AudioSelectResponse(BaseModel):
     """Response from audio source selection."""
     status: str
@@ -580,6 +623,55 @@ async def _download_audio_and_trigger_workers(
         job_manager.fail_job(job_id, f"Audio download failed: {e}")
 
 
+def _build_result_response(r: AudioSearchResult) -> AudioSearchResultResponse:
+    """Serialize an AudioSearchResult into the rich API response shape.
+
+    raw_result may be a dict (remote flacfetch API) or a Release object
+    (local flacfetch); both expose the same enriched display fields.
+    Shared by the search, standalone-search, and re-search endpoints so the
+    result shape stays identical across all three.
+    """
+    raw_dict: Dict[str, Any] = {}
+    if r.raw_result:
+        if isinstance(r.raw_result, dict):
+            raw_dict = r.raw_result
+        else:
+            try:
+                raw_dict = r.raw_result.to_dict()
+            except AttributeError:
+                pass  # Not a Release object
+
+    return AudioSearchResultResponse(
+        index=r.index,
+        title=r.title,
+        artist=r.artist,
+        provider=r.provider,
+        url=r.url,
+        duration=r.duration,
+        quality=r.quality,
+        source_id=r.source_id,
+        seeders=raw_dict.get('seeders') or r.seeders,
+        target_file=raw_dict.get('target_file') or r.target_file,
+        year=raw_dict.get('year'),
+        label=raw_dict.get('label'),
+        edition_info=raw_dict.get('edition_info'),
+        release_type=raw_dict.get('release_type'),
+        channel=raw_dict.get('channel'),
+        view_count=raw_dict.get('view_count'),
+        size_bytes=raw_dict.get('size_bytes'),
+        target_file_size=raw_dict.get('target_file_size'),
+        track_pattern=raw_dict.get('track_pattern'),
+        match_score=raw_dict.get('match_score'),
+        formatted_size=raw_dict.get('formatted_size'),
+        formatted_duration=raw_dict.get('formatted_duration'),
+        formatted_views=raw_dict.get('formatted_views'),
+        is_lossless=raw_dict.get('is_lossless'),
+        quality_str=raw_dict.get('quality_str'),
+        # Remote API uses 'quality_data', local uses 'quality' for the dict
+        quality_data=raw_dict.get('quality_data') or raw_dict.get('quality'),
+    )
+
+
 @router.post("/audio-search/search", response_model=AudioSearchResponse)
 async def search_audio(
     request: Request,
@@ -886,59 +978,8 @@ async def search_audio(
         )
         
         # Convert to response format with full Release data for rich display
-        result_responses = []
-        for r in search_results:
-            # Get full serialized data from raw_result if available
-            # raw_result can be either:
-            # - A dict (from remote flacfetch API)
-            # - A Release object (from local flacfetch)
-            raw_dict = {}
-            if r.raw_result:
-                if isinstance(r.raw_result, dict):
-                    # Remote flacfetch API returns dicts directly
-                    raw_dict = r.raw_result
-                else:
-                    # Local flacfetch returns Release objects
-                    try:
-                        raw_dict = r.raw_result.to_dict()
-                    except AttributeError:
-                        pass  # Not a Release object
-            
-            result_responses.append(
-                AudioSearchResultResponse(
-                    index=r.index,
-                    title=r.title,
-                    artist=r.artist,
-                    provider=r.provider,
-                    url=r.url,
-                    duration=r.duration,
-                    quality=r.quality,
-                    source_id=r.source_id,
-                    seeders=raw_dict.get('seeders') or r.seeders,
-                    target_file=raw_dict.get('target_file') or r.target_file,
-                    # Additional fields for rich display
-                    year=raw_dict.get('year'),
-                    label=raw_dict.get('label'),
-                    edition_info=raw_dict.get('edition_info'),
-                    release_type=raw_dict.get('release_type'),
-                    channel=raw_dict.get('channel'),
-                    view_count=raw_dict.get('view_count'),
-                    size_bytes=raw_dict.get('size_bytes'),
-                    target_file_size=raw_dict.get('target_file_size'),
-                    track_pattern=raw_dict.get('track_pattern'),
-                    match_score=raw_dict.get('match_score'),
-                    # Pre-computed display fields
-                    formatted_size=raw_dict.get('formatted_size'),
-                    formatted_duration=raw_dict.get('formatted_duration'),
-                    formatted_views=raw_dict.get('formatted_views'),
-                    is_lossless=raw_dict.get('is_lossless'),
-                    quality_str=raw_dict.get('quality_str'),
-                    # Full quality object for Release.from_dict()
-                    # Remote API uses 'quality_data', local uses 'quality' for the dict
-                    quality_data=raw_dict.get('quality_data') or raw_dict.get('quality'),
-                )
-            )
-        
+        result_responses = [_build_result_response(r) for r in search_results]
+
         return AudioSearchResponse(
             status="awaiting_selection",
             job_id=job_id,
@@ -1012,50 +1053,10 @@ async def search_audio_standalone(
             raise HTTPException(status_code=500, detail=f"Search failed: {e}")
 
         # Build result response objects
-        result_responses: List[AudioSearchResultResponse] = []
-        results_dicts: List[Dict[str, Any]] = []
-        for r in search_results:
-            raw_dict: Dict[str, Any] = {}
-            if r.raw_result:
-                if isinstance(r.raw_result, dict):
-                    raw_dict = r.raw_result
-                else:
-                    try:
-                        raw_dict = r.raw_result.to_dict()
-                    except AttributeError:
-                        pass
-
-            result_responses.append(
-                AudioSearchResultResponse(
-                    index=r.index,
-                    title=r.title,
-                    artist=r.artist,
-                    provider=r.provider,
-                    url=r.url,
-                    duration=r.duration,
-                    quality=r.quality,
-                    source_id=r.source_id,
-                    seeders=raw_dict.get('seeders') or r.seeders,
-                    target_file=raw_dict.get('target_file') or r.target_file,
-                    year=raw_dict.get('year'),
-                    label=raw_dict.get('label'),
-                    edition_info=raw_dict.get('edition_info'),
-                    release_type=raw_dict.get('release_type'),
-                    channel=raw_dict.get('channel'),
-                    view_count=raw_dict.get('view_count'),
-                    size_bytes=raw_dict.get('size_bytes'),
-                    target_file_size=raw_dict.get('target_file_size'),
-                    track_pattern=raw_dict.get('track_pattern'),
-                    match_score=raw_dict.get('match_score'),
-                    formatted_size=raw_dict.get('formatted_size'),
-                    formatted_duration=raw_dict.get('formatted_duration'),
-                    formatted_views=raw_dict.get('formatted_views'),
-                    is_lossless=raw_dict.get('is_lossless'),
-                    quality_str=raw_dict.get('quality_str'),
-                    quality_data=raw_dict.get('quality_data') or raw_dict.get('quality'),
-                )
-            )
-            results_dicts.append(r.to_dict())
+        result_responses: List[AudioSearchResultResponse] = [
+            _build_result_response(r) for r in search_results
+        ]
+        results_dicts: List[Dict[str, Any]] = [r.to_dict() for r in search_results]
 
         # Store session in Firestore (TTL: 7 days)
         # Long TTL so users who leave a tab open mid-flow don't hit "Search expired".
@@ -1127,6 +1128,319 @@ async def get_audio_search_results(
         "results": search_results,
         "results_count": len(search_results),
     }
+
+
+@router.post("/audio-search/{job_id}/research", response_model=AudioSearchResponse)
+async def research_audio(
+    job_id: str,
+    request: Request,
+    body: ResearchRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Re-run the audio search for an existing job that is awaiting selection.
+
+    Handles the dead-end where a search returned nothing (or a transient
+    failure parked the job with no sources): the user can retry, or edit the
+    artist/title and search again. The job stays in AWAITING_AUDIO_SELECTION;
+    its cached results are replaced with the fresh ones (which may be empty —
+    that is a normal outcome, returned as a 200 with an empty list, not an
+    error, so the UI can offer the manual fallback).
+
+    Editing the artist/title also applies the correction to the job's display
+    artist/title (used for title screens, filenames, lyrics), so the whole
+    pipeline runs on the corrected metadata.
+    """
+    locale = get_locale_from_request(request)
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "audioSearch.jobNotFound", job_id=job_id))
+
+    if job.status != JobStatus.AWAITING_AUDIO_SELECTION:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is not awaiting audio selection (status: {job.status})"
+        )
+
+    # Resolve the terms to search. A non-blank edited value overrides; otherwise
+    # fall back to the job's existing search terms (then its display fields).
+    edited_artist = (body.artist or "").strip()
+    edited_title = (body.title or "").strip()
+    artist = edited_artist or job.audio_search_artist or job.artist or ""
+    title = edited_title or job.audio_search_title or job.title or ""
+
+    if not artist or not title:
+        raise HTTPException(status_code=400, detail="Both artist and title are required to search")
+
+    # Apply the edit to the job before searching so a corrected typo/title flows
+    # through the rest of the pipeline (search terms + display metadata).
+    prev_artist = job.audio_search_artist or job.artist
+    prev_title = job.audio_search_title or job.title
+    if artist != prev_artist or title != prev_title:
+        job_manager.update_job(job_id, {
+            'audio_search_artist': artist,
+            'audio_search_title': title,
+            'artist': artist,
+            'title': title,
+        })
+        logger.info(f"[job:{job_id}] Re-search with edited terms: {artist} - {title}")
+
+    job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.SEARCHING_AUDIO,
+        progress=5,
+        message=f"Searching for: {artist} - {title}",
+        raise_on_invalid=False,
+    )
+
+    audio_search_service = get_audio_search_service()
+    try:
+        search_results = await audio_search_service.search_async(artist, title)
+    except NoResultsError:
+        search_results = []
+    except AudioSearchError as e:
+        # Restore the awaiting state so the job isn't stranded, then surface the error.
+        job_manager.transition_to_state(
+            job_id=job_id,
+            new_status=JobStatus.AWAITING_AUDIO_SELECTION,
+            progress=10,
+            message="Search failed. Please try again or provide your own audio.",
+            raise_on_invalid=False,
+        )
+        raise HTTPException(status_code=502, detail=f"Search failed: {e}")
+
+    # Replace cached results (empty is fine — the UI offers the manual fallback).
+    results_dicts = [r.to_dict() for r in search_results]
+    remote_id = getattr(audio_search_service, "last_remote_search_id", None)
+    job_manager.update_job(job_id, {
+        'state_data.audio_search_results': results_dicts,
+        'state_data.audio_search_count': len(results_dicts),
+        # Overwrite (or clear) the stale remote_search_id from the prior search.
+        'state_data.remote_search_id': remote_id,
+    })
+
+    job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.AWAITING_AUDIO_SELECTION,
+        progress=10,
+        message=(
+            f"Found {len(results_dicts)} audio sources. Waiting for selection."
+            if results_dicts else
+            "No audio sources found. Edit the details and search again, or provide your own audio."
+        ),
+        raise_on_invalid=False,
+    )
+
+    return AudioSearchResponse(
+        status="awaiting_selection",
+        job_id=job_id,
+        message=f"Re-search complete: {len(results_dicts)} audio sources.",
+        results=[_build_result_response(r) for r in search_results],
+        results_count=len(results_dicts),
+        auto_download=False,
+        server_version=VERSION,
+    )
+
+
+def _require_awaiting_selection(job_id: str, locale: str):
+    """Load a job and assert it is parked awaiting audio selection.
+
+    Shared guard for the manual-fallback endpoints (URL / file upload). Returns
+    the job or raises 404 (missing) / 400 (wrong state).
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "audioSearch.jobNotFound", job_id=job_id))
+    if job.status != JobStatus.AWAITING_AUDIO_SELECTION:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is not awaiting audio selection (status: {job.status})"
+        )
+    return job
+
+
+@router.post("/audio-search/{job_id}/provide-url", response_model=AttachResponse)
+async def provide_url_for_job(
+    job_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: ProvideUrlRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Attach a YouTube/yt-dlp URL to a parked job and start processing.
+
+    The manual escape hatch when audio search finds nothing usable: the user
+    pastes a source URL for a job already in AWAITING_AUDIO_SELECTION. The job
+    was already created and charged, so we do NOT create a new job or deduct
+    base credits — the post-download duration reconcile handles final billing.
+
+    Mirrors create_job_from_url's inline download (so generic yt-dlp sites work),
+    but transitions the existing parked job AWAITING_AUDIO_SELECTION →
+    DOWNLOADING_AUDIO → DOWNLOADING rather than creating a job.
+    """
+    locale = get_locale_from_request(request)
+    # Validation helpers live in file_upload; import lazily to avoid a heavy
+    # import at module load (and any import cycle).
+    from backend.api.routes.file_upload import (
+        _is_youtube_url,
+        _validate_url,
+        _unsupported_url_platform,
+        _drm_unsupported_detail,
+    )
+
+    job = _require_awaiting_selection(job_id, locale)
+
+    url = (body.url or "").strip()
+
+    # Reject DRM-protected streaming links (Apple Music, Spotify, Tidal, …) upfront.
+    unsupported_platform = _unsupported_url_platform(url)
+    if unsupported_platform:
+        raise HTTPException(status_code=400, detail=_drm_unsupported_detail(locale, unsupported_platform))
+
+    if not _validate_url(url):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid URL. Please provide a valid YouTube, Vimeo, SoundCloud, or other supported video URL."
+        )
+
+    youtube_service = get_youtube_download_service()
+
+    # For YouTube URLs, check availability early (geo/private/removed/bot/age).
+    if _is_youtube_url(url):
+        availability = await youtube_service.check_availability(url)
+        if availability and not availability.get("available"):
+            if availability.get("is_geo_restricted"):
+                detail = ("This YouTube video is not available in our server's region. "
+                          "Try using a different source for this song.")
+            elif availability.get("is_private"):
+                detail = "This YouTube video is private and cannot be downloaded."
+            elif availability.get("is_removed"):
+                detail = "This YouTube video has been removed and cannot be downloaded."
+            elif availability.get("is_bot_blocked"):
+                detail = ("We're temporarily unable to access YouTube to download this video. "
+                          "Please try again in a few minutes, or search for this song from another source.")
+            elif availability.get("is_age_restricted"):
+                detail = "This YouTube video is age-restricted and cannot be downloaded."
+            else:
+                detail = f"This YouTube video is unavailable: {availability.get('error', 'unknown error')}"
+            raise HTTPException(status_code=400, detail=detail)
+
+    # Transition into the download state BEFORE downloading so the job reflects
+    # progress and start_job_processing's DOWNLOADING_AUDIO → DOWNLOADING is valid.
+    job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.DOWNLOADING_AUDIO,
+        progress=10,
+        message=f"Downloading from provided URL: {job.artist} - {job.title}",
+        raise_on_invalid=False,
+    )
+
+    try:
+        audio_gcs_path = await youtube_service.download(
+            url=url, job_id=job_id, artist=job.artist, title=job.title,
+        )
+    except YouTubeDownloadError as e:
+        # Put the job back in the queue so the user can retry / pick another source.
+        job_manager.transition_to_state(
+            job_id=job_id,
+            new_status=JobStatus.AWAITING_AUDIO_SELECTION,
+            progress=10,
+            message="Download from that URL failed. Try another URL or search again.",
+            raise_on_invalid=False,
+        )
+        raise HTTPException(status_code=502, detail=f"Download failed: {e}")
+
+    job_manager.update_job(job_id, {
+        'audio_source_type': 'url',
+        'url': url,
+        'input_media_gcs_path': audio_gcs_path,
+        'filename': os.path.basename(audio_gcs_path),
+    })
+
+    # start_job_processing transitions DOWNLOADING_AUDIO → DOWNLOADING, runs the
+    # duration reconcile (final billing), and triggers audio + lyrics workers.
+    background_tasks.add_task(
+        job_manager.start_job_processing, job_id, 15,
+        "Audio downloaded, starting processing",
+    )
+
+    return AttachResponse(status="success", job_id=job_id, message="URL accepted, download complete, processing started")
+
+
+@router.post("/audio-search/{job_id}/attach-upload-url", response_model=AttachUploadUrlsResponse)
+async def attach_upload_url(
+    job_id: str,
+    request: Request,
+    body: AttachUploadUrlsRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Issue a signed GCS upload URL to attach an audio file to a parked job.
+
+    Step 1 of the manual file-upload fallback: the client PUTs the file to the
+    returned URL, then calls /attach-upload-complete. No job is created here.
+    """
+    locale = get_locale_from_request(request)
+    _require_awaiting_selection(job_id, locale)
+
+    filename = os.path.basename((body.filename or "").strip()) or "audio"
+    gcs_path = f"uploads/{job_id}/audio/{filename}"
+    upload_url = storage_service.generate_signed_upload_url(
+        gcs_path, content_type=body.content_type or "application/octet-stream", expiration_minutes=60,
+    )
+    return AttachUploadUrlsResponse(job_id=job_id, gcs_path=gcs_path, upload_url=upload_url)
+
+
+@router.post("/audio-search/{job_id}/attach-upload-complete", response_model=AttachResponse)
+async def attach_upload_complete(
+    job_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Finalise a file upload attached to a parked job and start processing.
+
+    Step 2 of the manual file-upload fallback: verifies the uploaded audio landed
+    in GCS, points the job at it, and starts processing. Like the URL path, the
+    job was already created/charged, so no new job and no base-credit deduction.
+    """
+    locale = get_locale_from_request(request)
+    from backend.api.routes.file_upload import _select_mixed_audio_files
+
+    job = _require_awaiting_selection(job_id, locale)
+
+    prefix = f"uploads/{job_id}/audio/"
+    files = storage_service.list_files(prefix)
+    audio_files = [f for f in files if not f.rstrip("/").endswith("/")]
+    if not audio_files:
+        raise HTTPException(status_code=400, detail="No uploaded audio file found. Upload the file first.")
+
+    selected = _select_mixed_audio_files(audio_files)
+    audio_gcs_path = selected[0] if isinstance(selected, list) and selected else (selected or audio_files[0])
+
+    job_manager.update_job(job_id, {
+        'audio_source_type': 'upload',
+        'input_media_gcs_path': audio_gcs_path,
+        'filename': os.path.basename(audio_gcs_path),
+    })
+
+    job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.DOWNLOADING_AUDIO,
+        progress=10,
+        message=f"File uploaded: {job.artist} - {job.title}",
+        raise_on_invalid=False,
+    )
+
+    background_tasks.add_task(
+        job_manager.start_job_processing, job_id, 15,
+        "File uploaded, starting processing",
+    )
+
+    return AttachResponse(status="success", job_id=job_id, message="Upload accepted, processing started")
 
 
 @router.post("/audio-search/{job_id}/select", response_model=AudioSelectResponse)

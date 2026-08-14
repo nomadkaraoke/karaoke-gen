@@ -279,6 +279,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
         open={showAudioSearch}
         onClose={() => setShowAudioSearch(false)}
         onSelect={onRefresh}
+        searchArtist={job.artist}
         searchTitle={job.title}
       />
 
