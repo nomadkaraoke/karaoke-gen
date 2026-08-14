@@ -14,6 +14,7 @@ import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 import { getJobStep, formatStepIndicator, getJobProgressPercent, isWaitingForEncodingCapacity, isVisibilityChangeInProgress } from "@/lib/job-status"
 import { useAuth } from "@/lib/auth"
 import { useDurationConfirm } from "@/hooks/use-duration-confirm"
+import { parseServerDate } from "@/lib/utils"
 
 /**
  * StatusIndicator component - Shows step-based progress with visual indicator
@@ -113,7 +114,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
       onNeedRefresh: onRefresh,
     })
 
-  const createdAt = new Date(job.created_at).toLocaleString()
+  const createdAt = parseServerDate(job.created_at).toLocaleString()
   const isInteractive = job.status === "awaiting_review" ||
                         job.status === "in_review" ||
                         job.status === "awaiting_instrumental_selection" ||

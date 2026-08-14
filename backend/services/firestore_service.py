@@ -3,7 +3,7 @@ Firestore database operations for job management.
 """
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from google.cloud import firestore
 from google.cloud.firestore_v1 import FieldFilter
 
@@ -87,7 +87,9 @@ class FirestoreService:
             # Create timeline event
             timeline_event = TimelineEvent(
                 status=status.value,
-                timestamp=datetime.utcnow().isoformat(),
+                # Timezone-aware UTC so the serialized ISO string carries a
+                # "+00:00" offset (see job_manager.create_job for rationale).
+                timestamp=datetime.now(timezone.utc).isoformat(),
                 progress=progress,
                 message=message,
                 metadata=timeline_metadata,
