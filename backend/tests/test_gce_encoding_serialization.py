@@ -211,4 +211,5 @@ class TestEnsureLatestWheelConcurrency:
                 t.join()
 
         assert results == [True, True, True]
-        assert counter["cp"] == 1  # exactly one download despite 3 concurrent callers
+        assert counter["cp"] == 1   # exactly one download despite 3 concurrent callers
+        assert counter["pip"] == 1  # and exactly one install (no concurrent venv writes)
