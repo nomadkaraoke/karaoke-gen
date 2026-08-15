@@ -61,9 +61,12 @@ def select_green_candidates(
         })
 
     override_vm = config.get("active_override_vm")
+    # Only complete entries are usable — a fallback missing vm/zone/ip would
+    # produce an unstartable candidate (e.g. `gcloud ... --zone=None`) and
+    # silently drop capacity from the selection path.
     usable = [
         f for f in (fallback_vms or [])
-        if f.get("vm") and f.get("vm") != override_vm
+        if f.get("vm") and f.get("zone") and f.get("ip") and f.get("vm") != override_vm
     ]
     # n2 (non-Spot) first, then stable name order for determinism.
     usable.sort(key=lambda f: (0 if _is_n2(f["vm"]) else 1, f["vm"]))

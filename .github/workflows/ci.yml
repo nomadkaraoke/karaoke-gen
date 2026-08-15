@@ -1275,11 +1275,13 @@ jobs:
               return r.stdout.strip()
 
           green = None
+          started = []  # every VM we issued `start` to — so we can stop losers
           for c in candidates:
               vm, zone = c["vm"], c["zone"]
               print(f"Trying green candidate: {vm} ({zone}, kind={c['kind']})")
               subprocess.run(["gcloud", "compute", "instances", "start", vm,
                               f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+              started.append((vm, zone))
               for i in range(12):
                   st = vm_status(vm, zone)
                   print(f"  {vm} status={st} ({i+1}/12)")
@@ -1289,6 +1291,15 @@ jobs:
                   time.sleep(10)
               if green:
                   break
+
+          # Stop every candidate we started but did NOT select, so a slow-booting
+          # loser can't come up later unmanaged (and billed) after the deploy.
+          selected_vm = green["vm"] if green else None
+          for vm, zone in started:
+              if vm != selected_vm:
+                  print(f"Stopping unselected candidate {vm} ({zone})")
+                  subprocess.run(["gcloud", "compute", "instances", "stop", vm,
+                                  f"--zone={zone}", "--project=nomadkaraoke"], check=False)
 
           started_fresh = "true"
           inplace_failed = False
@@ -1574,8 +1585,9 @@ jobs:
                   print(f"::warning::Skipping drain/stop with incomplete target: {tgt}")
                   continue
               status = vm_status(vm, zone)
-              if status != "RUNNING":
-                  print(f"{vm} status={status or 'unknown'} (not RUNNING); stopping without drain")
+              if status != "RUNNING" or not ip:
+                  why = f"status={status or 'unknown'}" if status != "RUNNING" else "no IP to probe"
+                  print(f"{vm} ({why}); stopping without drain")
                   subprocess.run(["gcloud", "compute", "instances", "stop", vm,
                                   f"--zone={zone}", "--project=nomadkaraoke"], check=False)
                   continue
@@ -1592,6 +1604,24 @@ jobs:
               subprocess.run(["gcloud", "compute", "instances", "stop", vm,
                               f"--zone={zone}", "--project=nomadkaraoke"], check=False)
           PYEOF
+
+      # Safety net: the deploy_in_progress lock is set unconditionally earlier, and
+      # both Rollback (on failure) and Promote (on success) clear it — but if the
+      # Promote step itself errors or hits its timeout, neither runs. This always()
+      # step guarantees the lock is released so the next deploy doesn't stall 10 min
+      # in "Wait for concurrent deploy". Idempotent with the other clears.
+      - name: Clear encoding-worker deploy lock
+        if: always()
+        run: |
+          python3 -c "
+          from google.cloud import firestore
+          db = firestore.Client(project='nomadkaraoke')
+          db.collection('config').document('encoding-worker').update({
+              'deploy_in_progress': False,
+              'deploy_in_progress_since': None,
+          })
+          print('Ensured deploy_in_progress is cleared')
+          " || true
 
       - name: Configure Docker for Artifact Registry
         run: |

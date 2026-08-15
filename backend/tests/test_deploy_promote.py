@@ -68,6 +68,19 @@ class TestSelectGreenCandidates:
         assert all(c["kind"] == "fallback" for c in cands)
         assert cands[0]["vm"] == "encoding-worker-fallback-n2c"
 
+    def test_malformed_fallback_entries_are_dropped(self):
+        fbs = [
+            {"vm": "encoding-worker-fallback-n2c", "zone": "us-central1-c", "ip": "35.226.119.227"},
+            {"vm": "encoding-worker-fallback-broken", "ip": "1.2.3.4"},  # no zone
+            {"zone": "us-central1-a", "ip": "5.6.7.8"},                   # no vm
+            {"vm": "encoding-worker-fallback-noip", "zone": "us-central1-b"},  # no ip
+        ]
+        cands = select_green_candidates(_config(active_override_vm=None), fbs)
+        vms = [c["vm"] for c in cands]
+        assert vms.count("encoding-worker-fallback-n2c") == 1
+        assert "encoding-worker-fallback-broken" not in vms
+        assert "encoding-worker-fallback-noip" not in vms
+
     def test_no_override_keeps_all_fallbacks(self):
         cands = select_green_candidates(_config(active_override_vm=None), FALLBACKS)
         fb_vms = [c["vm"] for c in cands if c["kind"] == "fallback"]
