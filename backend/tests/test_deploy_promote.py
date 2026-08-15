@@ -43,6 +43,12 @@ def _config(**over):
 
 class TestSelectGreenCandidates:
     def test_secondary_first_then_n2_before_c4d_excluding_override(self):
+        # LEGACY secret shape (no machine_type). The shared ranking infers n2 from
+        # the n2c/n2f names (rank 70) but CANNOT infer the bare c4d fallbacks a/b
+        # (no family token) → they get UNKNOWN_RANK and sort last. Net order here
+        # matches the pre-refactor "secondary, then n2, then c4d" result. Once the
+        # secret carries machine_type (post-rollout), a/b rank as c4d — see
+        # TestSelectGreenRankingSharedWithRuntime.
         cands = select_green_candidates(_config(), FALLBACKS)
         vms = [c["vm"] for c in cands]
         # c4d secondary leads; current override (n2f) excluded; n2c (n2) before c4d fallbacks.
@@ -162,3 +168,54 @@ class TestPromotePlanSecondaryBranch:
         u = plan["firestore_updates"]
         assert "active_override_vm" not in u  # nothing to clear
         assert [d["vm"] for d in plan["drain_and_stop"]] == ["encoding-worker-b"]
+
+
+class TestSelectGreenRankingSharedWithRuntime:
+    """Green selection now ranks via the shared preference (machine_type + cooldown)."""
+
+    # 6-type pool with explicit machine_type (mirrors the post-rollout secret).
+    POOL = [
+        {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.1",
+         "machine_type": "c4-highcpu-32"},
+        {"vm": "encoding-worker-fallback-n4db", "zone": "us-central1-b", "ip": "10.0.0.2",
+         "machine_type": "n4d-highcpu-32"},
+        {"vm": "encoding-worker-fallback-c2df", "zone": "us-central1-f", "ip": "10.0.0.3",
+         "machine_type": "c2d-highcpu-32"},
+        {"vm": "encoding-worker-fallback-n2da", "zone": "us-central1-a", "ip": "10.0.0.4",
+         "machine_type": "n2d-highcpu-32"},
+        {"vm": "encoding-worker-fallback-n2c", "zone": "us-central1-c", "ip": "10.0.0.5",
+         "machine_type": "n2-highcpu-32"},
+    ]
+
+    def test_secondary_c4d_leads_then_fastest_fallbacks(self):
+        cfg = _config(active_override_vm=None)
+        vms = [c["vm"] for c in select_green_candidates(cfg, self.POOL)]
+        # c4d secondary (rank 10) first, then c4 > n4d > c2d > n2d > n2.
+        assert vms == [
+            "encoding-worker-a",              # secondary, c4d
+            "encoding-worker-fallback-c4a",   # c4
+            "encoding-worker-fallback-n4db",  # n4d
+            "encoding-worker-fallback-c2df",  # c2d
+            "encoding-worker-fallback-n2da",  # n2d
+            "encoding-worker-fallback-n2c",   # n2
+        ]
+
+    def test_c4d_stockout_demotes_secondary_below_deep_pool(self):
+        # c4d@us-central1-c (the secondary's zone) recently stocked out.
+        from datetime import datetime, timezone
+        cfg = _config(
+            active_override_vm=None,
+            capacity_state={"c4d-highcpu-32@us-central1-c": datetime.now(timezone.utc).isoformat()},
+        )
+        cands = select_green_candidates(cfg, self.POOL)
+        vms = [c["vm"] for c in cands]
+        # The c4d secondary is demoted to the back; a fast fallback (c4) now leads.
+        assert vms[0] == "encoding-worker-fallback-c4a"
+        assert vms[-1] == "encoding-worker-a"  # demoted secondary re-probed last
+        # kind survives the reordering so promote_plan still treats it correctly.
+        assert cands[-1]["kind"] == "secondary"
+
+    def test_machine_type_carried_through(self):
+        cands = select_green_candidates(_config(active_override_vm=None), self.POOL)
+        c4 = next(c for c in cands if c["vm"] == "encoding-worker-fallback-c4a")
+        assert c4["machine_type"] == "c4-highcpu-32"

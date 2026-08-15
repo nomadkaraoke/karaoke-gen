@@ -40,10 +40,12 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         "flacfetch-api-key",
         "flacfetch-api-url",
         "encoding-worker-api-key",
-        # Capacity-fallback VMs config (JSON list of {vm,zone,ip}). Stored as
-        # a secret because --set-env-vars on Cloud Run is comma-delimited and
-        # the JSON value contains commas; the value itself is non-secret
-        # (just public IPs of fallback VMs).
+        # Capacity-fallback VMs config (JSON list of {vm,zone,ip,machine_type?}).
+        # machine_type (e.g. "c4-highcpu-32") drives the shared speed-rank
+        # ordering; optional for legacy entries (inferred from the vm name).
+        # Stored as a secret because --set-env-vars on Cloud Run is
+        # comma-delimited and the JSON value contains commas; the value itself is
+        # non-secret (just public IPs of fallback VMs).
         "encoding-worker-fallback-vms",
 
         # Notifications
