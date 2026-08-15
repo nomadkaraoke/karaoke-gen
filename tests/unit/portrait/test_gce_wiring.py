@@ -7,13 +7,12 @@ needing the GCE VM or a real render.
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Mock google.cloud.storage.Client before importing main.py so this test collects
-# in the wheel-only CI job (which has no GCP project/ADC), matching the pattern in
-# tests/unit/test_gce_render_video_endpoint.py.
-patch("google.cloud.storage.Client", MagicMock()).start()
-
-import backend.services.gce_encoding.main as gce  # noqa: E402
-from backend.services.encoding_interface import EncodingOutput  # noqa: E402
+# Mock google.cloud.storage.Client only while importing main.py so this test collects
+# in the wheel-only CI job (which has no GCP project/ADC). Scoped so we don't leave a
+# session-wide global patch that could affect other tests.
+with patch("google.cloud.storage.Client", MagicMock()):
+    import backend.services.gce_encoding.main as gce  # noqa: E402
+    from backend.services.encoding_interface import EncodingOutput  # noqa: E402
 
 
 def test_encoding_output_has_portrait_field():
