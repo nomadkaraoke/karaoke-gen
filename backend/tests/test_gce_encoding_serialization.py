@@ -118,3 +118,98 @@ class TestJobStatusModel:
             queue_position=worker._heavy_queue_position("missing"),
         )
         assert s.status == "pending"
+
+
+_LATEST_WHEEL_URI = (
+    "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-0.194.0-py3-none-any.whl"
+)
+
+
+def _fake_subprocess(counter):
+    """subprocess.run stub that dispatches by command and counts cp/pip calls."""
+    from types import SimpleNamespace
+
+    def _run(cmd, **kwargs):
+        head = cmd[:2]
+        if head == ["gsutil", "ls"]:
+            return SimpleNamespace(returncode=0, stdout=_LATEST_WHEEL_URI + "\n", stderr="")
+        if head == ["gsutil", "cp"]:
+            counter["cp"] += 1
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if "pip" in cmd:
+            counter["pip"] += 1
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    return _run
+
+
+class TestEnsureLatestWheelConcurrency:
+    """ensure_latest_wheel must be idempotent + race-free: it runs on the light
+    lane (>1 thread) at the start of every job, so concurrent calls used to
+    clobber the shared /tmp wheel path and venv (incident 2026-08-15, 374dec26)."""
+
+    def test_fast_path_when_already_verified_this_process(self, worker):
+        worker._verified_wheel_version = "0.194.0"
+        counter = {"cp": 0, "pip": 0}
+        with patch.object(worker.subprocess, "run", _fake_subprocess(counter)), \
+             patch.object(worker, "verify_wheel_imports", return_value=True) as vwi:
+            assert worker.ensure_latest_wheel() is True
+        assert counter == {"cp": 0, "pip": 0}   # no download, no install
+        vwi.assert_not_called()                  # no reverify either
+
+    def test_installed_version_verifies_without_reinstall(self, worker):
+        worker._verified_wheel_version = None
+        counter = {"cp": 0, "pip": 0}
+        with patch.object(worker.subprocess, "run", _fake_subprocess(counter)), \
+             patch.object(worker, "_installed_karaoke_gen_version", return_value="0.194.0"), \
+             patch.object(worker, "verify_wheel_imports", return_value=True):
+            assert worker.ensure_latest_wheel() is True
+        # Right version already present → verify only, no cp/pip.
+        assert counter == {"cp": 0, "pip": 0}
+        assert worker._verified_wheel_version == "0.194.0"
+
+    def test_installs_when_version_differs(self, worker):
+        worker._verified_wheel_version = None
+        counter = {"cp": 0, "pip": 0}
+        with patch.object(worker.subprocess, "run", _fake_subprocess(counter)), \
+             patch.object(worker, "_installed_karaoke_gen_version", return_value="0.193.0"), \
+             patch.object(worker, "verify_wheel_imports", return_value=True):
+            assert worker.ensure_latest_wheel() is True
+        assert counter["cp"] == 1 and counter["pip"] >= 1
+        assert worker._verified_wheel_version == "0.194.0"
+
+    def test_concurrent_calls_install_at_most_once(self, worker):
+        """The lock + version cache guarantee only ONE thread installs even when
+        several race in on a fresh boot; the rest hit the verified fast path."""
+        import threading
+        import time
+
+        worker._verified_wheel_version = None
+        counter = {"cp": 0, "pip": 0}
+        base = _fake_subprocess(counter)
+
+        def slow_run(cmd, **kwargs):
+            if cmd[:2] == ["gsutil", "cp"]:
+                time.sleep(0.2)  # widen the race window
+            return base(cmd, **kwargs)
+
+        results = []
+        barrier = threading.Barrier(3)
+
+        def call():
+            barrier.wait()
+            results.append(worker.ensure_latest_wheel())
+
+        with patch.object(worker.subprocess, "run", slow_run), \
+             patch.object(worker, "_installed_karaoke_gen_version", return_value="0.193.0"), \
+             patch.object(worker, "verify_wheel_imports", return_value=True):
+            threads = [threading.Thread(target=call) for _ in range(3)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        assert results == [True, True, True]
+        assert counter["cp"] == 1   # exactly one download despite 3 concurrent callers
+        assert counter["pip"] == 1  # and exactly one install (no concurrent venv writes)

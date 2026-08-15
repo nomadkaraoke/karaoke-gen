@@ -571,6 +571,19 @@ class TestEnsureLatestWheelVerification:
     True when it imports; retry a failed/partial install; callers fail fast.
     """
 
+    @pytest.fixture(autouse=True)
+    def _reset_wheel_cache(self, monkeypatch):
+        """ensure_latest_wheel caches the verified version in a module global and
+        can fast-path when the installed version already matches. Reset the cache
+        and pin the "installed" version to None around each test so these
+        download/install-flow tests run deterministically regardless of the test
+        venv's real karaoke-gen version."""
+        from backend.services.gce_encoding import main
+        main._verified_wheel_version = None
+        monkeypatch.setattr(main, "_installed_karaoke_gen_version", lambda: None)
+        yield
+        main._verified_wheel_version = None
+
     # A couple of versioned wheels plus the (filtered-out) current wheel, as
     # `gsutil ls` would emit them.
     DEFAULT_LS = (
