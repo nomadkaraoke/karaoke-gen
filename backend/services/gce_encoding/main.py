@@ -47,7 +47,30 @@ jobs: dict[str, dict] = {}
 #     review previews (`run_preview_encoding`). These are small/fast and
 #     latency-sensitive, so they get their own lane and never wait behind a
 #     multi-minute encode.
-HEAVY_CONCURRENCY = int(os.environ.get("ENCODING_HEAVY_CONCURRENCY", "1"))
+def _heavy_concurrency() -> int:
+    """Parse ENCODING_HEAVY_CONCURRENCY, clamped to a sane [1, 4] range.
+
+    A malformed/zero/negative value must never crash the worker at boot or
+    (via max_workers=0) wedge every encode — fall back to the OOM-safe default
+    of 1. The upper bound guards against an operator accidentally reintroducing
+    the concurrent-encode OOM on a small box.
+    """
+    raw = os.environ.get("ENCODING_HEAVY_CONCURRENCY", "1")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid ENCODING_HEAVY_CONCURRENCY=%r; defaulting to 1", raw)
+        return 1
+    if value < 1:
+        logger.warning("ENCODING_HEAVY_CONCURRENCY=%d < 1; clamping to 1", value)
+        return 1
+    if value > 4:
+        logger.warning("ENCODING_HEAVY_CONCURRENCY=%d > 4; clamping to 4", value)
+        return 4
+    return value
+
+
+HEAVY_CONCURRENCY = _heavy_concurrency()
 heavy_executor = ThreadPoolExecutor(max_workers=HEAVY_CONCURRENCY)
 light_executor = ThreadPoolExecutor(max_workers=2)
 

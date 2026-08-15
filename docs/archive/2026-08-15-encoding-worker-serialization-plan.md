@@ -122,8 +122,10 @@ the fix ships. Order: `a3f340a2`, `374dec26`, `590630c0`.
 2. Deploy the worker wheel; `curl /health` shows the new version and `queue_length`.
 3. **Real-world repro:** submit the 3 Arctic Monkeys renders **concurrently** (the exact OOM
    trigger). Expect: one `running`, others `pending`; peak RSS bounded (~1 heavy ffmpeg);
-   `journalctl -k` shows **no OOM**; `systemctl show encoding-worker -p NRestarts` stays 0; all three
-   complete. This doubles as Step 0 recovery once the fix is live.
+   `journalctl -k` shows **no OOM**; capture `systemctl show encoding-worker -p NRestarts`
+   *before* the run and assert it does **not increase** (the worker already carries a
+   nonzero `NRestarts` from the incident); all three complete. This doubles as Step 0
+   recovery once the fix is live.
 4. Simulate a mid-render worker restart (`systemctl restart encoding-worker` during an encode) and
    confirm the orchestrator resubmits (`_retry_` id in logs) and the job completes instead of failing.
 

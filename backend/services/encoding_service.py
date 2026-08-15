@@ -29,6 +29,7 @@ from backend.config import get_settings
 from backend.services.encoding_errors import (
     ENCODING_RESTART_FAILURE_CODE,
     EncodingJobLostError,
+    EncodingJobNotFoundError,
     EncodingWorkerCapacityError,
     EncodingWorkerStartError,
 )
@@ -98,6 +99,13 @@ async def run_with_lost_job_resubmit(
     the whole submit-and-wait, returning the encode result. It should raise
     `EncodingJobLostError` (propagated from `wait_for_completion`) when the job is
     lost; any other exception aborts immediately.
+
+    Idempotency: only the *worker-side* job id changes between attempts — output
+    GCS paths are keyed by the real job (fixed input/output prefixes), so a
+    resubmit re-encodes and *overwrites* the same objects rather than producing
+    duplicates. Downstream side effects (uploads, distribution) run in the
+    orchestrator only after a successful encode, so a resubmit before "complete"
+    cannot double them.
     """
     attempt = 0
     while True:
@@ -638,7 +646,7 @@ class EncodingService:
         if resp["status"] == 401:
             raise RuntimeError("Invalid API key for encoding worker")
         if resp["status"] == 404:
-            raise RuntimeError(f"Encoding job {job_id} not found")
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
         if resp["status"] != 200:
             raise RuntimeError(f"Failed to get job status: {resp['status']} - {resp['text']}")
 
@@ -715,7 +723,7 @@ class EncodingService:
                 # the same id can never recover it, so surface a distinct signal
                 # immediately instead of polling 4 more times and mislabelling it
                 # "lost contact" (which callers treat as unrecoverable).
-                if job_seen and "not found" in str(e).lower():
+                if job_seen and isinstance(e, EncodingJobNotFoundError):
                     logger.warning(
                         f"[job:{job_id}] Worker no longer has this job after previously "
                         f"reporting it — treating as lost (worker restart): {e}"
@@ -972,12 +980,16 @@ class EncodingService:
         # Pin polls to the worker the job landed on (see render_video_on_gce).
         pinned_url = self._get_worker_url()
 
-        # Wait for completion with shorter timeout
+        # Wait for completion with a short timeout. Previews are interactive
+        # (a user is waiting in the review UI), so cap the *total* wait at the
+        # same short bound — don't let a queued preview sit for the long default
+        # queue_timeout before its per-run timeout even starts.
         return await self.wait_for_completion(
             job_id=job_id,
             poll_interval=poll_interval,
             timeout=timeout,
             worker_url=pinned_url,
+            queue_timeout=timeout,
         )
 
     async def submit_render_video_job(

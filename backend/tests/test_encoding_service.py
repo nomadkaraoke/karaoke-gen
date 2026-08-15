@@ -18,7 +18,7 @@ from backend.services.encoding_service import (
     MAX_CONSECUTIVE_POLL_FAILURES,
     run_with_lost_job_resubmit,
 )
-from backend.services.encoding_errors import EncodingJobLostError
+from backend.services.encoding_errors import EncodingJobLostError, EncodingJobNotFoundError
 
 
 @pytest.fixture
@@ -682,7 +682,7 @@ class TestWaitForCompletionLostJob:
             call_count += 1
             if call_count == 1:
                 return {"status": "running", "progress": 30}
-            raise RuntimeError(f"Encoding job {job_id} not found")
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
 
         with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
              patch("asyncio.sleep", new_callable=AsyncMock), \
@@ -699,7 +699,7 @@ class TestWaitForCompletionLostJob:
         """A 404 before the job is ever seen is a submit/poll race, not a lost job —
         keep the transient tolerance (avoids false resubmits)."""
         async def always_404(job_id, worker_url=None):
-            raise RuntimeError(f"Encoding job {job_id} not found")
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
 
         with patch.object(encoding_service, "get_job_status", side_effect=always_404), \
              patch("asyncio.sleep", new_callable=AsyncMock), \
@@ -781,6 +781,28 @@ class TestWaitForCompletionLostJob:
             )
 
         assert result["status"] == "complete"
+
+
+class TestPreviewQueueTimeout:
+    """A queued preview must not wait the long default queue_timeout — an
+    interactive user is waiting, so total wait is capped at the short timeout."""
+
+    @pytest.mark.asyncio
+    async def test_preview_caps_queue_timeout_to_timeout(self, encoding_service):
+        submit = AsyncMock(return_value={"status": "accepted", "job_id": "p1"})
+        wait = AsyncMock(return_value={"status": "complete"})
+        with patch.object(encoding_service, "submit_preview_encoding_job", submit), \
+             patch.object(encoding_service, "wait_for_completion", wait):
+            await encoding_service.encode_preview_video(
+                job_id="p1",
+                ass_gcs_path="gs://b/x.ass",
+                audio_gcs_path="gs://b/a.flac",
+                output_gcs_path="gs://b/out.mp4",
+                timeout=90.0,
+            )
+        _, kwargs = wait.call_args
+        assert kwargs["timeout"] == 90.0
+        assert kwargs["queue_timeout"] == 90.0
 
 
 class TestRunWithLostJobResubmit:

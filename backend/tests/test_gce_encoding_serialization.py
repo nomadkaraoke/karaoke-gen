@@ -37,6 +37,24 @@ class TestHeavyLaneSerialization:
         assert worker.light_executor._max_workers >= 2
 
 
+class TestHeavyConcurrencyParsing:
+    @pytest.mark.parametrize("val,expected", [
+        ("1", 1), ("2", 2), ("4", 4),   # valid
+        ("0", 1), ("-3", 1),            # too low → clamp up to 1
+        ("9", 4),                        # too high → clamp down to 4
+        ("abc", 1), ("", 1),            # malformed → default 1
+    ])
+    def test_clamped_to_sane_range(self, worker, val, expected):
+        with patch.dict("os.environ", {"ENCODING_HEAVY_CONCURRENCY": val}):
+            assert worker._heavy_concurrency() == expected
+
+    def test_missing_env_defaults_to_one(self, worker):
+        import os
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ENCODING_HEAVY_CONCURRENCY", None)
+            assert worker._heavy_concurrency() == 1
+
+
 class TestHeavyQueuePosition:
     def _reset_jobs(self, worker, entries):
         worker.jobs.clear()

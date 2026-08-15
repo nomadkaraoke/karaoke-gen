@@ -50,6 +50,16 @@ class EncodingWorkerCapacityError(EncodingWorkerStartError):
 ENCODING_RESTART_FAILURE_CODE = "encoding_worker_restart"
 
 
+class EncodingJobNotFoundError(RuntimeError):
+    """The encoding worker returned HTTP 404 for a job status poll.
+
+    Subclasses RuntimeError so existing `except RuntimeError` handlers and
+    `"not found" in str(e)` checks keep working, while giving callers a precise
+    type to branch on (e.g. distinguishing a lost job from other RuntimeErrors)
+    without parsing the message text. Keep the message containing "not found".
+    """
+
+
 class EncodingJobLostError(Exception):
     """The encoding worker lost a job mid-run (restart wiped its in-memory state).
 
