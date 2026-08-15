@@ -9,6 +9,7 @@ the client can wait through a deep queue.
 
 Importing main.py constructs a storage.Client() at module load, so we patch it.
 """
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -17,12 +18,18 @@ import pytest
 
 @pytest.fixture(scope="module")
 def worker():
-    """Import the GCE worker module with GCS creds mocked out."""
-    with patch("google.cloud.storage.Client", return_value=MagicMock()):
-        sys.modules.pop("backend.services.gce_encoding.main", None)
-        import backend.services.gce_encoding.main as m
-        yield m
-        sys.modules.pop("backend.services.gce_encoding.main", None)
+    """Import the GCE worker module with GCS creds mocked out.
+
+    Clear ENCODING_HEAVY_CONCURRENCY during import so the default-behavior
+    assertions hold regardless of the CI environment.
+    """
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("ENCODING_HEAVY_CONCURRENCY", None)
+        with patch("google.cloud.storage.Client", return_value=MagicMock()):
+            sys.modules.pop("backend.services.gce_encoding.main", None)
+            import backend.services.gce_encoding.main as m
+            yield m
+            sys.modules.pop("backend.services.gce_encoding.main", None)
 
 
 class TestHeavyLaneSerialization:

@@ -69,15 +69,47 @@ MAX_BACKOFF_SECONDS = 15.0
 # long-running encoding job. Similar pattern to flacfetch status polling (PR #446).
 MAX_CONSECUTIVE_POLL_FAILURES = 5
 
-# How long a job may sit *queued* (status "pending") on the worker before we give
-# up. The worker serializes heavy jobs (one at a time), so a burst can queue for a
-# while; this is deliberately generous and separate from the per-run `timeout`,
-# which only starts counting once the job is actually "running".
-QUEUE_TIMEOUT_SECONDS = float(os.environ.get("ENCODING_QUEUE_TIMEOUT", str(4 * 3600)))
+_DEFAULT_QUEUE_TIMEOUT_SECONDS = float(4 * 3600)
 
-# Bounded automatic resubmits when the worker loses a job mid-run (OOM/deploy
-# restart). Each resubmit is a fresh job id; see `run_with_lost_job_resubmit`.
-ENCODING_RESUBMIT_MAX = int(os.environ.get("ENCODING_RESUBMIT_MAX", "2"))
+
+def _parse_queue_timeout() -> float:
+    """How long a job may sit *queued* (status "pending") before we give up.
+
+    Parsed defensively: a malformed / non-finite / non-positive value must not
+    crash the module at import nor make pending jobs fail immediately — fall back
+    to the generous default. Separate from the per-run `timeout`, which only
+    starts once the job is actually "running".
+    """
+    raw = os.environ.get("ENCODING_QUEUE_TIMEOUT")
+    if raw is None:
+        return _DEFAULT_QUEUE_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid ENCODING_QUEUE_TIMEOUT=%r; using default", raw)
+        return _DEFAULT_QUEUE_TIMEOUT_SECONDS
+    if not (value > 0) or value == float("inf"):
+        logger.warning("ENCODING_QUEUE_TIMEOUT=%r not a positive finite number; using default", raw)
+        return _DEFAULT_QUEUE_TIMEOUT_SECONDS
+    return value
+
+
+def _parse_resubmit_max() -> int:
+    """Bounded automatic resubmits when the worker loses a job mid-run.
+
+    Each resubmit is a fresh job id; see `run_with_lost_job_resubmit`. A bad
+    value falls back to 2; negatives clamp to 0 (no resubmits).
+    """
+    raw = os.environ.get("ENCODING_RESUBMIT_MAX", "2")
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        logger.warning("Invalid ENCODING_RESUBMIT_MAX=%r; using 2", raw)
+        return 2
+
+
+QUEUE_TIMEOUT_SECONDS = _parse_queue_timeout()
+ENCODING_RESUBMIT_MAX = _parse_resubmit_max()
 
 
 async def run_with_lost_job_resubmit(
