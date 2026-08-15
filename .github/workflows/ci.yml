@@ -1291,6 +1291,7 @@ jobs:
                   break
 
           started_fresh = "true"
+          inplace_failed = False
           if green is None:
               # Last resort: no separate green could start. Restart the current
               # serving override in place (accepts a brief blip; auto-resubmit
@@ -1307,13 +1308,20 @@ jobs:
                       time.sleep(5)
                   subprocess.run(["gcloud", "compute", "instances", "start", ov,
                                   f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+                  final_status = ""
                   for _ in range(18):
-                      if vm_status(ov, zone) == "RUNNING":
+                      final_status = vm_status(ov, zone)
+                      if final_status == "RUNNING":
                           break
                       time.sleep(10)
+                  # Record it either way so rollback can recover it (we stopped it,
+                  # so if it didn't come back we must be able to start it again).
                   green = {"vm": ov, "ip": os.environ.get("OVERRIDE_IP"),
                            "zone": zone, "kind": "fallback"}
                   started_fresh = "false"  # it's the serving worker — never stop on rollback
+                  if final_status != "RUNNING":
+                      inplace_failed = True
+                      print(f"::error::In-place restart of {ov} did not reach RUNNING (status={final_status or 'unknown'})")
               else:
                   print("::error::No green target could be started and no active override exists")
 
@@ -1323,15 +1331,18 @@ jobs:
                       f.write(f"{k}={v}\n")
 
           # green_ok gates the downstream health/encode/promote steps. A missing
-          # green or a green with no IP (nothing to health-check) is "not ok" — the
-          # deploy skips the encoding-worker promote but does NOT fail.
+          # green, a green with no IP, or an in-place restart that didn't come back
+          # RUNNING is "not ok" — the deploy skips the encoding-worker promote but
+          # does NOT fail; when a serving override is involved we still emit its
+          # vm/zone so the (always-run) rollback step can recover it.
           if green is None:
               _out(green_ok="false")
               print("::warning::No green target selected; skipping encoding-worker promote")
-          elif not green.get("ip"):
+          elif not green.get("ip") or inplace_failed:
               _out(green_ok="false", green_vm=green["vm"], green_zone=green["zone"],
                    green_started_fresh=started_fresh)
-              print(f"::error::Green {green['vm']} has no IP; cannot health-check — skipping promote")
+              reason = "has no IP" if not green.get("ip") else "did not return to RUNNING"
+              print(f"::error::Green {green['vm']} {reason}; skipping promote")
           else:
               _out(green_ok="true", green_vm=green["vm"], green_ip=green["ip"],
                    green_zone=green["zone"], green_kind=green["kind"],
@@ -1460,8 +1471,20 @@ jobs:
             echo "Stopping fresh green $GREEN_VM ($GREEN_ZONE) due to failed deploy"
             gcloud compute instances stop "$GREEN_VM" \
               --zone="$GREEN_ZONE" --project=nomadkaraoke || true
+          elif [ -n "$GREEN_VM" ] && [ -n "$GREEN_ZONE" ]; then
+            # Serving override (last-resort in-place restart). We stopped it during
+            # the restart, so if it isn't RUNNING we must bring it back — otherwise
+            # production stays down after a failed deploy.
+            echo "Green is the serving worker; ensuring $GREEN_VM is RUNNING"
+            STATUS=$(gcloud compute instances describe "$GREEN_VM" \
+              --zone="$GREEN_ZONE" --project=nomadkaraoke --format='value(status)' 2>/dev/null || echo "")
+            if [ "$STATUS" != "RUNNING" ]; then
+              echo "::warning::Serving worker $GREEN_VM is '${STATUS:-unknown}'; starting it back up"
+              gcloud compute instances start "$GREEN_VM" \
+                --zone="$GREEN_ZONE" --project=nomadkaraoke || true
+            fi
           else
-            echo "Green is the serving worker (or unknown); leaving it running"
+            echo "No green VM recorded; nothing to stop or recover"
           fi
 
           python3 -c "
