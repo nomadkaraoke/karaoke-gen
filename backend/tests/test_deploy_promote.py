@@ -80,6 +80,7 @@ class TestSelectGreenCandidates:
         assert vms.count("encoding-worker-fallback-n2c") == 1
         assert "encoding-worker-fallback-broken" not in vms
         assert "encoding-worker-fallback-noip" not in vms
+        assert None not in vms  # the entry with no "vm" is dropped, not emitted as vm=None
 
     def test_no_override_keeps_all_fallbacks(self):
         cands = select_green_candidates(_config(active_override_vm=None), FALLBACKS)
