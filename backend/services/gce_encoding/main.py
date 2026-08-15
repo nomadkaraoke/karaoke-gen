@@ -736,6 +736,110 @@ def generate_mov_from_png(png_path: Path, mov_path: Path, duration: int = 5) -> 
     return mov_path
 
 
+# Portrait (9:16) karaoke render is default-on; set PORTRAIT_RENDER_ENABLED=false to disable.
+PORTRAIT_RENDER_ENABLED = os.environ.get("PORTRAIT_RENDER_ENABLED", "true").lower() == "true"
+PORTRAIT_SUFFIX = "(Final Karaoke Portrait 1080x1920)"
+
+
+def _resolve_portrait_font(styles: dict, work_dir: Path) -> Optional[str]:
+    """Resolve a usable .ttf file for the portrait header (PIL needs a file path).
+
+    libass resolves the lyrics font via fontconfig (the theme font is registered by
+    the earlier render step on the same VM), but PIL needs an actual file. Ask
+    fontconfig for the theme font family's file; fall back to any bundled style font.
+    """
+    family = (styles.get("karaoke", {}) or {}).get("font") or "Avenir Next Bold"
+    try:
+        res = subprocess.run(
+            ["fc-match", "--format=%{file}", family],
+            capture_output=True, text=True, timeout=5,
+        )
+        if res.returncode == 0 and res.stdout and os.path.isfile(res.stdout.strip()):
+            return res.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    for pattern in ("style/*.ttf", "style/*.otf", "*.ttf"):
+        hit = next(iter(work_dir.glob(pattern)), None)
+        if hit:
+            return str(hit)
+    return None
+
+
+def render_portrait_into_outputs(
+    job_id: str, work_dir: Path, output_dir: Path, base_name: str,
+    artist: str, title: str, instrumental: Path, config: dict,
+) -> Optional[str]:
+    """Render the portrait (9:16) karaoke video into ``output_dir`` (best-effort).
+
+    Reuses the same corrected-lyrics data + theme as the landscape render. Uses the
+    un-padded instrumental and un-countdown-processed segments so the two stay in
+    sync without the countdown offset (the portrait title card provides lead-in).
+
+    This is additive and non-fatal: any failure logs and returns ``None`` so the
+    landscape outputs and distribution proceed unaffected.
+    """
+    if not PORTRAIT_RENDER_ENABLED:
+        logger.info(f"[job:{job_id}] Portrait render disabled via PORTRAIT_RENDER_ENABLED")
+        return None
+    try:
+        from karaoke_gen.lyrics_transcriber.types import CorrectionResult
+        from karaoke_gen.portrait import render_portrait_video, PortraitBrandConfig
+
+        # Corrected lyrics: prefer the reviewed corrections_updated.json.
+        corrections_file = None
+        for candidate in ("lyrics/corrections_updated.json", "lyrics/corrections.json"):
+            p = work_dir / candidate
+            if p.is_file():
+                corrections_file = p
+                break
+        if corrections_file is None:
+            found = next(iter(work_dir.glob("**/corrections*.json")), None)
+            corrections_file = found
+        if corrections_file is None:
+            logger.warning(f"[job:{job_id}] Portrait skipped: no corrections JSON found")
+            return None
+        with open(corrections_file, "r", encoding="utf-8") as f:
+            correction_result = CorrectionResult.from_dict(json.load(f))
+
+        # Theme styles (optional — renderer fills defaults).
+        styles = {}
+        style_params = work_dir / "style" / "style_params.json"
+        if not style_params.is_file():
+            style_params = next(iter(work_dir.glob("**/style_params.json")), None)
+        if style_params and Path(style_params).is_file():
+            with open(style_params, "r", encoding="utf-8") as f:
+                styles = json.load(f)
+
+        font_path = _resolve_portrait_font(styles, work_dir)
+        brand = PortraitBrandConfig(
+            brand_text=config.get("portrait_brand_text", "NOMAD KARAOKE"),
+            footer_text=config.get("portrait_footer_text", "nomadkaraoke.com"),
+            font_path=font_path,
+        )
+        out_path = output_dir / f"{base_name} {PORTRAIT_SUFFIX}.mp4"
+        logger.info(f"[job:{job_id}] Rendering portrait karaoke video -> {out_path.name}")
+        render_portrait_video(
+            correction_result=correction_result,
+            instrumental_path=str(instrumental),
+            styles=styles,
+            artist=artist,
+            title=title,
+            output_path=str(out_path),
+            brand=brand,
+            font_path=font_path,
+            work_dir=str(work_dir / "portrait_tmp"),
+            logger=logger,
+        )
+        if out_path.is_file():
+            logger.info(f"[job:{job_id}] Portrait render complete ({out_path.stat().st_size} bytes)")
+            return str(out_path)
+        logger.warning(f"[job:{job_id}] Portrait render produced no file")
+        return None
+    except Exception as e:
+        logger.error(f"[job:{job_id}] Portrait render failed (non-fatal): {e}", exc_info=True)
+        return None
+
+
 def run_encoding(job_id: str, work_dir: Path, config: dict):
     '''Run encoding using LocalEncodingService (single source of truth).
 
@@ -932,6 +1036,13 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
                     logger.info(f"Staged screen video for upload: {dest.name}")
                 except Exception as e:
                     logger.warning(f"Failed to stage {suffix} MOV into outputs: {e}")
+
+        # Portrait (9:16) karaoke render — additive, non-fatal. Written into output_dir
+        # so it rides the same GCS upload + Dropbox distribution as the other finals.
+        jobs[job_id]["progress"] = 92
+        render_portrait_into_outputs(
+            job_id, work_dir, output_dir, base_name, artist, title, instrumental, config,
+        )
 
         # Collect output files
         output_files = [str(f) for f in output_dir.glob("*") if f.is_file()]
