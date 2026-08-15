@@ -491,11 +491,23 @@ class VideoWorkerOrchestrator:
             except Exception as e:
                 self.job_log.warning(f"Failed to stage custom instrumental for GCE encoder: {e}")
 
+        # Submit the encode under `encode_job_id`, resubmitting under a fresh id
+        # if the worker loses the job mid-run (OOM/deploy restart wipes its
+        # in-memory registry — the original id can never complete). See
+        # run_with_lost_job_resubmit.
+        from backend.services.encoding_service import run_with_lost_job_resubmit
+
+        async def _submit_encode(encode_job_id: str):
+            encoding_input.options["job_id"] = encode_job_id
+            return await encoding_backend.encode(encoding_input)
+
         # Run encoding
         with job_span("encoding", self.config.job_id) as span:
             add_span_event("encoding_started", {"backend": encoding_backend.name})
 
-            output = await encoding_backend.encode(encoding_input)
+            output = await run_with_lost_job_resubmit(
+                _submit_encode, self.config.job_id, log=self.job_log
+            )
 
             add_span_event("encoding_completed", {
                 "success": output.success,
@@ -529,10 +541,11 @@ class VideoWorkerOrchestrator:
                         f"Stale GCE cache detected, re-encoding as {retry_job_id}: {e}"
                     )
 
-                    # Update the encoding input with the retry job ID
-                    encoding_input.options["job_id"] = retry_job_id
-
-                    output = await encoding_backend.encode(encoding_input)
+                    # Re-encode under the fresh id, still resubmitting if the worker
+                    # loses the job mid-run.
+                    output = await run_with_lost_job_resubmit(
+                        _submit_encode, retry_job_id, log=self.job_log
+                    )
                     if not output.success:
                         raise Exception(f"Encoding failed on retry: {output.error_message}")
 

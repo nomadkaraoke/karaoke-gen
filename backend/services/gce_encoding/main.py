@@ -29,7 +29,50 @@ logger = logging.getLogger(__name__)
 # so polls after a worker restart return the *last known* status instead of
 # 404. Hot path stays in-memory; persistence is best-effort.
 jobs: dict[str, dict] = {}
-executor = ThreadPoolExecutor(max_workers=4)  # 4 parallel encoding jobs
+
+# Two execution lanes with very different memory profiles:
+#
+#   heavy_executor — full renders (`run_render_video`) and final encodes
+#     (`run_encoding`). Each of these spawns an ffmpeg that already saturates
+#     every core, so running two in parallel gains no throughput but doubles
+#     peak RAM (a single 4K encode can use ~18 GB). Three concurrent encodes
+#     OOM-killed the 32 GB n2 fallback worker on 2026-08-15, which restarted
+#     the service and lost every in-flight job. Default to ONE heavy job at a
+#     time so the worker is OOM-proof on any machine type; the rest queue as
+#     `status="pending"` (surfaced via /health `queue_length` and /status
+#     `queue_position`). Override with ENCODING_HEAVY_CONCURRENCY only on
+#     boxes with headroom to spare.
+#
+#   light_executor — wheel installs (`ensure_latest_wheel`) and interactive
+#     review previews (`run_preview_encoding`). These are small/fast and
+#     latency-sensitive, so they get their own lane and never wait behind a
+#     multi-minute encode.
+def _heavy_concurrency() -> int:
+    """Parse ENCODING_HEAVY_CONCURRENCY, clamped to a sane [1, 4] range.
+
+    A malformed/zero/negative value must never crash the worker at boot or
+    (via max_workers=0) wedge every encode — fall back to the OOM-safe default
+    of 1. The upper bound guards against an operator accidentally reintroducing
+    the concurrent-encode OOM on a small box.
+    """
+    raw = os.environ.get("ENCODING_HEAVY_CONCURRENCY", "1")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid ENCODING_HEAVY_CONCURRENCY=%r; defaulting to 1", raw)
+        return 1
+    if value < 1:
+        logger.warning("ENCODING_HEAVY_CONCURRENCY=%d < 1; clamping to 1", value)
+        return 1
+    if value > 4:
+        logger.warning("ENCODING_HEAVY_CONCURRENCY=%d > 4; clamping to 4", value)
+        return 4
+    return value
+
+
+HEAVY_CONCURRENCY = _heavy_concurrency()
+heavy_executor = ThreadPoolExecutor(max_workers=HEAVY_CONCURRENCY)
+light_executor = ThreadPoolExecutor(max_workers=2)
 
 # Persister is initialized lazily — see persistence.py — so import-time
 # stays free of GCP creds. Tests can monkey-patch this attribute.
@@ -119,6 +162,15 @@ class JobStatus(BaseModel):
     error: Optional[str] = None
     output_files: Optional[list[str]] = None
     metadata: Optional[dict] = None
+    # Set when a job was interrupted by a worker-process restart (OOM, deploy,
+    # crash). Its work_dir is gone, so the client should resubmit rather than
+    # treat this as a permanent failure. See persistence.mark_orphans_failed_on_startup.
+    restart_failure_code: Optional[str] = None
+    # How many heavy jobs (renders/encodes) are ahead of this one in the
+    # serialized heavy lane (0 = running or next up). None for previews /
+    # terminal jobs. Lets the client wait through a deep queue without
+    # tripping the encode timeout.
+    queue_position: Optional[int] = None
 
 
 def download_from_gcs(gcs_uri: str, local_path: Path):
@@ -1083,7 +1135,7 @@ async def process_job(job_id: str, request: EncodeRequest):
         # minutes) — run it in the thread pool so the async event loop keeps serving health
         # checks and status polls.
         loop = asyncio.get_event_loop()
-        if not await loop.run_in_executor(executor, ensure_latest_wheel):
+        if not await loop.run_in_executor(light_executor, ensure_latest_wheel):
             raise RuntimeError(
                 "karaoke-gen wheel/dependencies not ready on this worker after retries; "
                 "job should be retried on a healthy worker"
@@ -1109,10 +1161,11 @@ async def process_job(job_id: str, request: EncodeRequest):
                 logger.info(f"Downloading existing instrumental: {gcs_uri} -> {dest}")
                 download_single_file_from_gcs(gcs_uri, dest)
 
-            # Run encoding in thread pool (CPU-bound)
+            # Run encoding in the heavy lane (CPU/RAM-bound; serialized to
+            # avoid OOM — see heavy_executor comment).
             loop = asyncio.get_event_loop()
             output_dir = await loop.run_in_executor(
-                executor,
+                heavy_executor,
                 run_encoding,
                 job_id,
                 work_dir,
@@ -1158,11 +1211,11 @@ async def process_preview_job(job_id: str, request: EncodePreviewRequest):
             work_dir = Path(temp_dir) / "work"
             work_dir.mkdir()
 
-            # Run preview encoding in thread pool (CPU-bound)
-            # Note: run_preview_encoding handles download/upload internally
+            # Run preview encoding in the light lane so interactive review
+            # previews never queue behind a multi-minute full encode.
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                executor,
+                light_executor,
                 run_preview_encoding,
                 job_id,
                 work_dir,
@@ -1190,7 +1243,7 @@ async def process_render_video_job(job_id: str, request: RenderVideoRequest):
         # Run in the thread pool: ensure_latest_wheel() blocks on subprocess installs (which
         # can retry for many minutes) and must not stall the async event loop.
         loop = asyncio.get_event_loop()
-        if not await loop.run_in_executor(executor, ensure_latest_wheel):
+        if not await loop.run_in_executor(light_executor, ensure_latest_wheel):
             raise RuntimeError(
                 "karaoke-gen wheel/dependencies not ready on this worker after retries; "
                 "job should be retried on a healthy worker"
@@ -1200,10 +1253,11 @@ async def process_render_video_job(job_id: str, request: RenderVideoRequest):
             work_dir = Path(temp_dir) / "work"
             work_dir.mkdir()
 
-            # Run render-video in thread pool (CPU-bound)
+            # Run render-video in the heavy lane (CPU/RAM-bound; serialized to
+            # avoid OOM — see heavy_executor comment).
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                executor,
+                heavy_executor,
                 run_render_video,
                 job_id,
                 work_dir,
@@ -1246,6 +1300,7 @@ async def submit_preview_encode_job(request: EncodePreviewRequest, background_ta
         "progress": 0,
         "error": None,
         "output_files": None,
+        "kind": "preview",  # light lane — never counted in the heavy queue
     }
     _persist(job_id)
 
@@ -1278,6 +1333,7 @@ async def submit_render_video_job(request: RenderVideoRequest, background_tasks:
         "error": None,
         "output_files": None,
         "metadata": None,
+        "kind": "render",  # heavy lane
     }
     _persist(job_id)
 
@@ -1310,6 +1366,7 @@ async def submit_encode_job(request: EncodeRequest, background_tasks: Background
         "progress": 0,
         "error": None,
         "output_files": None,
+        "kind": "encode",  # heavy lane
     }
     _persist(job_id)
 
@@ -1318,12 +1375,37 @@ async def submit_encode_job(request: EncodeRequest, background_tasks: Background
     return {"status": "accepted", "job_id": job_id}
 
 
+_HEAVY_KINDS = frozenset({"encode", "render"})
+
+
+def _heavy_queue_position(job_id: str) -> Optional[int]:
+    """Number of heavy jobs ahead of `job_id` in the serialized heavy lane.
+
+    0 means this job is running or next up; None means it isn't a queued heavy
+    job (a preview, a terminal job, or unknown-kind). Relies on `jobs` being
+    insertion-ordered (dict order) so "ahead" == submitted earlier and still
+    pending/running.
+    """
+    job = jobs.get(job_id)
+    if job is None or job.get("kind") not in _HEAVY_KINDS:
+        return None
+    if job.get("status") not in ("pending", "running"):
+        return None
+    ahead = 0
+    for other_id, other in jobs.items():
+        if other_id == job_id:
+            break
+        if other.get("kind") in _HEAVY_KINDS and other.get("status") in ("pending", "running"):
+            ahead += 1
+    return ahead
+
+
 @app.get("/status/{job_id}")
 async def get_job_status(job_id: str, _auth: bool = Depends(verify_api_key)) -> JobStatus:
     # Get the status of an encoding job
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    return JobStatus(**jobs[job_id])
+    return JobStatus(**jobs[job_id], queue_position=_heavy_queue_position(job_id))
 
 
 @app.get("/health")

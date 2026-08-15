@@ -315,6 +315,37 @@ class TestGCEEncodingBackend:
 
     @patch.object(GCEEncodingBackend, "_get_service")
     @pytest.mark.asyncio
+    async def test_encode_reraises_lost_job_error(self, mock_get_service):
+        """A lost-job error (worker restart) must propagate, NOT become success=False.
+
+        The orchestrator's resubmit wrapper only fires on the typed exception; if
+        the backend flattened it into success=False the render would just fail
+        instead of being retried."""
+        from backend.services.encoding_errors import EncodingJobLostError
+
+        mock_service = MagicMock()
+        mock_service.encode_videos = AsyncMock(
+            side_effect=EncodingJobLostError("worker lost the job", job_id="test-job")
+        )
+        mock_get_service.return_value = mock_service
+
+        backend = GCEEncodingBackend()
+        input_config = EncodingInput(
+            title_video_path="/input/title.mov",
+            karaoke_video_path="/input/karaoke.mov",
+            instrumental_audio_path="/input/audio.flac",
+            options={
+                "job_id": "test-job",
+                "input_gcs_path": "gs://bucket/input/",
+                "output_gcs_path": "gs://bucket/output/",
+            }
+        )
+
+        with pytest.raises(EncodingJobLostError):
+            await backend.encode(input_config)
+
+    @patch.object(GCEEncodingBackend, "_get_service")
+    @pytest.mark.asyncio
     async def test_encode_handles_list_result(self, mock_get_service):
         """Test GCE encoding handles list response gracefully.
 

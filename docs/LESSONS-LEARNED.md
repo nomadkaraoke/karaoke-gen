@@ -6,6 +6,46 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Concurrent encodes OOM-killed the worker → lost renders (Aug 2026, v0.194.0)
+
+Three renders submitted at once ran as **3 concurrent 4K ffmpeg encodes** on the
+single 32 GB `n2-highcpu-32` fallback worker (both 60 GB c4d primaries were down
+in a Spot stockout). Combined RSS ~30 GB tripped the kernel OOM-killer, which
+killed ffmpeg and restarted the `encoding-worker` service, wiping its in-memory
+`jobs` registry. Every client poll then got `404 not found` → `lost contact with
+worker after 5 consecutive poll failures` → all three jobs failed.
+
+**Root cause:** the worker used `ThreadPoolExecutor(max_workers=4)` — up to 4
+heavy encodes in parallel. ffmpeg already saturates every core for one job, so
+parallelism bought **no throughput**, only multiplied peak memory.
+
+**Fix:**
+- **Serialize the heavy lane.** Split into `heavy_executor`
+  (`max_workers=ENCODING_HEAVY_CONCURRENCY`, default **1**) for renders/encodes
+  and `light_executor` (previews + wheel installs). One heavy ffmpeg at a time =
+  OOM-proof on any machine type; extras queue as `pending` (surfaced via
+  `queue_position`). `backend/services/gce_encoding/main.py`.
+- **Resubmit on a lost job.** `wait_for_completion` now raises
+  `EncodingJobLostError` on a 404 *after the job was already seen* (a pinned poll
+  can only 404 if the worker lost it) or a terminal failure carrying
+  `restart_failure_code`. The render/encode workers wrap their submit+wait in
+  `run_with_lost_job_resubmit`, which resubmits as a fresh `<id>_retry_<hex8>`
+  (bounded). Backend must **re-raise** the typed error, not flatten it to
+  `success=False` (`encoding_interface.py`).
+- **Queue vs run timeout.** Time spent `pending` counts against a generous
+  `queue_timeout`, not the per-run `timeout`, so a burst can wait in the queue
+  and still succeed.
+
+**Principles for next time:**
+- CPU-bound work that already uses all cores should run **one at a time** per
+  box; add throughput with more workers, not more per-worker threads.
+- On a *pinned* poll, a `404` means the job is gone — treat "never existed"
+  (before first success) and "vanished mid-run" (after) differently.
+- A restart-recovery that persists jobs is not enough if the reload skips
+  *terminal* states — the client-side lost detection is the real safety net.
+
+---
+
 ## Naive `datetime.utcnow()` → wrong timezone in the UI (Aug 2026)
 
 Job `created_at` and timeline/log timestamps were built from naive

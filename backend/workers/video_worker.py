@@ -38,7 +38,7 @@ from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
-from backend.services.encoding_service import get_encoding_service
+from backend.services.encoding_service import get_encoding_service, run_with_lost_job_resubmit
 from backend.config import get_settings
 from backend.workers.style_helper import load_style_config
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
@@ -150,12 +150,19 @@ async def _encode_via_gce(
             encode_start = time.time()
             add_span_event("gce_encoding_started")
 
-            result = await encoding_service.encode_videos(
-                job_id=job_id,
-                input_gcs_path=input_gcs_path,
-                output_gcs_path=output_gcs_path,
-                encoding_config=encoding_config,
-                progress_callback=progress_callback,
+            # Resubmit under a fresh id if the worker loses the job mid-run
+            # (OOM/deploy restart wipes its in-memory registry).
+            async def _submit_encode(encode_job_id: str):
+                return await encoding_service.encode_videos(
+                    job_id=encode_job_id,
+                    input_gcs_path=input_gcs_path,
+                    output_gcs_path=output_gcs_path,
+                    encoding_config=encoding_config,
+                    progress_callback=progress_callback,
+                )
+
+            result = await run_with_lost_job_resubmit(
+                _submit_encode, job_id, log=job_log
             )
 
             encode_duration = time.time() - encode_start

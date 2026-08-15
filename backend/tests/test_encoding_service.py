@@ -16,7 +16,9 @@ from backend.services.encoding_service import (
     INITIAL_BACKOFF_SECONDS,
     MAX_BACKOFF_SECONDS,
     MAX_CONSECUTIVE_POLL_FAILURES,
+    run_with_lost_job_resubmit,
 )
+from backend.services.encoding_errors import EncodingJobLostError, EncodingJobNotFoundError
 
 
 @pytest.fixture
@@ -664,6 +666,193 @@ class TestWaitForCompletionPollTolerance:
 
         assert result["status"] == "complete"
         assert call_count == 6  # 2 fail + 1 success + 2 fail + 1 success
+
+
+class TestWaitForCompletionLostJob:
+    """A worker restart (OOM/deploy) that wipes an in-flight job must surface a
+    distinct, recoverable signal instead of the generic poll-failure timeout."""
+
+    @pytest.mark.asyncio
+    async def test_404_after_job_seen_raises_lost_error(self, encoding_service):
+        """Once we've seen the job run, a later 404 = the worker lost it → resubmit."""
+        call_count = 0
+
+        async def mock_get_status(job_id, worker_url=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"status": "running", "progress": 30}
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingJobLostError):
+                await encoding_service.wait_for_completion("j1")
+
+        # Should bail on the FIRST 404, not burn the full poll tolerance.
+        assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_404_before_job_seen_is_tolerated(self, encoding_service):
+        """A 404 before the job is ever seen is a submit/poll race, not a lost job —
+        keep the transient tolerance (avoids false resubmits)."""
+        async def always_404(job_id, worker_url=None):
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
+
+        with patch.object(encoding_service, "get_job_status", side_effect=always_404), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            # Falls through to the generic tolerance, NOT EncodingJobLostError.
+            with pytest.raises(RuntimeError, match="consecutive poll failures"):
+                await encoding_service.wait_for_completion("j1")
+
+    @pytest.mark.asyncio
+    async def test_restart_failure_code_raises_lost_error(self, encoding_service):
+        """A terminal failure carrying the restart marker is recoverable → lost error."""
+        async def mock_get_status(job_id, worker_url=None):
+            return {
+                "status": "failed",
+                "error": "Encoding worker restarted mid-job",
+                "restart_failure_code": "encoding_worker_restart",
+            }
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingJobLostError):
+                await encoding_service.wait_for_completion("j1")
+
+    @pytest.mark.asyncio
+    async def test_plain_failure_still_raises_runtimeerror(self, encoding_service):
+        """A normal (non-restart) failure stays a hard RuntimeError, not a resubmit."""
+        async def mock_get_status(job_id, worker_url=None):
+            return {"status": "failed", "error": "ffmpeg exploded"}
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(RuntimeError, match="ffmpeg exploded"):
+                await encoding_service.wait_for_completion("j1")
+            # And it must not be the recoverable subtype.
+            try:
+                await encoding_service.wait_for_completion("j1")
+            except EncodingJobLostError:  # pragma: no cover
+                pytest.fail("plain failure should not be EncodingJobLostError")
+            except RuntimeError:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_pending_does_not_count_toward_run_timeout(self, encoding_service):
+        """Time spent queued (pending) is bounded by queue_timeout, not the per-run
+        timeout — a burst can wait in the serialized heavy queue and still succeed."""
+        statuses = [
+            {"status": "pending", "progress": 0, "queue_position": 3},
+            {"status": "pending", "progress": 0, "queue_position": 2},
+            {"status": "pending", "progress": 0, "queue_position": 1},
+            {"status": "running", "progress": 10},
+            {"status": "complete", "output_files": ["a.mp4"]},
+        ]
+        idx = 0
+
+        async def mock_get_status(job_id, worker_url=None):
+            nonlocal idx
+            s = statuses[idx]
+            idx += 1
+            return s
+
+        # start_time read, then one read per loop iteration. Job is pending until
+        # t=300 (>> timeout=50) then runs and completes at t=310 (10s of run time).
+        seq = [0, 0, 100, 200, 300, 310]
+
+        def fake_time():
+            return seq.pop(0) if len(seq) > 1 else seq[0]
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.side_effect = fake_time
+            result = await encoding_service.wait_for_completion(
+                "j1", timeout=50, queue_timeout=1000
+            )
+
+        assert result["status"] == "complete"
+
+
+class TestPreviewQueueTimeout:
+    """A queued preview must not wait the long default queue_timeout — an
+    interactive user is waiting, so total wait is capped at the short timeout."""
+
+    @pytest.mark.asyncio
+    async def test_preview_caps_queue_timeout_to_timeout(self, encoding_service):
+        submit = AsyncMock(return_value={"status": "accepted", "job_id": "p1"})
+        wait = AsyncMock(return_value={"status": "complete"})
+        with patch.object(encoding_service, "submit_preview_encoding_job", submit), \
+             patch.object(encoding_service, "wait_for_completion", wait):
+            await encoding_service.encode_preview_video(
+                job_id="p1",
+                ass_gcs_path="gs://b/x.ass",
+                audio_gcs_path="gs://b/a.flac",
+                output_gcs_path="gs://b/out.mp4",
+                timeout=90.0,
+            )
+        _, kwargs = wait.call_args
+        assert kwargs["timeout"] == 90.0
+        assert kwargs["queue_timeout"] == 90.0
+
+
+class TestRunWithLostJobResubmit:
+    """The bounded resubmit wrapper used by the render + encode workers."""
+
+    @pytest.mark.asyncio
+    async def test_resubmits_with_fresh_id_then_succeeds(self):
+        seen_ids = []
+
+        async def op(job_id):
+            seen_ids.append(job_id)
+            if len(seen_ids) == 1:
+                raise EncodingJobLostError("lost", job_id=job_id)
+            return {"status": "complete"}
+
+        result = await run_with_lost_job_resubmit(op, "base123", max_resubmits=2)
+
+        assert result["status"] == "complete"
+        assert seen_ids[0] == "base123"
+        assert seen_ids[1].startswith("base123_retry_")
+        assert len(seen_ids) == 2
+
+    @pytest.mark.asyncio
+    async def test_gives_up_after_max_resubmits(self):
+        attempts = []
+
+        async def op(job_id):
+            attempts.append(job_id)
+            raise EncodingJobLostError("lost", job_id=job_id)
+
+        with pytest.raises(EncodingJobLostError):
+            await run_with_lost_job_resubmit(op, "base", max_resubmits=2)
+
+        # 1 initial + 2 resubmits = 3 attempts.
+        assert len(attempts) == 3
+        assert attempts[0] == "base"
+        assert all(a.startswith("base_retry_") for a in attempts[1:])
+
+    @pytest.mark.asyncio
+    async def test_other_errors_are_not_retried(self):
+        attempts = []
+
+        async def op(job_id):
+            attempts.append(job_id)
+            raise RuntimeError("some other failure")
+
+        with pytest.raises(RuntimeError, match="some other failure"):
+            await run_with_lost_job_resubmit(op, "base", max_resubmits=2)
+
+        assert len(attempts) == 1  # not retried
 
 
 class TestDynamicURLResolution:
