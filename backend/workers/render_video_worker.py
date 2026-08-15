@@ -44,7 +44,7 @@ from backend.config import get_settings
 from backend.workers.registry import worker_registry
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
-from backend.services.encoding_service import get_encoding_service
+from backend.services.encoding_service import get_encoding_service, run_with_lost_job_resubmit
 from backend.services.encoding_errors import (
     EncodingWorkerCapacityError,
     EncodingWorkerStartError,
@@ -225,8 +225,18 @@ async def process_render_video(job_id: str) -> bool:
 
                     with job_span("gce-render-video", job_id) as render_span:
                         render_start = time.time()
-                        result = await encoding_service.render_video_on_gce(
-                            job_id, render_config, progress_callback=progress_callback
+
+                        # Resubmit under a fresh worker job id if the encoding
+                        # worker loses the render mid-run (OOM/deploy restart wipes
+                        # its in-memory registry). The output GCS prefix is fixed in
+                        # render_config, so a new worker id doesn't move outputs.
+                        async def _submit_render(render_job_id: str):
+                            return await encoding_service.render_video_on_gce(
+                                render_job_id, render_config, progress_callback=progress_callback
+                            )
+
+                        result = await run_with_lost_job_resubmit(
+                            _submit_render, job_id, log=job_log
                         )
                         render_duration = time.time() - render_start
                         render_span.set_attribute("duration_seconds", render_duration)

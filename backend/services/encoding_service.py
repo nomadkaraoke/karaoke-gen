@@ -19,13 +19,16 @@ import asyncio
 import logging
 import os
 import time
+import uuid
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any, AsyncIterator
+from typing import Awaitable, Callable, Optional, Dict, Any, AsyncIterator
 
 import aiohttp
 
 from backend.config import get_settings
 from backend.services.encoding_errors import (
+    ENCODING_RESTART_FAILURE_CODE,
+    EncodingJobLostError,
     EncodingWorkerCapacityError,
     EncodingWorkerStartError,
 )
@@ -64,6 +67,55 @@ MAX_BACKOFF_SECONDS = 15.0
 # This prevents a single transient network blip during status polling from killing a
 # long-running encoding job. Similar pattern to flacfetch status polling (PR #446).
 MAX_CONSECUTIVE_POLL_FAILURES = 5
+
+# How long a job may sit *queued* (status "pending") on the worker before we give
+# up. The worker serializes heavy jobs (one at a time), so a burst can queue for a
+# while; this is deliberately generous and separate from the per-run `timeout`,
+# which only starts counting once the job is actually "running".
+QUEUE_TIMEOUT_SECONDS = float(os.environ.get("ENCODING_QUEUE_TIMEOUT", str(4 * 3600)))
+
+# Bounded automatic resubmits when the worker loses a job mid-run (OOM/deploy
+# restart). Each resubmit is a fresh job id; see `run_with_lost_job_resubmit`.
+ENCODING_RESUBMIT_MAX = int(os.environ.get("ENCODING_RESUBMIT_MAX", "2"))
+
+
+async def run_with_lost_job_resubmit(
+    operation: Callable[[str], Awaitable[Any]],
+    base_job_id: str,
+    *,
+    log: logging.Logger = logger,
+    max_resubmits: int = ENCODING_RESUBMIT_MAX,
+) -> Any:
+    """Run a submit+wait `operation(job_id)`, resubmitting if the worker loses it.
+
+    The encoding worker keeps job state in memory; an OOM/deploy restart wipes it
+    and the in-flight ffmpeg, so the original job id can never complete. When
+    `wait_for_completion` detects that (via `EncodingJobLostError`), we resubmit
+    the same work under a fresh `<base>_retry_<hex8>` id (the worker treats a new
+    id as a brand-new job). Bounded by `max_resubmits`.
+
+    `operation` must be an async callable taking the job id to use and performing
+    the whole submit-and-wait, returning the encode result. It should raise
+    `EncodingJobLostError` (propagated from `wait_for_completion`) when the job is
+    lost; any other exception aborts immediately.
+    """
+    attempt = 0
+    while True:
+        job_id = base_job_id if attempt == 0 else f"{base_job_id}_retry_{uuid.uuid4().hex[:8]}"
+        try:
+            return await operation(job_id)
+        except EncodingJobLostError as e:
+            attempt += 1
+            if attempt > max_resubmits:
+                log.error(
+                    f"[job:{base_job_id}] Encoding worker lost the job {attempt} time(s); "
+                    f"giving up after {max_resubmits} resubmit(s): {e}"
+                )
+                raise
+            log.warning(
+                f"[job:{base_job_id}] Encoding worker lost the job (restart/OOM); "
+                f"resubmitting as a fresh job (attempt {attempt + 1}/{max_resubmits + 1})"
+            )
 
 
 def _format_exception(e: BaseException) -> str:
@@ -599,6 +651,7 @@ class EncodingService:
         timeout: float = 3600.0,
         progress_callback=None,
         worker_url: Optional[str] = None,
+        queue_timeout: float = QUEUE_TIMEOUT_SECONDS,
     ) -> Dict[str, Any]:
         """
         Poll for encoding job completion with tolerance for transient failures.
@@ -631,11 +684,25 @@ class EncodingService:
         start_time = asyncio.get_event_loop().time()
         last_progress = 0
         consecutive_failures = 0
+        # Set to True after the first successful poll. Once we've seen the job,
+        # a later 404 means the worker LOST it (restart wiped in-memory state),
+        # not that it never existed — that is unrecoverable for this job id, so
+        # we resubmit rather than burn the transient-blip tolerance.
+        job_seen = False
+        # Set once the job is actually "running". The per-run `timeout` only
+        # counts from here; time spent "pending" in the worker's serialized
+        # heavy queue counts against `queue_timeout` instead.
+        run_started_at: Optional[float] = None
 
         while True:
-            elapsed = asyncio.get_event_loop().time() - start_time
-            if elapsed > timeout:
-                raise TimeoutError(f"Encoding job {job_id} timed out after {timeout}s")
+            now = asyncio.get_event_loop().time()
+            if run_started_at is not None:
+                if now - run_started_at > timeout:
+                    raise TimeoutError(f"Encoding job {job_id} timed out after {timeout}s")
+            elif now - start_time > queue_timeout:
+                raise TimeoutError(
+                    f"Encoding job {job_id} stuck in worker queue longer than {queue_timeout}s"
+                )
 
             try:
                 status = await self.get_job_status(job_id, worker_url=worker_url)
@@ -643,6 +710,20 @@ class EncodingService:
                 consecutive_failures = 0
             except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError,
                     asyncio.TimeoutError, RuntimeError) as e:
+                # A 404 *after* we've already seen the job = the worker lost it
+                # (OOM/deploy restart wiped its in-memory registry). Resubmitting
+                # the same id can never recover it, so surface a distinct signal
+                # immediately instead of polling 4 more times and mislabelling it
+                # "lost contact" (which callers treat as unrecoverable).
+                if job_seen and "not found" in str(e).lower():
+                    logger.warning(
+                        f"[job:{job_id}] Worker no longer has this job after previously "
+                        f"reporting it — treating as lost (worker restart): {e}"
+                    )
+                    raise EncodingJobLostError(
+                        f"Encoding job {job_id} was lost by the worker (restarted mid-run)",
+                        job_id=job_id,
+                    ) from e
                 consecutive_failures += 1
                 if consecutive_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
                     logger.error(
@@ -667,12 +748,19 @@ class EncodingService:
                 logger.error(f"[job:{job_id}] Unexpected status type: {type(status)}")
                 status = {}
 
+            job_seen = True
             job_status = status.get("status", "unknown")
             progress = status.get("progress", 0)
+            if run_started_at is None and (job_status == "running" or progress):
+                run_started_at = now
 
             # Report progress
             if progress != last_progress:
-                logger.info(f"[job:{job_id}] Encoding progress: {progress}%")
+                queue_position = status.get("queue_position")
+                if job_status == "pending" and queue_position:
+                    logger.info(f"[job:{job_id}] Queued on worker (position {queue_position})")
+                else:
+                    logger.info(f"[job:{job_id}] Encoding progress: {progress}%")
                 last_progress = progress
                 if progress_callback:
                     try:
@@ -681,11 +769,21 @@ class EncodingService:
                         logger.warning(f"Progress callback failed: {e}")
 
             if job_status == "complete":
-                logger.info(f"[job:{job_id}] GCE encoding complete in {elapsed:.1f}s")
+                logger.info(f"[job:{job_id}] GCE encoding complete in {now - start_time:.1f}s")
                 return status
 
             if job_status == "failed":
                 error = status.get("error", "Unknown error")
+                # A restart-marked failure is recoverable by resubmission, same
+                # as a mid-run vanish — surface the typed signal so callers retry.
+                if status.get("restart_failure_code") == ENCODING_RESTART_FAILURE_CODE:
+                    logger.warning(
+                        f"[job:{job_id}] Worker marked job failed after a restart — treating as lost: {error}"
+                    )
+                    raise EncodingJobLostError(
+                        f"Encoding job {job_id} was lost by the worker (restarted mid-run)",
+                        job_id=job_id,
+                    )
                 raise RuntimeError(f"Encoding job {job_id} failed: {error}")
 
             await asyncio.sleep(poll_interval)

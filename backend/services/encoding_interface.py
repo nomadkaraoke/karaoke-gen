@@ -14,6 +14,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 
+from backend.services.encoding_errors import EncodingJobLostError
+
 logger = logging.getLogger(__name__)
 
 
@@ -421,6 +423,12 @@ class GCEEncodingBackend(EncodingBackend):
                 encoding_backend=self.name
             )
 
+        except EncodingJobLostError:
+            # The worker lost this job mid-run (OOM/deploy restart). This is
+            # recoverable by resubmitting a fresh job id, so let the orchestrator
+            # decide — do NOT flatten it into success=False (which would fail the
+            # whole render). See video_worker_orchestrator's resubmit wrapper.
+            raise
         except Exception as e:
             encoding_time = time.time() - start_time
             self.logger.error(f"GCE encoding failed: {e}")
