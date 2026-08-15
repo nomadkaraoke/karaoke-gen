@@ -112,6 +112,8 @@ gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
 
 **Fixed in v0.192.7:** `ensure_latest_wheel()` now downloads only the single latest wheel (was: copying the entire ~6 GiB `wheels/` dir every job with a 60 s timeout), retries the install (3× at 900 s), and **verifies the render/encode import chain** before returning — a clean `pip` exit is no longer trusted. Callers fail the job with a clear retryable error instead of proceeding. Fresh workers pick this up via the wheel-at-boot.
 
+**Also fixed in v0.194.1 (concurrency race):** `ensure_latest_wheel()` runs on the *light* lane (>1 thread) at the start of every job, so on a fresh boot several jobs would call it at once and race on the shared `/tmp` wheel path (`gsutil cp` clobbered mid-copy) and the venv (two `pip install`s at once) — one job then failed with `wheel/dependencies not ready ... retry on a healthy worker` (2026-08-15, job 374dec26, 3 jobs on a fresh n2f boot). Now it's guarded by a process-wide lock **and** short-circuits when the installed version already matches the latest GCS wheel (the common case — startup.sh installs it at boot). So only the *first* job after a new wheel actually installs; the rest wait briefly then take the verified fast path. A single job failing this way can simply be retried once a worker is warm.
+
 **Manual repair (if a running VM is stuck on an old wheel):** the venv is root-owned, so use `sudo`:
 
 ```bash

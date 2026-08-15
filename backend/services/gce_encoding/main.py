@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -604,6 +605,30 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
 WHEEL_INSTALL_TIMEOUT = int(os.environ.get("WHEEL_INSTALL_TIMEOUT", "900"))
 WHEEL_INSTALL_ATTEMPTS = int(os.environ.get("WHEEL_INSTALL_ATTEMPTS", "3"))
 
+# Serialize wheel checks. ensure_latest_wheel() runs on the light executor
+# (>1 thread) and is invoked at the start of every job, so without a lock two
+# concurrent jobs race on the same /tmp wheel path (`gsutil cp` clobbers the
+# file mid-copy) and the same venv (`pip install` runs twice at once) —
+# corrupting each other so one job fails with "wheel/dependencies not ready"
+# (incident 2026-08-15, job 374dec26, three jobs hitting a fresh fallback boot).
+# The lock makes the first caller do the work while the rest wait, then take the
+# already-verified fast path below.
+_wheel_lock = threading.Lock()
+# Version we've already downloaded+installed+verified in THIS process. Lets a
+# job skip the whole download/install/verify when the environment is already
+# current — the common case, since startup.sh installs the wheel at boot and
+# only the first job after a new deploy actually needs to install.
+_verified_wheel_version: Optional[str] = None
+
+
+def _installed_karaoke_gen_version() -> Optional[str]:
+    '''Return the karaoke-gen version currently importable in this venv, or None.'''
+    try:
+        from importlib.metadata import version as _get_version
+        return _get_version("karaoke-gen")
+    except Exception:
+        return None
+
 # Modules exercised by the render (OutputGenerator) and encode
 # (LocalEncodingService) code paths. Importing these confirms the whole
 # dependency tree they pull in — including transitive deps like tenacity — is
@@ -639,16 +664,29 @@ def verify_wheel_imports():
 
 
 def ensure_latest_wheel():
-    '''Download, install, and verify the latest karaoke-gen wheel from GCS.
+    '''Ensure the latest karaoke-gen wheel is installed & verified (thread-safe).
 
     Called at the start of each job to enable hot code updates without restart.
-    In-progress jobs continue with their version, new jobs get latest code.
+    Serialized via `_wheel_lock` so concurrent jobs can't race on the shared
+    /tmp wheel path or venv; the first caller installs/verifies while the rest
+    wait and then hit the already-verified fast path.
+    '''
+    with _wheel_lock:
+        return _ensure_latest_wheel_locked()
+
+
+def _ensure_latest_wheel_locked():
+    '''Download, install, and verify the latest karaoke-gen wheel from GCS.
+
+    MUST be called holding `_wheel_lock`. In-progress jobs continue with their
+    version, new jobs get latest code.
 
     Retries the install and verifies the full import chain before returning, so
     a transient/partial dependency install can't leave the worker running jobs
     against a broken environment. Returns True only when the wheel is installed
     AND its render/encode imports succeed.
     '''
+    global _verified_wheel_version
     try:
         logger.info("Checking for latest karaoke-gen wheel in GCS...")
 
@@ -681,7 +719,28 @@ def ensure_latest_wheel():
 
         wheel_uris.sort(key=extract_version)
         latest_uri = wheel_uris[-1]
+        latest_version = str(extract_version(latest_uri))
         wheel_path = os.path.join("/tmp", latest_uri.rsplit("/", 1)[-1])
+
+        # Fast path: if the environment is already at the latest version, skip
+        # the download/install entirely. This is the common case (startup.sh
+        # installs the wheel at boot) and — together with `_wheel_lock` — is what
+        # stops concurrent jobs from re-downloading/re-installing and racing.
+        if _verified_wheel_version == latest_version:
+            # Already validated in this process — nothing to do.
+            return True
+        installed_version = _installed_karaoke_gen_version()
+        if installed_version == latest_version:
+            # Right version is present but not yet verified in this process.
+            # Confirm the import chain (cheap) rather than reinstalling; only
+            # fall through to a full reinstall if a prior install was partial.
+            if verify_wheel_imports():
+                _verified_wheel_version = latest_version
+                logger.info(f"karaoke-gen {latest_version} already installed and verified; skipping wheel install")
+                return True
+            logger.warning(
+                f"karaoke-gen {latest_version} present but import chain incomplete; reinstalling"
+            )
 
         cp_result = subprocess.run(
             ["gsutil", "cp", latest_uri, wheel_path],
@@ -720,6 +779,7 @@ def ensure_latest_wheel():
             # the render/encode paths need are actually importable before we let
             # a job run against this environment.
             if verify_wheel_imports():
+                _verified_wheel_version = latest_version
                 logger.info(f"Successfully installed and verified wheel: {wheel_path}")
                 return True
 
