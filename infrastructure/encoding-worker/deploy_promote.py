@@ -102,6 +102,12 @@ def promote_plan(
     """
     drain: List[Dict[str, Optional[str]]] = []
 
+    def _finalize(updates: Dict[str, Any]) -> Dict[str, Any]:
+        # Never drain/stop the worker we just promoted, whatever the config held
+        # (e.g. a stale override that pointed at the green, or primary==secondary).
+        safe = [t for t in drain if t.get("vm") and t["vm"] != green["vm"]]
+        return {"firestore_updates": updates, "drain_and_stop": safe}
+
     if green["kind"] == "secondary":
         updates: Dict[str, Any] = {
             "primary_vm": green["vm"],
@@ -137,7 +143,7 @@ def promote_plan(
                 "ip": config.get("active_override_ip"),
                 "zone": config.get("active_override_zone"),
             })
-        return {"firestore_updates": updates, "drain_and_stop": drain}
+        return _finalize(updates)
 
     # kind == "fallback": the green becomes the serving override.
     updates = {
@@ -156,4 +162,4 @@ def promote_plan(
             "ip": config.get("active_override_ip"),
             "zone": config.get("active_override_zone"),
         })
-    return {"firestore_updates": updates, "drain_and_stop": drain}
+    return _finalize(updates)

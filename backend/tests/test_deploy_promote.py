@@ -128,6 +128,19 @@ class TestPromotePlanSecondaryBranch:
         drained = {d["vm"] for d in plan["drain_and_stop"]}
         assert drained == {"encoding-worker-b", "encoding-worker-fallback-n2f"}
 
+    def test_secondary_never_drains_the_promoted_green(self):
+        # Pathological config where a stale override (or primary) names the green
+        # VM — the plan must never tell the workflow to stop what it just promoted.
+        green = {"vm": "encoding-worker-a", "ip": "34.57.78.246",
+                 "zone": "us-central1-c", "kind": "secondary"}
+        cfg = _config(active_override_vm="encoding-worker-a",
+                      active_override_ip="34.57.78.246",
+                      active_override_zone="us-central1-c")
+        plan = promote_plan(green, cfg, now="NOW", version="0.194.2")
+        assert all(d["vm"] != "encoding-worker-a" for d in plan["drain_and_stop"])
+        # The override is still cleared in config even though we don't stop that VM.
+        assert plan["firestore_updates"]["active_override_vm"] is None
+
     def test_secondary_swap_without_override(self):
         green = {"vm": "encoding-worker-a", "ip": "34.57.78.246",
                  "zone": "us-central1-c", "kind": "secondary"}

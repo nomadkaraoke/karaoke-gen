@@ -1192,7 +1192,7 @@ jobs:
                           "active_override_vm", "active_override_ip", "active_override_zone"]:
                   f.write(f"{key}={data.get(key, '')}\n")
               f.write(f"deploy_in_progress={str(data.get('deploy_in_progress', False)).lower()}\n")
-          print(f"Config: primary={data['primary_vm']}, secondary={data['secondary_vm']}, "
+          print(f"Config: primary={data.get('primary_vm')}, secondary={data.get('secondary_vm')}, "
                 f"active_override={data.get('active_override_vm')}")
           PYEOF
 
@@ -1236,6 +1236,10 @@ jobs:
       # infrastructure/encoding-worker/deploy_promote.py.
       - name: Select & start green target
         id: green
+        # Never hard-fail the whole backend deploy just because no encoding
+        # worker could be validated — emit green_ok=false and let the gated
+        # health/encode/promote steps skip while the Cloud Run deploy proceeds.
+        continue-on-error: true
         run: |
           python3 << 'PYEOF'
           import json, os, subprocess, sys, time
@@ -1312,15 +1316,27 @@ jobs:
                   started_fresh = "false"  # it's the serving worker — never stop on rollback
               else:
                   print("::error::No green target could be started and no active override exists")
-                  raise SystemExit(1)
 
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"green_vm={green['vm']}\n")
-              f.write(f"green_ip={green['ip']}\n")
-              f.write(f"green_zone={green['zone']}\n")
-              f.write(f"green_kind={green['kind']}\n")
-              f.write(f"green_started_fresh={started_fresh}\n")
-          print(f"Green: {green['vm']} ({green['zone']}, kind={green['kind']}, started_fresh={started_fresh})")
+          def _out(**kv):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  for k, v in kv.items():
+                      f.write(f"{k}={v}\n")
+
+          # green_ok gates the downstream health/encode/promote steps. A missing
+          # green or a green with no IP (nothing to health-check) is "not ok" — the
+          # deploy skips the encoding-worker promote but does NOT fail.
+          if green is None:
+              _out(green_ok="false")
+              print("::warning::No green target selected; skipping encoding-worker promote")
+          elif not green.get("ip"):
+              _out(green_ok="false", green_vm=green["vm"], green_zone=green["zone"],
+                   green_started_fresh=started_fresh)
+              print(f"::error::Green {green['vm']} has no IP; cannot health-check — skipping promote")
+          else:
+              _out(green_ok="true", green_vm=green["vm"], green_ip=green["ip"],
+                   green_zone=green["zone"], green_kind=green["kind"],
+                   green_started_fresh=started_fresh)
+              print(f"Green: {green['vm']} ({green['zone']}, kind={green['kind']}, started_fresh={started_fresh})")
           PYEOF
         env:
           PRIMARY_VM: ${{ steps.config.outputs.primary_vm }}
@@ -1333,6 +1349,7 @@ jobs:
 
       - name: Wait for service health
         id: health
+        if: steps.green.outputs.green_ok == 'true'
         continue-on-error: true
         run: |
           SECONDARY_IP="${{ steps.green.outputs.green_ip }}"
@@ -1428,7 +1445,10 @@ jobs:
           exit 1
 
       - name: Rollback on failure
-        if: steps.health.outputs.healthy != 'true' || steps.encode-test.outputs.passed != 'true'
+        # always() so the deploy_in_progress flag is ALWAYS cleared, even when the
+        # green step found no worker (its downstream steps skip, but the flag was
+        # already set). Skips only on a fully successful promote (passed == true).
+        if: always() && steps.encode-test.outputs.passed != 'true'
         run: |
           GREEN_VM="${{ steps.green.outputs.green_vm }}"
           GREEN_ZONE="${{ steps.green.outputs.green_zone }}"
@@ -1460,6 +1480,7 @@ jobs:
       # VM(s) the promote plan says are no longer serving. See deploy_promote.py.
       - name: Promote green to serving
         if: steps.encode-test.outputs.passed == 'true'
+        timeout-minutes: 25
         env:
           GREEN_VM: ${{ steps.green.outputs.green_vm }}
           GREEN_IP: ${{ steps.green.outputs.green_ip }}
@@ -1509,28 +1530,42 @@ jobs:
               except Exception:
                   return None
 
-          # Drain (bounded) then stop each VM the plan retired. "unknown" keeps us
-          # waiting (never stop mid-render — #908 resubmit covers a true loss, but
-          # we still avoid it); after the timeout we stop anyway so a wedged worker
-          # can't block the deploy. New renders already route to the promoted green.
-          DRAIN_TIMEOUT = 1200
+          def vm_status(vm, zone):
+              r = subprocess.run(
+                  ["gcloud", "compute", "instances", "describe", vm,
+                   f"--zone={zone}", "--project=nomadkaraoke", "--format=value(status)"],
+                  capture_output=True, text=True)
+              return r.stdout.strip()
+
+          # Drain (bounded) then stop each VM the plan retired. A non-RUNNING target
+          # is already gone — stop it (idempotent) without waiting. For a RUNNING one
+          # we wait for a confirmed 0 active_jobs so we never stop mid-render (#908
+          # resubmit would cover a loss, but we still avoid it). The drain budget is
+          # SHARED across all targets (one 20-min deadline, not per-target) so a slow
+          # or unreachable target can't stretch the step to N×20 min; the step also
+          # has a hard timeout-minutes. New renders already route to the promoted green.
+          deadline = time.monotonic() + 1200
           for tgt in plan["drain_and_stop"]:
               vm, ip, zone = tgt["vm"], tgt.get("ip"), tgt.get("zone")
               if not vm or not zone:
                   print(f"::warning::Skipping drain/stop with incomplete target: {tgt}")
                   continue
+              status = vm_status(vm, zone)
+              if status != "RUNNING":
+                  print(f"{vm} status={status or 'unknown'} (not RUNNING); stopping without drain")
+                  subprocess.run(["gcloud", "compute", "instances", "stop", vm,
+                                  f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+                  continue
               print(f"Draining {vm} ({zone}) before stop...")
-              elapsed = 0
               n = active_jobs(ip)
-              while n != 0 and elapsed < DRAIN_TIMEOUT:
+              while n != 0 and time.monotonic() < deadline:
                   time.sleep(15)
-                  elapsed += 15
                   n = active_jobs(ip)
-                  print(f"  {vm} active_jobs={n} ({elapsed}s)")
+                  print(f"  {vm} active_jobs={n} ({int(deadline - time.monotonic())}s budget left)")
               if n == 0:
                   print(f"Drain confirmed for {vm}; stopping")
               else:
-                  print(f"::warning::Drain not confirmed for {vm} after {DRAIN_TIMEOUT}s (last={n}); stopping anyway")
+                  print(f"::warning::Drain budget exhausted for {vm} (last={n}); stopping anyway")
               subprocess.run(["gcloud", "compute", "instances", "stop", vm,
                               f"--zone={zone}", "--project=nomadkaraoke"], check=False)
           PYEOF
