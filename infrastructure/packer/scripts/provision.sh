@@ -119,10 +119,28 @@ pip install fastapi uvicorn google-cloud-storage aiofiles aiohttp packaging
 # fallback uses). gsutil ships in the debian-cloud base image and the Packer
 # builder SA has GCS read on this bucket.
 BUCKET="gs://karaoke-gen-storage-nomadkaraoke"
-echo "Baking full dependency tree (CPU-only torch) from ${BUCKET}/wheels/karaoke_gen-current.whl ..."
-if ! gsutil cp "${BUCKET}/wheels/karaoke_gen-current.whl" /tmp/karaoke_gen.whl; then
-    echo "FATAL: could not download karaoke_gen-current.whl to bake deps into the image"
-    exit 1
+# pip requires a PEP 427-valid wheel filename; the GCS alias
+# `karaoke_gen-current.whl` is NOT valid, so copy it to a properly-versioned
+# name (mirrors startup.sh). Prefer version.txt for the version tag.
+BAKE_VERSION=$(gsutil cat "${BUCKET}/encoding-worker/version.txt" 2>/dev/null | tr -d '[:space:]')
+if [ -n "${BAKE_VERSION}" ]; then
+    WHEEL_NAME="karaoke_gen-${BAKE_VERSION}-py3-none-any.whl"
+else
+    WHEEL_NAME="karaoke_gen-0.0.0-py3-none-any.whl"
+fi
+WHEEL_PATH="/tmp/${WHEEL_NAME}"
+echo "Baking full dependency tree (CPU-only torch) from ${BUCKET}/wheels/karaoke_gen-current.whl → ${WHEEL_NAME} ..."
+if ! gsutil cp "${BUCKET}/wheels/karaoke_gen-current.whl" "${WHEEL_PATH}"; then
+    # Fall back to the latest properly-named versioned wheel.
+    LATEST_WHEEL=$(gsutil ls "${BUCKET}/wheels/karaoke_gen-*.whl" 2>/dev/null | grep -v 'current' | sort -V | tail -1 || echo "")
+    if [ -n "${LATEST_WHEEL}" ]; then
+        WHEEL_NAME=$(basename "${LATEST_WHEEL}")
+        WHEEL_PATH="/tmp/${WHEEL_NAME}"
+        gsutil cp "${LATEST_WHEEL}" "${WHEEL_PATH}"
+    else
+        echo "FATAL: could not download a wheel to bake deps into the image"
+        exit 1
+    fi
 fi
 
 # --index-url = PyTorch CPU index (primary, so torch resolves to the CPU build),
@@ -132,7 +150,7 @@ for attempt in 1 2 3; do
     if pip install \
         --index-url https://download.pytorch.org/whl/cpu \
         --extra-index-url https://pypi.org/simple \
-        /tmp/karaoke_gen.whl; then
+        "${WHEEL_PATH}"; then
         break
     fi
     echo "pip install of full dep tree failed (attempt ${attempt}/3); retrying..."
@@ -142,7 +160,7 @@ for attempt in 1 2 3; do
         exit 1
     fi
 done
-rm -f /tmp/karaoke_gen.whl
+rm -f "${WHEEL_PATH}"
 
 # Verify the import chain that actually broke before (tenacity is pulled
 # transitively via the generator→correction/langchain chain). Fail the BUILD if

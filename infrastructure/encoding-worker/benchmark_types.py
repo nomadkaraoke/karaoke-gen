@@ -13,14 +13,20 @@ adding a new type.
 
 Usage:
     python infrastructure/encoding-worker/benchmark_types.py \\
-        --ass-gcs   gs://karaoke-gen-storage-nomadkaraoke/bench/canonical.ass \\
-        --audio-gcs gs://karaoke-gen-storage-nomadkaraoke/bench/canonical.flac \\
-        --out-prefix gs://karaoke-gen-storage-nomadkaraoke/bench/out \\
-        [--repeats 3] [--types c4-highcpu-32,n2-highcpu-32] [--json ranking.json]
+        --input-gcs       gs://karaoke-gen-storage-nomadkaraoke/bench/inputs/ \\
+        --encoding-config @bench/encoding_config.json \\
+        --out-prefix      gs://karaoke-gen-storage-nomadkaraoke/bench/out \\
+        [--repeats 3] [--types c4-highcpu-32,n2-highcpu-32] [--json ranking.json] \\
+        [--include-running] [--no-stop]
 
-The canonical input should be a representative FULL 4K render (not the tiny CI
-preview asset) so the medians reflect production finalization time. Pin one real
-job's `.ass` + audio in a stable GCS location once and reuse it.
+The payload matches the real /encode contract (input_gcs_path + output_gcs_path +
+encoding_config), i.e. the production FULL finalization path — not the lighter
+/encode-preview. Pin one real job's inputs dir + its encoding_config in a stable
+GCS location once and reuse it so the medians reflect production 4K finalization
+time. `--encoding-config` takes inline JSON or `@path/to/file.json`.
+
+SAFETY: VMs already RUNNING (likely serving production) are skipped by default and
+never stopped; only VMs this run starts are benchmarked and stopped afterwards.
 
 Requires: gcloud/gsutil authenticated with compute + secret access. The fallback
 VM inventory (vm/zone/ip/machine_type) is read from the
@@ -142,15 +148,20 @@ def _wait_health(ip: str, api_key: str, timeout: float = 240.0) -> bool:
     return False
 
 
-def _one_encode(ip: str, api_key: str, job_id: str, ass: str, audio: str,
-                out: str, poll_timeout: float = 1800.0) -> float:
-    """Submit one full /encode and return client-side wall-time (seconds)."""
+def _one_encode(ip: str, api_key: str, job_id: str, input_gcs: str,
+                encoding_config: dict, out: str, poll_timeout: float = 1800.0) -> float:
+    """Submit one full /encode and return client-side wall-time (seconds).
+
+    Payload matches the real /encode contract (EncodeRequest:
+    input_gcs_path + output_gcs_path + encoding_config) — the production
+    finalization path we want to benchmark, NOT the lighter /encode-preview.
+    """
     start = time.monotonic()
     _http("POST", f"http://{ip}:{PORT}/encode", api_key, body={
         "job_id": job_id,
-        "ass_gcs_path": ass,
-        "audio_gcs_path": audio,
+        "input_gcs_path": input_gcs,
         "output_gcs_path": out,
+        "encoding_config": encoding_config,
     })
     deadline = time.monotonic() + poll_timeout
     while time.monotonic() < deadline:
@@ -183,10 +194,21 @@ def benchmark(args) -> Dict[str, float]:
     for w in workers:
         vm, zone, ip, mt = w["vm"], w["zone"], w.get("ip"), w["machine_type"]
         print(f"\n=== {mt} — {vm} ({zone}) ===")
+        initial_status = _vm_status(vm, zone)
+        # SAFETY: never touch a VM that is already RUNNING — it may be the serving
+        # primary/override, and injecting bench jobs (or stopping it) would disrupt
+        # production and wipe its in-memory job registry. Only benchmark VMs we
+        # start ourselves, and only stop those. `--include-running` overrides the
+        # skip but STILL never stops a VM this run didn't start.
+        started_by_us = False
+        if initial_status == "RUNNING" and not args.include_running:
+            print(f"  SKIP: {vm} is already RUNNING (likely serving); pass --include-running to bench it")
+            continue
         try:
-            if _vm_status(vm, zone) != "RUNNING":
+            if initial_status != "RUNNING":
                 print("  starting VM...")
                 _start(vm, zone)
+                started_by_us = True
             if not ip:
                 ip = _gcloud("compute", "instances", "describe", vm, f"--zone={zone}",
                              "--format=value(networkInterfaces[0].accessConfigs[0].natIP)")
@@ -196,17 +218,21 @@ def benchmark(args) -> Dict[str, float]:
             samples: List[float] = []
             for i in range(args.repeats):
                 job_id = f"bench-{mt}-{i}"
-                out = f"{args.out_prefix}/{mt}-{i}.mp4"
-                secs = _one_encode(ip, api_key, job_id, args.ass_gcs, args.audio_gcs, out)
+                out = f"{args.out_prefix}/{mt}-{i}/"
+                secs = _one_encode(ip, api_key, job_id, args.input_gcs,
+                                   args.encoding_config, out)
                 print(f"  run {i + 1}/{args.repeats}: {secs:.1f}s")
                 samples.append(secs)
             medians[mt] = round(statistics.median(samples), 1)
         except Exception as e:  # noqa: BLE001 — keep benchmarking the rest
             print(f"  ERROR benchmarking {mt}: {e}")
         finally:
-            if not args.no_stop:
+            # Only stop a VM this invocation actually started (never a serving one).
+            if started_by_us and not args.no_stop:
                 print("  stopping VM...")
                 _stop(vm, zone)
+            elif not started_by_us:
+                print("  leaving VM as found (was already running before this benchmark)")
 
     return medians
 
@@ -219,14 +245,33 @@ def _suggest_ranks(medians: Dict[str, float]) -> Dict[str, int]:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--ass-gcs", dest="ass_gcs", required=True)
-    p.add_argument("--audio-gcs", dest="audio_gcs", required=True)
+    p.add_argument("--input-gcs", dest="input_gcs", required=True,
+                   help="gs:// path to the canonical /encode inputs dir")
+    p.add_argument("--encoding-config", dest="encoding_config_raw", required=True,
+                   help="encoding_config as inline JSON or @path/to/file.json")
     p.add_argument("--out-prefix", dest="out_prefix", required=True)
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--types", default=None, help="comma-separated machine types to limit to")
     p.add_argument("--json", dest="json_out", default=None, help="write ranking JSON here")
     p.add_argument("--no-stop", action="store_true", help="leave VMs running after benchmarking")
+    p.add_argument("--include-running", action="store_true",
+                   help="also benchmark VMs already RUNNING (never stops them)")
     args = p.parse_args()
+
+    # Resolve --encoding-config (inline JSON or @file) into a dict once.
+    raw = args.encoding_config_raw
+    try:
+        if raw.startswith("@"):
+            with open(raw[1:]) as f:
+                args.encoding_config = json.load(f)
+        else:
+            args.encoding_config = json.loads(raw)
+    except (OSError, ValueError) as e:
+        print(f"ERROR: --encoding-config is not valid JSON / readable file: {e}")
+        return 2
+    if not isinstance(args.encoding_config, dict):
+        print("ERROR: --encoding-config must be a JSON object")
+        return 2
 
     medians = benchmark(args)
     if not medians:

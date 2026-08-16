@@ -315,6 +315,12 @@ class EncodingService:
             except (ValueError, TypeError) as e:
                 logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
                 parsed = []
+            # A non-list root (null, dict, scalar) parses fine but would blow up
+            # `for item in parsed` and escape this method during connection
+            # recovery — degrade to no fallbacks instead.
+            if not isinstance(parsed, list):
+                logger.warning("ENCODING_WORKER_FALLBACK_VMS must be a JSON list; ignoring")
+                parsed = []
             for item in parsed:
                 try:
                     pool.append({

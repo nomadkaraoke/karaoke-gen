@@ -1140,3 +1140,14 @@ class TestBuildWorkerCandidates:
     def test_no_worker_manager_returns_empty(self, encoding_service):
         encoding_service._worker_manager = None
         assert encoding_service._build_worker_candidates() == []
+
+    def test_non_list_fallback_json_degrades_to_primary_only(self, encoding_service):
+        # A JSON scalar (e.g. "null") parses fine but must not blow up iteration.
+        svc = self._service_with_fallbacks(encoding_service, "null")
+        cands = svc._build_worker_candidates()
+        assert [c.vm_name for c in cands] == ["encoding-worker-a"]
+
+    def test_dict_fallback_json_degrades_to_primary_only(self, encoding_service):
+        svc = self._service_with_fallbacks(encoding_service, '{"vm": "x"}')
+        cands = svc._build_worker_candidates()
+        assert [c.vm_name for c in cands] == ["encoding-worker-a"]
