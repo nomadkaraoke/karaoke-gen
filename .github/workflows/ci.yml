@@ -1192,6 +1192,9 @@ jobs:
                           "active_override_vm", "active_override_ip", "active_override_zone"]:
                   f.write(f"{key}={data.get(key, '')}\n")
               f.write(f"deploy_in_progress={str(data.get('deploy_in_progress', False)).lower()}\n")
+              # capacity_state is a map — emit as single-line JSON so the green
+              # selection step can demote recently-stocked-out machine types.
+              f.write(f"capacity_state={json.dumps(data.get('capacity_state') or {})}\n")
           print(f"Config: primary={data.get('primary_vm')}, secondary={data.get('secondary_vm')}, "
                 f"active_override={data.get('active_override_vm')}")
           PYEOF
@@ -1246,6 +1249,10 @@ jobs:
           sys.path.insert(0, "infrastructure/encoding-worker")
           import deploy_promote
 
+          try:
+              capacity_state = json.loads(os.environ.get("CAPACITY_STATE") or "{}")
+          except Exception:
+              capacity_state = {}
           config = {
               "primary_vm": os.environ.get("PRIMARY_VM") or None,
               "primary_ip": os.environ.get("PRIMARY_IP") or None,
@@ -1253,6 +1260,7 @@ jobs:
               "secondary_ip": os.environ.get("SECONDARY_IP") or None,
               "secondary_zone": "us-central1-c",
               "active_override_vm": os.environ.get("OVERRIDE_VM") or None,
+              "capacity_state": capacity_state,
           }
           raw = subprocess.run(
               ["gcloud", "secrets", "versions", "access", "latest",
@@ -1368,6 +1376,7 @@ jobs:
           OVERRIDE_VM: ${{ steps.config.outputs.active_override_vm }}
           OVERRIDE_IP: ${{ steps.config.outputs.active_override_ip }}
           OVERRIDE_ZONE: ${{ steps.config.outputs.active_override_zone }}
+          CAPACITY_STATE: ${{ steps.config.outputs.capacity_state }}
 
       - name: Wait for service health
         id: health

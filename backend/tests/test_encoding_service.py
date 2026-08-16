@@ -1066,3 +1066,88 @@ class TestWorkerUrlPinning:
 
         assert result["status"] == "complete"
         assert result["output_files"] == ["4k.mp4"]
+
+
+class TestBuildWorkerCandidates:
+    """_build_worker_candidates ranks primary + fallbacks via the shared preference."""
+
+    def _config(self, capacity_state=None):
+        cfg = MagicMock()
+        cfg.primary_vm = "encoding-worker-a"
+        cfg.primary_ip = "10.0.0.1"
+        cfg.primary_machine_type = None  # → defaults to c4d
+        cfg.capacity_state = capacity_state or {}
+        return cfg
+
+    def _service_with_fallbacks(self, encoding_service, fallbacks_json, capacity_state=None):
+        mgr = MagicMock()
+        mgr._zone = "us-central1-c"
+        mgr.get_config.return_value = self._config(capacity_state)
+        encoding_service._worker_manager = mgr
+        encoding_service.settings.encoding_worker_fallback_vms = fallbacks_json
+        return encoding_service
+
+    def test_primary_first_and_flagged(self, encoding_service):
+        svc = self._service_with_fallbacks(encoding_service, None)
+        cands = svc._build_worker_candidates()
+        assert cands[0].vm_name == "encoding-worker-a"
+        assert cands[0].is_primary is True
+        assert cands[0].machine_type == "c4d-highcpu-32"
+
+    def test_fallbacks_ranked_fastest_first(self, encoding_service):
+        import json
+        fallbacks = json.dumps([
+            {"vm": "encoding-worker-fallback-n2f", "zone": "us-central1-f", "ip": "10.0.0.5",
+             "machine_type": "n2-highcpu-32"},
+            {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.6",
+             "machine_type": "c4-highcpu-32"},
+        ])
+        svc = self._service_with_fallbacks(encoding_service, fallbacks)
+        order = [c.vm_name for c in svc._build_worker_candidates()]
+        # c4d primary, then c4 (faster), then n2.
+        assert order == ["encoding-worker-a", "encoding-worker-fallback-c4a",
+                         "encoding-worker-fallback-n2f"]
+
+    def test_stocked_out_primary_demoted(self, encoding_service):
+        import json
+        from datetime import datetime, timezone
+        fallbacks = json.dumps([
+            {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.6",
+             "machine_type": "c4-highcpu-32"},
+        ])
+        # c4d@us-central1-c stocked out "now" → demoted below c4.
+        cap = {"c4d-highcpu-32@us-central1-c": datetime.now(timezone.utc).isoformat()}
+        svc = self._service_with_fallbacks(encoding_service, fallbacks, capacity_state=cap)
+        cands = svc._build_worker_candidates()
+        order = [c.vm_name for c in cands]
+        assert order == ["encoding-worker-fallback-c4a", "encoding-worker-a"]
+        # is_primary still correctly attached to the demoted c4d.
+        primary = [c for c in cands if c.is_primary][0]
+        assert primary.vm_name == "encoding-worker-a"
+
+    def test_legacy_fallback_without_machine_type_inferred(self, encoding_service):
+        import json
+        fallbacks = json.dumps([
+            {"vm": "encoding-worker-fallback-n2c", "zone": "us-central1-c", "ip": "10.0.0.7"},
+        ])
+        svc = self._service_with_fallbacks(encoding_service, fallbacks)
+        cands = svc._build_worker_candidates()
+        n2 = [c for c in cands if "n2c" in c.vm_name][0]
+        assert n2.machine_type is None  # not fabricated on the object…
+        # …but inference placed it after the c4d primary.
+        assert [c.vm_name for c in cands] == ["encoding-worker-a", "encoding-worker-fallback-n2c"]
+
+    def test_no_worker_manager_returns_empty(self, encoding_service):
+        encoding_service._worker_manager = None
+        assert encoding_service._build_worker_candidates() == []
+
+    def test_non_list_fallback_json_degrades_to_primary_only(self, encoding_service):
+        # A JSON scalar (e.g. "null") parses fine but must not blow up iteration.
+        svc = self._service_with_fallbacks(encoding_service, "null")
+        cands = svc._build_worker_candidates()
+        assert [c.vm_name for c in cands] == ["encoding-worker-a"]
+
+    def test_dict_fallback_json_degrades_to_primary_only(self, encoding_service):
+        svc = self._service_with_fallbacks(encoding_service, '{"vm": "x"}')
+        cands = svc._build_worker_candidates()
+        assert [c.vm_name for c in cands] == ["encoding-worker-a"]

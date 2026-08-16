@@ -114,11 +114,12 @@ echo "Downloaded wheel as: ${WHEEL_NAME}"
 # graph (langchain, CUDA, etc.) can hit pip's "resolution-too-deep" error and
 # crash-loop the service before it can serve health checks (see #587).
 #
-# The karaoke-gen dependency tree (torch, langchain, tenacity, ...) is therefore
-# NOT installed here. It is installed lazily at the first job by
-# ensure_latest_wheel() in backend/services/gce_encoding/main.py (which installs
-# WITH deps, retries, and verifies the import chain). Do not assume deps are
-# present just because this step succeeded.
+# The full karaoke-gen dependency tree (torch [CPU-only], langchain, tenacity,
+# ...) is now BAKED INTO THE IMAGE at build time (provision.sh), so this --no-deps
+# code upgrade just fast-forwards the app to the newest wheel on an already-
+# complete venv. ensure_latest_wheel() in backend/services/gce_encoding/main.py
+# remains as a runtime backstop (installs WITH deps + verifies imports) for the
+# rare case of an image predating the dep-bake or a partial venv.
 echo "[4/5] Installing wheel..."
 "${VENV}/bin/pip" install --upgrade --quiet --force-reinstall --no-deps "${WHEEL_PATH}"
 

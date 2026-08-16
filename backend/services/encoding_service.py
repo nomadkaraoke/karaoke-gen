@@ -265,12 +265,15 @@ class EncodingService:
             yield
 
     def _build_worker_candidates(self) -> list:
-        """Build the ordered candidate list for ensure_any_running.
+        """Build the ranked candidate list for ensure_any_running.
 
         Reads optional fallback VMs from settings (env var
-        ENCODING_WORKER_FALLBACK_VMS, JSON list of {vm, zone, ip}). Returns
-        an empty list when no worker manager / no configured fallbacks —
-        caller falls back to the single-VM ensure_primary_running path.
+        ENCODING_WORKER_FALLBACK_VMS, JSON list of {vm, zone, ip, machine_type?}).
+        The primary + all fallbacks are ranked by the shared preference logic
+        (fastest-first, demoting recently-stocked-out types) so runtime selection
+        stays in lock-step with the deploy green selection. Returns an empty list
+        when no worker manager / no configured fallbacks — caller falls back to
+        the single-VM ensure_primary_running path.
         """
         if not self._worker_manager:
             return []
@@ -281,42 +284,69 @@ class EncodingService:
             return []
 
         from backend.services.encoding_worker_manager import EncodingWorkerCandidate
+        from backend.services.encoding_worker_preference import (
+            PRIMARY_MACHINE_TYPE,
+            ordered_candidates,
+        )
 
-        # Primary always goes first. Single-zone deployments stop here.
-        candidates = [
-            EncodingWorkerCandidate(
-                vm_name=config.primary_vm,
-                zone=self._worker_manager._zone,
-                ip=config.primary_ip,
-            )
-        ]
+        # Build a dict pool (primary + fallbacks), each tagged with machine_type so
+        # the shared preference logic can rank them. The primary/secondary pair is
+        # always c4d; the config may override via primary_machine_type.
+        primary_mt = getattr(config, "primary_machine_type", None) or PRIMARY_MACHINE_TYPE
+        pool = [{
+            "vm": config.primary_vm,
+            "zone": self._worker_manager._zone,
+            "ip": config.primary_ip,
+            "machine_type": primary_mt,
+            "kind": "primary",
+            "is_primary": True,
+        }]
 
-        # Optional capacity-fallback VMs in alternate zones, configured via
-        # env var. Schema: '[{"vm":"encoding-worker-fallback-a","zone":"us-central1-a","ip":"34.x.x.x"}, ...]'
-        # The list is empty by default; user populates after `pulumi up`
-        # provisions the fallback VMs.
+        # Optional capacity-fallback VMs in alternate zones/families, configured via
+        # env var. Schema: '[{"vm":"encoding-worker-fallback-c4a","zone":"us-central1-a",
+        # "ip":"34.x.x.x","machine_type":"c4-highcpu-32"}, ...]'. machine_type is
+        # optional (inferred from the VM name for legacy entries). Empty by default;
+        # populated after `pulumi up` provisions the fallback VMs.
         import json as _json
         raw = self.settings.encoding_worker_fallback_vms
-        if not raw:
-            return candidates
-        try:
-            parsed = _json.loads(raw)
-        except (ValueError, TypeError) as e:
-            logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
-            return candidates
-
-        for item in parsed:
+        if raw:
             try:
-                candidates.append(EncodingWorkerCandidate(
-                    vm_name=item["vm"],
-                    zone=item["zone"],
-                    ip=item["ip"],
-                ))
-            except (KeyError, TypeError) as e:
-                logger.warning(f"Skipping malformed fallback candidate {item}: {e}")
-                continue
+                parsed = _json.loads(raw)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
+                parsed = []
+            # A non-list root (null, dict, scalar) parses fine but would blow up
+            # `for item in parsed` and escape this method during connection
+            # recovery — degrade to no fallbacks instead.
+            if not isinstance(parsed, list):
+                logger.warning("ENCODING_WORKER_FALLBACK_VMS must be a JSON list; ignoring")
+                parsed = []
+            for item in parsed:
+                try:
+                    pool.append({
+                        "vm": item["vm"],
+                        "zone": item["zone"],
+                        "ip": item["ip"],
+                        "machine_type": item.get("machine_type"),
+                        "kind": "fallback",
+                    })
+                except (KeyError, TypeError) as e:
+                    logger.warning(f"Skipping malformed fallback candidate {item}: {e}")
+                    continue
 
-        return candidates
+        # Rank fastest-first, demoting types that recently stocked out. Keeps the
+        # primary (c4d) at the top whenever it has capacity.
+        ranked = ordered_candidates(pool, capacity_state=config.capacity_state)
+        return [
+            EncodingWorkerCandidate(
+                vm_name=c["vm"],
+                zone=c["zone"],
+                ip=c["ip"],
+                machine_type=c.get("machine_type"),
+                is_primary=c.get("is_primary", False),
+            )
+            for c in ranked
+        ]
 
     def _load_credentials(self):
         """Load encoding worker URL and API key from config/secrets."""

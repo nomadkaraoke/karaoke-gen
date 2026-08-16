@@ -6,6 +6,41 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Multi-instance-type encode pool: one shared speed-rank, availability-aware (Aug 2026, v0.195.0)
+
+"c4d primary + a single n2 fallback family" is not resilient — a stockout is per
+**(machine family × region)** and can exhaust every zone of a family at once. The
+fix is a **ranked pool of ≥5 x86_64, 32-vCPU, ≥32 GB highcpu types across ≥3
+independent silicon lineages** (c4d/c4/n4d + c2d/n2d/n2), tried fastest-first.
+
+Three things that made this clean:
+- **One pure preference module is the single source of truth.** Runtime selection
+  (`encoding_service._build_worker_candidates` → `ensure_any_running`) and deploy
+  green selection (`deploy_promote.select_green_candidates`) both call
+  `backend/services/encoding_worker_preference.ordered_candidates`. Two call-sites
+  computing "candidate order" independently WILL drift (they already had — runtime
+  used secret order, deploy used "n2-first"). `deploy_promote` is loaded by path in
+  CI, so it imports the module with a **by-path fallback** (an installed `backend`
+  package can otherwise shadow the repo working tree).
+- **Prefer fastest, but be availability-aware.** Base order is speed-rank (c4d
+  stays top when it can start). A type that raises `ZONE_RESOURCE_POOL_EXHAUSTED`
+  is recorded in Firestore `capacity_state` and **demoted for a 15-min cooldown,
+  not dropped** — stops wasting ~2 min/attempt probing a known-dead type, then
+  re-probes so we snap back to c4d the moment capacity returns.
+- **Override routing must key off an explicit `is_primary` flag, not list
+  position.** Once the ranker can put a fallback ahead of a stocked-out primary,
+  "candidate index 0 == primary" is false and the active-override set/clear logic
+  breaks silently (routes to the primary IP while a fallback is actually running).
+- **Disk-type is family-specific:** next-gen Titanium families (c4/c4d/n4/n4d)
+  support **hyperdisk-balanced only**; older families (c2d/n2/n2d) use
+  **pd-balanced**. Wrong disk type = GCE rejects the instance at create.
+- **Bake the full dep tree (CPU-only torch) into the image.** Each new fresh type
+  VM otherwise hits the fragile first-render `ensure_latest_wheel` full-tree
+  install; baking it (CPU torch via `--index-url` the PyTorch CPU index) makes all
+  types boot self-sufficient. CPU torch avoids multi-GB CUDA wheels the encode path
+  never uses. Verify `torch.version.cuda is None` — NOT `cuda.is_available()`,
+  which is False on the GPU-less builder even for a CUDA build.
+
 ## Concurrent encodes OOM-killed the worker → lost renders (Aug 2026, v0.194.0)
 
 Three renders submitted at once ran as **3 concurrent 4K ffmpeg encodes** on the
@@ -238,6 +273,8 @@ When a metadata key is missing, don't set it to "now" and skip the action — th
 ### Encoding Worker Blue-Green: Named VMs Beat MIG for Small Scale (Mar 2026)
 
 **Why not a Managed Instance Group?** MIG rolling updates don't support deep health checks — you can verify HTTP liveness but not "did a real encode actually work?". PR #587 showed that the service can respond to `/health` while failing all encode jobs (pip resolution error had broken the wheel). A real encode test catches this; a simple HTTP check does not. At two VMs, the operational complexity of a MIG (instance template management, rolling update policies, drain configuration) adds no value over two named VMs with a Firestore pointer.
+
+**Still true after the multi-type pool (Aug 2026, v0.195.0).** Broadening to a 6-type fallback pool (see the v0.195.0 lesson above) is a stockout-resilience play and stays on the named-VM model: static IPs, IP-addressed blue-green, on-demand start/stop, deep encode-test-before-swap. A regional MIG with instance flexibility is GCP's textbook answer to stockouts, but it would replace IP addressing with service discovery / an internal LB and turn blue-green into rolling recreate — high blast radius for a system just hardened. **Revisit MIG only when we need horizontal autoscaling (>1 concurrent worker per burst) or VM sprawl becomes unmanageable (>~10 types).**
 
 **Deep health check pattern**: After deploying to the secondary VM, CI runs a real encode job end-to-end before swapping traffic. This has caught broken deploys that passed all unit tests and liveness probes.
 

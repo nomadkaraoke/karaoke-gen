@@ -53,7 +53,17 @@ class MachineTypes:
     # us-central1-a/-b/-c simultaneously (2026-08-12) which took out every same-family lane.
     # n2-highcpu-32 (Intel Cascade/Ice Lake) draws from a much deeper, independent pool, so a
     # c4d shortage cannot exhaust it. n2 does NOT support hyperdisk-balanced → uses pd-balanced.
-    ENCODING_WORKER_ALT = "n2-highcpu-32"  # 32 vCPU, Intel - deep-capacity fallback pool
+    ENCODING_WORKER_ALT = "n2-highcpu-32"  # 32 vCPU, Intel Cascade/Ice Lake - deep-capacity fallback pool
+    # Broadened ranked pool (2026-08-15) — ≥5 x86_64, 32-vCPU, ≥32 GB highcpu types
+    # across 4 distinct silicon lineages, so a stockout of the newest-gen cohort
+    # (c4d/c4, the crunch) cannot exhaust every lane. Encode-speed ranking lives in
+    # backend/services/encoding_worker_preference.py::SPEED_RANK. Disk-type rule:
+    # next-gen Titanium families (c4/c4d/n4/n4d) support hyperdisk-balanced ONLY;
+    # older families (c2d/n2/n2d) use pd-balanced. Getting this wrong = pulumi error.
+    ENCODING_WORKER_C4 = "c4-highcpu-32"    # 32 vCPU / 64 GB, Intel Emerald Rapids (hyperdisk-only)
+    ENCODING_WORKER_N4D = "n4d-highcpu-32"  # 32 vCPU / 64 GB, AMD Titanium (hyperdisk-only)
+    ENCODING_WORKER_C2D = "c2d-highcpu-32"  # 32 vCPU / 64 GB, AMD Milan (Zen3), deep pool (pd-balanced)
+    ENCODING_WORKER_N2D = "n2d-highcpu-32"  # 32 vCPU / 32 GB, AMD Rome/Milan, deep pool (pd-balanced)
     FLACFETCH = "e2-small"  # 0.5 vCPU, 2GB RAM
 
 
@@ -300,8 +310,17 @@ class EncodingWorkerConfig:
     #
     # Each entry: name/IP suffix, zone suffix ({REGION}-{zone_suffix}),
     # machine_type, boot disk_type. ORDER MATTERS — IPs and VMs are zipped by
-    # position, and it defines candidate priority. Keep the c4d a/b entries
-    # first and byte-identical so Pulumi does not recreate the existing VMs.
+    # position. (Candidate PRIORITY is no longer positional: it is decided at
+    # runtime/deploy by the shared speed-rank + cooldown in
+    # backend/services/encoding_worker_preference.py.) Keep the existing a/b/n2c/n2f
+    # entries first and byte-identical so Pulumi does not recreate those VMs; the
+    # broadened-pool entries are APPENDED so the change is purely additive
+    # (verify `pulumi preview` shows only new IPs+VMs, zero replace).
+    #
+    # Zone spread: one machine type per zone where possible so a single
+    # (type × zone) stockout can't correlate across the pool. c4d primary lives in
+    # zone c (the primary pair), so the c4 fallback goes to a, n4d to b, c2d to f,
+    # n2d to a — 4 lineages across 4 zones.
     FALLBACKS = [
         {"suffix": "a", "zone_suffix": "a",
          "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"},
@@ -311,6 +330,15 @@ class EncodingWorkerConfig:
          "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
         {"suffix": "n2f", "zone_suffix": "f",
          "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
+        # --- Broadened pool (2026-08-15), appended (additive-only) ---
+        {"suffix": "c4a", "zone_suffix": "a",
+         "machine_type": MachineTypes.ENCODING_WORKER_C4, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "n4db", "zone_suffix": "b",
+         "machine_type": MachineTypes.ENCODING_WORKER_N4D, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "c2df", "zone_suffix": "f",
+         "machine_type": MachineTypes.ENCODING_WORKER_C2D, "disk_type": "pd-balanced"},
+        {"suffix": "n2da", "zone_suffix": "a",
+         "machine_type": MachineTypes.ENCODING_WORKER_N2D, "disk_type": "pd-balanced"},
     ]
 
     # Derived name lists (kept for readability / any external reference).

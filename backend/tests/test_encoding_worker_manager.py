@@ -934,3 +934,141 @@ class TestWaitForWorkerReady:
             )
 
         assert call_count["n"] == 3
+
+
+# ---------------------------------------------------------------------------
+# capacity_state (availability awareness) + is_primary override routing
+# ---------------------------------------------------------------------------
+
+
+class TestCapacityStateFeedback:
+    """ensure_any_running records/clears per-(type,zone) stockout state."""
+
+    def test_records_stockout_on_capacity_error(self, manager, mock_db, mock_compute):
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        # Primary c4d hits capacity; fallback n2 succeeds.
+        mock_compute.start.side_effect = [_capacity_op(), _ok_op()]
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-n2f", zone="us-central1-f",
+                                    ip="10.0.0.2", machine_type="n2-highcpu-32"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            manager.ensure_any_running(candidates)
+
+        doc_ref = mock_db.collection.return_value.document.return_value
+        # A merge-set recorded the c4d stockout under its type@zone key.
+        set_calls = [c for c in doc_ref.set.call_args_list
+                     if "capacity_state" in (c.args[0] if c.args else {})]
+        recorded = {}
+        for c in set_calls:
+            recorded.update(c.args[0]["capacity_state"])
+        assert recorded.get("c4d-highcpu-32@us-central1-c") == "2026-05-05T09:00:00+00:00"
+
+    def test_clears_stockout_for_type_on_clean_start(self, manager, mock_db, mock_compute):
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.return_value = _ok_op()
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            manager.ensure_any_running(candidates)
+
+        doc_ref = mock_db.collection.return_value.document.return_value
+        cleared = {}
+        for c in doc_ref.set.call_args_list:
+            payload = c.args[0] if c.args else {}
+            if "capacity_state" in payload:
+                cleared.update(payload["capacity_state"])
+        assert cleared.get("c4d-highcpu-32@us-central1-c") is None
+
+    def test_stockout_write_failure_does_not_break_start(self, manager, mock_db, mock_compute):
+        """A Firestore error while recording a stockout must not abort failover."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.side_effect = [_capacity_op(), _ok_op()]
+
+        doc_ref = mock_db.collection.return_value.document.return_value
+        doc_ref.set.side_effect = RuntimeError("firestore down")
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-n2f", zone="us-central1-f",
+                                    ip="10.0.0.2", machine_type="n2-highcpu-32"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["vm_name"] == "encoding-worker-fallback-n2f"
+        assert result["fell_back"] is True
+
+    def test_is_primary_flag_routes_override_regardless_of_position(self, manager, mock_db, mock_compute):
+        """A fallback ranked FIRST (is_primary=False) must still set active_override.
+
+        When the preference logic demotes a stocked-out primary, the fallback can be
+        candidate index 0 — the override must key off is_primary, not position.
+        """
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.return_value = _ok_op()
+
+        # Fallback is first (primary demoted), primary flagged but ranked second.
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-c2df", zone="us-central1-f",
+                                    ip="10.0.0.9", machine_type="c2d-highcpu-32", is_primary=False),
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["vm_name"] == "encoding-worker-fallback-c2df"
+        assert result["fell_back"] is True
+        doc_ref = mock_db.collection.return_value.document.return_value
+        override_calls = [c for c in doc_ref.update.call_args_list
+                          if "active_override_vm" in c.args[0]]
+        assert override_calls, "Fallback at index 0 must still set the override"
+        assert override_calls[0].args[0]["active_override_vm"] == "encoding-worker-fallback-c2df"
+
+    def test_legacy_candidates_without_flag_use_position(self, manager, mock_db, mock_compute):
+        """No is_primary flag anywhere → first candidate is treated as primary (legacy)."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.return_value = _ok_op()
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-blue", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["fell_back"] is False
+        assert result["vm_name"] == "encoding-worker-blue"
