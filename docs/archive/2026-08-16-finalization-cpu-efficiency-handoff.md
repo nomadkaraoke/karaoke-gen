@@ -1,6 +1,11 @@
 # Handoff: Investigate prod finalization CPU efficiency / utilization — 2026-08-16
 
-**Status:** OPEN investigation (not started). Written for a fresh Claude session —
+**Status:** ✅ RESOLVED 2026-08-16 — outcome (a): CPU already well-utilized (NOT
+capped at 8 cores); removed dead `ffmpeg_threads` config. Empirical measurement +
+resolution appended at the bottom under "RESOLUTION". The original investigation
+brief follows unchanged for context.
+
+**Status (original):** OPEN investigation (not started). Written for a fresh Claude session —
 self-contained; all facts you need are inlined below or in the linked repo docs.
 **Origin:** surfaced by the encode-worker multi-instance-type benchmark
 (`docs/archive/2026-08-15-encoding-instance-type-diversity-plan.md`; benchmark
@@ -139,3 +144,69 @@ close this out and just fix the stale comment; or (b) confirm an ~2–4× idle-c
 gap → raise threads / parallelize formats, validate the speedup and RAM headroom,
 ship it. Bump `pyproject.toml` version; if the fix is in the wheel's
 `LocalEncodingService`, it ships via the normal wheel → `ensure_latest_wheel` path.
+
+---
+
+## RESOLUTION (2026-08-16) — outcome (a): already efficient; dead config removed
+
+**Verdict: the "leaving 75% idle" fear is unfounded. Finalization uses ~21–25 of a
+worker's 32 vCPUs during every heavy libx264 stage. No threading fix warranted.**
+
+### 1. `ffmpeg_threads` is dead config — confirmed statically AND empirically
+- `grep -rn ffmpeg_threads backend/` → exactly one hit (the setter at
+  `video_worker.py:131`), zero consumers. `EncodingConfig(...)` at
+  `gce_encoding/main.py:1111` never passes it.
+- **Empirically**, the deployed ffmpeg argv captured mid-encode (`ps`/probe on the
+  worker) carry **no `-threads` flag** on any finalization command — x264 runs its
+  all-core auto default. Sample argv observed:
+  - `… -i with_vocals.mkv -c:v libx264 -c:a copy … (With Vocals).mp4`
+  - `… concat=n=3… -c:v libx264 -c:a pcm_s16le … (Final Karaoke Lossless 4k).mp4`
+  - `… -i …Lossless 4k.mp4 -c:v copy -c:a aac … (Lossy 4k).mp4`
+  - `… -c:v libx264 -vf scale=1280:720 -preset medium -tune animation … (Lossy 720p).mp4`
+
+### 2. Process-level CPU measurement (the point of this task)
+Method: started `encoding-worker-fallback-c4a` (c4-highcpu-32, 32 vCPU / 62 GB),
+recreated the bench input, POSTed `/encode` **directly to the VM IP**, and sampled
+`top -bH -d 2` on that same VM for the whole run. The authoritative signal is the
+system-wide `%Cpu(s)` summary line (0–100% across all 32 cores):
+
+| Stage (serial)            | ffmpeg cmd                         | `%Cpu us` (of 32) | ≈cores busy | peak RSS | ~duration |
+|---------------------------|------------------------------------|-------------------|-------------|----------|-----------|
+| "With Vocals" mp4 convert | `libx264 -c:a copy` (mkv→mp4)      | 64–70%            | ~21         | ~11 GB   | ~59 s     |
+| **Lossless 4K concat**    | `libx264 -c:a pcm_s16le`           | 72–75%            | ~23         | ~9 GB    | ~45 s     |
+| Lossy 4K                  | `-c:v copy -c:a aac` (stream copy) | 3–5%              | I/O-bound   | <0.1 GB  | ~4 s      |
+| MKV (YouTube)             | `-c:v copy -c:a flac` (copy)       | low               | I/O-bound   | —        | ~2 s      |
+| 720p                      | `libx264 scale=1280:720 -preset medium` | 76–78%       | ~25         | ~1.2 GB  | ~12 s     |
+
+Full run: ~122 s of encoding + ~35 s GCS download/upload = **~158 s wall** (matches
+the ~139 s c4 baseline plus I/O). An 8-core cap would show `us≈25%, idle≈75%`; we
+observed the **opposite** (`us≈66–78%, idle≈22–34%`). Not capped.
+
+### 3. Why the residual ~25–30% idle is NOT recoverable by more threads
+The heavy processes already spawn 90–162 OS threads (`nlwp`); x264's auto default is
+~1.5×cores. The idle is the structural ceiling of x264 **frame-threading**
+(inter-frame dependencies + a partially-serial lookahead), not a thread cap. Forcing
+`-threads 32`/`-x264-params threads=N` above auto gives negligible speed and can hurt
+quality. **Formats are serial and dependency-chained** (`encode_all_formats` steps
+3→{4,5,6}; lossy/mkv/720p all consume the lossless output), and the only overlap-able
+work after lossless is two near-free stream copies (lossy, mkv) — so parallelizing
+formats buys ~nothing and would raise peak RAM against the 32 GB fallback floor +
+the `ENCODING_HEAVY_CONCURRENCY=1` OOM constraint. Not worth it.
+
+### 4. What shipped
+- Removed the dead `"ffmpeg_threads": 8` field + stale `c4-standard-8` comment at
+  `video_worker.py:131`, replaced with a NOTE explaining the measured all-core
+  behaviour (so nobody re-opens this). No behaviour change. Version bump only.
+
+### 5. Follow-up worth its own task (NOT done here — out of scope, needs verification)
+The single biggest CPU cost is the **"With Vocals" preview** — a full 4K libx264
+re-encode (~59 s, longer than the lossless master itself). The source
+`with_vocals.mkv` is **already H.264** (High 4:4:4 Predictive, 3840×2160, `yuv444p`).
+If nothing downstream needs a re-encode / a different `pix_fmt`, this could become a
+container remux (`-c:v copy`) and save ~40–50 s/job — a far bigger win than any
+threading tweak. Requires confirming: (a) do players/consumers need `yuv420p` (4:4:4
+mp4 is poorly supported), and (b) does `convert_mov_to_mp4` intentionally normalize
+pix_fmt? Left for a dedicated investigation.
+
+### Operational note
+Bench VM stopped, `gs://…/bench/**` deleted after the run, per hygiene.
