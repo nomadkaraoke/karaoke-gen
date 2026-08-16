@@ -2,7 +2,28 @@
 
 **Date:** 2026-08-15
 **Branch:** `feat/sess-20260815-1915-encoding-instance-type-diversity`
-**Status:** IMPLEMENTED (v0.195.0) — code + IaC + Packer landed; operator rollout steps below still pending.
+**Status:** SHIPPED (v0.195.0 #911 + v0.195.1 #912) — code + IaC + Packer merged & rolled out.
+
+## Rollout outcome (2026-08-16)
+
+- ✅ Backend 0.195.1 live on Cloud Run; encode path healthy (c4d primary `encoding-worker-a`
+  RUNNING 0.195.1 after c4d capacity returned to us-central1-c). `capacity_state` field live.
+- ✅ Encoding-worker image rebuilt with the CPU-torch dep-bake; **validated end-to-end** — a fresh
+  `c4a` booted healthy in ~24s and encoded a preview in <6s (no first-job dep install).
+- ✅ **6 fallback VMs provisioned** (stopped): `-a`/`-b` (c4d), `-n2c`/`-n2f` (n2), **`-c4a`** (c4),
+  **`-n2da`** (n2d). Pool spans 4 machine families. Pulumi state consistent (`c4a`, orphaned by a
+  killed apply, was `pulumi import`ed + reconciled). Secret at **version 3** (6 entries, all with
+  `machine_type`).
+- ⏳ **DEFERRED: `c2df` (c2d/us-central1-f) + `n4db` (n4d/us-central1-b)** — declared in IaC, IPs
+  reserved, but VMs NOT created: **zones f/b are in active STOCKOUT**. Creating even a
+  `desired_status=TERMINATED` VM needs a one-time boot allocation, so the crunch blocks
+  provisioning the pool. `pulumi up` will show "2 to create/errored" until capacity returns — this
+  is EXPECTED. **To finish: re-run `pulumi up --target …c2df --target …n4db`, then add both to the
+  secret (v4) with the right `machine_type`** (never add a VM to the secret before it exists).
+- Not done: measured `SPEED_RANK` benchmark run (still arch-seeded); MIG; reservations.
+
+---
+
 **Context:** memory `project_gen_encoding_instance_type_diversity` + `_worker_serialization` + `_machine_family_diversity` + `_wheel_deps_missing`
 
 ## Goal

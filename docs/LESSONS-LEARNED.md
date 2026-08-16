@@ -406,6 +406,16 @@ When two sequential human review steps can be combined into one, do it. We origi
 
 ### Machine-family diversification (August 2026)
 
+> **Superseded by v0.195.0** — the "Multi-instance-type encode pool" lesson at the
+> top of this file. The 2-family fallback fleet (c4d + n2) described below was
+> broadened to a **ranked 6-family pool** (c4d/c4/n4d/c2d/n2d/n2), and runtime +
+> deploy selection now route through the shared
+> `backend/services/encoding_worker_preference.py` (fastest-first + 15-min capacity
+> cooldown), not "primary first, fallbacks in declared order". The incident + root
+> lesson below remain accurate history; the "Fix (Option B)" and "Architecture
+> summary" specifics (2 families / 6 VMs / declared-order iteration) are outdated —
+> see the v0.195.0 lesson for the current mechanism.
+
 **Incident 2026-08-12:** `c4d-highcpu-32` hit a **region-wide `ZONE_RESOURCE_POOL_EXHAUSTED` stockout across `us-central1-a`, `-b` AND `-c` simultaneously.** Because the primary pair *and* both fallbacks were all the same machine family, every lane in `ensure_any_running` failed at once. Effects:
 - **Preview** (`POST /api/review/{id}/preview-video`) fell through to slow local Cloud-Run encoding (~130–160 s), which **exceeds Cloudflare's ~100 s edge timeout** → browser got a **524 / "NetworkError when attempting to fetch resource"** even though the backend actually returned 200. The 524 and the NetworkError are the same event; backend logs showing 200 are misleading because the client was already disconnected.
 - **Render** parked in `RENDER_PENDING_CAPACITY` and auto-retried (safe only if capacity returns within 24 h).

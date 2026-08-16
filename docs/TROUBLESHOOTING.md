@@ -64,7 +64,7 @@ Since v0.184.2, in-flight status polls are also **pinned to the worker that acce
 
 Since **v0.194.0**, a mid-run job loss is also **auto-recovered**: the encoding worker processes heavy renders/encodes **one at a time** (`heavy_executor`, `ENCODING_HEAVY_CONCURRENCY=1`) so it can no longer OOM from concurrent 4K encodes (the trigger for the 2026-08-15 Arctic Monkeys batch failure — 3 concurrent encodes OOM-killed the 32 GB fallback worker and restarted it, wiping its in-memory jobs). If the worker *does* restart mid-render (deploy/crash), `wait_for_completion` now raises `EncodingJobLostError` and the render/encode worker **resubmits the job under a fresh `<id>_retry_<hex8>`** (bounded by `ENCODING_RESUBMIT_MAX=2`) instead of failing. To confirm serialization is live on a worker: `curl -s localhost:8080/health` shows `queue_length` growing while `active_jobs` stays 1 under load. **Note:** `main.py` ships in the wheel but the running uvicorn process only picks up worker-side changes (executor split, `queue_position`) on a **fresh boot / service restart** — `ensure_latest_wheel` alone does not reload the app process.
 
-Since **v0.194.2**, the CI deploy handles that restart automatically even during a c4d Spot stockout. The old blue-green only targeted the c4d primary/secondary; when both were down it rolled back and **never refreshed the serving n2 fallback** (recorded as `active_override_vm`), so worker-side changes didn't reach prod until a manual restart (`primary_version` in the config doc went stale). The deploy is now **capacity-aware** (`infrastructure/encoding-worker/deploy_promote.py`): it validates the new wheel on a *fresh* green worker — the c4d secondary if it starts, else a different n2 fallback (never the current override, so it keeps serving) — then **promotes** the green (primary/secondary swap for a c4d green, or sets `active_override` for a fallback green) and drains+stops the retired worker. A c4d green also **clears a stale override** so traffic returns to the fresh primary. Zero-downtime, and it works while c4d is exhausted. Last resort if no separate green can start: an in-place restart of the serving override (brief blip, covered by auto-resubmit).
+Since **v0.194.2**, the CI deploy handles that restart automatically even during a c4d Spot stockout. The old blue-green only targeted the c4d primary/secondary; when both were down it rolled back and **never refreshed the serving n2 fallback** (recorded as `active_override_vm`), so worker-side changes didn't reach prod until a manual restart (`primary_version` in the config doc went stale). The deploy is now **capacity-aware** (`infrastructure/encoding-worker/deploy_promote.py`): it validates the new wheel on a *fresh* green worker selected from the **ranked 6-family pool** (`select_green_candidates` → the shared `encoding_worker_preference.ordered_candidates` — fastest-first with capacity cooldown; the c4d secondary if it can start, else the fastest available fallback family, never the current override so it keeps serving) — then **promotes** the green (primary/secondary swap for a c4d green, or sets `active_override` for a fallback green) and drains+stops the retired worker. A c4d green also **clears a stale override** so traffic returns to the fresh primary. Zero-downtime, and it works while c4d is exhausted. Last resort if no separate green can start: an in-place restart of the serving override (brief blip, covered by auto-resubmit).
 
 ---
 
@@ -110,7 +110,9 @@ gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
 
 **Symptoms:** A render fails with `OutputGenerator not available: No module named 'tenacity'. The karaoke-gen wheel must be installed. Check that ensure_latest_wheel() succeeded.` (or another missing package). Retries hit the same VM and fail identically.
 
-**Cause:** A freshly-provisioned encoding-worker VM comes up with only a handful of packages baked into the Packer image, and boot installs the wheel with `--no-deps`. The full karaoke-gen dependency tree (torch, langchain, tenacity, …) is installed lazily at the first job by `ensure_latest_wheel()`. If that install fails or partially completes, the venv is left importable-but-incomplete and the render dies on the first missing import. First seen 2026-08-13 (job 233b9536) on a fresh `n2-highcpu-32` fallback added in #903.
+**Largely fixed in v0.195.0 (dep-bake):** the Packer image now bakes the **full** karaoke-gen dependency tree (with CPU-only torch) into the venv at build time, so a freshly-provisioned VM of any family boots self-sufficient — no first-job dependency install. This failure mode should now only appear on a VM whose boot disk predates the dep-bake image, or a venv left partial by an interrupted repair. The `ensure_latest_wheel()` runtime backstop below still exists for those cases.
+
+**Original cause (pre-v0.195.0):** A freshly-provisioned VM came up with only a handful of packages baked in, and boot installed the wheel with `--no-deps`. The full dependency tree (torch, langchain, tenacity, …) was installed lazily at the first job by `ensure_latest_wheel()`; a failed/partial install left the venv importable-but-incomplete and the render died on the first missing import. First seen 2026-08-13 (job 233b9536) on a fresh `n2-highcpu-32` fallback added in #903.
 
 **Fixed in v0.192.7:** `ensure_latest_wheel()` now downloads only the single latest wheel (was: copying the entire ~6 GiB `wheels/` dir every job with a 60 s timeout), retries the install (3× at 900 s), and **verifies the render/encode import chain** before returning — a clean `pip` exit is no longer trusted. Callers fail the job with a clear retryable error instead of proceeding. Fresh workers pick this up via the wheel-at-boot.
 
@@ -281,7 +283,7 @@ gcloud compute instances describe encoding-worker-a \
 
 **Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM. The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
 
-The fallback fleet is diversified by **machine family** (since incident 2026-08-12): `c4d-highcpu-32` primaries in `us-central1-c` + `c4d` fallbacks in `-a`/`-b` + `n2-highcpu-32` fallbacks (`encoding-worker-fallback-n2c`/`-n2f`) in `-c`/`-f`. The n2 pool is much deeper, so a full `c4d` region-wide stockout (which took out a/b/c at once on 2026-08-12) should now still find n2 capacity. If you see EVERY candidate (c4d **and** n2) return stockout, that's a genuinely severe regional event — wait, or add a cross-region fallback.
+The fallback fleet is diversified across **6 machine families** (broadened to the full pool in v0.195.0): `c4d-highcpu-32` primaries (`encoding-worker-a`/`-b`) in `us-central1-c`, plus 8 stopped fallbacks — `c4d` (`-fallback-a`/`-b`, zones a/b), `n2` (`-n2c`/`-n2f`, zones c/f), `c4` (`-c4a`, zone a), `n4d` (`-n4db`, zone b), `c2d` (`-c2df`, zone f), `n2d` (`-n2da`, zone a). Candidates are tried **fastest-first with a 15-min capacity cooldown** (a family that stocks out is demoted, then re-probed) — see `backend/services/encoding_worker_preference.py`. A single-family region-wide stockout (which took out c4d a/b/c at once on 2026-08-12) now still finds capacity in the 5 other families. If you see EVERY family return stockout, that's a genuinely severe regional event — wait, or add a cross-region fallback. NOTE: creating a *new* fallback VM (or re-creating a deleted one) still needs a one-time boot allocation, so a deep enough crunch can even block provisioning — a `pulumi up` may show the missing VM as "to create / errored" until capacity returns.
 
 **Related symptom — preview 524 / "NetworkError":** the same capacity exhaustion also makes `POST /api/review/{id}/preview-video` fall back to slow local encoding (~130–160 s), which exceeds Cloudflare's ~100 s edge timeout → the browser shows a **524** or Firefox *"NetworkError when attempting to fetch resource"* even though the backend returns 200. If a user reports the review preview failing, check for a concurrent stockout; the already-rendered preview mp4 (if any) is fetchable via `GET /api/review/{id}/preview-video/{hash}` (302 → signed GCS URL) with a Bearer admin token. Completing the review does **not** require the preview.
 
@@ -309,14 +311,18 @@ gcloud logging read 'protoPayload.methodName:"instances.start" AND "ZONE_RESOURC
   --project=nomadkaraoke --freshness=30m --limit=5 \
   --format='value(timestamp, protoPayload.resourceName)'
 
-# Try starting a fallback in each family; if BOTH c4d and n2 refuse, it's severe — wait.
+# Try starting a fallback in each of the 6 families; if ALL refuse, it's severe — wait.
 # Synchronous (no --async) so the start op surfaces stockout inline, and we capture
 # gcloud's own exit status rather than piping (a pipe would return sed's status).
 for VM_ZONE in \
   "encoding-worker-fallback-a:us-central1-a" \
   "encoding-worker-fallback-b:us-central1-b" \
   "encoding-worker-fallback-n2c:us-central1-c" \
-  "encoding-worker-fallback-n2f:us-central1-f"; do
+  "encoding-worker-fallback-n2f:us-central1-f" \
+  "encoding-worker-fallback-c4a:us-central1-a" \
+  "encoding-worker-fallback-n4db:us-central1-b" \
+  "encoding-worker-fallback-c2df:us-central1-f" \
+  "encoding-worker-fallback-n2da:us-central1-a"; do
   VM="${VM_ZONE%%:*}"; ZONE="${VM_ZONE##*:}"
   if OUT=$(gcloud compute instances start "$VM" --zone="$ZONE" --project=nomadkaraoke 2>&1); then
     echo "$VM: OK (started — remember to stop it)"

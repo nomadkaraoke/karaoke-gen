@@ -79,17 +79,21 @@ The `concurrency=1` setting may have been added deliberately for performance rea
 
 ### 🔍 GCE Encoding Worker
 
-**Current State:**
-- c4d-highcpu-32 VM running 24/7
-- Cost: ~$700/month
+**Current State (updated v0.195.0 — the opportunities below are largely SHIPPED):**
+- No longer a single 24/7 VM. It is a pool of **on-demand** VMs: a c4d-highcpu-32
+  blue-green primary pair + 8 stopped fallbacks across 6 machine families
+  (c4d/c4/n4d/c2d/n2d/n2) for stockout resilience.
+- **Idle auto-shutdown is live** (JIT start on the lyrics-review page; a Cloud
+  Function stops idle VMs after 15 min). When idle, cost is just boot disks
+  (~$10/VM/mo); compute is billed only while encoding — so the historical
+  "~$700/mo running 24/7" no longer applies.
 
-**Opportunities:**
-1. **Spot Instance:** Could save 60-91% (~$420-630/month savings)
-   - Risk: May be preempted during video encoding jobs
-   - Mitigation: Implement job restart logic
-2. **Auto-scaling:** Start/stop based on video queue depth
-   - Could scale to zero when no jobs queued
-   - Startup time: ~2-3 minutes (acceptable for async processing)
+**Opportunities (status):**
+1. **Spot Instance:** Could save 60-91% — NOT adopted; on-demand chosen so a
+   fallback can always be *started* when needed (Spot preemption would undermine
+   the anti-stockout pool during the industry-wide crunch). Kept as a future lever.
+2. **Auto-scaling / scale-to-zero:** ✅ IMPLEMENTED via JIT start + idle-shutdown
+   Cloud Function (start/stop on demand rather than queue-depth-based).
 
 **Recommendation:** Test Spot instance first (lower risk), then consider auto-scaling
 
