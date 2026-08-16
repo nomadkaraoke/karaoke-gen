@@ -38,10 +38,13 @@
         │ (jobs)   │  │ (files)  │  │  (API keys)  │ │  Worker (*)  │
         └──────────┘  └──────────┘  └──────────────┘ └──────────────┘
 
-(*) GCE Encoding Worker: c4d-highcpu-32 VM with AMD EPYC 9B45 (Turin) for
-    high-performance FFmpeg encoding (4.92x faster than previous c4-standard-8).
+(*) GCE Encoding Worker: a ranked pool of 6 x86_64 32-vCPU highcpu machine
+    families (c4d/c4/n4d/c2d/n2d/n2). c4d-highcpu-32 (AMD EPYC Turin) is the
+    fastest and stays the primary/preferred pick; the other families are
+    stockout-resilience fallbacks selected fastest-first with a capacity cooldown.
     Used for both final video encoding and preview video generation.
-    Uses immutable deployment pattern - see infrastructure/encoding-worker/README.md.
+    Uses immutable deployment pattern - see infrastructure/encoding-worker/README.md
+    and the "Encoding Worker" section below.
 ```
 
 ### Error Monitor
@@ -292,33 +295,82 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 
 **Worker Logs**: Stored in subcollection (`jobs/{job_id}/logs`) instead of embedded array to avoid Firestore's 1MB document size limit. TTL policy auto-deletes logs after 30 days. Feature flag: `USE_LOG_SUBCOLLECTION` (default: true). See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#firestore-document-1mb-limit-with-embedded-arrays).
 
-## Encoding Worker Blue-Green Deployment
+## Encoding Worker: blue-green primary pair + multi-family fallback pool
 
-The GCE encoding worker uses a blue-green deployment pattern with two named VMs (`encoding-worker-a` and `encoding-worker-b`).
+The GCE encoding worker is a **blue-green primary pair** (`encoding-worker-a`/`-b`,
+both c4d-highcpu-32 in us-central1-c) plus a **ranked pool of stockout-resilience
+fallback VMs** spanning 6 x86_64 machine families (see "Multi-instance-type pool"
+below). **10 VMs total**, all TERMINATED by default and started on demand.
 
 ### Architecture
 
 ```text
-Frontend → Backend (Cloud Run) → Firestore config → Primary VM (encoding-worker-a or b)
-                                                   ↑
+Frontend → Backend (Cloud Run) → Firestore config → active worker (primary, or a
+                                                   ↑  capacity-fallback "override")
 Cloud Scheduler (5 min) → Cloud Function → checks idle + stops VMs
                                                    ↑
-CI (GitHub Actions) → deploys to secondary → health check → swap Firestore → stop old
+CI (GitHub Actions) → selects a fresh "green" (ranked pool) → health + encode test
+                       → promote (swap primary OR set active_override) → stop old
 ```
+
+### Multi-instance-type pool (stockout resilience, v0.195.0)
+
+A single machine family can hit a region-wide `ZONE_RESOURCE_POOL_EXHAUSTED`
+stockout across every zone at once. To survive that, the fallback fleet spans
+**6 families** (c4d, c4, n4d, c2d, n2d, n2 — all `-highcpu-32`, ≥32 GB) across
+zones a/b/c/f: `encoding-worker-fallback-a`/`-b` (c4d), `-n2c`/`-n2f` (n2),
+`-c4a` (c4), `-n4db` (n4d), `-c2df` (c2d), `-n2da` (n2d).
+
+**Candidate ordering is one shared pure module**,
+`backend/services/encoding_worker_preference.py::ordered_candidates(pool, capacity_state)`,
+used by BOTH runtime selection and deploy green selection so they can't drift:
+- **Fastest-first** by `SPEED_RANK` (c4d preferred whenever it can start).
+- **Availability-aware**: a family that recently hit a capacity/stockout error is
+  recorded in the Firestore `capacity_state` map and **demoted for a 15-min
+  cooldown**, then re-probed — so we stop wasting ~2 min probing a dead family but
+  snap back to c4d the moment capacity returns.
+
+The fallback fleet is defined in `infrastructure/config.py::EncodingWorkerConfig.FALLBACKS`
+and published to the backend/idle-fn via the `encoding-worker-fallback-vms` secret
+(entries: `{vm, zone, ip, machine_type}`).
 
 ### Key Components
 
-**Two VMs (a/b)**: Both VMs are TERMINATED by default. One is designated "primary" and serves all encoding traffic. The secondary VM exists solely to receive new deployments before they go live.
+**Primary pair + fallback fleet**: All VMs TERMINATED by default. The primary pair
+(a/b) does blue-green deploys; the 8 fallbacks absorb capacity stockouts. Runtime
+warmup (`encoding_worker_manager.ensure_any_running`) tries the ranked candidates
+in order, falling through on stockout and recording an `active_override` when it
+lands on a fallback.
 
-**Firestore config doc** (`config/encoding-worker`): Single source of truth for routing. Fields: `primary` (a or b), `ip_a`, `ip_b`, `deploy_in_progress` flag, `activity_a`/`activity_b` timestamps.
+**Firestore config doc** (`config/encoding-worker`): source of truth for routing.
+Fields: `primary_vm`/`primary_ip`/`primary_version`, `secondary_vm`/…, the
+capacity-fallback pointer `active_override_vm`/`_ip`/`_zone`/`_version` (set when a
+fallback is serving), `deploy_in_progress`, `last_activity_at`, and the
+`capacity_state` map (`{"<machine_type>@<zone>": last_stockout_iso}`). `active_url`
+= override IP if set, else primary IP.
 
-**Backend routing** (`encoding_interface.py`): Reads the primary IP from the Firestore config doc with a 30-second TTL cache. All encoding requests route to the current primary.
+**Backend routing** (`encoding_interface.py`): reads the active worker IP from the
+config doc with a 30-second TTL cache.
 
-**JIT startup**: When a user enters the lyrics review page, the backend starts the primary VM on demand. This gives ~60 seconds of natural warmup time before encoding is needed, avoiding both 24/7 costs and noticeable cold-start latency for the user.
+**JIT startup**: entering the lyrics-review page starts the worker on demand
+(~60 s natural warmup), avoiding 24/7 cost and cold-start latency.
 
-**Idle auto-shutdown**: A Cloud Function (triggered every 5 minutes by Cloud Scheduler) checks the `activity_*` timestamps in Firestore and stops any VM that has been idle for more than 15 minutes. This is external to the VM — if the encoding worker code itself has a bug, the Cloud Function still shuts it down.
+**Idle auto-shutdown**: a Cloud Function (every 5 min) stops idle VMs (primary,
+secondary, and every fallback in the secret) based on Firestore activity — external
+to the VM so a sick worker still gets stopped.
 
-**Blue-green deploys**: CI builds a new wheel, deploys it to the secondary VM (not the live primary), runs a real encode test against the secondary, then atomically swaps the `primary` field in Firestore to point to the secondary. The old primary is stopped after the swap. If the health check fails, the primary is never updated.
+**Capacity-aware deploys**: CI selects a FRESH "green" from the ranked pool via
+`deploy_promote.select_green_candidates` (the same preference module) — the c4d
+secondary if it can start, else a fallback family, never the currently-serving
+override. After a real encode test on the green, it promotes: a c4d-secondary green
+does the classic primary swap (and clears any stale override); a fallback green
+becomes the `active_override`. The retired VM is drained + stopped; a failed health
+check never promotes. Override routing keys off an explicit `is_primary` flag, not
+list position. See `infrastructure/encoding-worker/deploy_promote.py`.
+
+**Self-sufficient image**: the Packer image (`infrastructure/packer/scripts/provision.sh`)
+bakes the full karaoke-gen dependency tree with **CPU-only torch**, so a fresh VM of
+any family boots ready to encode (no first-job dependency install).
 
 ### Seeding the Config
 
@@ -327,16 +379,31 @@ Initial setup or reset:
 python scripts/seed-encoding-worker-config.py <ip-a> <ip-b>
 ```
 
-### Deploy Flow
+### Deploy Flow (capacity-aware, v0.194.2+)
 
 ```text
 1. CI builds new karaoke-gen wheel + pushes to GCS
-2. CI starts secondary VM, waits for /health to respond
-3. CI runs real encode test against secondary VM
-4. If test passes: CI writes secondary name to Firestore `primary` field
-5. CI stops the old primary VM
-6. If test fails: CI stops secondary VM, primary unchanged
+2. CI picks a FRESH "green" from the ranked pool (select_green_candidates →
+   ordered_candidates): the c4d secondary if it can start, else the fastest
+   available fallback family — never the currently-serving active_override.
+3. CI starts the green, waits for /health, runs a real encode test against it.
+4. If the test FAILS: CI stops the green; primary/override unchanged (no promote).
+5. If the test PASSES: CI promotes the green:
+   - green is the c4d secondary  → swap it to `primary_vm` (classic blue-green)
+                                    AND clear any stale `active_override_*` so
+                                    traffic returns to the fresh c4d primary.
+   - green is a fallback family   → set it as `active_override_*` (the serving
+                                    worker); leave primary/secondary so c4d
+                                    resumes as primary when its capacity returns.
+6. CI drains (waits active_jobs==0, bounded) + stops the retired VM — never the
+   promoted green.
+7. Last resort (no separate green can start, e.g. deep stockout): in-place restart
+   of the current serving override — a brief blip, covered by client auto-resubmit.
 ```
+
+Override routing keys off an explicit `is_primary` flag (not list position), so a
+fallback ranked ahead of a stocked-out primary is still routed correctly. Pure
+decision logic + unit tests: `infrastructure/encoding-worker/deploy_promote.py`.
 
 ## Video Worker Orchestrator
 

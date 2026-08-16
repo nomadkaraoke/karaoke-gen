@@ -2,7 +2,32 @@
 
 **Date:** 2026-08-15
 **Branch:** `feat/sess-20260815-1915-encoding-instance-type-diversity`
-**Status:** IMPLEMENTED (v0.195.0) — code + IaC + Packer landed; operator rollout steps below still pending.
+**Status:** SHIPPED (v0.195.0 #911 + v0.195.1 #912) — code + IaC + Packer merged & rolled out.
+
+## Rollout outcome (2026-08-16)
+
+- ✅ Backend 0.195.1 live on Cloud Run; encode path healthy (c4d primary `encoding-worker-a`
+  RUNNING 0.195.1 after c4d capacity returned to us-central1-c). `capacity_state` field live.
+- ✅ Encoding-worker image rebuilt with the CPU-torch dep-bake; **validated end-to-end** — a fresh
+  `c4a` booted healthy in ~24s and encoded a preview in <6s (no first-job dep install).
+- ✅ **All 8 fallback VMs provisioned** (stopped), so the full 6-family pool is live:
+  `-a`/`-b` (c4d), `-n2c`/`-n2f` (n2), `-c4a` (c4), `-n2da` (n2d), `-c2df` (c2d), `-n4db` (n4d).
+  Pulumi state consistent (`c4a`, orphaned by a killed apply, was `pulumi import`ed + reconciled).
+  Secret at **version 5** (8 entries, all with `machine_type`).
+- ⏳→✅ **`c2df` + `n4db` were initially deferred** (created stopped VM still needs a one-time boot
+  allocation, so the 2026-08-15 stockout in zones f/b blocked provisioning). An autonomous
+  10-minute retry loop finished them on **2026-08-16 ~07:48** when zones f/b left stockout, and
+  added both to the secret (v5). **Historical note for a future crunch:** if a fallback VM is
+  missing/deleted, re-create it with the FULL Pulumi URNs (not an ellipsis) — e.g.
+  `cd infrastructure && pulumi up --yes --target 'urn:pulumi:prod::karaoke-gen-infrastructure::gcp:compute/instance:Instance::encoding-worker-fallback-c2df' --target 'urn:pulumi:prod::karaoke-gen-infrastructure::gcp:compute/instance:Instance::encoding-worker-fallback-n4db'`
+  (use the write-token env from the rollout notes) — then add it to the `encoding-worker-fallback-vms`
+  secret with its `machine_type`, but **never add a VM to the secret before it exists** (a
+  non-existent candidate → `get_vm_status` 404 → breaks warmup).
+- Not done: measured `SPEED_RANK` benchmark run (arch-seeded; a 2026-08-16 benchmark was too noisy
+  to apply — see the CPU-platform-variance findings); MIG; reservations.
+
+---
+
 **Context:** memory `project_gen_encoding_instance_type_diversity` + `_worker_serialization` + `_machine_family_diversity` + `_wheel_deps_missing`
 
 ## Goal
