@@ -341,6 +341,11 @@ class LocalEncodingService:
             AAC 320k so the file is fully portable. Matches the documented spec
             ("4k H264/AAC with original vocals", see template_service.py).
 
+        Both commands force ``-pix_fmt yuv420p`` (h264_nvenc can otherwise *preserve* a
+        yuv444p input). Prod encoding workers are CPU-only, so ``cpu_command`` is the
+        real path; if the NVENC command ever errors, ``_execute_command_with_fallback``
+        drops to the (correct) CPU command.
+
         Args:
             input_file: Path to input MOV/MKV file (source "With Vocals" video)
             output_file: Path for output MP4 file
@@ -350,7 +355,7 @@ class LocalEncodingService:
         """
         gpu_command = (
             f'{self._ffmpeg_base_command} {self.hwaccel_decode_flags} -i "{input_file}" '
-            f'-c:v {self.video_encoder} -c:a {self.aac_codec} -ar 48000 -b:a 320k '
+            f'-c:v {self.video_encoder} -pix_fmt yuv420p -c:a {self.aac_codec} -ar 48000 -b:a 320k '
             f'{self.MP4_FLAGS} "{output_file}"'
         )
         cpu_command = (

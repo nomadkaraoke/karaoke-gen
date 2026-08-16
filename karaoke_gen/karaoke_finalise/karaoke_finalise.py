@@ -889,13 +889,14 @@ class KaraokeFinalise:
         """Convert the source "With Vocals" video (MOV/MKV) to a standard, portable MP4.
 
         Produces the "(With Vocals).mp4" sing-along deliverable — a leaf output (no
-        later encode reads it). ``-pix_fmt yuv420p`` normalizes the renderer's High
-        4:4:4 (yuv444p) output to 4:2:0 so it plays everywhere and matches every other
-        deliverable; ``-preset veryfast`` roughly halves this stage (the longest one)
-        with negligible quality impact for karaoke content; AAC 320k keeps it fully
-        portable. Kept in sync with LocalEncodingService.convert_mov_to_mp4.
+        later encode reads it). ``-preset veryfast`` roughly halves this stage (the
+        longest finalization stage) with negligible quality impact for karaoke content;
+        AAC 320k keeps the audio portable. yuv420p (playback compatibility) comes from
+        ``self.mp4_flags``, which already carries ``-pix_fmt yuv420p``. Kept in sync
+        with LocalEncodingService.convert_mov_to_mp4 (whose MP4_FLAGS lacks pix_fmt, so
+        that variant sets ``-pix_fmt yuv420p`` explicitly).
         """
-        # Hardware-accelerated version
+        # Hardware-accelerated version (pix_fmt yuv420p supplied via self.mp4_flags)
         gpu_command = (
             f'{self.ffmpeg_base_command} {self.hwaccel_decode_flags} -i "{input_file}" '
             f'-c:v {self.video_encoder} {self.get_nvenc_quality_settings("high")} -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
@@ -904,7 +905,7 @@ class KaraokeFinalise:
         # Software fallback version
         cpu_command = (
             f'{self.ffmpeg_base_command} -i "{input_file}" '
-            f'-c:v libx264 -pix_fmt yuv420p -preset veryfast -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
+            f'-c:v libx264 -preset veryfast -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
         )
 
         self.execute_command_with_fallback(gpu_command, cpu_command, "Converting MOV video to MP4")

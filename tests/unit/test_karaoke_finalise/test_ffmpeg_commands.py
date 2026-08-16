@@ -142,7 +142,7 @@ def test_convert_mov_to_mp4_aac(mock_execute_fallback, finaliser_with_aac):
     )
     expected_cpu_cmd = (
         f'{finaliser_with_aac.ffmpeg_base_command} -i "{WITH_VOCALS_MOV}" '
-        f'-c:v libx264 -pix_fmt yuv420p -preset veryfast -c:a aac -ar 48000 -b:a 320k {finaliser_with_aac.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
+        f'-c:v libx264 -preset veryfast -c:a aac -ar 48000 -b:a 320k {finaliser_with_aac.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
     )
     mock_execute_fallback.assert_called_once_with(expected_gpu_cmd, expected_cpu_cmd, "Converting MOV video to MP4")
 
@@ -157,7 +157,7 @@ def test_convert_mov_to_mp4_aac_at(mock_execute_fallback, finaliser_with_aac_at)
     )
     expected_cpu_cmd = (
         f'{finaliser_with_aac_at.ffmpeg_base_command} -i "{WITH_VOCALS_MOV}" '
-        f'-c:v libx264 -pix_fmt yuv420p -preset veryfast -c:a aac_at -ar 48000 -b:a 320k {finaliser_with_aac_at.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
+        f'-c:v libx264 -preset veryfast -c:a aac_at -ar 48000 -b:a 320k {finaliser_with_aac_at.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
     )
     mock_execute_fallback.assert_called_once_with(expected_gpu_cmd, expected_cpu_cmd, "Converting MOV video to MP4")
 
@@ -402,7 +402,7 @@ def test_convert_mov_to_mp4_aac_nvenc(mock_execute_fallback, finaliser_with_nven
     )
     expected_cpu_cmd = (
         f'{finaliser_with_nvenc_aac.ffmpeg_base_command} -i "{WITH_VOCALS_MOV}" '
-        f'-c:v libx264 -pix_fmt yuv420p -preset veryfast -c:a aac -ar 48000 -b:a 320k {finaliser_with_nvenc_aac.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
+        f'-c:v libx264 -preset veryfast -c:a aac -ar 48000 -b:a 320k {finaliser_with_nvenc_aac.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
     )
     mock_execute_fallback.assert_called_once_with(expected_gpu_cmd, expected_cpu_cmd, "Converting MOV video to MP4")
 
@@ -418,7 +418,7 @@ def test_convert_mov_to_mp4_aac_at_nvenc(mock_execute_fallback, finaliser_with_n
     )
     expected_cpu_cmd = (
         f'{finaliser_with_nvenc_aac_at.ffmpeg_base_command} -i "{WITH_VOCALS_MOV}" '
-        f'-c:v libx264 -pix_fmt yuv420p -preset veryfast -c:a aac_at -ar 48000 -b:a 320k {finaliser_with_nvenc_aac_at.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
+        f'-c:v libx264 -preset veryfast -c:a aac_at -ar 48000 -b:a 320k {finaliser_with_nvenc_aac_at.mp4_flags} "{OUTPUT_FILES["with_vocals_mp4"]}"'
     )
     mock_execute_fallback.assert_called_once_with(expected_gpu_cmd, expected_cpu_cmd, "Converting MOV video to MP4")
 

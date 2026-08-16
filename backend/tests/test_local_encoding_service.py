@@ -191,7 +191,8 @@ class TestLocalEncodingServiceEncodingMethods:
         assert "-c:a aac" in cpu_command
         assert "-b:a 320k" in cpu_command
         assert "-c:a copy" not in cpu_command  # regression guard: no FLAC-in-mp4
-        # GPU path also emits portable AAC; NVENC h264 encodes 4:2:0 natively.
+        # GPU path also forces 4:2:0 (h264_nvenc can preserve yuv444p) and emits AAC.
+        assert "-pix_fmt yuv420p" in gpu_command
         assert "-c:a aac" in gpu_command
         assert "-b:a 320k" in gpu_command
 
