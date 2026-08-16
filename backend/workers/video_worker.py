@@ -128,7 +128,10 @@ async def _encode_via_gce(
         "base_name": base_name,
         "instrumental_selection": instrumental_selection,
         "existing_instrumental": existing_instrumental,
-        "ffmpeg_threads": 8,  # c4-standard-8 has 8 vCPUs
+        # NOTE: intentionally no "ffmpeg_threads" — finalization ffmpeg commands in
+        # LocalEncodingService carry no -threads flag, so x264 uses its all-core auto
+        # default (measured ~66-78% of a 32-vCPU worker busy during the heavy libx264
+        # stages — not capped). See docs/archive/2026-08-16-finalization-cpu-efficiency-handoff.md.
     }
 
     job_log.info(f"Submitting encoding job to GCE worker")

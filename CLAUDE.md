@@ -96,6 +96,10 @@ See `docs/TESTING.md` § "Ad-Hoc Production Debugging" for full details.
 - Never modify GCP resources directly via console or `gcloud` CLI
 - `gcloud` CLI for reading/debugging only (e.g., checking logs, SSH to VMs)
 - Stop and notify user on auth issues
+- **GCS ops on macOS: never use `gsutil -m`** — its fork-based multiprocessing segfaults
+  on macOS (crash-report popups + the parent process hangs forever). Use `gcloud storage`
+  instead (`gcloud storage cp/rm/rsync …`) — no fork, and faster. Plain `gsutil` (no `-m`)
+  is safe but slower. `~/.boto` pins `parallel_process_count=1` as a safety net; don't remove it.
 
 ### Internationalization (i18n)
 
