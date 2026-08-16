@@ -162,10 +162,16 @@ for attempt in 1 2 3; do
 done
 rm -f "${WHEEL_PATH}"
 
-# Verify the import chain that actually broke before (tenacity is pulled
-# transitively via the generator→correction/langchain chain). Fail the BUILD if
-# any import fails, so a half-baked image that claims to be self-sufficient can
-# never ship.
+# Verify the dependency TREE is complete. We import the heavy transitive
+# libraries that constitute the encode/finalization chain — crucially tenacity,
+# the dep that was silently missing on fresh fallback VMs (pulled via the
+# generator→correction/langchain chain). We deliberately do NOT import the worker
+# app module (backend.services.gce_encoding.main): it constructs GCP clients at
+# import and needs GOOGLE_CLOUD_PROJECT + auth that only exist at runtime (systemd
+# env), so importing it at BUILD time fails for environment reasons, not missing
+# deps. The canary libs below prove the install is complete without that
+# fragility. Fail the BUILD on any missing import so a half-baked image that
+# claims to be self-sufficient can never ship.
 echo "Verifying baked dependency imports..."
 python - << 'PYVERIFY'
 import importlib
@@ -180,9 +186,16 @@ assert torch.version.cuda is None, (
     "expected CPU-only; check the --index-url resolves torch from the CPU index"
 )
 
-# Importing the worker app module transitively exercises the generator/correction
-# chain that pulls tenacity (the dep that was missing on fresh fallback VMs).
-modules = ["tenacity", "backend.services.gce_encoding.main"]
+# Canary imports across the encode/generation dep tree. tenacity + the langchain
+# chain are the exact modules whose absence broke fresh fallback VMs before.
+modules = [
+    "tenacity",
+    "langchain",
+    "langchain_core",
+    "transformers",
+    "librosa",
+    "onnxruntime",
+]
 failed = []
 for name in modules:
     try:
