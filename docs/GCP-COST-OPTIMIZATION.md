@@ -95,7 +95,10 @@ The `concurrency=1` setting may have been added deliberately for performance rea
 2. **Auto-scaling / scale-to-zero:** ✅ IMPLEMENTED via JIT start + idle-shutdown
    Cloud Function (start/stop on demand rather than queue-depth-based).
 
-**Recommendation:** Test Spot instance first (lower risk), then consider auto-scaling
+**Recommendation:** Stay on-demand (already scales to zero via idle-shutdown, which
+captured most of the savings). Do NOT move to Spot for now — Spot preemption plus
+the industry-wide stockout would undermine the anti-stockout fallback pool. Revisit
+Spot only as a future experiment once capacity/resiliency is validated.
 
 ### 🔧 Artifact Registry Cleanup (Quick Win)
 

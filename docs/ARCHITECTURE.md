@@ -379,16 +379,31 @@ Initial setup or reset:
 python scripts/seed-encoding-worker-config.py <ip-a> <ip-b>
 ```
 
-### Deploy Flow
+### Deploy Flow (capacity-aware, v0.194.2+)
 
 ```text
 1. CI builds new karaoke-gen wheel + pushes to GCS
-2. CI starts secondary VM, waits for /health to respond
-3. CI runs real encode test against secondary VM
-4. If test passes: CI writes secondary name to Firestore `primary` field
-5. CI stops the old primary VM
-6. If test fails: CI stops secondary VM, primary unchanged
+2. CI picks a FRESH "green" from the ranked pool (select_green_candidates →
+   ordered_candidates): the c4d secondary if it can start, else the fastest
+   available fallback family — never the currently-serving active_override.
+3. CI starts the green, waits for /health, runs a real encode test against it.
+4. If the test FAILS: CI stops the green; primary/override unchanged (no promote).
+5. If the test PASSES: CI promotes the green:
+   - green is the c4d secondary  → swap it to `primary_vm` (classic blue-green)
+                                    AND clear any stale `active_override_*` so
+                                    traffic returns to the fresh c4d primary.
+   - green is a fallback family   → set it as `active_override_*` (the serving
+                                    worker); leave primary/secondary so c4d
+                                    resumes as primary when its capacity returns.
+6. CI drains (waits active_jobs==0, bounded) + stops the retired VM — never the
+   promoted green.
+7. Last resort (no separate green can start, e.g. deep stockout): in-place restart
+   of the current serving override — a brief blip, covered by client auto-resubmit.
 ```
+
+Override routing keys off an explicit `is_primary` flag (not list position), so a
+fallback ranked ahead of a stocked-out primary is still routed correctly. Pure
+decision logic + unit tests: `infrastructure/encoding-worker/deploy_promote.py`.
 
 ## Video Worker Orchestrator
 

@@ -94,13 +94,18 @@ The script is idempotent — re-running it skips regeneration if the CDG ZIP alr
 
 **Cause:** Worker picks up a new deploy but doesn't restart automatically.
 
+Target the **currently-serving** VM — `active_override_vm` in `config/encoding-worker`
+if set, else `primary_vm` (with its zone). There is no VM literally named
+`encoding-worker`; the examples below use the primary `encoding-worker-a` — swap in
+the active VM/zone if a fallback is serving.
+
 ```bash
-# Check current wheel version
-gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
+# Check current wheel version (example: the primary a in us-central1-c)
+gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
   --command="curl -s http://localhost:8080/health | python3 -m json.tool"
 
 # Restart to pick up latest wheel
-gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
+gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
   --command="sudo systemctl restart encoding-worker"
 ```
 

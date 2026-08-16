@@ -1,72 +1,76 @@
 # Handoff: Investigate prod finalization CPU efficiency / utilization — 2026-08-16
 
-**Status:** OPEN investigation (not started). Written for a fresh Claude session.
-**Origin:** surfaced by the encode-worker multi-instance-type benchmark (see
-`docs/archive/2026-08-15-encoding-instance-type-diversity-plan.md` and memory
-`project_gen_encoding_benchmark_findings`).
+**Status:** OPEN investigation (not started). Written for a fresh Claude session —
+self-contained; all facts you need are inlined below or in the linked repo docs.
+**Origin:** surfaced by the encode-worker multi-instance-type benchmark
+(`docs/archive/2026-08-15-encoding-instance-type-diversity-plan.md`; benchmark
+baselines inlined under "Reproducing the benchmark" below).
 
 ## The question
 
 Prod video **finalization** (the `/encode` path that produces
-`mp4_4k_lossless + mp4_4k_lossy + mp4_720p`) may be **under-utilizing the CPU**:
-the encode workers are now **32-vCPU** `*-highcpu-32` VMs, but the job config
-still passes `ffmpeg_threads: 8` with a **stale comment referencing the retired
-`c4-standard-8`** worker. If that 8 actually caps ffmpeg to 8 of 32 cores, every
-render is leaving ~75% of the machine idle — a bigger, cross-cutting win than any
-instance-type ranking, and it would apply to **all** machine families.
+`mp4_4k_lossless + mp4_4k_lossy + mp4_720p`) — is it using the 32-vCPU
+`*-highcpu-32` workers efficiently? The trigger was the stale
+`"ffmpeg_threads": 8` (with a comment referencing the retired `c4-standard-8`)
+in the job config, which looked like it might cap ffmpeg to 8 of 32 cores.
 
-But it is NOT yet confirmed that `ffmpeg_threads: 8` even reaches the finalization
-ffmpeg commands — resolving that ambiguity is step 1.
+**Static analysis has already answered the first-order question (do NOT re-derive
+it — verify then move on):** `ffmpeg_threads` is **dead config**. It is set at
+`backend/workers/video_worker.py:131` but **no code reads it** (grep for consumers
+returns nothing; `run_encoding()`'s `EncodingConfig(...)` at
+`backend/services/gce_encoding/main.py:1111` never passes it), and the actual
+finalization ffmpeg commands in `backend/services/local_encoding_service.py`
+(`encode_all_formats` → `encode_lossless_mp4`/`encode_lossy_mp4`/`encode_720p`,
+around lines 343 / 396 / 471) carry **no `-threads` flag at all** → ffmpeg falls
+back to its default (`-threads 0`, i.e. auto ≈ all cores). So finalization is
+**almost certainly NOT capped at 8 cores**; the "leaving 75% idle" fear is likely
+unfounded. (Separate, unrelated paths that DO hardcode threads — don't confuse
+them: `main.py:372` uses `-threads 8` in the **preview** `/encode-preview`
+480×270 path; `local_preview_encoding_service.py:310` uses `-threads 0`.)
+
+So this is now a **narrower efficiency + cleanup** task, not a "fix the cap" task.
 
 ## What to determine (in order)
 
-1. **Is `ffmpeg_threads` actually applied to the finalization encodes?**
-   - Config is set at `backend/workers/video_worker.py:131`
-     (`"ffmpeg_threads": 8,  # c4-standard-8 has 8 vCPUs`) and travels in
-     `encoding_config` → `POST /encode` → `run_encoding()` in
-     `backend/services/gce_encoding/main.py:955` → `LocalEncodingService`
-     (in the installed **karaoke-gen wheel**).
-   - The actual finalization ffmpeg commands live in the wheel at
-     `karaoke_gen/karaoke_finalise/karaoke_finalise.py` — candidates:
-     `:917` (4k **lossless**, `pcm_s16le`), `:899` (4k lossy, aac), `:956`
-     (720p). **None of these obviously carry a `-threads` flag in a grep** —
-     trace whether `config["ffmpeg_threads"]` is injected into them (via
-     `LocalEncodingService`) or whether it is **dead config** and ffmpeg is
-     already defaulting to `-threads 0` (all cores).
-   - NOTE separate code paths that DO hardcode threads (don't confuse them with
-     finalization): `backend/services/gce_encoding/main.py:372` hardcodes
-     `-threads 8` in the **preview** (`/encode-preview`, 480×270) path; and
-     `backend/services/local_preview_encoding_service.py:310` uses `-threads 0`
-     (all) in the Cloud-Run **local** preview fallback.
+1. **Confirm the static finding empirically** (x264's `-threads 0` "auto" is a
+   heuristic — it does NOT always scale to all cores; historically it caps frame
+   threads, with diminishing returns past ~16). Drive a real finalization and
+   capture **process-level** evidence, not just host-wide load:
+   - the **deployed ffmpeg argv** for each format (`ps -eo pid,args | grep ffmpeg`
+     on the worker mid-encode, or add a log line) — confirm no `-threads` and see
+     what x264 chose;
+   - **per-process / per-thread** CPU% and RSS (`top -H -p <ffmpeg-pid>`,
+     `pidstat -t -p <pid> 2`), NOT `mpstat -P ALL` alone — host-wide utilization
+     can't tell an 8-thread cap from serial `encode_all_formats` stages or
+     unrelated work;
+   - **per-format stage timings** (which of lossless/lossy/720p dominates).
+   Run all of this against the SAME worker you drive the encode to (see the
+   binding note in "Reproducing the benchmark").
 
-2. **Measure real CPU utilization during a finalization.** SSH to a worker while
-   it encodes and watch cores:
-   ```bash
-   gcloud compute ssh encoding-worker-fallback-c4a --zone=us-central1-a --project=nomadkaraoke \
-     --command="mpstat -P ALL 2 3"   # or: top -bn1 | head -20 ; nproc
-   ```
-   Drive an encode with the canonical input (recreate it — it was cleaned up; see
-   "Reproducing the benchmark" below). If all 32 cores are busy → `ffmpeg_threads`
-   is not the bottleneck (it's dead config or already 0). If ~8 cores are busy →
-   confirmed cap; raising it should speed finalization.
+2. **Check whether the 3 formats encode SERIALLY or in PARALLEL** in
+   `encode_all_formats` (`backend/services/local_encoding_service.py`). If serial,
+   wall-time ≈ sum of the three even if each saturates the cores — the real lever
+   may be **overlapping independent format encodes** rather than more threads. But
+   see the RAM constraint below before parallelizing.
 
-3. **Check whether the 3 output formats encode SERIALLY or in PARALLEL** within one
-   job (`encode_all_formats` in the wheel). If serial, total time ≈ sum of the
-   three; parallelizing independent format encodes (or one `-threads 0` encode)
-   could use idle cores — but see the RAM constraint below.
-
-4. **If under-utilized, decide the fix and validate it:**
-   - Likely simplest: set `ffmpeg_threads` to `0` (all cores) or `32`, or make it
-     dynamic (`nproc`). Confirm the wheel passes it through; if not, patch the
-     wheel's `LocalEncodingService` to honor it (and/or default to `-threads 0`).
-   - Re-benchmark before/after on the SAME input+VM to quantify the win.
+3. **Decide the fix (likely small) and validate it:**
+   - **Cleanup regardless:** remove the dead `ffmpeg_threads` field + stale comment
+     at `backend/workers/video_worker.py:131` (it misleads; that is the "documentation-
+     only" close-out CodeRabbit flagged). If you'd rather *use* it, wire it through
+     `EncodingConfig` → the `local_encoding_service.py` ffmpeg commands as an explicit
+     `-threads`; otherwise delete it.
+   - If step 1 shows real idle cores (x264 auto under-scales), the win is an explicit
+     high `-threads` (or `-x264-params threads=N`) or overlapping formats — validate
+     with a before/after re-benchmark on the SAME input+VM.
+   - If step 1 shows cores already saturated, close this out as "already efficient;
+     removed dead config" and stop.
 
 ## Hard constraints — do NOT regress these
 
 - **Heavy-lane serialization stays.** `ENCODING_HEAVY_CONCURRENCY=1` (one heavy
   encode at a time per worker) exists because 3 **concurrent** 4K encodes OOM-killed
-  the 32 GB worker (incident 2026-08-15, see `docs/LESSONS-LEARNED.md` "Concurrent
-  encodes OOM-killed the worker" + memory `project_gen_encoding_worker_serialization`).
+  the 32 GB worker (incident 2026-08-15; full write-up in `docs/LESSONS-LEARNED.md`
+  → "Concurrent encodes OOM-killed the worker → lost renders").
   Raising *threads within a single encode* is **orthogonal** to that and does not
   reintroduce concurrency — but it DOES raise a single encode's **peak RAM** (more
   parallel ffmpeg slices / parallel format encodes). Watch RSS on a 32 GB floor VM
@@ -89,7 +93,16 @@ gsutil -q cp "$J/stems/instrumental_clean.flac" "$I/stems/instrumental_clean.fla
 gsutil -q cp "$J/style/style_params.json" "$I/style/style_params.json"
 gsutil -q cp "$J/lyrics/karaoke.ass" "$I/lyrics/karaoke.ass"
 ```
-`POST /encode` body (worker port 8080, `X-API-Key` from
+**Bind the encode to the worker you observe.** Pick ONE stopped fallback (e.g.
+`encoding-worker-fallback-c4a`, us-central1-a), start it, and send BOTH the
+`/encode` POST and the `/status` polls **directly to that worker's external IP**
+(`http://<IP>:8080/…`, not through the backend/`api.nomadkaraoke.com` — the
+backend may route to a different active worker). SSH the SAME VM for the
+process-level probes in step 1, so the CPU/RSS you measure is the encode you drove.
+Get the IP: `gcloud compute instances describe <vm> --zone=<z>
+--format='value(networkInterfaces[0].accessConfigs[0].natIP)'`.
+
+`POST http://<IP>:8080/encode` body (`X-API-Key` from
 `gcloud secrets versions access latest --secret=encoding-worker-api-key`):
 ```json
 {"job_id":"cpu-probe-1","input_gcs_path":"gs://…/bench/encode-input/",
@@ -97,14 +110,22 @@ gsutil -q cp "$J/lyrics/karaoke.ass" "$I/lyrics/karaoke.ass"
  "encoding_config":{"formats":["mp4_4k_lossless","mp4_4k_lossy","mp4_720p"],
    "base_name":"Glen Campbell - A Better Place","artist":"Glen Campbell",
    "title":"A Better Place","instrumental_selection":"clean",
-   "existing_instrumental":null,"ffmpeg_threads":8}}
+   "existing_instrumental":null}}
 ```
-Poll `GET /status/{job_id}` to `complete`. Baseline medians from 2026-08-16 (full
-3-format finalization of this ~4-min song, `ffmpeg_threads:8`):
+(`ffmpeg_threads` deliberately omitted from the body above — it is dead config;
+see "The question".) Poll `GET http://<IP>:8080/status/{job_id}` to `complete`. Baseline medians from 2026-08-16 (full
+3-format finalization of this ~4-min song; the runs sent `ffmpeg_threads:8` in the
+body but the worker ignored it, so these reflect ffmpeg's default all-core threading):
 c4-Emerald ≈ **139s**, n2d-Milan ≈ **139s**, n2-CascadeLake ≈ **247s**, n2-IceLake
 ≈ **92s** (c4d unmeasured — could not start a 2nd c4d in the stockout). The huge
-n2 spread (92↔247s, same SKU, different CPU platform) is a separate finding —
-consider `min_cpu_platform` pinning; see memory `project_gen_encoding_benchmark_findings`.
+n2 spread — **92s vs 247s for the identical `n2-highcpu-32` SKU** — is because n2
+spans Intel Ice Lake (fast) and Cascade Lake (slow) and GCE assigns either; that
+intra-family variance exceeds the between-family differences. Separate actionable
+finding: pin `min_cpu_platform` (e.g. "Intel Ice Lake" / "AMD Milan") on n2/n2d
+fallbacks for predictable speed, or rank them lower to reflect the gamble. Also
+note the counterintuitive result that c4 (newest Intel Emerald) ≈ n2d (Milan) and
+did NOT beat n2 Ice Lake for this lossless-4K-heavy workload — so "newest = fastest"
+does not hold here; measure, don't assume.
 
 **Operational hygiene:** benchmark VMs are stopped fallbacks — start, probe, then
 STOP them (never the live-serving primary; the idle-shutdown fn also handles it).
