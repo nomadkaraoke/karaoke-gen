@@ -886,19 +886,27 @@ class KaraokeFinalise:
         self.execute_command(ffmpeg_command, "Remuxing video with instrumental audio")
 
     def convert_mov_to_mp4(self, input_file, output_file):
-        """Convert MOV file to MP4 format with hardware acceleration support"""
+        """Convert the source "With Vocals" video (MOV/MKV) to a standard, portable MP4.
+
+        Produces the "(With Vocals).mp4" sing-along deliverable — a leaf output (no
+        later encode reads it). ``-pix_fmt yuv420p`` normalizes the renderer's High
+        4:4:4 (yuv444p) output to 4:2:0 so it plays everywhere and matches every other
+        deliverable; ``-preset veryfast`` roughly halves this stage (the longest one)
+        with negligible quality impact for karaoke content; AAC 320k keeps it fully
+        portable. Kept in sync with LocalEncodingService.convert_mov_to_mp4.
+        """
         # Hardware-accelerated version
         gpu_command = (
             f'{self.ffmpeg_base_command} {self.hwaccel_decode_flags} -i "{input_file}" '
-            f'-c:v {self.video_encoder} {self.get_nvenc_quality_settings("high")} -c:a {self.aac_codec} -ar 48000 {self.mp4_flags} "{output_file}"'
+            f'-c:v {self.video_encoder} {self.get_nvenc_quality_settings("high")} -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
         )
-        
+
         # Software fallback version
         cpu_command = (
             f'{self.ffmpeg_base_command} -i "{input_file}" '
-            f'-c:v libx264 -c:a {self.aac_codec} -ar 48000 {self.mp4_flags} "{output_file}"'
+            f'-c:v libx264 -pix_fmt yuv420p -preset veryfast -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
         )
-        
+
         self.execute_command_with_fallback(gpu_command, cpu_command, "Converting MOV video to MP4")
 
     def encode_lossless_mp4(self, title_mov_file, karaoke_mp4_file, env_mov_input, ffmpeg_filter, output_file):
