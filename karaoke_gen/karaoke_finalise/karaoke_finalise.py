@@ -886,19 +886,28 @@ class KaraokeFinalise:
         self.execute_command(ffmpeg_command, "Remuxing video with instrumental audio")
 
     def convert_mov_to_mp4(self, input_file, output_file):
-        """Convert MOV file to MP4 format with hardware acceleration support"""
-        # Hardware-accelerated version
+        """Convert the source "With Vocals" video (MOV/MKV) to a standard, portable MP4.
+
+        Produces the "(With Vocals).mp4" sing-along deliverable — a leaf output (no
+        later encode reads it). ``-preset veryfast`` roughly halves this stage (the
+        longest finalization stage) with negligible quality impact for karaoke content;
+        AAC 320k keeps the audio portable. yuv420p (playback compatibility) comes from
+        ``self.mp4_flags``, which already carries ``-pix_fmt yuv420p``. Kept in sync
+        with LocalEncodingService.convert_mov_to_mp4 (whose MP4_FLAGS lacks pix_fmt, so
+        that variant sets ``-pix_fmt yuv420p`` explicitly).
+        """
+        # Hardware-accelerated version (pix_fmt yuv420p supplied via self.mp4_flags)
         gpu_command = (
             f'{self.ffmpeg_base_command} {self.hwaccel_decode_flags} -i "{input_file}" '
-            f'-c:v {self.video_encoder} {self.get_nvenc_quality_settings("high")} -c:a {self.aac_codec} -ar 48000 {self.mp4_flags} "{output_file}"'
+            f'-c:v {self.video_encoder} {self.get_nvenc_quality_settings("high")} -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
         )
-        
+
         # Software fallback version
         cpu_command = (
             f'{self.ffmpeg_base_command} -i "{input_file}" '
-            f'-c:v libx264 -c:a {self.aac_codec} -ar 48000 {self.mp4_flags} "{output_file}"'
+            f'-c:v libx264 -preset veryfast -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
         )
-        
+
         self.execute_command_with_fallback(gpu_command, cpu_command, "Converting MOV video to MP4")
 
     def encode_lossless_mp4(self, title_mov_file, karaoke_mp4_file, env_mov_input, ffmpeg_filter, output_file):
