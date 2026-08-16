@@ -153,9 +153,11 @@ ship it. Bump `pyproject.toml` version; if the fix is in the wheel's
 worker's 32 vCPUs during every heavy libx264 stage. No threading fix warranted.**
 
 ### 1. `ffmpeg_threads` is dead config — confirmed statically AND empirically
-- `grep -rn ffmpeg_threads backend/` → exactly one hit (the setter at
-  `video_worker.py:131`), zero consumers. `EncodingConfig(...)` at
-  `gce_encoding/main.py:1111` never passes it.
+- Before this change, `grep -rn ffmpeg_threads backend/` returned exactly one hit —
+  the setter `"ffmpeg_threads": 8` in the `encoding_config` dict at
+  `video_worker.py:131` — with zero consumers; `EncodingConfig(...)` at
+  `gce_encoding/main.py:1111` never passes it. This change removes that setter
+  (line 131 is now the explanatory NOTE comment), so grep now returns no setter.
 - **Empirically**, the deployed ffmpeg argv captured mid-encode (`ps`/probe on the
   worker) carry **no `-threads` flag** on any finalization command — x264 runs its
   all-core auto default. Sample argv observed:
