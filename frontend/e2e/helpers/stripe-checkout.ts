@@ -1,15 +1,20 @@
 // frontend/e2e/helpers/stripe-checkout.ts
-import { Page } from '@playwright/test';
+import { Page, Locator } from '@playwright/test';
 
 /**
  * Automate Stripe's hosted checkout page (checkout.stripe.com).
  *
- * Stripe Checkout (as of April 2026) shows:
- * - "Pay with Link" / "Pay with Klarna" buttons at top
- * - Payment method radio buttons: Card, Cash App Pay, Klarna, Bank
- * - Clicking "Card" reveals card input fields (number, expiry, CVC)
- * - Card fields are inside iframes within the page
- * - A "Pay" button at the bottom
+ * Stripe Checkout's layout depends on how many payment methods are enabled:
+ * - Multiple methods → an accordion of radio buttons (Card, Cash App Pay, …);
+ *   "Card" must be selected to reveal the card fields (historically in iframes).
+ * - Single method (Card only, current prod as of Aug 2026) → the card fields
+ *   (number, expiry, CVC, name, ZIP) render directly with no radio to select.
+ * Because the whole page is on checkout.stripe.com, card fields are direct
+ * inputs rather than cross-origin iframes.
+ * A "Pay" button sits at the bottom in both layouts.
+ *
+ * This helper handles both layouts: it only clicks the "Card" radio when one is
+ * actually present, and fills fields via direct locators with an iframe fallback.
  *
  * Environment variables:
  *   E2E_STRIPE_CARD_NUMBER, E2E_STRIPE_CARD_EXPIRY,
@@ -59,17 +64,34 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
   await page.screenshot({ path: 'test-results/stripe-checkout-loaded.png' });
   console.log('  Stripe Checkout loaded');
 
-  // Step 2: Select "Card" payment method
-  // Stripe uses an accordion with radio buttons overlaid by buttons.
-  // Use force:true to bypass the overlay interception.
+  // Step 2: Select "Card" payment method (only if a selector is present)
+  // Stripe's Checkout layout varies with the number of enabled payment methods:
+  //   - Multiple methods → an accordion of radio buttons; "Card" must be selected.
+  //   - Single method (Card only) → card fields render directly, no radio exists.
+  // As of Aug 2026 production serves the single-method layout: the card number,
+  // expiry and CVC are shown immediately with no "Card" radio. Waiting on a radio
+  // that never appears is what previously hung this step for 10s.
   console.log('  Selecting Card payment method...');
-  const cardRadio = page.getByRole('radio', { name: 'Card' });
-  await cardRadio.check({ force: true, timeout: 10_000 });
-  console.log('  Card payment method selected');
+  const cardNumberField = cardFieldLocator(page, 'cardNumber');
 
-  // Wait for card input fields to appear after selecting Card
-  // Stripe renders card fields inside iframes after the radio is clicked
-  await page.waitForTimeout(2000);
+  if (await cardNumberField.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    console.log('  Card fields already visible (single payment method) — no radio to select');
+  } else {
+    const cardRadio = page.getByRole('radio', { name: 'Card' });
+    if (await cardRadio.count()) {
+      // Accordion layout — bypass the overlay interception with force:true.
+      await cardRadio.check({ force: true, timeout: 10_000 });
+      console.log('  Card payment method selected via radio');
+    } else {
+      console.log('  No Card radio found — waiting for card fields to render...');
+    }
+    // Give Stripe a moment to render the card inputs (iframes or direct fields).
+    await cardNumberField
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .catch(() => console.log('  WARNING: card number field not visible after selecting Card'));
+  }
+
+  await page.waitForTimeout(1000);
   await page.screenshot({ path: 'test-results/stripe-card-selected.png' });
 
   // Step 3: Fill card number
@@ -88,7 +110,10 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
 
   // Step 6: Fill cardholder name if field exists
   if (card.name) {
-    const nameInput = page.locator('#billingName, input[name="billingName"]');
+    const nameInput = page
+      .locator('#billingName, input[name="billingName"], input[placeholder="Full name on card"]')
+      .or(page.getByRole('textbox', { name: /cardholder name/i }))
+      .first();
     if (await nameInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       console.log('  Filling cardholder name...');
       await nameInput.fill(card.name);
@@ -96,7 +121,10 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
   }
 
   // Step 6b: Fill ZIP code (required for US cards)
-  const zipInput = page.locator('#billingPostalCode, input[name="billingPostalCode"], input[placeholder="ZIP"]');
+  const zipInput = page
+    .locator('#billingPostalCode, input[name="billingPostalCode"], input[placeholder="ZIP"]')
+    .or(page.getByRole('textbox', { name: /^zip$|postal code/i }))
+    .first();
   if (await zipInput.isVisible({ timeout: 2000 }).catch(() => false)) {
     console.log('  Filling ZIP code...');
     await zipInput.fill(process.env.E2E_STRIPE_ZIP || '10001');
@@ -130,26 +158,57 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
 }
 
 /**
- * Fill a card field by name. Tries direct input first, then iframe-based.
+ * Accessible-name and placeholder metadata for each Stripe card field, used to
+ * build robust locators that work whether Stripe renders the field as a direct
+ * input (current single-payment-method layout) or inside an iframe.
+ */
+const CARD_FIELD_META: Record<string, { name: RegExp; placeholder?: string }> = {
+  cardNumber: { name: /card number/i, placeholder: '1234 1234 1234 1234' },
+  cardExpiry: { name: /expiration|expiry/i, placeholder: 'MM / YY' },
+  cardCvc: { name: /^cvc$|security code/i },
+};
+
+/**
+ * Locator for a Stripe card field rendered directly in the main frame (i.e. not
+ * inside an iframe). Matches by Stripe's stable field-name attribute, element id,
+ * input name, or placeholder — whichever the current Checkout layout uses.
+ */
+function cardFieldLocator(page: Page, fieldName: string): Locator {
+  const meta = CARD_FIELD_META[fieldName];
+  const selectors = [
+    `[data-elements-stable-field-name="${fieldName}"]`,
+    `#${fieldName}`,
+    `input[name="${fieldName}"]`,
+  ];
+  if (meta?.placeholder) selectors.push(`input[placeholder="${meta.placeholder}"]`);
+  return page.locator(selectors.join(', ')).first();
+}
+
+/**
+ * Fill a card field by name. Tries direct inputs (id / stable-field-name /
+ * placeholder / accessible name) first, then falls back to iframe-based inputs.
  *
- * Stripe Checkout card fields use IDs like #cardNumber, #cardExpiry, #cardCvc
- * when rendered as direct inputs, or are inside iframes when using Elements.
+ * Stripe Checkout renders card fields as direct inputs in the single-payment-
+ * method layout, or inside iframes when using the classic Elements accordion.
  */
 async function fillCardField(page: Page, fieldName: string, value: string): Promise<void> {
-  // Try 1: Direct input by ID
-  const directInput = page.locator(`#${fieldName}`);
+  // Try 1: Direct input by stable-field-name / id / name / placeholder
+  const directInput = cardFieldLocator(page, fieldName);
   if (await directInput.isVisible({ timeout: 3000 }).catch(() => false)) {
     await directInput.click();
     await directInput.type(value, { delay: 50 });
     return;
   }
 
-  // Try 2: Direct input by data attribute
-  const dataInput = page.locator(`[data-elements-stable-field-name="${fieldName}"]`);
-  if (await dataInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await dataInput.click();
-    await dataInput.type(value, { delay: 50 });
-    return;
+  // Try 2: Direct input by accessible name (aria-label)
+  const meta = CARD_FIELD_META[fieldName];
+  if (meta) {
+    const roleInput = page.getByRole('textbox', { name: meta.name }).first();
+    if (await roleInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await roleInput.click();
+      await roleInput.type(value, { delay: 50 });
+      return;
+    }
   }
 
   // Try 3: Input inside an iframe (Stripe Elements)
