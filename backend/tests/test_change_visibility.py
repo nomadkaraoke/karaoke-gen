@@ -363,13 +363,48 @@ class TestDeleteDistributedOutputs:
         }
 
         with patch("backend.services.brand_code_service.get_brand_code_service") as mock_bcs, \
-             patch("backend.services.brand_code_service.BrandCodeService.parse_brand_code", return_value=("NOMAD", 42)):
+             patch("backend.services.brand_code_service.BrandCodeService.parse_brand_code", return_value=("NOMAD", 42)), \
+             patch("backend.services.nomad_master_mirror.cleanup_nomad_masters") as mock_mirror:
             mock_brand_svc = MagicMock()
             mock_bcs.return_value = mock_brand_svc
 
             await service._delete_public_outputs("test-123", public_outputs)
 
+            # No public YouTube/Dropbox/GDrive present → all deletions "succeed" →
+            # the public number is recycled and the mirror is cleaned.
+            mock_mirror.assert_called_once_with("NOMAD-0042")
             mock_brand_svc.recycle_brand_code.assert_called_once_with("NOMAD", 42)
+
+    @pytest.mark.asyncio
+    async def test_delete_public_outputs_skips_recycle_on_incomplete_cleanup(self):
+        """If a public deletion fails, the number is NOT recycled (avoids a future
+        duplicate against lingering public files)."""
+        mock_job_manager = MagicMock()
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+
+        public_outputs = {
+            "youtube_url": None,
+            "brand_code": "NOMAD-0042",
+            "gdrive_files": {"mp4": "id1"},
+            "dropbox_path": None,
+            "artist": "A",
+            "title": "T",
+        }
+
+        with patch("backend.services.gdrive_service.get_gdrive_service") as mock_gd, \
+             patch("backend.services.nomad_master_mirror.cleanup_nomad_masters"), \
+             patch("backend.services.brand_code_service.get_brand_code_service") as mock_bcs, \
+             patch("backend.services.brand_code_service.BrandCodeService.parse_brand_code", return_value=("NOMAD", 42)):
+            gd = MagicMock()
+            gd.is_configured = True
+            gd.delete_files.side_effect = RuntimeError("gdrive boom")
+            mock_gd.return_value = gd
+            mock_brand_svc = MagicMock()
+            mock_bcs.return_value = mock_brand_svc
+
+            await service._delete_public_outputs("test-123", public_outputs)
+
+            mock_brand_svc.recycle_brand_code.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_clears_distribution_state_keys(self):

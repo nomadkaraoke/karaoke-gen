@@ -88,9 +88,48 @@ class VisibilityChangeService:
 
         # Set guard flag + flip to private so redistribution targets the private
         # destination. Public outputs remain live until the private archive exists.
+        # No "changed to private" timeline event yet — it is only recorded once the
+        # move actually succeeds (this is reverted if redistribution fails).
         job_ref.update({
             "state_data.visibility_change_in_progress": True,
             "is_private": True,
+            "updated_at": datetime.now(timezone.utc),
+        })
+
+        # Step 1: Redistribute to the private destination FIRST (public outputs
+        # still live). This is the only phase whose failure is safe to fully roll
+        # back — nothing public has been touched yet. redistribute_video verifies
+        # the archive actually materialized and recycles any NOMADNP code it
+        # allocated on failure, so a False return means "no-op, still public".
+        try:
+            from backend.workers.video_worker import redistribute_video
+            success = await redistribute_video(job_id)
+        except Exception as e:
+            logger.error(f"[job:{job_id}] Redistribution raised during visibility change: {e}", exc_info=True)
+            success = False
+
+        if not success:
+            # Roll back to public: no public outputs were deleted, so restoring
+            # is_private=False leaves the job fully intact and public.
+            logger.error(f"[job:{job_id}] Visibility change to private failed: redistribution did not succeed")
+            job_ref.update({
+                "is_private": False,
+                "state_data.visibility_change_in_progress": DELETE_FIELD,
+                "updated_at": datetime.now(timezone.utc),
+            })
+            raise RuntimeError("Redistribution failed - check worker logs")
+
+        # Step 2: Private archive now exists. From here we do NOT revert to public,
+        # even if public cleanup hiccups — the private move has committed. Deleting
+        # the public outputs + recycling the public NOMAD number is best-effort
+        # (each failure is logged inside the helper, never raised), so a stray
+        # orphaned public artifact cannot undo the successful private move.
+        await self._delete_public_outputs(job_id, public_outputs)
+
+        # Record the completed move and clear the guard flag. redistribute_video
+        # already updated state_data with the new private brand_code etc.
+        job_ref.update({
+            "state_data.visibility_change_in_progress": DELETE_FIELD,
             "updated_at": datetime.now(timezone.utc),
             "timeline": ArrayUnion([{
                 "status": "complete",
@@ -99,45 +138,12 @@ class VisibilityChangeService:
             }]),
         })
 
-        try:
-            # Step 1: Redistribute to the private destination FIRST (public outputs
-            # still live at this point). On failure, redistribute_video recycles any
-            # NOMADNP code it allocated, so there is nothing to clean up here.
-            from backend.workers.video_worker import redistribute_video
-            success = await redistribute_video(job_id)
-
-            if not success:
-                raise RuntimeError("Redistribution failed - check worker logs")
-
-            # Step 2: Private archive exists — now delete the public outputs and
-            # recycle the public NOMAD number. Best-effort; a failure here leaves an
-            # orphaned public artifact but does not undo the successful private move.
-            await self._delete_public_outputs(job_id, public_outputs)
-
-            # Clear guard flag (redistribution already updated state_data with the
-            # new private brand_code etc.)
-            job_ref.update({
-                "state_data.visibility_change_in_progress": DELETE_FIELD,
-            })
-
-            logger.info(f"[job:{job_id}] Visibility change to private complete")
-            return {
-                "status": "success",
-                "message": "Job changed to private. Outputs redistributed to private destination.",
-                "reprocessing_required": False,
-            }
-
-        except Exception as e:
-            logger.error(f"[job:{job_id}] Visibility change to private failed: {e}", exc_info=True)
-            # Roll back to public: no public outputs were deleted (deletion only runs
-            # after a successful redistribution), so restoring is_private=False leaves
-            # the job fully intact and public.
-            job_ref.update({
-                "is_private": False,
-                "state_data.visibility_change_in_progress": DELETE_FIELD,
-                "updated_at": datetime.now(timezone.utc),
-            })
-            raise
+        logger.info(f"[job:{job_id}] Visibility change to private complete")
+        return {
+            "status": "success",
+            "message": "Job changed to private. Outputs redistributed to private destination.",
+            "reprocessing_required": False,
+        }
 
     async def change_to_public(self, job_id: str, job, user_email: str) -> dict:
         """
@@ -253,6 +259,14 @@ class VisibilityChangeService:
         """
         import re
 
+        # Track whether each public destination was fully cleaned. The NOMAD number
+        # is only recycled when every deletion succeeded — otherwise a future public
+        # track could reuse the number while the old public files still linger,
+        # producing a duplicate. (Mirrors the admin delete-outputs recycle gate.)
+        youtube_ok = True
+        dropbox_ok = True
+        gdrive_ok = True
+
         youtube_url = public_outputs.get("youtube_url")
         if youtube_url:
             try:
@@ -270,6 +284,7 @@ class VisibilityChangeService:
                         finalise.delete_youtube_video(video_id)
                         logger.info(f"[job:{job_id}] Deleted public YouTube video {video_id}")
             except Exception as e:
+                youtube_ok = False
                 logger.warning(f"[job:{job_id}] Failed to delete public YouTube video: {e}")
 
         brand_code = public_outputs.get("brand_code")
@@ -287,6 +302,7 @@ class VisibilityChangeService:
                     dropbox.delete_folder(full_path)
                     logger.info(f"[job:{job_id}] Deleted public Dropbox folder {full_path}")
             except Exception as e:
+                dropbox_ok = False
                 logger.warning(f"[job:{job_id}] Failed to delete public Dropbox folder: {e}")
 
         gdrive_files = public_outputs.get("gdrive_files")
@@ -299,6 +315,7 @@ class VisibilityChangeService:
                     gdrive.delete_files(file_ids)
                     logger.info(f"[job:{job_id}] Deleted public Google Drive files")
             except Exception as e:
+                gdrive_ok = False
                 logger.warning(f"[job:{job_id}] Failed to delete public Google Drive files: {e}")
 
         # A track going private should also leave the public Nomad GCS fast-sync
@@ -310,8 +327,11 @@ class VisibilityChangeService:
             except Exception as e:
                 logger.warning(f"[job:{job_id}] Failed to clean up Nomad mirror for {brand_code}: {e}")
 
-        # Recycle the public NOMAD number so the next public track fills the gap.
-        if brand_code:
+        # Recycle the public NOMAD number so the next public track fills the gap —
+        # but only if every public deletion succeeded. If any lingered, keep the
+        # number reserved (a permanent gap the validator will flag) rather than
+        # risk a future duplicate; the leftover artifacts can then be cleaned up.
+        if brand_code and youtube_ok and dropbox_ok and gdrive_ok:
             try:
                 from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
                 prefix, number = BrandCodeService.parse_brand_code(brand_code)
@@ -319,6 +339,11 @@ class VisibilityChangeService:
                 logger.info(f"[job:{job_id}] Recycled public brand code {brand_code}")
             except Exception as e:
                 logger.warning(f"[job:{job_id}] Failed to recycle public brand code {brand_code}: {e}")
+        elif brand_code:
+            logger.warning(
+                f"[job:{job_id}] NOT recycling public brand code {brand_code}: "
+                f"public cleanup incomplete (youtube={youtube_ok}, dropbox={dropbox_ok}, gdrive={gdrive_ok})"
+            )
 
     async def _delete_distributed_outputs(self, job_id: str, job, keep_gcs_finals: bool = False):
         """Delete distributed outputs (YouTube, Dropbox, GDrive) and recycle brand code."""

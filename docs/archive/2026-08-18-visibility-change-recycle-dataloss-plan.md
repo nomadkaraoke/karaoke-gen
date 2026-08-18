@@ -93,26 +93,33 @@ call sites could misuse.
 - Verify no other stage in the redistribute-only path (`_run_organization`, `_run_distribution`,
   `_run_notifications`) performs a status transition that assumes a fresh pipeline.
 
-### B. Distribute-then-delete + rollback (`change_to_private`)
-Reorder `visibility_change_service.py:change_to_private`:
+### B. Distribute-then-delete + rollback (`change_to_private`) — as implemented
 
-1. Set guard flag (unchanged).
-2. **Redistribute to the private destination first** (`redistribute_video`): reuse GCS finals
+1. **Capture the public output references** (`youtube_url`, `brand_code`, `gdrive_files`,
+   `dropbox_path`, artist/title) from the job snapshot *before* anything mutates state —
+   redistribution overwrites `state_data` with the new private values.
+2. Set the guard flag **and** `is_private=True` up front (a *temporary* flag) so
+   `get_effective_distribution_for_job()` selects the private destination during redistribution.
+   No "changed to private" timeline event yet.
+3. **Redistribute to the private destination** (`redistribute_video`): reuse GCS finals
    (`keep_gcs_finals` stays true — never deleted for this path), upload to `Tracks-NonPublished`,
-   allocate `NOMADNP` code, write new `state_data.brand_code`/`dropbox_link`. Public outputs are
-   still live at this point.
-3. **Only on success**, flip `is_private=True`, then delete the *public* outputs (YouTube,
-   public Dropbox folder, public GDrive files) and **recycle the public `NOMAD` number**
-   (split the current `_delete_distributed_outputs` so recycle of the *public* code happens here,
-   after success).
-4. Clear guard flag.
-5. **On any failure** (redistribution raises/returns False): recycle the just-allocated
-   `NOMADNP` code (C), clear the guard flag, leave `is_private=False` and all public outputs
-   intact, re-raise. Net effect: a failed going-private is a no-op, not a destructive partial.
+   allocate `NOMADNP` code. Public outputs are still live at this point.
+4. **If redistribution fails** (raises or returns False): revert `is_private=False`, clear the
+   guard flag, re-raise `RuntimeError("Redistribution failed …")`. No public output was touched,
+   and `redistribute_video` already recycled any `NOMADNP` code it allocated (C) — a failed
+   going-private is a clean no-op.
+5. **On success**, the private archive exists and the move has committed — from here we do
+   **not** revert to public. Delete the *public* outputs (YouTube, public Dropbox folder, public
+   GDrive files) via `_delete_public_outputs` (best-effort, never raises) and **recycle the public
+   `NOMAD` number** — but only if every public deletion succeeded (else keep the number reserved
+   to avoid a future duplicate). Then record the "changed to private" timeline event and clear the
+   guard flag.
 
-Note the YouTube deletion is irreversible, which is *why* it must be last — the current
-delete-first order can never be safely rolled back. `_delete_distributed_outputs` is refactored
-so "delete public + recycle public code" is callable independently of "clear distribution state".
+Note the YouTube deletion is irreversible, which is *why* it must be last — the old delete-first
+order could never be safely rolled back. `redistribute_video` additionally verifies the archive
+actually materialized (brand code allocated + Dropbox upload not failed) before returning success,
+because the orchestrator swallows brand-code/Dropbox failures as warnings; without this a false
+"success" would delete the public outputs against a non-existent private archive.
 
 ### C. No leaked private codes
 Two options; prefer (i):

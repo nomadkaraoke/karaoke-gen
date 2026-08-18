@@ -609,6 +609,24 @@ async def redistribute_video(job_id: str) -> bool:
         await orchestrator._run_distribution()
         await orchestrator._run_notifications()
 
+        # Verify the redistribution actually produced the archive before reporting
+        # success. The orchestrator swallows brand-code and Dropbox failures as
+        # non-fatal warnings, so an apparent "success" can hide a missing archive.
+        # Reporting success in that case would let the caller (public->private
+        # visibility change) delete the still-live public outputs against a
+        # non-existent private archive — the exact data-loss bug this path fixes.
+        if config.brand_prefix and not orchestrator.result.brand_code:
+            raise RuntimeError(
+                "Redistribution produced no brand code — archive identity is missing"
+            )
+        if config.dropbox_path:
+            dropbox_failed = any(
+                "Dropbox upload failed" in w
+                for w in (orchestrator.result.distribution_warnings or [])
+            )
+            if dropbox_failed:
+                raise RuntimeError("Redistribution failed to upload the Dropbox archive")
+
         # Update job state_data with new distribution results
         state_update = dict(job.state_data or {})
         state_update['brand_code'] = orchestrator.result.brand_code
