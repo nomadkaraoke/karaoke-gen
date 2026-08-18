@@ -21,6 +21,7 @@ from backend.workers.video_worker_orchestrator import (
     VideoWorkerOrchestrator,
     create_orchestrator_config_from_job,
 )
+from backend.models.job import JobStatus
 
 
 class TestOrchestratorConfig:
@@ -2132,3 +2133,52 @@ class TestOriginalVocalsGuideEmit:
 
         with patch("backend.workers.style_helper.load_style_config", side_effect=fake_load):
             assert await orch._resolve_intro_seconds() == 8.0
+
+
+class TestRedistributeModeProgress:
+    """redistribute_mode must not attempt job status transitions.
+
+    Regression for the public->private data-loss bug: redistributing an already
+    `complete` job drove `_update_progress(PACKAGING)`, which raised
+    InvalidStateTransitionError (`complete -> packaging`) and aborted the
+    redistribution after the public outputs had already been deleted.
+    """
+
+    def _config(self, redistribute_mode):
+        return OrchestratorConfig(
+            job_id="job-1",
+            artist="A",
+            title="T",
+            title_video_path="",
+            karaoke_video_path="",
+            instrumental_audio_path="",
+            redistribute_mode=redistribute_mode,
+        )
+
+    def test_redistribute_mode_skips_status_transition(self):
+        jm = MagicMock()
+        orch = VideoWorkerOrchestrator(
+            config=self._config(redistribute_mode=True),
+            job_manager=jm,
+            storage=MagicMock(),
+            job_logger=MagicMock(),
+        )
+
+        orch._update_progress(JobStatus.PACKAGING, 90, "Uploading files")
+
+        jm.transition_to_state.assert_not_called()
+        jm.update_job.assert_called_once_with("job-1", {"progress": 90})
+
+    def test_normal_mode_drives_status_transition(self):
+        jm = MagicMock()
+        orch = VideoWorkerOrchestrator(
+            config=self._config(redistribute_mode=False),
+            job_manager=jm,
+            storage=MagicMock(),
+            job_logger=MagicMock(),
+        )
+
+        orch._update_progress(JobStatus.PACKAGING, 90, "Uploading files")
+
+        jm.transition_to_state.assert_called_once()
+        jm.update_job.assert_not_called()

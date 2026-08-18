@@ -505,6 +505,7 @@ async def redistribute_video(job_id: str) -> bool:
         return False
 
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_redist_{job_id}_")
+    orchestrator = None
 
     try:
         # Download existing finals from GCS by listing the finals folder
@@ -574,6 +575,10 @@ async def redistribute_video(job_id: str) -> bool:
             gdrive_folder_id=dist.gdrive_folder_id,
             enable_cdg=getattr(job, 'enable_cdg', False),
             enable_txt=getattr(job, 'enable_txt', False),
+            # Redistributing an already-`complete` job: progress updates must not
+            # attempt status transitions (complete -> packaging is illegal and
+            # would abort the redistribution).
+            redistribute_mode=True,
         )
 
         orchestrator = VideoWorkerOrchestrator(
@@ -604,6 +609,24 @@ async def redistribute_video(job_id: str) -> bool:
         await orchestrator._run_distribution()
         await orchestrator._run_notifications()
 
+        # Verify the redistribution actually produced the archive before reporting
+        # success. The orchestrator swallows brand-code and Dropbox failures as
+        # non-fatal warnings, so an apparent "success" can hide a missing archive.
+        # Reporting success in that case would let the caller (public->private
+        # visibility change) delete the still-live public outputs against a
+        # non-existent private archive — the exact data-loss bug this path fixes.
+        if config.brand_prefix and not orchestrator.result.brand_code:
+            raise RuntimeError(
+                "Redistribution produced no brand code — archive identity is missing"
+            )
+        if config.dropbox_path:
+            dropbox_failed = any(
+                "Dropbox upload failed" in w
+                for w in (orchestrator.result.distribution_warnings or [])
+            )
+            if dropbox_failed:
+                raise RuntimeError("Redistribution failed to upload the Dropbox archive")
+
         # Update job state_data with new distribution results
         state_update = dict(job.state_data or {})
         state_update['brand_code'] = orchestrator.result.brand_code
@@ -623,6 +646,27 @@ async def redistribute_video(job_id: str) -> bool:
 
     except Exception as e:
         logger.error(f"[job:{job_id}] WORKER_END worker=video-redistribute status=error error={e}")
+        # A brand code may have been allocated during _run_organization before the
+        # failure. It was never persisted to the job, so return it to the pool to
+        # avoid leaking a number (and, for a public->private change, so the caller's
+        # rollback leaves no orphaned NOMADNP code).
+        allocated = getattr(getattr(orchestrator, "result", None), "brand_code", None)
+        if allocated:
+            try:
+                from backend.services.brand_code_service import (
+                    BrandCodeService,
+                    get_brand_code_service,
+                )
+                prefix, number = BrandCodeService.parse_brand_code(allocated)
+                get_brand_code_service().recycle_brand_code(prefix, number)
+                logger.info(
+                    f"[job:{job_id}] Recycled brand code {allocated} after failed redistribution"
+                )
+            except Exception as recycle_err:
+                logger.warning(
+                    f"[job:{job_id}] Failed to recycle brand code {allocated} "
+                    f"after failed redistribution: {recycle_err}"
+                )
         return False
 
     finally:
