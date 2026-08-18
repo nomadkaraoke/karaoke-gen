@@ -105,6 +105,14 @@ class OrchestratorConfig:
     dry_run: bool = False
     non_interactive: bool = True
 
+    # Redistribution mode: when True, this orchestrator run is redistributing the
+    # finals of an already-`complete` job (e.g. a public->private visibility change)
+    # rather than driving a fresh job through its lifecycle. In this mode
+    # _update_progress must NOT attempt job status transitions — the job is (and
+    # stays) `complete`, and `complete -> packaging`/`encoding` are illegal
+    # transitions that would otherwise abort the redistribution.
+    redistribute_mode: bool = False
+
 
 @dataclass
 class OrchestratorResult:
@@ -234,14 +242,28 @@ class VideoWorkerOrchestrator:
         return self._discord_service
 
     def _update_progress(self, status: JobStatus, progress: int, message: str):
-        """Update job progress if job_manager is available."""
-        if self.job_manager:
-            self.job_manager.transition_to_state(
-                job_id=self.config.job_id,
-                new_status=status,
-                progress=progress,
-                message=message
+        """Update job progress if job_manager is available.
+
+        In redistribute_mode the job is already `complete` and must stay that way,
+        so we update only the progress percentage/message and skip the (illegal)
+        status transition. Outside redistribute_mode this drives the normal
+        lifecycle transition with validation.
+        """
+        if not self.job_manager:
+            return
+        if self.config.redistribute_mode:
+            # Progress-only update; do not transition status (job stays `complete`).
+            self.job_manager.update_job(
+                self.config.job_id,
+                {"progress": progress},
             )
+            return
+        self.job_manager.transition_to_state(
+            job_id=self.config.job_id,
+            new_status=status,
+            progress=progress,
+            message=message
+        )
 
     async def run(self) -> OrchestratorResult:
         """

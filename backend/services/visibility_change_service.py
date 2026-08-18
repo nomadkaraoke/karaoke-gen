@@ -57,43 +57,65 @@ class VisibilityChangeService:
         """
         Change a public job to private (fast path).
 
-        Deletes distributed outputs (YouTube/Dropbox/GDrive) but keeps GCS finals,
-        then redistributes to private destination.
+        Distribute-then-delete: the track is first redistributed to the private
+        destination (private Dropbox archive + NOMADNP code, no YouTube/GDrive),
+        and only *after* that succeeds are the public outputs (YouTube, public
+        Dropbox folder, public GDrive files) deleted and the public NOMAD number
+        recycled. GCS finals are always kept.
+
+        This ordering is deliberate: YouTube deletion is irreversible, so nothing
+        public may be destroyed until the private archive exists. If redistribution
+        fails, the job is reverted to public and left fully intact (no partial
+        deletion, no leaked NOMADNP code — see redistribute_video's failure path).
         """
         logger.info(f"[job:{job_id}] Starting visibility change: public -> private (by {user_email})")
 
         db = self.job_manager.firestore.db
         job_ref = db.collection("jobs").document(job_id)
 
-        # Set guard flag
+        # Capture the public output references BEFORE redistribution overwrites
+        # state_data with the new private values — we need them to delete the
+        # public outputs afterwards.
+        state_data = job.state_data or {}
+        public_outputs = {
+            "youtube_url": state_data.get("youtube_url"),
+            "brand_code": state_data.get("brand_code"),
+            "gdrive_files": state_data.get("gdrive_files"),
+            "dropbox_path": getattr(job, "dropbox_path", None),
+            "artist": job.artist,
+            "title": job.title,
+        }
+
+        # Set guard flag + flip to private so redistribution targets the private
+        # destination. Public outputs remain live until the private archive exists.
         job_ref.update({
             "state_data.visibility_change_in_progress": True,
+            "is_private": True,
             "updated_at": datetime.now(timezone.utc),
+            "timeline": ArrayUnion([{
+                "status": "complete",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "message": f"Visibility changed to private by {user_email}",
+            }]),
         })
 
         try:
-            # Step 1: Delete distributed outputs (keep GCS finals)
-            await self._delete_distributed_outputs(job_id, job, keep_gcs_finals=True)
-
-            # Step 2: Update job to private
-            job_ref.update({
-                "is_private": True,
-                "updated_at": datetime.now(timezone.utc),
-                "timeline": ArrayUnion([{
-                    "status": "complete",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "message": f"Visibility changed to private by {user_email}",
-                }]),
-            })
-
-            # Step 3: Trigger redistribution via video worker
+            # Step 1: Redistribute to the private destination FIRST (public outputs
+            # still live at this point). On failure, redistribute_video recycles any
+            # NOMADNP code it allocated, so there is nothing to clean up here.
             from backend.workers.video_worker import redistribute_video
             success = await redistribute_video(job_id)
 
             if not success:
                 raise RuntimeError("Redistribution failed - check worker logs")
 
-            # Clear guard flag (redistribution updates state_data with new brand_code etc.)
+            # Step 2: Private archive exists — now delete the public outputs and
+            # recycle the public NOMAD number. Best-effort; a failure here leaves an
+            # orphaned public artifact but does not undo the successful private move.
+            await self._delete_public_outputs(job_id, public_outputs)
+
+            # Clear guard flag (redistribution already updated state_data with the
+            # new private brand_code etc.)
             job_ref.update({
                 "state_data.visibility_change_in_progress": DELETE_FIELD,
             })
@@ -107,9 +129,13 @@ class VisibilityChangeService:
 
         except Exception as e:
             logger.error(f"[job:{job_id}] Visibility change to private failed: {e}", exc_info=True)
-            # Clear guard flag on failure
+            # Roll back to public: no public outputs were deleted (deletion only runs
+            # after a successful redistribution), so restoring is_private=False leaves
+            # the job fully intact and public.
             job_ref.update({
+                "is_private": False,
                 "state_data.visibility_change_in_progress": DELETE_FIELD,
+                "updated_at": datetime.now(timezone.utc),
             })
             raise
 
@@ -215,6 +241,84 @@ class VisibilityChangeService:
                        "with default branding and published publicly. This takes ~15-30 minutes.",
             "reprocessing_required": True,
         }
+
+    async def _delete_public_outputs(self, job_id: str, public_outputs: dict):
+        """Delete the captured PUBLIC outputs and recycle the public NOMAD number.
+
+        Used by change_to_private AFTER a successful private redistribution. Operates
+        on references captured before redistribution (which overwrites state_data with
+        private values). Does not touch GCS finals and does not clear state_data keys
+        (redistribution already set the new private values). Best-effort: individual
+        failures are logged, not raised, so one orphaned artifact can't undo the move.
+        """
+        import re
+
+        youtube_url = public_outputs.get("youtube_url")
+        if youtube_url:
+            try:
+                video_id_match = re.search(r'(?:youtu\.be/|youtube\.com/watch\?v=)([^&\s]+)', youtube_url)
+                if video_id_match:
+                    video_id = video_id_match.group(1)
+                    from karaoke_gen.karaoke_finalise.karaoke_finalise import KaraokeFinalise
+                    from backend.services.youtube_service import get_youtube_service
+                    youtube_service = get_youtube_service()
+                    if youtube_service.is_configured:
+                        finalise = KaraokeFinalise(
+                            dry_run=False, non_interactive=True,
+                            user_youtube_credentials=youtube_service.get_credentials_dict()
+                        )
+                        finalise.delete_youtube_video(video_id)
+                        logger.info(f"[job:{job_id}] Deleted public YouTube video {video_id}")
+            except Exception as e:
+                logger.warning(f"[job:{job_id}] Failed to delete public YouTube video: {e}")
+
+        brand_code = public_outputs.get("brand_code")
+        dropbox_path = public_outputs.get("dropbox_path")
+        if brand_code and dropbox_path:
+            try:
+                from backend.services.dropbox_service import get_dropbox_service
+                dropbox = get_dropbox_service()
+                if dropbox.is_configured:
+                    from karaoke_gen.utils import sanitize_filename
+                    safe_artist = sanitize_filename(public_outputs.get("artist")) if public_outputs.get("artist") else "Unknown"
+                    safe_title = sanitize_filename(public_outputs.get("title")) if public_outputs.get("title") else "Unknown"
+                    folder_name = f"{brand_code} - {safe_artist} - {safe_title}"
+                    full_path = f"{dropbox_path}/{folder_name}"
+                    dropbox.delete_folder(full_path)
+                    logger.info(f"[job:{job_id}] Deleted public Dropbox folder {full_path}")
+            except Exception as e:
+                logger.warning(f"[job:{job_id}] Failed to delete public Dropbox folder: {e}")
+
+        gdrive_files = public_outputs.get("gdrive_files")
+        if gdrive_files:
+            try:
+                from backend.services.gdrive_service import get_gdrive_service
+                gdrive = get_gdrive_service()
+                if gdrive.is_configured:
+                    file_ids = list(gdrive_files.values()) if isinstance(gdrive_files, dict) else []
+                    gdrive.delete_files(file_ids)
+                    logger.info(f"[job:{job_id}] Deleted public Google Drive files")
+            except Exception as e:
+                logger.warning(f"[job:{job_id}] Failed to delete public Google Drive files: {e}")
+
+        # A track going private should also leave the public Nomad GCS fast-sync
+        # mirror (and thus kjbox). Prefix-keyed by the public brand_code, non-fatal.
+        if brand_code:
+            try:
+                from backend.services.nomad_master_mirror import cleanup_nomad_masters
+                cleanup_nomad_masters(brand_code)
+            except Exception as e:
+                logger.warning(f"[job:{job_id}] Failed to clean up Nomad mirror for {brand_code}: {e}")
+
+        # Recycle the public NOMAD number so the next public track fills the gap.
+        if brand_code:
+            try:
+                from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
+                prefix, number = BrandCodeService.parse_brand_code(brand_code)
+                get_brand_code_service().recycle_brand_code(prefix, number)
+                logger.info(f"[job:{job_id}] Recycled public brand code {brand_code}")
+            except Exception as e:
+                logger.warning(f"[job:{job_id}] Failed to recycle public brand code {brand_code}: {e}")
 
     async def _delete_distributed_outputs(self, job_id: str, job, keep_gcs_finals: bool = False):
         """Delete distributed outputs (YouTube, Dropbox, GDrive) and recycle brand code."""

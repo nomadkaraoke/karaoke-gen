@@ -505,6 +505,7 @@ async def redistribute_video(job_id: str) -> bool:
         return False
 
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_redist_{job_id}_")
+    orchestrator = None
 
     try:
         # Download existing finals from GCS by listing the finals folder
@@ -574,6 +575,10 @@ async def redistribute_video(job_id: str) -> bool:
             gdrive_folder_id=dist.gdrive_folder_id,
             enable_cdg=getattr(job, 'enable_cdg', False),
             enable_txt=getattr(job, 'enable_txt', False),
+            # Redistributing an already-`complete` job: progress updates must not
+            # attempt status transitions (complete -> packaging is illegal and
+            # would abort the redistribution).
+            redistribute_mode=True,
         )
 
         orchestrator = VideoWorkerOrchestrator(
@@ -623,6 +628,27 @@ async def redistribute_video(job_id: str) -> bool:
 
     except Exception as e:
         logger.error(f"[job:{job_id}] WORKER_END worker=video-redistribute status=error error={e}")
+        # A brand code may have been allocated during _run_organization before the
+        # failure. It was never persisted to the job, so return it to the pool to
+        # avoid leaking a number (and, for a public->private change, so the caller's
+        # rollback leaves no orphaned NOMADNP code).
+        allocated = getattr(getattr(orchestrator, "result", None), "brand_code", None)
+        if allocated:
+            try:
+                from backend.services.brand_code_service import (
+                    BrandCodeService,
+                    get_brand_code_service,
+                )
+                prefix, number = BrandCodeService.parse_brand_code(allocated)
+                get_brand_code_service().recycle_brand_code(prefix, number)
+                logger.info(
+                    f"[job:{job_id}] Recycled brand code {allocated} after failed redistribution"
+                )
+            except Exception as recycle_err:
+                logger.warning(
+                    f"[job:{job_id}] Failed to recycle brand code {allocated} "
+                    f"after failed redistribution: {recycle_err}"
+                )
         return False
 
     finally:
