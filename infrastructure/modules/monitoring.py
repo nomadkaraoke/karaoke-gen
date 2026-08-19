@@ -194,23 +194,97 @@ def create_alert_policies(
     )
 
     # Alert: Cloud Run Service Unavailable
+    #
+    # HISTORY — why this is NOT an instance-count-absence alert anymore:
+    #   The original condition used `condition_absent` on
+    #   `run.googleapis.com/container/instance_count` ("No healthy instances").
+    #   That metric is a *sampled* series: for a min-instances=1, low-traffic
+    #   service it legitimately stops reporting for short stretches even while
+    #   the single instance is alive and serving 200s. On 2026-08-19 03:15 UTC it
+    #   fired + auto-resolved in ~85s while the same instanceId was actively
+    #   answering the scheduled recover-stuck-jobs / retry-pending-render crons
+    #   with HTTP 200 — a pure metric blink, not an outage. Absence of an
+    #   instance-count sample is simply the wrong signal for "is the API down".
+    #
+    #   Fix: measure reachability directly with a Cloud Monitoring uptime check
+    #   against the public health endpoint (through the Cloudflare edge, exactly
+    #   the path real users take), and page only when it FAILS from more than one
+    #   checker location — so a single flaky checker can't page us, but a genuine
+    #   hard-down (every checker failing) does within ~1-2 min.
+    #
+    #   NOTE on granularity: with selected_regions unset the check runs from all
+    #   of Google's checker locations (several are in the USA alone). The
+    #   condition counts failing *checker locations* (REDUCE_COUNT_FALSE grouped
+    #   by host), NOT broad geographic regions — two failed US checkers is enough
+    #   to fire. That is intentional: >1 failing location is a real reachability
+    #   problem worth paging, and requiring >1 filters out single-checker noise.
+    uptime_health = gcp.monitoring.UptimeCheckConfig(
+        "backend-health-uptime-check",
+        display_name="Karaoke Backend - /api/health",
+        timeout="10s",
+        period="60s",
+        monitored_resource=gcp.monitoring.UptimeCheckConfigMonitoredResourceArgs(
+            type="uptime_url",
+            labels={"project_id": PROJECT_ID, "host": "api.nomadkaraoke.com"},
+        ),
+        http_check=gcp.monitoring.UptimeCheckConfigHttpCheckArgs(
+            path="/api/health",
+            port=443,
+            use_ssl=True,
+            validate_ssl=True,
+            request_method="GET",
+            accepted_response_status_codes=[
+                gcp.monitoring.UptimeCheckConfigHttpCheckAcceptedResponseStatusCodeArgs(
+                    status_value=200,
+                ),
+            ],
+        ),
+        # Body must actually contain the health marker — guards against an edge
+        # that returns 200 with an error/placeholder page instead of the app.
+        content_matchers=[
+            gcp.monitoring.UptimeCheckConfigContentMatcherArgs(
+                content="healthy",
+                matcher="CONTAINS_STRING",
+            ),
+        ],
+    )
+    alerts["health_uptime_check"] = uptime_health
+
+    # Build the alert filter once the check id is known. `check_id` in the metric
+    # label is the short id exposed as `.uptime_check_id`.
+    _uptime_filter = uptime_health.uptime_check_id.apply(
+        lambda check_id: (
+            'resource.type="uptime_url" '
+            'AND metric.type="monitoring.googleapis.com/uptime_check/check_passed" '
+            f'AND metric.label.check_id="{check_id}"'
+        )
+    )
+
     alerts["service_unavailable"] = gcp.monitoring.AlertPolicy(
         "service-unavailable-alert",
         display_name="Karaoke Backend - Service Unavailable",
         combiner="OR",
         conditions=[
             gcp.monitoring.AlertPolicyConditionArgs(
-                display_name="No healthy instances",
-                condition_absent=gcp.monitoring.AlertPolicyConditionConditionAbsentArgs(
-                    filter='resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND metric.type="run.googleapis.com/container/instance_count"',
-                    duration="300s",
+                display_name="Health check failing from >1 checker location",
+                condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
+                    filter=_uptime_filter,
+                    # Count how many checker locations reported a *failed* check
+                    # over the window; fire when more than one location is failing.
+                    comparison="COMPARISON_GT",
+                    threshold_value=1,
+                    duration="60s",
                     aggregations=[
-                        gcp.monitoring.AlertPolicyConditionConditionAbsentAggregationArgs(
-                            alignment_period="60s",
-                            per_series_aligner="ALIGN_MEAN",
-                            cross_series_reducer="REDUCE_SUM",
+                        gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
+                            alignment_period="1200s",
+                            per_series_aligner="ALIGN_NEXT_OLDER",
+                            cross_series_reducer="REDUCE_COUNT_FALSE",
+                            group_by_fields=["resource.label.host"],
                         ),
                     ],
+                    trigger=gcp.monitoring.AlertPolicyConditionConditionThresholdTriggerArgs(
+                        count=1,
+                    ),
                 ),
             ),
         ],
@@ -218,7 +292,7 @@ def create_alert_policies(
             auto_close="1800s",
         ),
         documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
-            content="Karaoke backend service appears to be down - no healthy Cloud Run instances detected.\n\nImmediate actions:\n1. Check Cloud Run logs for crash reasons\n2. Verify recent deployments\n3. Check external dependencies (Modal, AudioShake)\n\nService URL: https://api.nomadkaraoke.com/api/health",
+            content="Karaoke backend health check (https://api.nomadkaraoke.com/api/health) is failing from multiple checker locations - the API is likely unreachable or erroring.\n\nImmediate actions:\n1. Check Cloud Run logs for crash reasons\n2. Verify recent deployments\n3. Check the Cloudflare edge (api.nomadkaraoke.com) and external dependencies (Modal, AudioShake)\n\nService URL: https://api.nomadkaraoke.com/api/health",
             mime_type="text/markdown",
         ),
         enabled=True,
