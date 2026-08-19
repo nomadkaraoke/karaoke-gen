@@ -209,8 +209,15 @@ def create_alert_policies(
     #   Fix: measure reachability directly with a Cloud Monitoring uptime check
     #   against the public health endpoint (through the Cloudflare edge, exactly
     #   the path real users take), and page only when it FAILS from more than one
-    #   global checker location — so a single-region network blip can't page us,
-    #   but a genuine hard-down (all regions failing) does within ~1-2 min.
+    #   checker location — so a single flaky checker can't page us, but a genuine
+    #   hard-down (every checker failing) does within ~1-2 min.
+    #
+    #   NOTE on granularity: with selected_regions unset the check runs from all
+    #   of Google's checker locations (several are in the USA alone). The
+    #   condition counts failing *checker locations* (REDUCE_COUNT_FALSE grouped
+    #   by host), NOT broad geographic regions — two failed US checkers is enough
+    #   to fire. That is intentional: >1 failing location is a real reachability
+    #   problem worth paging, and requiring >1 filters out single-checker noise.
     uptime_health = gcp.monitoring.UptimeCheckConfig(
         "backend-health-uptime-check",
         display_name="Karaoke Backend - /api/health",
@@ -259,11 +266,11 @@ def create_alert_policies(
         combiner="OR",
         conditions=[
             gcp.monitoring.AlertPolicyConditionArgs(
-                display_name="Health check failing from >1 region",
+                display_name="Health check failing from >1 checker location",
                 condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
                     filter=_uptime_filter,
                     # Count how many checker locations reported a *failed* check
-                    # over the window; fire when more than one region is failing.
+                    # over the window; fire when more than one location is failing.
                     comparison="COMPARISON_GT",
                     threshold_value=1,
                     duration="60s",
@@ -285,7 +292,7 @@ def create_alert_policies(
             auto_close="1800s",
         ),
         documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
-            content="Karaoke backend health check (https://api.nomadkaraoke.com/api/health) is failing from multiple regions - the API is likely unreachable or erroring.\n\nImmediate actions:\n1. Check Cloud Run logs for crash reasons\n2. Verify recent deployments\n3. Check the Cloudflare edge (api.nomadkaraoke.com) and external dependencies (Modal, AudioShake)\n\nService URL: https://api.nomadkaraoke.com/api/health",
+            content="Karaoke backend health check (https://api.nomadkaraoke.com/api/health) is failing from multiple checker locations - the API is likely unreachable or erroring.\n\nImmediate actions:\n1. Check Cloud Run logs for crash reasons\n2. Verify recent deployments\n3. Check the Cloudflare edge (api.nomadkaraoke.com) and external dependencies (Modal, AudioShake)\n\nService URL: https://api.nomadkaraoke.com/api/health",
             mime_type="text/markdown",
         ),
         enabled=True,
