@@ -811,16 +811,41 @@ export const api = {
     jobId: string,
     uploadedFileTypes: string[],
   ): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/uploads-complete`, {
+    const url = `${API_BASE_URL}/api/jobs/${jobId}/uploads-complete`;
+    const init: RequestInit = {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ uploaded_files: uploadedFileTypes }),
-    });
+    };
 
-    return handleResponse<{ status: string; message: string }>(response);
+    // Retry ONLY on network-level failures (fetch() rejects on DNS/TLS/connection
+    // reset/offline, never on an HTTP error status). This is the last step of the
+    // signed-URL submit flow: the files are already in GCS and the job stays
+    // PENDING until this call lands, so a transient blip here would otherwise
+    // strand a paid-for job at "Setting up" and show the user a generic error.
+    // Retrying lets the submit self-heal. HTTP errors (4xx/5xx) are deterministic
+    // and surfaced immediately via handleResponse — never retried.
+    const MAX_ATTEMPTS = 3;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      let response: Response;
+      try {
+        response = await fetch(url, init);
+      } catch (err) {
+        lastError = err;
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+          continue;
+        }
+        throw err;
+      }
+      return handleResponse<{ status: string; message: string }>(response);
+    }
+    // Unreachable: the loop either returns or throws, but satisfies the compiler.
+    throw lastError;
   },
 
   /**

@@ -549,7 +549,9 @@
     "matchUseCorrection": "folosește corecția",
     "matchUseTidied": "folosește versiunea curățată",
     "matchUsingTyped": "Folosim ce ai tastat: {value}",
-    "checkingUrl": "Se verifică…"
+    "checkingUrl": "Se verifică…",
+    "submitNetworkError": "Eroare de rețea — te rugăm să verifici conexiunea și să încerci din nou.",
+    "submitError": "Ceva nu a mers bine. Te rog să încerci din nou."
   },
   "jobStatus": {
     "settingUp": "Se configurează",

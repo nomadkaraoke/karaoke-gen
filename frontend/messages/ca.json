@@ -549,7 +549,9 @@
     "matchUseCorrection": "utilitza la correcció",
     "matchUseTidied": "utilitza la versió polida",
     "matchUsingTyped": "Utilitzant el que has escrit: {value}",
-    "checkingUrl": "Comprovant…"
+    "checkingUrl": "Comprovant…",
+    "submitNetworkError": "Error de xarxa — si us plau, comprova la teva connexió i torna-ho a provar.",
+    "submitError": "Alguna cosa ha anat malament. Torna-ho a provar."
   },
   "jobStatus": {
     "settingUp": "Configurant",

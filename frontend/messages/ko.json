@@ -549,7 +549,9 @@
     "matchUseCorrection": "수정본 사용하기",
     "matchUseTidied": "정리된 버전 사용하기",
     "matchUsingTyped": "입력한 내용 사용: {value}",
-    "checkingUrl": "확인 중…"
+    "checkingUrl": "확인 중…",
+    "submitNetworkError": "네트워크 오류 — 연결 상태를 확인하고 다시 시도해 주세요.",
+    "submitError": "문제가 발생했습니다. 다시 시도해 주세요."
   },
   "jobStatus": {
     "settingUp": "설정 중",

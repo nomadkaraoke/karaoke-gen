@@ -549,7 +549,9 @@
     "matchUseCorrection": "använd korrigeringen",
     "matchUseTidied": "använd rensad version",
     "matchUsingTyped": "Använder det du skrev: {value}",
-    "checkingUrl": "Kontrollerar…"
+    "checkingUrl": "Kontrollerar…",
+    "submitNetworkError": "Nätverksfel — kontrollera din anslutning och försök igen.",
+    "submitError": "Något gick fel. Försök igen."
   },
   "jobStatus": {
     "settingUp": "Ställer in",

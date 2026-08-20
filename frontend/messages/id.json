@@ -549,7 +549,9 @@
     "matchUseCorrection": "gunakan koreksi",
     "matchUseTidied": "gunakan versi yang dirapikan",
     "matchUsingTyped": "Menggunakan yang Anda ketik: {value}",
-    "checkingUrl": "Memeriksa…"
+    "checkingUrl": "Memeriksa…",
+    "submitNetworkError": "Kesalahan jaringan — silakan periksa koneksi Anda dan coba lagi.",
+    "submitError": "Terjadi kesalahan. Silakan coba lagi."
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",

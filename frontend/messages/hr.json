@@ -549,7 +549,9 @@
     "matchUseCorrection": "koristi ispravak",
     "matchUseTidied": "koristi uređenu verziju",
     "matchUsingTyped": "Koristimo ono što si upisao: {value}",
-    "checkingUrl": "Provjera…"
+    "checkingUrl": "Provjera…",
+    "submitNetworkError": "Mrežna pogreška — molim te, provjeri svoju vezu i pokušaj ponovno.",
+    "submitError": "Nešto je pošlo po zlu. Pokušaj ponovno."
   },
   "jobStatus": {
     "settingUp": "Postavljanje",

@@ -293,6 +293,42 @@ describe("API Client", () => {
       const body = JSON.parse(call[1].body)
       expect(body.uploaded_files).toEqual(["audio"])
     })
+
+    it("retries on a transient network failure and then succeeds", async () => {
+      const mockResponse = { status: "success", message: "Processing started" }
+
+      ;(global.fetch as jest.Mock)
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValueOnce({ ok: true, json: async () => mockResponse })
+
+      const result = await api.completeJobUpload("job-789", ["audio"])
+
+      expect(result).toEqual(mockResponse)
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it("gives up after 3 network failures and rethrows the network error", async () => {
+      ;(global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"))
+
+      await expect(api.completeJobUpload("job-789", ["audio"])).rejects.toThrow(
+        "Failed to fetch"
+      )
+      expect(global.fetch).toHaveBeenCalledTimes(3)
+    })
+
+    it("does NOT retry on an HTTP error response (deterministic)", async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ detail: "Job is not in pending state" }),
+      })
+
+      await expect(api.completeJobUpload("job-789", ["audio"])).rejects.toBeInstanceOf(
+        ApiError
+      )
+      // A 4xx is not a transient failure — it must not be retried.
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe("uploadJobSmart", () => {

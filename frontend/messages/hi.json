@@ -549,7 +549,9 @@
     "matchUseCorrection": "सुधार का इस्तेमाल करो",
     "matchUseTidied": "व्यवस्थित वर्शन का इस्तेमाल करो",
     "matchUsingTyped": "जो तुमने टाइप किया है, उसका इस्तेमाल हो रहा है: {value}",
-    "checkingUrl": "चेक किया जा रहा है…"
+    "checkingUrl": "चेक किया जा रहा है…",
+    "submitNetworkError": "नेटवर्क एरर — कृपया अपना कनेक्शन चेक करो और फिर से कोशिश करो।",
+    "submitError": "कुछ गलत हो गया। कृपया फिर से कोशिश करो।"
   },
   "jobStatus": {
     "settingUp": "सेटअप हो रहा है",

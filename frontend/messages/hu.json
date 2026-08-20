@@ -549,7 +549,9 @@
     "matchUseCorrection": "javítás használata",
     "matchUseTidied": "letisztított verzió használata",
     "matchUsingTyped": "Az általad beírtak használata: {value}",
-    "checkingUrl": "Ellenőrzés…"
+    "checkingUrl": "Ellenőrzés…",
+    "submitNetworkError": "Hálózati hiba — kérlek, ellenőrizd a kapcsolatodat, és próbáld újra.",
+    "submitError": "Valami hiba történt. Kérlek, próbáld újra."
   },
   "jobStatus": {
     "settingUp": "Beállítás",

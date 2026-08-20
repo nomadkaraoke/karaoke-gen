@@ -549,7 +549,9 @@
     "matchUseCorrection": "utiliser la correction",
     "matchUseTidied": "utiliser la version nettoyée",
     "matchUsingTyped": "Utilisation de ce que tu as tapé : {value}",
-    "checkingUrl": "Vérification…"
+    "checkingUrl": "Vérification…",
+    "submitNetworkError": "Erreur réseau — vérifie ta connexion et réessaie.",
+    "submitError": "Quelque chose s'est mal passé. Réessaie."
   },
   "jobStatus": {
     "settingUp": "Configuration",

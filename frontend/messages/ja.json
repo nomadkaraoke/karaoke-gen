@@ -549,7 +549,9 @@
     "matchUseCorrection": "修正を適用する",
     "matchUseTidied": "整形版を使用する",
     "matchUsingTyped": "入力された内容を使用します: {value}",
-    "checkingUrl": "確認中…"
+    "checkingUrl": "確認中…",
+    "submitNetworkError": "ネットワークエラーが発生しました。接続を確認して、もう一度お試しください。",
+    "submitError": "問題が発生しました。もう一度お試しください。"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",

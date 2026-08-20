@@ -549,7 +549,9 @@
     "matchUseCorrection": "bruk rettelsen",
     "matchUseTidied": "bruk oppryddet versjon",
     "matchUsingTyped": "Bruker det du skrev inn: {value}",
-    "checkingUrl": "Sjekker…"
+    "checkingUrl": "Sjekker…",
+    "submitNetworkError": "Nettverksfeil — vennligst sjekk tilkoblingen din og prøv igjen.",
+    "submitError": "Noe gikk galt. Vennligst prøv igjen."
   },
   "jobStatus": {
     "settingUp": "Setter opp",

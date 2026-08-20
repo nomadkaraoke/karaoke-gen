@@ -549,7 +549,9 @@
     "matchUseCorrection": "gamitin ang itinama",
     "matchUseTidied": "gamitin ang inayos na bersyon",
     "matchUsingTyped": "Ginagamit ang iyong nai-type: {value}",
-    "checkingUrl": "Sinusuri…"
+    "checkingUrl": "Sinusuri…",
+    "submitNetworkError": "Error sa network — paki-check ang iyong koneksyon at subukang muli.",
+    "submitError": "May nangyaring mali. Pakisubukan muli."
   },
   "jobStatus": {
     "settingUp": "Sine-set up",

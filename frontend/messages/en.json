@@ -541,6 +541,8 @@
     "missingAudioSource": "Missing audio source. Please go back and try again.",
     "searchExpired": "Your search results expired. Please search again — your song info is still saved.",
     "failedToStartProcessing": "Failed to start processing. Please try again.",
+    "submitError": "Something went wrong. Please try again.",
+    "submitNetworkError": "Network error — please check your connection and try again.",
     "trackSubmitted": "Track Submitted",
     "lyricsTranscription": "Lyrics transcription",
     "lyricsTranscriptionDesc": "We transcribe and sync lyrics from your audio. ~5 minutes",

@@ -549,7 +549,9 @@
     "matchUseCorrection": "usar la corrección",
     "matchUseTidied": "usar la versión arreglada",
     "matchUsingTyped": "Usando lo que escribiste: {value}",
-    "checkingUrl": "Comprobando…"
+    "checkingUrl": "Comprobando…",
+    "submitNetworkError": "Error de red — por favor, revisa tu conexión y vuelve a intentarlo.",
+    "submitError": "Algo salió mal. Por favor, inténtalo de nuevo."
   },
   "jobStatus": {
     "settingUp": "Configurando",

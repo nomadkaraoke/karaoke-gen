@@ -549,7 +549,9 @@
     "matchUseCorrection": "gunakan pembetulan",
     "matchUseTidied": "gunakan versi yang dikemaskan",
     "matchUsingTyped": "Menggunakan apa yang anda taip: {value}",
-    "checkingUrl": "Menyemak…"
+    "checkingUrl": "Menyemak…",
+    "submitNetworkError": "Ralat rangkaian — sila semak sambungan anda dan cuba lagi.",
+    "submitError": "Sesuatu yang tidak kena berlaku. Sila cuba lagi."
   },
   "jobStatus": {
     "settingUp": "Menyediakan",
