@@ -549,7 +549,9 @@
     "matchUseCorrection": "käytä korjausta",
     "matchUseTidied": "käytä siistittyä versiota",
     "matchUsingTyped": "Käytetään kirjoittamaasi: {value}",
-    "checkingUrl": "Tarkistetaan…"
+    "checkingUrl": "Tarkistetaan…",
+    "submitNetworkError": "Verkkovirhe — tarkista yhteytesi ja yritä uudelleen.",
+    "submitError": "Jotain meni pieleen. Yritä uudelleen."
   },
   "jobStatus": {
     "settingUp": "Asetetaan",

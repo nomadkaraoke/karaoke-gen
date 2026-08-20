@@ -549,7 +549,9 @@
     "matchUseCorrection": "להשתמש בתיקון",
     "matchUseTidied": "להשתמש בגרסה המסודרת",
     "matchUsingTyped": "משתמשים במה שהקלדת: {value}",
-    "checkingUrl": "בודק…"
+    "checkingUrl": "בודק…",
+    "submitNetworkError": "שגיאת רשת — אנא בדוק את החיבור שלך ונסה שוב.",
+    "submitError": "משהו השתבש. אנא נסה שוב."
   },
   "jobStatus": {
     "settingUp": "מגדיר",

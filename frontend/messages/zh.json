@@ -549,7 +549,9 @@
     "matchUseCorrection": "使用修正内容",
     "matchUseTidied": "使用整理后的版本",
     "matchUsingTyped": "使用您输入的内容：{value}",
-    "checkingUrl": "检查中…"
+    "checkingUrl": "检查中…",
+    "submitNetworkError": "网络错误 —— 请检查您的网络连接并重试。",
+    "submitError": "出了点问题，请重试。"
   },
   "jobStatus": {
     "settingUp": "设置中",

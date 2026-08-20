@@ -549,7 +549,9 @@
     "matchUseCorrection": "использовать исправление",
     "matchUseTidied": "использовать отформатированную версию",
     "matchUsingTyped": "Используем твой вариант: {value}",
-    "checkingUrl": "Проверка…"
+    "checkingUrl": "Проверка…",
+    "submitNetworkError": "Ошибка сети — пожалуйста, проверь подключение и попробуй еще раз.",
+    "submitError": "Что-то пошло не так. Пожалуйста, попробуй еще раз."
   },
   "jobStatus": {
     "settingUp": "Настройка",

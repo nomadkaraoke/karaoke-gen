@@ -549,7 +549,9 @@
     "matchUseCorrection": "použít opravu",
     "matchUseTidied": "použít upravenou verzi",
     "matchUsingTyped": "Používám to, co jsi zadal: {value}",
-    "checkingUrl": "Probíhá kontrola…"
+    "checkingUrl": "Probíhá kontrola…",
+    "submitNetworkError": "Chyba sítě — zkontroluj prosím své připojení a zkus to znovu.",
+    "submitError": "Něco se pokazilo. Zkus to prosím znovu."
   },
   "jobStatus": {
     "settingUp": "Nastavování",

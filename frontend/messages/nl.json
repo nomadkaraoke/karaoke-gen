@@ -549,7 +549,9 @@
     "matchUseCorrection": "gebruik de correctie",
     "matchUseTidied": "gebruik opgeschoonde versie",
     "matchUsingTyped": "We gebruiken wat je hebt getypt: {value}",
-    "checkingUrl": "Controleren…"
+    "checkingUrl": "Controleren…",
+    "submitNetworkError": "Netwerkfout — controleer je verbinding en probeer het opnieuw.",
+    "submitError": "Er is iets misgegaan. Probeer het opnieuw."
   },
   "jobStatus": {
     "settingUp": "Instellen",

@@ -549,7 +549,9 @@
     "matchUseCorrection": "düzeltmeyi kullan",
     "matchUseTidied": "düzenlenmiş sürümü kullan",
     "matchUsingTyped": "Yazdığın kullanılıyor: {value}",
-    "checkingUrl": "Kontrol ediliyor…"
+    "checkingUrl": "Kontrol ediliyor…",
+    "submitNetworkError": "Ağ hatası — lütfen bağlantını kontrol et ve tekrar dene.",
+    "submitError": "Bir şeyler ters gitti. Lütfen tekrar dene."
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",

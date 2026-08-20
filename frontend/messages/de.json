@@ -549,7 +549,9 @@
     "matchUseCorrection": "Korrektur verwenden",
     "matchUseTidied": "bereinigte Version verwenden",
     "matchUsingTyped": "Verwende deine Eingabe: {value}",
-    "checkingUrl": "Überprüfen…"
+    "checkingUrl": "Überprüfen…",
+    "submitNetworkError": "Netzwerkfehler — bitte überprüfe deine Verbindung und versuche es erneut.",
+    "submitError": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
   },
   "jobStatus": {
     "settingUp": "Richte ein",

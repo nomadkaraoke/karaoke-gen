@@ -119,9 +119,21 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
       setPhase("done")
       onJobCreated()
     } catch (err: any) {
-      const message = err instanceof ApiError
-        ? err.message
-        : "Something went wrong. Please try again."
+      // Surface the real cause for debugging — the generic user-facing string
+      // below hides which step failed (create / upload / complete).
+      console.error("[TenantJobFlow] submit failed:", err)
+      let message: string
+      if (err instanceof ApiError) {
+        message = err.message
+      } else if (
+        err instanceof TypeError ||
+        /network|failed to fetch|load failed/i.test(String(err?.message ?? ""))
+      ) {
+        // fetch()/XHR network-level failure (offline, connection reset, CORS).
+        message = t('submitNetworkError')
+      } else {
+        message = t('submitError')
+      }
       setError(message)
       setPhase("idle")
       setUploadProgress(0)

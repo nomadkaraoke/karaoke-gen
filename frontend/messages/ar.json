@@ -549,7 +549,9 @@
     "matchUseCorrection": "استخدام التصحيح",
     "matchUseTidied": "استخدام النسخة المنقحة",
     "matchUsingTyped": "استخدام ما كتبته: {value}",
-    "checkingUrl": "جاري التحقق..."
+    "checkingUrl": "جاري التحقق...",
+    "submitNetworkError": "خطأ في الشبكة — يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+    "submitError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",
