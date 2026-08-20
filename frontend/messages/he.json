@@ -550,7 +550,7 @@
     "matchUseTidied": "להשתמש בגרסה המסודרת",
     "matchUsingTyped": "משתמשים במה שהקלדת: {value}",
     "checkingUrl": "בודק…",
-    "submitNetworkError": "שגיאת רשת — אנא בדקו את החיבור ונסו שוב.",
+    "submitNetworkError": "שגיאת רשת — אנא בדוק את החיבור שלך ונסה שוב.",
     "submitError": "משהו השתבש. אנא נסה שוב."
   },
   "jobStatus": {
