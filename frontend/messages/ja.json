@@ -378,7 +378,10 @@
     "backend": "バックエンド",
     "encoder": "エンコーダー",
     "flacfetch": "Flacfetch",
-    "separator": "セパレーター"
+    "separator": "セパレーター",
+    "fallbackBadge": "フォールバック",
+    "fallbackNote": "通常のリソースが利用できないため、フォールバック用のインスタンスにルーティングされました。",
+    "liveWorker": "稼働中のワーカー"
   },
   "credits": {
     "title": "クレジットを追加購入",

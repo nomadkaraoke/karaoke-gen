@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Koder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Reserve",
+    "fallbackNote": "Primærkapasitet er utilgjengelig — omdirigert til en reserveinstans.",
+    "liveWorker": "Aktiv arbeider"
   },
   "credits": {
     "title": "Kjøp flere kreditter",

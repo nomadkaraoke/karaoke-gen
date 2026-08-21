@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Enkoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Pričuva",
+    "fallbackNote": "Primarni kapacitet nije dostupan — preusmjereno na pričuvnu vrstu instance.",
+    "liveWorker": "Aktivni radnik"
   },
   "credits": {
     "title": "Kupi još kredita",

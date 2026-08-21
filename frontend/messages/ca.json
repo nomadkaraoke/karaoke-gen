@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Codificador",
     "flacfetch": "Flacfetch",
-    "separator": "Separador"
+    "separator": "Separador",
+    "fallbackBadge": "De reserva",
+    "fallbackNote": "Capacitat principal no disponible — s'ha redirigit a un tipus d'instància de reserva.",
+    "liveWorker": "Procés actiu"
   },
   "credits": {
     "title": "Compra més crèdits",

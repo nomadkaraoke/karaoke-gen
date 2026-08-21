@@ -385,6 +385,12 @@ export interface ServiceStatus {
     deploy_in_progress?: boolean;
     active_jobs?: number;
     queue_length?: number;
+    // Currently-serving worker (fallback-aware). When a capacity stockout
+    // routes off the c4d primary pair, these point at the live fallback VM.
+    active_vm?: string;
+    active_zone?: string;
+    active_machine_type?: string;
+    on_fallback?: boolean;
     // Error details for offline services
     error?: string | null;
   };

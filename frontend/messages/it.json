@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separatore"
+    "separator": "Separatore",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Capacità principale non disponibile — reindirizzato a un tipo di istanza di fallback.",
+    "liveWorker": "Worker live"
   },
   "credits": {
     "title": "Acquista altri crediti",

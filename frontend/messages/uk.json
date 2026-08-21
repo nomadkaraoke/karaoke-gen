@@ -378,7 +378,10 @@
     "backend": "Бекенд",
     "encoder": "Кодувальник",
     "flacfetch": "Flacfetch",
-    "separator": "Розділювач"
+    "separator": "Розділювач",
+    "fallbackBadge": "Резерв",
+    "fallbackNote": "Основні потужності недоступні — перенаправлено на резервний тип інстансу.",
+    "liveWorker": "Активний воркер"
   },
   "credits": {
     "title": "Купити більше кредитів",

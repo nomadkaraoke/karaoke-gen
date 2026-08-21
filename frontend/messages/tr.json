@@ -378,7 +378,10 @@
     "backend": "Arkayüz",
     "encoder": "Kodlayıcı",
     "flacfetch": "Flacfetch",
-    "separator": "Ayırıcı"
+    "separator": "Ayırıcı",
+    "fallbackBadge": "Yedek",
+    "fallbackNote": "Ana kapasite kullanılamıyor — yedek bir sunucu tipine yönlendirildi.",
+    "liveWorker": "Canlı işlemci"
   },
   "credits": {
     "title": "Daha Fazla Kredi Al",

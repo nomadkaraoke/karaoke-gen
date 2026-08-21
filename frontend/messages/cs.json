@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Enkodér",
     "flacfetch": "Flacfetch",
-    "separator": "Separátor"
+    "separator": "Separátor",
+    "fallbackBadge": "Záložní",
+    "fallbackNote": "Primární kapacita je nedostupná — přesměrováno na záložní typ instance.",
+    "liveWorker": "Aktivní worker"
   },
   "credits": {
     "title": "Koupit další kredity",

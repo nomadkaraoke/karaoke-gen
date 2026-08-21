@@ -378,7 +378,10 @@
     "backend": "백엔드",
     "encoder": "인코더",
     "flacfetch": "Flacfetch",
-    "separator": "분리기"
+    "separator": "분리기",
+    "fallbackBadge": "대체",
+    "fallbackNote": "기본 용량을 사용할 수 없어 대체 인스턴스 유형으로 연결되었습니다.",
+    "liveWorker": "라이브 워커"
   },
   "credits": {
     "title": "크레딧 추가 구매",

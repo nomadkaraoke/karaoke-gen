@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Kódoló",
     "flacfetch": "Flacfetch",
-    "separator": "Szétválasztó"
+    "separator": "Szétválasztó",
+    "fallbackBadge": "Tartalék",
+    "fallbackNote": "Az elsődleges kapacitás nem elérhető — átirányítva egy tartalék példánytípusra.",
+    "liveWorker": "Élő feldolgozó"
   },
   "credits": {
     "title": "Vásárolj több kreditet",

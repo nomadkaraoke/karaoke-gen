@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Pemisah"
+    "separator": "Pemisah",
+    "fallbackBadge": "Cadangan",
+    "fallbackNote": "Kapasitas utama tidak tersedia — dialihkan ke tipe instans cadangan.",
+    "liveWorker": "Pekerja aktif"
   },
   "credits": {
     "title": "Beli Lebih Banyak Kredit",

@@ -378,7 +378,10 @@
     "backend": "الخلفية",
     "encoder": "المشفر",
     "flacfetch": "Flacfetch",
-    "separator": "الفاصل"
+    "separator": "الفاصل",
+    "fallbackBadge": "احتياطي",
+    "fallbackNote": "السعة الأساسية غير متوفرة — تم التوجيه إلى خادم احتياطي.",
+    "liveWorker": "عامل نشط"
   },
   "credits": {
     "title": "شراء المزيد من الأرصدة",

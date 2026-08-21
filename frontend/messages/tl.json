@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Hindi available ang pangunahing kapasidad — inilipat sa isang fallback instance type.",
+    "liveWorker": "Live worker"
   },
   "credits": {
     "title": "Bumili ng Higit Pang Credits",
