@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Primær kapacitet utilgængelig — omdirigeret til en fallback-instanstype.",
+    "liveWorker": "Live worker"
   },
   "credits": {
     "title": "Køb flere credits",

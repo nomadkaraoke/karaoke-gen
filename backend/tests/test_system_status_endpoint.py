@@ -51,6 +51,12 @@ def mock_encoding_worker_config():
     config.deploy_in_progress = False
     config.deploy_in_progress_since = None
     config.last_activity_at = None
+    # No capacity fallback active by default → serving the c4d primary.
+    config.active_override_vm = None
+    config.active_override_ip = None
+    config.active_override_zone = None
+    config.active_override_set_at = None
+    config.primary_machine_type = None
     return config
 
 
@@ -134,6 +140,7 @@ class TestSystemStatusAdmin:
 
         mock_auth = ("token123", UserType.ADMIN, -1)
         mock_manager = MagicMock()
+        mock_manager._zone = "us-central1-c"
         mock_manager.get_config.return_value = mock_encoding_worker_config
 
         with patch("backend.api.routes.health.check_encoding_worker_status", new_callable=AsyncMock, return_value=mock_encoding_status), \
@@ -155,3 +162,46 @@ class TestSystemStatusAdmin:
         assert admin["secondary_vm"] == "encoding-worker-a"
         assert admin["last_swap_at"] == "2026-03-31T18:10:00Z"
         assert admin["deploy_in_progress"] is False
+
+        # No fallback active → serving the c4d primary VM.
+        assert admin["on_fallback"] is False
+        assert admin["active_vm"] == "encoding-worker-b"
+        assert admin["active_zone"] == "us-central1-c"
+        assert admin["active_machine_type"] == "c4d-highcpu-32"
+
+    @pytest.mark.asyncio
+    async def test_admin_sees_capacity_fallback_worker(
+        self, mock_encoding_status, mock_flacfetch_status, mock_separator_status, mock_encoding_worker_config
+    ):
+        """When a stockout routes off the primary, the live worker reflects the fallback."""
+        from backend.api.routes.health import system_status
+        from backend.services.auth_service import UserType
+
+        # Capacity fallback active: serving an n2-family VM in an alternate zone.
+        mock_encoding_worker_config.active_override_vm = "encoding-worker-fallback-n2c"
+        mock_encoding_worker_config.active_override_ip = "34.9.9.9"
+        mock_encoding_worker_config.active_override_zone = "us-central1-a"
+
+        mock_auth = ("token123", UserType.ADMIN, -1)
+        mock_manager = MagicMock()
+        mock_manager._zone = "us-central1-c"
+        mock_manager.get_config.return_value = mock_encoding_worker_config
+
+        with patch("backend.api.routes.health.check_encoding_worker_status", new_callable=AsyncMock, return_value=mock_encoding_status), \
+             patch("backend.api.routes.health.check_flacfetch_service_status", new_callable=AsyncMock, return_value=mock_flacfetch_status), \
+             patch("backend.api.routes.health.check_audio_separator_status", return_value=mock_separator_status), \
+             patch("backend.api.routes.health.VERSION", "0.155.3"), \
+             patch("backend.api.routes.health.COMMIT_SHA", ""), \
+             patch("backend.api.routes.health.PR_NUMBER", ""), \
+             patch("backend.api.routes.health.PR_TITLE", ""), \
+             patch("backend.api.routes.health.STARTUP_TIME", "2026-03-31T18:10:00Z"), \
+             patch("backend.api.routes.health._get_encoding_worker_manager", return_value=mock_manager):
+
+            result = await system_status(auth=mock_auth)
+
+        admin = result["services"]["encoder"]["admin_details"]
+        assert admin["on_fallback"] is True
+        assert admin["active_vm"] == "encoding-worker-fallback-n2c"
+        assert admin["active_zone"] == "us-central1-a"
+        # "n2c" family token → n2-highcpu-32 (inferred from the VM name).
+        assert admin["active_machine_type"] == "n2-highcpu-32"

@@ -378,7 +378,10 @@
     "backend": "צד שרת",
     "encoder": "מקודד",
     "flacfetch": "Flacfetch",
-    "separator": "מפריד"
+    "separator": "מפריד",
+    "fallbackBadge": "גיבוי",
+    "fallbackNote": "הקיבולת הראשית אינה זמינה — נותב לסוג מופע גיבוי.",
+    "liveWorker": "תהליך פעיל"
   },
   "credits": {
     "title": "קנה עוד קרדיטים",

@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Dự phòng",
+    "fallbackNote": "Tài nguyên chính không khả dụng — đã chuyển hướng sang máy chủ dự phòng.",
+    "liveWorker": "Worker đang hoạt động"
   },
   "credits": {
     "title": "Mua thêm credit",

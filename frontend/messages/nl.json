@@ -378,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Primaire capaciteit niet beschikbaar — omgeleid naar een fallback-instancetype.",
+    "liveWorker": "Live worker"
   },
   "credits": {
     "title": "Koop meer credits",

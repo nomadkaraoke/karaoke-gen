@@ -59,7 +59,7 @@ function ServiceCard({
       className="rounded-lg border p-4"
       style={{
         borderColor: "var(--card-border)",
-        backgroundColor: "var(--card-bg)",
+        backgroundColor: "var(--card)",
       }}
     >
       <div className="flex items-center justify-between mb-1">
@@ -102,6 +102,38 @@ function ServiceCard({
       )}
 
       {children}
+    </div>
+  );
+}
+
+function LiveWorkerSection({ details }: { details: NonNullable<ServiceStatus["admin_details"]> }) {
+  const t = useTranslations('status');
+
+  return (
+    <div className="mt-2 text-xs">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="opacity-60">{t('liveWorker')}:</span>
+        <span className="font-mono font-medium">{details.active_machine_type}</span>
+        {details.on_fallback && (
+          <span
+            className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400"
+            style={{ backgroundColor: "rgba(251,191,36,0.12)" }}
+          >
+            {t('fallbackBadge')}
+          </span>
+        )}
+      </div>
+      {details.active_vm && (
+        <div className="mt-0.5 font-mono opacity-50">
+          {details.active_vm}
+          {details.active_zone ? ` · ${details.active_zone}` : ""}
+        </div>
+      )}
+      {details.on_fallback && (
+        <div className="mt-1 opacity-50 text-[10px] leading-snug">
+          {t('fallbackNote')}
+        </div>
+      )}
     </div>
   );
 }
@@ -216,7 +248,7 @@ export function SystemStatusModal({ open, onClose }: SystemStatusModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-lg" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--card-border)" }}>
+      <DialogContent className="sm:max-w-lg" style={{ backgroundColor: "var(--bg)", borderColor: "var(--card-border)" }}>
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('systemStatus')}</DialogTitle>
         </DialogHeader>
@@ -234,10 +266,12 @@ export function SystemStatusModal({ open, onClose }: SystemStatusModalProps) {
             <ServiceCard name={t('frontend')} service={frontendService} />
             <ServiceCard name={t('backend')} service={services.backend} />
             <ServiceCard name={t('encoder')} service={services.encoder}>
-              {services.encoder.admin_details &&
-                services.encoder.admin_details.primary_vm && (
-                  <BlueGreenSection details={services.encoder.admin_details} />
-                )}
+              {services.encoder.admin_details?.active_machine_type && (
+                <LiveWorkerSection details={services.encoder.admin_details} />
+              )}
+              {services.encoder.admin_details?.primary_vm && (
+                <BlueGreenSection details={services.encoder.admin_details} />
+              )}
             </ServiceCard>
             <ServiceCard name={t('flacfetch')} service={services.flacfetch} />
             <ServiceCard name={t('separator')} service={services.separator} />

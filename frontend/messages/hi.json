@@ -378,7 +378,10 @@
     "backend": "बैकएंड",
     "encoder": "एनकोडर",
     "flacfetch": "Flacfetch",
-    "separator": "सेपरेटर"
+    "separator": "सेपरेटर",
+    "fallbackBadge": "फ़ॉलबैक",
+    "fallbackNote": "प्राथमिक क्षमता उपलब्ध नहीं है — फ़ॉलबैक इंस्टेंस प्रकार पर रूट किया गया।",
+    "liveWorker": "लाइव वर्कर"
   },
   "credits": {
     "title": "और क्रेडिट्स खरीदो",

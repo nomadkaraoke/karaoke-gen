@@ -378,7 +378,10 @@
     "backend": "バックエンド",
     "encoder": "エンコーダー",
     "flacfetch": "Flacfetch",
-    "separator": "セパレーター"
+    "separator": "セパレーター",
+    "fallbackBadge": "フォールバック",
+    "fallbackNote": "プライマリ容量が利用できないため、フォールバックのインスタンスタイプにルーティングされました。",
+    "liveWorker": "稼働中のワーカー"
   },
   "credits": {
     "title": "クレジットを追加購入",

@@ -378,7 +378,10 @@
     "backend": "Bahagian Belakang",
     "encoder": "Pengekod",
     "flacfetch": "Flacfetch",
-    "separator": "Pemisah"
+    "separator": "Pemisah",
+    "fallbackBadge": "Sandaran",
+    "fallbackNote": "Kapasiti utama tidak tersedia — dihalakan ke jenis sandaran.",
+    "liveWorker": "Pekerja aktif"
   },
   "credits": {
     "title": "Beli Lebih Banyak Kredit",

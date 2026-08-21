@@ -378,7 +378,10 @@
     "backend": "后端",
     "encoder": "编码器",
     "flacfetch": "Flacfetch",
-    "separator": "分离器"
+    "separator": "分离器",
+    "fallbackBadge": "备用",
+    "fallbackNote": "主容量不可用 — 已切换至备用实例类型。",
+    "liveWorker": "在线工作节点"
   },
   "credits": {
     "title": "购买更多积分",
