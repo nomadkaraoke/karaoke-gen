@@ -380,7 +380,7 @@
     "flacfetch": "Flacfetch",
     "separator": "セパレーター",
     "fallbackBadge": "フォールバック",
-    "fallbackNote": "通常のリソースが利用できないため、フォールバック用のインスタンスにルーティングされました。",
+    "fallbackNote": "プライマリ容量が利用できないため、フォールバックのインスタンスタイプにルーティングされました。",
     "liveWorker": "稼働中のワーカー"
   },
   "credits": {

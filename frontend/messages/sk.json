@@ -380,7 +380,7 @@
     "flacfetch": "Flacfetch",
     "separator": "Separátor",
     "fallbackBadge": "Záloha",
-    "fallbackNote": "Primárna kapacita je nedostupná — presmerované na záložný typ inštancie.",
+    "fallbackNote": "Primárna kapacita je nedostupná — presmerovaná na záložný typ inštancie.",
     "liveWorker": "Aktívny worker"
   },
   "credits": {
