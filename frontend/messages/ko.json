@@ -239,7 +239,10 @@
     "loadingJobs": "작업 불러오는 중...",
     "noJobsMatchFilters": "필터와 일치하는 작업이 없습니다.",
     "noJobsYet": "아직 작업이 없습니다. 첫 작업을 만들어보세요!",
-    "referrals": "추천 프로그램"
+    "referrals": "추천 프로그램",
+    "bulkMode": "일괄",
+    "singleMode": "단일",
+    "submitModeToggle": "단일 또는 일괄 제출"
   },
   "auth": {
     "noVerificationToken": "인증 토큰이 제공되지 않았습니다",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "해당 링크를 찾을 수 없습니다",
     "resendSuccessBody": "{maskedEmail}(으)로 새 로그인 링크를 보냈습니다. 이 링크는 24시간 동안 유효합니다.",
     "resendSuccessTitle": "이메일을 확인해 주세요",
-    "resending": "전송 중..."
+    "resending": "전송 중...",
+    "confirmBody": "보안을 위해 아래 버튼을 클릭하여 로그인을 완료해 주세요. 이 추가 단계를 거치면 자동화된 이메일 스캐너가 먼저 링크를 사용해 버리는 것을 방지할 수 있습니다.",
+    "confirmButton": "로그인 완료",
+    "confirmTitle": "로그인을 완료해 주세요"
   },
   "payment": {
     "title": "결제가 완료되었습니다!",
@@ -372,7 +378,10 @@
     "backend": "백엔드",
     "encoder": "인코더",
     "flacfetch": "Flacfetch",
-    "separator": "분리기"
+    "separator": "분리기",
+    "fallbackBadge": "대체",
+    "fallbackNote": "기본 용량을 사용할 수 없어 대체 인스턴스 유형으로 연결되었습니다.",
+    "liveWorker": "라이브 워커"
   },
   "credits": {
     "title": "크레딧 추가 구매",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "링크 붙여넣기",
     "urlSupportedSitesHint": "YouTube, Facebook, SoundCloud, TikTok, Vimeo 등 수백 개의 사이트에서 사용할 수 있습니다.",
     "urlSupportedSitesLink": "지원되는 모든 사이트 보기",
-    "useThisUrl": "이 URL 사용하기"
+    "useThisUrl": "이 URL 사용하기",
+    "matchCorrectedTo": "{value}(으)로 수정되었습니다 — 입력하신 내용: “{typed}”",
+    "matchDidYouMean": "혹시 다음을 찾으셨나요?",
+    "matchKeepMine": "입력한 내용 유지",
+    "matchTidiedTo": "{value}(으)로 정리되었습니다",
+    "matchUndo": "실행 취소",
+    "matchChecking": "노래 세부 정보 확인 중…",
+    "matchUseCorrection": "수정본 사용하기",
+    "matchUseTidied": "정리된 버전 사용하기",
+    "matchUsingTyped": "입력한 내용 사용: {value}",
+    "checkingUrl": "확인 중…",
+    "submitNetworkError": "네트워크 오류 — 연결 상태를 확인하고 다시 시도해 주세요.",
+    "submitError": "문제가 발생했습니다. 다시 시도해 주세요."
   },
   "jobStatus": {
     "settingUp": "설정 중",
@@ -576,7 +597,9 @@
     "correcting": "수정 중",
     "lyricsDone": "가사 완료",
     "lyrics": "가사",
-    "confirmDurationCost": "비용 확인"
+    "confirmDurationCost": "비용 확인",
+    "findingAudioSources": "오디오 소스 찾는 중 (재시도 중)",
+    "waitingForCapacity": "인코딩 서버 대기 중 (재시도 중)"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",
@@ -588,7 +611,9 @@
     "autoSelect": "자동 선택 예정",
     "willAutoSelectFirst": "첫 번째 항목 자동 선택 예정",
     "noOutputsAvailable": "아직 사용 가능한 출력이 없습니다",
-    "confirmCost": "비용 확인"
+    "confirmCost": "비용 확인",
+    "makingPublicInProgress": "이 트랙을 공개로 전환하는 중입니다 — 기본 브랜딩으로 재렌더링 및 재게시를 진행합니다. 보통 15~30분 정도 소요됩니다.",
+    "waitingForEncodingServer": "(인코딩 서버 대기 중)"
   },
   "jobActions": {
     "delete": "삭제",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "노래 제목",
-    "artist": "아티스트"
+    "artist": "아티스트",
+    "loading": "타이틀 화면 미리보기 불러오는 중"
   },
   "editTrack": {
     "title": "완료된 트랙 편집",
@@ -739,7 +765,22 @@
     "views": "조회수 {count}회",
     "moreVersions": "+{count}개 더 보기",
     "select": "선택",
-    "creditCost": "{credits} 크레딧"
+    "creditCost": "{credits} 크레딧",
+    "chooseFile": "오디오 파일을 선택해 주세요 (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "오디오 소스를 찾을 수 없습니다. 위에서 아티스트나 제목을 수정하여 다시 검색하거나, URL 또는 파일 업로드로 직접 오디오를 추가해 주세요.",
+    "pasteUrl": "URL 붙여넣기",
+    "researchFailed": "검색에 실패했습니다. 다시 시도해 주세요.",
+    "searchAgain": "다시 검색하기",
+    "selectFailed": "오디오 선택에 실패했습니다",
+    "uploadFailed": "업로드에 실패했습니다. 다시 시도해 주세요.",
+    "urlFailed": "해당 URL은 사용할 수 없습니다. 다른 소스로 시도해 주세요.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "이 파일 사용하기",
+    "useThisUrl": "이 URL 사용하기",
+    "artistLabel": "아티스트",
+    "loading": "로딩 중...",
+    "titleLabel": "제목",
+    "uploadFileAction": "파일 업로드"
   },
   "audioEditor": {
     "loading": "오디오 편집기 불러오는 중...",
@@ -776,7 +817,17 @@
     "undoFailed": "실행 취소 실패",
     "redoFailed": "다시 실행 실패",
     "restoreFailed": "복원 실패 — 일부 편집 내용이 적용되지 않았을 수 있습니다",
-    "submitFailed": "제출 실패"
+    "submitFailed": "제출 실패",
+    "fadeIn": "페이드 인",
+    "fadeInSelection": "선택한 영역에 페이드 인 적용",
+    "fadeOut": "페이드 아웃",
+    "fadeOutSelection": "선택한 영역에 페이드 아웃 적용",
+    "fadeInDisabledHint": "페이드 인을 적용하려면 트랙의 맨 처음부터 시작하는 영역을 선택하세요.",
+    "fadeOutDisabledHint": "페이드 아웃을 적용하려면 트랙의 맨 끝까지 이어지는 영역을 선택하세요.",
+    "trimEndDisabledHint": "끝부분을 자르려면 트랙의 맨 끝까지 이어지는 영역을 선택하세요.",
+    "trimEndSelection": "선택 영역 이후의 모든 구간 제거",
+    "trimStartDisabledHint": "시작 부분을 자르려면 트랙의 맨 처음부터 시작하는 영역을 선택하세요.",
+    "trimStartSelection": "선택 영역 이전의 모든 구간 제거"
   },
   "audioEditRestore": {
     "title": "저장된 오디오 편집 세션",
@@ -803,7 +854,7 @@
       "acceptAll": "모두 수락",
       "revertAll": "모두 되돌리기",
       "undoAll": "모두 실행 취소",
-      "resetAllChanges": "모든 변경 사항을 원래 AI가 수정한 가사로 초기화",
+      "resetAllChanges": "모든 변경 사항을 취소하고 원래 수정된 가사로 되돌립니다",
       "undo": "실행 취소",
       "redo": "다시 실행",
       "findReplace": "찾기/바꾸기",
@@ -816,7 +867,11 @@
       "playback": "재생",
       "audioLoadError": "오디오를 불러올 수 없습니다",
       "audioStillLoading": "아직 오디오를 불러오는 중입니다...",
-      "loadingAudio": "오디오를 불러오는 중입니다..."
+      "loadingAudio": "오디오를 불러오는 중입니다...",
+      "autoCorrect": "자동 수정",
+      "autoCorrectDesc": "트랜스크립션을 참조 가사와 비교하여 단어 단위로 수정 사항을 적용합니다. 수정된 단어는 보라색으로 표시됩니다.",
+      "autoCorrectedCount": "자동 수정됨 · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {#개의 자동 수정이} other {#개의 자동 수정이}} 적용되었습니다(보라색으로 표시됨). 클릭하여 세부 정보를 확인하고 원치 않는 수정 사항은 되돌릴 수 있습니다."
     },
     "guidance": {
       "showTips": "팁 표시",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "주황색으로 강조 표시된 단어는 공백입니다 — 참조 가사와 일치하지 않아 오류(예: 비슷하게 들리는 잘못 인식된 단어)가 포함될 수 있는 구간입니다.",
       "useNAndP": "N과 P를 사용하여 공백 사이를 이동하세요. 각 줄 옆의 재생을 클릭하고 들리는 내용과 오른쪽의 참조 가사를 비교한 다음, 단어를 클릭하여 편집하거나 삭제하세요.",
       "watchOutForPhantomWords": "줄의 시작이나 끝에 있는 \"and\"와 같은 팬텀 워드에 주의하세요 — 추출 과정에서 종종 이런 단어가 추가됩니다.",
-      "tryTimelineView": "타임라인 보기를 사용하여 비정상적으로 긴 단어(10초 이상)를 찾아보세요. 이는 보통 타이밍 문제를 나타냅니다.",
+      "tryTimelineView": "2초가 넘는 단어와 2초가 넘는 공백은 주황색으로 표시됩니다. 타이밍에 문제가 없는지 확인해 보세요. 고급 모드로 전환하면 각 줄이 타임라인으로 펼쳐진 모습을 볼 수 있습니다.",
       "watchFullTutorial": "전체 튜토리얼 시청",
       "correctionHandlers": "수정 핸들러",
       "anchorSequences": "앵커 시퀀스",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "수정되지 않은 공백",
       "uncorrectedGapsDesc": "수동 검토가 필요할 수 있는 구간",
       "wordsUncorrected": "수정되지 않은 단어",
-      "numberOfGaps": "공백 수"
+      "numberOfGaps": "공백 수",
+      "autoCorrectTip": "{count, plural, =1 {#개의 단어가} other {#개의 단어가}} 자동 수정되었습니다(보라색으로 표시, 원래 단어는 위에 표시됨). 수정된 각 줄을 재생하여 단어 타이밍이 잘 맞는지 확인해 주세요. 특히 주황색으로 밑줄 친 부분은 타이밍이 추정된 것이므로 조정이 필요할 수 있습니다.",
+      "autoCorrected": "자동 수정됨",
+      "timingEstimated": "타이밍 추정됨"
     },
     "transcription": {
       "syncedLyrics": "싱크된 가사",
@@ -854,7 +912,13 @@
       "text": "텍스트",
       "timeline": "타임라인",
       "deleteSegment": "세그먼트 삭제",
-      "playSegment": "세그먼트 재생"
+      "playSegment": "세그먼트 재생",
+      "aiTooltipEstimated": "시스템에서 자동 수정했습니다. 타이밍이 추정된 것이므로, 이 줄을 재생해 보고 필요한 경우 단어 타이밍을 조정해 주세요.",
+      "aiTooltipReplaced": "시스템에서 \"{original}\"을(를) 자동 수정했습니다. 이 줄을 재생하여 단어 타이밍이 잘 맞는지 확인해 주세요.",
+      "aiTooltipReplacedEstimated": "시스템에서 \"{original}\"을(를) 자동 수정했습니다. 타이밍이 추정된 것이므로, 이 줄을 재생해 보고 필요한 경우 단어 타이밍을 조정해 주세요.",
+      "longGapWarning": "다음 단어 전에 {seconds}초의 공백이 있습니다. 잘못 인식된 단어(예: 불필요한 \"and\")일 수 있습니다. 클릭하여 여기서부터 재생해 보세요.",
+      "longWordWarning": "이 단어는 {seconds}초 동안 지속되어 비정상적으로 깁니다. 이 줄을 재생하여 끝나는 시간이 반주 부분까지 넘어가지 않았는지 확인해 주세요.",
+      "playFromGap": "이 공백의 끝부분부터 재생"
     },
     "editActionBar": {
       "reset": "초기화",
@@ -990,7 +1054,9 @@
         "loadingAll": "모든 단어 불러오는 중...",
         "loadingSegment": "세그먼트 불러오는 중...",
         "noData": "세그먼트 데이터가 없습니다",
-        "unCorrect": "수정 취소"
+        "unCorrect": "수정 취소",
+        "timingClamped": "\"{word}\" 타이밍이 구간을 벗어나 {time}초로 조정되었습니다.",
+        "timingSanitized": "이 구간을 벗어난 단어 타이밍 {count}개를 수정했습니다."
       },
       "findReplace": {
         "title": "찾기 및 바꾸기",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "맞춤형 가사가 적용되었습니다. 단어 타이밍이 잘 맞도록 편집된 각 구간을 수동으로 동기화해 주세요."
+    },
+    "autoCorrect": {
+      "accept": "제안 수락",
+      "acceptAll": "모두 수락",
+      "accepted": "수락됨",
+      "adlibRemovalHint": "참조 가사에 없는 백보컬을 삭제하는 제안 허용",
+      "adlibRemovalLabel": "애드리브 제거 제안",
+      "category_adlib_removal": "애드리브",
+      "category_formatting": "형식",
+      "category_grammar": "문법",
+      "category_mishearing": "오인식",
+      "category_other": "기타",
+      "category_repeated_chorus_fix": "코러스",
+      "collapse": "제안 접기",
+      "confidenceHint": "제안을 표시할 신뢰도 수준",
+      "confidenceLabel": "제안 필터",
+      "confidence_all": "모두 보기",
+      "confidence_high": "높은 확신도",
+      "description": "자동 수정은 추출된 가사를 참조 소스와 비교하여 단어 단위로 수정 사항을 제안합니다. 모든 제안은 직접 검토하실 수 있으며, 수락하기 전까지는 아무것도 적용되지 않습니다.",
+      "dismiss": "제안 무시",
+      "expand": "제안 펼치기",
+      "insertMarker": "삽입:",
+      "insertionsHint": "변환 과정에서 누락된 단어를 삽입하는 제안 허용",
+      "insertionsLabel": "누락된 단어 제안",
+      "noReferences": "이 노래에 대한 참조 가사가 없어 제안을 생성할 수 없습니다. 먼저 참조 패널에서 가사를 추가해 주세요.",
+      "noSuggestions": "발견된 문제가 없습니다 — 제안할 변경 사항이 없습니다.",
+      "reject": "제안 거부",
+      "rejectAll": "모두 거부",
+      "rejected": "거부됨",
+      "runButton": "제안 받기",
+      "running": "가사 분석 중… 보통 15~60초 정도 걸립니다.",
+      "staleHint": "제안이 생성된 후 해당 단어가 수정되어 이 제안은 더 이상 유효하지 않습니다.",
+      "summary": "{total}개 제안 · {pending}개 대기 중 · {accepted}개 수락됨",
+      "title": "자동 수정 제안",
+      "undo": "이 제안 실행 취소",
+      "cancel": "취소",
+      "close": "닫기",
+      "confidence_balanced": "균형",
+      "compareHint": "시간과 비용이 더 들지만, 여러 모델이 공통으로 제안하는 내용을 확인할 수 있어요.",
+      "compareLabel": "여러 모델 비교",
+      "conflictBadge": "다른 버전",
+      "conflictTooltip": "이 단어들에 대해 여러 제안이 있습니다 — 하나를 수락하면 나머지는 적용되지 않습니다.",
+      "consensusBadge": "{consensus}/{total}개 모델",
+      "consensusTooltip": "제안한 모델: {models}",
+      "cachedBadge": "캐시됨",
+      "cachedTooltip": "동일한 가사로 진행한 이전 작업에서 복원되었습니다 — AI 비용이 발생하지 않았습니다.",
+      "appliedSummary": "{count}개의 자동 수정이 적용되었습니다",
+      "hideDetails": "세부 정보 숨기기",
+      "rerun": "다시 실행",
+      "revertAllAuto": "모두 되돌리기",
+      "showDetails": "세부 정보 보기"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "예상 비용 — 최종 비용은 다운로드 후 확정됩니다",
     "reconcileTitle": "노래 길이가 예상보다 깁니다",
     "cancel": "취소"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "배경 미리보기 불러오는 중"
+  },
+  "bulk": {
+    "albumModeHint": "아티스트를 검색하고 앨범을 선택한 다음, 제작할 트랙을 선택하세요.",
+    "artistSearchPlaceholder": "아티스트 검색…",
+    "autoPickLossless": "최고의 오디오 자동 선택 (무손실만)",
+    "autoPickLosslessHint": "확실한 무손실/FLAC 일치 항목을 찾으면 오디오를 자동으로 선택합니다. 나머지는 검토 대기열로 이동합니다.",
+    "backToAlbums": "앨범으로 돌아가기",
+    "backToArtists": "아티스트로 돌아가기",
+    "batchProgressTitle": "총 {total}곡 일괄 처리",
+    "batchSettings": "일괄 처리 설정",
+    "byAlbum": "앨범별",
+    "byText": "텍스트별",
+    "checking": "확인 중…",
+    "chooseAudio": "오디오 선택",
+    "communityExists": "커뮤니티 버전이 존재합니다",
+    "communityExistsWithBrands": "커뮤니티 버전: {brands}",
+    "countAwaiting": "{count}개의 선택이 필요합니다",
+    "countComplete": "{count}개 완료",
+    "countFailed": "{count}개 실패",
+    "countProcessing": "{count}개 처리 중",
+    "countSearching": "{count}개 검색 중",
+    "createBatch": "{count}개의 가라오케 비디오 만들기",
+    "creditsCost": "{cost} 크레딧 · 보유 크레딧: {balance}",
+    "edition": "에디션",
+    "extra": "추가",
+    "loadingBatch": "일괄 처리 불러오는 중…",
+    "lookupFailed": "조회에 실패했습니다. 다시 시도해 주세요.",
+    "makePrivate": "비공개 유지",
+    "makePrivateHint": "YouTube에 게시하지 않고 Dropbox를 통해서만 전송합니다.",
+    "noAlbums": "이 아티스트의 앨범을 찾을 수 없습니다.",
+    "notEnoughCredits": "{needed} 크레딧이 필요하지만 {have} 크레딧만 보유하고 있습니다.",
+    "overLimit": "한 번에 최대 {max}곡까지만 제출할 수 있습니다.",
+    "progressError": "일괄 처리 진행 상황을 불러올 수 없습니다.",
+    "reviewQueueHint": "이 곡들에 대해 무손실 음원을 확실하게 자동 선택할 수 없었습니다. 각각 하나씩 선택해 주세요.",
+    "reviewQueueTitle": "이 트랙들의 오디오 선택",
+    "selectedCount": "{count}곡 선택됨",
+    "skipAudioEdit": "오디오 편집 건너뛰기",
+    "skipAudioEditHint": "각 트랙의 오디오를 그대로 사용합니다(자르기 없음).",
+    "skipCustomization": "사용자 지정 건너뛰기",
+    "skipCustomizationHint": "모든 트랙에 기본 테마와 스타일을 사용합니다.",
+    "startAnother": "다른 일괄 처리 시작",
+    "submitError": "일괄 처리를 생성할 수 없습니다. 다시 시도해 주세요.",
+    "submitting": "일괄 처리 생성 중…",
+    "textModeHint": "최대 {max}곡까지 추가하세요. 이미 커뮤니티 버전이 있는 곡은 표시해 드립니다.",
+    "title": "제목",
+    "tracklistHint": "라이브, 리믹스, 보너스 트랙 및 이미 커뮤니티 버전이 있는 곡은 기본적으로 선택 해제되어 있습니다.",
+    "addSong": "노래 추가",
+    "artist": "아티스트",
+    "buyCredits": "크레딧 구매",
+    "removeRow": "제거",
+    "trackCount": "{count} 트랙",
+    "changeEdition": "변경",
+    "existingVersions": "기존 버전:",
+    "usingRelease": "{label} · {year} · {tracks} 사용 중",
+    "variantBonus": "+{count} 보너스",
+    "variantOriginal": "오리지널",
+    "variantReissue": "재발매"
+  },
+  "backendStatus": {
+    "reconnecting": "다시 연결하는 중…",
+    "unavailable": {
+      "body": "대부분 일시적인 현상이니 몇 분 후에 다시 시도해 주세요.",
+      "reassurance": "현재 생성 중인 노래방 영상은 영향을 받지 않고 정상적으로 처리됩니다.",
+      "title": "서버에 연결하는 데 문제가 발생했습니다"
+    },
+    "dismiss": "닫기"
   }
 }

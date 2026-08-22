@@ -18,6 +18,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile, File
 
 from datetime import datetime, timezone
+from google.cloud.exceptions import NotFound
 from backend.utils.request_helpers import get_client_ip
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -396,6 +397,11 @@ async def edit_completed_track(
                 delete_results = gdrive.delete_files(file_ids)
                 all_success = all(delete_results.values())
                 cleanup_results["gdrive"] = {"status": "success" if all_success else "partial", "files": delete_results}
+                # Also remove the Nomad 720p master from the GCS fast-sync mirror
+                # (prefix-keyed by brand_code, so it covers renames). Non-fatal,
+                # Nomad-brand only, no-op otherwise.
+                from backend.services.nomad_master_mirror import cleanup_nomad_masters
+                cleanup_nomad_masters(brand_code)
             else:
                 cleanup_results["gdrive"] = {"status": "skipped", "reason": "Google Drive not configured"}
         except Exception as e:
@@ -576,6 +582,8 @@ _SUMMARY_STATE_DATA_KEYS = {
     'pending_additional_credits',
     'duration_actual_seconds',
     'duration_confirm_reason',
+    'batch_id',
+    'bulk_auto_selected',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']
@@ -1112,6 +1120,18 @@ async def submit_corrections(
         from backend.services.storage_service import StorageService
         storage = StorageService()
 
+        # Safety net: never persist word timings that fall outside their segment.
+        # Frontend should already prevent this; this guarantees clean stored data
+        # (the render worker reads corrections_updated.json verbatim).
+        from backend.services.timing_sanitizer import sanitize_corrections
+        sanitized, clamp_count = sanitize_corrections(submission.corrections)
+        if clamp_count:
+            logger.warning(
+                f"Job {job_id}: sanitized {clamp_count} out-of-bounds word timing(s) "
+                f"in submitted corrections before persisting"
+            )
+        submission.corrections = sanitized
+
         corrections_gcs_path = f"jobs/{job_id}/lyrics/corrections_updated.json"
         storage.upload_json(corrections_gcs_path, submission.corrections)
         job_manager.update_file_url(job_id, 'lyrics', 'corrections_updated', corrections_gcs_path)
@@ -1463,6 +1483,13 @@ async def complete_review(
     try:
         # Store instrumental selection if provided (combined review flow)
         instrumental_selection = body.instrumental_selection if body else None
+        # Jobs that supplied their own instrumental (existing_instrumental flow, e.g. tenant
+        # submissions) have no instrumental-selection UI step. Default to 'custom' so the
+        # render uses the provided instrumental instead of a separated stem that was never
+        # produced (the orchestrator otherwise defaults to 'clean' and fails prerequisites).
+        if not instrumental_selection and getattr(job, 'existing_instrumental_gcs_path', None):
+            instrumental_selection = 'custom'
+            logger.info(f"Job {job_id}: Defaulting instrumental selection to 'custom' (existing instrumental provided)")
         if instrumental_selection:
             job_manager.update_state_data(job_id, 'instrumental_selection', instrumental_selection)
             logger.info(f"Job {job_id}: Stored instrumental selection: {instrumental_selection}")
@@ -1620,6 +1647,17 @@ DOWNLOAD_FILENAME_SUFFIXES = {
 }
 
 
+def _cleanup_temp_file(path: Optional[str]) -> None:
+    """Best-effort removal of a temp file created for a download that failed
+    before streaming started (so it never reaches the iterator's cleanup)."""
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
 @router.get("/{job_id}/download/{category}/{file_key}")
 async def download_file(
     job_id: str,
@@ -1693,6 +1731,11 @@ async def download_file(
     else:
         filename = gcs_path.split('/')[-1]  # Fallback to original
     
+    # Created below with delete=False; the streaming iterator's finally removes it
+    # on the happy path. If download/setup raises before streaming starts, the
+    # except handlers below unlink it so failed (e.g. 404) requests don't leak
+    # temp files and fill local disk.
+    tmp_path = None
     try:
         # Download to temp file and stream
         storage = StorageService()
@@ -1728,7 +1771,16 @@ async def download_file(
                 'Content-Disposition': content_disposition
             }
         )
+    except NotFound:
+        # The recorded output is gone from GCS (e.g. a stale download link hit
+        # mid-reprocess after a visibility change / edit deleted the finals). This
+        # is "not found", not a server error — return 404 and log at warning so it
+        # doesn't trip the error-monitor.
+        _cleanup_temp_file(tmp_path)
+        logger.warning(f"Download requested for missing object {gcs_path}")
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.fileNoLongerAvailable"))
     except Exception as e:
+        _cleanup_temp_file(tmp_path)
         logger.error(f"Error downloading {gcs_path}: {e}")
         raise HTTPException(status_code=500, detail=f"Error downloading file: {e}")
 
@@ -1961,9 +2013,18 @@ async def retry_job(
                 "retry_stage": "screens_generation"
             }
         
-        # If we have input audio (uploaded or from URL), restart from beginning
-        elif job.input_media_gcs_path or job.url:
-            logger.info(f"Job {job_id}: Has input audio, restarting from beginning")
+        # If the input audio is already in GCS (an uploaded file, or a URL whose
+        # download succeeded), restart from beginning — the audio/lyrics workers
+        # re-fetch it from GCS.
+        #
+        # A URL job whose download never succeeded has only `job.url` and NO
+        # audio in GCS, so it must NOT take this branch: triggering the workers
+        # would just fail with "Failed to download audio file" and Cloud Run
+        # would retry them repeatedly (see job 7f36304a — an Apple Music link).
+        # Such jobs fall through to the "resubmit" refusal below, since there is
+        # no worker that re-downloads a generic URL.
+        elif job.input_media_gcs_path:
+            logger.info(f"Job {job_id}: Has input audio in GCS, restarting from beginning")
 
             # Clear error state and any partial progress
             job_manager.update_job(job_id, {
@@ -2252,6 +2313,14 @@ async def cleanup_distribution(
                         "status": "skipped",
                         "reason": "no files found to delete",
                     }
+
+                # Remove the Nomad 720p master(s) from the GCS fast-sync mirror too, so a
+                # re-finalise (incl. artist/title rename) doesn't leave the old cut on
+                # kjbox. Prefix-keyed by brand_code (covers renames); the subsequent
+                # re-run's push re-adds the new master. Non-fatal, Nomad-only.
+                if brand_code:
+                    from backend.services.nomad_master_mirror import cleanup_nomad_masters
+                    cleanup_nomad_masters(brand_code)
             else:
                 results["gdrive"] = {
                     "status": "failed",
@@ -2422,11 +2491,21 @@ async def create_job_from_search(
         from backend.services.job_defaults_service import resolve_cdg_txt_defaults
         resolved_cdg, resolved_txt = resolve_cdg_txt_defaults(effective_theme_id, None, None)
 
-        # Determine display values
+        # Determine display values.
+        # The session stores the ORIGINAL search query (e.g. "hard-fi"). body.artist/
+        # body.title carry whatever is currently in the wizard's artist/title fields,
+        # which reflect a "Use official formatting" correction the user may have applied
+        # after searching. The displayed job name must honour that correction, so prefer
+        # the request body over the stored query. An explicit display override wins above all.
         session_artist = session.get('artist', body.artist)
         session_title = session.get('title', body.title)
-        effective_display_artist = body.display_artist or session_artist
-        effective_display_title = body.display_title or session_title
+        # body.artist/body.title are required but unvalidated for whitespace, so strip
+        # them and fall back to the stored query if blank (display_* is pre-stripped to
+        # None by its validator). This keeps a stray "   " from becoming the job name.
+        body_artist = (body.artist or "").strip()
+        body_title = (body.title or "").strip()
+        effective_display_artist = body.display_artist or body_artist or session_artist
+        effective_display_title = body.display_title or body_title or session_title
 
         tenant_id = session.get('tenant_id') or ""
 

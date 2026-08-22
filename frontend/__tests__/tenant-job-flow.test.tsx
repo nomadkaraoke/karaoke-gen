@@ -131,13 +131,25 @@ describe('TenantJobFlow — error handling', () => {
     jest.clearAllMocks()
   })
 
+  // Mirrors handleSubmit's catch mapping in TenantJobFlow.tsx, using the en
+  // jobFlow strings that t('submitError') / t('submitNetworkError') resolve to.
+  const SUBMIT_ERROR = 'Something went wrong. Please try again.'
+  const SUBMIT_NETWORK_ERROR = 'Network error — please check your connection and try again.'
+  function mapSubmitError(err: any): string {
+    const { ApiError } = require('@/lib/api')
+    if (err instanceof ApiError) return err.message
+    if (err instanceof TypeError || /network|failed to fetch|load failed/i.test(String(err?.message ?? ''))) {
+      return SUBMIT_NETWORK_ERROR
+    }
+    return SUBMIT_ERROR
+  }
+
   it('ApiError message is surfaced when createJobWithUploadUrls fails', async () => {
     const { ApiError } = require('@/lib/api')
     mockApi.createJobWithUploadUrls.mockRejectedValue(
       new ApiError('Tenant file upload is not enabled', 403),
     )
 
-    // Simulate handleSubmit error path
     let errorMessage = ''
     try {
       await api.createJobWithUploadUrls('Artist', 'Title', [], {
@@ -145,16 +157,15 @@ describe('TenantJobFlow — error handling', () => {
         existing_instrumental: true,
       })
     } catch (err: any) {
-      errorMessage = err instanceof ApiError ? err.message : 'Something went wrong. Please try again.'
+      errorMessage = mapSubmitError(err)
     }
 
     expect(errorMessage).toBe('Tenant file upload is not enabled')
   })
 
-  it('generic errors get fallback message', async () => {
-    mockApi.createJobWithUploadUrls.mockRejectedValue(new TypeError('Network error'))
+  it('network-level failures map to the network error message', async () => {
+    mockApi.createJobWithUploadUrls.mockRejectedValue(new TypeError('Failed to fetch'))
 
-    const { ApiError } = require('@/lib/api')
     let errorMessage = ''
     try {
       await api.createJobWithUploadUrls('Artist', 'Title', [], {
@@ -162,10 +173,26 @@ describe('TenantJobFlow — error handling', () => {
         existing_instrumental: true,
       })
     } catch (err: any) {
-      errorMessage = err instanceof ApiError ? err.message : 'Something went wrong. Please try again.'
+      errorMessage = mapSubmitError(err)
     }
 
-    expect(errorMessage).toBe('Something went wrong. Please try again.')
+    expect(errorMessage).toBe(SUBMIT_NETWORK_ERROR)
+  })
+
+  it('non-network, non-ApiError failures get the generic fallback message', async () => {
+    mockApi.createJobWithUploadUrls.mockRejectedValue(new Error('boom'))
+
+    let errorMessage = ''
+    try {
+      await api.createJobWithUploadUrls('Artist', 'Title', [], {
+        is_private: true,
+        existing_instrumental: true,
+      })
+    } catch (err: any) {
+      errorMessage = mapSubmitError(err)
+    }
+
+    expect(errorMessage).toBe(SUBMIT_ERROR)
   })
 
   it('missing upload URL throws ApiError', async () => {

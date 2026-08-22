@@ -12,7 +12,6 @@ export { default as AgenticCorrectionMetrics } from './AgenticCorrectionMetrics'
 // View components
 export { default as TranscriptionView } from './TranscriptionView'
 export { default as ReferenceView } from './ReferenceView'
-export { default as DurationTimelineView } from './DurationTimelineView'
 export { default as EditWordList } from './EditWordList'
 export { default as TimelineEditor } from './TimelineEditor'
 export { default as WordDivider } from './WordDivider'

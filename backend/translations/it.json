@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection non valido. Deve essere uno tra: {valid_selections}",
     "instrumentalSelected": "Strumentale selezionata. Generazione del video avviata.",
     "instrumentalSelectionError": "Errore durante la selezione della strumentale per il lavoro {job_id}: {error}",
-    "downloadUrlsError": "Errore durante il recupero degli URL di download: {error}"
+    "downloadUrlsError": "Errore durante il recupero degli URL di download: {error}",
+    "fileNoLongerAvailable": "File non più disponibile"
   },
   "review": {
     "jobNotFound": "Lavoro non trovato",
@@ -92,7 +93,10 @@
     "selectAudioError": "Errore durante la selezione dell'audio per il lavoro {job_id}: {error}",
     "searchAudioError": "Errore durante la ricerca dell'audio: {error}",
     "searchCreatedSuccessfully": "Lavoro creato. Ricerca dell'audio in corso...",
-    "autoDownloadStarted": "Miglior risultato selezionato automaticamente. Avvio del download..."
+    "autoDownloadStarted": "Miglior risultato selezionato automaticamente. Avvio del download...",
+    "drmUrlUnsupported": "I link di {platform} sono protetti da copyright, quindi non possiamo scaricarli direttamente. Prova prima a scaricare l'audio con uno strumento di terze parti, poi carica il file audio qui. Puoi anche incollare un link di YouTube, oppure usare la Ricerca Audio per trovare questa canzone.",
+    "drmUrlUnsupportedWithLink": "I link di {platform} sono protetti da copyright, quindi non possiamo scaricarli direttamente. Puoi scaricare il brano usando uno strumento come {downloader} e poi caricare il file audio qui. Puoi anche incollare un link di YouTube, oppure usare la Ricerca Audio per trovare questa canzone.",
+    "drmUrlUnsupportedSearch": "I link di {platform} sono protetti da copyright, quindi non possiamo scaricarli direttamente. Cerca sul web un \"{platform} downloader\" per ottenere l'audio — ad esempio {searchUrl} — poi carica il file audio qui. Puoi anche incollare un link di YouTube, oppure usare la Ricerca Audio per trovare questa canzone."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

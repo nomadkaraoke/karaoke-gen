@@ -93,10 +93,122 @@ cd /opt/encoding-worker
 echo "Creating Python virtual environment..."
 /opt/python313/bin/python3.13 -m venv venv
 
-# Install base Python dependencies (wheel will add more at runtime)
+# Bake the FULL karaoke-gen dependency tree into the image (2026-08-15) so every
+# fresh worker VM — including the broadened multi-instance-type fallback pool — is
+# self-sufficient at boot instead of relying on a first-job ensure_latest_wheel()
+# install of the whole tree (torch + CUDA, langchain, tenacity, ...). That lazy
+# path repeatedly bit fresh fallback VMs (see #903 / "No module named 'tenacity'"):
+# a partial/timed-out install left a broken venv and every retry hit the same VM.
+#
+# HOW: install the current published wheel WITH deps, but resolve torch from the
+# PyTorch CPU index (primary) with PyPI as the fallback index (everything else).
+# CPU-only torch avoids the multi-GB CUDA/nvidia wheels the encode/finalize path
+# never needs, keeping the image small. The wheel's CODE is intentionally kept
+# installed too — startup.sh still runs `pip install --no-deps <latest wheel>` at
+# boot to fast-forward the code to the newest version (deps already satisfied), so
+# there's no crash-loop from full resolution at boot (the #587 reason for --no-deps)
+# AND no missing-dep failure on the first job.
 source venv/bin/activate
 pip install --upgrade pip
+
+# Boot/serve packages first (guarantees the service can start even if the heavy
+# install below is ever trimmed).
 pip install fastapi uvicorn google-cloud-storage aiofiles aiohttp packaging
+
+# Pull the current wheel from the fixed GCS path (same artifact the runtime
+# fallback uses). gsutil ships in the debian-cloud base image and the Packer
+# builder SA has GCS read on this bucket.
+BUCKET="gs://karaoke-gen-storage-nomadkaraoke"
+# pip requires a PEP 427-valid wheel filename; the GCS alias
+# `karaoke_gen-current.whl` is NOT valid, so copy it to a properly-versioned
+# name (mirrors startup.sh). Prefer version.txt for the version tag.
+BAKE_VERSION=$(gsutil cat "${BUCKET}/encoding-worker/version.txt" 2>/dev/null | tr -d '[:space:]')
+if [ -n "${BAKE_VERSION}" ]; then
+    WHEEL_NAME="karaoke_gen-${BAKE_VERSION}-py3-none-any.whl"
+else
+    WHEEL_NAME="karaoke_gen-0.0.0-py3-none-any.whl"
+fi
+WHEEL_PATH="/tmp/${WHEEL_NAME}"
+echo "Baking full dependency tree (CPU-only torch) from ${BUCKET}/wheels/karaoke_gen-current.whl → ${WHEEL_NAME} ..."
+if ! gsutil cp "${BUCKET}/wheels/karaoke_gen-current.whl" "${WHEEL_PATH}"; then
+    # Fall back to the latest properly-named versioned wheel.
+    LATEST_WHEEL=$(gsutil ls "${BUCKET}/wheels/karaoke_gen-*.whl" 2>/dev/null | grep -v 'current' | sort -V | tail -1 || echo "")
+    if [ -n "${LATEST_WHEEL}" ]; then
+        WHEEL_NAME=$(basename "${LATEST_WHEEL}")
+        WHEEL_PATH="/tmp/${WHEEL_NAME}"
+        gsutil cp "${LATEST_WHEEL}" "${WHEEL_PATH}"
+    else
+        echo "FATAL: could not download a wheel to bake deps into the image"
+        exit 1
+    fi
+fi
+
+# --index-url = PyTorch CPU index (primary, so torch resolves to the CPU build),
+# --extra-index-url = PyPI (everything else). Retry a couple of times to ride out
+# transient index blips during the build.
+for attempt in 1 2 3; do
+    if pip install \
+        --index-url https://download.pytorch.org/whl/cpu \
+        --extra-index-url https://pypi.org/simple \
+        "${WHEEL_PATH}"; then
+        break
+    fi
+    echo "pip install of full dep tree failed (attempt ${attempt}/3); retrying..."
+    sleep 15
+    if [ "${attempt}" = "3" ]; then
+        echo "FATAL: could not install the full karaoke-gen dependency tree"
+        exit 1
+    fi
+done
+rm -f "${WHEEL_PATH}"
+
+# Verify the dependency TREE is complete. We import the heavy transitive
+# libraries that constitute the encode/finalization chain — crucially tenacity,
+# the dep that was silently missing on fresh fallback VMs (pulled via the
+# generator→correction/langchain chain). We deliberately do NOT import the worker
+# app module (backend.services.gce_encoding.main): it constructs GCP clients at
+# import and needs GOOGLE_CLOUD_PROJECT + auth that only exist at runtime (systemd
+# env), so importing it at BUILD time fails for environment reasons, not missing
+# deps. The canary libs below prove the install is complete without that
+# fragility. Fail the BUILD on any missing import so a half-baked image that
+# claims to be self-sufficient can never ship.
+echo "Verifying baked dependency imports..."
+python - << 'PYVERIFY'
+import importlib
+import sys
+
+# torch must be the CPU build. NOTE: torch.cuda.is_available() is False even for a
+# CUDA build on this GPU-less builder, so it can't tell CPU from CUDA — check the
+# build's compiled CUDA version instead (None only for a true CPU-only wheel).
+import torch
+assert torch.version.cuda is None, (
+    f"baked torch is a CUDA build (torch.version.cuda={torch.version.cuda!r}) — "
+    "expected CPU-only; check the --index-url resolves torch from the CPU index"
+)
+
+# Canary imports across the encode/generation dep tree. tenacity + the langchain
+# chain are the exact modules whose absence broke fresh fallback VMs before.
+modules = [
+    "tenacity",
+    "langchain",
+    "langchain_core",
+    "transformers",
+    "librosa",
+    "onnxruntime",
+]
+failed = []
+for name in modules:
+    try:
+        importlib.import_module(name)
+    except Exception as exc:  # noqa: BLE001
+        failed.append(f"{name}: {exc}")
+if failed:
+    print("FATAL: baked dependency import check failed:")
+    for f in failed:
+        print(f"  - {f}")
+    sys.exit(1)
+print("Baked dependency imports OK (CPU-only torch).")
+PYVERIFY
 
 # Create bootstrap script (runs via ExecStartPre before service starts)
 # This minimal script downloads the REAL startup script from GCS.
@@ -218,6 +330,7 @@ echo "  - Python ${PYTHON_VERSION} at /opt/python313"
 echo "  - FFmpeg at /usr/local/bin/ffmpeg"
 echo "  - Noto fonts (including CJK)"
 echo "  - Virtual environment at /opt/encoding-worker/venv"
+echo "  - Full karaoke-gen dependency tree baked (CPU-only torch)"
 echo "  - Systemd service: encoding-worker.service"
 echo ""
 echo "Immutable deployment pattern:"

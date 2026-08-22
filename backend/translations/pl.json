@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Nieprawidłowe instrumental_selection. Musi to być jedno z: {valid_selections}",
     "instrumentalSelected": "Wybrano podkład. Rozpoczęto generowanie wideo.",
     "instrumentalSelectionError": "Błąd podczas wybierania podkładu dla zadania {job_id}: {error}",
-    "downloadUrlsError": "Błąd podczas pobierania linków: {error}"
+    "downloadUrlsError": "Błąd podczas pobierania linków: {error}",
+    "fileNoLongerAvailable": "Plik nie jest już dostępny"
   },
   "review": {
     "jobNotFound": "Nie znaleziono zadania",
@@ -92,7 +93,10 @@
     "selectAudioError": "Błąd podczas wybierania audio dla zadania {job_id}: {error}",
     "searchAudioError": "Błąd podczas wyszukiwania audio: {error}",
     "searchCreatedSuccessfully": "Zadanie utworzone. Wyszukiwanie audio...",
-    "autoDownloadStarted": "Najlepszy wynik wybrany automatycznie. Rozpoczynanie pobierania..."
+    "autoDownloadStarted": "Najlepszy wynik wybrany automatycznie. Rozpoczynanie pobierania...",
+    "drmUrlUnsupported": "Linki z {platform} są chronione przed kopiowaniem, więc nie możemy ich pobrać bezpośrednio. Spróbuj najpierw pobrać dźwięk za pomocą zewnętrznego narzędzia, a następnie prześlij plik audio tutaj. Możesz też wkleić link do YouTube lub użyć wyszukiwania audio, aby znaleźć tę piosenkę.",
+    "drmUrlUnsupportedWithLink": "Linki z {platform} są zabezpieczone przed kopiowaniem, więc nie możemy ich pobrać bezpośrednio. Możesz pobrać utwór za pomocą narzędzia takiego jak {downloader}, a następnie przesłać plik audio tutaj. Możesz również wkleić link do YouTube lub użyć Wyszukiwania Audio, aby znaleźć tę piosenkę.",
+    "drmUrlUnsupportedSearch": "Linki z {platform} są zabezpieczone przed kopiowaniem, więc nie możemy ich pobrać bezpośrednio. Wyszukaj w sieci „{platform} downloader”, aby pobrać plik audio — na przykład {searchUrl} — a następnie prześlij plik audio tutaj. Możesz również wkleić link do YouTube lub użyć Wyszukiwania Audio, aby znaleźć tę piosenkę."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

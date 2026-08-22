@@ -419,10 +419,11 @@ class TestUploadToPublicShare:
         cdg_file.write_bytes(b"cdg package")
         
         service = GoogleDriveService()
-        
+
         # Mock methods
-        with patch.object(service, "get_or_create_folder") as mock_get_folder:
-            with patch.object(service, "upload_file") as mock_upload:
+        with patch.object(service, "get_or_create_folder") as mock_get_folder, \
+             patch.object(service, "upload_file") as mock_upload, \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
                 mock_get_folder.side_effect = [
                     "mp4-folder-id",
                     "mp4-720-folder-id",
@@ -433,31 +434,187 @@ class TestUploadToPublicShare:
                     "720p-file-id",
                     "cdg-file-id",
                 ]
-                
+
                 output_files = {
                     "final_karaoke_lossy_mp4": str(mp4_file),
                     "final_karaoke_lossy_720p_mp4": str(mp4_720_file),
                     "final_karaoke_cdg_zip": str(cdg_file),
                 }
-                
+
                 result = service.upload_to_public_share(
                     root_folder_id="root-123",
                     brand_code="NOMAD-1163",
                     base_name="Artist - Title",
                     output_files=output_files,
                 )
-                
+
                 # Should have created/found 3 folders
                 assert mock_get_folder.call_count == 3
-                
+
                 # Should have uploaded 3 files
                 assert mock_upload.call_count == 3
-                
+
                 # Check result
                 assert result["mp4"] == "mp4-file-id"
                 assert result["mp4_720p"] == "720p-file-id"
                 assert result["cdg"] == "cdg-file-id"
-    
+
+                # Nomad brand → the 720p master is fast-synced to the Divebar GCS
+                # mirror with the exact "{brand_code} - {base_name}.mp4" object name.
+                mock_mirror_cls.return_value.push_720p.assert_called_once_with(
+                    str(mp4_720_file), "NOMAD-1163 - Artist - Title.mp4"
+                )
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_no_fast_sync_for_non_nomad_brand(self, mock_get_settings, tmp_path):
+        """Non-Nomad brands (and NOMADNP privates) must NOT touch the divebar mirror."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        mp4_720_file = tmp_path / "output_720p.mp4"
+        mp4_720_file.write_bytes(b"720p video")
+
+        service = GoogleDriveService()
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            for brand in ("VOCALSTAR-12", "NOMADNP-1163"):
+                service.upload_to_public_share(
+                    root_folder_id="root-123",
+                    brand_code=brand,
+                    base_name="Artist - Title",
+                    output_files={"final_karaoke_lossy_720p_mp4": str(mp4_720_file)},
+                )
+            mock_mirror_cls.assert_not_called()
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_fast_sync_failure_is_non_fatal(self, mock_get_settings, tmp_path):
+        """A mirror failure must never break the (already-succeeded) Drive upload."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        mp4_720_file = tmp_path / "output_720p.mp4"
+        mp4_720_file.write_bytes(b"720p video")
+
+        service = GoogleDriveService()
+        warnings: list = []
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="720p-file-id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror",
+                   side_effect=RuntimeError("gcs down")):
+            result = service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMAD-1163",
+                base_name="Artist - Title",
+                output_files={"final_karaoke_lossy_720p_mp4": str(mp4_720_file)},
+                warnings=warnings,
+            )
+            # Drive upload still reports success despite the mirror blowing up...
+            assert result["mp4_720p"] == "720p-file-id"
+            # ...and the failure is surfaced as a distribution warning (admin alert),
+            # not silently swallowed.
+            assert any("fast-sync" in w for w in warnings)
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_pushes_vocals_guide_for_nomad(self, mock_get_settings, tmp_path):
+        """A pre-built original-vocals guide is pushed to the vocals prefix with the exact
+        "{brand_code} - {base_name}.flac" object name (matches the master's naming)."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        mp4_720_file = tmp_path / "output_720p.mp4"
+        mp4_720_file.write_bytes(b"720p video")
+        guide_file = tmp_path / "original_vocals_guide.flac"
+        guide_file.write_bytes(b"guide flac")
+
+        service = GoogleDriveService()
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            mock_mirror_cls.return_value.push_vocals_guide.return_value = True
+            service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMAD-1163",
+                base_name="Artist - Title",
+                output_files={
+                    "final_karaoke_lossy_720p_mp4": str(mp4_720_file),
+                    "original_vocals_guide": str(guide_file),
+                },
+            )
+            mock_mirror_cls.return_value.push_vocals_guide.assert_called_once_with(
+                str(guide_file), "NOMAD-1163 - Artist - Title.flac"
+            )
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_no_vocals_guide_for_non_nomad(self, mock_get_settings, tmp_path):
+        """Non-Nomad / NOMADNP brands must never push a guide to the public mirror."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        guide_file = tmp_path / "original_vocals_guide.flac"
+        guide_file.write_bytes(b"guide flac")
+
+        service = GoogleDriveService()
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMADNP-1163",
+                base_name="Artist - Title",
+                output_files={"original_vocals_guide": str(guide_file)},
+            )
+            mock_mirror_cls.assert_not_called()
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_public_share_vocals_guide_failure_is_non_fatal(self, mock_get_settings, tmp_path):
+        """A guide push failure surfaces a warning but never breaks the Drive upload."""
+        from backend.services.gdrive_service import GoogleDriveService
+
+        mock_settings = Mock()
+        mock_settings.get_secret.return_value = json.dumps({
+            "refresh_token": "token", "client_id": "id", "client_secret": "secret",
+        })
+        mock_get_settings.return_value = mock_settings
+
+        guide_file = tmp_path / "original_vocals_guide.flac"
+        guide_file.write_bytes(b"guide flac")
+
+        service = GoogleDriveService()
+        warnings: list = []
+        with patch.object(service, "get_or_create_folder", return_value="f"), \
+             patch.object(service, "upload_file", return_value="id"), \
+             patch("backend.services.nomad_master_mirror.NomadMasterMirror") as mock_mirror_cls:
+            mock_mirror_cls.return_value.push_vocals_guide.return_value = False
+            service.upload_to_public_share(
+                root_folder_id="root-123",
+                brand_code="NOMAD-1163",
+                base_name="Artist - Title",
+                output_files={"original_vocals_guide": str(guide_file)},
+                warnings=warnings,
+            )
+            assert any("guide" in w.lower() for w in warnings)
+
     @patch("backend.services.gdrive_service.get_settings")
     def test_upload_to_public_share_skips_missing_files(
         self, mock_get_settings, tmp_path
@@ -925,6 +1082,56 @@ class TestFindFilesByBrandCode:
 
         # Should raise after processing all subfolders — an incomplete search must not
         # be silently treated as "nothing found" by the caller
+        with pytest.raises(RuntimeError, match="search incomplete"):
+            service.find_files_by_brand_code("root-folder", "NOMAD-1271")
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_recovers_from_transient_connection_error(self, mock_get_settings):
+        """A transient BrokenPipe/SSL EOF within a subfolder search is retried, not fatal.
+
+        Regression for the "GDrive brand_code search incomplete: 2/3 subfolder(s) failed"
+        alerts caused by [SSL: UNEXPECTED_EOF_WHILE_READING] / [Errno 32] Broken pipe
+        against idle Cloud Run containers.
+        """
+        service = self._make_service(mock_get_settings)
+        # Prevent _reset_service (called in before_sleep) from nulling our mock.
+        service._reset_service = Mock()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        mock_list_result.execute.side_effect = [
+            {"files": [{"id": "cdg-folder"}]},             # CDG subfolder found
+            BrokenPipeError("Errno 32 Broken pipe"),       # transient drop mid-search
+            {"files": [{"id": "cdg-folder"}]},             # retry: subfolder found again
+            {"files": [{"id": "cdg-file-1", "name": "NOMAD-1271 - piri - dog.zip"}]},
+            {"files": []},                                 # MP4 not found
+            {"files": []},                                 # MP4-720p not found
+        ]
+        mock_files_api.list.return_value = mock_list_result
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+
+        result = service.find_files_by_brand_code("root-folder", "NOMAD-1271")
+
+        assert result == ["cdg-file-1"]
+        service._reset_service.assert_called()  # a retry actually happened
+
+    @patch("backend.services.gdrive_service.get_settings")
+    def test_persistent_transient_error_still_raises_incomplete(self, mock_get_settings):
+        """If retries are exhausted, the search is still reported as incomplete (not clean)."""
+        service = self._make_service(mock_get_settings)
+        service._reset_service = Mock()
+
+        mock_files_api = Mock()
+        mock_list_result = Mock()
+        # Every call drops the connection — retries exhaust for all subfolders.
+        mock_list_result.execute.side_effect = BrokenPipeError("Errno 32 Broken pipe")
+        mock_files_api.list.return_value = mock_list_result
+        mock_drive = Mock()
+        mock_drive.files.return_value = mock_files_api
+        service._service = mock_drive
+
         with pytest.raises(RuntimeError, match="search incomplete"):
             service.find_files_by_brand_code("root-folder", "NOMAD-1271")
 

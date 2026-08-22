@@ -247,11 +247,20 @@ class CustomLyricsService:
                     settings=settings,
                 )
             except Exception:
-                logger.exception(
+                # Repair is a best-effort *improvement* step. If a repair call
+                # fails (e.g. the model returned an empty/blocked response, or a
+                # transient Vertex error), we must NOT throw away the successful
+                # initial result — that turned a working generation into a 500 and
+                # a browser "NetworkError". Keep the best candidate found so far.
+                # WARNING (not exception/ERROR): this is now a handled, non-fatal
+                # degradation, so it should not trip the production error monitor.
+                logger.warning(
                     "custom_lyrics_repair_call_failed",
+                    exc_info=True,
                     extra={"job_id": job_id, "iteration": iter_num, "stage": "repair"},
                 )
-                raise
+                stop_reason = StopReason.REPAIR_FAILED
+                break
             validations = self._validate_with_length_handling(
                 candidate_lines, target_lines, target_segments,
                 tolerance=params.tolerance, fixed=settings.fixed_line_count,
@@ -564,7 +573,40 @@ class CustomLyricsService:
                 },
             ),
         )
-        return self._parse_lines(response.text)
+        # The model can return no text (safety block, MAX_TOKENS with no content,
+        # empty candidate). `response.text` is then None and json.loads(None) would
+        # raise a raw TypeError -> uncaught 500 without CORS headers -> the browser
+        # reports a confusing "NetworkError". Surface a clean, diagnosable error.
+        text = response.text
+        if text is None:
+            raise CustomLyricsServiceError(
+                f"The AI returned an empty response ({self._describe_empty_response(response)}). "
+                f"Please try again.",
+                status_code=502,
+            )
+        return self._parse_lines(text)
+
+    @staticmethod
+    def _describe_empty_response(response: Any) -> str:
+        """Best-effort reason for an empty model response, for logs and messages."""
+        parts: list[str] = []
+        try:
+            block_reason = getattr(getattr(response, "prompt_feedback", None), "block_reason", None)
+            if block_reason:
+                parts.append(f"prompt_block={getattr(block_reason, 'name', block_reason)}")
+        except Exception:  # pragma: no cover - defensive
+            pass
+        try:
+            candidates = getattr(response, "candidates", None) or []
+            if candidates:
+                finish = getattr(candidates[0], "finish_reason", None)
+                if finish is not None:
+                    parts.append(f"finish_reason={getattr(finish, 'name', finish)}")
+            else:
+                parts.append("no_candidates")
+        except Exception:  # pragma: no cover - defensive
+            pass
+        return ", ".join(parts) if parts else "unknown"
 
     @staticmethod
     def _parse_lines(text: str) -> list[str]:

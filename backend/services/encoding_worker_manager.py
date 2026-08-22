@@ -27,7 +27,8 @@ Usage:
 
 import asyncio
 import logging
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from datetime import datetime, UTC
 from typing import Any, Optional
 
@@ -48,7 +49,35 @@ logger = logging.getLogger(__name__)
 # or returned an immediate error like ZONE_RESOURCE_POOL_EXHAUSTED.
 START_OPERATION_TIMEOUT_SECONDS = 30.0
 
+# A GCE instances.start returning 503 SERVICE_UNAVAILABLE (or 500/INTERNAL) is a
+# transient GCP control-plane error — distinct from a capacity STOCKOUT — and
+# usually succeeds on a quick retry. Retry the start a few times in-zone with
+# backoff before letting the caller fail over to another zone.
+START_TRANSIENT_MAX_RETRIES = 3
+START_TRANSIENT_BACKOFF_SECONDS = 5.0
+# Substrings (matched case-insensitively against the GCE error code/message)
+# that mark a retryable transient control-plane failure.
+_TRANSIENT_START_MARKERS = (
+    "503",
+    "service unavailable",
+    "internal error",
+    "internalerror",
+    "backenderror",
+    "500",
+)
+
 CONFIG_COLLECTION = "config"
+
+
+def _is_transient_start_error(error: "EncodingWorkerStartError") -> bool:
+    """True if a VM-start failure looks like a retryable transient GCP error.
+
+    Capacity errors (ZONE_RESOURCE_POOL_EXHAUSTED etc.) are NOT transient in the
+    same zone — retrying in-zone is pointless, the caller should fail over. Those
+    are a distinct subclass and are excluded by the caller.
+    """
+    haystack = f"{getattr(error, 'code', '') or ''} {error}".lower()
+    return any(marker in haystack for marker in _TRANSIENT_START_MARKERS)
 CONFIG_DOCUMENT = "encoding-worker"
 ENCODING_WORKER_PORT = 8080
 
@@ -77,6 +106,11 @@ class EncodingWorkerConfig:
     active_override_ip: Optional[str] = None
     active_override_zone: Optional[str] = None
     active_override_set_at: Optional[str] = None
+    # Availability-awareness state: {"<machine_type>@<zone>": last_stockout_iso}.
+    # Written when a candidate start hits a capacity/stockout error, read by the
+    # shared preference logic to demote recently-exhausted types. See
+    # backend/services/encoding_worker_preference.py.
+    capacity_state: dict = field(default_factory=dict)
 
     @property
     def primary_url(self) -> str:
@@ -106,16 +140,28 @@ class EncodingWorkerCandidate:
 
     Carries everything needed to talk to the worker: VM name + zone (so the
     GCE compute client targets the right zone) and external IP (so successful
-    starts can be persisted as the active URL override).
+    starts can be persisted as the active URL override). ``machine_type`` (e.g.
+    "c4d-highcpu-32") lets the manager record/clear per-(type,zone) capacity
+    state so the shared preference logic can demote a stocked-out type.
     """
 
     vm_name: str
     zone: str
     ip: str
+    machine_type: Optional[str] = None
+    # True iff this candidate is the blue-green PRIMARY VM. The override routing
+    # (set on fallback, clear on primary) keys off this flag, NOT list position —
+    # the preference logic may rank a fallback ahead of a stocked-out primary, so
+    # "first candidate" is no longer synonymous with "primary".
+    is_primary: bool = False
 
     @property
     def url(self) -> str:
         return f"http://{self.ip}:{ENCODING_WORKER_PORT}"
+
+    def _cooldown_dict(self) -> dict:
+        """Dict view for the shared preference helpers (cooldown_key)."""
+        return {"vm": self.vm_name, "zone": self.zone, "machine_type": self.machine_type}
 
 
 class EncodingWorkerManager:
@@ -161,6 +207,7 @@ class EncodingWorkerManager:
             active_override_ip=data.get("active_override_ip"),
             active_override_zone=data.get("active_override_zone"),
             active_override_set_at=data.get("active_override_set_at"),
+            capacity_state=data.get("capacity_state") or {},
         )
 
     def update_activity(self) -> None:
@@ -322,6 +369,38 @@ class EncodingWorkerManager:
         }
 
     def ensure_any_running(self, candidates: list) -> dict:
+        """Start any candidate VM; retry the whole set on an all-zones transient blip.
+
+        Delegates to :meth:`_ensure_any_running_once` (one attempt per candidate).
+        If EVERY candidate fails with a *transient* error — e.g. a brief 503
+        SERVICE_UNAVAILABLE control-plane blip that hits all zones at once — and
+        none hit real capacity exhaustion, retry the whole candidate set a few
+        times with backoff before giving up. Capacity exhaustion is NOT spun on
+        here (retrying in seconds won't conjure hardware); the render worker parks
+        the job and the 24h auto-retry cron handles a sustained shortage.
+        """
+        if not candidates:
+            raise ValueError("ensure_any_running requires at least one candidate")
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                return self._ensure_any_running_once(candidates)
+            except EncodingWorkerCapacityError:
+                raise
+            except EncodingWorkerStartError as e:
+                if attempt <= START_TRANSIENT_MAX_RETRIES and _is_transient_start_error(e):
+                    backoff = START_TRANSIENT_BACKOFF_SECONDS * attempt
+                    logger.warning(
+                        "All encoding candidates failed transiently (pass %d/%d): %s — "
+                        "retrying whole set in %.0fs",
+                        attempt, START_TRANSIENT_MAX_RETRIES + 1, e, backoff,
+                    )
+                    time.sleep(backoff)
+                    continue
+                raise
+
+    def _ensure_any_running_once(self, candidates: list) -> dict:
         """Start the first candidate VM that GCE accepts; raise if all are exhausted.
 
         Iterates `candidates` in order, attempting to start each one. A
@@ -359,6 +438,10 @@ class EncodingWorkerManager:
         # capacity exhaustion (transient, retry on a different VM/zone helps).
         last_capacity_error: Optional[EncodingWorkerCapacityError] = None
         last_start_error: Optional[EncodingWorkerStartError] = None
+        last_non_transient_error: Optional[EncodingWorkerStartError] = None
+        # When the caller marks a primary explicitly, route override off that flag;
+        # otherwise preserve the legacy "index 0 is the primary" behaviour.
+        has_explicit_primary = any(getattr(c, "is_primary", False) for c in candidates)
         for index, candidate in enumerate(candidates):
             try:
                 status = self.get_vm_status(candidate.vm_name, zone=candidate.zone)
@@ -373,7 +456,15 @@ class EncodingWorkerManager:
                     started = True
 
                 self.update_activity()
-                fell_back = index > 0
+                # A clean start means this type/zone has capacity again — clear
+                # any stale cooldown so the preference logic stops demoting it.
+                self._clear_stockout(candidate)
+                # "Fell back" = we did NOT land on the primary VM. Keyed off the
+                # explicit flag when present (ordering can rank a fallback ahead of
+                # a stocked-out primary, so it may not be index 0); otherwise the
+                # legacy position-based rule.
+                is_primary = candidate.is_primary if has_explicit_primary else (index == 0)
+                fell_back = not is_primary
                 if fell_back:
                     self._set_active_override(candidate)
                 else:
@@ -391,6 +482,9 @@ class EncodingWorkerManager:
                     "Candidate %s in %s exhausted (%s), trying next candidate",
                     candidate.vm_name, candidate.zone, cap_err.code,
                 )
+                # Record the stockout so the shared preference logic demotes this
+                # (type,zone) for a cooldown window instead of re-probing it first.
+                self._record_stockout(candidate)
                 last_capacity_error = cap_err
                 last_start_error = cap_err
                 continue
@@ -405,14 +499,59 @@ class EncodingWorkerManager:
                     candidate.vm_name, candidate.zone, start_err.code or "no-code",
                 )
                 last_start_error = start_err
+                if not _is_transient_start_error(start_err):
+                    last_non_transient_error = start_err
                 continue
 
-        # Every candidate failed. Prefer raising the capacity error if any
-        # candidate hit one (more actionable for the caller / user message).
+        # Every candidate failed. Raise the most actionable / least-retryable
+        # representative error so the caller (ensure_any_running) retries the
+        # whole set ONLY when every failure was a transient blip:
+        #   capacity  > non-transient start error > transient start error
+        # A capacity error means a real shortage (park + 24h retry handles it);
+        # a non-transient error (e.g. PERMISSION_DENIED) means something is
+        # actually broken — neither should trigger the fast whole-set retry.
         if last_capacity_error is not None:
             raise last_capacity_error
+        if last_non_transient_error is not None:
+            raise last_non_transient_error
         assert last_start_error is not None
         raise last_start_error
+
+    def _record_stockout(self, candidate) -> None:
+        """Mark a candidate's (machine_type, zone) as recently stocked out.
+
+        Merges a single key into the ``capacity_state`` map so concurrent starts
+        don't clobber each other's entries. Best-effort — a Firestore hiccup here
+        must never break the start path, so failures are logged and swallowed.
+        """
+        from backend.services.encoding_worker_preference import cooldown_key
+
+        key = cooldown_key(candidate._cooldown_dict())
+        if not key:
+            return
+        try:
+            self._doc_ref().set(
+                {"capacity_state": {key: datetime.now(UTC).isoformat()}}, merge=True
+            )
+            logger.info("Recorded stockout for %s", key)
+        except Exception as e:  # noqa: BLE001 — never fail the start path on telemetry
+            logger.warning("Could not record stockout for %s: %s", key, e)
+
+    def _clear_stockout(self, candidate) -> None:
+        """Clear a candidate's (machine_type, zone) cooldown after a clean start.
+
+        Sets the key to None (parsed as "not stocked out") via a merge so other
+        keys are untouched. Best-effort, like _record_stockout.
+        """
+        from backend.services.encoding_worker_preference import cooldown_key
+
+        key = cooldown_key(candidate._cooldown_dict())
+        if not key:
+            return
+        try:
+            self._doc_ref().set({"capacity_state": {key: None}}, merge=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not clear stockout for %s: %s", key, e)
 
     def _set_active_override(self, candidate) -> None:
         """Record a fallback VM as the active worker URL in Firestore."""

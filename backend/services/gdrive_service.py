@@ -266,6 +266,7 @@ class GoogleDriveService:
         brand_code: str,
         base_name: str,
         output_files: dict,
+        warnings: Optional[list] = None,
     ) -> Dict[str, str]:
         """
         Upload final files to public share folder structure.
@@ -322,6 +323,30 @@ class GoogleDriveService:
             uploaded_files["mp4_720p"] = file_id
             logger.info(f"Uploaded 720p MP4 to MP4-720p/ folder")
 
+            # Fast-sync the 720p master straight to the Divebar GCS mirror so kjbox
+            # (which mirrors that folder every 5 min) picks it up within minutes,
+            # instead of waiting for the nightly Drive->GCS VM. Nomad-brand only,
+            # best-effort, never fatal to the Drive upload. A failure is surfaced as
+            # a distribution warning (drives the admin alert) so this can't silently
+            # rot into "nightly VM only" — the nightly VM stays the backfill net.
+            fast_sync_warning = self._fast_sync_nomad_master(
+                brand_code, mp4_720p_path, f"{filename_base}.mp4"
+            )
+            if fast_sync_warning and warnings is not None:
+                warnings.append(fast_sync_warning)
+
+        # Push the padded original-vocals guide (silence[intro] + mixed_vocals) to the
+        # vocals prefix in the same Divebar mirror, so kjbox can layer it under the master
+        # at the "Original Vocals" slider. Same Nomad-brand gating + best-effort contract
+        # as the 720p push; the guide was pre-built by the orchestrator when available.
+        guide_path = output_files.get("original_vocals_guide")
+        if guide_path and os.path.exists(guide_path):
+            guide_warning = self._fast_sync_vocals_guide(
+                brand_code, guide_path, f"{filename_base}.flac"
+            )
+            if guide_warning and warnings is not None:
+                warnings.append(guide_warning)
+
         # Upload CDG ZIP to CDG/
         cdg_zip_path = output_files.get("final_karaoke_cdg_zip")
         if cdg_zip_path and os.path.exists(cdg_zip_path):
@@ -336,6 +361,74 @@ class GoogleDriveService:
 
         logger.info(f"Public share upload complete: {len(uploaded_files)} files uploaded")
         return uploaded_files
+
+    def _fast_sync_nomad_master(
+        self, brand_code: str, local_720p_path: str, filename: str
+    ) -> Optional[str]:
+        """Best-effort push of a freshly-published Nomad 720p master to the Divebar
+        GCS mirror so kjbox picks it up within minutes (vs the nightly VM).
+
+        No-op unless the fast-sync is enabled and this is a public Nomad release
+        (``NOMAD-####``, excluding ``NOMADNP`` private tracks). Never raises — the
+        Drive upload has already succeeded and the nightly VM is the backfill net.
+
+        Returns a human-readable warning string on failure (so the caller can surface
+        it via ``distribution_warnings`` / the admin alert), or ``None`` on
+        success or when skipped.
+        """
+        try:
+            from backend.config import settings
+            from backend.services.nomad_master_mirror import (
+                NomadMasterMirror,
+                is_nomad_public_brand,
+            )
+
+            if not settings.nomad_master_fast_sync_enabled:
+                return None
+            if not is_nomad_public_brand(brand_code):
+                return None
+
+            if NomadMasterMirror().push_720p(local_720p_path, filename):
+                return None
+            return (
+                f"Nomad master fast-sync to the GCS mirror failed for {filename} "
+                f"(the nightly Drive->GCS VM will backfill it)"
+            )
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning(f"Nomad master fast-sync skipped (unexpected error): {e}")
+            return f"Nomad master fast-sync errored for {filename}: {e}"
+
+    def _fast_sync_vocals_guide(
+        self, brand_code: str, local_path: str, filename: str
+    ) -> Optional[str]:
+        """Best-effort push of a freshly-built original-vocals guide to the Divebar GCS
+        mirror's vocals prefix so kjbox can pull it into ``NOMAD-vocals-padded/``.
+
+        No-op unless the fast-sync is enabled and this is a public Nomad release
+        (``NOMAD-####``, excluding ``NOMADNP``). Never raises — nothing downstream
+        depends on the guide. Returns a human-readable warning on failure (surfaced via
+        ``distribution_warnings`` / the admin alert), or ``None`` on success or skip.
+        """
+        try:
+            from backend.config import settings
+            from backend.services.nomad_master_mirror import (
+                NomadMasterMirror,
+                is_nomad_public_brand,
+            )
+
+            if not settings.nomad_master_fast_sync_enabled:
+                return None
+            if not is_nomad_public_brand(brand_code):
+                return None
+
+            if NomadMasterMirror().push_vocals_guide(local_path, filename):
+                return None
+            return (
+                f"Original-vocals guide sync to the GCS mirror failed for {filename}"
+            )
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            logger.warning(f"Original-vocals guide sync skipped (unexpected error): {e}")
+            return f"Original-vocals guide sync errored for {filename}: {e}"
 
     def delete_file(self, file_id: str) -> bool:
         """
@@ -387,6 +480,69 @@ class GoogleDriveService:
             results[file_id] = self.delete_file(file_id)
         return results
 
+    def _search_subfolder_for_brand(
+        self, root_folder_id: str, subfolder: str, brand_code: str
+    ) -> list[str]:
+        """Return file IDs in ``subfolder`` whose name starts with ``{brand_code} - ``.
+
+        Read-only Drive lookups, wrapped in retry-with-backoff so transient
+        connection drops (SSL EOF / BrokenPipe against idle Cloud Run containers)
+        self-heal instead of surfacing as "GDrive brand_code search incomplete".
+        Non-transient errors reraise immediately for the caller to record.
+        """
+
+        def _do_search() -> list[str]:
+            ids: list[str] = []
+            # Find the subfolder
+            escaped_subfolder = subfolder.replace("'", "\\'")
+            query = (
+                f"name='{escaped_subfolder}' and '{root_folder_id}' in parents "
+                f"and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            )
+            results = self.service.files().list(
+                q=query, fields="files(id, name)", supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
+
+            if not results.get("files"):
+                logger.debug(f"Subfolder '{subfolder}' not found in {root_folder_id}")
+                return ids
+
+            subfolder_id = results["files"][0]["id"]
+
+            # Search for files whose name starts with the brand code
+            # Use contains for efficiency, then filter by exact prefix
+            escaped_brand = brand_code.replace("'", "\\'")
+            file_query = (
+                f"name contains '{escaped_brand}' and '{subfolder_id}' in parents "
+                f"and trashed=false"
+            )
+            file_results = self.service.files().list(
+                q=file_query, fields="files(id, name)", supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
+
+            for f in file_results.get("files", []):
+                if f["name"].startswith(f"{brand_code} - "):
+                    ids.append(f["id"])
+                    logger.info(
+                        f"Found GDrive file to clean up in {subfolder}/: "
+                        f"{f['name']} ({f['id']})"
+                    )
+            return ids
+
+        for attempt in Retrying(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=2, max=8),
+            retry=retry_if_exception_type(TRANSIENT_ERRORS),
+            before_sleep=lambda retry_state: self._reset_service(),
+            reraise=True,
+        ):
+            with attempt:
+                return _do_search()
+
+        return []  # pragma: no cover - Retrying always returns or raises
+
     def find_files_by_brand_code(self, root_folder_id: str, brand_code: str) -> list[str]:
         """
         Search for files in public share subfolders matching a brand code prefix.
@@ -411,43 +567,9 @@ class GoogleDriveService:
 
         for subfolder in subfolders:
             try:
-                # Find the subfolder
-                escaped_subfolder = subfolder.replace("'", "\\'")
-                query = (
-                    f"name='{escaped_subfolder}' and '{root_folder_id}' in parents "
-                    f"and mimeType='application/vnd.google-apps.folder' and trashed=false"
+                found_ids.extend(
+                    self._search_subfolder_for_brand(root_folder_id, subfolder, brand_code)
                 )
-                results = self.service.files().list(
-                    q=query, fields="files(id, name)", supportsAllDrives=True,
-                    includeItemsFromAllDrives=True
-                ).execute()
-
-                if not results.get("files"):
-                    logger.debug(f"Subfolder '{subfolder}' not found in {root_folder_id}")
-                    continue
-
-                subfolder_id = results["files"][0]["id"]
-
-                # Search for files whose name starts with the brand code
-                # Use contains for efficiency, then filter by exact prefix
-                escaped_brand = brand_code.replace("'", "\\'")
-                file_query = (
-                    f"name contains '{escaped_brand}' and '{subfolder_id}' in parents "
-                    f"and trashed=false"
-                )
-                file_results = self.service.files().list(
-                    q=file_query, fields="files(id, name)", supportsAllDrives=True,
-                    includeItemsFromAllDrives=True
-                ).execute()
-
-                for f in file_results.get("files", []):
-                    if f["name"].startswith(f"{brand_code} - "):
-                        found_ids.append(f["id"])
-                        logger.info(
-                            f"Found GDrive file to clean up in {subfolder}/: "
-                            f"{f['name']} ({f['id']})"
-                        )
-
             except Exception as e:
                 logger.error(
                     f"Error searching for brand_code '{brand_code}' in '{subfolder}': {e}",

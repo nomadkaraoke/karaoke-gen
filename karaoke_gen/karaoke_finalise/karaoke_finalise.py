@@ -160,9 +160,13 @@ class KaraokeFinalise:
         # MP4 output flags for better compatibility and streaming
         self.mp4_flags = "-pix_fmt yuv420p -movflags +faststart+frag_keyframe+empty_moov"
 
-        # Update ffmpeg base command to include -y if non-interactive
-        if self.non_interactive:
-            self.ffmpeg_base_command += " -y"
+        # Always overwrite outputs. Without -y, ffmpeg prompts "... already exists.
+        # Overwrite? [y/N]" on stdin when an output file already exists; because we run
+        # ffmpeg with captured output and no stdin, that prompt is invisible and blocks
+        # until the subprocess timeout (e.g. a pre-existing (With Vocals).mp4 silently
+        # aborting --finalise-only at step 2/6). Re-running finalisation should always
+        # regenerate its intermediates, so unconditional -y is correct.
+        self.ffmpeg_base_command += " -y"
 
         # Detect and configure hardware acceleration
         # TODO: Re-enable this once we figure out why the resulting MP4s are 10x larger than when encoded with x264...
@@ -816,8 +820,10 @@ class KaraokeFinalise:
             return
         
         try:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=600)
-            
+            # stdin=DEVNULL so the subprocess can never block on an interactive prompt
+            # (e.g. ffmpeg's "Overwrite? [y/N]") — it reads EOF and proceeds/fails fast.
+            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
+
             # Log command output for debugging
             if result.stdout and result.stdout.strip():
                 self.logger.debug(f"Command STDOUT: {result.stdout.strip()}")
@@ -880,19 +886,28 @@ class KaraokeFinalise:
         self.execute_command(ffmpeg_command, "Remuxing video with instrumental audio")
 
     def convert_mov_to_mp4(self, input_file, output_file):
-        """Convert MOV file to MP4 format with hardware acceleration support"""
-        # Hardware-accelerated version
+        """Convert the source "With Vocals" video (MOV/MKV) to a standard, portable MP4.
+
+        Produces the "(With Vocals).mp4" sing-along deliverable — a leaf output (no
+        later encode reads it). ``-preset veryfast`` roughly halves this stage (the
+        longest finalization stage) with negligible quality impact for karaoke content;
+        AAC 320k keeps the audio portable. yuv420p (playback compatibility) comes from
+        ``self.mp4_flags``, which already carries ``-pix_fmt yuv420p``. Kept in sync
+        with LocalEncodingService.convert_mov_to_mp4 (whose MP4_FLAGS lacks pix_fmt, so
+        that variant sets ``-pix_fmt yuv420p`` explicitly).
+        """
+        # Hardware-accelerated version (pix_fmt yuv420p supplied via self.mp4_flags)
         gpu_command = (
             f'{self.ffmpeg_base_command} {self.hwaccel_decode_flags} -i "{input_file}" '
-            f'-c:v {self.video_encoder} {self.get_nvenc_quality_settings("high")} -c:a {self.aac_codec} -ar 48000 {self.mp4_flags} "{output_file}"'
+            f'-c:v {self.video_encoder} {self.get_nvenc_quality_settings("high")} -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
         )
-        
+
         # Software fallback version
         cpu_command = (
             f'{self.ffmpeg_base_command} -i "{input_file}" '
-            f'-c:v libx264 -c:a {self.aac_codec} -ar 48000 {self.mp4_flags} "{output_file}"'
+            f'-c:v libx264 -preset veryfast -c:a {self.aac_codec} -ar 48000 -b:a 320k {self.mp4_flags} "{output_file}"'
         )
-        
+
         self.execute_command_with_fallback(gpu_command, cpu_command, "Converting MOV video to MP4")
 
     def encode_lossless_mp4(self, title_mov_file, karaoke_mp4_file, env_mov_input, ffmpeg_filter, output_file):
@@ -1815,8 +1830,8 @@ class KaraokeFinalise:
         if self.nvenc_available and gpu_command != cpu_command:
             self.logger.debug(f"Attempting hardware-accelerated encoding: {gpu_command}")
             try:
-                result = subprocess.run(gpu_command, shell=True, capture_output=True, text=True, timeout=300)
-                
+                result = subprocess.run(gpu_command, shell=True, capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
+
                 if result.returncode == 0:
                     self.logger.info(f"✓ Hardware acceleration successful")
                     return
@@ -1829,7 +1844,7 @@ class KaraokeFinalise:
                         self.logger.warning("Empty error output detected, retrying with verbose logging...")
                         verbose_gpu_command = gpu_command.replace("-loglevel fatal", "-loglevel error")
                         try:
-                            verbose_result = subprocess.run(verbose_gpu_command, shell=True, capture_output=True, text=True, timeout=300)
+                            verbose_result = subprocess.run(verbose_gpu_command, shell=True, capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
                             self.logger.warning(f"Verbose GPU Command: {verbose_gpu_command}")
                             if verbose_result.stderr:
                                 self.logger.warning(f"FFmpeg STDERR (verbose): {verbose_result.stderr}")
@@ -1856,7 +1871,7 @@ class KaraokeFinalise:
         # Use CPU command (either as fallback or primary method)
         self.logger.debug(f"Running software encoding: {cpu_command}")
         try:
-            result = subprocess.run(cpu_command, shell=True, capture_output=True, text=True, timeout=600)
+            result = subprocess.run(cpu_command, shell=True, capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
             
             if result.returncode != 0:
                 error_msg = f"Software encoding failed with exit code {result.returncode}"

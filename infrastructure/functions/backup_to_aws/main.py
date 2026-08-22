@@ -2,14 +2,18 @@
 Backup to AWS Cloud Function.
 
 Nightly backup pipeline:
-1. Firestore export to GCS staging
+1. Firestore export to GCS staging (nightly; uploaded to S3 weekly on Sundays)
 2. BigQuery export to GCS staging (weekly/monthly schedule)
 3. GCS job files delta sync to staging
 4. Secret Manager export (encrypted with sealed-box public key) to staging
-5. Upload staging files to S3
+5. Upload staging files to S3 (Firestore export held back except Sundays)
 6. Discord alert
 
 Triggered by Cloud Scheduler at 1:00 AM ET daily.
+
+Firestore is the bulk of the cross-cloud egress. Exporting it nightly to GCS
+keeps a 1-day local restore point, while uploading to S3 only weekly keeps a
+1-week off-site RPO at ~1/7th the egress cost.
 """
 
 import datetime
@@ -59,7 +63,13 @@ def backup_to_aws(request):
     results = {}
     errors = []
 
-    logger.info(f"Starting backup for {date_str}")
+    # The Firestore export runs nightly (daily local restore point in GCS) but
+    # is only pushed off-site to S3 weekly, on Sundays — matching the BigQuery
+    # weekly cadence. This is the bulk of the cross-cloud egress, so weekly
+    # off-site keeps a 1-week off-site RPO while a 1-day local RPO is retained.
+    firestore_to_s3_today = today.weekday() == 6  # Sunday
+
+    logger.info(f"Starting backup for {date_str} (firestore->S3: {firestore_to_s3_today})")
 
     # Step 1: Firestore export (nightly)
     try:
@@ -123,11 +133,13 @@ def backup_to_aws(request):
         logger.error(f"Secrets export failed: {e}")
         errors.append(f"Secrets: {e}")
 
-    # Step 5: Upload to S3
+    # Step 5: Upload to S3. On non-Sundays, hold the Firestore export back
+    # (it stays in GCS staging as a daily local backup); it ships to S3 weekly.
     try:
         results["s3_upload"] = upload_staging_to_s3(
             staging_bucket=STAGING_BUCKET,
             s3_bucket=S3_BUCKET,
+            exclude_prefixes=[] if firestore_to_s3_today else ["firestore/"],
         )
     except Exception as e:
         logger.error(f"S3 upload failed: {e}")

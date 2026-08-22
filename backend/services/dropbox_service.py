@@ -156,6 +156,37 @@ class DropboxService:
             logger.info(f"Next brand code for {brand_prefix}: {next_code} (max existing: {max_existing})")
         return next_code
 
+    def file_exists(self, remote_path: str) -> bool:
+        """
+        Check whether a file exists at the given Dropbox path.
+
+        Args:
+            remote_path: Dropbox path (must start with /)
+
+        Returns:
+            True if a file exists at the path, False otherwise.
+        """
+        from dropbox.exceptions import ApiError
+
+        if not remote_path.startswith("/"):
+            remote_path = f"/{remote_path}"
+
+        try:
+            self.client.files_get_metadata(remote_path)
+            return True
+        except ApiError as e:
+            # Only a genuine "not found" means the file is absent. Re-raise other
+            # API errors (auth, network, rate limit) so callers don't mistake a
+            # transient failure for "missing" (e.g. the backfill uploading a dup).
+            err = e.error
+            if (
+                hasattr(err, "is_path")
+                and err.is_path()
+                and err.get_path().is_not_found()
+            ):
+                return False
+            raise
+
     def upload_file(self, local_path: str, remote_path: str) -> None:
         """
         Upload a single file to Dropbox.

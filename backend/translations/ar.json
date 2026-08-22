@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection غير صالح. يجب أن يكون واحدًا من: {valid_selections}",
     "instrumentalSelected": "تم تحديد المسار الموسيقي. بدأ إنشاء الفيديو.",
     "instrumentalSelectionError": "خطأ في تحديد المسار الموسيقي للمهمة {job_id}: {error}",
-    "downloadUrlsError": "خطأ في الحصول على روابط التنزيل: {error}"
+    "downloadUrlsError": "خطأ في الحصول على روابط التنزيل: {error}",
+    "fileNoLongerAvailable": "الملف لم يعد متاحاً"
   },
   "review": {
     "jobNotFound": "المهمة غير موجودة",
@@ -92,7 +93,10 @@
     "selectAudioError": "خطأ في تحديد الصوت للمهمة {job_id}: {error}",
     "searchAudioError": "خطأ في البحث عن الصوت: {error}",
     "searchCreatedSuccessfully": "تم إنشاء المهمة. جاري البحث عن الصوت...",
-    "autoDownloadStarted": "تم تحديد أفضل نتيجة تلقائيًا. جاري بدء التنزيل..."
+    "autoDownloadStarted": "تم تحديد أفضل نتيجة تلقائيًا. جاري بدء التنزيل...",
+    "drmUrlUnsupported": "روابط {platform} محمية بحقوق الطبع والنشر، لذا لا يمكننا تنزيلها مباشرة. حاول تنزيل الصوت باستخدام أداة خارجية أولاً، ثم قم برفع ملف الصوت هنا. يمكنك أيضاً لصق رابط YouTube، أو استخدام البحث الصوتي للعثور على هذه الأغنية.",
+    "drmUrlUnsupportedWithLink": "روابط {platform} محمية بحقوق الطبع والنشر، لذا لا يمكننا تنزيلها مباشرة. يمكنك تنزيل المقطع الصوتي باستخدام أداة مثل {downloader} ثم رفع الملف الصوتي هنا. يمكنك أيضاً لصق رابط YouTube، أو استخدام البحث الصوتي للعثور على هذه الأغنية.",
+    "drmUrlUnsupportedSearch": "روابط {platform} محمية بحقوق الطبع والنشر، لذا لا يمكننا تنزيلها مباشرة. ابحث في الويب عن \"أداة تنزيل {platform}\" للحصول على الصوت — على سبيل المثال {searchUrl} — ثم قم برفع ملف الصوت هنا. يمكنك أيضاً لصق رابط YouTube، أو استخدام البحث الصوتي للعثور على هذه الأغنية."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

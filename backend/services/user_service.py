@@ -373,6 +373,36 @@ class UserService:
             logger.exception("Error verifying magic link")
             return False, None, "An error occurred during verification"
 
+    def get_magic_link_status(self, token: str) -> str:
+        """
+        Read-only check of a magic link's status WITHOUT consuming it.
+
+        Used by the verify page on load to decide whether to show the
+        "Complete Sign-In" gate (valid) or a dead-link message (used/expired).
+        Crucially this must never mutate the token: an email link-scanner that
+        renders the verify page triggers this read, but must not burn a still-
+        valid link before the real user clicks.
+
+        Returns one of: "valid", "used", "expired", "invalid".
+        """
+        try:
+            if not token or not token.strip():
+                return "invalid"
+
+            doc = self.db.collection(MAGIC_LINKS_COLLECTION).document(token).get()
+            if not doc.exists:
+                return "invalid"
+
+            magic_link = MagicLinkToken(**doc.to_dict())
+            if magic_link.used:
+                return "used"
+            if datetime.utcnow() > magic_link.expires_at:
+                return "expired"
+            return "valid"
+        except Exception:
+            logger.exception("Error checking magic link status")
+            return "invalid"
+
     def grant_welcome_credits_if_eligible(
         self,
         email: str,

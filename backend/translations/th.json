@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection ไม่ถูกต้อง ต้องเป็นหนึ่งใน: {valid_selections}",
     "instrumentalSelected": "เลือกดนตรีบรรเลงแล้ว กำลังเริ่มสร้างวิดีโอ",
     "instrumentalSelectionError": "เกิดข้อผิดพลาดในการเลือกดนตรีบรรเลงสำหรับงาน {job_id}: {error}",
-    "downloadUrlsError": "เกิดข้อผิดพลาดในการรับ URL สำหรับดาวน์โหลด: {error}"
+    "downloadUrlsError": "เกิดข้อผิดพลาดในการรับ URL สำหรับดาวน์โหลด: {error}",
+    "fileNoLongerAvailable": "ไฟล์ไม่พร้อมใช้งานแล้ว"
   },
   "review": {
     "jobNotFound": "ไม่พบงาน",
@@ -92,7 +93,10 @@
     "selectAudioError": "เกิดข้อผิดพลาดในการเลือกเสียงสำหรับงาน {job_id}: {error}",
     "searchAudioError": "เกิดข้อผิดพลาดในการค้นหาเสียง: {error}",
     "searchCreatedSuccessfully": "สร้างงานแล้ว กำลังค้นหาเสียง...",
-    "autoDownloadStarted": "เลือกผลลัพธ์ที่ดีที่สุดโดยอัตโนมัติ กำลังเริ่มดาวน์โหลด..."
+    "autoDownloadStarted": "เลือกผลลัพธ์ที่ดีที่สุดโดยอัตโนมัติ กำลังเริ่มดาวน์โหลด...",
+    "drmUrlUnsupported": "ลิงก์ของ {platform} มีการป้องกันการคัดลอก เราจึงไม่สามารถดาวน์โหลดได้โดยตรง ลองดาวน์โหลดเสียงด้วยเครื่องมือของบุคคลที่สามก่อน แล้วจึงอัปโหลดไฟล์เสียงที่นี่ คุณยังสามารถวางลิงก์ YouTube หรือใช้ Audio Search เพื่อค้นหาเพลงนี้ได้อีกด้วย",
+    "drmUrlUnsupportedWithLink": "ลิงก์ของ {platform} มีการป้องกันการคัดลอก เราจึงไม่สามารถดาวน์โหลดได้โดยตรง คุณสามารถดาวน์โหลดเพลงโดยใช้เครื่องมืออย่าง {downloader} แล้วอัปโหลดไฟล์เสียงที่นี่ คุณยังสามารถวางลิงก์ YouTube หรือใช้ Audio Search เพื่อค้นหาเพลงนี้ได้เช่นกัน",
+    "drmUrlUnsupportedSearch": "ลิงก์ของ {platform} มีการป้องกันการคัดลอก เราจึงไม่สามารถดาวน์โหลดได้โดยตรง ลองค้นหาบนเว็บด้วยคำว่า \"{platform} downloader\" เพื่อรับไฟล์เสียง — ตัวอย่างเช่น {searchUrl} — จากนั้นอัปโหลดไฟล์เสียงที่นี่ คุณยังสามารถวางลิงก์ YouTube หรือใช้ Audio Search เพื่อค้นหาเพลงนี้ได้อีกด้วย"
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "karaoke-gen"
-version = "0.176.5"
+version = "0.196.8"
 description = "Generate karaoke videos with synchronized lyrics. Handles the entire process from downloading audio and lyrics to creating the final video with title screens."
 authors = ["Andrew Beveridge <andrew@beveridge.uk>"]
 license = "MIT"
@@ -64,6 +64,7 @@ langchain = ">=0.3.0"
 langchain-core = ">=0.3.0"
 langchain-openai = ">=0.2.0"
 langchain-anthropic = ">=0.2.0"
+anthropic = ">=0.109.0"  # direct dep: auto-correct structured outputs (output_config)
 langchain-ollama = ">=0.2.0"
 langchain-google-genai = ">=2.0.0"
 langfuse = ">=3.0.0"

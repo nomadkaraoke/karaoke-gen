@@ -260,6 +260,16 @@ class TestVMLifecycle:
         manager.start_vm("encoding-worker-blue")
         mock_compute.start.assert_not_called()
 
+    def test_is_transient_start_error_classification(self):
+        from backend.services.encoding_worker_manager import _is_transient_start_error
+        from backend.services.encoding_errors import EncodingWorkerStartError
+        assert _is_transient_start_error(
+            EncodingWorkerStartError("VM x start failed: 503 — SERVICE UNAVAILABLE", code="503")
+        )
+        assert not _is_transient_start_error(
+            EncodingWorkerStartError("VM x start failed: PERMISSION_DENIED", code="PERMISSION_DENIED")
+        )
+
     def test_stop_vm_calls_compute_stop(self, manager, mock_compute):
         mock_instance = MagicMock()
         mock_instance.status = "RUNNING"
@@ -588,22 +598,101 @@ class TestEnsureAnyRunning:
         mock_instance.status = "TERMINATED"
         mock_compute.get.return_value = mock_instance
 
-        op_503 = MagicMock()
-        op_503.error_code = "503"
-        op_503.error_message = "SERVICE UNAVAILABLE"
-        op_503.result.return_value = None
-        mock_compute.start.side_effect = [op_503, op_503]
+        def _op_503():
+            op = MagicMock()
+            op.error_code = "503"
+            op.error_message = "SERVICE UNAVAILABLE"
+            op.result.return_value = None
+            return op
+
+        # All-transient: the whole candidate set is retried a few times before
+        # giving up, so provide enough operations for every pass.
+        mock_compute.start.side_effect = [_op_503() for _ in range(20)]
 
         candidates = [
             EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
             EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
         ]
 
-        with pytest.raises(EncodingWorkerStartError) as exc_info:
-            manager.ensure_any_running(candidates)
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep:
+            with pytest.raises(EncodingWorkerStartError) as exc_info:
+                manager.ensure_any_running(candidates)
         # Should NOT be a capacity error — there were none in this scenario.
         assert not isinstance(exc_info.value, EncodingWorkerCapacityError)
-        assert mock_compute.start.call_count == 2
+        # Retried the whole 2-candidate set across multiple passes before failing.
+        assert mock_compute.start.call_count > 2
+        assert sleep.called
+
+    def test_retries_whole_set_on_all_transient_then_succeeds(self, manager, mock_db, mock_compute):
+        """A brief all-zones 503 blip: first pass fails everywhere, retry succeeds."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        def _op_503():
+            op = MagicMock(); op.error_code = "503"; op.error_message = "SERVICE UNAVAILABLE"
+            op.result.return_value = None
+            return op
+
+        # Pass 1: both candidates 503. Pass 2: primary succeeds.
+        mock_compute.start.side_effect = [_op_503(), _op_503(), _ok_op()]
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep, \
+             patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 6, 17, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+        assert result["vm_name"] == "primary"
+        assert result["fell_back"] is False
+        assert mock_compute.start.call_count == 3
+        sleep.assert_called_once()
+
+    def test_does_not_retry_whole_set_on_mixed_nontransient(self, manager, mock_db, mock_compute):
+        """If any candidate fails non-transiently (PERMISSION_DENIED), do NOT retry
+        the whole set even though the last failure was a transient 503."""
+        from backend.services.encoding_errors import EncodingWorkerStartError
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+
+        op_perm = MagicMock()
+        op_perm.error_code = "PERMISSION_DENIED"; op_perm.error_message = "denied"
+        op_perm.result.return_value = None
+        op_503 = MagicMock()
+        op_503.error_code = "503"; op_503.error_message = "SERVICE UNAVAILABLE"
+        op_503.result.return_value = None
+        # primary: PERMISSION_DENIED (non-transient); fallback: 503 (transient/last)
+        mock_compute.start.side_effect = [op_perm, op_503]
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep:
+            with pytest.raises(EncodingWorkerStartError) as exc:
+                manager.ensure_any_running(candidates)
+        assert exc.value.code == "PERMISSION_DENIED"  # non-transient surfaced
+        assert mock_compute.start.call_count == 2      # one pass only
+        sleep.assert_not_called()
+
+    def test_does_not_retry_whole_set_on_capacity(self, manager, mock_db, mock_compute):
+        """Capacity exhaustion is not spun on — it raises immediately for the park path."""
+        from backend.services.encoding_errors import EncodingWorkerCapacityError
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.side_effect = [_capacity_op(), _capacity_op()]
+        candidates = [
+            EncodingWorkerCandidate(vm_name="primary", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+        with patch("backend.services.encoding_worker_manager.time.sleep") as sleep:
+            with pytest.raises(EncodingWorkerCapacityError):
+                manager.ensure_any_running(candidates)
+        assert mock_compute.start.call_count == 2  # one pass only, no whole-set retry
+        sleep.assert_not_called()
 
     def test_prefers_capacity_error_when_mixed_failures(self, manager, mock_db, mock_compute):
         """When some candidates hit capacity and others hit generic errors, prefer raising
@@ -845,3 +934,141 @@ class TestWaitForWorkerReady:
             )
 
         assert call_count["n"] == 3
+
+
+# ---------------------------------------------------------------------------
+# capacity_state (availability awareness) + is_primary override routing
+# ---------------------------------------------------------------------------
+
+
+class TestCapacityStateFeedback:
+    """ensure_any_running records/clears per-(type,zone) stockout state."""
+
+    def test_records_stockout_on_capacity_error(self, manager, mock_db, mock_compute):
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        # Primary c4d hits capacity; fallback n2 succeeds.
+        mock_compute.start.side_effect = [_capacity_op(), _ok_op()]
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-n2f", zone="us-central1-f",
+                                    ip="10.0.0.2", machine_type="n2-highcpu-32"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            manager.ensure_any_running(candidates)
+
+        doc_ref = mock_db.collection.return_value.document.return_value
+        # A merge-set recorded the c4d stockout under its type@zone key.
+        set_calls = [c for c in doc_ref.set.call_args_list
+                     if "capacity_state" in (c.args[0] if c.args else {})]
+        recorded = {}
+        for c in set_calls:
+            recorded.update(c.args[0]["capacity_state"])
+        assert recorded.get("c4d-highcpu-32@us-central1-c") == "2026-05-05T09:00:00+00:00"
+
+    def test_clears_stockout_for_type_on_clean_start(self, manager, mock_db, mock_compute):
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.return_value = _ok_op()
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            manager.ensure_any_running(candidates)
+
+        doc_ref = mock_db.collection.return_value.document.return_value
+        cleared = {}
+        for c in doc_ref.set.call_args_list:
+            payload = c.args[0] if c.args else {}
+            if "capacity_state" in payload:
+                cleared.update(payload["capacity_state"])
+        assert cleared.get("c4d-highcpu-32@us-central1-c") is None
+
+    def test_stockout_write_failure_does_not_break_start(self, manager, mock_db, mock_compute):
+        """A Firestore error while recording a stockout must not abort failover."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.side_effect = [_capacity_op(), _ok_op()]
+
+        doc_ref = mock_db.collection.return_value.document.return_value
+        doc_ref.set.side_effect = RuntimeError("firestore down")
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-n2f", zone="us-central1-f",
+                                    ip="10.0.0.2", machine_type="n2-highcpu-32"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["vm_name"] == "encoding-worker-fallback-n2f"
+        assert result["fell_back"] is True
+
+    def test_is_primary_flag_routes_override_regardless_of_position(self, manager, mock_db, mock_compute):
+        """A fallback ranked FIRST (is_primary=False) must still set active_override.
+
+        When the preference logic demotes a stocked-out primary, the fallback can be
+        candidate index 0 — the override must key off is_primary, not position.
+        """
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.return_value = _ok_op()
+
+        # Fallback is first (primary demoted), primary flagged but ranked second.
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-c2df", zone="us-central1-f",
+                                    ip="10.0.0.9", machine_type="c2d-highcpu-32", is_primary=False),
+            EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["vm_name"] == "encoding-worker-fallback-c2df"
+        assert result["fell_back"] is True
+        doc_ref = mock_db.collection.return_value.document.return_value
+        override_calls = [c for c in doc_ref.update.call_args_list
+                          if "active_override_vm" in c.args[0]]
+        assert override_calls, "Fallback at index 0 must still set the override"
+        assert override_calls[0].args[0]["active_override_vm"] == "encoding-worker-fallback-c2df"
+
+    def test_legacy_candidates_without_flag_use_position(self, manager, mock_db, mock_compute):
+        """No is_primary flag anywhere → first candidate is treated as primary (legacy)."""
+        mock_instance = MagicMock()
+        mock_instance.status = "TERMINATED"
+        mock_compute.get.return_value = mock_instance
+        mock_compute.start.return_value = _ok_op()
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-blue", zone="us-central1-c", ip="10.0.0.1"),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fb-a", zone="us-central1-a", ip="10.0.0.2"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 5, 5, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["fell_back"] is False
+        assert result["vm_name"] == "encoding-worker-blue"

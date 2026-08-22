@@ -54,8 +54,14 @@ jobs:
 
           BUCKET = os.environ["BUCKET"]
           # (label, prefix, max_age_hours)
+          # NOTE: Firestore and BigQuery export to GCS staging nightly but are
+          # only uploaded to S3 *weekly* (Sundays) to cut cross-cloud egress —
+          # see backup_to_aws/main.py (firestore_to_s3_today). This monitor only
+          # sees the S3 (off-site) copy, so their limits must allow a full week
+          # plus slack (192h ≈ 8 days), NOT the 36h nightly cadence. GCS job
+          # files and secrets DO upload to S3 nightly, so they stay at 36h.
           TARGETS = [
-              ("Firestore",         "firestore/",              36),
+              ("Firestore",         "firestore/",              192),
               ("GCS job files",     "gcs/job-files/",          36),
               ("Encrypted secrets", "secrets/",                36),
               ("BigQuery weekly",   "bigquery/daily-refresh/", 192),

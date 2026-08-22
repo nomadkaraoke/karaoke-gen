@@ -29,6 +29,7 @@ Environment variables:
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone, timedelta
 
 import functions_framework
@@ -84,14 +85,37 @@ def get_vm_ip(vm_name, zone=ZONE):
     return None
 
 
-def check_active_jobs(vm_ip):
-    try:
-        resp = requests.get(f"http://{vm_ip}:{ENCODING_WORKER_PORT}/health", timeout=5)
-        if resp.status_code == 200:
-            return resp.json().get("active_jobs", 0)
-    except Exception:
-        pass
-    return 0
+def check_active_jobs(vm_ip, attempts=3):
+    """Return the worker's active_jobs count, or None if it can't be confirmed.
+
+    Returns None (NOT 0) on any failure — connection error, timeout, non-200,
+    or unparseable body — so the caller can fail SAFE. A busy encoder running a
+    4K render pins all 32 cores and shares uvicorn with the encode subprocess,
+    so /health can miss the 5s window even though the VM is hard at work.
+    Treating that unreachable/slow /health as "0 active jobs" previously let the
+    idle check stop a VM mid-render, orphaning the in-memory job and surfacing
+    as "lost contact with worker ... not found" (incident 2026-06-15).
+
+    A genuinely idle VM answers /health quickly, so the retry loop is cheap and
+    a truly-idle VM is still reclaimed; only ambiguous (busy/unreachable) VMs
+    are kept alive for this cycle.
+    """
+    last_err = None
+    for attempt in range(attempts):
+        try:
+            resp = requests.get(f"http://{vm_ip}:{ENCODING_WORKER_PORT}/health", timeout=5)
+            if resp.status_code == 200:
+                return int(resp.json().get("active_jobs", 0))
+            last_err = f"HTTP {resp.status_code}"
+        except Exception as e:  # noqa: BLE001 - any failure means "unconfirmed"
+            last_err = f"{type(e).__name__}: {e}"
+        if attempt < attempts - 1:
+            time.sleep(2)
+    logger.warning(
+        f"Could not confirm active_jobs for {vm_ip} after {attempts} attempts "
+        f"({last_err}); treating as unknown (assume busy)"
+    )
+    return None
 
 
 def stop_vm(vm_name, zone=ZONE):
@@ -192,16 +216,31 @@ def idle_shutdown(request):
             results[vm_name] = f"already_{status.lower()}"
             continue
 
+        # Fail SAFE: never stop a VM unless /health gives us a *confirmed*
+        # active_jobs == 0. If we can't reach the VM or confirm its job count,
+        # keep it alive this cycle (the function reruns every 5 min, so a
+        # genuinely idle VM is reclaimed once /health responds). This prevents
+        # stopping a VM mid-render — the cause of "lost contact with worker"
+        # (incident 2026-06-15).
         vm_ip = get_vm_ip(vm_name, vm_zone)
-        if vm_ip:
-            active_jobs = check_active_jobs(vm_ip)
-            if active_jobs > 0:
-                results[vm_name] = f"active_jobs={active_jobs}"
-                logger.info(f"{vm_name} has {active_jobs} active jobs, keeping alive")
-                continue
+        if not vm_ip:
+            results[vm_name] = "no_ip_kept_alive"
+            logger.warning(f"{vm_name} is RUNNING but has no reachable IP; keeping alive (fail-safe)")
+            continue
 
-        # Only the currently-routed VM (primary, or active_override fallback)
-        # gets the keep-alive treatment. Other VMs stop on idle.
+        active_jobs = check_active_jobs(vm_ip)
+        if active_jobs is None:
+            results[vm_name] = "health_unknown_kept_alive"
+            logger.warning(f"{vm_name} /health unconfirmed; keeping alive (fail-safe)")
+            continue
+        if active_jobs > 0:
+            results[vm_name] = f"active_jobs={active_jobs}"
+            logger.info(f"{vm_name} has {active_jobs} active jobs, keeping alive")
+            continue
+
+        # active_jobs confirmed 0. Only the currently-routed VM (primary, or
+        # active_override fallback) gets the extra recent-activity keep-alive.
+        # Other VMs stop on idle.
         if vm_name == active_vm and has_recent_activity:
             results[vm_name] = "active_session"
             logger.info(f"{vm_name} (active) kept alive due to recent activity")

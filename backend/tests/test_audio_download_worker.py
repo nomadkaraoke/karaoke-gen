@@ -14,8 +14,39 @@ from backend.workers.audio_download_worker import (
     process_audio_download,
     _extract_gcs_path,
     _download_audio,
+    DOWNLOAD_WAIT_TIMEOUT_SECONDS,
 )
 from backend.services.audio_search_service import DownloadError
+
+
+def _cloud_run_task_timeout_seconds() -> int:
+    """Parse the audio-download-job task timeout from the Pulumi module."""
+    import pathlib
+    import re
+
+    src = (
+        pathlib.Path(__file__).resolve().parents[2]
+        / "infrastructure" / "modules" / "cloud_run.py"
+    ).read_text()
+    # The audio-download job block sets timeout="NNNNs" right before max_retries.
+    m = re.search(r'timeout="(\d+)s",\s*\n\s*max_retries=2,\s*\n\s*vpc_access=', src)
+    assert m, "could not locate audio-download-job timeout in cloud_run.py"
+    return int(m.group(1))
+
+
+def test_download_wait_timeout_below_cloud_run_task_timeout():
+    """The in-worker download wait MUST expire before Cloud Run SIGKILLs the task.
+
+    If they are equal (the old 600s/600s), the SIGKILL bypasses graceful
+    failure handling and leaves an in-flight auto-retry racing manual retries
+    (job 1cd29294). Keep meaningful headroom for the final upload + transition.
+    """
+    task_timeout = _cloud_run_task_timeout_seconds()
+    assert DOWNLOAD_WAIT_TIMEOUT_SECONDS < task_timeout, (
+        f"download wait {DOWNLOAD_WAIT_TIMEOUT_SECONDS}s must be < Cloud Run "
+        f"task timeout {task_timeout}s"
+    )
+    assert task_timeout - DOWNLOAD_WAIT_TIMEOUT_SECONDS >= 60
 
 
 def _make_job(
@@ -124,6 +155,11 @@ class TestProcessAudioDownload:
                 'input_media_gcs_path': "uploads/test-job-123/audio/song.mp3",
                 'filename': "song.mp3",
             })
+            # Original audio recorded in file_urls so it shows in the admin files
+            # manifest (and can be staged into the Dropbox folder) for URL/search jobs.
+            mock_jm.update_file_url.assert_any_call(
+                "test-job-123", 'input', 'audio', "uploads/test-job-123/audio/song.mp3"
+            )
             mock_jm.transition_to_state.assert_called_once()
             mock_ws.trigger_audio_worker.assert_awaited_once_with("test-job-123")
             mock_ws.trigger_lyrics_worker.assert_awaited_once_with("test-job-123")
@@ -189,6 +225,83 @@ class TestProcessAudioDownload:
             mock_jm.fail_job.assert_not_called()
             mock_ws.trigger_audio_worker.assert_not_awaited()
             mock_ws.trigger_lyrics_worker.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_run_completing_mid_download_is_idempotent(self):
+        """A second run finishing while we download must not fail the job.
+
+        Regression for job 1cd29294: a manual /retry raced this task's Cloud
+        Run auto-retry. The loser downloaded, then tried DOWNLOADING ->
+        DOWNLOADING, which raised InvalidStateTransitionError, and the generic
+        except marked a job the winner had already advanced as FAILED. The
+        loser must instead detect the advance and return success without
+        transitioning, failing, or re-triggering downstream workers.
+        """
+        entry_job = _make_job(status=JobStatus.DOWNLOADING_AUDIO)
+        # By the time our download finishes, a concurrent run advanced the job.
+        advanced_job = _make_job(status=JobStatus.DOWNLOADING)
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory:
+
+            mock_jm = MagicMock()
+            # Entry sees DOWNLOADING_AUDIO; the pre-transition re-read sees the
+            # concurrent run's advance to DOWNLOADING.
+            mock_jm.get_job.side_effect = [entry_job, advanced_job]
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+
+            mock_ws = AsyncMock()
+            mock_ws_factory.return_value = mock_ws
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            mock_dl.assert_awaited_once()  # we did download before detecting the race
+            mock_jm.transition_to_state.assert_not_called()
+            mock_jm.fail_job.assert_not_called()
+            mock_ws.trigger_audio_worker.assert_not_awaited()
+            mock_ws.trigger_lyrics_worker.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_invalid_transition_at_commit_treated_as_success_if_advanced(self):
+        """A race that slips past the guard still must not fail the job.
+
+        If the job advances between the pre-transition re-read and the
+        transition itself, transition_to_state returns False (raise_on_invalid
+        is off); we re-read, see the advance, and return success.
+        """
+        entry_job = _make_job(status=JobStatus.DOWNLOADING_AUDIO)
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory:
+
+            mock_jm = MagicMock()
+            # Entry + pre-transition guard both see DOWNLOADING_AUDIO (guard
+            # passes); the transition fails; the post-failure re-read sees the
+            # concurrent advance.
+            mock_jm.get_job.side_effect = [
+                entry_job,
+                _make_job(status=JobStatus.DOWNLOADING_AUDIO),
+                _make_job(status=JobStatus.DOWNLOADING),
+            ]
+            mock_jm.transition_to_state.return_value = False
+            mock_jm_cls.return_value = mock_jm
+
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+            mock_ws = AsyncMock()
+            mock_ws_factory.return_value = mock_ws
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            mock_jm.fail_job.assert_not_called()
+            mock_ws.trigger_audio_worker.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_uses_state_data_selection_when_available(self):

@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Ongeldige instrumental_selection. Moet een van de volgende zijn: {valid_selections}",
     "instrumentalSelected": "Instrumental geselecteerd. Videogeneratie is gestart.",
     "instrumentalSelectionError": "Fout bij het selecteren van instrumental voor taak {job_id}: {error}",
-    "downloadUrlsError": "Fout bij het ophalen van download-URL's: {error}"
+    "downloadUrlsError": "Fout bij het ophalen van download-URL's: {error}",
+    "fileNoLongerAvailable": "Bestand niet meer beschikbaar"
   },
   "review": {
     "jobNotFound": "Taak niet gevonden",
@@ -92,7 +93,10 @@
     "selectAudioError": "Fout bij het selecteren van audio voor taak {job_id}: {error}",
     "searchAudioError": "Fout bij het zoeken naar audio: {error}",
     "searchCreatedSuccessfully": "Taak aangemaakt. Zoeken naar audio...",
-    "autoDownloadStarted": "Beste resultaat automatisch geselecteerd. Downloaden wordt gestart..."
+    "autoDownloadStarted": "Beste resultaat automatisch geselecteerd. Downloaden wordt gestart...",
+    "drmUrlUnsupported": "{platform}-links zijn kopieerbeveiligd, dus we kunnen ze niet direct downloaden. Probeer de audio eerst te downloaden met een externe tool en upload het audiobestand vervolgens hier. Je kunt ook een YouTube-link plakken, of Audio Search gebruiken om dit nummer te vinden.",
+    "drmUrlUnsupportedWithLink": "{platform}-links zijn kopieerbeveiligd, dus we kunnen ze niet direct downloaden. Je kunt het nummer downloaden met een tool zoals {downloader} en vervolgens het audiobestand hier uploaden. Je kunt ook een YouTube-link plakken, of Audio Search gebruiken om dit nummer te vinden.",
+    "drmUrlUnsupportedSearch": "{platform}-links zijn kopieerbeveiligd, dus we kunnen ze niet direct downloaden. Zoek op het web naar een \"{platform} downloader\" om de audio te verkrijgen — bijvoorbeeld {searchUrl} — en upload het audiobestand vervolgens hier. Je kunt ook een YouTube-link plakken, of Audio Search gebruiken om dit nummer te vinden."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

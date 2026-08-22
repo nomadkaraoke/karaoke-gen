@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "अमान्य instrumental_selection। इनमें से एक होना चाहिए: {valid_selections}",
     "instrumentalSelected": "इंस्ट्रुमेंटल चुना गया। वीडियो जनरेशन शुरू हो गया है।",
     "instrumentalSelectionError": "जॉब {job_id} के लिए इंस्ट्रुमेंटल चुनने में त्रुटि: {error}",
-    "downloadUrlsError": "डाउनलोड URLs प्राप्त करने में त्रुटि: {error}"
+    "downloadUrlsError": "डाउनलोड URLs प्राप्त करने में त्रुटि: {error}",
+    "fileNoLongerAvailable": "फ़ाइल अब उपलब्ध नहीं है"
   },
   "review": {
     "jobNotFound": "जॉब नहीं मिली",
@@ -92,7 +93,10 @@
     "selectAudioError": "जॉब {job_id} के लिए ऑडियो चुनने में त्रुटि: {error}",
     "searchAudioError": "ऑडियो खोजने में त्रुटि: {error}",
     "searchCreatedSuccessfully": "जॉब बन गई। ऑडियो खोजा जा रहा है...",
-    "autoDownloadStarted": "सबसे अच्छा रिज़ल्ट अपने आप चुन लिया गया। डाउनलोड शुरू हो रहा है..."
+    "autoDownloadStarted": "सबसे अच्छा रिज़ल्ट अपने आप चुन लिया गया। डाउनलोड शुरू हो रहा है...",
+    "drmUrlUnsupported": "{platform} लिंक्स कॉपी-प्रोटेक्टेड हैं, इसलिए हम उन्हें सीधे डाउनलोड नहीं कर सकते। पहले किसी थर्ड-पार्टी टूल से ऑडियो डाउनलोड करने की कोशिश करो, फिर ऑडियो फ़ाइल को यहाँ अपलोड करो। तुम YouTube लिंक भी पेस्ट कर सकते हो, या इस गाने को खोजने के लिए Audio Search का उपयोग कर सकते हो।",
+    "drmUrlUnsupportedWithLink": "{platform} लिंक कॉपी-प्रोटेक्टेड होते हैं, इसलिए हम उन्हें सीधे डाउनलोड नहीं कर सकते। तुम {downloader} जैसे टूल का उपयोग करके ट्रैक डाउनलोड कर सकते हो और फिर ऑडियो फ़ाइल को यहाँ अपलोड कर सकते हो। तुम YouTube लिंक भी पेस्ट कर सकते हो, या इस गाने को खोजने के लिए Audio Search का उपयोग कर सकते हो।",
+    "drmUrlUnsupportedSearch": "{platform} लिंक्स कॉपी-प्रोटेक्टेड होते हैं, इसलिए हम उन्हें सीधे डाउनलोड नहीं कर सकते। ऑडियो पाने के लिए वेब पर \"{platform} downloader\" सर्च करो — उदाहरण के लिए {searchUrl} — फिर ऑडियो फ़ाइल को यहाँ अपलोड करो। तुम YouTube लिंक भी पेस्ट कर सकते हो, या इस गाने को खोजने के लिए Audio Search का उपयोग कर सकते हो।"
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection tidak valid. Harus salah satu dari: {valid_selections}",
     "instrumentalSelected": "Instrumental dipilih. Pembuatan video dimulai.",
     "instrumentalSelectionError": "Kesalahan saat memilih instrumental untuk tugas {job_id}: {error}",
-    "downloadUrlsError": "Kesalahan saat mendapatkan URL unduhan: {error}"
+    "downloadUrlsError": "Kesalahan saat mendapatkan URL unduhan: {error}",
+    "fileNoLongerAvailable": "File sudah tidak tersedia"
   },
   "review": {
     "jobNotFound": "Tugas tidak ditemukan",
@@ -92,7 +93,10 @@
     "selectAudioError": "Kesalahan saat memilih audio untuk tugas {job_id}: {error}",
     "searchAudioError": "Kesalahan saat mencari audio: {error}",
     "searchCreatedSuccessfully": "Tugas dibuat. Mencari audio...",
-    "autoDownloadStarted": "Hasil terbaik dipilih secara otomatis. Unduhan dimulai..."
+    "autoDownloadStarted": "Hasil terbaik dipilih secara otomatis. Unduhan dimulai...",
+    "drmUrlUnsupported": "Tautan {platform} dilindungi hak cipta, jadi kami tidak dapat mengunduhnya secara langsung. Coba unduh audionya dengan alat pihak ketiga terlebih dahulu, lalu unggah file audionya di sini. Anda juga dapat menempelkan tautan YouTube, atau menggunakan Pencarian Audio untuk menemukan lagu ini.",
+    "drmUrlUnsupportedWithLink": "Tautan {platform} dilindungi hak cipta, sehingga kami tidak dapat mengunduhnya secara langsung. Anda dapat mengunduh lagu tersebut menggunakan alat seperti {downloader} lalu mengunggah file audionya di sini. Anda juga dapat menempelkan tautan YouTube, atau menggunakan Pencarian Audio untuk menemukan lagu ini.",
+    "drmUrlUnsupportedSearch": "Tautan {platform} dilindungi hak cipta, jadi kami tidak bisa mengunduhnya secara langsung. Cari \"downloader {platform}\" di internet untuk mendapatkan audionya — misalnya {searchUrl} — lalu unggah file audio di sini. Anda juga bisa menempelkan tautan YouTube, atau menggunakan Pencarian Audio untuk menemukan lagu ini."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

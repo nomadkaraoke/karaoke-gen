@@ -8,6 +8,8 @@ Creates:
 - Cloud Scheduler to rebuild xref daily (after mirror + KN sync complete)
 """
 
+from pathlib import Path
+
 import pulumi
 import pulumi_gcp as gcp
 from pulumi_gcp import (
@@ -72,6 +74,17 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
     )
     resources["source_bucket"] = source_bucket
 
+    # Content-hashed source archive so `pulumi up` redeploys the function on code
+    # changes (a static object name never triggered a redeploy).
+    source_dir = Path(__file__).parent.parent / "functions" / "divebar_lookup"
+    source_archive = storage.BucketObject(
+        "divebar-lookup-source",
+        bucket=source_bucket.name,
+        name="divebar-lookup-source.zip",
+        source=pulumi.FileArchive(str(source_dir)),
+    )
+    resources["source_archive"] = source_archive
+
     # ==================== BigQuery: Cross-Reference Table ====================
 
     xref_table = bigquery.Table(
@@ -103,7 +116,8 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
             source=cloudfunctionsv2.FunctionBuildConfigSourceArgs(
                 storage_source=cloudfunctionsv2.FunctionBuildConfigSourceStorageSourceArgs(
                     bucket=source_bucket.name,
-                    object="divebar-lookup-source.zip",
+                    object=source_archive.name,
+                    generation=source_archive.generation,
                 ),
             ),
         ),
@@ -115,10 +129,26 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
             service_account_email=sa.email,
             environment_variables={
                 "GCP_PROJECT_ID": PROJECT_ID,
+                # Region the divebar scheduler jobs live in — the `refresh`
+                # action builds job paths from it to run them on demand.
+                "GCP_REGION": REGION,
+                # Secret holding the `refresh` bearer token. Read at runtime
+                # (not injected as a secret env var) so the function deploys
+                # cleanly before the secret has a version — it just returns 403
+                # until one is added. Avoids a deploy-ordering gotcha.
+                "DIVEBAR_REFRESH_SECRET_ID": all_secrets["divebar-refresh-token"].secret_id,
             },
         ),
     )
     resources["function"] = function
+
+    # Allow the function SA to read the refresh-token secret at runtime.
+    resources["refresh_token_accessor"] = gcp.secretmanager.SecretIamMember(
+        "divebar-lookup-refresh-token-accessor",
+        secret_id=all_secrets["divebar-refresh-token"].secret_id,
+        role="roles/secretmanager.secretAccessor",
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
 
     # ==================== IAM: Allow unauthenticated access ====================
     # The KJ Controller calls this from a LAN device without GCP credentials.
@@ -187,6 +217,33 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
             min_backoff_duration="60s",
             max_backoff_duration="300s",
         ),
+    )
+
+    # ==================== IAM: on-demand scheduler-job runner ====================
+    # The `refresh` action forces the existing divebar scheduler jobs
+    # (mirror index, file-sync VM start, xref rebuild) to run immediately,
+    # reusing their own OIDC identities and targets. The function SA therefore
+    # only needs permission to *run* those jobs — not to invoke the mirror
+    # function or start the VM directly. Least-privilege custom role rather than
+    # the broad roles/cloudscheduler.admin.
+
+    scheduler_runner_role = gcp.projects.IAMCustomRole(
+        "divebar-scheduler-runner-role",
+        role_id="divebarSchedulerRunner",
+        title="Divebar Scheduler Job Runner",
+        description="Run (force-trigger) Divebar Cloud Scheduler jobs on demand",
+        permissions=[
+            "cloudscheduler.jobs.run",
+            "cloudscheduler.jobs.get",
+        ],
+    )
+    resources["scheduler_runner_role"] = scheduler_runner_role
+
+    resources["scheduler_runner_binding"] = gcp.projects.IAMMember(
+        "divebar-lookup-scheduler-runner",
+        project=PROJECT_ID,
+        role=scheduler_runner_role.id,
+        member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
     return resources

@@ -239,7 +239,10 @@
     "loadingJobs": "Memuatkan kerja...",
     "noJobsMatchFilters": "Tiada kerja yang sepadan dengan penapis anda.",
     "noJobsYet": "Tiada kerja lagi. Cipta satu untuk bermula!",
-    "referrals": "Rujukan"
+    "referrals": "Rujukan",
+    "bulkMode": "Pukal",
+    "singleMode": "Tunggal",
+    "submitModeToggle": "Penyerahan tunggal atau pukal"
   },
   "auth": {
     "noVerificationToken": "Tiada token pengesahan diberikan",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Kami tidak dapat mencari pautan tersebut",
     "resendSuccessBody": "Kami telah menghantar pautan log masuk baharu ke {maskedEmail}. Ia sah selama 24 jam seterusnya.",
     "resendSuccessTitle": "Semak e-mel anda",
-    "resending": "Menghantar..."
+    "resending": "Menghantar...",
+    "confirmBody": "Untuk keselamatan anda, klik butang di bawah untuk melengkapkan log masuk. Langkah tambahan ini menghalang pengimbas e-mel automatik daripada menggunakan pautan anda sebelum anda berbuat demikian.",
+    "confirmButton": "Lengkapkan Log Masuk",
+    "confirmTitle": "Lengkapkan log masuk anda"
   },
   "payment": {
     "title": "Pembayaran Berjaya!",
@@ -372,7 +378,10 @@
     "backend": "Bahagian Belakang",
     "encoder": "Pengekod",
     "flacfetch": "Flacfetch",
-    "separator": "Pemisah"
+    "separator": "Pemisah",
+    "fallbackBadge": "Sandaran",
+    "fallbackNote": "Kapasiti utama tidak tersedia — dihalakan ke jenis sandaran.",
+    "liveWorker": "Pekerja aktif"
   },
   "credits": {
     "title": "Beli Lebih Banyak Kredit",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Tampal pautan",
     "urlSupportedSitesHint": "Berfungsi dengan YouTube, Facebook, SoundCloud, TikTok, Vimeo dan beratus-ratus laman web lain.",
     "urlSupportedSitesLink": "Lihat semua laman web yang disokong",
-    "useThisUrl": "Gunakan URL Ini"
+    "useThisUrl": "Gunakan URL Ini",
+    "matchCorrectedTo": "Dibetulkan kepada {value} — anda menaip “{typed}”",
+    "matchDidYouMean": "Maksud anda?",
+    "matchKeepMine": "kekalkan apa yang saya taip",
+    "matchTidiedTo": "Dikemaskan kepada {value}",
+    "matchUndo": "Buat asal",
+    "matchChecking": "Menyemak butiran lagu…",
+    "matchUseCorrection": "gunakan pembetulan",
+    "matchUseTidied": "gunakan versi yang dikemaskan",
+    "matchUsingTyped": "Menggunakan apa yang anda taip: {value}",
+    "checkingUrl": "Menyemak…",
+    "submitNetworkError": "Ralat rangkaian — sila semak sambungan anda dan cuba lagi.",
+    "submitError": "Sesuatu yang tidak kena berlaku. Sila cuba lagi."
   },
   "jobStatus": {
     "settingUp": "Menyediakan",
@@ -576,7 +597,9 @@
     "correcting": "Membetulkan",
     "lyricsDone": "Lirik selesai",
     "lyrics": "Lirik",
-    "confirmDurationCost": "Sahkan kos"
+    "confirmDurationCost": "Sahkan kos",
+    "findingAudioSources": "Mencari sumber audio (mencuba semula)",
+    "waitingForCapacity": "Menunggu pelayan pengekodan (mencuba semula)"
   },
   "jobCard": {
     "actionNeeded": "Tindakan diperlukan",
@@ -588,7 +611,9 @@
     "autoSelect": "Akan pilih automatik",
     "willAutoSelectFirst": "Akan pilih automatik yang pertama",
     "noOutputsAvailable": "Tiada output tersedia lagi",
-    "confirmCost": "Sahkan Kos"
+    "confirmCost": "Sahkan Kos",
+    "makingPublicInProgress": "Menjadikan trek ini awam — merender semula dengan penjenamaan lalai dan menerbitkan semula. Proses ini biasanya mengambil masa 15–30 minit.",
+    "waitingForEncodingServer": "(menunggu ketersediaan pelayan pengekodan)"
   },
   "jobActions": {
     "delete": "Padam",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Tajuk Lagu",
-    "artist": "Artis"
+    "artist": "Artis",
+    "loading": "Memuatkan pratonton skrin tajuk"
   },
   "editTrack": {
     "title": "Edit Trek Selesai",
@@ -739,7 +765,22 @@
     "views": "{count} tontonan",
     "moreVersions": "+{count} lagi",
     "select": "Pilih",
-    "creditCost": "{credits} kredit"
+    "creditCost": "{credits} kredit",
+    "chooseFile": "Pilih fail audio (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Kami tidak menemui sebarang sumber audio. Cuba sunting artis atau tajuk di atas dan cari semula, atau gunakan audio anda sendiri melalui URL atau muat naik fail.",
+    "pasteUrl": "Tampal URL",
+    "researchFailed": "Carian gagal. Sila cuba lagi.",
+    "searchAgain": "Cari semula",
+    "selectFailed": "Gagal memilih audio",
+    "uploadFailed": "Muat naik gagal. Sila cuba lagi.",
+    "urlFailed": "Tidak dapat menggunakan URL tersebut. Cuba sumber lain.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Gunakan fail ini",
+    "useThisUrl": "Gunakan URL ini",
+    "artistLabel": "Artis",
+    "loading": "Memuatkan...",
+    "titleLabel": "Tajuk",
+    "uploadFileAction": "Muat naik fail"
   },
   "audioEditor": {
     "loading": "Memuatkan editor audio...",
@@ -776,7 +817,17 @@
     "undoFailed": "Gagal buat asal",
     "redoFailed": "Gagal buat semula",
     "restoreFailed": "Gagal memulihkan — beberapa suntingan mungkin tidak digunakan",
-    "submitFailed": "Gagal menghantar"
+    "submitFailed": "Gagal menghantar",
+    "fadeIn": "Pudar Masuk",
+    "fadeInSelection": "Pudar masuk pada bahagian yang dipilih",
+    "fadeOut": "Pudar Keluar",
+    "fadeOutSelection": "Pudar keluar pada bahagian yang dipilih",
+    "fadeInDisabledHint": "Untuk fade in, pilih bahagian yang bermula tepat pada permulaan trek",
+    "fadeOutDisabledHint": "Untuk fade out, pilih bahagian yang berakhir tepat pada penghujung trek",
+    "trimEndDisabledHint": "Untuk memotong bahagian akhir, pilih bahagian yang berakhir tepat pada penghujung trek",
+    "trimEndSelection": "Buang semua bahagian selepas pilihan",
+    "trimStartDisabledHint": "Untuk memotong bahagian awal, pilih bahagian yang bermula tepat pada permulaan trek",
+    "trimStartSelection": "Buang semua bahagian sebelum pilihan"
   },
   "audioEditRestore": {
     "title": "Sesi Suntingan Audio Disimpan",
@@ -803,7 +854,7 @@
       "acceptAll": "Terima Semua",
       "revertAll": "Kembalikan Semua",
       "undoAll": "Buat Asal Semua",
-      "resetAllChanges": "Tetapkan semula semua perubahan kembali kepada lirik asal yang dibetulkan AI",
+      "resetAllChanges": "Tetapkan semula semua perubahan kepada lirik asal yang telah dibetulkan",
       "undo": "Buat Asal",
       "redo": "Buat Semula",
       "findReplace": "Cari/Ganti",
@@ -816,7 +867,11 @@
       "playback": "Main Balik",
       "audioLoadError": "Tidak dapat memuatkan audio",
       "audioStillLoading": "Audio masih dimuatkan...",
-      "loadingAudio": "Memuatkan audio..."
+      "loadingAudio": "Memuatkan audio...",
+      "autoCorrect": "Pembetulan automatik",
+      "autoCorrectDesc": "Bandingkan transkripsi dengan lirik rujukan dan gunakan pembetulan peringkat perkataan untuk anda. Perkataan yang dibetulkan ditunjukkan dalam warna ungu.",
+      "autoCorrectedCount": "Dibetulkan secara automatik · {count}",
+      "autoCorrectedDesc": "Kami telah melaksanakan {count, plural, =1 {# pembetulan automatik} other {# pembetulan automatik}} (ditunjukkan dalam warna ungu). Klik untuk melihat butiran dan buat asal mana-mana yang anda tidak bersetuju."
     },
     "guidance": {
       "showTips": "Tunjukkan petua",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Perkataan yang diserlahkan oren adalah jurang — bahagian yang tidak dapat dipadankan dengan lirik rujukan dan mungkin mengandungi ralat (cth. perkataan salah dengar yang berbunyi serupa).",
       "useNAndP": "Gunakan N dan P untuk melompat antara jurang. Untuk setiap satu, klik main di sebelah baris dan bandingkan apa yang anda dengar dengan lirik rujukan di sebelah kanan, kemudian klik perkataan untuk mengedit atau memadamnya.",
       "watchOutForPhantomWords": "Berhati-hati dengan perkataan hantu seperti \"and\" pada permulaan atau akhir baris — transkripsi sering menambah ini.",
-      "tryTimelineView": "Cuba paparan Garis Masa untuk mengesan sebarang perkataan yang luar biasa panjang (10+ saat), yang biasanya menunjukkan masalah pemasaan.",
+      "tryTimelineView": "Perkataan lebih daripada 2s dan jurang lebih daripada 2s ditandakan dengan tempoh ambar — semak untuk masalah pemasaan. Tukar kepada Lanjutan untuk melihat setiap baris diregangkan menjadi garis masa.",
       "watchFullTutorial": "Tonton tutorial penuh",
       "correctionHandlers": "Pengendali Pembetulan",
       "anchorSequences": "Jujukan Sauh",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Jurang Tidak Dibetulkan",
       "uncorrectedGapsDesc": "Bahagian yang mungkin memerlukan semakan manual",
       "wordsUncorrected": "Perkataan Tidak Dibetulkan",
-      "numberOfGaps": "Bilangan Jurang"
+      "numberOfGaps": "Bilangan Jurang",
+      "autoCorrectTip": "{count, plural, =1 {# perkataan telah dibetulkan secara automatik} other {# perkataan telah dibetulkan secara automatik}} untuk anda (ditunjukkan dalam warna ungu, dengan perkataan asal di atas). Mainkan setiap baris yang dibetulkan dan pastikan perkataan masih selari — terutamanya yang digariskan dengan warna ambar, di mana pemasaan telah dianggarkan dan mungkin perlu diselaraskan.",
+      "autoCorrected": "Dibetulkan secara automatik",
+      "timingEstimated": "Pemasaan dianggarkan"
     },
     "transcription": {
       "syncedLyrics": "Lirik Disegerakkan",
@@ -854,7 +912,13 @@
       "text": "Teks",
       "timeline": "Garis Masa",
       "deleteSegment": "Padam segmen",
-      "playSegment": "Main segmen"
+      "playSegment": "Main segmen",
+      "aiTooltipEstimated": "Dibetulkan secara automatik oleh sistem kami. Pemasaan di sini telah dianggarkan, jadi mainkan baris ini dan selaraskan pemasaan perkataan jika perlu.",
+      "aiTooltipReplaced": "Dibetulkan secara automatik oleh sistem kami daripada \"{original}\". Mainkan baris ini untuk mengesahkan perkataan masih selari.",
+      "aiTooltipReplacedEstimated": "Dibetulkan secara automatik oleh sistem kami daripada \"{original}\". Pemasaan telah dianggarkan, jadi mainkan baris ini dan selaraskan pemasaan perkataan jika perlu.",
+      "longGapWarning": "Jurang {seconds}s sebelum perkataan seterusnya — selalunya perkataan awal yang tersesat (cth. \"dan\" bayangan). Klik untuk main dari sini.",
+      "longWordWarning": "Perkataan ini berlarutan selama {seconds}s — luar biasa panjang. Mainkan baris ini dan pastikan masa tamatnya tidak meleret ke bahagian instrumental.",
+      "playFromGap": "Main dari penghujung jurang ini"
     },
     "editActionBar": {
       "reset": "Tetapkan Semula",
@@ -990,7 +1054,9 @@
         "loadingAll": "Memuatkan semua perkataan...",
         "loadingSegment": "Memuatkan segmen...",
         "noData": "Tiada data segmen tersedia",
-        "unCorrect": "Nyah-Betulkan"
+        "unCorrect": "Nyah-Betulkan",
+        "timingClamped": "Pemasaan \"{word}\" berada di luar segmen — diselaraskan kepada {time}s.",
+        "timingSanitized": "Membetulkan pemasaan {count} perkataan yang berada di luar segmen ini."
       },
       "findReplace": {
         "title": "Cari dan Ganti",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Lirik tersuai digunakan. Segerakkan setiap segmen yang disunting secara manual untuk memastikan pemasaan perkataan adalah tepat untuk lirik tersuai."
+    },
+    "autoCorrect": {
+      "accept": "Terima cadangan",
+      "acceptAll": "Terima semua",
+      "accepted": "Diterima",
+      "adlibRemovalHint": "Benarkan cadangan yang memadam vokal latar yang tidak ada dalam rujukan",
+      "adlibRemovalLabel": "Cadangkan pemadaman adlib",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "tatabahasa",
+      "category_mishearing": "salah dengar",
+      "category_other": "lain-lain",
+      "category_repeated_chorus_fix": "korus",
+      "collapse": "Tutup cadangan",
+      "confidenceHint": "Tahap keyakinan sesuatu cadangan sebelum ia dipaparkan",
+      "confidenceLabel": "Penapis cadangan",
+      "confidence_all": "Tunjukkan semua",
+      "confidence_high": "Keyakinan tinggi",
+      "description": "Pembetulan automatik membandingkan lirik yang ditranskrip dengan sumber rujukan dan mencadangkan pembetulan pada peringkat perkataan. Anda boleh menyemak setiap cadangan — tiada perubahan akan dibuat sehingga anda menerimanya.",
+      "dismiss": "Abaikan cadangan",
+      "expand": "Kembangkan cadangan",
+      "insertMarker": "masukkan:",
+      "insertionsHint": "Benarkan cadangan yang memasukkan perkataan yang tertinggal dalam transkripsi",
+      "insertionsLabel": "Cadangkan perkataan yang tertinggal",
+      "noReferences": "Tiada lirik rujukan tersedia untuk lagu ini, jadi cadangan tidak dapat dijana. Tambahkan lirik dari panel rujukan terlebih dahulu.",
+      "noSuggestions": "Tiada isu ditemui — tiada perubahan yang dicadangkan.",
+      "reject": "Tolak cadangan",
+      "rejectAll": "Tolak semua",
+      "rejected": "Ditolak",
+      "runButton": "Dapatkan cadangan",
+      "running": "Menganalisis lirik… ini biasanya mengambil masa 15–60 saat.",
+      "staleHint": "Perkataan ini telah diedit sejak cadangan dijana, jadi cadangan ini tidak lagi terpakai.",
+      "summary": "{total} cadangan · {pending} belum selesai · {accepted} diterima",
+      "title": "Cadangan pembetulan automatik",
+      "undo": "Buat asal cadangan ini",
+      "cancel": "Batal",
+      "close": "Tutup",
+      "confidence_balanced": "Seimbang",
+      "compareHint": "Lebih perlahan dan kos lebih tinggi, tetapi menunjukkan cadangan yang dipersetujui oleh berbilang model",
+      "compareLabel": "Bandingkan berbilang model",
+      "conflictBadge": "varian",
+      "conflictTooltip": "Terdapat cadangan yang berbeza untuk perkataan ini — menerima satu varian akan menolak yang lain.",
+      "consensusBadge": "{consensus}/{total} model",
+      "consensusTooltip": "Dicadangkan oleh: {models}",
+      "cachedBadge": "dicache",
+      "cachedTooltip": "Dipulihkan daripada proses sebelumnya untuk lirik yang sama — tiada kos AI dikenakan.",
+      "appliedSummary": "{count} pembetulan automatik diterapkan",
+      "hideDetails": "Sembunyikan butiran",
+      "rerun": "Jalankan semula",
+      "revertAllAuto": "Kembalikan semua",
+      "showDetails": "Papar butiran"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Anggaran — kos akhir disahkan selepas muat turun",
     "reconcileTitle": "Lagu ini lebih panjang daripada yang dijangkakan",
     "cancel": "Batal"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Memuatkan pratonton latar belakang"
+  },
+  "bulk": {
+    "albumModeHint": "Cari artis, pilih album, kemudian pilih trek yang ingin dibuat.",
+    "artistSearchPlaceholder": "Cari artis…",
+    "autoPickLossless": "Pilih automatik audio terbaik (lossless sahaja)",
+    "autoPickLosslessHint": "Pilih audio secara automatik apabila kami menemui padanan lossless/FLAC yang meyakinkan. Yang lain akan dimasukkan ke baris gilir semakan.",
+    "backToAlbums": "Kembali ke album",
+    "backToArtists": "Kembali ke artis",
+    "batchProgressTitle": "Kumpulan {total} lagu",
+    "batchSettings": "Tetapan kumpulan",
+    "byAlbum": "Mengikut album",
+    "byText": "Mengikut teks",
+    "checking": "Menyemak…",
+    "chooseAudio": "Pilih audio",
+    "communityExists": "Versi komuniti wujud",
+    "communityExistsWithBrands": "Versi komuniti: {brands}",
+    "countAwaiting": "{count} perlukan pilihan",
+    "countComplete": "{count} selesai",
+    "countFailed": "{count} gagal",
+    "countProcessing": "{count} sedang diproses",
+    "countSearching": "{count} sedang dicari",
+    "createBatch": "Cipta {count} video karaoke",
+    "creditsCost": "{cost} kredit · anda mempunyai {balance}",
+    "edition": "Edisi",
+    "extra": "Tambahan",
+    "loadingBatch": "Memuatkan kumpulan…",
+    "lookupFailed": "Carian gagal. Sila cuba lagi.",
+    "makePrivate": "Kekalkan peribadi",
+    "makePrivateHint": "Hantar melalui Dropbox sahaja dan bukannya terbitkan ke YouTube.",
+    "noAlbums": "Tiada album ditemui untuk artis ini.",
+    "notEnoughCredits": "Anda perlukan {needed} kredit tetapi hanya ada {have}.",
+    "overLimit": "Anda boleh menghantar paling banyak {max} lagu serentak.",
+    "progressError": "Tidak dapat memuatkan kemajuan kumpulan.",
+    "reviewQueueHint": "Kami tidak dapat memilih sumber lossless secara automatik dengan yakin untuk lagu-lagu ini. Pilih satu untuk setiap lagu.",
+    "reviewQueueTitle": "Pilih audio untuk trek ini",
+    "selectedCount": "{count} lagu dipilih",
+    "skipAudioEdit": "Langkau penyuntingan audio",
+    "skipAudioEditHint": "Gunakan audio setiap trek seadanya (tanpa pemotongan).",
+    "skipCustomization": "Langkau penyesuaian",
+    "skipCustomizationHint": "Gunakan tema dan gaya lalai untuk setiap trek.",
+    "startAnother": "Mulakan kumpulan lain",
+    "submitError": "Tidak dapat mencipta kumpulan. Sila cuba lagi.",
+    "submitting": "Mencipta kumpulan…",
+    "textModeHint": "Tambah sehingga {max} lagu. Kami akan menandakan mana-mana lagu yang sudah mempunyai versi komuniti.",
+    "title": "Tajuk",
+    "tracklistHint": "Trek langsung, adunan semula dan bonus — serta lagu yang sudah mempunyai versi komuniti — tidak ditandakan secara lalai.",
+    "addSong": "Tambah lagu",
+    "artist": "Artis",
+    "buyCredits": "Beli kredit",
+    "removeRow": "Alih keluar",
+    "trackCount": "{count} trek",
+    "changeEdition": "Tukar",
+    "existingVersions": "Versi sedia ada:",
+    "usingRelease": "Menggunakan {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Asal",
+    "variantReissue": "Keluaran semula"
+  },
+  "backendStatus": {
+    "reconnecting": "Menyambung semula…",
+    "unavailable": {
+      "body": "Ini biasanya sementara — sila cuba lagi dalam beberapa minit.",
+      "reassurance": "Sebarang video karaoke yang sedang dihasilkan tidak terjejas dan akan terus diproses.",
+      "title": "Kami menghadapi masalah menyambung ke pelayan kami"
+    },
+    "dismiss": "Tutup"
   }
 }

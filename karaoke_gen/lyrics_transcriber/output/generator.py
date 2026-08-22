@@ -11,6 +11,7 @@ from karaoke_gen.lyrics_transcriber.output.lyrics_file import LyricsFileGenerato
 from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
 from karaoke_gen.lyrics_transcriber.output.video import VideoGenerator
 from karaoke_gen.lyrics_transcriber.output.segment_resizer import SegmentResizer
+from karaoke_gen.lyrics_transcriber.output.timing_validation import validate_segment_timing
 from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
 from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 
@@ -173,6 +174,12 @@ class OutputGenerator:
         try:
             # Only process transcription-related outputs if we have transcription data
             if transcription_corrected:
+
+                # Fail loudly with an actionable message if any segment/word lacks
+                # timing. Untimed lyrics (e.g. custom lyrics not yet tap-synced in
+                # the review UI) otherwise crash deep in resizing/ASS/encoder with
+                # cryptic NoneType errors. Gate here covers preview + local render.
+                validate_segment_timing(transcription_corrected.corrected_segments)
 
                 # Resize corrected segments
                 resized_segments = self.segment_resizer.resize_segments(transcription_corrected.corrected_segments)

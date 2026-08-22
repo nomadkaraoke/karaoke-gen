@@ -15,10 +15,22 @@ Provides search and cross-reference endpoints for the KJ Controller:
   POST /  {"action": "download_url", "file_id": "abc123"}
     → Generate a signed Google Drive download URL
 
+  POST /  {"action": "refresh", "token": "..."}
+    → On-demand "refresh now": force-run the divebar scheduler jobs
+      (Drive→BigQuery index, Drive→GCS file sync, xref rebuild) so a track
+      just published to the Nomad Drive shows up without waiting for the
+      nightly 2/3/6 AM runs. Token-gated (shared bearer) since the endpoint
+      is otherwise public.
+
 Environment variables:
   GCP_PROJECT_ID: GCP project ID
+  GCP_REGION: region the divebar scheduler jobs live in (for `refresh`)
+  DIVEBAR_REFRESH_SECRET_ID: Secret Manager secret holding the `refresh` bearer
+    token (read at runtime, so the function deploys before the secret has a
+    value — it just returns 403 until one is added)
 """
 
+import hmac
 import json
 import logging
 import os
@@ -32,7 +44,23 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 logger = logging.getLogger(__name__)
 
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "nomadkaraoke")
+GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 DATASET = "karaoke_decide"
+REFRESH_SECRET_ID = os.environ.get("DIVEBAR_REFRESH_SECRET_ID", "divebar-refresh-token")
+
+# The `refresh` action force-runs ONLY the index job. The index function chains the
+# index-dependent jobs (file-sync VM + xref rebuild) itself, on completion — see
+# divebar_mirror._trigger_downstream_jobs. Firing all three here concurrently used to
+# race: the sync VM finished before the index had the newly-published rows, so a
+# just-published track was indexed but not byte-synced to GCS until the next nightly
+# run. Chaining from the index's actual completion removes that race.
+REFRESH_SCHEDULER_JOBS = [
+    # Refresh-only mirror trigger: its request body sets chain_downstream, so the
+    # index chains the sync-VM + xref itself on completion. (divebar-mirror-daily,
+    # the nightly cron, omits the flag and leaves the standalone nightly sync/xref
+    # schedules alone — so refreshing never double-runs the nightly pipeline.)
+    "divebar-mirror-refresh",
+]
 
 
 def _json_response(data: dict, status: int = 200):
@@ -155,16 +183,51 @@ def _lookup_kn_ids(kn_ids: list[int]) -> dict[int, list[dict]]:
     return result
 
 
+def _norm_sql(col: str) -> str:
+    """A BigQuery expression replicating divebar_mirror's normalize_for_search.
+
+    Both the KaraokeNerds side and the Divebar side of the xref join are passed
+    through this so the comparison is symmetric. Previously the join compared the
+    KN side (only LOWER+TRIM) against the Divebar side's fully-normalized columns
+    (diacritics / leading "the " / punctuation stripped), so most rows could never
+    match. Steps mirror normalize_for_search: strip diacritics (NFD + drop combining
+    marks), lower/trim, strip a trailing karaoke tag, strip a leading "the ", drop
+    non-word chars (keeping unicode letters/digits/underscore), collapse whitespace.
+    """
+    return (
+        "TRIM(REGEXP_REPLACE("
+        "REGEXP_REPLACE("
+        "REGEXP_REPLACE("
+        "REGEXP_REPLACE("
+        "LOWER(TRIM(REGEXP_REPLACE(NORMALIZE(COALESCE(" + col + ", ''), NFD), r'\\p{Mn}', ''))),"
+        r" r'\s*[\(\[]\s*(?:[^)\]]*karaoke[^)\]]*|(?:instrumental|backing track|no vocals?|kj version|with vocals?|demo)[^)\]]*)[\)\]]\s*$', ''),"
+        r" r'^the ', ''),"
+        r" r'[^\p{L}\p{N}_\s]', ''),"
+        r" r'\s+', ' '))"
+    )
+
+
 def _rebuild_xref() -> dict:
-    """Rebuild the KN ↔ Divebar cross-reference index using exact + fuzzy matching."""
+    """Rebuild the KN ↔ Divebar cross-reference index by exact normalized match.
+
+    Both sides are normalized through the identical `_norm_sql` expression, so a
+    KN song links to a Divebar file only when their artist AND title agree after
+    normalization. (The previous "brand_match" branch matched on brand_code +
+    artist only — with no title constraint it was a Cartesian product that linked
+    every KN song by an artist/brand to every Divebar file by the same
+    artist/brand, i.e. wrong-song links. Constraining it by title would make it a
+    strict subset of the exact match, so it was removed.)
+    """
     client = bigquery.Client(project=GCP_PROJECT_ID)
     start = time.time()
 
-    # Step 1: Exact match on normalized artist + title
+    kn_artist, kn_title = _norm_sql("kn.Artist"), _norm_sql("kn.Title")
+    db_artist, db_title = _norm_sql("db.artist"), _norm_sql("db.title")
+
     exact_sql = f"""
         CREATE OR REPLACE TABLE `{GCP_PROJECT_ID}.{DATASET}.kn_divebar_xref` AS
 
-        -- Exact normalized match (high confidence)
+        -- Exact match on symmetrically-normalized artist + title (high confidence)
         SELECT DISTINCT
             kn.Id AS kn_id,
             db.file_id AS divebar_file_id,
@@ -173,40 +236,10 @@ def _rebuild_xref() -> dict:
             CURRENT_TIMESTAMP() AS matched_at
         FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_raw` kn
         JOIN `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db
-            ON LOWER(TRIM(kn.Artist)) = db.artist_normalized
-            AND LOWER(TRIM(kn.Title)) = db.title_normalized
-        WHERE db.artist_normalized IS NOT NULL
-            AND db.artist_normalized != ''
-            AND db.title_normalized IS NOT NULL
-            AND db.title_normalized != ''
-
-        UNION ALL
-
-        -- Community brand match: KN community track brand matches Divebar folder brand code
-        SELECT DISTINCT
-            kn.Id AS kn_id,
-            db.file_id AS divebar_file_id,
-            'brand_match' AS match_type,
-            0.90 AS confidence,
-            CURRENT_TIMESTAMP() AS matched_at
-        FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community` c
-        JOIN `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_raw` kn
-            ON LOWER(TRIM(c.Artist)) = LOWER(TRIM(kn.Artist))
-            AND LOWER(TRIM(c.Title)) = LOWER(TRIM(kn.Title))
-        JOIN `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db
-            ON LOWER(c.Brand) = LOWER(COALESCE(db.brand_code, ''))
-            AND LOWER(TRIM(c.Artist)) = db.artist_normalized
-        WHERE c.Brand IS NOT NULL
-            AND c.Brand != ''
-            AND db.artist_normalized IS NOT NULL
-            AND db.artist_normalized != ''
-            -- Exclude exact matches (already captured above)
-            AND NOT EXISTS (
-                SELECT 1 FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog` db2
-                WHERE LOWER(TRIM(kn.Artist)) = db2.artist_normalized
-                AND LOWER(TRIM(kn.Title)) = db2.title_normalized
-                AND db2.file_id = db.file_id
-            )
+            ON {kn_artist} = {db_artist}
+            AND {kn_title} = {db_title}
+        WHERE {db_artist} != ''
+            AND {db_title} != ''
     """
 
     logger.info("Rebuilding cross-reference index...")
@@ -296,19 +329,21 @@ def _get_full_stats() -> dict:
             SELECT
                 COUNT(*) as total_files,
                 COUNT(DISTINCT brand) as total_brands,
-                COUNTIF(gcs_path IS NOT NULL) as gcs_synced,
+                COUNTIF(gcs_path LIKE 'gs://%') as gcs_synced,
                 COUNTIF(gcs_path IS NULL) as gcs_pending,
+                COUNTIF(gcs_path IS NOT NULL AND gcs_path NOT LIKE 'gs://%') as gcs_unavailable,
                 COUNTIF(artist IS NOT NULL AND title IS NOT NULL) as with_metadata,
                 ROUND(SUM(file_size) / 1024/1024/1024, 1) as total_gb,
-                ROUND(SUM(CASE WHEN gcs_path IS NOT NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_synced_gb,
+                ROUND(SUM(CASE WHEN gcs_path LIKE 'gs://%' THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_synced_gb,
                 ROUND(SUM(CASE WHEN gcs_path IS NULL THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_pending_gb,
+                ROUND(SUM(CASE WHEN gcs_path IS NOT NULL AND gcs_path NOT LIKE 'gs://%' THEN file_size ELSE 0 END) / 1024/1024/1024, 1) as gcs_unavailable_gb,
                 MAX(synced_at) as last_index_sync
             FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
         ),
         format_stats AS (
             SELECT format, COUNT(*) as count,
                 ROUND(SUM(file_size) / 1024/1024/1024, 1) as gb,
-                COUNTIF(gcs_path IS NOT NULL) as in_gcs
+                COUNTIF(gcs_path LIKE 'gs://%') as in_gcs
             FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
             GROUP BY format
             ORDER BY count DESC
@@ -338,7 +373,7 @@ def _get_full_stats() -> dict:
     fmt_sql = f"""
         SELECT format, COUNT(*) as count,
             ROUND(SUM(file_size) / 1024/1024/1024, 1) as gb,
-            COUNTIF(gcs_path IS NOT NULL) as in_gcs
+            COUNTIF(gcs_path LIKE 'gs://%') as in_gcs
         FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
         GROUP BY format ORDER BY count DESC
     """
@@ -349,6 +384,9 @@ def _get_full_stats() -> dict:
             "gb": fmt_row.gb,
             "in_gcs": fmt_row.in_gcs,
         }
+
+    # Files that can actually be mirrored (exclude permanently-unavailable ones).
+    syncable = row.total_files - row.gcs_unavailable
 
     return {
         "catalog": {
@@ -361,9 +399,18 @@ def _get_full_stats() -> dict:
         "gcs_mirror": {
             "synced": row.gcs_synced,
             "pending": row.gcs_pending,
+            # Files that can never be mirrored: no longer on Drive (404/410) or
+            # too large to buffer. Marked with a sentinel gcs_path by the sync VM.
+            "unavailable": row.gcs_unavailable,
+            "syncable_total": syncable,
             "synced_gb": row.gcs_synced_gb,
             "pending_gb": row.gcs_pending_gb,
-            "percent": round(row.gcs_synced / row.total_files * 100, 1) if row.total_files else 0,
+            "unavailable_gb": row.gcs_unavailable_gb,
+            # Percent of *syncable* files mirrored. Reaches 100% once every file
+            # that can be synced is in GCS — unavailable files are excluded from
+            # the denominator so a healthy, fully-caught-up mirror reads 100%
+            # (green) instead of being pinned below by permanently-dead links.
+            "percent": round(row.gcs_synced / syncable * 100, 1) if syncable else 0,
         },
         "formats": formats,
         "cross_reference": {
@@ -376,6 +423,68 @@ def _get_full_stats() -> dict:
             "songs": row.kn_songs,
             "community_tracks": row.kn_community,
         },
+    }
+
+
+def _get_expected_token() -> str:
+    """Read the refresh bearer token from Secret Manager (latest version).
+
+    Read at call time rather than injected as an env var so the function can be
+    deployed before the secret has any version — until one is added this returns
+    "" and the gate below rejects every request. Returns "" on any access error
+    (missing secret/version, no permission) so failures fail closed.
+    """
+    from google.cloud import secretmanager
+
+    name = f"projects/{GCP_PROJECT_ID}/secrets/{REFRESH_SECRET_ID}/versions/latest"
+    try:
+        client = secretmanager.SecretManagerServiceClient()
+        resp = client.access_secret_version(name=name)
+        return resp.payload.data.decode("utf-8").strip()
+    except Exception as e:
+        logger.warning("Could not read refresh token secret: %s", e)
+        return ""
+
+
+def _refresh(token: str) -> dict:
+    """Force-run the divebar pipeline scheduler jobs on demand.
+
+    Validates the shared bearer token (from Secret Manager), then triggers each
+    job in REFRESH_SCHEDULER_JOBS via the Cloud Scheduler API. Jobs run
+    asynchronously under their own identities; this returns as soon as they're
+    queued.
+
+    Returns {"triggered": [...]} on success. Raises PermissionError on a
+    bad/missing token.
+    """
+    expected = _get_expected_token()
+    # Constant-time compare; also reject when the token isn't configured so a
+    # function deployed before the secret has a value can't be bypassed.
+    if not expected or not token or not hmac.compare_digest(str(token), expected):
+        raise PermissionError("invalid or missing refresh token")
+
+    from google.cloud import scheduler_v1
+
+    client = scheduler_v1.CloudSchedulerClient()
+    triggered, failed = [], []
+    for job in REFRESH_SCHEDULER_JOBS:
+        job_path = f"projects/{GCP_PROJECT_ID}/locations/{GCP_REGION}/jobs/{job}"
+        try:
+            client.run_job(name=job_path)
+            triggered.append(job)
+        except Exception as e:
+            # Best-effort: one job failing (e.g. already running) shouldn't
+            # block the others. Surface it so callers can see partial success.
+            logger.warning("Failed to run scheduler job %s: %s", job, e)
+            failed.append({"job": job, "error": str(e)})
+
+    return {
+        "triggered": triggered,
+        "failed": failed,
+        # The mirror/sync jobs run async (index ~minutes, GCS sync up to ~1h);
+        # the catalog reflects a newly-published track once the mirror index
+        # completes. xref fully reflects new tracks after the next mirror run.
+        "note": "Jobs queued. New tracks appear after the mirror index completes (~minutes).",
     }
 
 
@@ -433,6 +542,14 @@ def divebar_lookup(request):
         elif action == "stats":
             stats = _get_full_stats()
             return _json_response({"status": "ok", **stats})
+
+        elif action == "refresh":
+            try:
+                result = _refresh(body.get("token", ""))
+            except PermissionError:
+                # Don't leak whether the token exists; uniform 403.
+                return _json_response({"status": "error", "message": "forbidden"}, 403)
+            return _json_response({"status": "ok", **result})
 
         else:
             return _json_response({"status": "error", "message": f"Unknown action: {action}"}, 400)

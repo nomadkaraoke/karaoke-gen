@@ -20,6 +20,17 @@ class Settings(BaseSettings):
     gcs_temp_bucket: str = os.getenv("GCS_TEMP_BUCKET", "karaoke-gen-temp")
     gcs_output_bucket: str = os.getenv("GCS_OUTPUT_BUCKET", "karaoke-gen-outputs")
     firestore_collection: str = os.getenv("FIRESTORE_COLLECTION", "jobs")
+
+    # Nomad master fast-sync: push freshly-published Nomad 720p masters straight to the
+    # Divebar GCS mirror so kjbox (which mirrors that folder every 5 min) picks them up
+    # within minutes instead of waiting for the nightly Drive->GCS VM. Nomad-brand only.
+    divebar_files_bucket: str = os.getenv("DIVEBAR_FILES_BUCKET", "nomadkaraoke-divebar-files")
+    nomad_master_gcs_prefix: str = os.getenv("NOMAD_MASTER_GCS_PREFIX", "files/Nomad Karaoke/MP4-720p")
+    nomad_master_fast_sync_enabled: bool = os.getenv("NOMAD_MASTER_FAST_SYNC_ENABLED", "true").lower() == "true"
+    # Original-vocals guide: a padded isolated-vocals file (silence[intro] + vocals) pushed to
+    # a sibling prefix in the same Divebar bucket, which kjbox mirrors into NOMAD-vocals-padded/
+    # to power the "Original Vocals" sing-along slider. Same brand gating as the master push.
+    nomad_vocals_guide_gcs_prefix: str = os.getenv("NOMAD_VOCALS_GUIDE_GCS_PREFIX", "files/Nomad Karaoke/vocals-padded")
     
     # Audio Separator API (for GPU processing)
     audio_separator_api_url: Optional[str] = os.getenv("AUDIO_SEPARATOR_API_URL")
@@ -87,6 +98,48 @@ class Settings(BaseSettings):
     custom_lyrics_max_iterations: int = int(os.getenv("CUSTOM_LYRICS_MAX_ITERATIONS", "4"))
     custom_lyrics_default_strictness: str = os.getenv("CUSTOM_LYRICS_DEFAULT_STRICTNESS", "balanced")
     custom_lyrics_max_output_lines_multiplier: float = float(os.getenv("CUSTOM_LYRICS_MAX_OUTPUT_LINES_MULTIPLIER", "2.0"))
+
+    # AI auto-correct suggestions — opt-in, user-triggered from the lyrics
+    # review UI. Stateless: one whole-song LLM call returning word-level
+    # suggestions the reviewer accepts/rejects individually.
+    auto_correct_model: str = os.getenv("AUTO_CORRECT_MODEL", "gemini-3.1-pro-preview")
+    # Models used by the multi-model "compare" mode (semicolon-separated —
+    # Cloud Run --set-env-vars is comma-delimited). Empty = single-model only.
+    auto_correct_compare_models: str = os.getenv("AUTO_CORRECT_COMPARE_MODELS", "")
+    # Proactively generate (and cache) auto-correct suggestions in the lyrics
+    # worker once transcription + references are ready, so the review UI has
+    # them instantly. Best-effort: failures never block or fail the job. Only
+    # meaningful where ANTHROPIC_API_KEY + AUTO_CORRECT_COMPARE_MODELS are set
+    # (the lyrics-transcription-job, via ci.yml). Default off.
+    auto_correct_proactive_enabled: bool = os.getenv(
+        "AUTO_CORRECT_PROACTIVE_ENABLED", "false"
+    ).lower() in ("true", "1", "yes")
+
+    # Match judge — artist/title formatting + match-acceptance for the job
+    # submission flow. Deterministic + catalog layers always run; the light AI
+    # layer (Vertex Gemini Flash) fires only when those aren't confident.
+    match_judge_enabled: bool = os.getenv("MATCH_JUDGE_ENABLED", "true").lower() in (
+        "true", "1", "yes",
+    )
+    match_judge_model: str = os.getenv("MATCH_JUDGE_MODEL", "gemini-3.5-flash")
+    # Bounds the AI call so a hung model never strands the submission UI. Kept
+    # generous because Vertex returns 504 DEADLINE_EXCEEDED if generation can't
+    # finish within this deadline (3s was too tight for gemini-3.5-flash); the
+    # call still runs off the critical path and degrades to "none" on timeout.
+    match_judge_timeout_ms: int = int(os.getenv("MATCH_JUDGE_TIMEOUT_MS", "12000"))
+
+    # Batch karaoke-filename parser (kjbox download-naming). Reuses the Vertex
+    # Gemini stack. Larger timeout than match_judge because it batches ~200 items.
+    parse_titles_enabled: bool = os.getenv("PARSE_TITLES_ENABLED", "true").lower() in (
+        "1", "true", "yes",
+    )
+    parse_titles_model: str = os.getenv("PARSE_TITLES_MODEL", "gemini-3.5-flash")
+    parse_titles_timeout_ms: int = int(os.getenv("PARSE_TITLES_TIMEOUT_MS", "20000"))
+    parse_titles_max_items: int = int(os.getenv("PARSE_TITLES_MAX_ITEMS", "200"))
+    # Items per Gemini call: large client batches are split into concurrent
+    # chunks of this size so one call never outgrows parse_titles_timeout_ms
+    # (a 100-item single call did, blanking the whole batch).
+    parse_titles_chunk_size: int = int(os.getenv("PARSE_TITLES_CHUNK_SIZE", "10"))
 
     # Cloud Tasks (for scalable worker coordination)
     # When enabled, workers are triggered via Cloud Tasks for guaranteed delivery
