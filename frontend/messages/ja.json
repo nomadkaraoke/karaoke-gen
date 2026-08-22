@@ -239,7 +239,10 @@
     "loadingJobs": "ジョブを読み込み中...",
     "noJobsMatchFilters": "フィルターに一致するジョブはありません。",
     "noJobsYet": "まだジョブがありません。作成して始めましょう！",
-    "referrals": "紹介"
+    "referrals": "紹介",
+    "bulkMode": "一括",
+    "singleMode": "シングル",
+    "submitModeToggle": "単一または一括送信"
   },
   "auth": {
     "noVerificationToken": "認証トークンが提供されていません",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "リンクが見つかりませんでした",
     "resendSuccessBody": "新しいサインインリンクを {maskedEmail} 宛に送信しました。リンクの有効期限は24時間です。",
     "resendSuccessTitle": "メールをご確認ください",
-    "resending": "送信中..."
+    "resending": "送信中...",
+    "confirmBody": "セキュリティのため、下のボタンをクリックしてサインインを完了してください。このステップにより、自動メールスキャナーなどによってお客様より先にリンクが無効になってしまうのを防ぎます。",
+    "confirmButton": "サインインを完了する",
+    "confirmTitle": "サインインの完了"
   },
   "payment": {
     "title": "支払いが完了しました！",
@@ -372,7 +378,10 @@
     "backend": "バックエンド",
     "encoder": "エンコーダー",
     "flacfetch": "Flacfetch",
-    "separator": "セパレーター"
+    "separator": "セパレーター",
+    "fallbackBadge": "フォールバック",
+    "fallbackNote": "プライマリ容量が利用できないため、フォールバックのインスタンスタイプにルーティングされました。",
+    "liveWorker": "稼働中のワーカー"
   },
   "credits": {
     "title": "クレジットを追加購入",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "リンクを貼り付ける",
     "urlSupportedSitesHint": "YouTube、Facebook、SoundCloud、TikTok、Vimeoなど、数百ものサイトに対応しています。",
     "urlSupportedSitesLink": "対応サイト一覧を見る",
-    "useThisUrl": "このURLを使用する"
+    "useThisUrl": "このURLを使用する",
+    "matchCorrectedTo": "{value} に修正しました — 入力内容: 「{typed}」",
+    "matchDidYouMean": "もしかして？",
+    "matchKeepMine": "入力した内容をそのまま使う",
+    "matchTidiedTo": "{value} に整えました",
+    "matchUndo": "元に戻す",
+    "matchChecking": "曲の詳細を確認しています…",
+    "matchUseCorrection": "修正を適用する",
+    "matchUseTidied": "整形版を使用する",
+    "matchUsingTyped": "入力された内容を使用します: {value}",
+    "checkingUrl": "確認中…",
+    "submitNetworkError": "ネットワークエラーが発生しました。接続を確認して、もう一度お試しください。",
+    "submitError": "問題が発生しました。もう一度お試しください。"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",
@@ -576,7 +597,9 @@
     "correcting": "修正中",
     "lyricsDone": "歌詞完了",
     "lyrics": "歌詞",
-    "confirmDurationCost": "料金を確認"
+    "confirmDurationCost": "料金を確認",
+    "findingAudioSources": "音源を検索中（再試行中）",
+    "waitingForCapacity": "エンコーディングサーバーの空きを待機中（再試行中）"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",
@@ -588,7 +611,9 @@
     "autoSelect": "自動選択されます",
     "willAutoSelectFirst": "最初を自動選択します",
     "noOutputsAvailable": "まだ利用可能な出力がありません",
-    "confirmCost": "料金を確認"
+    "confirmCost": "料金を確認",
+    "makingPublicInProgress": "このトラックを公開しています — デフォルトのブランディングで再レンダリングし、再公開しています。通常15〜30分ほどかかります。",
+    "waitingForEncodingServer": "（エンコーディングサーバーの空きを待機中）"
   },
   "jobActions": {
     "delete": "削除",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "曲名",
-    "artist": "アーティスト"
+    "artist": "アーティスト",
+    "loading": "タイトル画面のプレビューを読み込んでいます"
   },
   "editTrack": {
     "title": "完了したトラックを編集",
@@ -739,7 +765,22 @@
     "views": "{count} 回視聴",
     "moreVersions": "他 {count} 件",
     "select": "選択",
-    "creditCost": "{credits} クレジット"
+    "creditCost": "{credits} クレジット",
+    "chooseFile": "音声ファイルを選択 (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "音源が見つかりませんでした。上のアーティスト名やタイトルを編集して再検索するか、URLまたはファイルのアップロードでご自身の音源を追加してみてください。",
+    "pasteUrl": "URLを貼り付け",
+    "researchFailed": "検索に失敗しました。もう一度お試しください。",
+    "searchAgain": "もう一度検索",
+    "selectFailed": "音源の選択に失敗しました",
+    "uploadFailed": "アップロードに失敗しました。もう一度お試しください。",
+    "urlFailed": "そのURLは使用できませんでした。別の音源をお試しください。",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "このファイルを使用",
+    "useThisUrl": "このURLを使用",
+    "artistLabel": "アーティスト",
+    "loading": "読み込み中...",
+    "titleLabel": "タイトル",
+    "uploadFileAction": "ファイルをアップロード"
   },
   "audioEditor": {
     "loading": "オーディオエディタを読み込み中...",
@@ -776,7 +817,17 @@
     "undoFailed": "元に戻す操作に失敗しました",
     "redoFailed": "やり直し操作に失敗しました",
     "restoreFailed": "復元に失敗しました — 一部の編集が適用されていない可能性があります",
-    "submitFailed": "送信に失敗しました"
+    "submitFailed": "送信に失敗しました",
+    "fadeIn": "フェードイン",
+    "fadeInSelection": "選択した範囲をフェードイン",
+    "fadeOut": "フェードアウト",
+    "fadeOutSelection": "選択した範囲をフェードアウト",
+    "fadeInDisabledHint": "フェードインするには、トラックの先頭から始まる範囲を選択してください",
+    "fadeOutDisabledHint": "フェードアウトするには、トラックの末尾で終わる範囲を選択してください",
+    "trimEndDisabledHint": "末尾をトリミングするには、トラックの末尾で終わる範囲を選択してください",
+    "trimEndSelection": "選択範囲より後の部分をすべて削除します",
+    "trimStartDisabledHint": "先頭をトリミングするには、トラックの先頭から始まる範囲を選択してください",
+    "trimStartSelection": "選択範囲より前の部分をすべて削除します"
   },
   "audioEditRestore": {
     "title": "保存されたオーディオ編集セッション",
@@ -803,7 +854,7 @@
       "acceptAll": "すべて承認",
       "revertAll": "すべて元に戻す",
       "undoAll": "すべて取り消す",
-      "resetAllChanges": "すべての変更を元のAI修正済み歌詞にリセット",
+      "resetAllChanges": "すべての変更をリセットして、元の修正済み歌詞に戻す",
       "undo": "元に戻す",
       "redo": "やり直し",
       "findReplace": "検索/置換",
@@ -816,7 +867,11 @@
       "playback": "再生",
       "audioLoadError": "音声を読み込めませんでした",
       "audioStillLoading": "音声はまだ読み込み中です...",
-      "loadingAudio": "音声を読み込み中..."
+      "loadingAudio": "音声を読み込み中...",
+      "autoCorrect": "自動補正",
+      "autoCorrectDesc": "文字起こしを参照用の歌詞と比較し、単語レベルの修正を自動的に適用します。修正された単語は紫色で表示されます。",
+      "autoCorrectedCount": "自動修正済み · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {#件の自動修正} other {#件の自動修正}}を適用しました（紫色で表示）。クリックして詳細を表示し、不要な修正は元に戻すことができます。"
     },
     "guidance": {
       "showTips": "ヒントを表示",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "オレンジ色でハイライトされた単語はギャップです — 参照歌詞と一致せず、エラー（似たように聞こえる誤認識された単語など）が含まれている可能性があるセクションです。",
       "useNAndP": "N キーと P キーを使用してギャップ間をジャンプします。それぞれについて、行の横にある再生をクリックし、聞こえる音と右側の参照歌詞を比較してから、単語をクリックして編集または削除します。",
       "watchOutForPhantomWords": "行の最初や最後にある「and」などのファントムワード（存在しない単語）に注意してください — 文字起こしではこれらが追加されることがよくあります。",
-      "tryTimelineView": "タイムラインビューを試して、異常に長い単語（10秒以上）を見つけてください。これは通常、タイミングの問題を示しています。",
+      "tryTimelineView": "2秒以上の単語や2秒以上の空白は、オレンジ色でフラグが立てられます。タイミングの問題がないか確認してください。「詳細」に切り替えると、各行がタイムライン上に展開されて表示されます。",
       "watchFullTutorial": "完全なチュートリアルを見る",
       "correctionHandlers": "修正ハンドラー",
       "anchorSequences": "アンカーシーケンス",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "未修正のギャップ",
       "uncorrectedGapsDesc": "手動での確認が必要な可能性があるセクション",
       "wordsUncorrected": "未修正の単語",
-      "numberOfGaps": "ギャップの数"
+      "numberOfGaps": "ギャップの数",
+      "autoCorrectTip": "{count, plural, =1 {#語を自動修正しました} other {#語を自動修正しました}}（紫色で表示され、上に元の単語が表示されます）。修正された各行を再生し、タイミングが合っているか確認してください。オレンジ色で下線が引かれている箇所はタイミングが推定されたもので、調整が必要になる場合があります。",
+      "autoCorrected": "自動修正済み",
+      "timingEstimated": "推定タイミング"
     },
     "transcription": {
       "syncedLyrics": "同期された歌詞",
@@ -854,7 +912,13 @@
       "text": "テキスト",
       "timeline": "タイムライン",
       "deleteSegment": "セグメントを削除",
-      "playSegment": "セグメントを再生"
+      "playSegment": "セグメントを再生",
+      "aiTooltipEstimated": "システムにより自動修正されました。ここのタイミングは推定のため、この行を再生して必要に応じてタイミングを調整してください。",
+      "aiTooltipReplaced": "システムにより「{original}」から自動修正されました。この行を再生して、タイミングが合っているか確認してください。",
+      "aiTooltipReplacedEstimated": "システムにより「{original}」から自動修正されました。タイミングは推定のため、この行を再生して必要に応じてタイミングを調整してください。",
+      "longGapWarning": "次の単語まで{seconds}秒のギャップがあります。これは誤って早く認識された単語（例：余分な「and」など）によく見られます。クリックしてここから再生してください。",
+      "longWordWarning": "この単語は{seconds}秒続いており、不自然に長くなっています。行を再生して、終了時間が間奏に食い込んでいないか確認してください。",
+      "playFromGap": "このギャップの終わりから再生"
     },
     "editActionBar": {
       "reset": "リセット",
@@ -990,7 +1054,9 @@
         "loadingAll": "すべての単語を読み込み中...",
         "loadingSegment": "セグメントを読み込み中...",
         "noData": "利用可能なセグメントデータがありません",
-        "unCorrect": "修正を取り消す"
+        "unCorrect": "修正を取り消す",
+        "timingClamped": "\"{word}\" のタイミングがセグメント外だったため、{time}秒に調整されました。",
+        "timingSanitized": "このセグメント外にあった {count} 個の単語のタイミングを修正しました。"
       },
       "findReplace": {
         "title": "検索と置換",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "カスタム歌詞を適用しました。カスタマイズした歌詞のタイミングが合うように、編集した各セグメントを手動で同期してください。"
+    },
+    "autoCorrect": {
+      "accept": "提案を採用する",
+      "acceptAll": "すべて採用する",
+      "accepted": "採用済み",
+      "adlibRemovalHint": "リファレンスにないバックボーカルを削除する提案を表示します。",
+      "adlibRemovalLabel": "アドリブの削除を提案",
+      "category_adlib_removal": "アドリブ",
+      "category_formatting": "フォーマット",
+      "category_grammar": "文法",
+      "category_mishearing": "聞き間違い",
+      "category_other": "その他",
+      "category_repeated_chorus_fix": "コーラス",
+      "collapse": "提案を折りたたむ",
+      "confidenceHint": "提案を表示するために必要な信頼度の基準",
+      "confidenceLabel": "提案フィルター",
+      "confidence_all": "すべて表示",
+      "confidence_high": "高い確信度",
+      "description": "自動補正は、文字起こしした歌詞を参照用の歌詞と比較し、単語レベルで修正を提案します。すべての提案はご自身で確認でき、承認するまで適用されることはありません。",
+      "dismiss": "提案を非表示にする",
+      "expand": "提案を展開する",
+      "insertMarker": "挿入:",
+      "insertionsHint": "文字起こしで抜けている単語を追加する提案を表示します。",
+      "insertionsLabel": "不足している単語の追加を提案",
+      "noReferences": "この曲には参照用の歌詞がないため、提案を生成できません。まずは参照パネルから歌詞を追加してください。",
+      "noSuggestions": "問題は見つかりませんでした。修正の提案はありません。",
+      "reject": "提案を却下する",
+      "rejectAll": "すべて却下する",
+      "rejected": "却下済み",
+      "runButton": "提案を取得する",
+      "running": "歌詞を分析しています… 通常15〜60秒かかります。",
+      "staleHint": "提案の生成後に歌詞が編集されたため、この提案は無効になりました。",
+      "summary": "{total}件の提案 · 保留中 {pending}件 · 採用済み {accepted}件",
+      "title": "自動補正の提案",
+      "undo": "この提案を元に戻す",
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "confidence_balanced": "バランス",
+      "compareHint": "時間とコストはかかりますが、複数のモデルで一致した提案を確認できます。",
+      "compareLabel": "複数のモデルを比較する",
+      "conflictBadge": "別案",
+      "conflictTooltip": "これらの単語には複数の修正候補があります。1つの候補を承認すると、他の候補は破棄されます。",
+      "consensusBadge": "{consensus}/{total} モデル",
+      "consensusTooltip": "提案元: {models}",
+      "cachedBadge": "キャッシュ済み",
+      "cachedTooltip": "同じ歌詞の過去のデータから復元されました。AIのコストは発生していません。",
+      "appliedSummary": "{count}件の自動修正を適用しました",
+      "hideDetails": "詳細を非表示",
+      "rerun": "再実行",
+      "revertAllAuto": "すべて元に戻す",
+      "showDetails": "詳細を表示"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "目安 — 最終的な料金はダウンロード後に確定します",
     "reconcileTitle": "この曲は想定より長くなっています",
     "cancel": "キャンセル"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "背景プレビューを読み込んでいます"
+  },
+  "bulk": {
+    "albumModeHint": "アーティストを検索してアルバムを選び、作成するトラックを選択してください。",
+    "artistSearchPlaceholder": "アーティストを検索…",
+    "autoPickLossless": "最適な音源を自動選択（ロスレスのみ）",
+    "autoPickLosslessHint": "確実なロスレス/FLAC音源が見つかった場合は自動的に選択します。それ以外はレビューキューに送られます。",
+    "backToAlbums": "アルバムに戻る",
+    "backToArtists": "アーティストに戻る",
+    "batchProgressTitle": "全{total}曲のバッチ",
+    "batchSettings": "バッチ設定",
+    "byAlbum": "アルバム別",
+    "byText": "テキスト別",
+    "checking": "確認中…",
+    "chooseAudio": "音源を選択",
+    "communityExists": "コミュニティ版が存在します",
+    "communityExistsWithBrands": "コミュニティ版: {brands}",
+    "countAwaiting": "{count}曲の選択が必要です",
+    "countComplete": "{count}曲完了",
+    "countFailed": "{count}曲失敗",
+    "countProcessing": "{count}曲処理中",
+    "countSearching": "{count}曲検索中",
+    "createBatch": "{count}曲のカラオケ動画を作成",
+    "creditsCost": "消費クレジット: {cost} · 残高: {balance}",
+    "edition": "エディション",
+    "extra": "エクストラ",
+    "loadingBatch": "バッチを読み込み中…",
+    "lookupFailed": "検索に失敗しました。もう一度お試しください。",
+    "makePrivate": "非公開にする",
+    "makePrivateHint": "YouTubeには公開せず、Dropbox経由でのみ配信します。",
+    "noAlbums": "このアーティストのアルバムは見つかりませんでした。",
+    "notEnoughCredits": "{needed}クレジット必要ですが、{have}クレジットしかありません。",
+    "overLimit": "一度に送信できるのは最大{max}曲までです。",
+    "progressError": "バッチの進捗を読み込めませんでした。",
+    "reviewQueueHint": "これらの曲のロスレス音源を自動選択できませんでした。それぞれ音源を選択してください。",
+    "reviewQueueTitle": "これらのトラックの音源を選択",
+    "selectedCount": "{count}曲選択済み",
+    "skipAudioEdit": "音声編集をスキップ",
+    "skipAudioEditHint": "各トラックの音声をそのまま使用します（トリミングなし）。",
+    "skipCustomization": "カスタマイズをスキップ",
+    "skipCustomizationHint": "すべてのトラックにデフォルトのテーマとスタイルを使用します。",
+    "startAnother": "別のバッチを開始",
+    "submitError": "バッチを作成できませんでした。もう一度お試しください。",
+    "submitting": "バッチを作成中…",
+    "textModeHint": "最大{max}曲まで追加できます。すでにコミュニティ版が存在する曲にはマークが付きます。",
+    "title": "タイトル",
+    "tracklistHint": "ライブ、リミックス、ボーナストラック、およびすでにコミュニティ版が存在する曲は、デフォルトでチェックが外れています。",
+    "addSong": "曲を追加",
+    "artist": "アーティスト",
+    "buyCredits": "クレジットを購入",
+    "removeRow": "削除",
+    "trackCount": "{count}トラック",
+    "changeEdition": "変更",
+    "existingVersions": "既存のバージョン:",
+    "usingRelease": "{label} · {year} · {tracks} を使用",
+    "variantBonus": "+{count} ボーナス",
+    "variantOriginal": "オリジナル",
+    "variantReissue": "リイシュー"
+  },
+  "backendStatus": {
+    "reconnecting": "再接続中…",
+    "unavailable": {
+      "body": "通常は一時的な問題ですので、数分後にもう一度お試しください。",
+      "reassurance": "現在作成中のカラオケ動画に影響はありません。そのまま処理が継続されます。",
+      "title": "サーバーへの接続に問題が発生しています"
+    },
+    "dismiss": "閉じる"
   }
 }

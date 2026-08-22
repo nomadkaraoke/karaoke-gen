@@ -51,7 +51,224 @@ restores state, and raises rather than silently dropping a worker trigger).
 
 ---
 
+## Multi-instance-type encode pool: one shared speed-rank, availability-aware (Aug 2026, v0.195.0)
+
+"c4d primary + a single n2 fallback family" is not resilient — a stockout is per
+**(machine family × region)** and can exhaust every zone of a family at once. The
+fix is a **ranked pool of ≥5 x86_64, 32-vCPU, ≥32 GB highcpu types across ≥3
+independent silicon lineages** (c4d/c4/n4d + c2d/n2d/n2), tried fastest-first.
+
+Three things that made this clean:
+- **One pure preference module is the single source of truth.** Runtime selection
+  (`encoding_service._build_worker_candidates` → `ensure_any_running`) and deploy
+  green selection (`deploy_promote.select_green_candidates`) both call
+  `backend/services/encoding_worker_preference.ordered_candidates`. Two call-sites
+  computing "candidate order" independently WILL drift (they already had — runtime
+  used secret order, deploy used "n2-first"). `deploy_promote` is loaded by path in
+  CI, so it imports the module with a **by-path fallback** (an installed `backend`
+  package can otherwise shadow the repo working tree).
+- **Prefer fastest, but be availability-aware.** Base order is speed-rank (c4d
+  stays top when it can start). A type that raises `ZONE_RESOURCE_POOL_EXHAUSTED`
+  is recorded in Firestore `capacity_state` and **demoted for a 15-min cooldown,
+  not dropped** — stops wasting ~2 min/attempt probing a known-dead type, then
+  re-probes so we snap back to c4d the moment capacity returns.
+- **Override routing must key off an explicit `is_primary` flag, not list
+  position.** Once the ranker can put a fallback ahead of a stocked-out primary,
+  "candidate index 0 == primary" is false and the active-override set/clear logic
+  breaks silently (routes to the primary IP while a fallback is actually running).
+- **Disk-type is family-specific:** next-gen Titanium families (c4/c4d/n4/n4d)
+  support **hyperdisk-balanced only**; older families (c2d/n2/n2d) use
+  **pd-balanced**. Wrong disk type = GCE rejects the instance at create.
+- **Bake the full dep tree (CPU-only torch) into the image.** Each new fresh type
+  VM otherwise hits the fragile first-render `ensure_latest_wheel` full-tree
+  install; baking it (CPU torch via `--index-url` the PyTorch CPU index) makes all
+  types boot self-sufficient. CPU torch avoids multi-GB CUDA wheels the encode path
+  never uses. Verify `torch.version.cuda is None` — NOT `cuda.is_available()`,
+  which is False on the GPU-less builder even for a CUDA build.
+
+## Concurrent encodes OOM-killed the worker → lost renders (Aug 2026, v0.194.0)
+
+Three renders submitted at once ran as **3 concurrent 4K ffmpeg encodes** on the
+single 32 GB `n2-highcpu-32` fallback worker (both 60 GB c4d primaries were down
+in a Spot stockout). Combined RSS ~30 GB tripped the kernel OOM-killer, which
+killed ffmpeg and restarted the `encoding-worker` service, wiping its in-memory
+`jobs` registry. Every client poll then got `404 not found` → `lost contact with
+worker after 5 consecutive poll failures` → all three jobs failed.
+
+**Root cause:** the worker used `ThreadPoolExecutor(max_workers=4)` — up to 4
+heavy encodes in parallel. ffmpeg already saturates every core for one job, so
+parallelism bought **no throughput**, only multiplied peak memory.
+
+**Fix:**
+- **Serialize the heavy lane.** Split into `heavy_executor`
+  (`max_workers=ENCODING_HEAVY_CONCURRENCY`, default **1**) for renders/encodes
+  and `light_executor` (previews + wheel installs). One heavy ffmpeg at a time =
+  OOM-proof on any machine type; extras queue as `pending` (surfaced via
+  `queue_position`). `backend/services/gce_encoding/main.py`.
+- **Resubmit on a lost job.** `wait_for_completion` now raises
+  `EncodingJobLostError` on a 404 *after the job was already seen* (a pinned poll
+  can only 404 if the worker lost it) or a terminal failure carrying
+  `restart_failure_code`. The render/encode workers wrap their submit+wait in
+  `run_with_lost_job_resubmit`, which resubmits as a fresh `<id>_retry_<hex8>`
+  (bounded). Backend must **re-raise** the typed error, not flatten it to
+  `success=False` (`encoding_interface.py`).
+- **Queue vs run timeout.** Time spent `pending` counts against a generous
+  `queue_timeout`, not the per-run `timeout`, so a burst can wait in the queue
+  and still succeed.
+
+**Principles for next time:**
+- CPU-bound work that already uses all cores should run **one at a time** per
+  box; add throughput with more workers, not more per-worker threads.
+- On a *pinned* poll, a `404` means the job is gone — treat "never existed"
+  (before first success) and "vanished mid-run" (after) differently.
+- A restart-recovery that persists jobs is not enough if the reload skips
+  *terminal* states — the client-side lost detection is the real safety net.
+
+---
+
+## Naive `datetime.utcnow()` → wrong timezone in the UI (Aug 2026)
+
+Job `created_at` and timeline/log timestamps were built from naive
+`datetime.utcnow()` and serialized via `model_dump(mode='json')` /
+`.isoformat()`, producing ISO strings with **no timezone offset**
+(`"2026-08-14T18:10:25.123456"`). Firestore stored them as plain strings and
+returned them verbatim. The frontend's `new Date(str)` parses an offset-less
+ISO date-time as **local** time, so the raw UTC wall-clock was shown
+unconverted — off by the viewer's UTC offset.
+
+Two-part fix:
+- **Display layer (`frontend/lib/utils.ts` → `parseServerDate`)**: treat
+  offset-less ISO date-times as UTC (append `Z`). This corrects *all* existing
+  data immediately, no migration. Use it for any backend timestamp before
+  `new Date()`/`toLocaleString()`.
+- **Write layer**: `datetime.now(timezone.utc)` so new strings carry `+00:00`.
+
+Takeaways: (1) never serialize a naive datetime to the client — always
+timezone-aware UTC; (2) fixing at the display layer beats a data migration when
+old rows are already ambiguous; (3) datetime arithmetic must guard for both
+naive and aware (`if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)`),
+as `job_health_service` already did.
+
+---
+
+## Portrait (9:16) video: re-render, never transform the finished video (Jul 2026)
+
+The karaoke video is `ffmpeg` compositing a background + audio + an `ass=` **subtitle
+filter**, and the generated ASS bakes **absolute pixel coordinates at 3840×2160**
+(`{\an8}{\pos(1920,Y)}` per line). That has a hard consequence for portrait output:
+you cannot post-process the finished 16:9 video into a good 9:16 one — letterboxing
+leaves the lyrics tiny in ~32% of the frame, and centre-cropping slices the start/end
+off **every** line. The only good option is to **re-render at portrait resolution with
+the lyrics re-wrapped** for the narrow frame.
+
+This is cheap because the generator is already parameterized: `SubtitlesGenerator` /
+`VideoGenerator` take a resolution tuple + font/line-height, and `SegmentResizer` wraps
+lines via `max_line_length`. The portrait module (`karaoke_gen/portrait/`) drives them
+directly at 1080×1920 from the same `corrections_updated.json` — so word-by-word timing
+is identical to the landscape video; only layout changes. Gotchas found while building it:
+
+- **Wrapping orphans:** `SegmentResizer` splits at natural breaks (commas), which in a
+  narrow frame can strand a one-word line ("No,"). A small merge-back pass
+  (`portrait/wrap.py`) fixes it without re-splitting (preserves per-word timing).
+- **Sync without countdown:** use the **un-padded** instrumental + **un-countdown-processed**
+  segments — they're inherently in sync (original transcription timing); the portrait
+  title card provides the lead-in. Don't reuse the landscape's padded instrumental with
+  un-shifted segments or they drift by the padding amount.
+- **Fonts on the GCE encoder:** libass resolves the lyrics font via fontconfig (the render
+  step registers the theme font on the VM), but the PIL-drawn header needs an actual
+  **file** — resolve it with `fc-match --format=%{file} "<family>"`.
+- **Integration is zero-plumbing on the distribution side:** the portrait file is written
+  into the encoder's `output_dir`, so it rides the existing `finals/` GCS upload, and
+  `_upload_to_dropbox` uploads the whole local output dir. Only the orchestrator's
+  explicit **download allowlist** (`_download_gce_encoded_files`) needed a new mapping —
+  YouTube/Drive use their own allowlists, which is exactly why the portrait file is
+  naturally excluded from them.
+
+Whole feature is additive + `PORTRAIT_RENDER_ENABLED`-gated + non-fatal: a portrait render
+failure logs and returns `None`, never blocking the landscape outputs or distribution.
+
+## Cloudflare edge in front of Cloud Run — the SSL "dragon" (Jul 2026)
+
+Putting `api.nomadkaraoke.com` behind Cloudflare (WAF/rate-limit/origin-lock)
+surfaced several non-obvious gotchas. See `infrastructure/modules/edge_security.py`
+and `docs/archive/2026-07-20-edge-security-*.md`.
+
+- **Cloud Run domain-mapping managed certs cannot provision behind Cloudflare.**
+  Even with a correct grey-cloud CNAME → `ghs.googlehosted.com` (right DNS,
+  propagated, no CAA), Google's ACME challenge is "not visible through the public
+  internet" and the cert stays `pending` forever. Recreating the mapping doesn't
+  help. **This does not matter** because the zone SSL mode is **"full" (not
+  strict)**: Cloudflare encrypts to the origin but doesn't validate its cert, so
+  the edge works regardless and is **renewal-safe** (a never-provisioning /
+  never-renewing cert can't cause a 525 when the cert isn't checked). **Rule:
+  keep the zone on "full", never "full (strict)".** The much-feared run.app
+  SNI-override Origin Rule and a GCP load balancer are both unnecessary — and the
+  Origin Rule is blocked anyway by the zone's singleton `http_request_origin`
+  entrypoint (already holds a flacfetch prod rule).
+- **A proxied (orange) record blocks cert issuance** (DNS points at Cloudflare,
+  not `ghs`) — so if you ever DO need the managed cert, create grey → provision →
+  flip orange. For the prod cutover this was moot: `api`'s cert already existed
+  and "full" mode tolerates it, so the cutover was just the grey→orange flip.
+- **Cloudflare Free-plan WAF/rate-limit constraints (fail at apply time):** the
+  regex `matches` operator needs Business+ (use `contains`); rate-limit `period`
+  must be `10`s and `characteristics` MUST include `cf.colo.id` (per-colo
+  counting); managed OWASP ruleset is Pro+ only.
+- **Origin lock without breaking internal callers:** all internal traffic (Cloud
+  Tasks via `CLOUD_RUN_SERVICE_URL`, schedulers, frontend) reaches the backend
+  through `api.nomadkaraoke.com`, so it traverses Cloudflare and carries the
+  injected `X-Edge-Auth` header. Validated by running the prod E2E in `warn` mode
+  first and confirming **zero** missing-header warnings before flipping to
+  `enforce`. Health/root paths are exempt (Cloud Run probes hit the origin
+  directly).
+- **Applying from a worktree:** the prod Pulumi stack shows benign cross-worktree
+  Cloud Function source-archive drift (last applied from a different worktree) —
+  apply edge changes with `pulumi up --target <urn>` to avoid touching it. CI
+  does NOT auto-run `pulumi up` (apply locally before merge).
+
+## Magic-link auth vs. email link-scanners (Jul 2026)
+
+- **Never auto-consume a single-use token on page render.** `/auth/verify` used to
+  call `verifyMagicLink(token)` from a `useEffect` on mount (no user gesture) against
+  the state-mutating `GET /api/users/auth/verify`. Any agent that renders the page and
+  runs its JS — Gmail/Safe-Browsing scanners, corporate security proxies — burns the
+  token and creates a throwaway session, so the real user then sees "This link has
+  already been used." Diagnosed for one user whose links were consumed within ~60s by
+  Google LLC IPs (`2607:f8b0…`), his own click losing a sub-second race in Cloud Run logs.
+- **Fix pattern:** gate verification behind an explicit "Complete Sign-In" click
+  (`frontend/app/[locale]/auth/verify/page.tsx`). Scanners render but don't click, so
+  the token survives. Switching GET→POST alone does NOT help — a JS-executing scanner
+  runs the fetch regardless of method; the user-gesture gate is the robust mitigation.
+- **Still latent:** the admin one-click login path (`/app?admin_token=…`,
+  `frontend/app/[locale]/app/page.tsx`) auto-verifies the same way. Admin-only/low-volume,
+  so not yet gated — apply the same pattern if it ever bites.
+
+## Bulk Mode (Jun 2026)
+
+- **Auto-pick "tier 1" rule is duplicated** between `frontend/lib/audio-search-utils.ts`
+  (`getSearchConfidence`) and `backend/services/audio_search_service.py`
+  (`pick_auto_selection`). The backend port drives the `bulk_search_worker`
+  auto-select decision. If you change the rule, change BOTH — the parity is guarded
+  by `backend/tests/test_bulk_foundations.py`.
+- **The duration-delta charge is replicated** in `bulk_search_worker._auto_select`
+  using the same primitives/state keys (`credits_charged`/`select_charge_applied`)
+  as `audio_search.select_audio_source`, rather than refactoring the proven money
+  path. Keep them in sync.
+- **KaraokeNerds availability** reuses the existing `karaokenerds_service`
+  scraper via `check_community_versions_batch` (it has the `is_community` flag,
+  matching "community-*created* version"). We deliberately did NOT add a
+  karaoke-decide BigQuery endpoint — its catalog is search-based and lacks the
+  community distinction.
+- **Parked bulk jobs are hidden from the main jobs list** (the dashboard filters
+  out `awaiting_audio_selection`). The bulk review queue renders them itself, and
+  the batch_id is persisted to `localStorage` so a returning user can finish them.
+
 ## AI Generation Patterns
+
+### Auto-Correction Take 3: Suggestion Layer, Not Silent Application (Jun 2026)
+Lyrics auto-correction failed twice (rule handlers, per-gap agentic LLM) and was fully disabled in PR #321 because it "created more work than it saved". The failures were architectural, not fundamental: per-gap calls with tiny context (10-30s × up to 74 gaps, blocking the pipeline) and silent application (every wrong fix = invisible reviewer work). The 2026 redesign inverts all three properties: **one whole-song call** (a full song + 3 reference sources ≈ 3K tokens), **on-demand from the review UI** (zero pipeline impact, failure = "no suggestions" never a stuck job), and **a pending-suggestion layer** the reviewer accepts/rejects per change (wrong suggestion = one click, and the EditLog `ai_suggestion_*` entries measure real accept rates for free). Eval before building: 30 real jobs with corrections.json (pre-review) + corrections_updated.json (human ground truth) made a 5-model benchmark trivial — and showed GPT-5.2 would have *worsened* lyrics (accept-all gap-closed −0.80) while Fable 5/Gemini 3.1 Pro close ~half the human-edit gap. Without that eval we might have shipped on the wrong model. Harness: `lyrics-alignment-eval-dataset/auto-correct-eval/`.
+
+### Eval Metric Gotcha: Relative Metrics Explode on Near-Perfect Inputs (Jun 2026)
+"Gap closed" (how much of the pre→ground-truth distance accept-all closes) goes violently negative on near-perfect transcriptions: one human edit in 198 words means 1−sim_before ≈ 0.003, so two harmless style suggestions read as −300%. Inspect the *suggestions themselves* before concluding a model is unsafe — in our case they were reference-supported tweaks (`all right`→`alright`) a human just didn't bother making. Report medians alongside means, and treat strict-precision as a floor, not the expected accept rate.
 
 ### Validate-and-Repair Loop with Plateau Detection (May 2026)
 When chaining LLM calls into a repair loop (e.g. syllable-aware custom lyrics), score plateau detection on the **full score tuple** (`(violation_count, total_min_delta)`), not just count. A loop that compares `new_violation_count >= prev_violation_count` will trip on iteration 0 because there's no prior count to compare against — and even past the first iteration, you can lose deltas (fewer overshoot, but still N violations) without count moving. Using the tuple lets the loop detect "still improving" cases that pure count misses. Spec'd plan pseudocode often gets this wrong; verify against tests like `test_max_iters_reached`.
@@ -102,6 +319,8 @@ When a metadata key is missing, don't set it to "now" and skip the action — th
 
 **Why not a Managed Instance Group?** MIG rolling updates don't support deep health checks — you can verify HTTP liveness but not "did a real encode actually work?". PR #587 showed that the service can respond to `/health` while failing all encode jobs (pip resolution error had broken the wheel). A real encode test catches this; a simple HTTP check does not. At two VMs, the operational complexity of a MIG (instance template management, rolling update policies, drain configuration) adds no value over two named VMs with a Firestore pointer.
 
+**Still true after the multi-type pool (Aug 2026, v0.195.0).** Broadening to a 6-type fallback pool (see the v0.195.0 lesson above) is a stockout-resilience play and stays on the named-VM model: static IPs, IP-addressed blue-green, on-demand start/stop, deep encode-test-before-swap. A regional MIG with instance flexibility is GCP's textbook answer to stockouts, but it would replace IP addressing with service discovery / an internal LB and turn blue-green into rolling recreate — high blast radius for a system just hardened. **Revisit MIG only when we need horizontal autoscaling (>1 concurrent worker per burst) or VM sprawl becomes unmanageable (>~10 types).**
+
 **Deep health check pattern**: After deploying to the secondary VM, CI runs a real encode job end-to-end before swapping traffic. This has caught broken deploys that passed all unit tests and liveness probes.
 
 **JIT startup**: Tying VM startup to a user workflow event (entering the lyrics review page) gives ~60 seconds of natural warmup time before encoding is actually needed. Users are reading and editing lyrics while the VM starts — they never experience a cold-start stall. This avoids both 24/7 costs (~$400/mo) and noticeable latency.
@@ -110,6 +329,13 @@ When a metadata key is missing, don't set it to "now" and skip the action — th
 
 ### Pending Jobs Guard Must Not Reset Idle Timestamps (Mar 2026)
 When pending CI jobs are detected, keep runners alive but don't refresh their `last-activity` timestamps. Refreshing timestamps resets the idle timer, so runners can never accumulate enough idle time to be stopped — even after all jobs complete.
+
+### "Is It Busy?" Guards Must Fail SAFE, Not Fail Open (Jun 2026)
+Both stop paths for the GCE encoder VMs guarded against killing a busy worker by checking `/health`'s `active_jobs` — but both defaulted to **0 (= idle)** when `/health` was unreachable or slow (CI drain: `... || echo "0"`; idle Cloud Function: `except: return 0`). A busy encoder runs a 4K ffmpeg on all 32 cores and shares uvicorn with the encode subprocess, so `/health` can miss its timeout *while the VM is hard at work*. Combined with blue/green deploy churn (every merge cycles the VMs) and the 5-min idle check, this stopped VMs **mid-render**, orphaning the in-memory job so backend polls got 404 → "lost contact with worker ... not found" (incident 2026-06-15; the burst was self-inflicted by rapid PR merges during the tenant E2E, 0 in the prior 48h). **Rule:** a guard that decides whether to destroy work must treat "couldn't confirm" as "assume busy / don't act," never as the permissive default. Retry the probe, and only act on a *confirmed* safe signal (here: a real `active_jobs == 0` from a 200 response), with a bounded timeout so a wedged worker can't block forever.
+
+### In-Flight Status Polls Must Be Pinned to the Worker, Not the Floating Primary (Jun 2026)
+
+The day after the drain fix above, the **same** "lost contact ... not found" error recurred (incident 2026-06-16, job d3af33ae) — but this time the VM was *never* stopped mid-render. `EncodingService.get_job_status()` re-resolved the worker URL on **every poll** via `_get_worker_url()` → `config.active_url`. A blue-green deploy swapped the Firestore `primary_vm` pointer at 04:33:46 (worker-a → worker-b); 7s later the in-flight render's polls started hitting worker-b, which had never received the job → 404 → 5 failures → render failed. Worker-a was alive and finished the encode the whole time; nobody was listening. The drain (which keeps the old VM *alive*) can't help — the job is orphaned at the **poll layer** the instant the pointer swaps, 47s before any VM stop. **Rule:** once a job is accepted by a specific worker, every subsequent poll for that job must target *that* worker until terminal — the poll follows the job, not the floating primary pointer. URL re-resolution is correct for *capacity fallback* (dead primary → start fallback → re-route a fresh submission) but wrong for an *in-flight poll* (a different/fresh VM can't have the job; re-routing only yields 404). Fix: capture the worker URL **after** submit (reflects a fallback re-route, precedes any later swap) and pass it as `worker_url=` through `wait_for_completion` → `get_job_status`, which then pins the request and sets `allow_failover=False`. v0.184.2.
 
 ### Cloud Run GPU: Let the Platform Scale, Not Your Code (Mar 2026)
 
@@ -215,7 +441,7 @@ When two sequential human review steps can be combined into one, do it. We origi
 
 3. **`compute.instances.start` returns `503 SERVICE_UNAVAILABLE` for transient backend stress, not just capacity.** Initial fix only classified `ZONE_RESOURCE_POOL_EXHAUSTED` as transient/recoverable; `503` got the generic `EncodingWorkerStartError` and never triggered multi-zone fallback. Either treat the `EncodingWorkerStartError` parent class as fallback-worthy (what we did, PR #750) or expand the capacity error code list.
 
-4. **GCE `c4d-highcpu-32` capacity in `us-central1-f` is unreliable enough to be useless as a fallback.** Provisioning failed there at create time on multiple attempts (the very thing the fallback is meant to mitigate). `-a` and `-b` are stable. (PR #749)
+4. **GCE `c4d-highcpu-32` capacity in `us-central1-f` is unreliable enough to be useless as a fallback.** Provisioning failed there at create time on multiple attempts (the very thing the fallback is meant to mitigate). `-a` and `-b` were stable *at the time*. (PR #749) — **Superseded 2026-08-12:** see "Machine-family diversification" below; `-a`/`-b` are NOT immune — the whole `c4d-highcpu-32` family stocked out region-wide (a/b/c at once).
 
 5. **`google-auth ≥ 2.40` uses mTLS-over-HTTPS for the GCE metadata server when `/run/google-mds-mtls/` certs exist on the VM.** Newer GCE images ship those certs; the mTLS handshake then fails with `SSL CERTIFICATE_VERIFY_FAILED` on freshly-provisioned VMs. The worker can't refresh its SA token, all GCS reads/writes break. Fix: set `GCE_METADATA_MTLS_MODE=none` in the systemd EnvironmentFile to force HTTP-on-port-80 metadata access. (PR #750)
 
@@ -223,8 +449,31 @@ When two sequential human review steps can be combined into one, do it. We origi
 
 7. **`_request_with_retry` captured the URL once before the retry loop.** When the warmup-fallback updated the active URL override (e.g., switching from a dead primary to a live fallback), the retry loop kept hitting the original (dead) URL for all 8 attempts. Fix: thread the relative `path` through and re-resolve `_get_worker_url() + path` on retries after warmup has fired. (PR #752)
 
+### Machine-family diversification (August 2026)
+
+> **Superseded by v0.195.0** — the "Multi-instance-type encode pool" lesson at the
+> top of this file. The 2-family fallback fleet (c4d + n2) described below was
+> broadened to a **ranked 6-family pool** (c4d/c4/n4d/c2d/n2d/n2), and runtime +
+> deploy selection now route through the shared
+> `backend/services/encoding_worker_preference.py` (fastest-first + 15-min capacity
+> cooldown), not "primary first, fallbacks in declared order". The incident + root
+> lesson below remain accurate history; the "Fix (Option B)" and "Architecture
+> summary" specifics (2 families / 6 VMs / declared-order iteration) are outdated —
+> see the v0.195.0 lesson for the current mechanism.
+
+**Incident 2026-08-12:** `c4d-highcpu-32` hit a **region-wide `ZONE_RESOURCE_POOL_EXHAUSTED` stockout across `us-central1-a`, `-b` AND `-c` simultaneously.** Because the primary pair *and* both fallbacks were all the same machine family, every lane in `ensure_any_running` failed at once. Effects:
+- **Preview** (`POST /api/review/{id}/preview-video`) fell through to slow local Cloud-Run encoding (~130–160 s), which **exceeds Cloudflare's ~100 s edge timeout** → browser got a **524 / "NetworkError when attempting to fetch resource"** even though the backend actually returned 200. The 524 and the NetworkError are the same event; backend logs showing 200 are misleading because the client was already disconnected.
+- **Render** parked in `RENDER_PENDING_CAPACITY` and auto-retried (safe only if capacity returns within 24 h).
+
+**Root lesson:** zone diversity is not enough — a stockout is per **(machine family × region)**, and it can take out *every* zone of a family in a region at once. The fallback fleet must diversify **machine family**, not just zone.
+
+**Fix (Option B):** added `n2-highcpu-32` capacity fallbacks (`encoding-worker-fallback-n2c`/`-n2f` in `us-central1-c`/`-f`) — an independent, much deeper capacity pool. Runtime needed **no change** (`ensure_any_running` already iterates arbitrary `{vm,zone,ip}` candidates; `start_vm(zone=...)` is zone-generic); it's purely `infrastructure/config.py::EncodingWorkerConfig.FALLBACKS` (now carries per-VM `machine_type` + `disk_type`) + `encoding_worker_vm.py` + a new `encoding-worker-fallback-vms` secret version. Gotchas:
+- **n2 does not support `hyperdisk-balanced`** → its fallbacks use `pd-balanced` boot disks (per-VM `disk_type`).
+- **Keep the existing `-a`/`-b` entries byte-identical** (including the IP `description` string!) — changing even the Address description forces the Address to replace, which cascades to *replacing the c4d VM* (needs the very capacity that's out). Always `pulumi preview` and confirm the diff is purely additive (`+N to create`, no `+-replace` on existing encoding-worker VMs) before `pulumi up`.
+- **Preview-timeout is a separate, still-open fragility:** a synchronous preval that outlives the ~100 s edge timeout gives users an opaque 524. Fast-follow options: make preview async/polling (like render), fail fast to local encode when all VM starts stock out, or raise the edge read-timeout for that route.
+
 **Architecture summary (post-fixes):**
-- 4 GCE encoding workers: 2 primaries in `us-central1-c` (blue-green) + 2 capacity fallbacks in `us-central1-a` and `us-central1-b`. All idle by default; started on demand.
+- 6 GCE encoding workers: 2 primaries in `us-central1-c` (blue-green, `c4d-highcpu-32`) + 2 `c4d` capacity fallbacks in `us-central1-a`/`-b` + 2 `n2-highcpu-32` fallbacks in `us-central1-c`/`-f`. All idle by default; started on demand.
 - `EncodingWorkerCandidate` list iterated in `ensure_any_running` — primary first, fallbacks in declared order. Capacity errors fall through to next candidate; non-capacity start errors also fall through (broadened in PR #750).
 - New `RENDER_PENDING_CAPACITY` job state for transient infra failures — different from `FAILED` (which is for unrecoverable bugs).
 - Cloud Scheduler fires `/api/internal/retry-pending-render-jobs` every 5 min; 24h hard timeout per job.
@@ -1363,3 +1612,108 @@ can recover via the review UI's "Search All Providers" control with
 `force_sources=["spotify"]` (registered at
 `/api/review/{job_id}/search-lyrics`); no code change to the filter is
 warranted.
+
+## CJK Lyrics: Line-Splitting Must Use Display Width, Not Character Count (Jul 2026)
+
+**Symptom:** A Japanese karaoke video (job `4dcca2d6`) rendered with lyric
+lines overlapping and running off both screen edges.
+
+**Root cause:** `SegmentResizer` gated/split lines on raw character count
+(`len(text) <= max_line_length`, budget calibrated for Latin at 4K). East-Asian
+*Wide/Fullwidth* glyphs render ~2.5× a Latin character, and CJK has no
+inter-word spaces, so a Japanese line well under the *character* budget was ~2×
+too wide for the frame. The karaoke ASS sets **no `WrapStyle`**, so libass
+smart-wraps (style 0) a too-wide line onto a second physical row — which lands
+on the next slot's fixed `y = first_pos + i*line_height` position and overlaps it.
+
+**Fix:** Measure an **East-Asian display width** (`unicodedata.east_asian_width`
+W/F → `WIDE_RATIO=2.7` units, else 1). For pure ASCII/Latin `display_width == len`,
+so Latin/European output is byte-for-byte unchanged. Only the oversize *gate* uses
+display width; wide-script segments are then split by **word-token packing**
+(`_pack_words_into_lines`), which is boundary-safe (never cuts inside a multi-char
+CJK token like `立ち向かう`) and counts the inter-token space the renderer emits.
+
+**Gotchas for next time:**
+- libass renders at ~0.70× the nominal ASS `Fontsize` — calibrate widths against
+  that effective size (`lyrics_line.ASS_FONT_SCALE`), not the nominal 250px.
+- The renderer emits a space after **every** word token (`lyrics_line.py`
+  `transformed_text + " "`), which both inflates CJK width ~25% and is why CJK
+  text looks oddly spaced-out. Dropping inter-CJK spaces is a separate improvement.
+- A wordless oversized segment must be **preserved**, not split — the word-matching
+  splitters map zero words and would return `[]`, silently dropping lyrics.
+- The CJK font is a **system fallback** (Noto Sans CJK); the configured karaoke
+  font (Montserrat/Avenir) has no CJK glyphs. See `video_generator._find_cjk_font`.
+
+## Long-Running Workers Must Be Fenced Against Supersession (Aug 2026)
+
+**Symptom:** An operator reset a `rendering_video` job via the admin "Review"
+button, then the job flipped itself to `failed` seconds later with *"Invalid
+state transition … in_review -> instrumental_selected"* (job `7f457087`). The
+reset was fine; the job died on its own.
+
+**Root cause:** Admin reset hard-writes the status backwards but does **not**
+stop the render worker already running on the encoder. When that render
+finished it ran its normal terminal transition (`rendering_video ->
+instrumental_selected`), now illegal, and the worker's generic `except
+Exception` handler called `fail_job()` — clobbering the operator's reset. A
+classic stale-worker / lost-update race: whoever finishes last wins, and the
+loser is a perfectly good reset.
+
+**Fix (v0.192.4):** Fence long-running render/video workers against
+supersession with two independent nets (`backend/workers/supersede.py`):
+1. **Status fence** — re-read the job before writing outputs / transitioning;
+   if it's no longer in the status this worker owns, discard the result.
+2. **Generation fence** — `state_data.worker_generation`, atomically
+   `Increment`ed by every admin reset *and* every render/video trigger. A worker
+   captures it at start; if it later differs, a newer run took over.
+Plus a targeted `except InvalidStateTransitionError` **before** the generic
+handler in both workers: a terminal transition that became illegal is treated
+as supersession (log + `return False`), never `fail_job()`.
+
+**Principles for next time:**
+- A worker must **never** `fail_job()` because its *own* success transition
+  became illegal — that only happens when something deliberately moved the job.
+- Bump the fence at the **trigger choke point** (`trigger_render_video_worker` /
+  `trigger_video_worker`), so every run gets a unique generation without having
+  to hunt down every caller. Cloud Tasks/Run retries re-invoke the worker (not
+  the trigger), so they keep the same generation — correct, it's the same run.
+- Check the fence **before writing outputs**, not just before the terminal
+  transition — otherwise a stale render can overwrite a newer render's video.
+- Test-isolation gotcha: assert an atomic bump via
+  `patch("google.cloud.firestore_v1.Increment")` + `assert_called_once_with(1)`,
+  not `isinstance(..., Increment)` — another test in the suite replaces the
+  firestore module with a mock, so real-vs-mock class identity flakes.
+
+## Server-Created Jobs Must Fit the Dashboard's UI Assumptions (Aug 2026)
+
+**Symptom:** A paid "Made for you" Stripe order auto-created its job perfectly
+(webhook → `_handle_made_for_you_order`, job `b092648c` at
+`awaiting_audio_selection` with 10 audio sources found, admin notified) — yet
+the operator saw *nothing* on the dashboard and re-created the job by hand,
+producing a duplicate.
+
+**Root cause:** Two UI assumptions that only hold for *self-service* jobs:
+1. The dashboard filtered out **all** `awaiting_audio_selection` jobs, because
+   for a self-service user those are mid-wizard and owned by the guided-flow
+   component. Made-for-you jobs are created **server-side** by the Stripe
+   webhook, so they sit at that same status with **no active wizard session** —
+   and got silently dropped.
+2. The admin notification email's "Open Job" button linked to bare `/app/`,
+   i.e. the exact page that filters the job out.
+
+**Fix (v0.192.5):** `shouldShowJobOnDashboard()` keeps `made_for_you` jobs
+visible at `awaiting_audio_selection` (hiding only self-service ones); added
+`made_for_you`/`customer_email` to `SUMMARY_FIELD_PATHS` so the summary payload
+carries the flag; the email now deep-links to
+`/app/?admin_token=…&status=awaiting_audio_selection` (dashboard honors a
+`status` URL param).
+
+**Principles for next time:**
+- A UI filter written for one creation path (interactive wizard) will silently
+  swallow items from another path (server/webhook). When adding a server-created
+  job that reuses an interactive status, audit every place that status is
+  special-cased in the frontend.
+- A notification's action link must point at a view that actually **renders the
+  item** — verify the deep-link, don't assume "/app shows everything".
+- Any field a frontend filter branches on must be in `SUMMARY_FIELD_PATHS`, or
+  it arrives `undefined` and the branch silently takes the wrong path.

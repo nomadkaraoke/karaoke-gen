@@ -5,6 +5,7 @@ import { hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { ReferralCapture } from '@/components/ReferralCapture';
+import { BackendStatusBanner } from '@/components/backend-status-banner';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -37,6 +38,7 @@ export default async function LocaleLayout({
       <Suspense fallback={null}>
         <ReferralCapture />
       </Suspense>
+      <BackendStatusBanner />
       {children}
     </NextIntlClientProvider>
   );

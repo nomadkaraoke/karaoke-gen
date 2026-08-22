@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Érvénytelen instrumental_selection. A következők egyike kell legyen: {valid_selections}",
     "instrumentalSelected": "Instrumentális sáv kiválasztva. A videó generálása megkezdődött.",
     "instrumentalSelectionError": "Hiba a(z) {job_id} feladat instrumentális sávjának kiválasztásakor: {error}",
-    "downloadUrlsError": "Hiba a letöltési URL-ek lekérésekor: {error}"
+    "downloadUrlsError": "Hiba a letöltési URL-ek lekérésekor: {error}",
+    "fileNoLongerAvailable": "A fájl már nem elérhető"
   },
   "review": {
     "jobNotFound": "A feladat nem található",
@@ -92,7 +93,10 @@
     "selectAudioError": "Hiba a hang kiválasztásakor a(z) {job_id} feladatnál: {error}",
     "searchAudioError": "Hiba a hang keresésekor: {error}",
     "searchCreatedSuccessfully": "Feladat létrehozva. Hang keresése...",
-    "autoDownloadStarted": "A legjobb eredmény automatikusan kiválasztva. Letöltés indítása..."
+    "autoDownloadStarted": "A legjobb eredmény automatikusan kiválasztva. Letöltés indítása...",
+    "drmUrlUnsupported": "A(z) {platform} linkek másolásvédettek, így nem tudjuk őket közvetlenül letölteni. Próbáld meg először letölteni a hanganyagot egy külső eszközzel, majd töltsd fel ide a hangfájlt. Beilleszthetsz egy YouTube linket is, vagy használd az Audio Search funkciót a dal megtalálásához.",
+    "drmUrlUnsupportedWithLink": "A(z) {platform} linkek másolásvédettek, ezért nem tudjuk őket közvetlenül letölteni. A számot letöltheted egy olyan eszközzel, mint a(z) {downloader}, majd feltöltheted ide a hangfájlt. Beilleszthetsz egy YouTube linket is, vagy használhatod a Hangkeresést a dal megtalálásához.",
+    "drmUrlUnsupportedSearch": "A(z) {platform} linkek másolásvédettek, így nem tudjuk őket közvetlenül letölteni. Keress rá a weben egy „{platform} downloader” kifejezésre a hanganyag letöltéséhez — például: {searchUrl} —, majd töltsd fel ide az audiofájlt. Beilleszthetsz egy YouTube linket is, vagy használd a Hangkeresőt a dal megtalálásához."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

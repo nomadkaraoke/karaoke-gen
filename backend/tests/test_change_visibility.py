@@ -101,7 +101,9 @@ class TestChangeToPrivate:
     """Test public -> private visibility change."""
 
     @pytest.mark.asyncio
-    async def test_calls_redistribute(self):
+    async def test_redistributes_then_deletes_public(self):
+        """Distribute-then-delete: redistribute runs, then public outputs are deleted
+        with the references captured before redistribution overwrote state."""
         mock_job_manager = MagicMock()
         mock_job_ref = MagicMock()
         mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
@@ -110,18 +112,29 @@ class TestChangeToPrivate:
         job = _make_job(is_private=False, state_data={
             "youtube_url": "https://youtube.com/watch?v=abc",
             "brand_code": "NOMAD-0001",
+            "gdrive_files": {"mp4": "id1"},
             "dropbox_link": "https://dropbox.com/test",
         })
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock) as mock_delete, \
-             patch("backend.workers.video_worker.redistribute_video", new_callable=AsyncMock, return_value=True) as mock_redist:
+        call_order = []
+        mock_redist = AsyncMock(return_value=True, side_effect=lambda *a, **k: call_order.append("redist") or True)
+        mock_delete = AsyncMock(side_effect=lambda *a, **k: call_order.append("delete"))
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", mock_delete), \
+             patch("backend.workers.video_worker.redistribute_video", mock_redist):
 
             result = await service.change_to_private("test-123", job, "user@example.com")
 
             assert result["status"] == "success"
             assert result["reprocessing_required"] is False
-            mock_delete.assert_called_once_with("test-123", job, keep_gcs_finals=True)
             mock_redist.assert_called_once_with("test-123")
+            # Redistribution must happen BEFORE any public deletion.
+            assert call_order == ["redist", "delete"]
+            # Public deletion receives the references captured before redistribution.
+            captured = mock_delete.call_args.args[1]
+            assert captured["youtube_url"] == "https://youtube.com/watch?v=abc"
+            assert captured["brand_code"] == "NOMAD-0001"
+            assert captured["gdrive_files"] == {"mp4": "id1"}
 
     @pytest.mark.asyncio
     async def test_sets_is_private_true(self):
@@ -132,7 +145,7 @@ class TestChangeToPrivate:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=False, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", new_callable=AsyncMock), \
              patch("backend.workers.video_worker.redistribute_video", new_callable=AsyncMock, return_value=True):
 
             await service.change_to_private("test-123", job, "user@example.com")
@@ -178,6 +191,37 @@ class TestChangeToPublic:
             assert result["reprocessing_required"] is True
             mock_worker.trigger_screens_worker.assert_called_once_with("test-123")
             mock_theme.assert_called_once_with(job_id="test-123", theme_id="nomad")
+
+    @pytest.mark.asyncio
+    async def test_intermediate_deletes_ignore_missing(self):
+        """Best-effort deletes of intermediate render artifacts must pass
+        ignore_missing=True so absent .mov/.mkv files are a quiet no-op instead
+        of a noisy ERROR log that trips the error-monitor (regression)."""
+        mock_job_manager = MagicMock()
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+             patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)), \
+             patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
+
+            mock_storage = MagicMock()
+            mock_storage_cls.return_value = mock_storage
+            mock_worker = MagicMock()
+            mock_worker.trigger_screens_worker = AsyncMock(return_value=True)
+            mock_worker_svc.return_value = mock_worker
+
+            await service.change_to_public("test-123", job, "user@example.com")
+
+            assert mock_storage.delete_file.call_count > 0
+            for call in mock_storage.delete_file.call_args_list:
+                assert call.kwargs.get("ignore_missing") is True, (
+                    f"delete_file called without ignore_missing=True: {call}"
+                )
 
     @pytest.mark.asyncio
     async def test_resets_styles_to_nomad_theme(self):
@@ -252,22 +296,33 @@ class TestChangeToPrivateErrors:
 
     @pytest.mark.asyncio
     async def test_rollback_on_redistribute_failure(self):
+        """On redistribution failure NOTHING public is deleted and the job is
+        reverted to public — a failed going-private is a no-op, not a partial."""
         mock_job_manager = MagicMock()
         mock_job_ref = MagicMock()
         mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
 
         service = VisibilityChangeService(job_manager=mock_job_manager)
-        job = _make_job(is_private=False, state_data={})
+        job = _make_job(is_private=False, state_data={
+            "youtube_url": "https://youtube.com/watch?v=abc",
+            "brand_code": "NOMAD-0001",
+            "gdrive_files": {"mp4": "id1"},
+        })
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        mock_delete = AsyncMock()
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", mock_delete), \
              patch("backend.workers.video_worker.redistribute_video", new_callable=AsyncMock, return_value=False):
 
             with pytest.raises(RuntimeError, match="Redistribution failed"):
                 await service.change_to_private("test-123", job, "user@example.com")
 
-            # Guard flag should be cleared on failure (DELETE_FIELD sentinel)
-            last_update = mock_job_ref.update.call_args_list[-1]
-            val = last_update.args[0].get("state_data.visibility_change_in_progress")
+            # Public outputs must NOT be deleted when redistribution fails.
+            mock_delete.assert_not_called()
+
+            # Job reverted to public + guard flag cleared (DELETE_FIELD sentinel).
+            last_update = mock_job_ref.update.call_args_list[-1].args[0]
+            assert last_update.get("is_private") is False
+            val = last_update.get("state_data.visibility_change_in_progress")
             assert "delete" in str(type(val)).lower() or "sentinel" in str(val).lower()
 
 
@@ -291,6 +346,65 @@ class TestDeleteDistributedOutputs:
             await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
 
             mock_brand_svc.recycle_brand_code.assert_called_once_with("NOMAD", 42)
+
+    @pytest.mark.asyncio
+    async def test_delete_public_outputs_recycles_public_code(self):
+        """_delete_public_outputs recycles the captured public NOMAD number."""
+        mock_job_manager = MagicMock()
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+
+        public_outputs = {
+            "youtube_url": None,
+            "brand_code": "NOMAD-0042",
+            "gdrive_files": None,
+            "dropbox_path": None,
+            "artist": "A",
+            "title": "T",
+        }
+
+        with patch("backend.services.brand_code_service.get_brand_code_service") as mock_bcs, \
+             patch("backend.services.brand_code_service.BrandCodeService.parse_brand_code", return_value=("NOMAD", 42)), \
+             patch("backend.services.nomad_master_mirror.cleanup_nomad_masters") as mock_mirror:
+            mock_brand_svc = MagicMock()
+            mock_bcs.return_value = mock_brand_svc
+
+            await service._delete_public_outputs("test-123", public_outputs)
+
+            # No public YouTube/Dropbox/GDrive present → all deletions "succeed" →
+            # the public number is recycled and the mirror is cleaned.
+            mock_mirror.assert_called_once_with("NOMAD-0042")
+            mock_brand_svc.recycle_brand_code.assert_called_once_with("NOMAD", 42)
+
+    @pytest.mark.asyncio
+    async def test_delete_public_outputs_skips_recycle_on_incomplete_cleanup(self):
+        """If a public deletion fails, the number is NOT recycled (avoids a future
+        duplicate against lingering public files)."""
+        mock_job_manager = MagicMock()
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+
+        public_outputs = {
+            "youtube_url": None,
+            "brand_code": "NOMAD-0042",
+            "gdrive_files": {"mp4": "id1"},
+            "dropbox_path": None,
+            "artist": "A",
+            "title": "T",
+        }
+
+        with patch("backend.services.gdrive_service.get_gdrive_service") as mock_gd, \
+             patch("backend.services.nomad_master_mirror.cleanup_nomad_masters"), \
+             patch("backend.services.brand_code_service.get_brand_code_service") as mock_bcs, \
+             patch("backend.services.brand_code_service.BrandCodeService.parse_brand_code", return_value=("NOMAD", 42)):
+            gd = MagicMock()
+            gd.is_configured = True
+            gd.delete_files.side_effect = RuntimeError("gdrive boom")
+            mock_gd.return_value = gd
+            mock_brand_svc = MagicMock()
+            mock_bcs.return_value = mock_brand_svc
+
+            await service._delete_public_outputs("test-123", public_outputs)
+
+            mock_brand_svc.recycle_brand_code.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_clears_distribution_state_keys(self):

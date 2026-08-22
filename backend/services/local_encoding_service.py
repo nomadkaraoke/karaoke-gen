@@ -325,10 +325,29 @@ class LocalEncodingService:
         output_file: str,
     ) -> bool:
         """
-        Convert MOV to MP4 format.
+        Convert the source "With Vocals" video (MOV/MKV) to a standard, portable MP4.
+
+        This produces the "(With Vocals).mp4" sing-along deliverable. It is a leaf
+        output — no later encode reads it — so the encode is chosen purely for the
+        deliverable itself:
+          - ``-pix_fmt yuv420p``: the renderer emits High 4:4:4 (yuv444p), which many
+            browsers/TVs/phones cannot decode. Normalize to 4:2:0 so it plays
+            everywhere and matches every other output. (Also ~halves this stage's CPU
+            time vs. re-encoding 4:4:4, and yields a slightly smaller file.)
+          - ``-preset veryfast``: this is the single longest finalization stage; a fast
+            preset roughly halves it (~56s → ~28s on a 32-vCPU worker) with negligible
+            quality difference for karaoke content (static background + text).
+          - ``-c:a aac``: the source audio is FLAC; FLAC-in-MP4 is non-standard. Encode
+            AAC 320k so the file is fully portable. Matches the documented spec
+            ("4k H264/AAC with original vocals", see template_service.py).
+
+        Both commands force ``-pix_fmt yuv420p`` (h264_nvenc can otherwise *preserve* a
+        yuv444p input). Prod encoding workers are CPU-only, so ``cpu_command`` is the
+        real path; if the NVENC command ever errors, ``_execute_command_with_fallback``
+        drops to the (correct) CPU command.
 
         Args:
-            input_file: Path to input MOV file
+            input_file: Path to input MOV/MKV file (source "With Vocals" video)
             output_file: Path for output MP4 file
 
         Returns:
@@ -336,11 +355,13 @@ class LocalEncodingService:
         """
         gpu_command = (
             f'{self._ffmpeg_base_command} {self.hwaccel_decode_flags} -i "{input_file}" '
-            f'-c:v {self.video_encoder} -c:a copy {self.MP4_FLAGS} "{output_file}"'
+            f'-c:v {self.video_encoder} -pix_fmt yuv420p -c:a {self.aac_codec} -ar 48000 -b:a 320k '
+            f'{self.MP4_FLAGS} "{output_file}"'
         )
         cpu_command = (
             f'{self._ffmpeg_base_command} -i "{input_file}" '
-            f'-c:v libx264 -c:a copy {self.MP4_FLAGS} "{output_file}"'
+            f'-c:v libx264 -pix_fmt yuv420p -preset veryfast '
+            f'-c:a {self.aac_codec} -ar 48000 -b:a 320k {self.MP4_FLAGS} "{output_file}"'
         )
         return self._execute_command_with_fallback(
             gpu_command, cpu_command, "Converting MOV to MP4"

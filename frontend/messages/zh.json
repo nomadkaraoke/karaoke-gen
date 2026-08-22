@@ -239,7 +239,10 @@
     "loadingJobs": "正在加载任务...",
     "noJobsMatchFilters": "没有符合您筛选条件的任务。",
     "noJobsYet": "暂无任务。创建一个来开始吧！",
-    "referrals": "推荐"
+    "referrals": "推荐",
+    "bulkMode": "批量",
+    "singleMode": "单曲",
+    "submitModeToggle": "单曲或批量提交"
   },
   "auth": {
     "noVerificationToken": "未提供验证令牌",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "无法找到该链接",
     "resendSuccessBody": "我们已将新的登录链接发送至 {maskedEmail}，该链接在24小时内有效。",
     "resendSuccessTitle": "请查收邮件",
-    "resending": "发送中..."
+    "resending": "发送中...",
+    "confirmBody": "为了您的账号安全，请点击下方按钮完成登录。这一额外步骤可防止自动邮件扫描程序在您点击之前使链接失效。",
+    "confirmButton": "完成登录",
+    "confirmTitle": "完成登录"
   },
   "payment": {
     "title": "付款成功！",
@@ -372,7 +378,10 @@
     "backend": "后端",
     "encoder": "编码器",
     "flacfetch": "Flacfetch",
-    "separator": "分离器"
+    "separator": "分离器",
+    "fallbackBadge": "备用",
+    "fallbackNote": "主容量不可用 — 已切换至备用实例类型。",
+    "liveWorker": "在线工作节点"
   },
   "credits": {
     "title": "购买更多积分",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "粘贴链接",
     "urlSupportedSitesHint": "支持 YouTube、Facebook、SoundCloud、TikTok、Vimeo 以及数百个其他网站。",
     "urlSupportedSitesLink": "查看所有支持的网站",
-    "useThisUrl": "使用此链接"
+    "useThisUrl": "使用此链接",
+    "matchCorrectedTo": "已更正为 {value} — 您输入的是“{typed}”",
+    "matchDidYouMean": "您是不是指？",
+    "matchKeepMine": "保留我的输入",
+    "matchTidiedTo": "已整理为 {value}",
+    "matchUndo": "撤销",
+    "matchChecking": "正在检查歌曲详情…",
+    "matchUseCorrection": "使用修正内容",
+    "matchUseTidied": "使用整理后的版本",
+    "matchUsingTyped": "使用您输入的内容：{value}",
+    "checkingUrl": "检查中…",
+    "submitNetworkError": "网络错误 —— 请检查您的网络连接并重试。",
+    "submitError": "出了点问题，请重试。"
   },
   "jobStatus": {
     "settingUp": "设置中",
@@ -576,7 +597,9 @@
     "correcting": "校对中",
     "lyricsDone": "歌词完成",
     "lyrics": "歌词",
-    "confirmDurationCost": "确认费用"
+    "confirmDurationCost": "确认费用",
+    "findingAudioSources": "正在查找音频源（重试中）",
+    "waitingForCapacity": "等待编码服务器 (正在重试)"
   },
   "jobCard": {
     "actionNeeded": "需要操作",
@@ -588,7 +611,9 @@
     "autoSelect": "将自动选择",
     "willAutoSelectFirst": "将自动选择第一个",
     "noOutputsAvailable": "暂无可用输出",
-    "confirmCost": "确认费用"
+    "confirmCost": "确认费用",
+    "makingPublicInProgress": "正在公开此曲目 — 使用默认品牌重新渲染并重新发布。这通常需要 15–30 分钟。",
+    "waitingForEncodingServer": "(等待编码服务器可用)"
   },
   "jobActions": {
     "delete": "删除",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "歌曲名称",
-    "artist": "歌手"
+    "artist": "歌手",
+    "loading": "正在加载标题画面预览"
   },
   "editTrack": {
     "title": "编辑已完成的曲目",
@@ -739,7 +765,22 @@
     "views": "{count} 次观看",
     "moreVersions": "还有 {count} 个",
     "select": "选择",
-    "creditCost": "{credits} 积分"
+    "creditCost": "{credits} 积分",
+    "chooseFile": "选择音频文件（MP3、WAV、FLAC、M4A、OGG）",
+    "noResultsHelp": "未能找到任何音频源。请尝试修改上方的歌手或歌曲名并重新搜索，或者通过提供网址或上传文件来使用您自己的音频。",
+    "pasteUrl": "粘贴网址",
+    "researchFailed": "搜索失败。请重试。",
+    "searchAgain": "重新搜索",
+    "selectFailed": "选择音频失败",
+    "uploadFailed": "上传失败。请重试。",
+    "urlFailed": "无法使用该网址。请尝试其他来源。",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "使用此文件",
+    "useThisUrl": "使用此网址",
+    "artistLabel": "歌手",
+    "loading": "加载中...",
+    "titleLabel": "标题",
+    "uploadFileAction": "上传文件"
   },
   "audioEditor": {
     "loading": "正在加载音频编辑器...",
@@ -776,7 +817,17 @@
     "undoFailed": "撤销失败",
     "redoFailed": "重做失败",
     "restoreFailed": "恢复失败——某些编辑可能未应用",
-    "submitFailed": "提交失败"
+    "submitFailed": "提交失败",
+    "fadeIn": "淡入",
+    "fadeInSelection": "在选定区域淡入",
+    "fadeOut": "淡出",
+    "fadeOutSelection": "在选定区域淡出",
+    "fadeInDisabledHint": "如需添加淡入效果，请选择从音轨最开头开始的区域",
+    "fadeOutDisabledHint": "如需添加淡出效果，请选择在音轨最末尾结束的区域",
+    "trimEndDisabledHint": "如需裁剪结尾，请选择在音轨最末尾结束的区域",
+    "trimEndSelection": "移除所选区域之后的所有内容",
+    "trimStartDisabledHint": "如需裁剪开头，请选择从音轨最开头开始的区域",
+    "trimStartSelection": "移除所选区域之前的所有内容"
   },
   "audioEditRestore": {
     "title": "已保存的音频编辑会话",
@@ -803,7 +854,7 @@
       "acceptAll": "全部接受",
       "revertAll": "全部还原",
       "undoAll": "全部撤销",
-      "resetAllChanges": "将所有更改重置回原始的 AI 校对歌词",
+      "resetAllChanges": "将所有更改重置为最初的纠错歌词",
       "undo": "撤销",
       "redo": "重做",
       "findReplace": "查找/替换",
@@ -816,7 +867,11 @@
       "playback": "播放",
       "audioLoadError": "无法加载音频",
       "audioStillLoading": "音频仍在加载中...",
-      "loadingAudio": "正在加载音频..."
+      "loadingAudio": "正在加载音频...",
+      "autoCorrect": "自动纠错",
+      "autoCorrectDesc": "将转录内容与参考歌词进行比较，并为您应用单词级别的修复。已纠正的单词会以紫色显示。",
+      "autoCorrectedCount": "自动更正 · {count}",
+      "autoCorrectedDesc": "我们进行了 {count, plural, =1 {# 处自动更正} other {# 处自动更正}}（以紫色显示）。点击查看详情，您也可以撤销任何不合适的更正。"
     },
     "guidance": {
       "showTips": "显示提示",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "橙色高亮的单词是未匹配片段——无法与参考歌词匹配的部分，可能包含错误（例如听错的相似发音单词）。",
       "useNAndP": "使用 N 和 P 在未匹配片段之间跳转。对于每一个，点击行旁边的播放按钮，将您听到的内容与右侧的参考歌词进行比较，然后点击一个单词进行编辑或删除。",
       "watchOutForPhantomWords": "注意行首或行尾多余的词 (Phantom words)，如“and”——转录经常会添加这些词。",
-      "tryTimelineView": "尝试时间轴视图以发现任何异常长的单词（10 秒以上），这通常表明存在时间同步问题。",
+      "tryTimelineView": "超过2秒的单词和超过2秒的间隙会用琥珀色标记时长 — 请检查这些地方是否存在时间同步问题。切换到高级模式以查看每行展开的时间轴。",
       "watchFullTutorial": "观看完整教程",
       "correctionHandlers": "校对处理程序",
       "anchorSequences": "锚点序列",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "未校对的未匹配片段",
       "uncorrectedGapsDesc": "可能需要手动检查的部分",
       "wordsUncorrected": "未校对的单词",
-      "numberOfGaps": "未匹配片段数量"
+      "numberOfGaps": "未匹配片段数量",
+      "autoCorrectTip": "{count, plural, =1 {已为您自动更正 # 个字词} other {已为您自动更正 # 个字词}}（以紫色显示，上方为原词）。请播放每一行更正后的歌词，检查字词是否仍然对齐——特别是带有橙黄色下划线的字词，其时间为估算值，可能需要调整。",
+      "autoCorrected": "已自动更正",
+      "timingEstimated": "时间为估算值"
     },
     "transcription": {
       "syncedLyrics": "同步歌词",
@@ -854,7 +912,13 @@
       "text": "文本",
       "timeline": "时间轴",
       "deleteSegment": "删除片段",
-      "playSegment": "播放片段"
+      "playSegment": "播放片段",
+      "aiTooltipEstimated": "由系统自动更正。此处的时间为估算值，请播放此行，并在需要时调整字词的对齐时间。",
+      "aiTooltipReplaced": "由系统将“{original}”自动更正而来。请播放此行以确认字词仍然对齐。",
+      "aiTooltipReplacedEstimated": "由系统将“{original}”自动更正而来。时间为估算值，请播放此行，并在需要时调整字词的对齐时间。",
+      "longGapWarning": "距离下一个词有 {seconds} 秒的间隙——通常是多余的提前词（例如凭空多出的“and”）。点击从此处开始播放。",
+      "longWordWarning": "这个词持续了 {seconds} 秒——时间异常长。请播放此行，检查其结束时间是否延伸到了伴奏中。",
+      "playFromGap": "从该间隙的末尾开始播放"
     },
     "editActionBar": {
       "reset": "重置",
@@ -990,7 +1054,9 @@
         "loadingAll": "正在加载所有单词...",
         "loadingSegment": "正在加载片段...",
         "noData": "无可用片段数据",
-        "unCorrect": "取消校对"
+        "unCorrect": "取消校对",
+        "timingClamped": "\"{word}\" 的时间点超出了片段范围 — 已调整至 {time} 秒。",
+        "timingSanitized": "已修复 {count} 个超出此片段范围的单词时间点。"
       },
       "findReplace": {
         "title": "查找和替换",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "已应用自定义歌词。请手动同步每个编辑过的片段，以确保自定义歌词的每个词都能准确同步。"
+    },
+    "autoCorrect": {
+      "accept": "接受建议",
+      "acceptAll": "全部接受",
+      "accepted": "已接受",
+      "adlibRemovalHint": "允许建议删除参考歌词中没有的伴唱或即兴演唱",
+      "adlibRemovalLabel": "建议删除即兴演唱",
+      "category_adlib_removal": "即兴演唱",
+      "category_formatting": "格式",
+      "category_grammar": "语法",
+      "category_mishearing": "听错",
+      "category_other": "其他",
+      "category_repeated_chorus_fix": "副歌",
+      "collapse": "折叠建议",
+      "confidenceHint": "显示建议所需的置信度",
+      "confidenceLabel": "建议筛选器",
+      "confidence_all": "显示全部",
+      "confidence_high": "高置信度",
+      "description": "自动纠错功能会将转录歌词与参考来源进行比较，并提供词级别的修改建议。您可以审查每条建议——在您接受之前，不会应用任何更改。",
+      "dismiss": "忽略建议",
+      "expand": "展开建议",
+      "insertMarker": "插入：",
+      "insertionsHint": "允许建议插入转录漏掉的词",
+      "insertionsLabel": "建议补充漏词",
+      "noReferences": "此歌曲没有可用的参考歌词，因此无法生成建议。请先从参考面板添加歌词。",
+      "noSuggestions": "未发现问题——没有修改建议。",
+      "reject": "拒绝建议",
+      "rejectAll": "全部拒绝",
+      "rejected": "已拒绝",
+      "runButton": "获取建议",
+      "running": "正在分析歌词……这通常需要 15–60 秒。",
+      "staleHint": "这些词在生成建议后已被编辑，因此该建议不再适用。",
+      "summary": "{total} 条建议 · {pending} 条待处理 · {accepted} 条已接受",
+      "title": "自动纠错建议",
+      "undo": "撤销此建议",
+      "cancel": "取消",
+      "close": "关闭",
+      "confidence_balanced": "平衡",
+      "compareHint": "速度较慢且成本较高，但会显示多个模型一致认可的建议",
+      "compareLabel": "比较多个模型",
+      "conflictBadge": "选项",
+      "conflictTooltip": "这些词有不同的修改建议——接受其中一个会自动拒绝其他建议。",
+      "consensusBadge": "{consensus}/{total} 个模型",
+      "consensusTooltip": "推荐模型：{models}",
+      "cachedBadge": "已缓存",
+      "cachedTooltip": "已从之前相同歌词的处理记录中恢复 —— 未产生 AI 费用。",
+      "appliedSummary": "已应用 {count} 处自动更正",
+      "hideDetails": "隐藏详情",
+      "rerun": "重新运行",
+      "revertAllAuto": "全部还原",
+      "showDetails": "显示详情"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "预估 — 最终费用将在下载后确认",
     "reconcileTitle": "这首歌比预期的要长",
     "cancel": "取消"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "正在加载背景预览"
+  },
+  "bulk": {
+    "albumModeHint": "搜索歌手，选择一张专辑，然后选择要制作的曲目。",
+    "artistSearchPlaceholder": "搜索歌手…",
+    "autoPickLossless": "自动选择最佳音频（仅限无损）",
+    "autoPickLosslessHint": "当我们找到确定的无损/FLAC匹配时，自动选择该音频。其他音频将进入审核队列。",
+    "backToAlbums": "返回专辑",
+    "backToArtists": "返回歌手",
+    "batchProgressTitle": "共 {total} 首歌的批处理",
+    "batchSettings": "批量设置",
+    "byAlbum": "按专辑",
+    "byText": "按文本",
+    "checking": "检查中…",
+    "chooseAudio": "选择音频",
+    "communityExists": "已存在社区版本",
+    "communityExistsWithBrands": "社区版本：{brands}",
+    "countAwaiting": "{count} 首需要选择",
+    "countComplete": "{count} 首已完成",
+    "countFailed": "{count} 首失败",
+    "countProcessing": "{count} 首处理中",
+    "countSearching": "{count} 首搜索中",
+    "createBatch": "创建 {count} 个卡拉OK视频",
+    "creditsCost": "花费 {cost} 个积分 · 您有 {balance} 个积分",
+    "edition": "版本",
+    "extra": "额外",
+    "loadingBatch": "正在加载批处理…",
+    "lookupFailed": "查找失败。请重试。",
+    "makePrivate": "保持私密",
+    "makePrivateHint": "仅通过 Dropbox 交付，而不是发布到 YouTube。",
+    "noAlbums": "未找到该歌手的专辑。",
+    "notEnoughCredits": "您需要 {needed} 个积分，但只有 {have} 个。",
+    "overLimit": "您一次最多只能提交 {max} 首歌。",
+    "progressError": "无法加载批处理进度。",
+    "reviewQueueHint": "我们无法为这些曲目确定地自动选择无损音源。请为每首曲目选择一个。",
+    "reviewQueueTitle": "为这些曲目选择音频",
+    "selectedCount": "已选择 {count} 首歌",
+    "skipAudioEdit": "跳过音频编辑",
+    "skipAudioEditHint": "按原样使用每首曲目的音频（不进行裁剪）。",
+    "skipCustomization": "跳过自定义",
+    "skipCustomizationHint": "为每首曲目使用默认主题和样式。",
+    "startAnother": "开始另一个批处理",
+    "submitError": "无法创建批处理。请重试。",
+    "submitting": "正在创建批处理…",
+    "textModeHint": "最多添加 {max} 首歌。我们会标记任何已经有社区版本的歌曲。",
+    "title": "标题",
+    "tracklistHint": "现场版、混音版、附赠曲目以及已有社区版本的歌曲默认不勾选。",
+    "addSong": "添加歌曲",
+    "artist": "歌手",
+    "buyCredits": "购买点数",
+    "removeRow": "移除",
+    "trackCount": "{count} 首曲目",
+    "changeEdition": "更改",
+    "existingVersions": "现有版本：",
+    "usingRelease": "使用 {label} · {year} · {tracks}",
+    "variantBonus": "+{count} 附加曲目",
+    "variantOriginal": "原版",
+    "variantReissue": "再版"
+  },
+  "backendStatus": {
+    "reconnecting": "重新连接中…",
+    "unavailable": {
+      "body": "这通常是暂时现象，请几分钟后再试。",
+      "reassurance": "当前正在制作的卡拉OK视频不会受到影响，系统将继续进行处理。",
+      "title": "我们连接服务器时遇到了一些问题"
+    },
+    "dismiss": "忽略"
   }
 }

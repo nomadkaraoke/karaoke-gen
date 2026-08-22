@@ -107,8 +107,8 @@ def create_theme_config() -> dict:
             "video_duration": 5,
             "existing_image": None,
             "background_color": "#000000",
-            "background_image": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/intro_background.png",
-            "font": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/Oswald-SemiBold.ttf",
+            "background_image": "intro_background.png",
+            "font": "Oswald-SemiBold.ttf",
             "title_region": "370,450,3100,480",
             "title_text_transform": None,
             "title_color": "#ffff00",
@@ -132,13 +132,14 @@ def create_theme_config() -> dict:
             "extra_text": None,
             "extra_text_color": "#ffffff",
             "extra_text_region": None,
+            "extra_text_text_transform": "uppercase",
             "extra_text_gradient": None
         },
         "karaoke": {
             "background_color": "#000000",
-            "background_image": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/karaoke_background.jpg",
+            "background_image": "karaoke_background.jpg",
             "font": "Oswald SemiBold",
-            "font_path": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/Oswald-SemiBold.ttf",
+            "font_path": "Oswald-SemiBold.ttf",
             "font_size": 420,
             "top_padding": 100,
             "ass_name": "VocalStar",
@@ -166,8 +167,8 @@ def create_theme_config() -> dict:
             "video_duration": 5,
             "existing_image": None,
             "background_color": "#000000",
-            "background_image": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/end_background.png",
-            "font": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/Oswald-SemiBold.ttf",
+            "background_image": "end_background.png",
+            "font": "Oswald-SemiBold.ttf",
             "title_region": None,
             "title_text_transform": "none",
             "title_color": "#ffff00",
@@ -179,6 +180,7 @@ def create_theme_config() -> dict:
             "extra_text": None,
             "extra_text_color": None,
             "extra_text_region": None,
+            "extra_text_text_transform": "uppercase",
             "extra_text_gradient": None
         },
         "cdg": {
@@ -202,20 +204,20 @@ def create_theme_config() -> dict:
             "inactive_fill": "#ffff00",
             "inactive_stroke": "#000000",
             "instrumental_font_color": "#ffff00",
-            "font_path": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/Oswald-SemiBold.ttf",
+            "font_path": "Oswald-SemiBold.ttf",
             "font_size": 18,
             "stroke_width": 0,
             "stroke_style": "octagon",
             "instrumental_gap_threshold": 1500,
             "instrumental_text": "INSTRUMENTAL",
-            "instrumental_background": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/cdg_instrumental_background.gif",
+            "instrumental_background": "cdg_instrumental_background.gif",
             "instrumental_transition": "topleftmusicalnotes",
-            "title_screen_background": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/cdg_title_background.gif",
+            "title_screen_background": "cdg_title_background.gif",
             "title_screen_transition": "centertexttoplogobottomtext",
             "title_artist_gap": 30,
             "intro_duration_seconds": 10.0,
             "first_syllable_buffer_seconds": 3.0,
-            "outro_background": f"gs://{GCS_BUCKET}/themes/{THEME_ID}/assets/cdg_title_background.gif",
+            "outro_background": "cdg_title_background.gif",
             "outro_transition": "centertexttoplogobottomtext",
             "outro_text_line1": "$title",
             "outro_text_line2": "$artist",
@@ -246,9 +248,9 @@ def create_tenant_config() -> dict:
             "audio_search": False,  # Vocal Star provides their own audio
             "file_upload": True,
             "youtube_url": False,
-            "youtube_upload": False,  # Download only
-            "dropbox_upload": False,
-            "gdrive_upload": False,
+            "youtube_upload": False,  # B2B: never publish to YouTube
+            "dropbox_upload": True,   # Outputs delivered to the tenant's Dropbox folder
+            "gdrive_upload": False,   # B2B: never publish to Google Drive
             "theme_selection": False,  # Always use Vocal Star theme
             "color_overrides": False,
             "enable_cdg": True,
@@ -260,10 +262,12 @@ def create_tenant_config() -> dict:
             "locked_theme": THEME_ID,  # Lock to Vocal Star theme - users cannot change
             "distribution_mode": "download_only",
             "brand_prefix": "VSTAR",
+            "dropbox_path": "/MediaUnsynced/Karaoke/Tracks-VocalStar",
+            "gdrive_folder_id": None,  # No Google Drive for white-label tenants
             "youtube_description_template": None
         },
         "auth": {
-            "allowed_email_domains": ["vocal-star.com", "vocalstarmusic.com"],
+            "allowed_email_domains": ["vocal-star.com", "vocalstarmusic.com", "inbox.testmail.app"],
             "require_email_domain": True,
             "fixed_token_ids": [],  # Will be populated when tokens are created
             "sender_email": "vocalstar@nomadkaraoke.com"

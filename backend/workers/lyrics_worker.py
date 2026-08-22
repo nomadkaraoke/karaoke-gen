@@ -171,6 +171,26 @@ def create_lyrics_processor(
     )
 
 
+async def _trigger_proactive_auto_correct(job_id, job_log) -> None:
+    """Trigger proactive auto-correct generation on the API service.
+
+    The actual multi-model LLM call + caching runs on the API service (which
+    has the working Anthropic key / compare-models config) — see
+    backend/workers/auto_correct_worker.py. Here we just fire the HTTP trigger
+    and await it. Best-effort and fully isolated: it must NEVER raise, fail the
+    job, or block the pipeline — downstream stages are already triggered before
+    this runs, and the service gates the work behind AUTO_CORRECT_PROACTIVE_ENABLED.
+    """
+    try:
+        from backend.services.worker_service import WorkerService
+
+        ok = await WorkerService().trigger_auto_correct(job_id)
+        job_log.info("Proactive auto-correct trigger %s", "ok" if ok else "skipped/failed")
+    except Exception as e:  # noqa: BLE001 — never let auto-correct affect the job
+        job_log.warning(f"Proactive auto-correct trigger failed (non-fatal): {e}")
+        logger.warning(f"[job:{job_id}] Proactive auto-correct trigger failed (non-fatal): {e}")
+
+
 async def process_lyrics_transcription(job_id: str) -> bool:
     """
     Process lyrics transcription and correction for a job using karaoke_gen.LyricsProcessor.
@@ -517,7 +537,15 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 # This will check if audio is also complete and transition to next stage if so
                 job_log.info("Lyrics worker complete, checking if audio is also done...")
                 job_manager.mark_lyrics_complete(job_id)
-                
+
+                # Proactively pre-generate + cache AI auto-correct suggestions so
+                # they're ready when the reviewer opens the lyrics UI. The work
+                # runs on the API service (it has the Anthropic key); we just fire
+                # the trigger here. Done AFTER mark_lyrics_complete (downstream is
+                # already triggered, so this never blocks it) and fully isolated —
+                # it can never fail or delay the job beyond its own timeout.
+                await _trigger_proactive_auto_correct(job_id, job_log)
+
                 duration = time.time() - start_time
                 # Store worker-level timing
                 job_manager.update_processing_metadata(job_id, "timing.lyrics_worker_seconds", round(duration, 1))

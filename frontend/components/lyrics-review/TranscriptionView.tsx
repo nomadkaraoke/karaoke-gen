@@ -1,17 +1,15 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Badge } from '@/components/ui/badge'
 import { Play, Trash2, Type, Clock } from 'lucide-react'
 import { HighlightedText } from './shared/HighlightedText'
 import { TranscriptionViewProps, TranscriptionWordPosition } from '@/lib/lyrics-review/types'
 import { deleteSegment } from '@/lib/lyrics-review/utils/segmentOperations'
 import SegmentDetailsModal from './modals/SegmentDetailsModal'
-import DurationTimelineView from './DurationTimelineView'
 import SingerChip from './SingerChip'
 import { resolveSegmentSinger, hasWordOverrides } from '@/lib/lyrics-review/duet'
 import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
@@ -39,6 +37,9 @@ export default function TranscriptionView({
   advancedMode = false,
   onAdvancedModeToggle,
   editedWordIds,
+  aiCorrectedWordIds,
+  aiOriginalTextByWordId,
+  aiEstimatedWordIds,
   isDuet,
   onSegmentSingerChange,
   onSegmentFocus,
@@ -47,7 +48,54 @@ export default function TranscriptionView({
   const tHeader = useTranslations('lyricsReview.header')
   const { ready: audioReady } = useAudioReady()
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<'text' | 'duration'>('text')
+
+  // With no reference lyrics, nothing classifies words as anchor/gap/corrected,
+  // so every pill would render uncoloured and the line loses the colour-scanning
+  // we rely on. Fall back to the gap-orange highlight for plain words in that
+  // case (applies to both Simple and Advanced via HighlightedText).
+  const hasReferenceLyrics = Object.keys(data.reference_lyrics ?? {}).length > 0
+
+  // Timing warnings (shown in both Simple and Advanced): any word longer than
+  // 2s, and any gap longer than 2s between consecutive words in a segment.
+  // These are the issues the old Timeline view existed to surface.
+  // Timing maps. longWord/longGap drive the warnings (both modes). In Advanced,
+  // timelineGrow (= duration) and timelineGap (= gap before) become flex weights
+  // so each segment's words fill the full width proportional to their timing.
+  const { longWordByWordId, longGapAfterByWordId, timelineGrowByWordId, timelineGapByWordId } =
+    useMemo(() => {
+      const TIMING_WARNING_THRESHOLD_S = 2
+      const longWord = new Map<string, number>()
+      const longGap = new Map<string, number>()
+      const grow = new Map<string, number>()
+      const gapBefore = new Map<string, number>()
+      for (const seg of data.corrected_segments) {
+        const ws = seg.words
+        for (let i = 0; i < ws.length; i++) {
+          const w = ws[i]
+          if (w.start_time != null && w.end_time != null) {
+            const dur = Math.max(0, w.end_time - w.start_time)
+            if (dur > TIMING_WARNING_THRESHOLD_S) longWord.set(w.id, dur)
+            grow.set(w.id, dur)
+          }
+          const next = ws[i + 1]
+          if (next && w.end_time != null && next.start_time != null) {
+            const gap = next.start_time - w.end_time
+            if (gap > TIMING_WARNING_THRESHOLD_S) longGap.set(w.id, gap)
+          }
+          const prev = ws[i - 1]
+          if (prev && prev.end_time != null && w.start_time != null) {
+            const gap = w.start_time - prev.end_time
+            if (gap > 0.15) gapBefore.set(w.id, gap)
+          }
+        }
+      }
+      return {
+        longWordByWordId: longWord,
+        longGapAfterByWordId: longGap,
+        timelineGrowByWordId: grow,
+        timelineGapByWordId: gapBefore,
+      }
+    }, [data.corrected_segments])
 
   const handleDeleteSegment = (segmentIndex: number) => {
     if (onDataChange) {
@@ -60,61 +108,28 @@ export default function TranscriptionView({
     <Card className="p-2">
       <CardContent className="p-0">
         <div className="flex justify-between items-center mb-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">{t('syncedLyrics')}</h3>
-            <Badge
-              variant={advancedMode ? 'default' : 'outline'}
-              className="cursor-pointer hover:opacity-80 transition-opacity text-[0.65rem] h-5 px-1.5"
-              onClick={() => onAdvancedModeToggle?.(!advancedMode)}
-            >
-              {advancedMode ? t('advanced') : t('simple')}
-            </Badge>
-          </div>
+          <h3 className="text-sm font-semibold">{t('syncedLyrics')}</h3>
           <ToggleGroup
             type="single"
-            value={viewMode}
-            onValueChange={(value) => value && setViewMode(value as 'text' | 'duration')}
+            value={advancedMode ? 'advanced' : 'simple'}
+            onValueChange={(value) => value && onAdvancedModeToggle?.(value === 'advanced')}
             className="h-7"
           >
-            <ToggleGroupItem value="text" aria-label="text view" className="h-7 px-2.5 text-[0.75rem]">
+            <ToggleGroupItem value="simple" aria-label="simple view" className="h-7 px-2.5 text-[0.75rem]">
               <Type className="h-3.5 w-3.5 mr-1" />
-              {t('text')}
+              {t('simple')}
             </ToggleGroupItem>
-            <ToggleGroupItem
-              value="duration"
-              aria-label="duration view"
-              className="h-7 px-2.5 text-[0.75rem]"
-            >
+            <ToggleGroupItem value="advanced" aria-label="advanced view" className="h-7 px-2.5 text-[0.75rem]">
               <Clock className="h-3.5 w-3.5 mr-1.5" />
-              {t('timeline')}
+              {t('advanced')}
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
 
-        {viewMode === 'duration' ? (
-          <DurationTimelineView
-            segments={data.corrected_segments}
-            corrections={data.corrections || []}
-            anchors={data.anchor_sequences || []}
-            gaps={data.gap_sequences || []}
-            onWordClick={(wordId) => {
-              // Find word in segments
-              for (const segment of data.corrected_segments) {
-                const word = segment.words.find((w) => w.id === wordId)
-                if (word) {
-                  onWordClick?.({
-                    word_id: wordId,
-                    type: 'other',
-                    anchor: undefined,
-                    gap: undefined,
-                  })
-                  break
-                }
-              }
-            }}
-          />
-        ) : (
-          <div className="flex flex-col gap-0.5">
+        {(
+          // Advanced rows are full-width pill timelines, so give them a bit
+          // more breathing room between lines to match Simple's rhythm.
+          <div className={cn('flex flex-col', advancedMode ? 'gap-2' : 'gap-0.5')}>
             {data.corrected_segments.map((segment, segmentIndex) => {
               const segmentWords: TranscriptionWordPosition[] = segment.words.map((word) => {
                 const correction = data.corrections?.find(
@@ -152,6 +167,12 @@ export default function TranscriptionView({
                 }
               })
 
+              // Segments with an AI correction need headroom for the
+              // original-text bubble that floats above the corrected word.
+              const segmentHasAiCorrection = segment.words.some((w) =>
+                aiCorrectedWordIds?.has(w.id)
+              )
+
               const segmentSinger: SingerId = resolveSegmentSinger(segment)
               const rowTintClass = isDuet
                 ? segmentSinger === 1 ? 'bg-gradient-to-r from-blue-500/10 to-transparent' :
@@ -165,7 +186,11 @@ export default function TranscriptionView({
                   tabIndex={isDuet && onSegmentFocus ? 0 : undefined}
                   onFocus={isDuet && onSegmentFocus ? () => onSegmentFocus(segmentIndex) : undefined}
                   onBlur={isDuet && onSegmentFocus ? () => onSegmentFocus(null) : undefined}
-                  className={cn('flex items-start w-full hover:bg-muted/50 transition-colors', rowTintClass)}
+                  className={cn(
+                    'flex items-start w-full hover:bg-muted/50 transition-colors',
+                    segmentHasAiCorrection && 'pt-5',
+                    rowTintClass,
+                  )}
                 >
                   {/* Segment controls */}
                   <div className="flex items-center gap-0.5 pr-1" style={{ minWidth: advancedMode ? '2.5em' : undefined }}>
@@ -234,6 +259,16 @@ export default function TranscriptionView({
                       onAcceptCorrection={onAcceptCorrection}
                       onShowCorrectionDetail={onShowCorrectionDetail}
                       editedWordIds={editedWordIds}
+                      aiCorrectedWordIds={aiCorrectedWordIds}
+                      aiOriginalTextByWordId={aiOriginalTextByWordId}
+                      aiEstimatedWordIds={aiEstimatedWordIds}
+                      longWordByWordId={longWordByWordId}
+                      longGapAfterByWordId={longGapAfterByWordId}
+                      onSeekPlay={audioReady ? onPlaySegment : undefined}
+                      timelineLayout={advancedMode}
+                      timelineGrowByWordId={advancedMode ? timelineGrowByWordId : undefined}
+                      timelineGapByWordId={advancedMode ? timelineGapByWordId : undefined}
+                      noReferenceFallback={!hasReferenceLyrics}
                     />
                   </div>
                 </div>

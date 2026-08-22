@@ -53,6 +53,10 @@ class FamilySpec:
     extra_runner_labels: tuple[str, ...]
     has_gpu: bool
     needs_external_ip_in_fallback_zone: bool
+    # Advertised OS label; also selects the startup-script metadata key —
+    # Windows VMs only execute scripts under `windows-startup-script-ps1`
+    # and silently ignore `startup-script`.
+    os_label: str = "linux"
 
 
 FAMILIES: dict[str, FamilySpec] = {
@@ -87,6 +91,18 @@ FAMILIES: dict[str, FamilySpec] = {
         # rare fallback case rather than provisioning region-wide NAT.
         needs_external_ip_in_fallback_zone=True,
     ),
+    "gpu-windows": FamilySpec(
+        name="gpu-windows",
+        machine_type="n1-standard-4",
+        # Windows Server base image is 50GB; the bake uses a 100GB disk
+        # (models + drivers), so the disk we create here must be >= 100GB.
+        disk_size_gb=100,
+        image_family="gha-runner-gpu-windows",
+        extra_runner_labels=("x64", "gcp", "gpu"),
+        has_gpu=True,
+        needs_external_ip_in_fallback_zone=True,
+        os_label="windows",
+    ),
 }
 
 
@@ -107,6 +123,24 @@ fi
 cd /home/runner/actions-runner
 # --jitconfig implies --ephemeral: runs one job, deregisters, exits.
 sudo -u runner ./run.sh --jitconfig "$JIT"
+"""
+
+
+# Windows equivalent, delivered via the `windows-startup-script-ps1` metadata
+# key. Runs as SYSTEM on every boot — fine for a single-use VM. The finally
+# block guarantees shutdown even if the runner crashes, so the orphan-cleanup
+# pass can delete the stopped VM.
+WINDOWS_STARTUP_SCRIPT_PS1 = r"""$ErrorActionPreference = "Stop"
+try {
+    $jit = Invoke-RestMethod -Headers @{ "Metadata-Flavor" = "Google" } `
+        -Uri "http://metadata.google.internal/computeMetadata/v1/instance/attributes/jit-config"
+    if (-not $jit) { throw "jit-config metadata missing" }
+    Set-Location "C:\actions-runner"
+    # --jitconfig implies --ephemeral: runs one job, deregisters, exits.
+    & .\run.cmd --jitconfig "$jit"
+} finally {
+    shutdown /s /t 30
+}
 """
 
 
@@ -132,11 +166,16 @@ def get_compute_client() -> compute_v1.InstancesClient:
 def resolve_family(labels: Iterable[str]) -> FamilySpec:
     """Pick the right image family for a queued job's labels.
 
-    Precedence: gpu → build → general. A job that asks for both ``gpu`` and
-    ``docker-build`` shouldn't exist today; if it ever does we'd want a separate
-    image, not a coin-flip.
+    Precedence: windows → gpu → build → general. A job that asks for both
+    ``gpu`` and ``docker-build`` shouldn't exist today; if it ever does we'd
+    want a separate image, not a coin-flip.
+
+    Any ``windows`` job routes to the (only) Windows family — gpu-windows —
+    even without a ``gpu`` label, so it runs rather than queueing forever.
     """
     label_set = {label.lower() for label in labels}
+    if "windows" in label_set:
+        return FAMILIES["gpu-windows"]
     if "gpu" in label_set:
         return FAMILIES["gpu"]
     if "docker-build" in label_set:
@@ -146,7 +185,7 @@ def resolve_family(labels: Iterable[str]) -> FamilySpec:
 
 def runner_labels_for(family: FamilySpec) -> list[str]:
     """Compose the labels advertised to GitHub by this runner."""
-    return ["self-hosted", "linux", *family.extra_runner_labels]
+    return ["self-hosted", family.os_label, *family.extra_runner_labels]
 
 
 # ---------------------------------------------------------------------------
@@ -277,10 +316,17 @@ def _build_instance(
             compute_v1.AccessConfig(name="External NAT", type_="ONE_TO_ONE_NAT"),
         ]
 
+    if family.os_label == "windows":
+        startup_item = compute_v1.Items(
+            key="windows-startup-script-ps1", value=WINDOWS_STARTUP_SCRIPT_PS1
+        )
+    else:
+        startup_item = compute_v1.Items(key="startup-script", value=STARTUP_SCRIPT)
+
     metadata = compute_v1.Metadata(
         items=[
             compute_v1.Items(key="jit-config", value=jit_config),
-            compute_v1.Items(key="startup-script", value=STARTUP_SCRIPT),
+            startup_item,
             compute_v1.Items(key="enable-oslogin", value="TRUE"),
         ]
     )
@@ -370,9 +416,14 @@ def create_ephemeral_runner(labels: Iterable[str], pat: str) -> dict:
 
     last_error: Exception | None = None
     for zone in zones:
-        use_external_ip = (
-            family.needs_external_ip_in_fallback_zone and zone != PRIMARY_ZONE
-        )
+        # Always attach an ephemeral external IP so runner egress (Docker
+        # pulls, dependency downloads) leaves via the VM's own IP and bypasses
+        # the Cloud NAT data-processing charge (~$26/mo — runners were the
+        # NAT's only user). Ephemeral IPs are free while attached to a running
+        # VM, runners are short-lived, and us-central1 has ample IN_USE_ADDRESSES
+        # quota (limit 69). Supersedes the prior fallback-zone-only logic;
+        # `needs_external_ip_in_fallback_zone` is retained for documentation.
+        use_external_ip = True
         instance = _build_instance(
             name=runner_name,
             family=family,
@@ -465,8 +516,12 @@ def _log_serial_tail(zone: str, name: str) -> None:
     requiring an Ops Agent on the image.
     """
     try:
+        # No port kwarg: the deployed google-cloud-compute client rejects it
+        # (TypeError: unexpected keyword argument 'port', seen 2026-07-20 in
+        # prod logs — it silently disabled ALL serial capture). Port 1 is the
+        # API default anyway.
         out = get_compute_client().get_serial_port_output(
-            project=PROJECT_ID, zone=zone, instance=name, port=1
+            project=PROJECT_ID, zone=zone, instance=name
         )
         contents = out.contents or ""
         tail = contents[-_SERIAL_TAIL_BYTES:]
@@ -516,8 +571,20 @@ def cleanup_orphans(pat: str) -> dict:
     for zone, instance in vms:
         age = _vm_age_minutes(instance)
         registered = instance.name in runner_by_name
+        status = getattr(instance, "status", "")
 
-        if age >= MAX_VM_LIFETIME_MINUTES:
+        if status == "TERMINATED":
+            # Ephemeral runners self-shutdown after their single job — a
+            # stopped VM will never work again, but its attached GPU still
+            # counts against NVIDIA_T4_GPUS quota until the VM is DELETED.
+            # Leaving corpses for the age-based rules below meant back-to-back
+            # CI waves exhausted quota and the (fire-and-forget) dispatcher
+            # silently stranded queued jobs. Reap immediately.
+            print(f"{instance.name}: TERMINATED — deleting immediately to release GPU quota")
+            if not registered:
+                _log_serial_tail(zone, instance.name)
+            to_delete.append((zone, instance.name))
+        elif age >= MAX_VM_LIFETIME_MINUTES:
             print(f"{instance.name}: age={age:.1f}min > max, deleting")
             to_delete.append((zone, instance.name))
         elif not registered and age >= ORPHAN_GRACE_MINUTES:

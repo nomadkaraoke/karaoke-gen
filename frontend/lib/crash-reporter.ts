@@ -92,17 +92,45 @@ function signatureFor(message: string, stack: string | null, source: string): st
 
 /**
  * Benign errors that are routinely produced by the browser during normal use
- * and carry no diagnostic value. The most common is a rejected
- * `HTMLMediaElement.play()` promise (DOMException "AbortError") that fires when
- * playback is interrupted by a pause / src change / unmount — e.g. clicking play
- * on the lyrics-review audio while it is still loading. These must never reach
- * the error monitor.
+ * and carry no diagnostic value. These must never reach the error monitor:
+ *
+ * - A rejected `HTMLMediaElement.play()` promise (DOMException "AbortError")
+ *   that fires when playback is interrupted by a pause / src change / unmount —
+ *   e.g. clicking play on the lyrics-review audio while it is still loading.
+ * - The "ResizeObserver loop …" notice: a spec-defined signal that an observer
+ *   callback nudged layout and the browser deferred the next batch a frame. It
+ *   is not a crash — Chrome hides it from its own console — and every page using
+ *   ResizeObserver (TimelineCanvas, FlyerPreview, the VNC toolbar, …) emits it.
  */
-function isBenignError(e: unknown): boolean {
+const BENIGN_MESSAGE_PATTERNS = [
+  // Both the current ("completed with undelivered notifications") and legacy
+  // ("loop limit exceeded") Chromium phrasings.
+  /resizeobserver loop/i,
+]
+
+export function isBenignError(e: unknown): boolean {
   if (e instanceof DOMException && e.name === 'AbortError') return true
   // Some browsers surface the same media abort as a plain Error.
   if (e instanceof Error && e.name === 'AbortError') return true
-  return false
+  const message =
+    e instanceof Error ? e.message : typeof e === 'string' ? e : ''
+  return BENIGN_MESSAGE_PATTERNS.some((re) => re.test(message))
+}
+
+/**
+ * Local development must never reach the production error monitor. On localhost
+ * the API base URL is relative, so reports would be proxied straight to the prod
+ * backend and trip prod alerts for transient dev errors (hot-reload, half-saved
+ * edits, etc.). Decided from the page URL the error occurred on.
+ */
+function isLocalhostUrl(url: string | undefined): boolean {
+  if (!url) return false
+  try {
+    const h = new URL(url).hostname
+    return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+  } catch {
+    return false
+  }
 }
 
 export async function reportClientError(args: ReportArgs): Promise<void> {
@@ -123,6 +151,8 @@ export async function reportClientError(args: ReportArgs): Promise<void> {
     }
 
     const ctx = collectContext(args.context)
+    // Never report from local dev — would hit the prod error monitor.
+    if (isLocalhostUrl(ctx.url)) return
     const body = {
       message,
       stack,

@@ -239,7 +239,10 @@
     "loadingJobs": "Nilo-load ang mga job...",
     "noJobsMatchFilters": "Walang job na tumutugma sa iyong mga filter.",
     "noJobsYet": "Wala pang mga job. Gumawa ng isa para makapagsimula!",
-    "referrals": "Mga Referral"
+    "referrals": "Mga Referral",
+    "bulkMode": "Maramihan",
+    "singleMode": "Isahan",
+    "submitModeToggle": "Isahan o maramihang pagsusumite"
   },
   "auth": {
     "noVerificationToken": "Walang ibinigay na verification token",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Hindi namin mahanap ang link na iyon",
     "resendSuccessBody": "Nagpadala kami ng bagong sign-in link sa {maskedEmail}. Valid ito sa loob ng 24 oras.",
     "resendSuccessTitle": "I-check ang iyong email",
-    "resending": "Ipinapadala..."
+    "resending": "Ipinapadala...",
+    "confirmBody": "Para sa iyong seguridad, i-click ang button sa ibaba para tapusin ang pag-sign in. Pinipigilan ng karagdagang hakbang na ito ang mga automated email scanner na magamit ang iyong link bago mo pa ito magawa.",
+    "confirmButton": "Kumpletuhin ang Pag-sign In",
+    "confirmTitle": "Kumpletuhin ang iyong pag-sign in"
   },
   "payment": {
     "title": "Matagumpay ang Pagbabayad!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Hindi available ang pangunahing kapasidad — inilipat sa isang fallback instance type.",
+    "liveWorker": "Live worker"
   },
   "credits": {
     "title": "Bumili ng Higit Pang Credits",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Mag-paste ng link",
     "urlSupportedSitesHint": "Gumagana sa YouTube, Facebook, SoundCloud, TikTok, Vimeo at daan-daang iba pang mga site.",
     "urlSupportedSitesLink": "Tingnan ang lahat ng suportadong site",
-    "useThisUrl": "Gamitin ang URL na Ito"
+    "useThisUrl": "Gamitin ang URL na Ito",
+    "matchCorrectedTo": "Itinama sa {value} — ang tinype mo ay “{typed}”",
+    "matchDidYouMean": "Ibig mo bang sabihin?",
+    "matchKeepMine": "panatilihin ang tinype ko",
+    "matchTidiedTo": "Inayos sa {value}",
+    "matchUndo": "I-undo",
+    "matchChecking": "Sinusuri ang mga detalye ng kanta…",
+    "matchUseCorrection": "gamitin ang itinama",
+    "matchUseTidied": "gamitin ang inayos na bersyon",
+    "matchUsingTyped": "Ginagamit ang iyong nai-type: {value}",
+    "checkingUrl": "Sinusuri…",
+    "submitNetworkError": "Error sa network — paki-check ang iyong koneksyon at subukang muli.",
+    "submitError": "May nangyaring mali. Pakisubukan muli."
   },
   "jobStatus": {
     "settingUp": "Sine-set up",
@@ -576,7 +597,9 @@
     "correcting": "Itinatama",
     "lyricsDone": "Tapos na ang lyrics",
     "lyrics": "Lyrics",
-    "confirmDurationCost": "Kumpirmahin ang halaga"
+    "confirmDurationCost": "Kumpirmahin ang halaga",
+    "findingAudioSources": "Naghahanap ng mga audio source (sinusubukang muli)",
+    "waitingForCapacity": "Naghihintay sa encoding server (sinusubukan muli)"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",
@@ -588,7 +611,9 @@
     "autoSelect": "Awtomatikong pipili",
     "willAutoSelectFirst": "Awtomatikong pipiliin ang una",
     "noOutputsAvailable": "Wala pang available na outputs",
-    "confirmCost": "Kumpirmahin ang Halaga"
+    "confirmCost": "Kumpirmahin ang Halaga",
+    "makingPublicInProgress": "Ginagawang pampubliko ang track na ito — nire-render muli gamit ang default na branding at muling pina-publish. Karaniwan itong tumatagal ng 15–30 minuto.",
+    "waitingForEncodingServer": "(naghihintay na maging available ang encoding server)"
   },
   "jobActions": {
     "delete": "Tanggalin",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Pamagat ng Kanta",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Nilo-load ang preview ng title screen"
   },
   "editTrack": {
     "title": "I-edit ang Nakumpletong Track",
@@ -739,7 +765,22 @@
     "views": "{count} views",
     "moreVersions": "+{count} pa",
     "select": "Piliin",
-    "creditCost": "{credits} credits"
+    "creditCost": "{credits} credits",
+    "chooseFile": "Pumili ng audio file (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Wala kaming nahanap na audio sources. Subukang i-edit ang artist o pamagat sa itaas at maghanap ulit, o magbigay ng sarili mong audio gamit ang URL o file upload.",
+    "pasteUrl": "I-paste ang URL",
+    "researchFailed": "Nabigo ang paghahanap. Pakisubukan ulit.",
+    "searchAgain": "Maghanap ulit",
+    "selectFailed": "Hindi napili ang audio",
+    "uploadFailed": "Nabigo ang pag-upload. Pakisubukan ulit.",
+    "urlFailed": "Hindi magamit ang URL na iyon. Subukan ang ibang source.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Gamitin ang file na ito",
+    "useThisUrl": "Gamitin ang URL na ito",
+    "artistLabel": "Artist",
+    "loading": "Nagloload...",
+    "titleLabel": "Pamagat",
+    "uploadFileAction": "Mag-upload ng file"
   },
   "audioEditor": {
     "loading": "Nilo-load ang audio editor...",
@@ -776,7 +817,17 @@
     "undoFailed": "Nabigo ang pag-undo",
     "redoFailed": "Nabigo ang pag-redo",
     "restoreFailed": "Nabigo ang pag-restore — maaaring hindi nailapat ang ilang edit",
-    "submitFailed": "Nabigo ang pag-submit"
+    "submitFailed": "Nabigo ang pag-submit",
+    "fadeIn": "Fade In",
+    "fadeInSelection": "Mag-fade in sa napiling bahagi",
+    "fadeOut": "Fade Out",
+    "fadeOutSelection": "Mag-fade out sa napiling bahagi",
+    "fadeInDisabledHint": "Para mag-fade in, pumili ng bahagi na nagsisimula sa mismong simula ng track",
+    "fadeOutDisabledHint": "Para mag-fade out, pumili ng bahagi na nagtatapos sa mismong dulo ng track",
+    "trimEndDisabledHint": "Para i-trim ang dulo, pumili ng bahagi na nagtatapos sa mismong dulo ng track",
+    "trimEndSelection": "Alisin ang lahat pagkatapos ng napiling bahagi",
+    "trimStartDisabledHint": "Para i-trim ang simula, pumili ng bahagi na nagsisimula sa mismong simula ng track",
+    "trimStartSelection": "Alisin ang lahat bago ang napiling bahagi"
   },
   "audioEditRestore": {
     "title": "Mga Naka-save na Audio Edit Session",
@@ -803,7 +854,7 @@
       "acceptAll": "Tanggapin Lahat",
       "revertAll": "I-revert Lahat",
       "undoAll": "I-undo Lahat",
-      "resetAllChanges": "I-reset ang lahat ng pagbabago pabalik sa orihinal na AI-corrected lyrics",
+      "resetAllChanges": "I-reset ang lahat ng pagbabago pabalik sa orihinal na naiwastong lyrics",
       "undo": "I-undo",
       "redo": "I-redo",
       "findReplace": "Hanapin/Palitan",
@@ -816,7 +867,11 @@
       "playback": "Playback",
       "audioLoadError": "Hindi ma-load ang audio",
       "audioStillLoading": "Naglo-load pa rin ang audio...",
-      "loadingAudio": "Naglo-load ang audio..."
+      "loadingAudio": "Naglo-load ang audio...",
+      "autoCorrect": "Auto-correct",
+      "autoCorrectDesc": "Paghambingin ang transkripsyon laban sa mga reference na lyrics at ilapat ang mga pag-aayos sa antas ng salita para sa iyo. Ang mga naitamang salita ay ipinapakita sa kulay lila.",
+      "autoCorrectedCount": "Na-auto-correct · {count}",
+      "autoCorrectedDesc": "Naglapat kami ng {count, plural, =1 {# auto-correction} other {# na auto-correction}} (ipinapakita sa kulay lila). I-click upang makita ang mga detalye at i-undo ang anumang hindi mo sinasang-ayunan."
     },
     "guidance": {
       "showTips": "Ipakita ang mga tip",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Ang mga salitang naka-highlight ng orange ay mga gap — mga bahagi na hindi maitugma sa reference lyrics at maaaring may mga mali (hal. mga maling narinig na salita na magkatunog).",
       "useNAndP": "Gamitin ang N at P para lumipat sa pagitan ng mga gap. Para sa bawat isa, i-click ang play sa tabi ng linya at ihambing ang naririnig mo sa reference lyrics sa kanan, pagkatapos ay i-click ang isang salita para i-edit o tanggalin ito.",
       "watchOutForPhantomWords": "Mag-ingat sa mga phantom word tulad ng \"and\" sa simula o dulo ng mga linya — madalas itong idinadagdag ng transcription.",
-      "tryTimelineView": "Subukan ang Timeline view para makita ang anumang hindi pangkaraniwang mahahabang salita (10+ segundo), na karaniwang nagpapahiwatig ng problema sa timing.",
+      "tryTimelineView": "Ang mga salitang higit sa 2s at mga puwang na higit sa 2s ay minarkahan ng kulay amber na tagal — suriin ang mga ito para sa mga problema sa timing. Lumipat sa Advanced upang makita ang bawat linya na naka-stretch sa isang timeline.",
       "watchFullTutorial": "Panoorin ang buong tutorial",
       "correctionHandlers": "Correction Handlers",
       "anchorSequences": "Anchor Sequences",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Hindi Naitamang mga Gap",
       "uncorrectedGapsDesc": "Mga bahagi na maaaring mangailangan ng manual na review",
       "wordsUncorrected": "Mga Salitang Hindi Naitama",
-      "numberOfGaps": "Bilang ng mga Gap"
+      "numberOfGaps": "Bilang ng mga Gap",
+      "autoCorrectTip": "{count, plural, =1 {May # salitang na-auto-correct} other {May # na salitang na-auto-correct}} para sa iyo (ipinapakita sa kulay lila, na may orihinal na salita sa itaas). I-play ang bawat naitamang linya at suriin kung naka-align pa rin ang mga salita — lalo na ang mga may salungguhit na amber, kung saan tinantya ang timing at malamang na kailangang i-adjust.",
+      "autoCorrected": "Na-auto-correct",
+      "timingEstimated": "Tinantya ang timing"
     },
     "transcription": {
       "syncedLyrics": "Naka-sync na Lyrics",
@@ -854,7 +912,13 @@
       "text": "Text",
       "timeline": "Timeline",
       "deleteSegment": "Tanggalin ang segment",
-      "playSegment": "I-play ang segment"
+      "playSegment": "I-play ang segment",
+      "aiTooltipEstimated": "Na-auto-correct ng aming system. Tinantya ang timing dito, kaya i-play ang linyang ito at i-adjust ang timing ng salita kung kinakailangan.",
+      "aiTooltipReplaced": "Na-auto-correct ng aming system mula sa \"{original}\". I-play ang linyang ito upang kumpirmahin na naka-align pa rin ang mga salita.",
+      "aiTooltipReplacedEstimated": "Na-auto-correct ng aming system mula sa \"{original}\". Tinantya ang timing, kaya i-play ang linyang ito at i-adjust ang timing ng salita kung kinakailangan.",
+      "longGapWarning": "{seconds}s na puwang bago ang susunod na salita — kadalasang isang ligaw na maagang salita (hal. isang phantom na \"and\"). I-click upang i-play mula rito.",
+      "longWordWarning": "Tumatagal ang salitang ito ng {seconds}s — masyadong mahaba. I-play ang linya at suriin kung ang oras ng pagtatapos nito ay hindi umabot sa instrumental.",
+      "playFromGap": "I-play mula sa dulo ng puwang na ito"
     },
     "editActionBar": {
       "reset": "I-reset",
@@ -990,7 +1054,9 @@
         "loadingAll": "Nilo-load ang lahat ng salita...",
         "loadingSegment": "Nilo-load ang segment...",
         "noData": "Walang available na segment data",
-        "unCorrect": "I-un-Correct"
+        "unCorrect": "I-un-Correct",
+        "timingClamped": "Ang timing ng \"{word}\" ay nasa labas ng segment — inilapat sa {time}s.",
+        "timingSanitized": "Inayos ang {count} timing ng salita na nasa labas ng segment na ito."
       },
       "findReplace": {
         "title": "Hanapin at Palitan",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics."
+    },
+    "autoCorrect": {
+      "accept": "Tanggapin ang mungkahi",
+      "acceptAll": "Tanggapin lahat",
+      "accepted": "Tinanggap",
+      "adlibRemovalHint": "Payagan ang mga mungkahi na magtanggal ng mga backing vocal na wala sa mga reference",
+      "adlibRemovalLabel": "I-suggest na tanggalin ang mga adlib",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "grammar",
+      "category_mishearing": "maling dinig",
+      "category_other": "iba pa",
+      "category_repeated_chorus_fix": "chorus",
+      "collapse": "I-collapse ang mga mungkahi",
+      "confidenceHint": "Kung gaano katiyak ang isang mungkahi bago ito ipakita",
+      "confidenceLabel": "Filter ng mungkahi",
+      "confidence_all": "Ipakita lahat",
+      "confidence_high": "Mataas na kasiguraduhan",
+      "description": "Inihahambing ng auto-correct ang mga na-transcribe na lyrics sa mga reference source at nagmumungkahi ng mga pag-aayos sa bawat salita. Susuriin mo ang bawat mungkahi — walang ilalapat hangga't hindi mo ito tinatanggap.",
+      "dismiss": "I-dismiss ang mga mungkahi",
+      "expand": "I-expand ang mga mungkahi",
+      "insertMarker": "idagdag:",
+      "insertionsHint": "Payagan ang mga mungkahi na magdagdag ng mga salitang nakaligtaan sa transcription",
+      "insertionsLabel": "I-suggest ang mga nawawalang salita",
+      "noReferences": "Walang available na reference lyrics para sa kantang ito, kaya hindi makabuo ng mga mungkahi. Magdagdag muna ng lyrics mula sa reference panel.",
+      "noSuggestions": "Walang nakitang isyu — walang mga iminungkahing pagbabago.",
+      "reject": "Tanggihan ang mungkahi",
+      "rejectAll": "Tanggihan lahat",
+      "rejected": "Tinanggihan",
+      "runButton": "Kumuha ng mga mungkahi",
+      "running": "Sinusuri ang lyrics… karaniwang tumatagal ito ng 15–60 segundo.",
+      "staleHint": "Na-edit na ang mga salitang ito simula nang ginawa ang mga mungkahi, kaya hindi na naaangkop ang mungkahing ito.",
+      "summary": "{total} mungkahi · {pending} nakabinbin · {accepted} tinanggap",
+      "title": "Mga mungkahi ng auto-correct",
+      "undo": "I-undo ang mungkahing ito",
+      "cancel": "Kanselahin",
+      "close": "Isara",
+      "confidence_balanced": "Balanse",
+      "compareHint": "Mas mabagal at mas mahal, pero ipinapakita nito kung aling mga mungkahi ang sinasang-ayunan ng iba't ibang modelo",
+      "compareLabel": "Paghambingin ang maraming modelo",
+      "conflictBadge": "variant",
+      "conflictTooltip": "May iba't ibang mungkahi para sa mga salitang ito — ang pagtanggap sa isang variant ay magbabalewala sa iba.",
+      "consensusBadge": "{consensus}/{total} modelo",
+      "consensusTooltip": "Iminungkahi ng: {models}",
+      "cachedBadge": "naka-cache",
+      "cachedTooltip": "Na-restore mula sa nakaraang pag-proseso ng parehong lyrics — walang nagastos na AI cost.",
+      "appliedSummary": "{count} na auto-correction ang inilapat",
+      "hideDetails": "Itago ang mga detalye",
+      "rerun": "Patakbuhin muli",
+      "revertAllAuto": "Ibalik lahat",
+      "showDetails": "Ipakita ang mga detalye"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Tantiya — kukumpirmahin ang pinal na halaga pagkatapos ma-download",
     "reconcileTitle": "Mas mahaba ang kantang ito kaysa sa inaasahan",
     "cancel": "Kanselahin"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Nilo-load ang preview ng background"
+  },
+  "bulk": {
+    "albumModeHint": "Maghanap ng artist, pumili ng album, pagkatapos ay piliin kung aling mga track ang gagawin.",
+    "artistSearchPlaceholder": "Maghanap ng artist…",
+    "autoPickLossless": "Awtomatikong piliin ang pinakamagandang audio (lossless lang)",
+    "autoPickLosslessHint": "Awtomatikong piliin ang audio kapag nakahanap kami ng siguradong lossless/FLAC na tugma. Ang iba ay mapupunta sa review queue.",
+    "backToAlbums": "Bumalik sa mga album",
+    "backToArtists": "Bumalik sa mga artist",
+    "batchProgressTitle": "Batch ng {total} na kanta",
+    "batchSettings": "Mga setting ng batch",
+    "byAlbum": "Ayon sa album",
+    "byText": "Ayon sa text",
+    "checking": "Sinusuri…",
+    "chooseAudio": "Pumili ng audio",
+    "communityExists": "Mayroon nang community version",
+    "communityExistsWithBrands": "Community version: {brands}",
+    "countAwaiting": "{count} ang kailangang piliin",
+    "countComplete": "{count} ang kumpleto na",
+    "countFailed": "{count} ang nabigo",
+    "countProcessing": "{count} ang pinoproseso",
+    "countSearching": "{count} ang hinahanap",
+    "createBatch": "Gumawa ng {count} na karaoke video",
+    "creditsCost": "{cost} na credit · mayroon kang {balance}",
+    "edition": "Edisyon",
+    "extra": "Dagdag",
+    "loadingBatch": "Nilo-load ang batch…",
+    "lookupFailed": "Nabigo ang paghahanap. Mangyaring subukan muli.",
+    "makePrivate": "Gawing pribado",
+    "makePrivateHint": "Ipadala sa pamamagitan ng Dropbox lang sa halip na i-publish sa YouTube.",
+    "noAlbums": "Walang nahanap na mga album para sa artist na ito.",
+    "notEnoughCredits": "Kailangan mo ng {needed} na credit pero mayroon ka lang {have}.",
+    "overLimit": "Maaari kang magsumite ng hanggang {max} na kanta nang sabay-sabay.",
+    "progressError": "Hindi ma-load ang progreso ng batch.",
+    "reviewQueueHint": "Hindi namin awtomatikong mapili nang may katiyakan ang lossless na source para sa mga ito. Pumili ng isa para sa bawat isa.",
+    "reviewQueueTitle": "Pumili ng audio para sa mga track na ito",
+    "selectedCount": "{count} na kanta ang napili",
+    "skipAudioEdit": "Laktawan ang pag-edit ng audio",
+    "skipAudioEditHint": "Gamitin ang audio ng bawat track nang walang binabago (walang trimming).",
+    "skipCustomization": "Laktawan ang pag-customize",
+    "skipCustomizationHint": "Gamitin ang default na tema at estilo para sa bawat track.",
+    "startAnother": "Magsimula ng isa pang batch",
+    "submitError": "Hindi magawa ang batch. Mangyaring subukan muli.",
+    "submitting": "Ginagawa ang batch…",
+    "textModeHint": "Magdagdag ng hanggang {max} na kanta. I-flag namin ang anumang mayroon nang community version.",
+    "title": "Pamagat",
+    "tracklistHint": "Ang mga live, remix at bonus na track — at mga kantang mayroon nang community version — ay naka-untick bilang default.",
+    "addSong": "Magdagdag ng kanta",
+    "artist": "Artist",
+    "buyCredits": "Bumili ng credits",
+    "removeRow": "Alisin",
+    "trackCount": "{count} na track",
+    "changeEdition": "Palitan",
+    "existingVersions": "Mga kasalukuyang bersyon:",
+    "usingRelease": "Ginagamit ang {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Orihinal",
+    "variantReissue": "Muling inilabas"
+  },
+  "backendStatus": {
+    "reconnecting": "Kumokonekta muli…",
+    "unavailable": {
+      "body": "Kadalasan ay pansamantala lamang ito — pakisubukan muli pagkalipas ng ilang minuto.",
+      "reassurance": "Ang anumang karaoke video na kasalukuyang ginagawa ay hindi maaapektuhan at patuloy na ipoproseso.",
+      "title": "Nahihirapan kaming kumonekta sa aming mga server"
+    },
+    "dismiss": "I-dismiss"
   }
 }

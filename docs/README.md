@@ -7,6 +7,9 @@
 - **Web App**: https://gen.nomadkaraoke.com
   - `/` - Landing page with pricing
   - `/app` - Main app (upload audio, review lyrics, download videos)
+    - **Bulk Mode** (Jun 2026): submit up to 100 jobs at once by text or by album
+      (MusicBrainz lookup + KaraokeNerds availability); auto-picks confident
+      lossless audio, parks the rest in a review queue. See `docs/API.md` § Bulk Mode.
   - `/admin` - Admin dashboard (user management, job monitoring)
 - **Backend API**: https://api.nomadkaraoke.com - FastAPI on Cloud Run
 - **CLI Tools**: `karaoke-gen` (local), `karaoke-gen-remote` (cloud)
@@ -18,6 +21,7 @@
 | Audio upload & separation | Working |
 | Lyrics transcription | Working |
 | Auto-correction (agentic + heuristic) | Disabled (raw transcription goes to human review) |
+| **AI auto-correct suggestions (opt-in)** | Working ("AI Suggest" button in lyrics review — whole-song LLM call, per-suggestion accept/reject) |
 | Combined review (lyrics + instrumental) | Working |
 | Preview video generation | Working |
 | Multi-format encoding | Working |
@@ -39,6 +43,7 @@
 | **i18n / Multilingual (frontend)** | Working (next-intl, en/es/de, 1062 strings, [locale] routing) |
 | **Referral system** | Working (referral links with configurable discounts, 20% cash kickback via Stripe Connect, auto-payout at $20) |
 | **Error monitor** | New (Cloud Run Job every 15 min — log collection, normalization, LLM dedup/grouping, Discord alerts, auto-resolution, daily digest) |
+| **Edge security (Cloudflare)** | Working (api.nomadkaraoke.com proxied — WAF + rate limit + origin lock enforced; 2026-07-20) |
 
 ## Known Issues
 
@@ -49,6 +54,12 @@
 (No pending work items)
 
 ## Recent Changes
+
+- **Portrait (9:16) Karaoke Video Output** (2026-07-13): When enabled (`PORTRAIT_RENDER_ENABLED`, default on), every finalised job also gets a portrait 1080×1920 karaoke video for phone viewing / social sharing, distributed to **GCS + the Dropbox brand-code folder only** (never Drive/YouTube). It is a genuine **re-render** at portrait resolution with re-wrapped lyrics — not a transform of the finished landscape video (letterbox = tiny lyrics, crop = cuts the ends off every line; proven in the design experiments). The new `karaoke_gen/portrait/` module reuses the same `SubtitlesGenerator` engine + corrected-lyrics data, so word-by-word timing is identical; it adds an orphan-merging wrapper, a branded portrait background (wordmark/header + song/artist + footer), and title/end cards. Rendered on the GCE encoder inside `run_encoding` (best-effort + `PORTRAIT_RENDER_ENABLED` flag; a failure never fails the job) and carried to Dropbox via the existing `finals/` upload path. ~15–30s + ~10 MB per job. See [archive/2026-06-14-portrait-video-design.md](archive/2026-06-14-portrait-video-design.md) and [archive/2026-07-13-portrait-video-plan.md](archive/2026-07-13-portrait-video-plan.md).
+
+- **Cloudflare Edge Security for the Backend API** (2026-07-20): `api.nomadkaraoke.com` is now proxied through Cloudflare (WAF + rate limiting + origin lock), after a vuln-scanner hammered the previously directly-exposed Cloud Run origin. WAF blocks exploit/secret-exposure paths (`contains` operator — regex needs a Business plan); per-IP rate limiting excludes `/api/internal/*`; a Transform Rule injects a secret `X-Edge-Auth` header that the backend's `EdgeAuthMiddleware` (`EDGE_AUTH_MODE=enforce`) requires, blocking direct-to-`*.run.app` bypass (health/root exempt). Key finding: the Cloud Run managed cert can't provision behind Cloudflare, but zone SSL mode "full" (not strict) doesn't validate the origin cert, so it works and is renewal-safe — **never switch the zone to "full (strict)".** Managed as IaC in `infrastructure/modules/edge_security.py`. Also retuned the "High Error Rate" alert to 5xx-only (scanner 404s no longer page). See [ARCHITECTURE.md § Edge Security](ARCHITECTURE.md#edge-security-cloudflare), [LESSONS-LEARNED.md](LESSONS-LEARNED.md#cloudflare-edge-in-front-of-cloud-run--the-ssl-dragon-jul-2026), and [archive/2026-07-20-edge-security-cutover-runbook.md](archive/2026-07-20-edge-security-cutover-runbook.md).
+
+- **AI Auto-Correct Suggestions** (2026-06-11): Opt-in AI correction suggestions in the lyrics review UI — the third attempt at lyrics auto-correction, redesigned around the failures that led to disabling it in PR #321 (Jan 2026). One whole-song LLM call (default Gemini 3.1 Pro via Vertex, `AUTO_CORRECT_MODEL` env) compares the working transcription against reference lyrics and returns word-id-keyed suggestions; nothing is applied until the reviewer accepts each one (or accept-all) in a dedicated panel with per-row undo. New `POST /api/review/{job_id}/auto-correct` endpoint + `backend/services/auto_correct/`; frontend `useAutoCorrect` hook, `AutoCorrectModal` (knobs: adlib removal, insertions, confidence filter), `AutoCorrectPanel`. Accept/reject decisions land in the EditLog (`ai_suggestion_*` ops) to measure real accept rates. 5-model offline eval over 30 real jobs with human ground truth picked the default (Fable 5 ≈ Gemini 3.1 Pro ≫ GPT-5.2, which made lyrics worse). See [archive/2026-06-10-lyrics-auto-correction-reeval-plan.md](archive/2026-06-10-lyrics-auto-correction-reeval-plan.md).
 
 - **Syllable-Aware Custom Lyrics** (2026-05-02): Enhanced the Custom Lyrics LLM mode with syllable-count validation and a per-line repair loop. Backend computes per-line target/candidate syllable counts via the existing `SyllablesMatchHandler` engine and re-prompts Gemini up to 3 times until lines fit budget (Δ ≤ 2 default, configurable via Verbatim/Loose/Balanced/Tight/Strict strictness). New `GenerationSettings` (`allow_reword`, `allow_omit`, `fixed_line_count`, `strictness`) exposed in the modal as a collapsible settings panel. New `CustomLyricsPreview` component shows per-line syllable annotations (target / actual / Δ) with severity badges and stop-reason banners. Variable-line-count mode (when `fixed_line_count=false`) re-times segments proportionally. Eval harness with disk-backed Gemini cache, per-line + per-fixture + corpus scorers, and 4 fixtures (1 from production, 3 handcrafted public-domain). v1-ships criteria validation (Year 5 ≥75% pass@2, macro corpus ≥70% pass@2) deferred to post-merge. See [archive/2026-05-02-custom-lyrics-syllable-aware-design.md](archive/2026-05-02-custom-lyrics-syllable-aware-design.md) and [archive/2026-05-02-custom-lyrics-syllable-aware-plan.md](archive/2026-05-02-custom-lyrics-syllable-aware-plan.md).
 

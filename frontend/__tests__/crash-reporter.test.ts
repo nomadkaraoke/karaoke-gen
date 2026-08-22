@@ -94,6 +94,15 @@ describe('crash-reporter.reportClientError', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('does not report errors from a localhost origin', async () => {
+    await reportClientError({
+      error: new TypeError('dev boom'),
+      source: 'test',
+      context: { href: 'http://localhost:3000/en/app/jobs/', userAgent: 'ua' },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('does not throw on fetch failure', async () => {
     fetchMock.mockRejectedValueOnce(new Error('offline'))
     await expect(

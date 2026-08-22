@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection invalid. Trebuie să fie unul dintre: {valid_selections}",
     "instrumentalSelected": "Instrumental selectat. A început generarea videoclipului.",
     "instrumentalSelectionError": "Eroare la selectarea instrumentalului pentru jobul {job_id}: {error}",
-    "downloadUrlsError": "Eroare la obținerea adreselor URL de descărcare: {error}"
+    "downloadUrlsError": "Eroare la obținerea adreselor URL de descărcare: {error}",
+    "fileNoLongerAvailable": "Fișierul nu mai este disponibil"
   },
   "review": {
     "jobNotFound": "Jobul nu a fost găsit",
@@ -92,7 +93,10 @@
     "selectAudioError": "Eroare la selectarea fișierului audio pentru jobul {job_id}: {error}",
     "searchAudioError": "Eroare la căutarea audio: {error}",
     "searchCreatedSuccessfully": "Job creat. Se caută fișierul audio...",
-    "autoDownloadStarted": "Cel mai bun rezultat a fost selectat automat. Descărcarea începe..."
+    "autoDownloadStarted": "Cel mai bun rezultat a fost selectat automat. Descărcarea începe...",
+    "drmUrlUnsupported": "Linkurile {platform} sunt protejate la copiere, așa că nu le putem descărca direct. Încearcă să descarci mai întâi conținutul audio cu un instrument terț, apoi încarcă fișierul audio aici. De asemenea, poți lipi un link YouTube sau poți folosi Căutare Audio pentru a găsi această melodie.",
+    "drmUrlUnsupportedWithLink": "Linkurile {platform} sunt protejate la copiere, așa că nu le putem descărca direct. Poți descărca piesa folosind un instrument precum {downloader} și apoi poți încărca fișierul audio aici. De asemenea, poți lipi un link YouTube sau poți folosi Căutarea Audio pentru a găsi această melodie.",
+    "drmUrlUnsupportedSearch": "Linkurile {platform} sunt protejate la copiere, așa că nu le putem descărca direct. Caută pe web un „{platform} downloader” pentru a obține fișierul audio — de exemplu {searchUrl} — apoi încarcă fișierul audio aici. De asemenea, poți lipi un link YouTube sau poți folosi Căutarea Audio pentru a găsi această piesă."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

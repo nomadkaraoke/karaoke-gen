@@ -213,9 +213,13 @@ export default function TimelineEditor({
   const handleTimelineClick = (e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect || !onPlaySegment) return
+    // A not-yet-laid-out container has zero width, making the ratio non-finite;
+    // bail so we never hand a NaN/Infinity time to the audio element.
+    if (rect.width <= 0) return
 
     const x = e.clientX - rect.left
     const clickedPosition = (x / rect.width) * (endTime - startTime) + startTime
+    if (!Number.isFinite(clickedPosition)) return
 
     onPlaySegment(clickedPosition)
   }

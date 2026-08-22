@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Ugyldig instrumental_selection. Må være en av: {valid_selections}",
     "instrumentalSelected": "Instrumental valgt. Videogenerering startet.",
     "instrumentalSelectionError": "Feil ved valg av instrumental for jobb {job_id}: {error}",
-    "downloadUrlsError": "Feil ved henting av nedlastings-URL-er: {error}"
+    "downloadUrlsError": "Feil ved henting av nedlastings-URL-er: {error}",
+    "fileNoLongerAvailable": "Filen er ikke lenger tilgjengelig"
   },
   "review": {
     "jobNotFound": "Jobben ble ikke funnet",
@@ -92,7 +93,10 @@
     "selectAudioError": "Feil ved valg av lyd for jobb {job_id}: {error}",
     "searchAudioError": "Feil ved søk etter lyd: {error}",
     "searchCreatedSuccessfully": "Jobb opprettet. Søker etter lyd...",
-    "autoDownloadStarted": "Beste resultat valgt automatisk. Nedlasting starter..."
+    "autoDownloadStarted": "Beste resultat valgt automatisk. Nedlasting starter...",
+    "drmUrlUnsupported": "{platform}-lenker er kopibeskyttet, så vi kan ikke laste dem ned direkte. Prøv å laste ned lyden med et tredjepartsverktøy først, og last deretter opp lydfilen her. Du kan også lime inn en YouTube-lenke, eller bruke Lydsøk for å finne denne sangen.",
+    "drmUrlUnsupportedWithLink": "{platform}-lenker er kopibeskyttet, så vi kan ikke laste dem ned direkte. Du kan laste ned sporet ved å bruke et verktøy som {downloader} og deretter laste opp lydfilen her. Du kan også lime inn en YouTube-lenke, eller bruke Lydsøk for å finne denne sangen.",
+    "drmUrlUnsupportedSearch": "{platform}-lenker er kopibeskyttet, så vi kan ikke laste dem ned direkte. Søk på nettet etter en \"{platform} downloader\" for å hente lyden — for eksempel {searchUrl} — og last deretter opp lydfilen her. Du kan også lime inn en YouTube-lenke, eller bruke Lydsøk for å finne denne sangen."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

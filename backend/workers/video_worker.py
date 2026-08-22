@@ -32,12 +32,13 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from backend.models.job import JobStatus
+from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
-from backend.services.encoding_service import get_encoding_service
+from backend.services.encoding_service import get_encoding_service, run_with_lost_job_resubmit
 from backend.config import get_settings
 from backend.workers.style_helper import load_style_config
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
@@ -107,12 +108,30 @@ async def _encode_via_gce(
     instrumental_selection = job.state_data.get('instrumental_selection', 'clean')
     existing_instrumental = getattr(job, 'existing_instrumental_gcs_path', None)
 
+    # Stage the user-provided instrumental into the encoder's input prefix (jobs/{job_id}/).
+    # It is uploaded under uploads/, which the GCE encoder does NOT pull via input_gcs_path;
+    # copying it here makes the encoder's recursive find_file("*existing_instrumental*")
+    # locate it regardless of the worker image version (older encoder images predate the
+    # encoding_config "existing_instrumental" download path). Without this, tenant /
+    # existing-instrumental jobs fail with "No instrumental audio found".
+    if existing_instrumental:
+        try:
+            ext = os.path.splitext(existing_instrumental)[1].lower() or ".mp3"
+            staged_path = f"jobs/{job_id}/existing_instrumental{ext}"
+            storage.copy_blob(existing_instrumental, staged_path)
+            job_log.info(f"Staged existing instrumental for encoder: {staged_path}")
+        except Exception as e:
+            job_log.warning(f"Failed to stage existing instrumental into jobs/ prefix: {e}")
+
     encoding_config = {
         "formats": ["mp4_4k_lossless", "mp4_4k_lossy", "mp4_720p"],
         "base_name": base_name,
         "instrumental_selection": instrumental_selection,
         "existing_instrumental": existing_instrumental,
-        "ffmpeg_threads": 8,  # c4-standard-8 has 8 vCPUs
+        # NOTE: intentionally no "ffmpeg_threads" — finalization ffmpeg commands in
+        # LocalEncodingService carry no -threads flag, so x264 uses its all-core auto
+        # default (measured ~66-78% of a 32-vCPU worker busy during the heavy libx264
+        # stages — not capped). See docs/archive/2026-08-16-finalization-cpu-efficiency-handoff.md.
     }
 
     job_log.info(f"Submitting encoding job to GCE worker")
@@ -134,12 +153,19 @@ async def _encode_via_gce(
             encode_start = time.time()
             add_span_event("gce_encoding_started")
 
-            result = await encoding_service.encode_videos(
-                job_id=job_id,
-                input_gcs_path=input_gcs_path,
-                output_gcs_path=output_gcs_path,
-                encoding_config=encoding_config,
-                progress_callback=progress_callback,
+            # Resubmit under a fresh id if the worker loses the job mid-run
+            # (OOM/deploy restart wipes its in-memory registry).
+            async def _submit_encode(encode_job_id: str):
+                return await encoding_service.encode_videos(
+                    job_id=encode_job_id,
+                    input_gcs_path=input_gcs_path,
+                    output_gcs_path=output_gcs_path,
+                    encoding_config=encoding_config,
+                    progress_callback=progress_callback,
+                )
+
+            result = await run_with_lost_job_resubmit(
+                _submit_encode, job_id, log=job_log
             )
 
             encode_duration = time.time() - encode_start
@@ -344,6 +370,9 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                     'final_with_vocals_mp4': result.final_with_vocals_mp4,
                     'final_karaoke_cdg_zip': result.final_karaoke_cdg_zip,
                     'final_karaoke_txt_zip': result.final_karaoke_txt_zip,
+                    'title_mov': result.title_mov,
+                    'end_mov': result.end_mov,
+                    'portrait_video': result.portrait_video,
                 })
 
             # Store result metadata in job BEFORE transitioning to COMPLETE
@@ -406,6 +435,18 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             job_manager.update_state_data(job_id, 'video_progress', {'stage': 'complete'})
             return True
 
+    except InvalidStateTransitionError as e:
+        # The job was reset/cancelled out from under us mid-encode (e.g. admin
+        # reset while generating_video/encoding). Discard our stale result quietly
+        # rather than failing a job the operator deliberately moved. See
+        # backend/workers/supersede.py and render_video_worker for the same guard.
+        duration = time.time() - start_time
+        logger.info(
+            f"[job:{job_id}] WORKER_END worker=video orchestrator=true status=superseded "
+            f"duration={duration:.1f}s reason={e}"
+        )
+        return False
+
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=video orchestrator=true status=error duration={duration:.1f}s error={e}")
@@ -464,6 +505,7 @@ async def redistribute_video(job_id: str) -> bool:
         return False
 
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_redist_{job_id}_")
+    orchestrator = None
 
     try:
         # Download existing finals from GCS by listing the finals folder
@@ -533,6 +575,10 @@ async def redistribute_video(job_id: str) -> bool:
             gdrive_folder_id=dist.gdrive_folder_id,
             enable_cdg=getattr(job, 'enable_cdg', False),
             enable_txt=getattr(job, 'enable_txt', False),
+            # Redistributing an already-`complete` job: progress updates must not
+            # attempt status transitions (complete -> packaging is illegal and
+            # would abort the redistribution).
+            redistribute_mode=True,
         )
 
         orchestrator = VideoWorkerOrchestrator(
@@ -563,6 +609,24 @@ async def redistribute_video(job_id: str) -> bool:
         await orchestrator._run_distribution()
         await orchestrator._run_notifications()
 
+        # Verify the redistribution actually produced the archive before reporting
+        # success. The orchestrator swallows brand-code and Dropbox failures as
+        # non-fatal warnings, so an apparent "success" can hide a missing archive.
+        # Reporting success in that case would let the caller (public->private
+        # visibility change) delete the still-live public outputs against a
+        # non-existent private archive — the exact data-loss bug this path fixes.
+        if config.brand_prefix and not orchestrator.result.brand_code:
+            raise RuntimeError(
+                "Redistribution produced no brand code — archive identity is missing"
+            )
+        if config.dropbox_path:
+            dropbox_failed = any(
+                "Dropbox upload failed" in w
+                for w in (orchestrator.result.distribution_warnings or [])
+            )
+            if dropbox_failed:
+                raise RuntimeError("Redistribution failed to upload the Dropbox archive")
+
         # Update job state_data with new distribution results
         state_update = dict(job.state_data or {})
         state_update['brand_code'] = orchestrator.result.brand_code
@@ -582,6 +646,27 @@ async def redistribute_video(job_id: str) -> bool:
 
     except Exception as e:
         logger.error(f"[job:{job_id}] WORKER_END worker=video-redistribute status=error error={e}")
+        # A brand code may have been allocated during _run_organization before the
+        # failure. It was never persisted to the job, so return it to the pool to
+        # avoid leaking a number (and, for a public->private change, so the caller's
+        # rollback leaves no orphaned NOMADNP code).
+        allocated = getattr(getattr(orchestrator, "result", None), "brand_code", None)
+        if allocated:
+            try:
+                from backend.services.brand_code_service import (
+                    BrandCodeService,
+                    get_brand_code_service,
+                )
+                prefix, number = BrandCodeService.parse_brand_code(allocated)
+                get_brand_code_service().recycle_brand_code(prefix, number)
+                logger.info(
+                    f"[job:{job_id}] Recycled brand code {allocated} after failed redistribution"
+                )
+            except Exception as recycle_err:
+                logger.warning(
+                    f"[job:{job_id}] Failed to recycle brand code {allocated} "
+                    f"after failed redistribution: {recycle_err}"
+                )
         return False
 
     finally:
@@ -940,6 +1025,17 @@ async def generate_video_legacy(job_id: str) -> bool:
             job_manager.update_state_data(job_id, 'video_progress', {'stage': 'complete'})
             return True
 
+    except InvalidStateTransitionError as e:
+        # Job reset/cancelled out from under us mid-encode — discard the stale
+        # result quietly instead of failing the operator's reset (see the
+        # orchestrated path and render_video_worker for the same guard).
+        duration = time.time() - start_time
+        logger.info(
+            f"[job:{job_id}] WORKER_END worker=video status=superseded "
+            f"duration={duration:.1f}s reason={e}"
+        )
+        return False
+
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=video status=error duration={duration:.1f}s error={e}")
@@ -949,7 +1045,7 @@ async def generate_video_legacy(job_id: str) -> bool:
             error_details={"stage": "video_generation", "error": str(e)}
         )
         return False
-        
+
     finally:
         # Restore original working directory
         os.chdir(original_cwd)
@@ -1106,6 +1202,7 @@ async def _handle_native_distribution(
                     brand_code=upload_brand_code,
                     base_name=base_name,
                     output_files=output_files,
+                    warnings=result.setdefault('distribution_warnings', []),
                 )
                 
                 result['gdrive_files'] = uploaded
@@ -1589,6 +1686,12 @@ async def _upload_results(
         ('final_with_vocals_mp4', 'finals', 'with_vocals_mp4'),
         ('final_karaoke_cdg_zip', 'packages', 'cdg_zip'),
         ('final_karaoke_txt_zip', 'packages', 'txt_zip'),
+        # Standalone screen videos — recorded so they appear in the admin files
+        # manifest and are verifiable (regression: missing from Dropbox folders)
+        ('title_mov', 'finals', 'title_mov'),
+        ('end_mov', 'finals', 'end_mov'),
+        # Portrait (9:16) karaoke — recorded in the admin files manifest.
+        ('portrait_video', 'finals', 'portrait_1080x1920'),
     ]
     
     for result_key, category, file_key in file_mappings:

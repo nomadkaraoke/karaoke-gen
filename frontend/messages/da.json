@@ -239,7 +239,10 @@
     "loadingJobs": "Indlæser job...",
     "noJobsMatchFilters": "Ingen job matcher dine filtre.",
     "noJobsYet": "Ingen job endnu. Opret et for at komme i gang!",
-    "referrals": "Henvisninger"
+    "referrals": "Henvisninger",
+    "bulkMode": "Bulk",
+    "singleMode": "Enkelt",
+    "submitModeToggle": "Enkelt- eller masseindsendelse"
   },
   "auth": {
     "noVerificationToken": "Ingen bekræftelsestoken angivet",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Vi kunne ikke finde det link",
     "resendSuccessBody": "Vi har sendt et nyt login-link til {maskedEmail}. Det er gyldigt i de næste 24 timer.",
     "resendSuccessTitle": "Tjek din e-mail",
-    "resending": "Sender..."
+    "resending": "Sender...",
+    "confirmBody": "Af hensyn til din sikkerhed skal du klikke på knappen nedenfor for at fuldføre dit login. Dette ekstra trin forhindrer automatiske e-mail-scannere i at bruge dit link, før du selv gør det.",
+    "confirmButton": "Fuldfør login",
+    "confirmTitle": "Fuldfør dit login"
   },
   "payment": {
     "title": "Betaling gennemført!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Primær kapacitet utilgængelig — omdirigeret til en fallback-instanstype.",
+    "liveWorker": "Live worker"
   },
   "credits": {
     "title": "Køb flere credits",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Indsæt et link",
     "urlSupportedSitesHint": "Fungerer med YouTube, Facebook, SoundCloud, TikTok, Vimeo og hundredvis af andre sider.",
     "urlSupportedSitesLink": "Se alle understøttede sider",
-    "useThisUrl": "Brug denne URL"
+    "useThisUrl": "Brug denne URL",
+    "matchCorrectedTo": "Rettet til {value} — du skrev “{typed}”",
+    "matchDidYouMean": "Mente du?",
+    "matchKeepMine": "behold det, jeg skrev",
+    "matchTidiedTo": "Finpudset til {value}",
+    "matchUndo": "Fortryd",
+    "matchChecking": "Tjekker sangdetaljer…",
+    "matchUseCorrection": "brug rettelsen",
+    "matchUseTidied": "brug den tilrettede version",
+    "matchUsingTyped": "Bruger det, du indtastede: {value}",
+    "checkingUrl": "Tjekker…",
+    "submitNetworkError": "Netværksfejl — tjek venligst din forbindelse, og prøv igen.",
+    "submitError": "Noget gik galt. Prøv venligst igen."
   },
   "jobStatus": {
     "settingUp": "Sætter op",
@@ -576,7 +597,9 @@
     "correcting": "Retter",
     "lyricsDone": "Sangtekster færdige",
     "lyrics": "Sangtekster",
-    "confirmDurationCost": "Bekræft pris"
+    "confirmDurationCost": "Bekræft pris",
+    "findingAudioSources": "Finder lydkilder (prøver igen)",
+    "waitingForCapacity": "Venter på kodningsserver (prøver igen)"
   },
   "jobCard": {
     "actionNeeded": "Handling påkrævet",
@@ -588,7 +611,9 @@
     "autoSelect": "Vil automatisk vælge",
     "willAutoSelectFirst": "Vil automatisk vælge første",
     "noOutputsAvailable": "Ingen outputs tilgængelige endnu",
-    "confirmCost": "Bekræft pris"
+    "confirmCost": "Bekræft pris",
+    "makingPublicInProgress": "Gør dette nummer offentligt — gen-renderer med standardbranding og genudgiver. Det tager normalt 15–30 minutter.",
+    "waitingForEncodingServer": "(venter på, at kodningsserveren bliver ledig)"
   },
   "jobActions": {
     "delete": "Slet",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Sangtitel",
-    "artist": "Kunstner"
+    "artist": "Kunstner",
+    "loading": "Indlæser forhåndsvisning af titelskærm"
   },
   "editTrack": {
     "title": "Rediger fuldført nummer",
@@ -739,7 +765,22 @@
     "views": "{count} visninger",
     "moreVersions": "+{count} mere",
     "select": "Vælg",
-    "creditCost": "{credits} kreditter"
+    "creditCost": "{credits} kreditter",
+    "chooseFile": "Vælg en lydfil (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Vi kunne ikke finde nogen lydkilder. Prøv at ændre kunstneren eller titlen ovenfor og søg igen, eller tilføj din egen lyd via en URL eller filupload.",
+    "pasteUrl": "Indsæt URL",
+    "researchFailed": "Søgning mislykkedes. Prøv igen.",
+    "searchAgain": "Søg igen",
+    "selectFailed": "Kunne ikke vælge lyd",
+    "uploadFailed": "Upload mislykkedes. Prøv igen.",
+    "urlFailed": "Kunne ikke bruge den URL. Prøv en anden kilde.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Brug denne fil",
+    "useThisUrl": "Brug denne URL",
+    "artistLabel": "Kunstner",
+    "loading": "Indlæser...",
+    "titleLabel": "Titel",
+    "uploadFileAction": "Upload fil"
   },
   "audioEditor": {
     "loading": "Indlæser lydredigeringsprogram...",
@@ -776,7 +817,17 @@
     "undoFailed": "Fortryd mislykkedes",
     "redoFailed": "Gendan mislykkedes",
     "restoreFailed": "Gendannelse mislykkedes — nogle redigeringer er muligvis ikke blevet anvendt",
-    "submitFailed": "Indsendelse mislykkedes"
+    "submitFailed": "Indsendelse mislykkedes",
+    "fadeIn": "Fade ind",
+    "fadeInSelection": "Fade ind over det valgte område",
+    "fadeOut": "Fade ud",
+    "fadeOutSelection": "Fade ud over det valgte område",
+    "fadeInDisabledHint": "For at fade ind skal du vælge et område, der begynder helt i starten af sporet",
+    "fadeOutDisabledHint": "For at fade ud skal du vælge et område, der slutter helt for enden af sporet",
+    "trimEndDisabledHint": "For at beskære slutningen skal du vælge et område, der slutter helt for enden af sporet",
+    "trimEndSelection": "Fjern alt efter markeringen",
+    "trimStartDisabledHint": "For at beskære starten skal du vælge et område, der begynder helt i starten af sporet",
+    "trimStartSelection": "Fjern alt før markeringen"
   },
   "audioEditRestore": {
     "title": "Gemte lydredigeringssessioner",
@@ -803,7 +854,7 @@
       "acceptAll": "Accepter alle",
       "revertAll": "Gendan alle",
       "undoAll": "Fortryd alle",
-      "resetAllChanges": "Nulstil alle ændringer tilbage til de originale AI-rettede sangtekster",
+      "resetAllChanges": "Nulstil alle ændringer tilbage til den oprindelige rettede sangtekst",
       "undo": "Fortryd",
       "redo": "Gendan",
       "findReplace": "Find/Erstat",
@@ -816,7 +867,11 @@
       "playback": "Afspilning",
       "audioLoadError": "Kunne ikke indlæse lyd",
       "audioStillLoading": "Lyden indlæses stadig...",
-      "loadingAudio": "Indlæser lyd..."
+      "loadingAudio": "Indlæser lyd...",
+      "autoCorrect": "Autokorrektur",
+      "autoCorrectDesc": "Sammenlign transskriptionen med referenceteksten og anvend rettelser på ordniveau for dig. Rettede ord vises med lilla.",
+      "autoCorrectedCount": "Automatisk rettet · {count}",
+      "autoCorrectedDesc": "Vi har foretaget {count, plural, =1 {# automatisk rettelse} other {# automatiske rettelser}} (vist med lilla). Klik for at se detaljerne og fortryde dem, du er uenig i."
     },
     "guidance": {
       "showTips": "Vis tips",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "De orange fremhævede ord er huller — sektioner, der ikke kunne matches med referenceteksterne og kan indeholde fejl (f.eks. misforståede ord, der lyder ens).",
       "useNAndP": "Brug N og P til at hoppe mellem huller. For hver enkelt skal du klikke på afspil ved siden af linjen og sammenligne det, du hører, med referenceteksterne til højre, og derefter klikke på et ord for at redigere eller slette det.",
       "watchOutForPhantomWords": "Pas på fantomord som \"og\" i starten eller slutningen af linjer — transskriptionen tilføjer ofte disse.",
-      "tryTimelineView": "Prøv Tidslinje-visningen for at spotte eventuelle usædvanligt lange ord (10+ sekunder), hvilket normalt indikerer et timingproblem.",
+      "tryTimelineView": "Ord over 2s og pauser over 2s er markeret med en ravgul varighed — tjek dem for timingproblemer. Skift til Avanceret for at se hver linje strakt ud på en tidslinje.",
       "watchFullTutorial": "Se fuld vejledning",
       "correctionHandlers": "Rettelseshåndterere",
       "anchorSequences": "Ankersekvenser",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Urettede huller",
       "uncorrectedGapsDesc": "Sektioner, der kan kræve manuel gennemgang",
       "wordsUncorrected": "Ord ikke rettet",
-      "numberOfGaps": "Antal huller"
+      "numberOfGaps": "Antal huller",
+      "autoCorrectTip": "{count, plural, =1 {# ord blev automatisk rettet} other {# ord blev automatisk rettet}} for dig (vist med lilla, med det oprindelige ord ovenover). Afspil hver rettet linje og tjek, at ordene stadig passer — især dem, der er understreget med orange, hvor timingen blev estimeret og sandsynligvis skal justeres.",
+      "autoCorrected": "Automatisk rettet",
+      "timingEstimated": "Timing estimeret"
     },
     "transcription": {
       "syncedLyrics": "Synkroniserede sangtekster",
@@ -854,7 +912,13 @@
       "text": "Tekst",
       "timeline": "Tidslinje",
       "deleteSegment": "Slet segment",
-      "playSegment": "Afspil segment"
+      "playSegment": "Afspil segment",
+      "aiTooltipEstimated": "Automatisk rettet af vores system. Timingen her blev estimeret, så afspil denne linje og juster ordets timing, hvis det er nødvendigt.",
+      "aiTooltipReplaced": "Automatisk rettet af vores system fra \"{original}\". Afspil denne linje for at bekræfte, at ordene stadig passer.",
+      "aiTooltipReplacedEstimated": "Automatisk rettet af vores system fra \"{original}\". Timingen blev estimeret, så afspil denne linje og juster ordets timing, hvis det er nødvendigt.",
+      "longGapWarning": "{seconds}s pause før det næste ord — ofte et fejlplaceret tidligt ord (f.eks. et fantom-\"og\"). Klik for at afspille herfra.",
+      "longWordWarning": "Dette ord varer {seconds}s — usædvanligt længe. Afspil linjen og tjek, at dets sluttidspunkt ikke fortsætter ind i det instrumentale.",
+      "playFromGap": "Afspil fra slutningen af denne pause"
     },
     "editActionBar": {
       "reset": "Nulstil",
@@ -990,7 +1054,9 @@
         "loadingAll": "Indlæser alle ord...",
         "loadingSegment": "Indlæser segment...",
         "noData": "Ingen segmentdata tilgængelige",
-        "unCorrect": "Fjern rettelse"
+        "unCorrect": "Fjern rettelse",
+        "timingClamped": "\"{word}\" timing var uden for segmentet — justeret til {time}s.",
+        "timingSanitized": "Rettede {count} ord-timing(er), der faldt uden for dette segment."
       },
       "findReplace": {
         "title": "Find og erstat",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst."
+    },
+    "autoCorrect": {
+      "accept": "Accepter forslag",
+      "acceptAll": "Accepter alle",
+      "accepted": "Accepteret",
+      "adlibRemovalHint": "Tillad forslag, der sletter korvokal, som ikke findes i referencerne",
+      "adlibRemovalLabel": "Foreslå at fjerne adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "grammatik",
+      "category_mishearing": "fejlhørt",
+      "category_other": "andet",
+      "category_repeated_chorus_fix": "omkvæd",
+      "collapse": "Skjul forslag",
+      "confidenceHint": "Hvor sikkert et forslag skal være, før det vises",
+      "confidenceLabel": "Forslagsfilter",
+      "confidence_all": "Vis alle",
+      "confidence_high": "Høj sikkerhed",
+      "description": "Autokorrektur sammenligner den transskriberede sangtekst med referencekilderne og foreslår rettelser på ordniveau. Du gennemgår hvert forslag — intet anvendes, før du accepterer det.",
+      "dismiss": "Fjern forslag",
+      "expand": "Udvid forslag",
+      "insertMarker": "indsæt:",
+      "insertionsHint": "Tillad forslag, der indsætter ord, som transskriptionen overså",
+      "insertionsLabel": "Foreslå manglende ord",
+      "noReferences": "Der er ingen referencetekster tilgængelige for denne sang, så der kan ikke genereres forslag. Tilføj en sangtekst fra referencepanelet først.",
+      "noSuggestions": "Ingen problemer fundet — der er ingen foreslåede ændringer.",
+      "reject": "Afvis forslag",
+      "rejectAll": "Afvis alle",
+      "rejected": "Afvist",
+      "runButton": "Hent forslag",
+      "running": "Analyserer tekst… dette tager normalt 15–60 sekunder.",
+      "staleHint": "Disse ord er blevet redigeret, siden forslagene blev genereret, så dette forslag gælder ikke længere.",
+      "summary": "{total} forslag · {pending} afventer · {accepted} accepteret",
+      "title": "Forslag til autokorrektur",
+      "undo": "Fortryd dette forslag",
+      "cancel": "Annuller",
+      "close": "Luk",
+      "confidence_balanced": "Balanceret",
+      "compareHint": "Langsommere og koster mere, men viser, hvilke forslag flere modeller er enige om",
+      "compareLabel": "Sammenlign flere modeller",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Der er forskellige forslag til disse ord — hvis du accepterer én variant, afvises de andre.",
+      "consensusBadge": "{consensus}/{total} modeller",
+      "consensusTooltip": "Foreslået af: {models}",
+      "cachedBadge": "cachet",
+      "cachedTooltip": "Gendannet fra en tidligere kørsel med de samme sangtekster — der påløb ingen AI-omkostninger.",
+      "appliedSummary": "{count} automatiske rettelser foretaget",
+      "hideDetails": "Skjul detaljer",
+      "rerun": "Kør igen",
+      "revertAllAuto": "Fortryd alle",
+      "showDetails": "Vis detaljer"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Anslået — endelig pris bekræftes efter download",
     "reconcileTitle": "Denne sang er længere end forventet",
     "cancel": "Annuller"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Indlæser forhåndsvisning af baggrund"
+  },
+  "bulk": {
+    "albumModeHint": "Søg efter en kunstner, vælg et album, og vælg derefter, hvilke numre du vil lave.",
+    "artistSearchPlaceholder": "Søg efter en kunstner…",
+    "autoPickLossless": "Vælg automatisk bedste lyd (kun lossless)",
+    "autoPickLosslessHint": "Vælg automatisk lyden, når vi finder et sikkert lossless/FLAC-match. Andre går til en gennemgangskø.",
+    "backToAlbums": "Tilbage til album",
+    "backToArtists": "Tilbage til kunstnere",
+    "batchProgressTitle": "Batch af {total} sange",
+    "batchSettings": "Batch-indstillinger",
+    "byAlbum": "Efter album",
+    "byText": "Efter tekst",
+    "checking": "Tjekker…",
+    "chooseAudio": "Vælg lyd",
+    "communityExists": "Community-version findes",
+    "communityExistsWithBrands": "Community-version: {brands}",
+    "countAwaiting": "{count} mangler et valg",
+    "countComplete": "{count} færdige",
+    "countFailed": "{count} mislykkedes",
+    "countProcessing": "{count} behandles",
+    "countSearching": "{count} søger",
+    "createBatch": "Opret {count} karaoke-videoer",
+    "creditsCost": "{cost} credits · du har {balance}",
+    "edition": "Udgave",
+    "extra": "Ekstra",
+    "loadingBatch": "Indlæser batch…",
+    "lookupFailed": "Opslag mislykkedes. Prøv venligst igen.",
+    "makePrivate": "Hold privat",
+    "makePrivateHint": "Lever kun via Dropbox i stedet for at udgive på YouTube.",
+    "noAlbums": "Ingen album fundet for denne kunstner.",
+    "notEnoughCredits": "Du skal bruge {needed} credits, men har {have}.",
+    "overLimit": "Du kan højst indsende {max} sange ad gangen.",
+    "progressError": "Kunne ikke indlæse batch-fremskridt.",
+    "reviewQueueHint": "Vi kunne ikke med sikkerhed automatisk vælge en lossless-kilde til disse. Vælg en for hver.",
+    "reviewQueueTitle": "Vælg lyd til disse numre",
+    "selectedCount": "{count} sange valgt",
+    "skipAudioEdit": "Spring lydredigering over",
+    "skipAudioEditHint": "Brug hvert nummers lyd som den er (ingen beskæring).",
+    "skipCustomization": "Spring tilpasning over",
+    "skipCustomizationHint": "Brug standardtemaet og -stilen til hvert nummer.",
+    "startAnother": "Start en ny batch",
+    "submitError": "Kunne ikke oprette batchen. Prøv venligst igen.",
+    "submitting": "Opretter batch…",
+    "textModeHint": "Tilføj op til {max} sange. Vi markerer dem, der allerede har en community-version.",
+    "title": "Titel",
+    "tracklistHint": "Live-, remix- og bonusnumre — samt sange, der allerede har en community-version — er som standard ikke afkrydset.",
+    "addSong": "Tilføj sang",
+    "artist": "Kunstner",
+    "buyCredits": "Køb kreditter",
+    "removeRow": "Fjern",
+    "trackCount": "{count} numre",
+    "changeEdition": "Skift",
+    "existingVersions": "Eksisterende versioner:",
+    "usingRelease": "Bruger {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Genudgivelse"
+  },
+  "backendStatus": {
+    "reconnecting": "Genopretter forbindelse…",
+    "unavailable": {
+      "body": "Dette er som regel midlertidigt — prøv igen om et par minutter.",
+      "reassurance": "Eventuelle karaokevideoer, der i øjeblikket bliver lavet, påvirkes ikke og vil fortsat blive behandlet.",
+      "title": "Vi har problemer med at få forbindelse til vores servere"
+    },
+    "dismiss": "Afvis"
   }
 }

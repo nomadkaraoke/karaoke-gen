@@ -132,12 +132,16 @@ def test_init_non_interactive_ffmpeg(mock_logger):
     assert finaliser.ffmpeg_base_command.strip().endswith(" -y")
 
 def test_init_interactive_ffmpeg(mock_logger):
-    """Test ffmpeg command does not include -y when non_interactive is False."""
+    """Test ffmpeg command includes -y even when non_interactive is False.
+
+    -y is now unconditional: without it, a pre-existing output file makes ffmpeg
+    block on an invisible "Overwrite? [y/N]" prompt until the subprocess timeout.
+    """
     config = MINIMAL_CONFIG.copy()
     config["non_interactive"] = False
     with patch.object(KaraokeFinalise, 'detect_best_aac_codec', return_value='aac'):
         finaliser = KaraokeFinalise(logger=mock_logger, **config)
-    assert not finaliser.ffmpeg_base_command.strip().endswith(" -y")
+    assert finaliser.ffmpeg_base_command.strip().endswith(" -y")
 
 
 # --- AAC Codec Detection Tests ---

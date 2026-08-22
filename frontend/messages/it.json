@@ -239,7 +239,10 @@
     "loadingJobs": "Caricamento lavori...",
     "noJobsMatchFilters": "Nessun lavoro corrisponde ai tuoi filtri.",
     "noJobsYet": "Ancora nessun lavoro. Creane uno per iniziare!",
-    "referrals": "Inviti"
+    "referrals": "Inviti",
+    "bulkMode": "In blocco",
+    "singleMode": "Singolo",
+    "submitModeToggle": "Invio singolo o in blocco"
   },
   "auth": {
     "noVerificationToken": "Nessun token di verifica fornito",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Non siamo riusciti a trovare quel link",
     "resendSuccessBody": "Abbiamo inviato un nuovo link di accesso a {maskedEmail}. È valido per le prossime 24 ore.",
     "resendSuccessTitle": "Controlla la tua email",
-    "resending": "Invio in corso..."
+    "resending": "Invio in corso...",
+    "confirmBody": "Per la tua sicurezza, clicca sul pulsante qui sotto per completare l'accesso. Questo passaggio aggiuntivo impedisce agli scanner automatici di email di utilizzare il tuo link prima di te.",
+    "confirmButton": "Completa l'accesso",
+    "confirmTitle": "Completa il tuo accesso"
   },
   "payment": {
     "title": "Pagamento riuscito!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separatore"
+    "separator": "Separatore",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Capacità principale non disponibile — reindirizzato a un tipo di istanza di fallback.",
+    "liveWorker": "Worker live"
   },
   "credits": {
     "title": "Acquista altri crediti",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Incolla un link",
     "urlSupportedSitesHint": "Funziona con YouTube, Facebook, SoundCloud, TikTok, Vimeo e centinaia di altri siti.",
     "urlSupportedSitesLink": "Vedi tutti i siti supportati",
-    "useThisUrl": "Usa questo URL"
+    "useThisUrl": "Usa questo URL",
+    "matchCorrectedTo": "Corretto in {value} — hai digitato “{typed}”",
+    "matchDidYouMean": "Intendevi dire?",
+    "matchKeepMine": "mantieni quello che ho digitato",
+    "matchTidiedTo": "Sistemato in {value}",
+    "matchUndo": "Annulla",
+    "matchChecking": "Controllo dei dettagli del brano…",
+    "matchUseCorrection": "usa la correzione",
+    "matchUseTidied": "usa la versione ripulita",
+    "matchUsingTyped": "Uso quello che hai digitato: {value}",
+    "checkingUrl": "Controllo in corso…",
+    "submitNetworkError": "Errore di rete — controlla la tua connessione e riprova.",
+    "submitError": "Qualcosa è andato storto. Riprova."
   },
   "jobStatus": {
     "settingUp": "Configurazione",
@@ -576,7 +597,9 @@
     "correcting": "Correzione",
     "lyricsDone": "Testo completato",
     "lyrics": "Testo",
-    "confirmDurationCost": "Conferma costo"
+    "confirmDurationCost": "Conferma costo",
+    "findingAudioSources": "Ricerca delle fonti audio (nuovo tentativo)",
+    "waitingForCapacity": "In attesa del server di codifica (nuovo tentativo)"
   },
   "jobCard": {
     "actionNeeded": "Azione richiesta",
@@ -588,7 +611,9 @@
     "autoSelect": "Selezionerà automaticamente",
     "willAutoSelectFirst": "Selezionerà automaticamente il primo",
     "noOutputsAvailable": "Nessun output ancora disponibile",
-    "confirmCost": "Conferma costo"
+    "confirmCost": "Conferma costo",
+    "makingPublicInProgress": "Stiamo rendendo pubblica questa traccia — nuovo rendering con il branding predefinito e ripubblicazione in corso. Di solito ci vogliono 15–30 minuti.",
+    "waitingForEncodingServer": "(in attesa della disponibilità del server di codifica)"
   },
   "jobActions": {
     "delete": "Elimina",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Titolo della canzone",
-    "artist": "Artista"
+    "artist": "Artista",
+    "loading": "Caricamento dell'anteprima della schermata del titolo"
   },
   "editTrack": {
     "title": "Modifica traccia completata",
@@ -739,7 +765,22 @@
     "views": "{count} visualizzazioni",
     "moreVersions": "+{count} altre",
     "select": "Seleziona",
-    "creditCost": "{credits} crediti"
+    "creditCost": "{credits} crediti",
+    "chooseFile": "Scegli un file audio (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Non abbiamo trovato nessuna fonte audio. Prova a modificare l'artista o il titolo qui sopra e cerca di nuovo, oppure fornisci il tuo audio tramite URL o caricando un file.",
+    "pasteUrl": "Incolla URL",
+    "researchFailed": "Ricerca non riuscita. Riprova.",
+    "searchAgain": "Cerca di nuovo",
+    "selectFailed": "Impossibile selezionare l'audio",
+    "uploadFailed": "Caricamento non riuscito. Riprova.",
+    "urlFailed": "Impossibile usare quell'URL. Prova un'altra fonte.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Usa questo file",
+    "useThisUrl": "Usa questo URL",
+    "artistLabel": "Artista",
+    "loading": "Caricamento in corso...",
+    "titleLabel": "Titolo",
+    "uploadFileAction": "Carica file"
   },
   "audioEditor": {
     "loading": "Caricamento editor audio...",
@@ -776,7 +817,17 @@
     "undoFailed": "Annullamento fallito",
     "redoFailed": "Ripetizione fallita",
     "restoreFailed": "Ripristino fallito — alcune modifiche potrebbero non essere state applicate",
-    "submitFailed": "Invio fallito"
+    "submitFailed": "Invio fallito",
+    "fadeIn": "Dissolvenza in entrata",
+    "fadeInSelection": "Dissolvenza in entrata sulla regione selezionata",
+    "fadeOut": "Dissolvenza in uscita",
+    "fadeOutSelection": "Dissolvenza in uscita sulla regione selezionata",
+    "fadeInDisabledHint": "Per la dissolvenza in entrata, seleziona una regione che parta esattamente dall'inizio della traccia",
+    "fadeOutDisabledHint": "Per la dissolvenza in uscita, seleziona una regione che termini esattamente alla fine della traccia",
+    "trimEndDisabledHint": "Per tagliare la fine, seleziona una regione che termini esattamente alla fine della traccia",
+    "trimEndSelection": "Rimuovi tutto dopo la selezione",
+    "trimStartDisabledHint": "Per tagliare l'inizio, seleziona una regione che parta esattamente dall'inizio della traccia",
+    "trimStartSelection": "Rimuovi tutto prima della selezione"
   },
   "audioEditRestore": {
     "title": "Sessioni di modifica audio salvate",
@@ -803,7 +854,7 @@
       "acceptAll": "Accetta tutto",
       "revertAll": "Ripristina tutto",
       "undoAll": "Annulla tutto",
-      "resetAllChanges": "Reimposta tutte le modifiche al testo originale corretto dall'IA",
+      "resetAllChanges": "Annulla tutte le modifiche e torna al testo corretto originale",
       "undo": "Annulla",
       "redo": "Ripeti",
       "findReplace": "Trova/Sostituisci",
@@ -816,7 +867,11 @@
       "playback": "Riproduzione",
       "audioLoadError": "Impossibile caricare l'audio",
       "audioStillLoading": "L'audio è ancora in caricamento...",
-      "loadingAudio": "Caricamento audio..."
+      "loadingAudio": "Caricamento audio...",
+      "autoCorrect": "Correzione automatica",
+      "autoCorrectDesc": "Confronta la trascrizione con il testo di riferimento e applica le correzioni a livello di parola per te. Le parole corrette sono mostrate in viola.",
+      "autoCorrectedCount": "Correzioni automatiche · {count}",
+      "autoCorrectedDesc": "Abbiamo applicato {count, plural, =1 {# correzione automatica} other {# correzioni automatiche}} (mostrate in viola). Clicca per visualizzare i dettagli e annullare quelle con cui non sei d'accordo."
     },
     "guidance": {
       "showTips": "Mostra suggerimenti",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Le parole evidenziate in arancione sono lacune — sezioni che non è stato possibile abbinare al testo di riferimento e potrebbero contenere errori (es. parole fraintese che suonano in modo simile).",
       "useNAndP": "Usa N e P per saltare tra le lacune. Per ognuna, clicca su play accanto alla riga e confronta ciò che senti con il testo di riferimento a destra, poi clicca su una parola per modificarla o eliminarla.",
       "watchOutForPhantomWords": "Fai attenzione alle parole fantasma come \"and\" all'inizio o alla fine delle righe — la trascrizione spesso le aggiunge.",
-      "tryTimelineView": "Prova la vista Timeline per individuare eventuali parole insolitamente lunghe (10+ secondi), che di solito indicano un problema di tempismo.",
+      "tryTimelineView": "Le parole oltre i 2s e le pause oltre i 2s sono contrassegnate con una durata color ambra — controllale per problemi di tempismo. Passa ad Avanzate per vedere ogni riga estesa in una timeline.",
       "watchFullTutorial": "Guarda il tutorial completo",
       "correctionHandlers": "Gestori di correzione",
       "anchorSequences": "Sequenze di ancoraggio",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Lacune non corrette",
       "uncorrectedGapsDesc": "Sezioni che potrebbero richiedere una revisione manuale",
       "wordsUncorrected": "Parole non corrette",
-      "numberOfGaps": "Numero di lacune"
+      "numberOfGaps": "Numero di lacune",
+      "autoCorrectTip": "{count, plural, =1 {# parola è stata corretta automaticamente} other {# parole sono state corrette automaticamente}} per te (mostrate in viola, con la parola originale sopra). Riproduci ogni riga corretta e controlla che le parole siano ancora allineate — specialmente quelle sottolineate in ambra, dove la sincronizzazione è stata stimata e probabilmente dovrà essere regolata.",
+      "autoCorrected": "Corretto automaticamente",
+      "timingEstimated": "Sincronizzazione stimata"
     },
     "transcription": {
       "syncedLyrics": "Testo sincronizzato",
@@ -854,7 +912,13 @@
       "text": "Testo",
       "timeline": "Timeline",
       "deleteSegment": "Elimina segmento",
-      "playSegment": "Riproduci segmento"
+      "playSegment": "Riproduci segmento",
+      "aiTooltipEstimated": "Corretto automaticamente dal nostro sistema. La sincronizzazione qui è stata stimata, quindi riproduci questa riga e regola i tempi delle parole se necessario.",
+      "aiTooltipReplaced": "Corretto automaticamente dal nostro sistema da \"{original}\". Riproduci questa riga per confermare che le parole siano ancora allineate.",
+      "aiTooltipReplacedEstimated": "Corretto automaticamente dal nostro sistema da \"{original}\". La sincronizzazione è stata stimata, quindi riproduci questa riga e regola i tempi delle parole se necessario.",
+      "longGapWarning": "Pausa di {seconds}s prima della parola successiva — spesso una parola isolata in anticipo (es. una \"e\" fantasma). Clicca per riprodurre da qui.",
+      "longWordWarning": "Questa parola dura {seconds}s — è insolitamente lunga. Riproduci la riga e controlla che il suo tempo di fine non si sovrapponga alla parte strumentale.",
+      "playFromGap": "Riproduci dalla fine di questa pausa"
     },
     "editActionBar": {
       "reset": "Reimposta",
@@ -990,7 +1054,9 @@
         "loadingAll": "Caricamento di tutte le parole...",
         "loadingSegment": "Caricamento segmento...",
         "noData": "Nessun dato del segmento disponibile",
-        "unCorrect": "Annulla correzione"
+        "unCorrect": "Annulla correzione",
+        "timingClamped": "Il tempismo di \"{word}\" era fuori dal segmento — allineato a {time}s.",
+        "timingSanitized": "Corretti {count} tempismi delle parole che cadevano fuori da questo segmento."
       },
       "findReplace": {
         "title": "Trova e sostituisci",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Testo personalizzato applicato. Sincronizza manualmente ogni segmento modificato per assicurarti che il tempismo delle parole sia corretto per il testo personalizzato."
+    },
+    "autoCorrect": {
+      "accept": "Accetta suggerimento",
+      "acceptAll": "Accetta tutti",
+      "accepted": "Accettato",
+      "adlibRemovalHint": "Consenti suggerimenti che eliminano le voci di sottofondo non presenti nei riferimenti",
+      "adlibRemovalLabel": "Suggerisci di rimuovere gli adlib",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formattazione",
+      "category_grammar": "grammatica",
+      "category_mishearing": "fraintendimento",
+      "category_other": "altro",
+      "category_repeated_chorus_fix": "ritornello",
+      "collapse": "Comprimi suggerimenti",
+      "confidenceHint": "Quanto deve essere attendibile un suggerimento prima di essere mostrato",
+      "confidenceLabel": "Filtro suggerimenti",
+      "confidence_all": "Mostra tutti",
+      "confidence_high": "Alta sicurezza",
+      "description": "La correzione automatica confronta il testo trascritto con le fonti di riferimento e suggerisce correzioni a livello di singola parola. Puoi rivedere ogni suggerimento — non verrà applicato nulla finché non lo accetti.",
+      "dismiss": "Ignora suggerimenti",
+      "expand": "Espandi suggerimenti",
+      "insertMarker": "inserisci:",
+      "insertionsHint": "Consenti suggerimenti che inseriscono le parole omesse nella trascrizione",
+      "insertionsLabel": "Suggerisci parole mancanti",
+      "noReferences": "Non ci sono testi di riferimento disponibili per questa canzone, quindi non è possibile generare suggerimenti. Aggiungi prima il testo dal pannello di riferimento.",
+      "noSuggestions": "Nessun problema trovato — non ci sono modifiche suggerite.",
+      "reject": "Rifiuta suggerimento",
+      "rejectAll": "Rifiuta tutti",
+      "rejected": "Rifiutato",
+      "runButton": "Ottieni suggerimenti",
+      "running": "Analisi del testo in corso… di solito richiede dai 15 ai 60 secondi.",
+      "staleHint": "Queste parole sono state modificate dopo la generazione dei suggerimenti, quindi questo suggerimento non è più valido.",
+      "summary": "{total} suggerimenti · {pending} in attesa · {accepted} accettati",
+      "title": "Suggerimenti di correzione automatica",
+      "undo": "Annulla questo suggerimento",
+      "cancel": "Annulla",
+      "close": "Chiudi",
+      "confidence_balanced": "Bilanciato",
+      "compareHint": "Più lento e costoso, ma mostra su quali suggerimenti concordano più modelli",
+      "compareLabel": "Confronta più modelli",
+      "conflictBadge": "variante",
+      "conflictTooltip": "Ci sono diversi suggerimenti per queste parole — accettando una variante rifiuterai le altre.",
+      "consensusBadge": "{consensus}/{total} modelli",
+      "consensusTooltip": "Proposto da: {models}",
+      "cachedBadge": "in cache",
+      "cachedTooltip": "Ripristinato da un'elaborazione precedente dello stesso testo — non ha comportato alcun costo per l'IA.",
+      "appliedSummary": "{count} correzioni automatiche applicate",
+      "hideDetails": "Nascondi dettagli",
+      "rerun": "Riesegui",
+      "revertAllAuto": "Ripristina tutto",
+      "showDetails": "Mostra dettagli"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Stimato — costo finale confermato dopo il download",
     "reconcileTitle": "Questa canzone è più lunga del previsto",
     "cancel": "Annulla"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Caricamento dell'anteprima dello sfondo"
+  },
+  "bulk": {
+    "albumModeHint": "Cerca un artista, scegli un album, poi seleziona quali tracce creare.",
+    "artistSearchPlaceholder": "Cerca un artista…",
+    "autoPickLossless": "Scegli automaticamente l'audio migliore (solo lossless)",
+    "autoPickLosslessHint": "Scegli automaticamente l'audio quando troviamo una corrispondenza sicura lossless/FLAC. Gli altri vanno in una coda di revisione.",
+    "backToAlbums": "Torna agli album",
+    "backToArtists": "Torna agli artisti",
+    "batchProgressTitle": "Lotto di {total} canzoni",
+    "batchSettings": "Impostazioni del lotto",
+    "byAlbum": "Per album",
+    "byText": "Per testo",
+    "checking": "Controllo in corso…",
+    "chooseAudio": "Scegli audio",
+    "communityExists": "Esiste una versione della community",
+    "communityExistsWithBrands": "Versione della community: {brands}",
+    "countAwaiting": "{count} richiedono una scelta",
+    "countComplete": "{count} completate",
+    "countFailed": "{count} non riuscite",
+    "countProcessing": "{count} in elaborazione",
+    "countSearching": "{count} in ricerca",
+    "createBatch": "Crea {count} video karaoke",
+    "creditsCost": "{cost} crediti · ne hai {balance}",
+    "edition": "Edizione",
+    "extra": "Extra",
+    "loadingBatch": "Caricamento lotto in corso…",
+    "lookupFailed": "Ricerca fallita. Riprova.",
+    "makePrivate": "Mantieni privato",
+    "makePrivateHint": "Consegna solo tramite Dropbox invece di pubblicare su YouTube.",
+    "noAlbums": "Nessun album trovato per questo artista.",
+    "notEnoughCredits": "Ti servono {needed} crediti ma ne hai {have}.",
+    "overLimit": "Puoi inviare al massimo {max} canzoni alla volta.",
+    "progressError": "Impossibile caricare l'avanzamento del lotto.",
+    "reviewQueueHint": "Non siamo riusciti a scegliere automaticamente con sicurezza una fonte lossless per queste. Scegline una per ciascuna.",
+    "reviewQueueTitle": "Scegli l'audio per queste tracce",
+    "selectedCount": "{count} canzoni selezionate",
+    "skipAudioEdit": "Salta la modifica dell'audio",
+    "skipAudioEditHint": "Usa l'audio di ogni traccia così com'è (nessun taglio).",
+    "skipCustomization": "Salta la personalizzazione",
+    "skipCustomizationHint": "Usa il tema e lo stile predefiniti per ogni traccia.",
+    "startAnother": "Inizia un altro lotto",
+    "submitError": "Impossibile creare il lotto. Riprova.",
+    "submitting": "Creazione lotto in corso…",
+    "textModeHint": "Aggiungi fino a {max} canzoni. Segnaleremo quelle che hanno già una versione della community.",
+    "title": "Titolo",
+    "tracklistHint": "Le tracce live, remix e bonus — e le canzoni che hanno già una versione della community — sono deselezionate per impostazione predefinita.",
+    "addSong": "Aggiungi canzone",
+    "artist": "Artista",
+    "buyCredits": "Acquista crediti",
+    "removeRow": "Rimuovi",
+    "trackCount": "{count} tracce",
+    "changeEdition": "Cambia",
+    "existingVersions": "Versioni esistenti:",
+    "usingRelease": "Utilizzando {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Originale",
+    "variantReissue": "Ristampa"
+  },
+  "backendStatus": {
+    "reconnecting": "Riconnessione…",
+    "unavailable": {
+      "body": "Di solito è un problema temporaneo — riprova tra un paio di minuti.",
+      "reassurance": "I video karaoke attualmente in fase di creazione non subiranno interruzioni e continueranno a essere elaborati.",
+      "title": "Abbiamo problemi a raggiungere i nostri server"
+    },
+    "dismiss": "Ignora"
   }
 }

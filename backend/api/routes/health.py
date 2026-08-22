@@ -15,6 +15,7 @@ from backend.services.flacfetch_client import get_flacfetch_client
 from backend.services.email_service import get_email_service
 from backend.services.stripe_service import get_stripe_service
 from backend.services.encoding_service import get_encoding_service
+from backend.services.encoding_worker_preference import infer_machine_type, PRIMARY_MACHINE_TYPE
 from backend.services.spacy_preloader import get_preloaded_model, is_model_preloaded
 from backend.services.nltk_preloader import get_preloaded_cmudict, is_cmudict_preloaded
 from backend.services.langfuse_preloader import get_preloaded_langfuse_handler, is_langfuse_preloaded, is_langfuse_configured
@@ -443,6 +444,26 @@ async def system_status(
         if manager:
             try:
                 config = manager.get_config()
+
+                # Which VM is actually serving right now? When a capacity
+                # fallback is active (e.g. a c4d stockout routed us to an
+                # alternate family) the override points at the live VM;
+                # otherwise it's the blue-green primary. The primary pair is
+                # always c4d — fallbacks carry their family in the VM name
+                # (…-fallback-n2c, …-fallback-c4a), which infer_machine_type
+                # decodes when no explicit machine_type is stored on the config.
+                on_fallback = bool(config.active_override_vm)
+                active_vm = config.active_override_vm or config.primary_vm
+                default_zone = getattr(manager, "_zone", "us-central1-c")
+                active_zone = config.active_override_zone or default_zone
+                if on_fallback:
+                    active_machine_type = infer_machine_type({"vm": active_vm})
+                else:
+                    active_machine_type = (
+                        getattr(config, "primary_machine_type", None)
+                        or PRIMARY_MACHINE_TYPE
+                    )
+
                 encoder_svc["admin_details"] = {
                     "primary_vm": config.primary_vm,
                     "primary_ip": config.primary_ip,
@@ -456,6 +477,11 @@ async def system_status(
                     "deploy_in_progress": config.deploy_in_progress,
                     "active_jobs": encoding_status.get("active_jobs", 0),
                     "queue_length": encoding_status.get("queue_length", 0),
+                    # Currently-serving worker (fallback-aware)
+                    "active_vm": active_vm,
+                    "active_zone": active_zone,
+                    "active_machine_type": active_machine_type,
+                    "on_fallback": on_fallback,
                 }
             except Exception as e:
                 logger.warning(f"Failed to get blue-green config: {e}")

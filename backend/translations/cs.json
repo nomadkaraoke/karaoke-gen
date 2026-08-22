@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Neplatné instrumental_selection. Musí být jedno z: {valid_selections}",
     "instrumentalSelected": "Instrumentál vybrán. Začalo generování videa.",
     "instrumentalSelectionError": "Chyba při výběru instrumentálu pro úlohu {job_id}: {error}",
-    "downloadUrlsError": "Chyba při získávání adres URL ke stažení: {error}"
+    "downloadUrlsError": "Chyba při získávání adres URL ke stažení: {error}",
+    "fileNoLongerAvailable": "Soubor již není dostupný"
   },
   "review": {
     "jobNotFound": "Úloha nebyla nalezena",
@@ -92,7 +93,10 @@
     "selectAudioError": "Chyba při výběru zvuku pro úlohu {job_id}: {error}",
     "searchAudioError": "Chyba při vyhledávání zvuku: {error}",
     "searchCreatedSuccessfully": "Úloha vytvořena. Vyhledávám zvuk...",
-    "autoDownloadStarted": "Nejlepší výsledek byl vybrán automaticky. Začíná stahování..."
+    "autoDownloadStarted": "Nejlepší výsledek byl vybrán automaticky. Začíná stahování...",
+    "drmUrlUnsupported": "Odkazy z {platform} jsou chráněny proti kopírování, takže je nemůžeme stáhnout přímo. Zkus nejprve stáhnout zvuk pomocí nástroje třetí strany a poté sem nahraj zvukový soubor. Můžeš také vložit odkaz na YouTube nebo použít Audio Search k vyhledání této písně.",
+    "drmUrlUnsupportedWithLink": "Odkazy z {platform} jsou chráněny proti kopírování, takže je nemůžeme stáhnout přímo. Skladbu si můžeš stáhnout pomocí nástroje jako {downloader} a poté sem nahrát zvukový soubor. Můžeš také vložit odkaz na YouTube, nebo k nalezení této písně použít Vyhledávání zvuku.",
+    "drmUrlUnsupportedSearch": "Odkazy z {platform} jsou chráněny proti kopírování, takže je nemůžeme stáhnout přímo. Vyhledej na webu „{platform} downloader“ pro získání zvuku — například {searchUrl} — a poté sem nahraj zvukový soubor. Můžeš také vložit odkaz na YouTube nebo použít vyhledávání zvuku k nalezení této písničky."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

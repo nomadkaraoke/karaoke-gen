@@ -16,7 +16,9 @@ from backend.services.encoding_service import (
     INITIAL_BACKOFF_SECONDS,
     MAX_BACKOFF_SECONDS,
     MAX_CONSECUTIVE_POLL_FAILURES,
+    run_with_lost_job_resubmit,
 )
+from backend.services.encoding_errors import EncodingJobLostError, EncodingJobNotFoundError
 
 
 @pytest.fixture
@@ -601,7 +603,7 @@ class TestWaitForCompletionPollTolerance:
         """Tolerates up to MAX_CONSECUTIVE_POLL_FAILURES-1 consecutive failures."""
         call_count = 0
 
-        async def mock_get_status(job_id):
+        async def mock_get_status(job_id, worker_url=None):
             nonlocal call_count
             call_count += 1
             if call_count <= 2:
@@ -623,7 +625,7 @@ class TestWaitForCompletionPollTolerance:
     @pytest.mark.asyncio
     async def test_fails_after_max_consecutive_poll_failures(self, encoding_service):
         """Fails after MAX_CONSECUTIVE_POLL_FAILURES consecutive failures."""
-        async def always_fail(job_id):
+        async def always_fail(job_id, worker_url=None):
             raise aiohttp.ClientConnectorError(
                 connection_key=MagicMock(), os_error=OSError("Connection refused")
             )
@@ -640,7 +642,7 @@ class TestWaitForCompletionPollTolerance:
         """A successful poll resets the consecutive failure counter."""
         call_count = 0
 
-        async def intermittent_failures(job_id):
+        async def intermittent_failures(job_id, worker_url=None):
             nonlocal call_count
             call_count += 1
             # Fail for 2, succeed (running), fail for 2 more, succeed (complete)
@@ -664,6 +666,193 @@ class TestWaitForCompletionPollTolerance:
 
         assert result["status"] == "complete"
         assert call_count == 6  # 2 fail + 1 success + 2 fail + 1 success
+
+
+class TestWaitForCompletionLostJob:
+    """A worker restart (OOM/deploy) that wipes an in-flight job must surface a
+    distinct, recoverable signal instead of the generic poll-failure timeout."""
+
+    @pytest.mark.asyncio
+    async def test_404_after_job_seen_raises_lost_error(self, encoding_service):
+        """Once we've seen the job run, a later 404 = the worker lost it → resubmit."""
+        call_count = 0
+
+        async def mock_get_status(job_id, worker_url=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"status": "running", "progress": 30}
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingJobLostError):
+                await encoding_service.wait_for_completion("j1")
+
+        # Should bail on the FIRST 404, not burn the full poll tolerance.
+        assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_404_before_job_seen_is_tolerated(self, encoding_service):
+        """A 404 before the job is ever seen is a submit/poll race, not a lost job —
+        keep the transient tolerance (avoids false resubmits)."""
+        async def always_404(job_id, worker_url=None):
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
+
+        with patch.object(encoding_service, "get_job_status", side_effect=always_404), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            # Falls through to the generic tolerance, NOT EncodingJobLostError.
+            with pytest.raises(RuntimeError, match="consecutive poll failures"):
+                await encoding_service.wait_for_completion("j1")
+
+    @pytest.mark.asyncio
+    async def test_restart_failure_code_raises_lost_error(self, encoding_service):
+        """A terminal failure carrying the restart marker is recoverable → lost error."""
+        async def mock_get_status(job_id, worker_url=None):
+            return {
+                "status": "failed",
+                "error": "Encoding worker restarted mid-job",
+                "restart_failure_code": "encoding_worker_restart",
+            }
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingJobLostError):
+                await encoding_service.wait_for_completion("j1")
+
+    @pytest.mark.asyncio
+    async def test_plain_failure_still_raises_runtimeerror(self, encoding_service):
+        """A normal (non-restart) failure stays a hard RuntimeError, not a resubmit."""
+        async def mock_get_status(job_id, worker_url=None):
+            return {"status": "failed", "error": "ffmpeg exploded"}
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(RuntimeError, match="ffmpeg exploded"):
+                await encoding_service.wait_for_completion("j1")
+            # And it must not be the recoverable subtype.
+            try:
+                await encoding_service.wait_for_completion("j1")
+            except EncodingJobLostError:  # pragma: no cover
+                pytest.fail("plain failure should not be EncodingJobLostError")
+            except RuntimeError:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_pending_does_not_count_toward_run_timeout(self, encoding_service):
+        """Time spent queued (pending) is bounded by queue_timeout, not the per-run
+        timeout — a burst can wait in the serialized heavy queue and still succeed."""
+        statuses = [
+            {"status": "pending", "progress": 0, "queue_position": 3},
+            {"status": "pending", "progress": 0, "queue_position": 2},
+            {"status": "pending", "progress": 0, "queue_position": 1},
+            {"status": "running", "progress": 10},
+            {"status": "complete", "output_files": ["a.mp4"]},
+        ]
+        idx = 0
+
+        async def mock_get_status(job_id, worker_url=None):
+            nonlocal idx
+            s = statuses[idx]
+            idx += 1
+            return s
+
+        # start_time read, then one read per loop iteration. Job is pending until
+        # t=300 (>> timeout=50) then runs and completes at t=310 (10s of run time).
+        seq = [0, 0, 100, 200, 300, 310]
+
+        def fake_time():
+            return seq.pop(0) if len(seq) > 1 else seq[0]
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.side_effect = fake_time
+            result = await encoding_service.wait_for_completion(
+                "j1", timeout=50, queue_timeout=1000
+            )
+
+        assert result["status"] == "complete"
+
+
+class TestPreviewQueueTimeout:
+    """A queued preview must not wait the long default queue_timeout — an
+    interactive user is waiting, so total wait is capped at the short timeout."""
+
+    @pytest.mark.asyncio
+    async def test_preview_caps_queue_timeout_to_timeout(self, encoding_service):
+        submit = AsyncMock(return_value={"status": "accepted", "job_id": "p1"})
+        wait = AsyncMock(return_value={"status": "complete"})
+        with patch.object(encoding_service, "submit_preview_encoding_job", submit), \
+             patch.object(encoding_service, "wait_for_completion", wait):
+            await encoding_service.encode_preview_video(
+                job_id="p1",
+                ass_gcs_path="gs://b/x.ass",
+                audio_gcs_path="gs://b/a.flac",
+                output_gcs_path="gs://b/out.mp4",
+                timeout=90.0,
+            )
+        _, kwargs = wait.call_args
+        assert kwargs["timeout"] == 90.0
+        assert kwargs["queue_timeout"] == 90.0
+
+
+class TestRunWithLostJobResubmit:
+    """The bounded resubmit wrapper used by the render + encode workers."""
+
+    @pytest.mark.asyncio
+    async def test_resubmits_with_fresh_id_then_succeeds(self):
+        seen_ids = []
+
+        async def op(job_id):
+            seen_ids.append(job_id)
+            if len(seen_ids) == 1:
+                raise EncodingJobLostError("lost", job_id=job_id)
+            return {"status": "complete"}
+
+        result = await run_with_lost_job_resubmit(op, "base123", max_resubmits=2)
+
+        assert result["status"] == "complete"
+        assert seen_ids[0] == "base123"
+        assert seen_ids[1].startswith("base123_retry_")
+        assert len(seen_ids) == 2
+
+    @pytest.mark.asyncio
+    async def test_gives_up_after_max_resubmits(self):
+        attempts = []
+
+        async def op(job_id):
+            attempts.append(job_id)
+            raise EncodingJobLostError("lost", job_id=job_id)
+
+        with pytest.raises(EncodingJobLostError):
+            await run_with_lost_job_resubmit(op, "base", max_resubmits=2)
+
+        # 1 initial + 2 resubmits = 3 attempts.
+        assert len(attempts) == 3
+        assert attempts[0] == "base"
+        assert all(a.startswith("base_retry_") for a in attempts[1:])
+
+    @pytest.mark.asyncio
+    async def test_other_errors_are_not_retried(self):
+        attempts = []
+
+        async def op(job_id):
+            attempts.append(job_id)
+            raise RuntimeError("some other failure")
+
+        with pytest.raises(RuntimeError, match="some other failure"):
+            await run_with_lost_job_resubmit(op, "base", max_resubmits=2)
+
+        assert len(attempts) == 1  # not retried
 
 
 class TestDynamicURLResolution:
@@ -752,3 +941,213 @@ class TestFormatException:
         e = aiohttp.ClientConnectorError(MagicMock(), OSError())
         # Type name should always appear
         assert "ClientConnectorError" in _format_exception(e)
+
+
+class TestWorkerUrlPinning:
+    """Status polls must stay pinned to the worker that ACCEPTED the job.
+
+    Regression for incident 2026-06-16 (job d3af33ae): a blue-green deploy
+    swapped the primary pointer mid-render, and because status polls re-resolved
+    `active_url` on every call, they migrated from the worker actually encoding
+    the job (old primary) to the freshly-swapped new primary — which 404'd
+    "Encoding job ... not found" and failed the render after 5 polls, even though
+    the original worker finished the encode fine.
+    """
+
+    @pytest.mark.asyncio
+    async def test_get_job_status_targets_pinned_url(self, encoding_service):
+        """A pinned poll hits the given worker_url, not active_url, and disables
+        failover (a pinned poll must never re-resolve or spin up a fallback VM —
+        a fresh VM cannot have the in-flight job)."""
+        # active_url would resolve to worker-b, but the job lives on worker-a.
+        captured = {}
+
+        async def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"status": 200, "json": {"status": "running", "progress": 40}, "text": None}
+
+        with patch.object(encoding_service, "_get_worker_url", return_value="http://worker-b:8080"), \
+             patch.object(encoding_service, "_request_with_retry", side_effect=fake_request):
+            result = await encoding_service.get_job_status("d3af33ae", worker_url="http://worker-a:8080")
+
+        assert result["status"] == "running"
+        assert captured["url"] == "http://worker-a:8080/status/d3af33ae"
+        assert captured["allow_failover"] is False
+
+    @pytest.mark.asyncio
+    async def test_get_job_status_without_pin_uses_active_url(self, encoding_service):
+        """Regression: unpinned polls still resolve the current active_url."""
+        captured = {}
+
+        async def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"status": 200, "json": {"status": "running"}, "text": None}
+
+        with patch.object(encoding_service, "_get_worker_url", return_value="http://worker-b:8080"), \
+             patch.object(encoding_service, "_request_with_retry", side_effect=fake_request):
+            await encoding_service.get_job_status("d3af33ae")
+
+        assert captured["url"] == "http://worker-b:8080/status/d3af33ae"
+        # Unpinned keeps the existing failover/re-resolution behaviour.
+        assert captured.get("allow_failover", True) is True
+
+    @pytest.mark.asyncio
+    async def test_wait_for_completion_threads_pinned_url_into_polls(self, encoding_service):
+        """wait_for_completion forwards its worker_url to every status poll."""
+        seen_urls = []
+
+        async def mock_get_status(job_id, worker_url=None):
+            seen_urls.append(worker_url)
+            return {"status": "complete", "output_files": ["a.mp4"]}
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            result = await encoding_service.wait_for_completion(
+                "d3af33ae", worker_url="http://worker-a:8080"
+            )
+
+        assert result["status"] == "complete"
+        assert seen_urls == ["http://worker-a:8080"]
+
+    @pytest.mark.asyncio
+    async def test_request_with_retry_no_failover_when_disabled(self, encoding_service):
+        """With allow_failover=False, a connection error must NOT trigger the
+        fallback-VM warmup nor URL re-resolution — it just retries the same URL
+        and surfaces the failure to the caller's own poll-tolerance loop."""
+        encoding_service.set_worker_manager(MagicMock())
+        warmup = AsyncMock()
+
+        with patch.object(encoding_service, "_warmup_encoding_worker_fallback", warmup), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("aiohttp.ClientSession") as mock_session:
+            mock_session.side_effect = aiohttp.ClientConnectorError(
+                MagicMock(), OSError("Connection refused")
+            )
+            with pytest.raises(aiohttp.ClientConnectorError):
+                await encoding_service._request_with_retry(
+                    method="GET",
+                    url="http://worker-a:8080/status/j1",
+                    headers={},
+                    job_id="j1",
+                    path=None,
+                    allow_failover=False,
+                )
+
+        warmup.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_render_video_keeps_polling_submission_worker_after_swap(self, encoding_service):
+        """End-to-end: when active_url has swapped to a worker that 404s, the
+        render keeps polling the worker the job was submitted to and completes.
+
+        This FAILS before the fix (the poll follows active_url to worker-b and
+        gets "not found"), and PASSES after (the poll is pinned to worker-a)."""
+        encoding_service.set_worker_manager(MagicMock())
+
+        async def fake_submit(job_id, render_config):
+            return {"status": "accepted", "job_id": job_id}
+
+        async def fake_get_status(job_id, worker_url=None):
+            # worker-a owns the job; the post-swap active worker (worker-b, or an
+            # unpinned None) has never seen it.
+            if worker_url == "http://worker-a:8080":
+                return {"status": "complete", "output_files": ["4k.mp4"]}
+            raise RuntimeError(f"Encoding job {job_id} not found")
+
+        with patch.object(encoding_service, "_get_worker_url", return_value="http://worker-a:8080"), \
+             patch.object(encoding_service, "submit_render_video_job", side_effect=fake_submit), \
+             patch.object(encoding_service, "get_job_status", side_effect=fake_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            result = await encoding_service.render_video_on_gce("d3af33ae", {"foo": "bar"})
+
+        assert result["status"] == "complete"
+        assert result["output_files"] == ["4k.mp4"]
+
+
+class TestBuildWorkerCandidates:
+    """_build_worker_candidates ranks primary + fallbacks via the shared preference."""
+
+    def _config(self, capacity_state=None):
+        cfg = MagicMock()
+        cfg.primary_vm = "encoding-worker-a"
+        cfg.primary_ip = "10.0.0.1"
+        cfg.primary_machine_type = None  # → defaults to c4d
+        cfg.capacity_state = capacity_state or {}
+        return cfg
+
+    def _service_with_fallbacks(self, encoding_service, fallbacks_json, capacity_state=None):
+        mgr = MagicMock()
+        mgr._zone = "us-central1-c"
+        mgr.get_config.return_value = self._config(capacity_state)
+        encoding_service._worker_manager = mgr
+        encoding_service.settings.encoding_worker_fallback_vms = fallbacks_json
+        return encoding_service
+
+    def test_primary_first_and_flagged(self, encoding_service):
+        svc = self._service_with_fallbacks(encoding_service, None)
+        cands = svc._build_worker_candidates()
+        assert cands[0].vm_name == "encoding-worker-a"
+        assert cands[0].is_primary is True
+        assert cands[0].machine_type == "c4d-highcpu-32"
+
+    def test_fallbacks_ranked_fastest_first(self, encoding_service):
+        import json
+        fallbacks = json.dumps([
+            {"vm": "encoding-worker-fallback-n2f", "zone": "us-central1-f", "ip": "10.0.0.5",
+             "machine_type": "n2-highcpu-32"},
+            {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.6",
+             "machine_type": "c4-highcpu-32"},
+        ])
+        svc = self._service_with_fallbacks(encoding_service, fallbacks)
+        order = [c.vm_name for c in svc._build_worker_candidates()]
+        # c4d primary, then c4 (faster), then n2.
+        assert order == ["encoding-worker-a", "encoding-worker-fallback-c4a",
+                         "encoding-worker-fallback-n2f"]
+
+    def test_stocked_out_primary_demoted(self, encoding_service):
+        import json
+        from datetime import datetime, timezone
+        fallbacks = json.dumps([
+            {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.6",
+             "machine_type": "c4-highcpu-32"},
+        ])
+        # c4d@us-central1-c stocked out "now" → demoted below c4.
+        cap = {"c4d-highcpu-32@us-central1-c": datetime.now(timezone.utc).isoformat()}
+        svc = self._service_with_fallbacks(encoding_service, fallbacks, capacity_state=cap)
+        cands = svc._build_worker_candidates()
+        order = [c.vm_name for c in cands]
+        assert order == ["encoding-worker-fallback-c4a", "encoding-worker-a"]
+        # is_primary still correctly attached to the demoted c4d.
+        primary = [c for c in cands if c.is_primary][0]
+        assert primary.vm_name == "encoding-worker-a"
+
+    def test_legacy_fallback_without_machine_type_inferred(self, encoding_service):
+        import json
+        fallbacks = json.dumps([
+            {"vm": "encoding-worker-fallback-n2c", "zone": "us-central1-c", "ip": "10.0.0.7"},
+        ])
+        svc = self._service_with_fallbacks(encoding_service, fallbacks)
+        cands = svc._build_worker_candidates()
+        n2 = [c for c in cands if "n2c" in c.vm_name][0]
+        assert n2.machine_type is None  # not fabricated on the object…
+        # …but inference placed it after the c4d primary.
+        assert [c.vm_name for c in cands] == ["encoding-worker-a", "encoding-worker-fallback-n2c"]
+
+    def test_no_worker_manager_returns_empty(self, encoding_service):
+        encoding_service._worker_manager = None
+        assert encoding_service._build_worker_candidates() == []
+
+    def test_non_list_fallback_json_degrades_to_primary_only(self, encoding_service):
+        # A JSON scalar (e.g. "null") parses fine but must not blow up iteration.
+        svc = self._service_with_fallbacks(encoding_service, "null")
+        cands = svc._build_worker_candidates()
+        assert [c.vm_name for c in cands] == ["encoding-worker-a"]
+
+    def test_dict_fallback_json_degrades_to_primary_only(self, encoding_service):
+        svc = self._service_with_fallbacks(encoding_service, '{"vm": "x"}')
+        cands = svc._build_worker_candidates()
+        assert [c.vm_name for c in cands] == ["encoding-worker-a"]

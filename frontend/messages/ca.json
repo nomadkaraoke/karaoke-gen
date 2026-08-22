@@ -239,7 +239,10 @@
     "loadingJobs": "Carregant treballs...",
     "noJobsMatchFilters": "Cap treball coincideix amb els teus filtres.",
     "noJobsYet": "Encara no hi ha treballs. Crea'n un per començar!",
-    "referrals": "Referències"
+    "referrals": "Referències",
+    "bulkMode": "En lot",
+    "singleMode": "Individual",
+    "submitModeToggle": "Enviament únic o massiu"
   },
   "auth": {
     "noVerificationToken": "No s'ha proporcionat cap testimoni de verificació",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "No hem pogut trobar aquest enllaç",
     "resendSuccessBody": "Hem enviat un enllaç d'inici de sessió nou a {maskedEmail}. És vàlid durant les pròximes 24 hores.",
     "resendSuccessTitle": "Comprova el teu correu electrònic",
-    "resending": "Enviant..."
+    "resending": "Enviant...",
+    "confirmBody": "Per a la teva seguretat, fes clic al botó de sota per acabar d'iniciar sessió. Aquest pas addicional evita que els escàners de correu automatitzats utilitzin el teu enllaç abans que tu.",
+    "confirmButton": "Completa l'inici de sessió",
+    "confirmTitle": "Completa el teu inici de sessió"
   },
   "payment": {
     "title": "Pagament completat amb èxit!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Codificador",
     "flacfetch": "Flacfetch",
-    "separator": "Separador"
+    "separator": "Separador",
+    "fallbackBadge": "De reserva",
+    "fallbackNote": "Capacitat principal no disponible — s'ha redirigit a un tipus d'instància de reserva.",
+    "liveWorker": "Procés actiu"
   },
   "credits": {
     "title": "Compra més crèdits",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Enganxa un enllaç",
     "urlSupportedSitesHint": "Funciona amb YouTube, Facebook, SoundCloud, TikTok, Vimeo i centenars de llocs més.",
     "urlSupportedSitesLink": "Consulta tots els llocs compatibles",
-    "useThisUrl": "Utilitza aquest URL"
+    "useThisUrl": "Utilitza aquest URL",
+    "matchCorrectedTo": "Corregit a {value} — has escrit “{typed}”",
+    "matchDidYouMean": "Volies dir?",
+    "matchKeepMine": "mantenir el que he escrit",
+    "matchTidiedTo": "Ajustat a {value}",
+    "matchUndo": "Desfer",
+    "matchChecking": "Comprovant els detalls de la cançó…",
+    "matchUseCorrection": "utilitza la correcció",
+    "matchUseTidied": "utilitza la versió polida",
+    "matchUsingTyped": "Utilitzant el que has escrit: {value}",
+    "checkingUrl": "Comprovant…",
+    "submitNetworkError": "Error de xarxa — si us plau, comprova la teva connexió i torna-ho a provar.",
+    "submitError": "Alguna cosa ha anat malament. Torna-ho a provar."
   },
   "jobStatus": {
     "settingUp": "Configurant",
@@ -576,7 +597,9 @@
     "correcting": "Corregint",
     "lyricsDone": "Lletres fetes",
     "lyrics": "Lletres",
-    "confirmDurationCost": "Confirma el cost"
+    "confirmDurationCost": "Confirma el cost",
+    "findingAudioSources": "Cercant fonts d'àudio (reintentant)",
+    "waitingForCapacity": "Esperant el servidor de codificació (reintentant)"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",
@@ -588,7 +611,9 @@
     "autoSelect": "Se seleccionarà automàticament",
     "willAutoSelectFirst": "Se seleccionarà automàticament el primer",
     "noOutputsAvailable": "Encara no hi ha sortides disponibles",
-    "confirmCost": "Confirmar cost"
+    "confirmCost": "Confirmar cost",
+    "makingPublicInProgress": "Fent pública aquesta pista — renderitzant de nou amb la marca predeterminada i republicant. Això sol trigar 15–30 minuts.",
+    "waitingForEncodingServer": "(esperant la disponibilitat del servidor de codificació)"
   },
   "jobActions": {
     "delete": "Suprimeix",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Títol de la cançó",
-    "artist": "Artista"
+    "artist": "Artista",
+    "loading": "Carregant la previsualització de la pantalla de títol"
   },
   "editTrack": {
     "title": "Edita la pista completada",
@@ -739,7 +765,22 @@
     "views": "{count} visualitzacions",
     "moreVersions": "+{count} més",
     "select": "Selecciona",
-    "creditCost": "{credits} crèdits"
+    "creditCost": "{credits} crèdits",
+    "chooseFile": "Tria un fitxer d'àudio (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "No hem pogut trobar cap font d'àudio. Prova d'editar l'artista o el títol de dalt i torna a cercar, o afegeix el teu propi àudio amb un URL o pujant un fitxer.",
+    "pasteUrl": "Enganxa l'URL",
+    "researchFailed": "La cerca ha fallat. Si us plau, torna-ho a provar.",
+    "searchAgain": "Torna a cercar",
+    "selectFailed": "No s'ha pogut seleccionar l'àudio",
+    "uploadFailed": "La pujada ha fallat. Si us plau, torna-ho a provar.",
+    "urlFailed": "No s'ha pogut utilitzar aquest URL. Prova una altra font.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Utilitza aquest fitxer",
+    "useThisUrl": "Utilitza aquest URL",
+    "artistLabel": "Artista",
+    "loading": "Carregant...",
+    "titleLabel": "Títol",
+    "uploadFileAction": "Puja un fitxer"
   },
   "audioEditor": {
     "loading": "Carregant l'editor d'àudio...",
@@ -776,7 +817,17 @@
     "undoFailed": "No s'ha pogut desfer",
     "redoFailed": "No s'ha pogut refer",
     "restoreFailed": "La restauració ha fallat — és possible que algunes edicions no s'hagin aplicat",
-    "submitFailed": "L'enviament ha fallat"
+    "submitFailed": "L'enviament ha fallat",
+    "fadeIn": "Fosa d'entrada",
+    "fadeInSelection": "Aplica una fosa d'entrada a la regió seleccionada",
+    "fadeOut": "Fosa de sortida",
+    "fadeOutSelection": "Aplica una fosa de sortida a la regió seleccionada",
+    "fadeInDisabledHint": "Per fer una fosa d'entrada, selecciona una regió que comenci just al principi de la pista",
+    "fadeOutDisabledHint": "Per fer una fosa de sortida, selecciona una regió que acabi just al final de la pista",
+    "trimEndDisabledHint": "Per retallar el final, selecciona una regió que acabi just al final de la pista",
+    "trimEndSelection": "Elimina tot el que hi ha després de la selecció",
+    "trimStartDisabledHint": "Per retallar el principi, selecciona una regió que comenci just al principi de la pista",
+    "trimStartSelection": "Elimina tot el que hi ha abans de la selecció"
   },
   "audioEditRestore": {
     "title": "Sessions d'edició d'àudio desades",
@@ -803,7 +854,7 @@
       "acceptAll": "Accepta-ho tot",
       "revertAll": "Reverteix-ho tot",
       "undoAll": "Desfés-ho tot",
-      "resetAllChanges": "Restableix tots els canvis a les lletres originals corregides per IA",
+      "resetAllChanges": "Restableix tots els canvis a la lletra corregida original",
       "undo": "Desfés",
       "redo": "Refés",
       "findReplace": "Cerca/Reemplaça",
@@ -816,7 +867,11 @@
       "playback": "Reproducció",
       "audioLoadError": "No s'ha pogut carregar l'àudio",
       "audioStillLoading": "L'àudio encara s'està carregant...",
-      "loadingAudio": "Carregant l'àudio..."
+      "loadingAudio": "Carregant l'àudio...",
+      "autoCorrect": "Autocorrecció",
+      "autoCorrectDesc": "Compara la transcripció amb la lletra de referència i aplica correccions a nivell de paraula per tu. Les paraules corregides es mostren en lila.",
+      "autoCorrectedCount": "Autocorregit · {count}",
+      "autoCorrectedDesc": "Hem aplicat {count, plural, =1 {# autocorrecció} other {# autocorreccions}} (es mostren en lila). Fes clic per veure els detalls i desfer les que no et semblin bé."
     },
     "guidance": {
       "showTips": "Mostra els consells",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Les paraules ressaltades en taronja són buits — seccions que no s'han pogut fer coincidir amb les lletres de referència i poden contenir errors (p. ex. paraules mal enteses que sonen semblant).",
       "useNAndP": "Utilitza N i P per saltar entre els buits. Per a cadascun, fes clic a reprodueix al costat de la línia i compara el que sents amb les lletres de referència a la dreta, després fes clic a una paraula per editar-la o suprimir-la.",
       "watchOutForPhantomWords": "Vigila amb les paraules fantasma com \"and\" a l'inici o al final de les línies — la transcripció sovint les afegeix.",
-      "tryTimelineView": "Prova la vista de Línia de temps per detectar qualsevol paraula inusualment llarga (més de 10 segons), que normalment indica un problema de temps.",
+      "tryTimelineView": "Les paraules de més de 2s i els espais de més de 2s es marquen amb una durada de color ambre — revisa'ls per si hi ha problemes de sincronització. Canvia a Avançat per veure cada línia estesa en una línia de temps.",
       "watchFullTutorial": "Mira el tutorial complet",
       "correctionHandlers": "Gestors de correcció",
       "anchorSequences": "Seqüències d'ancoratge",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Buits no corregits",
       "uncorrectedGapsDesc": "Seccions que poden necessitar revisió manual",
       "wordsUncorrected": "Paraules no corregides",
-      "numberOfGaps": "Nombre de buits"
+      "numberOfGaps": "Nombre de buits",
+      "autoCorrectTip": "{count, plural, =1 {T'hem autocorregit # paraula} other {T'hem autocorregit # paraules}} (es mostren en lila, amb la paraula original a sobre). Reprodueix cada línia corregida i comprova que les paraules encara quadrin — especialment les subratllades en ambre, on la sincronització s'ha estimat i probablement caldrà ajustar-la.",
+      "autoCorrected": "Autocorregit",
+      "timingEstimated": "Sincronització estimada"
     },
     "transcription": {
       "syncedLyrics": "Lletres sincronitzades",
@@ -854,7 +912,13 @@
       "text": "Text",
       "timeline": "Línia de temps",
       "deleteSegment": "Suprimeix el segment",
-      "playSegment": "Reprodueix el segment"
+      "playSegment": "Reprodueix el segment",
+      "aiTooltipEstimated": "Autocorregit pel nostre sistema. La sincronització aquí s'ha estimat, així que reprodueix aquesta línia i ajusta el temps de les paraules si cal.",
+      "aiTooltipReplaced": "Autocorregit pel nostre sistema en lloc de \"{original}\". Reprodueix aquesta línia per confirmar que les paraules encara quadrin.",
+      "aiTooltipReplacedEstimated": "Autocorregit pel nostre sistema en lloc de \"{original}\". La sincronització s'ha estimat, així que reprodueix aquesta línia i ajusta el temps de les paraules si cal.",
+      "longGapWarning": "Pausa de {seconds}s abans de la següent paraula — sovint una paraula solta avançada (p. ex. un \"and\" fantasma). Fes clic per reproduir des d'aquí.",
+      "longWordWarning": "Aquesta paraula dura {seconds}s — és inusualment llarga. Reprodueix la línia i comprova que el seu temps final no s'hagi solapat amb la instrumental.",
+      "playFromGap": "Reprodueix des del final d'aquesta pausa"
     },
     "editActionBar": {
       "reset": "Restableix",
@@ -990,7 +1054,9 @@
         "loadingAll": "Carregant totes les paraules...",
         "loadingSegment": "Carregant el segment...",
         "noData": "No hi ha dades del segment disponibles",
-        "unCorrect": "Desfés la correcció"
+        "unCorrect": "Desfés la correcció",
+        "timingClamped": "La sincronització de \"{word}\" estava fora del segment — s'ha ajustat a {time}s.",
+        "timingSanitized": "S'han corregit {count} sincronitzacions de paraules que quedaven fora d'aquest segment."
       },
       "findReplace": {
         "title": "Cerca i reemplaça",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada."
+    },
+    "autoCorrect": {
+      "accept": "Accepta el suggeriment",
+      "acceptAll": "Accepta-ho tot",
+      "accepted": "Acceptat",
+      "adlibRemovalHint": "Permet suggeriments que eliminin les veus de fons que les referències no tenen",
+      "adlibRemovalLabel": "Suggereix eliminar els adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "gramàtica",
+      "category_mishearing": "error d'audició",
+      "category_other": "altres",
+      "category_repeated_chorus_fix": "tornada",
+      "collapse": "Contreu els suggeriments",
+      "confidenceHint": "Quin nivell de confiança ha de tenir un suggeriment abans de mostrar-se",
+      "confidenceLabel": "Filtre de suggeriments",
+      "confidence_all": "Mostra-ho tot",
+      "confidence_high": "Certesa alta",
+      "description": "L'autocorrecció compara la lletra transcrita amb les fonts de referència i suggereix correccions a nivell de paraula. Tu revises cada suggeriment — no s'aplica res fins que ho acceptes.",
+      "dismiss": "Descarta els suggeriments",
+      "expand": "Desplega els suggeriments",
+      "insertMarker": "insereix:",
+      "insertionsHint": "Permet suggeriments que insereixin paraules que la transcripció ha omès",
+      "insertionsLabel": "Suggereix paraules que falten",
+      "noReferences": "No hi ha cap lletra de referència disponible per a aquesta cançó, així que no es poden generar suggeriments. Afegeix primer la lletra des del panell de referència.",
+      "noSuggestions": "No s'han trobat problemes — no hi ha cap canvi suggerit.",
+      "reject": "Rebutja el suggeriment",
+      "rejectAll": "Rebutja-ho tot",
+      "rejected": "Rebutjat",
+      "runButton": "Obtén suggeriments",
+      "running": "S'està analitzant la lletra... això sol trigar entre 15 i 60 segons.",
+      "staleHint": "Aquestes paraules s'han editat des que es van generar els suggeriments, per la qual cosa aquest suggeriment ja no és vàlid.",
+      "summary": "{total} suggeriments · {pending} pendents · {accepted} acceptats",
+      "title": "Suggeriments d'autocorrecció",
+      "undo": "Desfés aquest suggeriment",
+      "cancel": "Cancel·la",
+      "close": "Tanca",
+      "confidence_balanced": "Equilibrat",
+      "compareHint": "Més lent i més car, però mostra en quins suggeriments coincideixen diversos models",
+      "compareLabel": "Compara múltiples models",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Hi ha diferents suggeriments per a aquestes paraules — si acceptes una variant, es rebutgen les altres.",
+      "consensusBadge": "{consensus}/{total} models",
+      "consensusTooltip": "Proposat per: {models}",
+      "cachedBadge": "en memòria cau",
+      "cachedTooltip": "Restaurat a partir d'una execució anterior amb la mateixa lletra — no s'ha generat cap cost d'IA.",
+      "appliedSummary": "{count} autocorreccions aplicades",
+      "hideDetails": "Amaga els detalls",
+      "rerun": "Torna a executar",
+      "revertAllAuto": "Reverteix-ho tot",
+      "showDetails": "Mostra els detalls"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Aproximat — el cost final es confirmarà després de la descàrrega",
     "reconcileTitle": "Aquesta cançó és més llarga del que s'esperava",
     "cancel": "Cancel·la"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Carregant la previsualització del fons"
+  },
+  "bulk": {
+    "albumModeHint": "Cerca un artista, tria un àlbum i després escull quines pistes vols crear.",
+    "artistSearchPlaceholder": "Cerca un artista…",
+    "autoPickLossless": "Tria automàticament el millor àudio (només sense pèrdua)",
+    "autoPickLosslessHint": "Tria automàticament l'àudio quan trobem una coincidència segura sense pèrdua/FLAC. La resta van a una cua de revisió.",
+    "backToAlbums": "Torna als àlbums",
+    "backToArtists": "Torna als artistes",
+    "batchProgressTitle": "Lot de {total} cançons",
+    "batchSettings": "Configuració del lot",
+    "byAlbum": "Per àlbum",
+    "byText": "Per text",
+    "checking": "Comprovant…",
+    "chooseAudio": "Tria l'àudio",
+    "communityExists": "Ja existeix una versió de la comunitat",
+    "communityExistsWithBrands": "Versió de la comunitat: {brands}",
+    "countAwaiting": "{count} necessiten una elecció",
+    "countComplete": "{count} completades",
+    "countFailed": "{count} han fallat",
+    "countProcessing": "{count} en procés",
+    "countSearching": "{count} cercant",
+    "createBatch": "Crea {count} vídeos de karaoke",
+    "creditsCost": "{cost} crèdits · en tens {balance}",
+    "edition": "Edició",
+    "extra": "Extra",
+    "loadingBatch": "Carregant el lot…",
+    "lookupFailed": "La cerca ha fallat. Si us plau, torna-ho a provar.",
+    "makePrivate": "Mantén-ho privat",
+    "makePrivateHint": "Lliura només a través de Dropbox en lloc de publicar-ho a YouTube.",
+    "noAlbums": "No s'han trobat àlbums per a aquest artista.",
+    "notEnoughCredits": "Necessites {needed} crèdits però en tens {have}.",
+    "overLimit": "Pots enviar un màxim de {max} cançons alhora.",
+    "progressError": "No s'ha pogut carregar el progrés del lot.",
+    "reviewQueueHint": "No hem pogut triar automàticament amb seguretat una font sense pèrdua per a aquestes. Tria'n una per a cadascuna.",
+    "reviewQueueTitle": "Tria l'àudio per a aquestes pistes",
+    "selectedCount": "{count} cançons seleccionades",
+    "skipAudioEdit": "Omet l'edició d'àudio",
+    "skipAudioEditHint": "Utilitza l'àudio de cada pista tal qual (sense retallar).",
+    "skipCustomization": "Omet la personalització",
+    "skipCustomizationHint": "Utilitza el tema i l'estil per defecte per a cada pista.",
+    "startAnother": "Comença un altre lot",
+    "submitError": "No s'ha pogut crear el lot. Si us plau, torna-ho a provar.",
+    "submitting": "Creant el lot…",
+    "textModeHint": "Afegeix fins a {max} cançons. Marcarem les que ja tinguin una versió de la comunitat.",
+    "title": "Títol",
+    "tracklistHint": "Les pistes en directe, remescles i extres — i les cançons que ja tenen una versió de la comunitat — estan desmarcades per defecte.",
+    "addSong": "Afegeix una cançó",
+    "artist": "Artista",
+    "buyCredits": "Compra crèdits",
+    "removeRow": "Elimina",
+    "trackCount": "{count} pistes",
+    "changeEdition": "Canvia",
+    "existingVersions": "Versions existents:",
+    "usingRelease": "Utilitzant {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Reedició"
+  },
+  "backendStatus": {
+    "reconnecting": "Reconnectant…",
+    "unavailable": {
+      "body": "Això sol ser temporal — si us plau, torna-ho a provar d'aquí a un parell de minuts.",
+      "reassurance": "Els vídeos de karaoke que s'estiguin creant ara mateix no es veuran afectats i es continuaran processant.",
+      "title": "Tenim problemes per connectar amb els nostres servidors"
+    },
+    "dismiss": "Descarta"
   }
 }

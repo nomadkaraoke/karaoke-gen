@@ -2,6 +2,13 @@
 
 Base URL: `https://api.nomadkaraoke.com` (production) or `http://localhost:8000` (local)
 
+> **Edge:** production traffic must go through `https://api.nomadkaraoke.com`
+> (proxied by Cloudflare — WAF + rate limiting). The Cloud Run origin is
+> **origin-locked**: requests hitting the raw `*.run.app` URL directly are
+> rejected with `403` unless they carry the Cloudflare-injected `X-Edge-Auth`
+> header (`/` and `/api/health*` are exempt for probes). See
+> [ARCHITECTURE.md § Edge Security](ARCHITECTURE.md#edge-security-cloudflare).
+
 ## Authentication
 
 All endpoints except `/health` and `/api/themes` require authentication.
@@ -545,6 +552,97 @@ Adds user-pasted lyrics as a new reference source, re-runs the correction pipeli
 
 Returns `{ "status": "success", "data": <CorrectionData> }`.
 
+#### AI Auto-Correct Suggestions
+
+```http
+POST /api/review/{job_id}/auto-correct
+Content-Type: application/json
+
+{
+  "segments": [ "...client's current corrected_segments..." ],
+  "reference_lyrics": { "genius": { "segments": [...] } },
+  "artist": "Twenty One Pilots",
+  "title": "Chlorine",
+  "settings": {
+    "suggest_adlib_removal": true,
+    "allow_insertions": true,
+    "min_confidence": 0.0,
+    "compare_models": true
+  }
+}
+```
+
+AI correction suggestions for the lyrics review UI. Stateless: one whole-song
+LLM call per model (Claude models use the Anthropic API via the
+`anthropic-api-key` secret, Gemini models use Vertex AI) compares the
+client's current transcription against the reference sources and returns
+word-id-keyed suggestions. Nothing is applied server-side — the reviewer
+accepts/rejects each suggestion in the UI and persistence flows through the
+existing corrections/complete paths.
+
+The review UI always requests the multi-model path (`compare_models: true`)
+and auto-runs once on load, so suggestions appear without a click. To make
+that load instant, suggestions are **proactively pre-generated and cached**
+once transcription + references are ready: the lyrics worker fires an internal
+trigger (`POST /api/internal/workers/auto-correct`) that runs the same
+multi-model generation on the API service (gated by
+`AUTO_CORRECT_PROACTIVE_ENABLED`; best-effort — it never blocks or fails the
+karaoke job). Because the proactive run uses the same default settings the UI
+sends, the on-load request is normally a cache hit with no extra cost.
+
+With `"compare_models": true`, every model in `AUTO_CORRECT_COMPARE_MODELS`
+(semicolon-separated) is queried in parallel; identical suggestions are
+deduplicated with a per-suggestion `consensus` count, and suggestions that
+target overlapping words with different outcomes share a `conflict_group`
+(the UI accepts at most one per group). A model failure in compare mode is
+reported in `warnings` while remaining model results are returned; only if
+all models fail does the endpoint return 502.
+
+Returns:
+
+```json
+{
+  "suggestions": [
+    {
+      "id": "uuid",
+      "op": "replace",
+      "word_ids": ["w3"],
+      "segment_ids": ["seg-1"],
+      "original_text": "glory",
+      "new_text": "chlorine",
+      "reason": "All references read 'chlorine' here",
+      "category": "mishearing",
+      "confidence": 0.95,
+      "models": ["claude-opus-4-8", "gemini-3.1-pro-preview"],
+      "consensus": 2,
+      "total_models": 2,
+      "conflict_group": null
+    }
+  ],
+  "model": "claude-opus-4-8, gemini-3.1-pro-preview",
+  "elapsed_seconds": 27.4,
+  "settings_applied": { "suggest_adlib_removal": true, "allow_insertions": true, "min_confidence": 0.0 },
+  "warnings": [],
+  "cached": false
+}
+```
+
+Results are cached per job in GCS
+(`jobs/{job_id}/lyrics/auto_correct_cache/{hash}.json`), keyed on the exact
+input: word ids + texts, reference lyrics texts, settings, and the resolved
+model list. Re-running on unmodified lyrics returns the previous result with
+`"cached": true` and incurs no LLM cost; any edit to the lyrics, references,
+or settings produces a new key and a fresh run. Cache reads/writes are
+best-effort — storage failures degrade to a normal uncached run.
+
+`op` is `replace` | `delete` | `insert_after` (for `insert_after`, `word_ids`
+holds the anchor word). Errors: `422` when no reference lyrics are available,
+`400` for invalid settings, `429` when the model provider is temporarily
+rate-limited (transient — retryable; the service already retries with backoff
+before surfacing this), `502` when the model call otherwise fails or returns
+malformed output. Design/eval background:
+`docs/archive/2026-06-10-lyrics-auto-correction-reeval-plan.md`.
+
 #### Search Reference Lyrics
 
 ```http
@@ -742,6 +840,65 @@ Response:
 
 When `has_community` is true, the frontend shows a dismissible green banner suggesting the user check existing versions before creating a new one.
 
+#### Match Judge (artist/title formatting + match acceptance)
+
+```http
+POST /api/catalog/match-judge
+Content-Type: application/json
+
+{
+  "artist": "paramore",
+  "title": "big man, little dignity",
+  "audio_confidence_tier": 1,
+  "stage": "full"
+}
+```
+
+Decides the official formatting for a typed artist/title and whether it matches a
+real song. A deterministic normalizer + the catalog run first; a light Vertex
+Gemini model (`MATCH_JUDGE_MODEL`, default `gemini-3.5-flash`) is consulted
+**only** when those aren't confident. `audio_confidence_tier` (1=strong..3=weak,
+optional) lets the judge tell whether weak audio results hint at a typo. The call
+never blocks job creation — on timeout/error it returns a `none` verdict. Disable
+the AI layer with `MATCH_JUDGE_ENABLED=false` (deterministic+catalog still run).
+
+`stage` (optional, `"fast"` | `"full"`, default `"full"`) supports a two-call
+pattern the frontend uses to keep the tidy off the critical path:
+
+- `"fast"` — catalog-only pass (no AI, `audio_confidence_tier` ignored). The
+  client fires this on mount, in parallel with the audio search. Returns a
+  confident catalog verdict when it can, otherwise `needs_ai: true` (a marker
+  telling the client to follow up with a `"full"` call once the tier is known).
+- `"full"` — the complete pipeline. Runs the AI judge when the catalog isn't
+  confident, **and** when a confident catalog match coincides with a weak audio
+  tier (`>= 3`) — a weak tier means the match may be a junk/typo'd entry, so the
+  AI verifies it and can override.
+
+Response:
+```json
+{
+  "kind": "cosmetic",
+  "confident": true,
+  "canonical_artist": "Paramore",
+  "canonical_title": "Big Man, Little Dignity",
+  "alternatives": [],
+  "engine": "catalog",
+  "reason": "formatting differs from catalog",
+  "needs_ai": false
+}
+```
+
+`kind` drives the Step 2 UI: `cosmetic` → silent tidy with a two-way toggle
+("keep what I typed" ⇄ "use tidied version"); `content` (confident) → applied
+with a "Corrected … · Undo" toggle, re-searching audio only when the original
+results were weak; `ambiguous` (or unconfident `content`) → an ask-first "Did you
+mean?" prompt; `none` → no change. `needs_ai` is only ever `true` on a `"fast"`
+verdict that couldn't decide; it is always `false` on a `"full"` verdict.
+
+Until the judge settles, the Step 2 audio-selection buttons are disabled with a
+subtle "Checking song details…" indicator, so a user can never advance with
+un-tidied metadata; a 12s timeout guarantees the gate releases.
+
 ### Audio Search
 
 #### Search for Audio
@@ -798,6 +955,46 @@ post-download and may trigger an `AWAITING_DURATION_CONFIRM` pause if the actual
 `acknowledged_credits` is **optional**. If provided, the server validates it equals the
 server-computed credit total and returns 409 on mismatch. If omitted, the server deducts the
 computed cost without client confirmation.
+
+#### Recover a Parked Job (re-search / provide own audio)
+
+When a search returns nothing usable (0 results, a transient failure, or the auto-picked
+source is unusable) the job stays in `AWAITING_AUDIO_SELECTION` with no selectable sources.
+These endpoints let the user out of that dead-end without creating a new job or re-charging
+base credits (the job was already charged at creation; final duration billing is reconciled
+post-download). All require the job to be in `AWAITING_AUDIO_SELECTION` (else `400`).
+
+```http
+POST /api/audio-search/{job_id}/research
+Content-Type: application/json
+
+{ "artist": "Arctic Monkeys", "title": "The View From the Afternoon" }  // both optional
+```
+
+Re-runs the audio search. Blank/omitted fields re-use the job's existing search terms (a plain
+retry); provided values are applied to the job's search terms **and** display artist/title, then
+searched. Returns the same shape as `/search` (`results`, `results_count`). An empty result set is
+a normal `200` (not an error) so the client can offer the manual fallback below. `502` on a hard
+search-service error.
+
+```http
+POST /api/audio-search/{job_id}/provide-url
+Content-Type: application/json
+
+{ "url": "https://youtube.com/watch?v=..." }
+```
+
+Attaches a YouTube/yt-dlp URL to the parked job, downloads it, and starts processing
+(`AWAITING_AUDIO_SELECTION → DOWNLOADING_AUDIO → DOWNLOADING`). Rejects DRM/streaming links and
+unavailable videos with `400`; `502` if the download fails (the job is returned to the queue).
+
+```http
+POST /api/audio-search/{job_id}/attach-upload-url        // → { upload_url, gcs_path }
+POST /api/audio-search/{job_id}/attach-upload-complete   // after PUTting the file
+```
+
+Two-step manual file upload for a parked job: request a signed GCS upload URL, `PUT` the audio
+file to it, then call `attach-upload-complete` to point the job at the file and start processing.
 
 #### Standalone Search (Guided Flow — Step 2)
 
@@ -2121,6 +2318,33 @@ Referred users with an active discount window (default 30 days) automatically re
 ### Referral Earnings
 
 After a credit purchase by a referred user, earnings are recorded automatically in the Stripe webhook handler. When a referrer's pending balance reaches $20 and they have a Stripe Connect account, a payout is triggered automatically.
+
+## Bulk Mode
+
+Submit up to 100 karaoke jobs at once (by text rows or by album lookup). All
+routes require auth.
+
+### Album lookup (MusicBrainz)
+
+- `GET /api/bulk/album/artists?q=<name>` → `[{mbid,name,disambiguation,type,country}]`
+- `GET /api/bulk/album/albums?artist_mbid=<mbid>` → `[{release_group_mbid,title,primary_type,secondary_types,first_release_date,is_studio}]` (studio albums first)
+- `GET /api/bulk/album/tracklist?artist=<name>&release_group_mbid=<mbid>` (or `&release_mbid=<mbid>` for a specific edition; optional `&locale=<code>` biases representative-pressing choice) → `{release_mbid,canonical_release_mbid,selected_variant_mbid,title,date,tracks:[{position,title,recording_mbid,length_ms,is_extra,extra_reason,available,brands,versions:[{brand,url}]}],editions:[{release_mbid,title,status,date,country,track_count}],variants:[{representative_release_mbid,label,track_count,year,pressing_count,delta_vs_original}]}`. `variants` collapses the release-group's country pressings into distinct tracklists grouped by track count (label `Original`/`Reissue`, `Original` = earliest); load one via its `representative_release_mbid` as `release_mbid`. Each track is enriched with KaraokeNerds community-version availability — `available`/`brands` plus `versions` (per-version `{brand,url}` YouTube links for clickable preview); enrichment is best-effort and never fatal.
+
+### Availability (text mode)
+
+- `POST /api/bulk/availability` body `{tracks:[{artist,title}]}` (≤100) → `{results:[{artist,title,available,brands,brand_count,versions:[{brand,url}]}]}`. Backed by the existing KaraokeNerds community-version scraper (1h cache, bounded concurrency). `versions` carries per-version YouTube links for clickable preview.
+
+### Submit
+
+- `POST /api/bulk/submit` body `{songs:[{artist,title,display_artist?,display_title?}],settings:{auto_select_if_lossless,is_private,skip_audio_edit,skip_customization}}` → `{batch_id,job_ids,total}`.
+  - Credit gate: requires `credits >= len(songs)` (1/song minimum) before any job is created; admins bypass. Returns `402` with `{credits_available,credits_required}` if short (no jobs created). `422` for 0 or >100 songs.
+  - Creates one parked job per song (`auto_download=False`), stamps `state_data.batch_id` + `bulk_settings`, and dispatches the `bulk-search-job` Cloud Run Job which runs each search and either auto-selects a confident lossless match or parks the job in `AWAITING_AUDIO_SELECTION`.
+
+### Progress
+
+- `GET /api/bulk/{batch_id}` → `{batch_id,total,counts:{searching,awaiting_selection,processing,complete,failed},jobs:[{job_id,artist,title,status,auto_selected}]}`. Ownership-scoped (admins see any); `404` for another user's batch. Parked jobs are completed via the existing `/api/audio-search/{job_id}/select` flow, or recovered
+via `/research` (re-search / edit terms) and `/provide-url` · `/attach-upload-*` (own audio) when a
+search returned nothing usable.
 
 ## Webhooks
 

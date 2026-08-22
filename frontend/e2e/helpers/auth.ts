@@ -6,6 +6,52 @@ import { Page, APIRequestContext } from '@playwright/test';
 import { STORAGE_KEYS, URLS, TIMEOUTS } from './constants';
 
 /**
+ * Click through the "Complete Sign-In" gate on the magic-link verify page.
+ *
+ * As of #870 (fix(auth): gate magic-link verify behind explicit click), the
+ * `/auth/verify` page no longer auto-consumes the single-use token on mount.
+ * Instead it runs a read-only status probe and, for a valid link, shows a
+ * "Complete Sign-In" confirm gate. The token is only spent when this button
+ * is clicked — this protects the link from email scanners / security proxies
+ * that render the page (and run its JS) but never click.
+ *
+ * E2E tests navigate directly to the magic link, so they must click this gate
+ * themselves. Call this AFTER `page.goto(magicLink)` and BEFORE waiting for
+ * the post-sign-in states (success / credit interstitial).
+ *
+ * If the verify page shows the failure UI instead of the gate (e.g. the link
+ * was genuinely already used or expired), this throws with the on-page detail
+ * so the failure is diagnosable rather than a bare 30s timeout.
+ */
+export async function clickCompleteSignInGate(page: Page): Promise<void> {
+  const confirmButton = page.getByRole('button', { name: /complete sign-?in/i });
+  const failureHeading = page.getByText(/sign-in failed/i);
+
+  const outcome = await Promise.race([
+    confirmButton
+      .waitFor({ state: 'visible', timeout: 30000 })
+      .then(() => 'gate' as const),
+    failureHeading
+      .waitFor({ state: 'visible', timeout: 30000 })
+      .then(() => 'failure' as const),
+  ]);
+
+  if (outcome === 'failure') {
+    const detail = await page
+      .locator('.text-muted-foreground')
+      .first()
+      .textContent()
+      .catch(() => null);
+    throw new Error(
+      `Magic-link verify page showed the failure UI instead of the "Complete Sign-In" gate` +
+        ` (link already used / expired?): ${detail?.trim() ?? 'no detail'}`
+    );
+  }
+
+  await confirmButton.click();
+}
+
+/**
  * Set the auth token in localStorage before page navigation.
  * Must be called BEFORE navigating to the page.
  */

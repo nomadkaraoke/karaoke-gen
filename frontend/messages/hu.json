@@ -239,7 +239,10 @@
     "loadingJobs": "Projektek betöltése...",
     "noJobsMatchFilters": "Nincs a szűrőknek megfelelő projekt.",
     "noJobsYet": "Még nincsenek projektek. Hozz létre egyet a kezdéshez!",
-    "referrals": "Ajánlások"
+    "referrals": "Ajánlások",
+    "bulkMode": "Tömeges",
+    "singleMode": "Egyes",
+    "submitModeToggle": "Egyedi vagy tömeges beküldés"
   },
   "auth": {
     "noVerificationToken": "Nincs megadva ellenőrző token",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Nem találtuk ezt a linket",
     "resendSuccessBody": "Küldtünk egy új bejelentkezési linket a(z) {maskedEmail} címre. A link 24 óráig érvényes.",
     "resendSuccessTitle": "Ellenőrizd a postaládádat",
-    "resending": "Küldés..."
+    "resending": "Küldés...",
+    "confirmBody": "A biztonságod érdekében kattints az alábbi gombra a bejelentkezés befejezéséhez. Ez a plusz lépés megakadályozza, hogy az automatikus e-mail szkennerek felhasználják a linkedet, mielőtt te rákattintanál.",
+    "confirmButton": "Bejelentkezés befejezése",
+    "confirmTitle": "Fejezd be a bejelentkezést"
   },
   "payment": {
     "title": "Sikeres fizetés!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Kódoló",
     "flacfetch": "Flacfetch",
-    "separator": "Szétválasztó"
+    "separator": "Szétválasztó",
+    "fallbackBadge": "Tartalék",
+    "fallbackNote": "Az elsődleges kapacitás nem elérhető — átirányítva egy tartalék példánytípusra.",
+    "liveWorker": "Élő feldolgozó"
   },
   "credits": {
     "title": "Vásárolj több kreditet",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Illessz be egy linket",
     "urlSupportedSitesHint": "Működik a YouTube, Facebook, SoundCloud, TikTok, Vimeo és több száz más oldallal.",
     "urlSupportedSitesLink": "Nézd meg az összes támogatott oldalt",
-    "useThisUrl": "Használd ezt az URL-t"
+    "useThisUrl": "Használd ezt az URL-t",
+    "matchCorrectedTo": "Javítva erre: {value} — ezt írtad: „{typed}”",
+    "matchDidYouMean": "Erre gondoltál?",
+    "matchKeepMine": "maradjon, amit írtam",
+    "matchTidiedTo": "Rendezve erre: {value}",
+    "matchUndo": "Visszavonás",
+    "matchChecking": "A dal adatainak ellenőrzése…",
+    "matchUseCorrection": "javítás használata",
+    "matchUseTidied": "letisztított verzió használata",
+    "matchUsingTyped": "Az általad beírtak használata: {value}",
+    "checkingUrl": "Ellenőrzés…",
+    "submitNetworkError": "Hálózati hiba — kérlek, ellenőrizd a kapcsolatodat, és próbáld újra.",
+    "submitError": "Valami hiba történt. Kérlek, próbáld újra."
   },
   "jobStatus": {
     "settingUp": "Beállítás",
@@ -576,7 +597,9 @@
     "correcting": "Javítás",
     "lyricsDone": "Dalszöveg kész",
     "lyrics": "Dalszöveg",
-    "confirmDurationCost": "Költség megerősítése"
+    "confirmDurationCost": "Költség megerősítése",
+    "findingAudioSources": "Hangforrások keresése (újrapróbálkozás)",
+    "waitingForCapacity": "Várakozás a kódoló szerverre (újrapróbálkozás)"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",
@@ -588,7 +611,9 @@
     "autoSelect": "Automatikusan kiválasztja",
     "willAutoSelectFirst": "Automatikusan kiválasztja az elsőt",
     "noOutputsAvailable": "Még nincsenek elérhető kimenetek",
-    "confirmCost": "Költség megerősítése"
+    "confirmCost": "Költség megerősítése",
+    "makingPublicInProgress": "A dal nyilvánossá tétele folyamatban — újrarenderelés az alapértelmezett arculattal és újraközzététel. Ez általában 15–30 percet vesz igénybe.",
+    "waitingForEncodingServer": "(várakozás a kódoló szerver elérhetőségére)"
   },
   "jobActions": {
     "delete": "Törlés",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Dal címe",
-    "artist": "Előadó"
+    "artist": "Előadó",
+    "loading": "Címképernyő előnézetének betöltése"
   },
   "editTrack": {
     "title": "Befejezett dal szerkesztése",
@@ -739,7 +765,22 @@
     "views": "{count} megtekintés",
     "moreVersions": "+{count} további",
     "select": "Kiválasztás",
-    "creditCost": "{credits} kredit"
+    "creditCost": "{credits} kredit",
+    "chooseFile": "Válassz egy hangfájlt (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Nem találtunk hangforrást. Próbáld meg módosítani a fenti előadót vagy címet, és keress újra, vagy adj meg egy saját hangfájlt URL-en keresztül vagy feltöltéssel.",
+    "pasteUrl": "URL beillesztése",
+    "researchFailed": "A keresés nem sikerült. Kérlek, próbáld újra.",
+    "searchAgain": "Új keresés",
+    "selectFailed": "Nem sikerült kiválasztani a hanganyagot",
+    "uploadFailed": "A feltöltés nem sikerült. Kérlek, próbáld újra.",
+    "urlFailed": "Ezt az URL-t nem tudtuk használni. Próbálj meg egy másik forrást.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Használd ezt a fájlt",
+    "useThisUrl": "Használd ezt az URL-t",
+    "artistLabel": "Előadó",
+    "loading": "Betöltés...",
+    "titleLabel": "Cím",
+    "uploadFileAction": "Fájl feltöltése"
   },
   "audioEditor": {
     "loading": "Hangszerkesztő betöltése...",
@@ -776,7 +817,17 @@
     "undoFailed": "Visszavonás sikertelen",
     "redoFailed": "Újra sikertelen",
     "restoreFailed": "Visszaállítás sikertelen — előfordulhat, hogy néhány szerkesztés nem lett alkalmazva",
-    "submitFailed": "Beküldés sikertelen"
+    "submitFailed": "Beküldés sikertelen",
+    "fadeIn": "Felerősítés",
+    "fadeInSelection": "Felerősítés a kijelölt szakaszon",
+    "fadeOut": "Elhalkítás",
+    "fadeOutSelection": "Elhalkítás a kijelölt szakaszon",
+    "fadeInDisabledHint": "A felerősítéshez jelölj ki egy olyan részt, amely pontosan a sáv legeléjén kezdődik",
+    "fadeOutDisabledHint": "Az elhalkításhoz jelölj ki egy olyan részt, amely pontosan a sáv legvégéig tart",
+    "trimEndDisabledHint": "A végének levágásához jelölj ki egy olyan részt, amely pontosan a sáv legvégéig tart",
+    "trimEndSelection": "Minden eltávolítása a kijelölés után",
+    "trimStartDisabledHint": "Az elejének levágásához jelölj ki egy olyan részt, amely pontosan a sáv legeléjén kezdődik",
+    "trimStartSelection": "Minden eltávolítása a kijelölés előtt"
   },
   "audioEditRestore": {
     "title": "Mentett hangszerkesztési munkamenetek",
@@ -803,7 +854,7 @@
       "acceptAll": "Összes elfogadása",
       "revertAll": "Összes visszaállítása",
       "undoAll": "Összes visszavonása",
-      "resetAllChanges": "Minden változtatás visszaállítása az eredeti AI által javított dalszövegre",
+      "resetAllChanges": "Minden módosítás visszaállítása az eredeti, javított dalszövegre",
       "undo": "Visszavonás",
       "redo": "Újra",
       "findReplace": "Keresés/Csere",
@@ -816,7 +867,11 @@
       "playback": "Lejátszás",
       "audioLoadError": "Nem sikerült betölteni a hanganyagot",
       "audioStillLoading": "A hanganyag még töltődik...",
-      "loadingAudio": "Hanganyag betöltése..."
+      "loadingAudio": "Hanganyag betöltése...",
+      "autoCorrect": "Automatikus javítás",
+      "autoCorrectDesc": "Összehasonlítja az átiratot a referencia dalszöveggel, és szószintű javításokat alkalmaz számodra. A javított szavak lila színnel jelennek meg.",
+      "autoCorrectedCount": "Automatikusan javítva · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {# automatikus javítást alkalmaztunk} other {# automatikus javítást alkalmaztunk}} (lilával jelölve). Kattints a részletek megtekintéséhez, és vond vissza azokat, amikkel nem értesz egyet."
     },
     "guidance": {
       "showTips": "Tippek mutatása",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "A narancssárgával kiemelt szavak a hézagok — azok a részek, amelyeket nem lehetett egyeztetni a referencia dalszöveggel, és hibákat tartalmazhatnak (pl. félrehallott szavak, amelyek hasonlóan hangzanak).",
       "useNAndP": "Használd az N és P billentyűket a hézagok közötti ugráshoz. Mindegyiknél kattints a lejátszásra a sor mellett, és hasonlítsd össze, amit hallasz, a jobb oldali referencia dalszöveggel, majd kattints egy szóra a szerkesztéshez vagy törléshez.",
       "watchOutForPhantomWords": "Vigyázz a fantom szavakra, mint például az \"és\" a sorok elején vagy végén — az átírás gyakran hozzáadja ezeket.",
-      "tryTimelineView": "Próbáld ki az Idővonal nézetet, hogy észrevedd a szokatlanul hosszú szavakat (10+ másodperc), amelyek általában időzítési problémát jeleznek.",
+      "tryTimelineView": "A 2 másodpercnél hosszabb szavak és a 2 másodpercnél hosszabb szünetek borostyánsárga időtartammal vannak megjelölve — ellenőrizd ezeket az időzítési problémák miatt. Válts a Haladó nézetre, hogy minden sort egy idővonalon kinyújtva láthass.",
       "watchFullTutorial": "Nézd meg a teljes oktatóvideót",
       "correctionHandlers": "Javítási kezelők",
       "anchorSequences": "Horgony szekvenciák",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Javítatlan hézagok",
       "uncorrectedGapsDesc": "Részek, amelyek manuális áttekintést igényelhetnek",
       "wordsUncorrected": "Javítatlan szavak",
-      "numberOfGaps": "Hézagok száma"
+      "numberOfGaps": "Hézagok száma",
+      "autoCorrectTip": "{count, plural, =1 {# szót javítottunk automatikusan} other {# szót javítottunk automatikusan}} (lilával jelölve, az eredeti szó felette látható). Játszd le az összes javított sort, és ellenőrizd, hogy a szavak szinkronban maradtak-e — különösen a borostyánsárgával aláhúzottakat, ahol az időzítés csak becsült, és valószínűleg módosításra szorul.",
+      "autoCorrected": "Automatikusan javítva",
+      "timingEstimated": "Becsült időzítés"
     },
     "transcription": {
       "syncedLyrics": "Szinkronizált dalszöveg",
@@ -854,7 +912,13 @@
       "text": "Szöveg",
       "timeline": "Idővonal",
       "deleteSegment": "Szegmens törlése",
-      "playSegment": "Szegmens lejátszása"
+      "playSegment": "Szegmens lejátszása",
+      "aiTooltipEstimated": "A rendszerünk automatikusan javította. Az időzítés itt csak becsült, ezért játszd le ezt a sort, és szükség esetén állítsd be a szavak időzítését.",
+      "aiTooltipReplaced": "A rendszerünk automatikusan javította erről: \"{original}\". Játszd le ezt a sort, hogy megerősítsd, a szavak még mindig szinkronban vannak.",
+      "aiTooltipReplacedEstimated": "A rendszerünk automatikusan javította erről: \"{original}\". Az időzítés csak becsült, ezért játszd le ezt a sort, és szükség esetén állítsd be a szavak időzítését.",
+      "longGapWarning": "{seconds} mp szünet a következő szó előtt — gyakran egy véletlen korai szó (pl. egy fantom \"és\"). Kattints ide a lejátszáshoz innen.",
+      "longWordWarning": "Ez a szó {seconds} mp-ig tart — szokatlanul hosszú. Játszd le a sort, és ellenőrizd, hogy a befejezési ideje nem lóg-e bele az instrumentális részbe.",
+      "playFromGap": "Lejátszás a szünet végétől"
     },
     "editActionBar": {
       "reset": "Visszaállítás",
@@ -990,7 +1054,9 @@
         "loadingAll": "Összes szó betöltése...",
         "loadingSegment": "Szegmens betöltése...",
         "noData": "Nincsenek elérhető szegmens adatok",
-        "unCorrect": "Javítás visszavonása"
+        "unCorrect": "Javítás visszavonása",
+        "timingClamped": "A(z) \"{word}\" időzítése a szegmensen kívül esett — {time}s-re igazítva.",
+        "timingSanitized": "{count} szó időzítése javítva, amely ezen a szegmensen kívül esett."
       },
       "findReplace": {
         "title": "Keresés és csere",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez."
+    },
+    "autoCorrect": {
+      "accept": "Javaslat elfogadása",
+      "acceptAll": "Összes elfogadása",
+      "accepted": "Elfogadva",
+      "adlibRemovalHint": "Engedélyezd az olyan javaslatokat, amelyek törlik a referenciákban nem szereplő háttérvokálokat",
+      "adlibRemovalLabel": "Adlibek eltávolításának javaslata",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formátum",
+      "category_grammar": "nyelvtan",
+      "category_mishearing": "félrehallás",
+      "category_other": "egyéb",
+      "category_repeated_chorus_fix": "refrén",
+      "collapse": "Javaslatok összecsukása",
+      "confidenceHint": "Mennyire legyen biztos a javaslat, mielőtt megjelenik",
+      "confidenceLabel": "Javaslatszűrő",
+      "confidence_all": "Összes megjelenítése",
+      "confidence_high": "Nagy bizonyosság",
+      "description": "Az automatikus javítás összehasonlítja a leírt dalszöveget a referenciaforrásokkal, és szavankénti javításokat javasol. Minden javaslatot átnézhetsz — semmi sem módosul, amíg el nem fogadod.",
+      "dismiss": "Javaslatok elvetése",
+      "expand": "Javaslatok kibontása",
+      "insertMarker": "beszúrás:",
+      "insertionsHint": "Engedélyezd az olyan javaslatokat, amelyek beszúrják az átírásból kimaradt szavakat",
+      "insertionsLabel": "Hiányzó szavak javaslata",
+      "noReferences": "Ehhez a dalhoz nincs elérhető referencia-dalszöveg, így nem tudunk javaslatokat generálni. Először adj hozzá dalszöveget a referenciapanelen.",
+      "noSuggestions": "Nem találtunk problémát — nincsenek javasolt módosítások.",
+      "reject": "Javaslat elutasítása",
+      "rejectAll": "Összes elutasítása",
+      "rejected": "Elutasítva",
+      "runButton": "Javaslatok kérése",
+      "running": "Dalszöveg elemzése… ez általában 15–60 másodpercet vesz igénybe.",
+      "staleHint": "Ezeket a szavakat módosítottad a javaslatok generálása óta, így ez a javaslat már nem érvényes.",
+      "summary": "{total} javaslat · {pending} függőben · {accepted} elfogadva",
+      "title": "Automatikus javítási javaslatok",
+      "undo": "Javaslat visszavonása",
+      "cancel": "Mégse",
+      "close": "Bezárás",
+      "confidence_balanced": "Kiegyensúlyozott",
+      "compareHint": "Lassabb és többe kerül, de megmutatja, mely javaslatokban ért egyet több modell.",
+      "compareLabel": "Több modell összehasonlítása",
+      "conflictBadge": "változat",
+      "conflictTooltip": "Több különböző javaslat is van ezekre a szavakra — az egyik változat elfogadásával elutasítod a többit.",
+      "consensusBadge": "{consensus}/{total} modell",
+      "consensusTooltip": "Javasolta: {models}",
+      "cachedBadge": "gyorsítótárazott",
+      "cachedTooltip": "Egy korábbi, azonos dalszövegen végzett futtatásból visszaállítva — nem merült fel AI-költség.",
+      "appliedSummary": "{count} automatikus javítás alkalmazva",
+      "hideDetails": "Részletek elrejtése",
+      "rerun": "Újrafuttatás",
+      "revertAllAuto": "Összes visszavonása",
+      "showDetails": "Részletek megjelenítése"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Becsült — a végső költséget a letöltés után erősítjük meg",
     "reconcileTitle": "Ez a dal hosszabb a vártnál",
     "cancel": "Mégse"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Háttér előnézetének betöltése"
+  },
+  "bulk": {
+    "albumModeHint": "Keress egy előadót, válassz egy albumot, majd döntsd el, melyik számokat szeretnéd elkészíteni.",
+    "artistSearchPlaceholder": "Előadó keresése…",
+    "autoPickLossless": "Legjobb hanganyag automatikus kiválasztása (csak veszteségmentes)",
+    "autoPickLosslessHint": "Automatikusan kiválasztja a hanganyagot, ha biztos veszteségmentes/FLAC egyezést találunk. A többi az ellenőrzési várólistára kerül.",
+    "backToAlbums": "Vissza az albumokhoz",
+    "backToArtists": "Vissza az előadókhoz",
+    "batchProgressTitle": "{total} dalból álló csomag",
+    "batchSettings": "Csomag beállításai",
+    "byAlbum": "Album szerint",
+    "byText": "Szöveg szerint",
+    "checking": "Ellenőrzés…",
+    "chooseAudio": "Hanganyag kiválasztása",
+    "communityExists": "Létezik közösségi verzió",
+    "communityExistsWithBrands": "Közösségi verzió: {brands}",
+    "countAwaiting": "{count} választást igényel",
+    "countComplete": "{count} kész",
+    "countFailed": "{count} sikertelen",
+    "countProcessing": "{count} feldolgozás alatt",
+    "countSearching": "{count} keresése",
+    "createBatch": "{count} karaoke videó létrehozása",
+    "creditsCost": "{cost} kredit · neked {balance} van",
+    "edition": "Kiadás",
+    "extra": "Extra",
+    "loadingBatch": "Csomag betöltése…",
+    "lookupFailed": "A keresés sikertelen. Kérlek, próbáld újra.",
+    "makePrivate": "Privátként megtart",
+    "makePrivateHint": "Csak Dropboxon keresztül kézbesítjük, ahelyett, hogy közzétennénk a YouTube-on.",
+    "noAlbums": "Nem találhatók albumok ehhez az előadóhoz.",
+    "notEnoughCredits": "{needed} kreditre van szükséged, de csak {have} van.",
+    "overLimit": "Egyszerre legfeljebb {max} dalt küldhetsz be.",
+    "progressError": "Nem sikerült betölteni a csomag folyamatát.",
+    "reviewQueueHint": "Ezekhez nem tudtunk magabiztosan automatikusan veszteségmentes forrást választani. Válassz egyet mindegyikhez.",
+    "reviewQueueTitle": "Válassz hanganyagot ezekhez a számokhoz",
+    "selectedCount": "{count} dal kiválasztva",
+    "skipAudioEdit": "Hangszerkesztés kihagyása",
+    "skipAudioEditHint": "Minden szám hanganyagának használata úgy, ahogy van (vágás nélkül).",
+    "skipCustomization": "Testreszabás kihagyása",
+    "skipCustomizationHint": "Az alapértelmezett téma és stílus használata minden számnál.",
+    "startAnother": "Új csomag indítása",
+    "submitError": "Nem sikerült létrehozni a csomagot. Kérlek, próbáld újra.",
+    "submitting": "Csomag létrehozása…",
+    "textModeHint": "Adj hozzá legfeljebb {max} dalt. Megjelöljük azokat, amelyeknek már van közösségi verziója.",
+    "title": "Cím",
+    "tracklistHint": "Az élő, remix és bónusz számok — valamint a már közösségi verzióval rendelkező dalok — alapértelmezés szerint nincsenek bejelölve.",
+    "addSong": "Dal hozzáadása",
+    "artist": "Előadó",
+    "buyCredits": "Kredit vásárlása",
+    "removeRow": "Eltávolítás",
+    "trackCount": "{count} szám",
+    "changeEdition": "Módosítás",
+    "existingVersions": "Meglévő verziók:",
+    "usingRelease": "Használatban: {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bónusz",
+    "variantOriginal": "Eredeti",
+    "variantReissue": "Újrakiadás"
+  },
+  "backendStatus": {
+    "reconnecting": "Újracsatlakozás…",
+    "unavailable": {
+      "body": "Ez általában átmeneti — kérlek, próbáld újra néhány perc múlva.",
+      "reassurance": "A jelenleg készülő karaoke videókat ez nem érinti, a feldolgozásuk zavartalanul folytatódik.",
+      "title": "Nem tudjuk elérni a szervereinket"
+    },
+    "dismiss": "Elvetés"
   }
 }

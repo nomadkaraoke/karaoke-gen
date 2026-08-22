@@ -1,17 +1,14 @@
 #!/bin/bash
 # Deploy the Divebar Mirror Cloud Function
 #
-# This script:
-# 1. Creates a ZIP of the function source
-# 2. Uploads it to GCS
-# 3. Deploys the function via gcloud
+# NOTE: As of 2026-06, the function source is managed by Pulumi
+# (modules/divebar_mirror.py zips this directory via pulumi.FileArchive and pins
+# the function to the object generation). The normal way to ship a code change is:
 #
-# Prerequisites:
-# - gcloud CLI authenticated
-# - Pulumi infrastructure already deployed (creates the bucket)
+#     cd infrastructure && pulumi up
 #
-# Usage:
-#   ./deploy.sh
+# This script remains for ad-hoc manual uploads/testing only; a manual upload
+# will be reset to the repo contents on the next `pulumi up`.
 
 set -e
 

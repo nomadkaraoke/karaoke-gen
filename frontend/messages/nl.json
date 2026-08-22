@@ -239,7 +239,10 @@
     "loadingJobs": "Taken laden...",
     "noJobsMatchFilters": "Geen taken komen overeen met je filters.",
     "noJobsYet": "Nog geen taken. Maak er een aan om te beginnen!",
-    "referrals": "Verwijzingen"
+    "referrals": "Verwijzingen",
+    "bulkMode": "Bulk",
+    "singleMode": "Enkel",
+    "submitModeToggle": "Enkele of bulk inzending"
   },
   "auth": {
     "noVerificationToken": "Geen verificatietoken opgegeven",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "We konden die link niet vinden",
     "resendSuccessBody": "We hebben een nieuwe inloglink naar {maskedEmail} gestuurd. Deze is de komende 24 uur geldig.",
     "resendSuccessTitle": "Check je e-mail",
-    "resending": "Verzenden..."
+    "resending": "Verzenden...",
+    "confirmBody": "Klik voor je eigen veiligheid op de onderstaande knop om het inloggen te voltooien. Deze extra stap voorkomt dat geautomatiseerde e-mailscanners je link gebruiken voordat jij dat doet.",
+    "confirmButton": "Inloggen voltooien",
+    "confirmTitle": "Voltooi het inloggen"
   },
   "payment": {
     "title": "Betaling succesvol!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Primaire capaciteit niet beschikbaar — omgeleid naar een fallback-instancetype.",
+    "liveWorker": "Live worker"
   },
   "credits": {
     "title": "Koop meer credits",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Plak een link",
     "urlSupportedSitesHint": "Werkt met YouTube, Facebook, SoundCloud, TikTok, Vimeo en honderden andere sites.",
     "urlSupportedSitesLink": "Bekijk alle ondersteunde sites",
-    "useThisUrl": "Gebruik deze URL"
+    "useThisUrl": "Gebruik deze URL",
+    "matchCorrectedTo": "Gecorrigeerd naar {value} — je typte “{typed}”",
+    "matchDidYouMean": "Bedoelde je?",
+    "matchKeepMine": "behoud wat ik typte",
+    "matchTidiedTo": "Opgeschoond naar {value}",
+    "matchUndo": "Ongedaan maken",
+    "matchChecking": "Nummergegevens controleren…",
+    "matchUseCorrection": "gebruik de correctie",
+    "matchUseTidied": "gebruik opgeschoonde versie",
+    "matchUsingTyped": "We gebruiken wat je hebt getypt: {value}",
+    "checkingUrl": "Controleren…",
+    "submitNetworkError": "Netwerkfout — controleer je verbinding en probeer het opnieuw.",
+    "submitError": "Er is iets misgegaan. Probeer het opnieuw."
   },
   "jobStatus": {
     "settingUp": "Instellen",
@@ -576,7 +597,9 @@
     "correcting": "Corrigeren",
     "lyricsDone": "Songteksten klaar",
     "lyrics": "Songteksten",
-    "confirmDurationCost": "Kosten bevestigen"
+    "confirmDurationCost": "Kosten bevestigen",
+    "findingAudioSources": "Audiobronnen zoeken (opnieuw proberen)",
+    "waitingForCapacity": "Wachten op encodingserver (opnieuw proberen)"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",
@@ -588,7 +611,9 @@
     "autoSelect": "Zal automatisch selecteren",
     "willAutoSelectFirst": "Zal automatisch de eerste selecteren",
     "noOutputsAvailable": "Nog geen outputs beschikbaar",
-    "confirmCost": "Kosten bevestigen"
+    "confirmCost": "Kosten bevestigen",
+    "makingPublicInProgress": "Deze track wordt openbaar gemaakt — opnieuw renderen met standaard branding en opnieuw publiceren. Dit duurt meestal 15–30 minuten.",
+    "waitingForEncodingServer": "(wachten op beschikbaarheid van de encodingserver)"
   },
   "jobActions": {
     "delete": "Verwijderen",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Titel van nummer",
-    "artist": "Artiest"
+    "artist": "Artiest",
+    "loading": "Voorbeeld van titelscherm laden"
   },
   "editTrack": {
     "title": "Bewerk Voltooide Track",
@@ -739,7 +765,22 @@
     "views": "{count} weergaven",
     "moreVersions": "+{count} meer",
     "select": "Selecteren",
-    "creditCost": "{credits} credits"
+    "creditCost": "{credits} credits",
+    "chooseFile": "Kies een audiobestand (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "We konden geen audiobronnen vinden. Probeer de artiest of titel hierboven aan te passen en opnieuw te zoeken, of voeg je eigen audio toe via een URL of bestandsupload.",
+    "pasteUrl": "Plak URL",
+    "researchFailed": "Zoeken mislukt. Probeer het opnieuw.",
+    "searchAgain": "Opnieuw zoeken",
+    "selectFailed": "Audio selecteren mislukt",
+    "uploadFailed": "Uploaden mislukt. Probeer het opnieuw.",
+    "urlFailed": "We konden die URL niet gebruiken. Probeer een andere bron.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Gebruik dit bestand",
+    "useThisUrl": "Gebruik deze URL",
+    "artistLabel": "Artiest",
+    "loading": "Laden...",
+    "titleLabel": "Titel",
+    "uploadFileAction": "Bestand uploaden"
   },
   "audioEditor": {
     "loading": "Audio-editor laden...",
@@ -776,7 +817,17 @@
     "undoFailed": "Ongedaan maken mislukt",
     "redoFailed": "Opnieuw uitvoeren mislukt",
     "restoreFailed": "Herstellen mislukt — sommige bewerkingen zijn mogelijk niet toegepast",
-    "submitFailed": "Indienen mislukt"
+    "submitFailed": "Indienen mislukt",
+    "fadeIn": "Fade-in",
+    "fadeInSelection": "Fade-in over het geselecteerde gedeelte",
+    "fadeOut": "Fade-out",
+    "fadeOutSelection": "Fade-out over het geselecteerde gedeelte",
+    "fadeInDisabledHint": "Om in te faden, selecteer je een gedeelte dat helemaal aan het begin van de track begint",
+    "fadeOutDisabledHint": "Om uit te faden, selecteer je een gedeelte dat helemaal aan het einde van de track eindigt",
+    "trimEndDisabledHint": "Om het einde bij te knippen, selecteer je een gedeelte dat helemaal aan het einde van de track eindigt",
+    "trimEndSelection": "Verwijder alles na de selectie",
+    "trimStartDisabledHint": "Om het begin bij te knippen, selecteer je een gedeelte dat helemaal aan het begin van de track begint",
+    "trimStartSelection": "Verwijder alles voor de selectie"
   },
   "audioEditRestore": {
     "title": "Opgeslagen Audio Bewerkingssessies",
@@ -803,7 +854,7 @@
       "acceptAll": "Accepteer alles",
       "revertAll": "Draai alles terug",
       "undoAll": "Maak alles ongedaan",
-      "resetAllChanges": "Reset alle wijzigingen terug naar de originele AI-gecorrigeerde songteksten",
+      "resetAllChanges": "Zet alle wijzigingen terug naar de oorspronkelijke gecorrigeerde songtekst",
       "undo": "Ongedaan maken",
       "redo": "Opnieuw uitvoeren",
       "findReplace": "Zoeken/Vervangen",
@@ -816,7 +867,11 @@
       "playback": "Afspelen",
       "audioLoadError": "Kon audio niet laden",
       "audioStillLoading": "Audio is nog aan het laden...",
-      "loadingAudio": "Audio laden..."
+      "loadingAudio": "Audio laden...",
+      "autoCorrect": "Autocorrectie",
+      "autoCorrectDesc": "Vergelijk de transcriptie met de referentietekst en pas correcties op woordniveau voor je toe. Gecorrigeerde woorden worden in het paars weergegeven.",
+      "autoCorrectedCount": "Automatisch gecorrigeerd · {count}",
+      "autoCorrectedDesc": "We hebben {count, plural, =1 {# automatische correctie} other {# automatische correcties}} toegepast (weergegeven in het paars). Klik om de details te bekijken en maak de correcties ongedaan waar je het niet mee eens bent."
     },
     "guidance": {
       "showTips": "Toon tips",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "De oranje gemarkeerde woorden zijn gaten — secties die niet konden worden gematcht met de referentie songteksten en mogelijk fouten bevatten (bijv. verkeerd verstane woorden die vergelijkbaar klinken).",
       "useNAndP": "Gebruik N en P om tussen gaten te springen. Klik voor elk gat op afspelen naast de regel en vergelijk wat je hoort met de referentie songteksten aan de rechterkant, klik vervolgens op een woord om het te bewerken of te verwijderen.",
       "watchOutForPhantomWords": "Pas op voor spookwoorden zoals \"en\" aan het begin of einde van regels — de transcriptie voegt deze vaak toe.",
-      "tryTimelineView": "Probeer de Tijdlijn-weergave om ongewoon lange woorden (10+ seconden) te spotten, wat meestal wijst op een timingprobleem.",
+      "tryTimelineView": "Woorden langer dan 2s en pauzes langer dan 2s worden gemarkeerd met een oranje duur — controleer deze op timingproblemen. Schakel over naar Geavanceerd om elke regel uitgerekt in een tijdlijn te zien.",
       "watchFullTutorial": "Bekijk volledige tutorial",
       "correctionHandlers": "Correctie-handlers",
       "anchorSequences": "Anker-sequenties",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Ongecorrigeerde gaten",
       "uncorrectedGapsDesc": "Secties die mogelijk handmatige controle nodig hebben",
       "wordsUncorrected": "Woorden ongecorrigeerd",
-      "numberOfGaps": "Aantal gaten"
+      "numberOfGaps": "Aantal gaten",
+      "autoCorrectTip": "{count, plural, =1 {Er is # woord automatisch voor je gecorrigeerd} other {Er zijn # woorden automatisch voor je gecorrigeerd}} (weergegeven in het paars, met het originele woord erboven). Speel elke gecorrigeerde regel af en controleer of de woorden nog steeds gelijk lopen — vooral de woorden die oranje onderstreept zijn, waarvan de timing is geschat en waarschijnlijk moet worden aangepast.",
+      "autoCorrected": "Automatisch gecorrigeerd",
+      "timingEstimated": "Timing geschat"
     },
     "transcription": {
       "syncedLyrics": "Gesynchroniseerde songteksten",
@@ -854,7 +912,13 @@
       "text": "Tekst",
       "timeline": "Tijdlijn",
       "deleteSegment": "Verwijder segment",
-      "playSegment": "Speel segment af"
+      "playSegment": "Speel segment af",
+      "aiTooltipEstimated": "Automatisch gecorrigeerd door ons systeem. De timing is hier geschat, dus speel deze regel af en pas indien nodig de timing van de woorden aan.",
+      "aiTooltipReplaced": "Automatisch door ons systeem gecorrigeerd van \"{original}\". Speel deze regel af om te bevestigen dat de woorden nog steeds gelijk lopen.",
+      "aiTooltipReplacedEstimated": "Automatisch door ons systeem gecorrigeerd van \"{original}\". De timing is geschat, dus speel deze regel af en pas indien nodig de timing van de woorden aan.",
+      "longGapWarning": "{seconds}s pauze voor het volgende woord — vaak een verdwaald woord dat te vroeg komt (bijv. een spook-\"en\"). Klik om vanaf hier af te spelen.",
+      "longWordWarning": "Dit woord duurt {seconds}s — ongewoon lang. Speel de regel af en controleer of de eindtijd niet doorloopt in het instrumentale gedeelte.",
+      "playFromGap": "Afspelen vanaf het einde van deze pauze"
     },
     "editActionBar": {
       "reset": "Resetten",
@@ -990,7 +1054,9 @@
         "loadingAll": "Alle woorden laden...",
         "loadingSegment": "Segment laden...",
         "noData": "Geen segmentgegevens beschikbaar",
-        "unCorrect": "Correctie ongedaan maken"
+        "unCorrect": "Correctie ongedaan maken",
+        "timingClamped": "\"{word}\" timing viel buiten het segment — aangepast naar {time}s.",
+        "timingSanitized": "{count} woordtiming(s) gecorrigeerd die buiten dit segment viel(en)."
       },
       "findReplace": {
         "title": "Zoeken en vervangen",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Aangepaste songtekst toegepast. Synchroniseer elk bewerkt segment handmatig zodat de timing van de woorden perfect aansluit op de nieuwe songtekst."
+    },
+    "autoCorrect": {
+      "accept": "Accepteer suggestie",
+      "acceptAll": "Accepteer alles",
+      "accepted": "Geaccepteerd",
+      "adlibRemovalHint": "Sta suggesties toe die achtergrondzang verwijderen die niet in de referenties voorkomt",
+      "adlibRemovalLabel": "Stel voor om adlibs te verwijderen",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "opmaak",
+      "category_grammar": "grammatica",
+      "category_mishearing": "verkeerd verstaan",
+      "category_other": "overig",
+      "category_repeated_chorus_fix": "refrein",
+      "collapse": "Suggesties inklappen",
+      "confidenceHint": "Hoe zeker een suggestie moet zijn voordat deze wordt getoond",
+      "confidenceLabel": "Suggestiefilter",
+      "confidence_all": "Toon alles",
+      "confidence_high": "Hoge zekerheid",
+      "description": "Autocorrectie vergelijkt de getranscribeerde songtekst met de referentiebronnen en stelt correcties op woordniveau voor. Je beoordeelt elke suggestie — er wordt niets toegepast totdat je deze accepteert.",
+      "dismiss": "Suggesties negeren",
+      "expand": "Suggesties uitklappen",
+      "insertMarker": "invoegen:",
+      "insertionsHint": "Sta suggesties toe die woorden invoegen die in de transcriptie ontbreken",
+      "insertionsLabel": "Stel ontbrekende woorden voor",
+      "noReferences": "Er is geen referentiesongtekst beschikbaar voor dit nummer, dus er kunnen geen suggesties worden gegenereerd. Voeg eerst een songtekst toe via het referentiepaneel.",
+      "noSuggestions": "Geen problemen gevonden — er zijn geen voorgestelde wijzigingen.",
+      "reject": "Wijs suggestie af",
+      "rejectAll": "Wijs alles af",
+      "rejected": "Afgewezen",
+      "runButton": "Suggesties ophalen",
+      "running": "Songtekst analyseren… dit duurt meestal 15–60 seconden.",
+      "staleHint": "Deze woorden zijn bewerkt nadat de suggesties zijn gegenereerd, dus deze suggestie is niet meer van toepassing.",
+      "summary": "{total} suggesties · {pending} in afwachting · {accepted} geaccepteerd",
+      "title": "Suggesties voor autocorrectie",
+      "undo": "Maak deze suggestie ongedaan",
+      "cancel": "Annuleren",
+      "close": "Sluiten",
+      "confidence_balanced": "Gebalanceerd",
+      "compareHint": "Langzamer en kost meer, maar laat zien over welke suggesties meerdere modellen het eens zijn",
+      "compareLabel": "Vergelijk meerdere modellen",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Er zijn verschillende suggesties voor deze woorden — als je één variant accepteert, worden de andere afgewezen.",
+      "consensusBadge": "{consensus}/{total} modellen",
+      "consensusTooltip": "Voorgesteld door: {models}",
+      "cachedBadge": "gecached",
+      "cachedTooltip": "Hersteld uit een eerdere verwerking van dezelfde songtekst — er zijn geen AI-kosten gemaakt.",
+      "appliedSummary": "{count} automatische correcties toegepast",
+      "hideDetails": "Details verbergen",
+      "rerun": "Opnieuw uitvoeren",
+      "revertAllAuto": "Alles ongedaan maken",
+      "showDetails": "Details tonen"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Geschat — definitieve kosten worden na downloaden bevestigd",
     "reconcileTitle": "Dit nummer is langer dan verwacht",
     "cancel": "Annuleren"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Achtergrondvoorbeeld laden"
+  },
+  "bulk": {
+    "albumModeHint": "Zoek naar een artiest, kies een album en kies vervolgens welke nummers je wilt maken.",
+    "artistSearchPlaceholder": "Zoek naar een artiest…",
+    "autoPickLossless": "Kies automatisch de beste audio (alleen lossless)",
+    "autoPickLosslessHint": "Kies automatisch de audio wanneer we een zekere lossless/FLAC-match vinden. Andere gaan naar een beoordelingswachtrij.",
+    "backToAlbums": "Terug naar albums",
+    "backToArtists": "Terug naar artiesten",
+    "batchProgressTitle": "Batch van {total} nummers",
+    "batchSettings": "Batch-instellingen",
+    "byAlbum": "Op album",
+    "byText": "Op tekst",
+    "checking": "Controleren…",
+    "chooseAudio": "Kies audio",
+    "communityExists": "Community-versie bestaat al",
+    "communityExistsWithBrands": "Community-versie: {brands}",
+    "countAwaiting": "{count} hebben een keuze nodig",
+    "countComplete": "{count} voltooid",
+    "countFailed": "{count} mislukt",
+    "countProcessing": "{count} in verwerking",
+    "countSearching": "{count} aan het zoeken",
+    "createBatch": "Maak {count} karaoke-video's",
+    "creditsCost": "{cost} credits · je hebt er {balance}",
+    "edition": "Editie",
+    "extra": "Extra",
+    "loadingBatch": "Batch laden…",
+    "lookupFailed": "Opzoeken mislukt. Probeer het opnieuw.",
+    "makePrivate": "Houd privé",
+    "makePrivateHint": "Lever alleen via Dropbox in plaats van te publiceren op YouTube.",
+    "noAlbums": "Geen albums gevonden voor deze artiest.",
+    "notEnoughCredits": "Je hebt {needed} credits nodig, maar je hebt er {have}.",
+    "overLimit": "Je kunt maximaal {max} nummers tegelijk indienen.",
+    "progressError": "Kon de batch-voortgang niet laden.",
+    "reviewQueueHint": "We konden voor deze nummers niet met zekerheid automatisch een lossless bron kiezen. Kies er een voor elk nummer.",
+    "reviewQueueTitle": "Kies audio voor deze nummers",
+    "selectedCount": "{count} nummers geselecteerd",
+    "skipAudioEdit": "Audiobewerking overslaan",
+    "skipAudioEditHint": "Gebruik de audio van elk nummer zoals het is (niet bijsnijden).",
+    "skipCustomization": "Aanpassing overslaan",
+    "skipCustomizationHint": "Gebruik het standaardthema en de standaardstijl voor elk nummer.",
+    "startAnother": "Start nog een batch",
+    "submitError": "Kon de batch niet aanmaken. Probeer het opnieuw.",
+    "submitting": "Batch aanmaken…",
+    "textModeHint": "Voeg maximaal {max} nummers toe. We markeren degene die al een community-versie hebben.",
+    "title": "Titel",
+    "tracklistHint": "Live-, remix- en bonustracks — en nummers die al een community-versie hebben — zijn standaard uitgevinkt.",
+    "addSong": "Nummer toevoegen",
+    "artist": "Artiest",
+    "buyCredits": "Credits kopen",
+    "removeRow": "Verwijderen",
+    "trackCount": "{count} tracks",
+    "changeEdition": "Wijzigen",
+    "existingVersions": "Bestaande versies:",
+    "usingRelease": "Gebruikt {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Origineel",
+    "variantReissue": "Heruitgave"
+  },
+  "backendStatus": {
+    "reconnecting": "Opnieuw verbinden…",
+    "unavailable": {
+      "body": "Dit is meestal tijdelijk — probeer het over een paar minuten opnieuw.",
+      "reassurance": "Karaokevideo's die momenteel worden gemaakt, ondervinden hier geen hinder van en worden gewoon verder verwerkt.",
+      "title": "We kunnen onze servers even niet bereiken"
+    },
+    "dismiss": "Sluiten"
   }
 }

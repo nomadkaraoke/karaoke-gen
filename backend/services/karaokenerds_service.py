@@ -5,6 +5,7 @@ Scrapes karaokenerds.com to check if a song already has community-approved
 karaoke versions available on YouTube. Ported from kjbox/kj-controller/karaoke_nerds.py.
 """
 
+import asyncio
 import logging
 import re
 import time
@@ -14,11 +15,21 @@ from urllib.parse import urlencode
 import httpx
 from bs4 import BeautifulSoup
 
+from backend.services.match_judge.classifier import normalize_for_match
+
 logger = logging.getLogger(__name__)
 
 SEARCH_URL = "https://karaokenerds.com/Search"
 REQUEST_TIMEOUT = 8
 USER_AGENT = "NomadKaraokeGen/1.0"
+
+# karaokenerds.com's search silently returns zero results once a query exceeds
+# ~10 whitespace-separated terms (observed: 10 terms match, 11 return nothing).
+# Long/repetitive titles like "I Do, I Do, I Do, I Do, I Do" combined with the
+# artist blow past this, so the song is falsely reported as having no community
+# version. When that happens we retry with the title alone (the highest-signal
+# term) and keep only results whose artist matches.
+MAX_RELIABLE_QUERY_TERMS = 10
 
 # In-memory TTL cache: { cache_key: (expiry_timestamp, data) }
 _cache: dict[str, tuple[float, Any]] = {}
@@ -145,6 +156,45 @@ def parse_results(html: str) -> list[dict]:
     return songs
 
 
+async def _search_songs(query: str) -> list[dict] | None:
+    """Run a single karaokenerds search and parse the results.
+
+    Returns the parsed song list, or ``None`` if the HTTP request failed (so the
+    caller can distinguish "search errored" from "search returned nothing").
+    """
+    params = urlencode({"query": query, "webFilter": "OnlyWeb"})
+    url = f"{SEARCH_URL}?{params}"
+    try:
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            resp = await client.get(
+                url,
+                headers={"User-Agent": USER_AGENT},
+                follow_redirects=True,
+            )
+            resp.raise_for_status()
+    except Exception as e:
+        logger.warning(f"KaraokeNerds search failed for '{query}': {e}")
+        return None
+    return parse_results(resp.text)
+
+
+def _extract_community_songs(songs: list[dict]) -> tuple[list[dict], str | None]:
+    """Filter parsed songs to those with community tracks; return (songs, best_url)."""
+    community_songs: list[dict] = []
+    best_youtube_url: str | None = None
+    for song in songs:
+        community_tracks = [t for t in song["tracks"] if t["is_community"]]
+        if community_tracks:
+            community_songs.append({
+                "title": song["title"],
+                "artist": song["artist"],
+                "community_tracks": community_tracks,
+            })
+            if best_youtube_url is None:
+                best_youtube_url = community_tracks[0]["youtube_url"]
+    return community_songs, best_youtube_url
+
+
 async def check_community_versions(artist: str, title: str) -> dict:
     """
     Check if a song has community-approved karaoke versions on karaokenerds.
@@ -160,39 +210,32 @@ async def check_community_versions(artist: str, title: str) -> dict:
     if cached is not None:
         return cached
 
-    params = urlencode({"query": query, "webFilter": "OnlyWeb"})
-    url = f"{SEARCH_URL}?{params}"
-
-    try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            resp = await client.get(
-                url,
-                headers={"User-Agent": USER_AGENT},
-                follow_redirects=True,
-            )
-            resp.raise_for_status()
-    except Exception as e:
-        logger.warning(f"KaraokeNerds search failed for '{query}': {e}")
+    songs = await _search_songs(query)
+    if songs is None:
+        # Hard failure (network/HTTP) — cache a negative so we don't hammer the
+        # site, matching prior behaviour.
         result = {"has_community": False, "songs": [], "best_youtube_url": None}
         _cache_set(cache_key, result)
         return result
 
-    songs = parse_results(resp.text)
+    # karaokenerds chokes on overlong queries and returns nothing. If the
+    # combined "artist title" query was too long AND came back empty, retry with
+    # the title alone, then keep only results whose artist matches (title-only is
+    # broader, so this guards against same-titled songs by other artists).
+    if (
+        not songs
+        and title.strip()
+        and len(query.split()) > MAX_RELIABLE_QUERY_TERMS
+    ):
+        fallback = await _search_songs(title)
+        if fallback:
+            key_artist = normalize_for_match(artist)
+            songs = [
+                s for s in fallback
+                if normalize_for_match(s.get("artist") or "") == key_artist
+            ]
 
-    # Filter to only songs that have community tracks with YouTube URLs
-    community_songs = []
-    best_youtube_url = None
-
-    for song in songs:
-        community_tracks = [t for t in song["tracks"] if t["is_community"]]
-        if community_tracks:
-            community_songs.append({
-                "title": song["title"],
-                "artist": song["artist"],
-                "community_tracks": community_tracks,
-            })
-            if best_youtube_url is None:
-                best_youtube_url = community_tracks[0]["youtube_url"]
+    community_songs, best_youtube_url = _extract_community_songs(songs)
 
     result = {
         "has_community": len(community_songs) > 0,
@@ -201,3 +244,54 @@ async def check_community_versions(artist: str, title: str) -> dict:
     }
     _cache_set(cache_key, result)
     return result
+
+
+async def check_community_versions_batch(
+    songs: list[dict], concurrency: int = 5
+) -> list[dict]:
+    """Check community-version availability for many songs (Bulk Mode).
+
+    ``songs`` is a list of ``{"artist": str, "title": str}``. Returns a list in the
+    same order, each ``{"artist", "title", "available": bool, "brands": [str],
+    "brand_count": int, "versions": [{"brand": str, "url": str}]}``. ``versions`` is
+    the per-community-version detail (deduped by brand, first YouTube URL kept) the UI
+    uses to render clickable links; ``brands``/``brand_count`` are retained for
+    back-compat. Bounded concurrency keeps us polite to karaokenerds.com; per-song
+    results reuse the existing 1h cache. A failed lookup degrades to
+    ``available=False`` (the track simply stays selectable) — never raises.
+    """
+    sem = asyncio.Semaphore(max(1, concurrency))
+
+    async def _one(song: dict) -> dict:
+        artist = (song.get("artist") or "").strip()
+        title = (song.get("title") or "").strip()
+        if not artist or not title:
+            return {"artist": artist, "title": title, "available": False,
+                    "brands": [], "brand_count": 0, "versions": []}
+        async with sem:
+            res = await check_community_versions(artist, title)
+        versions: list[dict] = []
+        versioned_brands: set[str] = set()
+        brands: list[str] = []
+        for matched in res.get("songs", []):
+            for track in matched.get("community_tracks", []):
+                name = track.get("brand_name")
+                if not name:
+                    continue
+                if name not in brands:
+                    brands.append(name)
+                # A clickable version needs a URL; brand still counts as "exists" without one.
+                url = track.get("youtube_url")
+                if url and name not in versioned_brands:
+                    versioned_brands.add(name)
+                    versions.append({"brand": name, "url": url})
+        return {
+            "artist": artist,
+            "title": title,
+            "available": bool(res.get("has_community")),
+            "brands": brands,
+            "brand_count": len(brands),
+            "versions": versions,
+        }
+
+    return await asyncio.gather(*[_one(s) for s in songs])

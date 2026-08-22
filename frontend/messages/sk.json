@@ -239,7 +239,10 @@
     "loadingJobs": "Načítavajú sa úlohy...",
     "noJobsMatchFilters": "Tvojim filtrom nezodpovedajú žiadne úlohy.",
     "noJobsYet": "Zatiaľ žiadne úlohy. Vytvor jednu a začni!",
-    "referrals": "Odporúčania"
+    "referrals": "Odporúčania",
+    "bulkMode": "Hromadne",
+    "singleMode": "Jednotlivo",
+    "submitModeToggle": "Jednotlivé alebo hromadné odoslanie"
   },
   "auth": {
     "noVerificationToken": "Nebol poskytnutý žiadny overovací token",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Tento odkaz sme nenašli",
     "resendSuccessBody": "Poslali sme nový prihlasovací odkaz na {maskedEmail}. Je platný nasledujúcich 24 hodín.",
     "resendSuccessTitle": "Skontroluj si e-mail",
-    "resending": "Odosiela sa..."
+    "resending": "Odosiela sa...",
+    "confirmBody": "Pre tvoju bezpečnosť klikni na tlačidlo nižšie a dokonči prihlásenie. Tento krok navyše zabráni automatickým e-mailovým skenerom použiť tvoj odkaz skôr, než to stihneš ty.",
+    "confirmButton": "Dokončiť prihlásenie",
+    "confirmTitle": "Dokonči prihlásenie"
   },
   "payment": {
     "title": "Platba úspešná!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Enkodér",
     "flacfetch": "Flacfetch",
-    "separator": "Separátor"
+    "separator": "Separátor",
+    "fallbackBadge": "Záloha",
+    "fallbackNote": "Primárna kapacita je nedostupná — presmerovaná na záložný typ inštancie.",
+    "liveWorker": "Aktívny worker"
   },
   "credits": {
     "title": "Kúpiť viac kreditov",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Vlož odkaz",
     "urlSupportedSitesHint": "Funguje s YouTube, Facebook, SoundCloud, TikTok, Vimeo a stovkami ďalších stránok.",
     "urlSupportedSitesLink": "Pozri si všetky podporované stránky",
-    "useThisUrl": "Použi túto URL"
+    "useThisUrl": "Použi túto URL",
+    "matchCorrectedTo": "Opravené na {value} — tvoj text: „{typed}“",
+    "matchDidYouMean": "Mal si na mysli?",
+    "matchKeepMine": "ponechať môj text",
+    "matchTidiedTo": "Upravené na {value}",
+    "matchUndo": "Vrátiť späť",
+    "matchChecking": "Kontrolujú sa detaily skladby…",
+    "matchUseCorrection": "použiť opravu",
+    "matchUseTidied": "použiť upravenú verziu",
+    "matchUsingTyped": "Používam to, čo si zadal: {value}",
+    "checkingUrl": "Kontroluje sa…",
+    "submitNetworkError": "Chyba siete — skontroluj pripojenie a skús to znova.",
+    "submitError": "Niečo sa pokazilo. Skús to znova."
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",
@@ -576,7 +597,9 @@
     "correcting": "Opravuje sa",
     "lyricsDone": "Text hotový",
     "lyrics": "Text",
-    "confirmDurationCost": "Potvrdiť cenu"
+    "confirmDurationCost": "Potvrdiť cenu",
+    "findingAudioSources": "Hľadanie zdrojov zvuku (opakovaný pokus)",
+    "waitingForCapacity": "Čaká sa na kódovací server (opakovaný pokus)"
   },
   "jobCard": {
     "actionNeeded": "Vyžaduje sa akcia",
@@ -588,7 +611,9 @@
     "autoSelect": "Automaticky vyberie",
     "willAutoSelectFirst": "Automaticky vyberie prvé",
     "noOutputsAvailable": "Zatiaľ nie sú k dispozícii žiadne výstupy",
-    "confirmCost": "Potvrdiť cenu"
+    "confirmCost": "Potvrdiť cenu",
+    "makingPublicInProgress": "Zverejňovanie tejto skladby — opätovné renderovanie s predvoleným brandingom a opätovné publikovanie. Zvyčajne to trvá 15 – 30 minút.",
+    "waitingForEncodingServer": "(čaká sa na dostupnosť kódovacieho servera)"
   },
   "jobActions": {
     "delete": "Vymazať",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Názov piesne",
-    "artist": "Interpret"
+    "artist": "Interpret",
+    "loading": "Načítava sa náhľad úvodnej obrazovky"
   },
   "editTrack": {
     "title": "Upraviť dokončenú skladbu",
@@ -739,7 +765,22 @@
     "views": "{count} zhliadnutí",
     "moreVersions": "+{count} ďalších",
     "select": "Vybrať",
-    "creditCost": "{credits} kreditov"
+    "creditCost": "{credits} kreditov",
+    "chooseFile": "Vyber zvukový súbor (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Nenašli sme žiadne zdroje zvuku. Skús upraviť interpreta alebo názov vyššie a vyhľadať znova, alebo pridaj vlastný zvuk pomocou URL adresy či nahratím súboru.",
+    "pasteUrl": "Vlož URL",
+    "researchFailed": "Vyhľadávanie zlyhalo. Skús to znova.",
+    "searchAgain": "Hľadať znova",
+    "selectFailed": "Nepodarilo sa vybrať zvuk",
+    "uploadFailed": "Nahrávanie zlyhalo. Skús to znova.",
+    "urlFailed": "Túto URL adresu nebolo možné použiť. Skús iný zdroj.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Použiť tento súbor",
+    "useThisUrl": "Použiť túto URL",
+    "artistLabel": "Interpret",
+    "loading": "Načítava sa...",
+    "titleLabel": "Názov",
+    "uploadFileAction": "Nahrať súbor"
   },
   "audioEditor": {
     "loading": "Načítava sa editor zvuku...",
@@ -776,7 +817,17 @@
     "undoFailed": "Krok späť zlyhal",
     "redoFailed": "Krok znova zlyhal",
     "restoreFailed": "Obnovenie zlyhalo — niektoré úpravy sa možno neaplikovali",
-    "submitFailed": "Odoslanie zlyhalo"
+    "submitFailed": "Odoslanie zlyhalo",
+    "fadeIn": "Postupné zosilnenie",
+    "fadeInSelection": "Postupné zosilnenie vo vybranej oblasti",
+    "fadeOut": "Postupné stíšenie",
+    "fadeOutSelection": "Postupné stíšenie vo vybranej oblasti",
+    "fadeInDisabledHint": "Ak chceš použiť postupné zosilnenie, vyber oblasť, ktorá sa začína na úplnom začiatku stopy",
+    "fadeOutDisabledHint": "Ak chceš použiť postupné zoslabenie, vyber oblasť, ktorá sa končí na úplnom konci stopy",
+    "trimEndDisabledHint": "Ak chceš orezať koniec, vyber oblasť, ktorá sa končí na úplnom konci stopy",
+    "trimEndSelection": "Odstrániť všetko za výberom",
+    "trimStartDisabledHint": "Ak chceš orezať začiatok, vyber oblasť, ktorá sa začína na úplnom začiatku stopy",
+    "trimStartSelection": "Odstrániť všetko pred výberom"
   },
   "audioEditRestore": {
     "title": "Uložené relácie úprav zvuku",
@@ -803,7 +854,7 @@
       "acceptAll": "Prijať všetky",
       "revertAll": "Vrátiť všetky",
       "undoAll": "Vrátiť späť všetky",
-      "resetAllChanges": "Obnoviť všetky zmeny späť na pôvodný text opravený AI",
+      "resetAllChanges": "Vrátiť všetky zmeny späť na pôvodný opravený text",
       "undo": "Späť",
       "redo": "Znova",
       "findReplace": "Nájsť/Nahradiť",
@@ -816,7 +867,11 @@
       "playback": "Prehrávanie",
       "audioLoadError": "Nepodarilo sa načítať audio",
       "audioStillLoading": "Audio sa stále načítava...",
-      "loadingAudio": "Načítava sa audio..."
+      "loadingAudio": "Načítava sa audio...",
+      "autoCorrect": "Automatická oprava",
+      "autoCorrectDesc": "Porovná prepis s referenčným textom a aplikuje za teba opravy na úrovni slov. Opravené slová sú zobrazené fialovou farbou.",
+      "autoCorrectedCount": "Automaticky opravené · {count}",
+      "autoCorrectedDesc": "Aplikovali sme {count, plural, =1 {# automatickú opravu} few {# automatické opravy} other {# automatických opráv}} (zobrazené fialovou farbou). Klikni pre zobrazenie podrobností a zrušenie tých, s ktorými nesúhlasíš."
     },
     "guidance": {
       "showTips": "Zobraziť tipy",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Oranžovo zvýraznené slová sú medzery — časti, ktoré sa nepodarilo priradiť k referenčnému textu a môžu obsahovať chyby (napr. zle počuté slová, ktoré znejú podobne).",
       "useNAndP": "Použi N a P na preskakovanie medzi medzerami. Pri každej klikni na prehrávanie vedľa riadku a porovnaj to, čo počuješ, s referenčným textom napravo, potom klikni na slovo pre jeho úpravu alebo vymazanie.",
       "watchOutForPhantomWords": "Dávaj si pozor na fantómové slová ako \"and\" na začiatku alebo na konci riadkov — prepis ich často pridáva.",
-      "tryTimelineView": "Vyskúšaj zobrazenie Časová os, aby si si všimol akékoľvek nezvyčajne dlhé slová (10+ sekúnd), ktoré zvyčajne naznačujú problém s časovaním.",
+      "tryTimelineView": "Slová dlhšie ako 2 s a medzery dlhšie ako 2 s sú označené jantárovou farbou — skontroluj ich kvôli problémom s časovaním. Prepni na Pokročilé, aby si videl každý riadok roztiahnutý na časovej osi.",
       "watchFullTutorial": "Pozrieť si celý tutoriál",
       "correctionHandlers": "Spracovatelia opráv",
       "anchorSequences": "Kotviace sekvencie",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Neopravené medzery",
       "uncorrectedGapsDesc": "Časti, ktoré môžu vyžadovať manuálnu kontrolu",
       "wordsUncorrected": "Neopravené slová",
-      "numberOfGaps": "Počet medzier"
+      "numberOfGaps": "Počet medzier",
+      "autoCorrectTip": "{count, plural, =1 {# slovo bolo automaticky opravené} few {# slová boli automaticky opravené} other {# slov bolo automaticky opravených}} (zobrazené fialovou farbou, s pôvodným slovom vyššie). Prehraj si každý opravený riadok a skontroluj, či slová stále sedia — najmä tie podčiarknuté jantárovou farbou, kde bolo načasovanie odhadnuté a pravdepodobne bude potrebovať úpravu.",
+      "autoCorrected": "Automaticky opravené",
+      "timingEstimated": "Odhadované načasovanie"
     },
     "transcription": {
       "syncedLyrics": "Synchronizovaný text",
@@ -854,7 +912,13 @@
       "text": "Text",
       "timeline": "Časová os",
       "deleteSegment": "Vymazať segment",
-      "playSegment": "Prehrať segment"
+      "playSegment": "Prehrať segment",
+      "aiTooltipEstimated": "Automaticky opravené naším systémom. Načasovanie tu bolo odhadnuté, takže si prehraj tento riadok a v prípade potreby uprav načasovanie slov.",
+      "aiTooltipReplaced": "Automaticky opravené naším systémom z „{original}“. Prehraj si tento riadok a potvrď, že slová stále sedia.",
+      "aiTooltipReplacedEstimated": "Automaticky opravené naším systémom z „{original}“. Načasovanie bolo odhadnuté, takže si prehraj tento riadok a v prípade potreby uprav načasovanie slov.",
+      "longGapWarning": "Medzera {seconds} s pred ďalším slovom — často ide o predčasné slovo (napr. falošné „a“). Klikni pre prehratie odtiaľto.",
+      "longWordWarning": "Toto slovo trvá {seconds} s — čo je nezvyčajne dlho. Prehraj si riadok a skontroluj, či jeho koniec nezasahuje do inštrumentálnej pasáže.",
+      "playFromGap": "Prehrať od konca tejto medzery"
     },
     "editActionBar": {
       "reset": "Obnoviť",
@@ -990,7 +1054,9 @@
         "loadingAll": "Načítavajú sa všetky slová...",
         "loadingSegment": "Načítava sa segment...",
         "noData": "Nie sú k dispozícii žiadne dáta segmentu",
-        "unCorrect": "Zrušiť opravu"
+        "unCorrect": "Zrušiť opravu",
+        "timingClamped": "Časovanie \"{word}\" bolo mimo segmentu — zarovnané na {time} s.",
+        "timingSanitized": "Opravené časovanie pre {count} slov, ktoré boli mimo tohto segmentu."
       },
       "findReplace": {
         "title": "Nájsť a nahradiť",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Vlastný text bol aplikovaný. Manuálne synchronizuj každý upravený segment, aby sa zabezpečilo správne načasovanie slov pre prispôsobený text."
+    },
+    "autoCorrect": {
+      "accept": "Prijať návrh",
+      "acceptAll": "Prijať všetko",
+      "accepted": "Prijaté",
+      "adlibRemovalHint": "Povoliť návrhy, ktoré vymažú sprievodné vokály, ak nie sú v referenčnom texte",
+      "adlibRemovalLabel": "Navrhnúť odstránenie adlibov",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formátovanie",
+      "category_grammar": "gramatika",
+      "category_mishearing": "prepočutie",
+      "category_other": "iné",
+      "category_repeated_chorus_fix": "refrén",
+      "collapse": "Zbaliť návrhy",
+      "confidenceHint": "Aká vysoká musí byť miera istoty návrhu, aby sa zobrazil",
+      "confidenceLabel": "Filter návrhov",
+      "confidence_all": "Zobraziť všetko",
+      "confidence_high": "Vysoká istota",
+      "description": "Automatická oprava porovnáva prepísaný text s referenčnými zdrojmi a navrhuje opravy na úrovni slov. Každý návrh skontroluješ — nič sa neaplikuje, kým ho neschváliš.",
+      "dismiss": "Zahodiť návrhy",
+      "expand": "Rozbaliť návrhy",
+      "insertMarker": "vložiť:",
+      "insertionsHint": "Povoliť návrhy na vloženie slov, ktoré v prepise chýbajú",
+      "insertionsLabel": "Navrhnúť chýbajúce slová",
+      "noReferences": "Pre túto pieseň nie je k dispozícii žiadny referenčný text, takže návrhy nie je možné vygenerovať. Najprv pridaj text z referenčného panela.",
+      "noSuggestions": "Nenašli sa žiadne problémy — nie sú tu žiadne navrhované zmeny.",
+      "reject": "Odmietnuť návrh",
+      "rejectAll": "Odmietnuť všetko",
+      "rejected": "Odmietnuté",
+      "runButton": "Získať návrhy",
+      "running": "Analyzuje sa text… zvyčajne to trvá 15 – 60 sekúnd.",
+      "staleHint": "Tieto slová boli od vygenerovania návrhov upravené, takže tento návrh už neplatí.",
+      "summary": "{total} návrhov · {pending} čakajúcich · {accepted} prijatých",
+      "title": "Návrhy automatickej opravy",
+      "undo": "Vrátiť späť tento návrh",
+      "cancel": "Zrušiť",
+      "close": "Zavrieť",
+      "confidence_balanced": "Vyvážená",
+      "compareHint": "Je to pomalšie a stojí to viac, ale ukáže, na ktorých návrhoch sa zhoduje viacero modelov",
+      "compareLabel": "Porovnaj viaceré modely",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Pre tieto slová existujú rôzne návrhy — prijatím jedného variantu odmietneš ostatné.",
+      "consensusBadge": "{consensus}/{total} modelov",
+      "consensusTooltip": "Navrhli: {models}",
+      "cachedBadge": "z cache",
+      "cachedTooltip": "Obnovené z predchádzajúceho spustenia na rovnakom texte — nevznikli žiadne náklady na AI.",
+      "appliedSummary": "Aplikované automatické opravy: {count}",
+      "hideDetails": "Skryť podrobnosti",
+      "rerun": "Spustiť znova",
+      "revertAllAuto": "Vrátiť všetko",
+      "showDetails": "Zobraziť podrobnosti"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Odhadované — konečná cena bude potvrdená po stiahnutí",
     "reconcileTitle": "Táto pieseň je dlhšia, ako sa očakávalo",
     "cancel": "Zrušiť"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Načítava sa náhľad pozadia"
+  },
+  "bulk": {
+    "albumModeHint": "Vyhľadaj interpreta, vyber album a potom zvoľ, ktoré skladby chceš vytvoriť.",
+    "artistSearchPlaceholder": "Hľadať interpreta…",
+    "autoPickLossless": "Automaticky vybrať najlepšie audio (iba bezstratové)",
+    "autoPickLosslessHint": "Automaticky vyberie audio, keď nájdeme spoľahlivú bezstratovú/FLAC zhodu. Ostatné pôjdu do radu na kontrolu.",
+    "backToAlbums": "Späť na albumy",
+    "backToArtists": "Späť na interpretov",
+    "batchProgressTitle": "Dávka {total} skladieb",
+    "batchSettings": "Nastavenia dávky",
+    "byAlbum": "Podľa albumu",
+    "byText": "Podľa textu",
+    "checking": "Kontroluje sa…",
+    "chooseAudio": "Vybrať audio",
+    "communityExists": "Komunitná verzia existuje",
+    "communityExistsWithBrands": "Komunitná verzia: {brands}",
+    "countAwaiting": "{count} čaká na výber",
+    "countComplete": "{count} hotových",
+    "countFailed": "{count} zlyhalo",
+    "countProcessing": "{count} sa spracúva",
+    "countSearching": "{count} sa hľadá",
+    "createBatch": "Vytvoriť {count} karaoke videí",
+    "creditsCost": "{cost} kreditov · máš {balance}",
+    "edition": "Edícia",
+    "extra": "Extra",
+    "loadingBatch": "Načítava sa dávka…",
+    "lookupFailed": "Vyhľadávanie zlyhalo. Skús to znova.",
+    "makePrivate": "Ponechať súkromné",
+    "makePrivateHint": "Doručiť iba cez Dropbox namiesto zverejnenia na YouTube.",
+    "noAlbums": "Pre tohto interpreta sa nenašli žiadne albumy.",
+    "notEnoughCredits": "Potrebuješ {needed} kreditov, ale máš {have}.",
+    "overLimit": "Naraz môžeš odoslať maximálne {max} skladieb.",
+    "progressError": "Nepodarilo sa načítať priebeh dávky.",
+    "reviewQueueHint": "Pre tieto sme nemohli s istotou automaticky vybrať bezstratový zdroj. Vyber jeden pre každú.",
+    "reviewQueueTitle": "Vyber audio pre tieto skladby",
+    "selectedCount": "Vybraných skladieb: {count}",
+    "skipAudioEdit": "Preskočiť úpravu audia",
+    "skipAudioEditHint": "Použiť audio každej skladby tak, ako je (bez orezávania).",
+    "skipCustomization": "Preskočiť prispôsobenie",
+    "skipCustomizationHint": "Použiť predvolenú tému a štýl pre každú skladbu.",
+    "startAnother": "Spustiť ďalšiu dávku",
+    "submitError": "Nepodarilo sa vytvoriť dávku. Skús to znova.",
+    "submitting": "Vytvára sa dávka…",
+    "textModeHint": "Pridaj až {max} skladieb. Označíme tie, ktoré už majú komunitnú verziu.",
+    "title": "Názov",
+    "tracklistHint": "Živé nahrávky, remixy a bonusové skladby — a skladby, ktoré už majú komunitnú verziu — sú predvolene odškrtnuté.",
+    "addSong": "Pridať pieseň",
+    "artist": "Interpret",
+    "buyCredits": "Kúpiť kredity",
+    "removeRow": "Odstrániť",
+    "trackCount": "{count} skladieb",
+    "changeEdition": "Zmeniť",
+    "existingVersions": "Existujúce verzie:",
+    "usingRelease": "Používa sa {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Originál",
+    "variantReissue": "Reedícia"
+  },
+  "backendStatus": {
+    "reconnecting": "Obnovuje sa pripojenie…",
+    "unavailable": {
+      "body": "Zvyčajne ide len o dočasný problém — skús to znova o pár minút.",
+      "reassurance": "Karaoke videá, ktoré sa práve vytvárajú, to neovplyvní a ich spracovanie bude pokračovať.",
+      "title": "Máme problémy s pripojením k našim serverom"
+    },
+    "dismiss": "Zavrieť"
   }
 }

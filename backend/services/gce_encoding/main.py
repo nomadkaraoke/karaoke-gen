@@ -1,5 +1,4 @@
 import asyncio
-import glob as glob_module
 import hashlib
 import json
 import logging
@@ -9,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -30,7 +30,50 @@ logger = logging.getLogger(__name__)
 # so polls after a worker restart return the *last known* status instead of
 # 404. Hot path stays in-memory; persistence is best-effort.
 jobs: dict[str, dict] = {}
-executor = ThreadPoolExecutor(max_workers=4)  # 4 parallel encoding jobs
+
+# Two execution lanes with very different memory profiles:
+#
+#   heavy_executor — full renders (`run_render_video`) and final encodes
+#     (`run_encoding`). Each of these spawns an ffmpeg that already saturates
+#     every core, so running two in parallel gains no throughput but doubles
+#     peak RAM (a single 4K encode can use ~18 GB). Three concurrent encodes
+#     OOM-killed the 32 GB n2 fallback worker on 2026-08-15, which restarted
+#     the service and lost every in-flight job. Default to ONE heavy job at a
+#     time so the worker is OOM-proof on any machine type; the rest queue as
+#     `status="pending"` (surfaced via /health `queue_length` and /status
+#     `queue_position`). Override with ENCODING_HEAVY_CONCURRENCY only on
+#     boxes with headroom to spare.
+#
+#   light_executor — wheel installs (`ensure_latest_wheel`) and interactive
+#     review previews (`run_preview_encoding`). These are small/fast and
+#     latency-sensitive, so they get their own lane and never wait behind a
+#     multi-minute encode.
+def _heavy_concurrency() -> int:
+    """Parse ENCODING_HEAVY_CONCURRENCY, clamped to a sane [1, 4] range.
+
+    A malformed/zero/negative value must never crash the worker at boot or
+    (via max_workers=0) wedge every encode — fall back to the OOM-safe default
+    of 1. The upper bound guards against an operator accidentally reintroducing
+    the concurrent-encode OOM on a small box.
+    """
+    raw = os.environ.get("ENCODING_HEAVY_CONCURRENCY", "1")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid ENCODING_HEAVY_CONCURRENCY=%r; defaulting to 1", raw)
+        return 1
+    if value < 1:
+        logger.warning("ENCODING_HEAVY_CONCURRENCY=%d < 1; clamping to 1", value)
+        return 1
+    if value > 4:
+        logger.warning("ENCODING_HEAVY_CONCURRENCY=%d > 4; clamping to 4", value)
+        return 4
+    return value
+
+
+HEAVY_CONCURRENCY = _heavy_concurrency()
+heavy_executor = ThreadPoolExecutor(max_workers=HEAVY_CONCURRENCY)
+light_executor = ThreadPoolExecutor(max_workers=2)
 
 # Persister is initialized lazily — see persistence.py — so import-time
 # stays free of GCP creds. Tests can monkey-patch this attribute.
@@ -120,6 +163,15 @@ class JobStatus(BaseModel):
     error: Optional[str] = None
     output_files: Optional[list[str]] = None
     metadata: Optional[dict] = None
+    # Set when a job was interrupted by a worker-process restart (OOM, deploy,
+    # crash). Its work_dir is gone, so the client should resubmit rather than
+    # treat this as a permanent failure. See persistence.mark_orphans_failed_on_startup.
+    restart_failure_code: Optional[str] = None
+    # How many heavy jobs (renders/encodes) are ahead of this one in the
+    # serialized heavy lane (0 = running or next up). None for previews /
+    # terminal jobs. Lets the client wait through a deep queue without
+    # tripping the encode timeout.
+    queue_position: Optional[int] = None
 
 
 def download_from_gcs(gcs_uri: str, local_path: Path):
@@ -539,59 +591,211 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
         raise
 
 
+# Wheel install/verification tuning.
+#
+# On a freshly-provisioned worker the Packer image only pre-installs a handful
+# of packages (fastapi/uvicorn/gcs/...) and boot installs the wheel with
+# --no-deps, so the FIRST job's install here has to resolve the entire
+# karaoke-gen dependency tree (torch, langchain, tenacity, ...). That can take
+# well over 5 minutes and, if it times out or partially completes, leaves the
+# environment importable-but-broken (e.g. "No module named 'tenacity'"). We
+# therefore retry, and — critically — verify the import chain actually works
+# before declaring success, since pip can return 0 while a dependency is still
+# missing.
+WHEEL_INSTALL_TIMEOUT = int(os.environ.get("WHEEL_INSTALL_TIMEOUT", "900"))
+WHEEL_INSTALL_ATTEMPTS = int(os.environ.get("WHEEL_INSTALL_ATTEMPTS", "3"))
+
+# Serialize wheel checks. ensure_latest_wheel() runs on the light executor
+# (>1 thread) and is invoked at the start of every job, so without a lock two
+# concurrent jobs race on the same /tmp wheel path (`gsutil cp` clobbers the
+# file mid-copy) and the same venv (`pip install` runs twice at once) —
+# corrupting each other so one job fails with "wheel/dependencies not ready"
+# (incident 2026-08-15, job 374dec26, three jobs hitting a fresh fallback boot).
+# The lock makes the first caller do the work while the rest wait, then take the
+# already-verified fast path below.
+_wheel_lock = threading.Lock()
+# Version we've already downloaded+installed+verified in THIS process. Lets a
+# job skip the whole download/install/verify when the environment is already
+# current — the common case, since startup.sh installs the wheel at boot and
+# only the first job after a new deploy actually needs to install.
+_verified_wheel_version: Optional[str] = None
+
+
+def _installed_karaoke_gen_version() -> Optional[str]:
+    '''Return the karaoke-gen version currently importable in this venv, or None.'''
+    try:
+        from importlib.metadata import version as _get_version
+        return _get_version("karaoke-gen")
+    except Exception:
+        return None
+
+# Modules exercised by the render (OutputGenerator) and encode
+# (LocalEncodingService) code paths. Importing these confirms the whole
+# dependency tree they pull in — including transitive deps like tenacity — is
+# actually present, not just that `pip install` exited 0.
+_WHEEL_IMPORT_CHECK = (
+    "import tenacity; "
+    "from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator; "
+    "from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations; "
+    "from backend.services.local_encoding_service import LocalEncodingService"
+)
+
+
+def verify_wheel_imports():
+    '''Verify the karaoke-gen render/encode import chain is fully importable.
+
+    Runs in a subprocess so a broken/partial install surfaces as a clean
+    boolean instead of crashing (or half-importing into) the worker process.
+    Returns True if every module imports, False otherwise.
+    '''
+    try:
+        check = subprocess.run(
+            [sys.executable, "-c", _WHEEL_IMPORT_CHECK],
+            capture_output=True, text=True, timeout=180,
+        )
+    except subprocess.TimeoutExpired:
+        logger.warning("Wheel import verification timed out")
+        return False
+    if check.returncode != 0:
+        # Tail of stderr carries the actionable ModuleNotFoundError.
+        logger.warning(f"Wheel import verification failed: {check.stderr.strip()[-500:]}")
+        return False
+    return True
+
+
 def ensure_latest_wheel():
-    '''Download and install latest karaoke-gen wheel from GCS.
+    '''Ensure the latest karaoke-gen wheel is installed & verified (thread-safe).
 
     Called at the start of each job to enable hot code updates without restart.
-    In-progress jobs continue with their version, new jobs get latest code.
+    Serialized via `_wheel_lock` so concurrent jobs can't race on the shared
+    /tmp wheel path or venv; the first caller installs/verifies while the rest
+    wait and then hit the already-verified fast path.
     '''
+    with _wheel_lock:
+        return _ensure_latest_wheel_locked()
+
+
+def _ensure_latest_wheel_locked():
+    '''Download, install, and verify the latest karaoke-gen wheel from GCS.
+
+    MUST be called holding `_wheel_lock`. In-progress jobs continue with their
+    version, new jobs get latest code.
+
+    Retries the install and verifies the full import chain before returning, so
+    a transient/partial dependency install can't leave the worker running jobs
+    against a broken environment. Returns True only when the wheel is installed
+    AND its render/encode imports succeed.
+    '''
+    global _verified_wheel_version
     try:
         logger.info("Checking for latest karaoke-gen wheel in GCS...")
 
-        # Download latest wheel
-        result = subprocess.run(
-            ["gsutil", "cp", "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl", "/tmp/"],
-            capture_output=True, text=True, timeout=60
-        )
-
-        # Find the downloaded wheel (get the latest by version sorting)
-        wheels = glob_module.glob("/tmp/karaoke_gen-*.whl")
-        # Filter out karaoke_gen-current.whl (not a valid PEP 427 wheel name)
-        wheels = [w for w in wheels if '-current' not in w]
-
-        if not wheels:
-            logger.warning("No wheel found in GCS, using fallback encoding logic")
-            return False
-
-        # Sort to get latest version (by semantic version, not alphabetically)
+        # Sort helper: extract version from a wheel name/URI like
+        # karaoke_gen-0.116.1-py3-none-any.whl
         def extract_version(wheel_path):
-            """Extract version from wheel filename like karaoke_gen-0.116.1-py3-none-any.whl"""
             match = re.search(r'karaoke_gen-([0-9.]+)-', wheel_path)
             if match:
                 return Version(match.group(1))
             return Version("0.0.0")  # Fallback for unparseable filenames
 
-        wheels.sort(key=extract_version, reverse=True)
-        wheel_path = wheels[0]
-        logger.info(f"Installing wheel: {wheel_path}")
-
-        # Install (or upgrade) the wheel
-        # Use 5-minute timeout - first install at job start may need to resolve dependencies
-        # Subsequent installs are faster since dependencies are cached
-        install_result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", wheel_path],
-            capture_output=True, text=True, timeout=300
+        # List wheel names only (fast), then copy just the single latest one.
+        # NOTE: `gsutil cp gs://.../karaoke_gen-*.whl /tmp/` would download the
+        # ENTIRE wheels/ directory (hundreds of wheels, multiple GiB) on every
+        # job and blow the timeout on fresh workers — the historical cause of
+        # "no wheel found" / partial installs. Listing + single copy is ~2s.
+        ls_result = subprocess.run(
+            ["gsutil", "ls", "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl"],
+            capture_output=True, text=True, timeout=60
         )
+        # Filter out karaoke_gen-current.whl (not a valid PEP 427 wheel name)
+        wheel_uris = [
+            line.strip() for line in ls_result.stdout.splitlines()
+            if line.strip() and '-current' not in line
+        ]
 
-        if install_result.returncode != 0:
-            logger.warning(f"Wheel installation failed: {install_result.stderr}")
+        if not wheel_uris:
+            logger.warning("No versioned wheel found in GCS, using fallback encoding logic")
             return False
 
-        logger.info(f"Successfully installed wheel: {wheel_path}")
-        return True
+        wheel_uris.sort(key=extract_version)
+        latest_uri = wheel_uris[-1]
+        latest_version = str(extract_version(latest_uri))
+        wheel_path = os.path.join("/tmp", latest_uri.rsplit("/", 1)[-1])
+
+        # Fast path: if the environment is already at the latest version, skip
+        # the download/install entirely. This is the common case (startup.sh
+        # installs the wheel at boot) and — together with `_wheel_lock` — is what
+        # stops concurrent jobs from re-downloading/re-installing and racing.
+        if _verified_wheel_version == latest_version:
+            # Already validated in this process — nothing to do.
+            return True
+        installed_version = _installed_karaoke_gen_version()
+        if installed_version == latest_version:
+            # Right version is present but not yet verified in this process.
+            # Confirm the import chain (cheap) rather than reinstalling; only
+            # fall through to a full reinstall if a prior install was partial.
+            if verify_wheel_imports():
+                _verified_wheel_version = latest_version
+                logger.info(f"karaoke-gen {latest_version} already installed and verified; skipping wheel install")
+                return True
+            logger.warning(
+                f"karaoke-gen {latest_version} present but import chain incomplete; reinstalling"
+            )
+
+        cp_result = subprocess.run(
+            ["gsutil", "cp", latest_uri, wheel_path],
+            capture_output=True, text=True, timeout=120
+        )
+        if cp_result.returncode != 0:
+            logger.warning(f"Failed to download wheel {latest_uri}: {cp_result.stderr.strip()[-500:]}")
+            return False
+
+        # Install (with deps), then verify the import chain is complete. Retry a
+        # failed or partial install: pip is resumable, so a second pass fills in
+        # dependencies a timed-out first pass left missing (e.g. tenacity).
+        for attempt in range(1, WHEEL_INSTALL_ATTEMPTS + 1):
+            logger.info(f"Installing wheel (attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS}): {wheel_path}")
+            try:
+                install_result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", wheel_path],
+                    capture_output=True, text=True, timeout=WHEEL_INSTALL_TIMEOUT
+                )
+            except subprocess.TimeoutExpired:
+                logger.warning(
+                    f"Wheel install timed out after {WHEEL_INSTALL_TIMEOUT}s "
+                    f"(attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS})"
+                )
+                install_result = None
+
+            if install_result is not None and install_result.returncode != 0:
+                logger.warning(
+                    f"Wheel installation failed (attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS}): "
+                    f"{install_result.stderr.strip()[-500:]}"
+                )
+            elif install_result is not None:
+                logger.info(f"pip install completed for wheel: {wheel_path}")
+
+            # A clean `pip install` exit is not sufficient — confirm the deps
+            # the render/encode paths need are actually importable before we let
+            # a job run against this environment.
+            if verify_wheel_imports():
+                _verified_wheel_version = latest_version
+                logger.info(f"Successfully installed and verified wheel: {wheel_path}")
+                return True
+
+            logger.warning(
+                f"Wheel environment incomplete after attempt {attempt}/{WHEEL_INSTALL_ATTEMPTS}; "
+                "dependencies are missing or failed to import"
+            )
+
+        logger.error(
+            f"Wheel not ready after {WHEEL_INSTALL_ATTEMPTS} attempts: import verification "
+            "still failing (environment is missing dependencies)"
+        )
+        return False
 
     except subprocess.TimeoutExpired:
-        logger.warning("Wheel download/install timed out, using fallback")
+        logger.warning("Wheel download timed out, using fallback")
         return False
     except Exception as e:
         logger.warning(f"Failed to ensure latest wheel: {e}")
@@ -642,6 +846,110 @@ def generate_mov_from_png(png_path: Path, mov_path: Path, duration: int = 5) -> 
         raise RuntimeError(f"FFmpeg produced invalid output for {mov_path.name}")
     logger.info(f"Generated MOV: {mov_path.name} ({mov_path.stat().st_size} bytes)")
     return mov_path
+
+
+# Portrait (9:16) karaoke render is default-on; set PORTRAIT_RENDER_ENABLED=false to disable.
+PORTRAIT_RENDER_ENABLED = os.environ.get("PORTRAIT_RENDER_ENABLED", "true").lower() == "true"
+PORTRAIT_SUFFIX = "(Final Karaoke Portrait 1080x1920)"
+
+
+def _resolve_portrait_font(styles: dict, work_dir: Path) -> Optional[str]:
+    """Resolve a usable .ttf file for the portrait header (PIL needs a file path).
+
+    libass resolves the lyrics font via fontconfig (the theme font is registered by
+    the earlier render step on the same VM), but PIL needs an actual file. Ask
+    fontconfig for the theme font family's file; fall back to any bundled style font.
+    """
+    family = (styles.get("karaoke", {}) or {}).get("font") or "Avenir Next Bold"
+    try:
+        res = subprocess.run(
+            ["fc-match", "--format=%{file}", family],
+            capture_output=True, text=True, timeout=5,
+        )
+        if res.returncode == 0 and res.stdout and os.path.isfile(res.stdout.strip()):
+            return res.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    for pattern in ("style/*.ttf", "style/*.otf", "*.ttf"):
+        hit = next(iter(work_dir.glob(pattern)), None)
+        if hit:
+            return str(hit)
+    return None
+
+
+def render_portrait_into_outputs(
+    job_id: str, work_dir: Path, output_dir: Path, base_name: str,
+    artist: str, title: str, instrumental: Path, config: dict,
+) -> Optional[str]:
+    """Render the portrait (9:16) karaoke video into ``output_dir`` (best-effort).
+
+    Reuses the same corrected-lyrics data + theme as the landscape render. Uses the
+    un-padded instrumental and un-countdown-processed segments so the two stay in
+    sync without the countdown offset (the portrait title card provides lead-in).
+
+    This is additive and non-fatal: any failure logs and returns ``None`` so the
+    landscape outputs and distribution proceed unaffected.
+    """
+    if not PORTRAIT_RENDER_ENABLED:
+        logger.info(f"[job:{job_id}] Portrait render disabled via PORTRAIT_RENDER_ENABLED")
+        return None
+    try:
+        from karaoke_gen.lyrics_transcriber.types import CorrectionResult
+        from karaoke_gen.portrait import render_portrait_video, PortraitBrandConfig
+
+        # Corrected lyrics: prefer the reviewed corrections_updated.json.
+        corrections_file = None
+        for candidate in ("lyrics/corrections_updated.json", "lyrics/corrections.json"):
+            p = work_dir / candidate
+            if p.is_file():
+                corrections_file = p
+                break
+        if corrections_file is None:
+            found = next(iter(work_dir.glob("**/corrections*.json")), None)
+            corrections_file = found
+        if corrections_file is None:
+            logger.warning(f"[job:{job_id}] Portrait skipped: no corrections JSON found")
+            return None
+        with open(corrections_file, "r", encoding="utf-8") as f:
+            correction_result = CorrectionResult.from_dict(json.load(f))
+
+        # Theme styles (optional — renderer fills defaults).
+        styles = {}
+        style_params = work_dir / "style" / "style_params.json"
+        if not style_params.is_file():
+            style_params = next(iter(work_dir.glob("**/style_params.json")), None)
+        if style_params and Path(style_params).is_file():
+            with open(style_params, "r", encoding="utf-8") as f:
+                styles = json.load(f)
+
+        font_path = _resolve_portrait_font(styles, work_dir)
+        brand = PortraitBrandConfig(
+            brand_text=config.get("portrait_brand_text", "NOMAD KARAOKE"),
+            footer_text=config.get("portrait_footer_text", "nomadkaraoke.com"),
+            font_path=font_path,
+        )
+        out_path = output_dir / f"{base_name} {PORTRAIT_SUFFIX}.mp4"
+        logger.info(f"[job:{job_id}] Rendering portrait karaoke video -> {out_path.name}")
+        render_portrait_video(
+            correction_result=correction_result,
+            instrumental_path=str(instrumental),
+            styles=styles,
+            artist=artist,
+            title=title,
+            output_path=str(out_path),
+            brand=brand,
+            font_path=font_path,
+            work_dir=str(work_dir / "portrait_tmp"),
+            logger=logger,
+        )
+        if out_path.is_file():
+            logger.info(f"[job:{job_id}] Portrait render complete ({out_path.stat().st_size} bytes)")
+            return str(out_path)
+        logger.warning(f"[job:{job_id}] Portrait render produced no file")
+        return None
+    except Exception as e:
+        logger.error(f"[job:{job_id}] Portrait render failed (non-fatal): {e}", exc_info=True)
+        return None
 
 
 def run_encoding(job_id: str, work_dir: Path, config: dict):
@@ -827,6 +1135,27 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
 
         jobs[job_id]["progress"] = 90
 
+        # Include the standalone 5-second screen videos in the uploaded outputs so they
+        # land in the Dropbox folder. They are generated above (or passed in) purely as
+        # concat inputs and used to live only in screens/; copy them into outputs/ with
+        # the canonical names. Regression fix: screen MOVs disappeared from Dropbox after
+        # #647/#650 moved screen generation to this encoder.
+        for screen_video, suffix in ((title_video, "Title"), (end_video, "End")):
+            if screen_video and Path(screen_video).is_file():
+                dest = output_dir / f"{base_name} ({suffix}).mov"
+                try:
+                    shutil.copy2(screen_video, dest)
+                    logger.info(f"Staged screen video for upload: {dest.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to stage {suffix} MOV into outputs: {e}")
+
+        # Portrait (9:16) karaoke render — additive, non-fatal. Written into output_dir
+        # so it rides the same GCS upload + Dropbox distribution as the other finals.
+        jobs[job_id]["progress"] = 92
+        render_portrait_into_outputs(
+            job_id, work_dir, output_dir, base_name, artist, title, instrumental, config,
+        )
+
         # Collect output files
         output_files = [str(f) for f in output_dir.glob("*") if f.is_file()]
         jobs[job_id]["output_files"] = output_files
@@ -859,8 +1188,18 @@ async def process_job(job_id: str, request: EncodeRequest):
     # Process an encoding job asynchronously
     try:
         # Download and install latest wheel at job start (allows hot updates without restart)
-        # This means in-progress jobs continue with their version, new jobs get latest code
-        ensure_latest_wheel()
+        # This means in-progress jobs continue with their version, new jobs get latest code.
+        # Fail fast (retryable) if the environment isn't ready rather than proceeding into a
+        # confusing "No module named ..." ImportError deep in encoding.
+        # ensure_latest_wheel() makes blocking subprocess calls (install can retry for many
+        # minutes) — run it in the thread pool so the async event loop keeps serving health
+        # checks and status polls.
+        loop = asyncio.get_event_loop()
+        if not await loop.run_in_executor(light_executor, ensure_latest_wheel):
+            raise RuntimeError(
+                "karaoke-gen wheel/dependencies not ready on this worker after retries; "
+                "job should be retried on a healthy worker"
+            )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             work_dir = Path(temp_dir) / "work"
@@ -882,10 +1221,11 @@ async def process_job(job_id: str, request: EncodeRequest):
                 logger.info(f"Downloading existing instrumental: {gcs_uri} -> {dest}")
                 download_single_file_from_gcs(gcs_uri, dest)
 
-            # Run encoding in thread pool (CPU-bound)
+            # Run encoding in the heavy lane (CPU/RAM-bound; serialized to
+            # avoid OOM — see heavy_executor comment).
             loop = asyncio.get_event_loop()
             output_dir = await loop.run_in_executor(
-                executor,
+                heavy_executor,
                 run_encoding,
                 job_id,
                 work_dir,
@@ -931,11 +1271,11 @@ async def process_preview_job(job_id: str, request: EncodePreviewRequest):
             work_dir = Path(temp_dir) / "work"
             work_dir.mkdir()
 
-            # Run preview encoding in thread pool (CPU-bound)
-            # Note: run_preview_encoding handles download/upload internally
+            # Run preview encoding in the light lane so interactive review
+            # previews never queue behind a multi-minute full encode.
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                executor,
+                light_executor,
                 run_preview_encoding,
                 job_id,
                 work_dir,
@@ -957,17 +1297,27 @@ async def process_preview_job(job_id: str, request: EncodePreviewRequest):
 async def process_render_video_job(job_id: str, request: RenderVideoRequest):
     # Process a render-video job asynchronously
     try:
-        # Download and install latest wheel at job start (allows hot updates without restart)
-        ensure_latest_wheel()
+        # Download and install latest wheel at job start (allows hot updates without restart).
+        # Fail fast (retryable) if the environment isn't ready rather than proceeding into a
+        # confusing "No module named 'tenacity'" ImportError inside render_video.
+        # Run in the thread pool: ensure_latest_wheel() blocks on subprocess installs (which
+        # can retry for many minutes) and must not stall the async event loop.
+        loop = asyncio.get_event_loop()
+        if not await loop.run_in_executor(light_executor, ensure_latest_wheel):
+            raise RuntimeError(
+                "karaoke-gen wheel/dependencies not ready on this worker after retries; "
+                "job should be retried on a healthy worker"
+            )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             work_dir = Path(temp_dir) / "work"
             work_dir.mkdir()
 
-            # Run render-video in thread pool (CPU-bound)
+            # Run render-video in the heavy lane (CPU/RAM-bound; serialized to
+            # avoid OOM — see heavy_executor comment).
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                executor,
+                heavy_executor,
                 run_render_video,
                 job_id,
                 work_dir,
@@ -1010,6 +1360,7 @@ async def submit_preview_encode_job(request: EncodePreviewRequest, background_ta
         "progress": 0,
         "error": None,
         "output_files": None,
+        "kind": "preview",  # light lane — never counted in the heavy queue
     }
     _persist(job_id)
 
@@ -1042,6 +1393,7 @@ async def submit_render_video_job(request: RenderVideoRequest, background_tasks:
         "error": None,
         "output_files": None,
         "metadata": None,
+        "kind": "render",  # heavy lane
     }
     _persist(job_id)
 
@@ -1074,6 +1426,7 @@ async def submit_encode_job(request: EncodeRequest, background_tasks: Background
         "progress": 0,
         "error": None,
         "output_files": None,
+        "kind": "encode",  # heavy lane
     }
     _persist(job_id)
 
@@ -1082,12 +1435,37 @@ async def submit_encode_job(request: EncodeRequest, background_tasks: Background
     return {"status": "accepted", "job_id": job_id}
 
 
+_HEAVY_KINDS = frozenset({"encode", "render"})
+
+
+def _heavy_queue_position(job_id: str) -> Optional[int]:
+    """Number of heavy jobs ahead of `job_id` in the serialized heavy lane.
+
+    0 means this job is running or next up; None means it isn't a queued heavy
+    job (a preview, a terminal job, or unknown-kind). Relies on `jobs` being
+    insertion-ordered (dict order) so "ahead" == submitted earlier and still
+    pending/running.
+    """
+    job = jobs.get(job_id)
+    if job is None or job.get("kind") not in _HEAVY_KINDS:
+        return None
+    if job.get("status") not in ("pending", "running"):
+        return None
+    ahead = 0
+    for other_id, other in jobs.items():
+        if other_id == job_id:
+            break
+        if other.get("kind") in _HEAVY_KINDS and other.get("status") in ("pending", "running"):
+            ahead += 1
+    return ahead
+
+
 @app.get("/status/{job_id}")
 async def get_job_status(job_id: str, _auth: bool = Depends(verify_api_key)) -> JobStatus:
     # Get the status of an encoding job
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    return JobStatus(**jobs[job_id])
+    return JobStatus(**jobs[job_id], queue_position=_heavy_queue_position(job_id))
 
 
 @app.get("/health")

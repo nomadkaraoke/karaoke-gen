@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Ungültige instrumental_selection. Muss eines der folgenden sein: {valid_selections}",
     "instrumentalSelected": "Instrumental ausgewählt. Video-Generierung gestartet.",
     "instrumentalSelectionError": "Fehler bei der Auswahl des Instrumentals für Auftrag {job_id}: {error}",
-    "downloadUrlsError": "Fehler beim Abrufen der Download-URLs: {error}"
+    "downloadUrlsError": "Fehler beim Abrufen der Download-URLs: {error}",
+    "fileNoLongerAvailable": "Datei nicht mehr verfügbar"
   },
   "review": {
     "jobNotFound": "Auftrag nicht gefunden",
@@ -92,7 +93,10 @@
     "selectAudioError": "Fehler bei der Audioauswahl für Auftrag {job_id}: {error}",
     "searchAudioError": "Fehler bei der Audiosuche: {error}",
     "searchCreatedSuccessfully": "Auftrag erstellt. Suche nach Audio...",
-    "autoDownloadStarted": "Bestes Ergebnis automatisch ausgewählt. Download startet..."
+    "autoDownloadStarted": "Bestes Ergebnis automatisch ausgewählt. Download startet...",
+    "drmUrlUnsupported": "{platform}-Links sind kopiergeschützt, daher können wir sie nicht direkt herunterladen. Versuche zuerst, das Audio mit einem Drittanbieter-Tool herunterzuladen, und lade die Audiodatei dann hier hoch. Du kannst auch einen YouTube-Link einfügen oder die Audiosuche verwenden, um diesen Song zu finden.",
+    "drmUrlUnsupportedWithLink": "{platform}-Links sind kopiergeschützt, daher können wir sie nicht direkt herunterladen. Du kannst den Titel mit einem Tool wie {downloader} herunterladen und die Audiodatei dann hier hochladen. Du kannst auch einen YouTube-Link einfügen oder die Audiosuche verwenden, um diesen Song zu finden.",
+    "drmUrlUnsupportedSearch": "{platform}-Links sind kopiergeschützt, daher können wir sie nicht direkt herunterladen. Suche im Internet nach einem \"{platform} Downloader\", um das Audio zu erhalten — zum Beispiel {searchUrl} — und lade die Audiodatei dann hier hoch. Du kannst auch einen YouTube-Link einfügen oder die Audio-Suche verwenden, um diesen Song zu finden."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

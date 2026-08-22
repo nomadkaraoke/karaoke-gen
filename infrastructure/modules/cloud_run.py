@@ -377,7 +377,12 @@ def create_audio_download_job(
                     )
                 ],
                 service_account=service_account.email,
-                timeout="600s",  # 10 minutes max (downloads typically < 5 min)
+                # 20 min max. Slow torrent (RED/OPS) downloads can exceed 10 min;
+                # a SIGKILL at the old 600s bypassed graceful failure handling and
+                # left in-flight auto-retries racing manual retries (job 1cd29294).
+                # The worker's DOWNLOAD_WAIT_TIMEOUT_SECONDS (1080s) is kept
+                # strictly below this so it fails cleanly before Cloud Run kills it.
+                timeout="1200s",
                 max_retries=2,
                 vpc_access=vpc_access,
             ),
@@ -385,6 +390,111 @@ def create_audio_download_job(
     )
 
     return audio_download_job
+
+
+def create_bulk_search_job(
+    bucket: gcp.storage.Bucket,
+    service_account: gcp.serviceaccount.Account,
+    vpc_connector: object = None,
+) -> cloudrunv2.Job:
+    """
+    Create the Cloud Run Job for Bulk Mode batch audio search.
+
+    Processes every job in a batch (state_data.batch_id): runs each audio search
+    via the flacfetch VM, auto-selects confident lossless matches (triggering the
+    audio-download-job), and parks the rest in AWAITING_AUDIO_SELECTION.
+
+    Requires VPC access to reach the flacfetch VM. Longer timeout than the download
+    job because a batch can contain up to 100 songs. Idempotent across retries
+    (only re-processes jobs still flagged bulk_pending_search), so retries=1.
+    """
+    vpc_access = None
+    if vpc_connector:
+        vpc_access = cloudrunv2.JobTemplateTemplateVpcAccessArgs(
+            connector=vpc_connector.id,
+            egress="PRIVATE_RANGES_ONLY",
+        )
+
+    bulk_search_job = cloudrunv2.Job(
+        "bulk-search-job",
+        name="bulk-search-job",
+        location=REGION,
+        template=cloudrunv2.JobTemplateArgs(
+            template=cloudrunv2.JobTemplateTemplateArgs(
+                containers=[
+                    cloudrunv2.JobTemplateTemplateContainerArgs(
+                        image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+                        args=["python", "-m", "backend.workers.bulk_search_worker"],
+                        resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
+                            limits={
+                                "cpu": "1",
+                                "memory": "1Gi",
+                            },
+                        ),
+                        envs=[
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ADMIN_TOKENS",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/admin-tokens",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="CLOUD_RUN_SERVICE_URL",
+                                value="https://api.nomadkaraoke.com",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENABLE_CLOUD_TASKS",
+                                value="true",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="ENVIRONMENT",
+                                value="production",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="FLACFETCH_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="FLACFETCH_API_URL",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/flacfetch-api-url",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCP_REGION",
+                                value=REGION,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GCS_BUCKET_NAME",
+                                value=bucket.name,
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GOOGLE_CLOUD_PROJECT",
+                                value=PROJECT_ID,
+                            ),
+                        ],
+                    )
+                ],
+                service_account=service_account.email,
+                timeout="3600s",  # up to 100 songs per batch
+                max_retries=1,
+                vpc_access=vpc_access,
+            ),
+        ),
+    )
+
+    return bulk_search_job
 
 
 def create_video_encoding_job(
