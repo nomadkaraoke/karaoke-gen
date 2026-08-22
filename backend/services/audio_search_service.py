@@ -368,12 +368,17 @@ class AudioSearchService:
             return results
             
         except FlacfetchServiceError as e:
-            logger.warning(f"Remote flacfetch search failed, falling back to local: {e}")
-            # Fallback to local search
+            # flacfetch is the sole downloader. The remote service was explicitly
+            # configured, so a failure here must NOT silently downgrade to the
+            # local YouTube-only fetcher — that hides the outage and ships a worse
+            # source than the user expected (the 2026-06-08 incident class).
+            # Fail loudly. (Fallback audit 2026-06-09, Theme 1.)
+            logger.error(f"Remote flacfetch search failed (not falling back to local): {e}")
+            # Clear cached state so a later download() can't consume stale results
+            # from a previous successful search on this (singleton) instance.
             self._remote_search_id = None
-            results = self._fetcher.search(artist, title)
-            self._cached_results = results
-            return results
+            self._cached_results = []
+            raise AudioSearchError(f"Remote flacfetch search failed: {e}") from e
     
     def select_best(self, results: List[AudioSearchResult]) -> int:
         """

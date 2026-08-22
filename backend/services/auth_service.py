@@ -87,7 +87,15 @@ class AuthService:
         if self.admin_tokens:
             logger.info(f"Loaded {len(self.admin_tokens)} admin token(s)")
         else:
-            logger.warning("No admin tokens configured! Set ADMIN_TOKENS environment variable.")
+            # Loud signal: with no admin tokens, every admin/internal-worker
+            # endpoint fails closed (403). That's safe but looks like an auth bug
+            # rather than a config error, so log at ERROR (picked up by the error
+            # monitor → Discord alert) instead of a quiet warning.
+            logger.error(
+                "No admin tokens configured! All admin and internal-worker "
+                "endpoints will reject every request (403). Set the ADMIN_TOKENS "
+                "secret/env var. This is almost certainly a misconfiguration."
+            )
 
     def _validate_oidc_token(self, token: str) -> Optional[AuthResult]:
         """

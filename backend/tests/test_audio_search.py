@@ -321,6 +321,22 @@ class TestAudioSearchServiceSearch:
         
         assert "No results found" in str(exc_info.value)
     
+    def test_remote_search_failure_does_not_fall_back_to_local(self):
+        """A remote flacfetch error must fail loudly, not silently downgrade to local YouTube."""
+        from backend.services.flacfetch_client import FlacfetchServiceError
+
+        service = AudioSearchService(red_api_key=None, red_api_url=None, ops_api_key=None, ops_api_url=None)
+        mock_remote = Mock()
+        mock_remote.search = AsyncMock(side_effect=FlacfetchServiceError("remote service down"))
+        service._remote_client = mock_remote
+        service._fetcher = Mock()  # local fetcher — must NOT be used as a silent fallback
+
+        with pytest.raises(AudioSearchError, match="Remote flacfetch search failed"):
+            service.search("ABBA", "Waterloo")
+
+        # Critical: we did NOT silently fall back to the local YouTube-only fetcher.
+        service._fetcher.search.assert_not_called()
+
     def test_search_multiple_results(self):
         """Test search returns multiple results with correct indices."""
         mock_results = []

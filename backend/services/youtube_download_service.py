@@ -2,13 +2,15 @@
 YouTube download service for cloud backend.
 
 This service provides a single entry point for all YouTube downloads in the cloud.
-It automatically routes downloads through the remote flacfetch service when configured,
-avoiding YouTube bot detection issues on Cloud Run IPs.
+flacfetch is the SOLE downloader: downloads are always routed through the remote
+flacfetch service, which has YouTube cookies and avoids bot detection on Cloud Run IPs.
 
 The flow is:
 1. Check if remote flacfetch is configured (FLACFETCH_API_URL)
 2. If yes: Use FlacfetchClient.download_by_id() - downloads on VM, uploads to GCS
-3. If no: Use local yt_dlp (with warning about bot detection risk)
+3. If no: raise YouTubeDownloadError — there is NO local yt-dlp fallback. We never
+   run yt-dlp inside the Cloud Run container (it's blocked by bot detection and a
+   silent fallback previously masked a real download bug — 2026-06-08 incident).
 
 All entry points (audio search selection, direct URL submission) should use this
 service for YouTube downloads to ensure consistent behavior.
@@ -34,8 +36,8 @@ class YouTubeDownloadService:
     When remote flacfetch is configured (FLACFETCH_API_URL), downloads happen
     on the flacfetch VM which has YouTube cookies and avoids bot detection.
 
-    When remote is not configured, falls back to local yt_dlp with a warning
-    that downloads may be blocked on Cloud Run IPs.
+    When remote is not configured, this raises YouTubeDownloadError. There is no
+    local yt-dlp fallback — flacfetch is the sole downloader.
 
     Usage:
         service = get_youtube_download_service()

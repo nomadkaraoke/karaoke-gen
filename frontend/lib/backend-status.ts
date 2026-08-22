@@ -5,38 +5,47 @@
  *
  * The backend runs on Cloud Run with `--min-instances 1`. When Cloud Run recycles
  * that single instance (routine host maintenance / instance max-lifetime), there is
- * a brief (~1-2 min worst case, usually well under) window where the origin is
- * unreachable and API calls fail even though nothing is actually broken — and any
- * karaoke jobs already rendering (Cloud Run Jobs / GCE encoding VMs) keep running
- * untouched. See infrastructure/modules/monitoring.py for the server-side story.
+ * a brief window where the origin is unreachable and requests HANG (Cloud Run holds
+ * them during the cold start) even though nothing is actually broken — and any
+ * karaoke jobs already rendering keep running untouched.
  *
- * `apiFetch` (lib/api.ts) reports request outcomes here so a single app-wide banner
- * can reassure the user during those blips instead of every screen showing its own
- * scary generic error. This is a tiny framework-agnostic store (module singleton +
- * listeners) consumed via the `useBackendStatus` hook.
+ * We want ONE reassuring app-wide banner during those blips, but only when there's
+ * real evidence of a problem — NOT merely because a request was a little slow. So
+ * status is derived purely from **how long the oldest in-flight backend GET has been
+ * outstanding**: a read that completes (even a slowish 3–5s one) shows nothing; only
+ * a read stalled past STALL_RECONNECTING_MS surfaces the hint, escalating past
+ * STALL_UNAVAILABLE_MS to the full message. This matches "only tell the user once
+ * something has genuinely been trying to load for >10s / timed out."
+ *
+ * Only GETs are tracked: reads are what a page waits on during a recycle, and long
+ * POSTs (search, generate, auto-correct) are legitimately slow and must never trip
+ * the banner. See lib/api.ts (apiFetch) for the begin/endRequest wiring.
  */
 
 import { useSyncExternalStore } from 'react'
 
 export type BackendStatus =
-  /** Requests are succeeding (or we have no evidence of trouble). */
+  /** No stalled reads — everything is completing in a reasonable time. */
   | 'online'
-  /** A request just failed and we're transparently retrying — show a subtle hint. */
+  /** A read has been outstanding a while; show a subtle "reconnecting" hint. */
   | 'reconnecting'
-  /** Trouble has persisted past the threshold — show the gentle full message. */
+  /** A read has been stalled long enough to show the full "temporarily unavailable". */
   | 'unavailable'
 
-/**
- * How long connectivity trouble must persist before we escalate from the subtle
- * "reconnecting" hint to the full "temporarily unavailable" message. Kept in sync
- * with the read-retry budget in lib/api.ts so a request that exhausts its retries
- * lands right around the same time this escalates.
- */
-export const UNAVAILABLE_AFTER_MS = 10_000
+/** A tracked read must be outstanding at least this long before we show ANYTHING —
+ *  so a normal slow-but-successful load never surfaces the banner. */
+export const STALL_RECONNECTING_MS = 10_000
+/** ...and this long before we escalate to the full assertive message. */
+export const STALL_UNAVAILABLE_MS = 20_000
+
+let nextId = 1
+/** id -> startedAt (ms) for every tracked backend GET currently in flight. */
+const inFlight = new Map<number, number>()
+/** Dev/preview override: when non-null, forces the reported status. */
+let devOverride: BackendStatus | null = null
 
 let status: BackendStatus = 'online'
-let firstTroubleAt: number | null = null
-let escalationTimer: ReturnType<typeof setTimeout> | null = null
+let ticker: ReturnType<typeof setInterval> | null = null
 
 const listeners = new Set<() => void>()
 
@@ -50,54 +59,48 @@ function setStatus(next: BackendStatus) {
   emit()
 }
 
-function clearEscalationTimer() {
-  if (escalationTimer) {
-    clearTimeout(escalationTimer)
-    escalationTimer = null
+function computeFromStalls(): BackendStatus {
+  if (inFlight.size === 0) return 'online'
+  let oldest = Infinity
+  for (const startedAt of inFlight.values()) {
+    if (startedAt < oldest) oldest = startedAt
+  }
+  const age = Date.now() - oldest
+  if (age >= STALL_UNAVAILABLE_MS) return 'unavailable'
+  if (age >= STALL_RECONNECTING_MS) return 'reconnecting'
+  return 'online'
+}
+
+function recompute() {
+  setStatus(devOverride ?? computeFromStalls())
+  // Stop the clock once nothing is outstanding (and no dev override needs it).
+  if (inFlight.size === 0 && devOverride === null && ticker) {
+    clearInterval(ticker)
+    ticker = null
   }
 }
 
-/**
- * Report that a backend request attempt failed and we're about to retry (or it
- * ultimately failed but might just be a transient blip). Moves us to "reconnecting"
- * immediately and arms a timer that escalates to "unavailable" if trouble persists.
- */
-export function reportBackendTrouble() {
-  if (firstTroubleAt === null) {
-    firstTroubleAt = Date.now()
-  }
-  if (status === 'online') {
-    setStatus('reconnecting')
-  }
-  if (status !== 'unavailable' && escalationTimer === null) {
-    const elapsed = Date.now() - (firstTroubleAt ?? Date.now())
-    const remaining = Math.max(0, UNAVAILABLE_AFTER_MS - elapsed)
-    escalationTimer = setTimeout(() => {
-      escalationTimer = null
-      // Still no success by now → this is more than a momentary blip.
-      if (firstTroubleAt !== null) setStatus('unavailable')
-    }, remaining)
-  }
+function ensureTicker() {
+  if (ticker) return
+  // Re-evaluate every second so a request that keeps hanging escalates over time.
+  ticker = setInterval(recompute, 1000)
 }
 
 /**
- * Report that trouble is confirmed sustained (e.g. a read exhausted its full retry
- * budget). Escalates to "unavailable" right away without waiting on the timer.
+ * Mark a tracked backend read as started. Returns an id to pass to `endRequest` when
+ * it settles (success OR failure — either way it's no longer outstanding).
  */
-export function reportBackendUnavailable() {
-  if (firstTroubleAt === null) firstTroubleAt = Date.now()
-  clearEscalationTimer()
-  setStatus('unavailable')
+export function beginRequest(): number {
+  const id = nextId++
+  inFlight.set(id, Date.now())
+  ensureTicker()
+  recompute()
+  return id
 }
 
-/**
- * Report a successful backend request. Clears any trouble state and returns us to
- * "online" — the banner disappears the moment connectivity is restored.
- */
-export function reportBackendOnline() {
-  firstTroubleAt = null
-  clearEscalationTimer()
-  setStatus('online')
+/** Mark a tracked read as settled. */
+export function endRequest(id: number): void {
+  if (inFlight.delete(id)) recompute()
 }
 
 export function getBackendStatus(): BackendStatus {
@@ -120,19 +123,22 @@ export function useBackendStatus(): BackendStatus {
 }
 
 /**
- * Dev/preview-only escape hatch so the outage UX can be demoed without actually
- * taking the backend down. Exposed on `window.__nkBackendStatus` and no-ops on the
- * production consumer build. Not referenced by app code paths.
+ * Dev/preview-only escape hatch so the outage UX can be demoed without waiting on a
+ * real stall. Exposed on `window.__nkBackendStatus` and no-ops on the production
+ * consumer host. Not referenced by app code paths.
  */
 export function __installBackendStatusDevHook() {
   if (typeof window === 'undefined') return
-  const host = window.location.hostname
-  const isProd = host === 'gen.nomadkaraoke.com'
-  if (isProd) return
+  if (window.location.hostname === 'gen.nomadkaraoke.com') return
+  const simulate = (s: BackendStatus | null) => {
+    devOverride = s
+    if (s !== null) ensureTicker()
+    recompute()
+  }
   ;(window as unknown as { __nkBackendStatus?: unknown }).__nkBackendStatus = {
-    reconnecting: () => reportBackendTrouble(),
-    unavailable: () => reportBackendUnavailable(),
-    online: () => reportBackendOnline(),
+    reconnecting: () => simulate('reconnecting'),
+    unavailable: () => simulate('unavailable'),
+    online: () => simulate(null),
     get: () => getBackendStatus(),
   }
 }
