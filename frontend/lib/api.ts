@@ -5,7 +5,7 @@
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
-import { reportBackendOnline, reportBackendTrouble } from './backend-status';
+import { beginRequest, endRequest } from './backend-status';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -465,15 +465,12 @@ export class BackendUnavailableError extends ApiError {
 // ===== Backend connectivity: timeout + safe retry wrapper =====
 //
 // Every `api.*` call goes through apiFetch instead of raw fetch so that a transient
-// backend blip (e.g. Cloud Run recycling its single min-instance) degrades
-// gracefully — a subtle "reconnecting" hint, transparent retries for idempotent
-// reads, and an app-wide "temporarily unavailable" banner — instead of every screen
-// throwing its own generic error. See lib/backend-status.ts for the UX states.
+// backend blip (e.g. Cloud Run recycling its single min-instance) degrades gracefully:
+// transparent retries for idempotent reads, and — via the backend-status store — a
+// single app-wide banner that only appears once a read has genuinely STALLED (been
+// outstanding past the store's threshold), never merely because a request was slow.
+// See lib/backend-status.ts for how the banner is derived from in-flight GETs.
 
-/** Show the subtle "reconnecting…" hint if a request is still outstanding after this
- *  long. Non-aborting: a slow-but-healthy response still completes and clears it, so
- *  legitimately slow endpoints are never falsely failed. */
-const RECONNECTING_HINT_MS = 2500;
 /** Hard backstop: abort a request that has hung this long (Cloud Run holds requests
  *  during a cold start, but not forever). Generous so genuine cold-starts can ride
  *  out and still succeed rather than erroring the user. */
@@ -518,17 +515,22 @@ function isManagedBackendUrl(input: RequestInfo | URL): boolean {
 }
 
 export interface ApiFetchOptions {
-  /** Override the per-attempt hard-timeout (ms). */
+  /** Override the per-attempt hard-timeout (ms). By default only GETs get a timeout
+   *  (a backstop for hung reads); non-GETs run untimed. Set explicitly to time-box a
+   *  POST, or pass a larger value for a slow read. */
   timeoutMs?: number;
   /** Force-disable retry even for GET (e.g. a GET with side effects). */
   retry?: boolean;
+  /** Opt a GET out of connectivity-banner tracking — for reads that are inherently
+   *  slow (large payloads, server-side work) and should never surface the banner. */
+  trackConnectivity?: boolean;
 }
 
 /**
- * Drop-in replacement for `fetch` for backend calls: adds a non-aborting
- * "reconnecting" hint, a hard-timeout backstop, safe retries for GETs, and reports
- * connectivity to the backend-status store. Signature matches fetch so call sites
- * only change the function name.
+ * Drop-in replacement for `fetch` for backend calls: a hard-timeout backstop, safe
+ * retries for GETs, and — for GETs only — connectivity tracking so the app-wide
+ * banner can surface when a read STALLS (see lib/backend-status.ts). Signature matches
+ * fetch so call sites only change the function name.
  */
 export async function apiFetch(
   input: RequestInfo | URL,
@@ -550,71 +552,78 @@ export async function apiFetch(
   // Never auto-retry non-GET: replaying a create/submit/payment could double-charge
   // or duplicate a job. Reads are idempotent and safe to retry.
   const allowRetry = isGet && (opts?.retry ?? true);
-  const hardTimeout = opts?.timeoutMs ?? HARD_TIMEOUT_MS;
+  // Only reads get an artificial hard-timeout backstop; long-running POSTs (preview
+  // video, generate, search) must run as long as they need or they'd fail mid-encode.
+  // A caller can still explicitly time-box any request via opts.timeoutMs.
+  const hardTimeout = opts?.timeoutMs ?? (isGet ? HARD_TIMEOUT_MS : undefined);
   const maxAttempts = allowRetry ? GET_MAX_ATTEMPTS : 1;
   const callerSignal = init?.signal ?? request?.signal ?? undefined;
 
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const controller = new AbortController();
-    const hintTimer = setTimeout(reportBackendTrouble, RECONNECTING_HINT_MS);
-    const hardTimer = setTimeout(
-      () => controller.abort(new DOMException('Request timed out', 'AbortError')),
-      hardTimeout,
-    );
-    const onCallerAbort = () =>
-      controller.abort((callerSignal as AbortSignal | undefined)?.reason);
-    if (callerSignal) {
-      if (callerSignal.aborted) controller.abort(callerSignal.reason);
-      else callerSignal.addEventListener('abort', onCallerAbort, { once: true });
-    }
-    const cleanup = () => {
-      clearTimeout(hintTimer);
-      clearTimeout(hardTimer);
-      callerSignal?.removeEventListener('abort', onCallerAbort);
-    };
+  // Only reads feed the connectivity banner: a page waits on GETs during a recycle,
+  // whereas long POSTs (search, generate, auto-correct) are legitimately slow and
+  // must never trip it. Tracking spans the whole call (across retries) and settles in
+  // `finally`, so the banner reflects how long the read has actually been stalled.
+  const track = isGet && (opts?.trackConnectivity ?? true);
+  const trackingId = track ? beginRequest() : null;
+  try {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const hardTimer =
+        hardTimeout != null
+          ? setTimeout(
+              () => controller.abort(new DOMException('Request timed out', 'AbortError')),
+              hardTimeout,
+            )
+          : null;
+      const onCallerAbort = () =>
+        controller.abort((callerSignal as AbortSignal | undefined)?.reason);
+      if (callerSignal) {
+        if (callerSignal.aborted) controller.abort(callerSignal.reason);
+        else callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+      }
+      const cleanup = () => {
+        if (hardTimer) clearTimeout(hardTimer);
+        callerSignal?.removeEventListener('abort', onCallerAbort);
+      };
 
-    let response: Response;
-    try {
-      response = await globalThis.fetch(input, { ...init, signal: controller.signal });
-    } catch (err) {
+      let response: Response;
+      try {
+        response = await globalThis.fetch(input, { ...init, signal: controller.signal });
+      } catch (err) {
+        cleanup();
+        // The CALLER aborted (navigation, their own timeout) — not a backend problem.
+        if (callerSignal?.aborted) throw err;
+        lastError = err;
+        if (attempt < maxAttempts) {
+          await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
+          continue;
+        }
+        throw new BackendUnavailableError(err);
+      }
       cleanup();
-      // The CALLER aborted (navigation, their own timeout) — not a backend problem.
-      if (callerSignal?.aborted) throw err;
-      lastError = err;
-      // reportBackendTrouble() (above) armed the escalation timer, so the banner
-      // still escalates to "unavailable" strictly on the UNAVAILABLE_AFTER_MS clock
-      // rather than the instant a fast-failing retry budget (~2s) runs out.
-      reportBackendTrouble();
-      if (attempt < maxAttempts) {
-        await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
-        continue;
-      }
-      throw new BackendUnavailableError(err);
-    }
-    cleanup();
 
-    if (TRANSIENT_STATUS.has(response.status)) {
-      reportBackendTrouble();
-      if (allowRetry && attempt < maxAttempts) {
-        await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
-        continue;
+      if (TRANSIENT_STATUS.has(response.status)) {
+        if (allowRetry && attempt < maxAttempts) {
+          await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
+          continue;
+        }
+        if (isGet) {
+          throw new BackendUnavailableError(undefined, response.status);
+        }
+        // Non-GET: hand the real transient response back so the caller's handleResponse
+        // surfaces it.
+        return response;
       }
-      if (isGet) {
-        throw new BackendUnavailableError(undefined, response.status);
-      }
-      // Non-GET: hand the real transient response back so the caller's handleResponse
-      // surfaces it; the banner is already showing via reportBackendTrouble().
+
       return response;
     }
 
-    // A real reply from the backend (2xx, or a deterministic 4xx/5xx) → we're online.
-    reportBackendOnline();
-    return response;
+    // Unreachable (loop always returns or throws) — satisfies the compiler.
+    throw new BackendUnavailableError(lastError);
+  } finally {
+    if (trackingId !== null) endRequest(trackingId);
   }
-
-  // Unreachable (loop always returns or throws) — satisfies the compiler.
-  throw new BackendUnavailableError(lastError);
 }
 
 // Exported for testing

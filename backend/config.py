@@ -85,7 +85,8 @@ class Settings(BaseSettings):
 
     # AI Credit Evaluation (anti-abuse gating for free credits)
     # When enabled, welcome and feedback credit grants are evaluated by Gemini
-    # before granting. Fail-open: if evaluation fails, credits are granted anyway.
+    # before granting. Fail-CLOSED: if evaluation fails, the decision becomes
+    # "pending_review" (no auto-grant; an admin is notified to decide).
     credit_eval_enabled: bool = os.getenv("CREDIT_EVAL_ENABLED", "true").lower() in ("true", "1", "yes")
     credit_eval_model: str = os.getenv("CREDIT_EVAL_MODEL", "gemini-3.1-pro-preview")
 
