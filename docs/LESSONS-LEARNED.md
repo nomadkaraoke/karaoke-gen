@@ -6,6 +6,51 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Don't Invent Silent Fallbacks — Ask or Fail Loud (Jun 2026)
+
+When the desired behaviour for an edge case is unclear, **do not** invent a quiet
+fallback that lets the system keep going while doing the wrong thing. Either ask
+the human, or fail loudly with a clear, specific error. Silent fallbacks hide
+bugs: the system "works" while producing wrong output, and the real failure
+surfaces much later (or never).
+
+**Motivating incident (2026-06-08):** a Facebook-URL job failed with a generic
+"Failed to download audio file". A non-YouTube path had silently fallen back to
+running yt-dlp *inside the Cloud Run container* (flacfetch was supposed to be the
+sole downloader), which then died in a broken `convert_to_wav`. The download had
+actually succeeded — the fallback was both unintended and broken. The fix
+**deleted** the fallback rather than patching it.
+
+A full audit of the codebase's fallback paths followed — see
+`docs/archive/2026-06-09-fallback-audit-plan.md` for the catalogue and the
+per-item decisions.
+
+**Rules of thumb:**
+- A function that can't produce its result should **raise a specific exception**,
+  not `return None` and let a caller surface a generic message. (See
+  `download_audio()` in `backend/workers/audio_worker.py` / `lyrics_worker.py`:
+  each failure mode now raises `DownloadError` with the real reason.)
+- "If X isn't configured, silently do Y instead" is the most dangerous shape —
+  especially around download, payment, job-state, and worker-triggering. Prefer
+  failing closed and visibly. (See `YouTubeDownloadService.download` — no
+  flacfetch → raises, no local yt-dlp.)
+- Don't trust a comment that *says* a path is a safe fallback — verify what the
+  user actually observes when it triggers.
+- Comments/docstrings must not lie about fail-open vs fail-closed. The credit
+  evaluation service is **fail-closed** (`pending_review` on error); its
+  docstrings used to claim fail-open, which would have tempted a future
+  maintainer to "fix" the code into a free-credit-abuse hole.
+- A safe-but-silent fallback (e.g. empty `ADMIN_TOKENS` → everything 403s) should
+  still log at ERROR so the error monitor alerts — a quiet warning reads as an
+  auth bug, not a config error.
+
+Good loud-failure models already in the tree to copy:
+`lyrics_transcriber/output/video.py` (raises on a missing background image) and
+`backend/services/visibility_change_service.py` (checks the trigger result,
+restores state, and raises rather than silently dropping a worker trigger).
+
+---
+
 ## Multi-instance-type encode pool: one shared speed-rank, availability-aware (Aug 2026, v0.195.0)
 
 "c4d primary + a single n2 fallback family" is not resilient — a stockout is per

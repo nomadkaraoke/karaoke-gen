@@ -176,3 +176,25 @@ class TestWorkerFileOperations:
             result = await download_audio("test123", temp_dir, mock_storage, mock_job, mock_job_manager)
             mock_storage.download_file.assert_called()
 
+    @pytest.mark.asyncio
+    async def test_lyrics_download_audio_no_source_raises(self):
+        """Lyrics worker download_audio must fail loudly when there's no source."""
+        from backend.workers.lyrics_worker import download_audio
+        from backend.services.audio_search_service import DownloadError
+
+        mock_storage = MagicMock()
+        mock_job_manager = MagicMock()
+        mock_job = Job(
+            job_id="test123",
+            status=JobStatus.TRANSCRIBING,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            # No input_media_gcs_path and no url → nothing to download
+        )
+        mock_job_manager.get_job.return_value = mock_job
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with pytest.raises(DownloadError, match="No input audio available"):
+                await download_audio("test123", temp_dir, mock_storage, mock_job, mock_job_manager)
+            mock_storage.download_file.assert_not_called()
+

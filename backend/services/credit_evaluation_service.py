@@ -2,8 +2,9 @@
 AI-powered credit evaluation service.
 
 Evaluates whether to grant free credits (welcome or feedback) by collecting
-abuse signals and asking Gemini for a grant/deny decision. Fail-open: if
-the AI call fails for any reason, credits are granted.
+abuse signals and asking Gemini for a grant/deny decision. Fail-CLOSED: if
+the AI call fails for any reason, the decision becomes "pending_review" (no
+credits auto-granted; an admin is notified to decide manually).
 """
 import json
 import logging
@@ -25,7 +26,7 @@ class CreditEvaluation:
     decision: str  # "grant" or "deny"
     reasoning: str
     confidence: float
-    error: Optional[str] = None  # Set if evaluation failed (decision defaults to "grant")
+    error: Optional[str] = None  # Set if evaluation failed (decision defaults to "pending_review")
     signals: Optional[dict] = None  # Collected abuse signals (for admin review emails)
 
 

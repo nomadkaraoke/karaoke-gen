@@ -816,20 +816,46 @@ class TestDownloadAudioWithUrl:
 
     @pytest.mark.asyncio
     async def test_download_audio_url_without_gcs_path_refuses(self, mock_job_with_url, mock_job_manager, mock_storage):
-        """A URL job with no GCS file must fail (no local yt-dlp fallback)."""
+        """A URL job with no GCS file must fail loudly (no local yt-dlp fallback)."""
         from backend.workers.audio_worker import download_audio
+        from backend.services.audio_search_service import DownloadError
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            result = await download_audio(
-                "test123",
-                temp_dir,
-                mock_storage,
-                mock_job_with_url,
-                job_manager_instance=mock_job_manager
-            )
+            # Fails loudly with a specific DownloadError rather than returning
+            # None (which used to surface a generic "Failed to download audio file").
+            with pytest.raises(DownloadError, match="flacfetch service"):
+                await download_audio(
+                    "test123",
+                    temp_dir,
+                    mock_storage,
+                    mock_job_with_url,
+                    job_manager_instance=mock_job_manager
+                )
 
-            # Refuses to download locally → returns None, never touches storage
-            assert result is None
+            # Refuses to download locally → never touches storage
+            mock_storage.download_file.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_download_audio_no_source_raises(self, mock_job_manager, mock_storage):
+        """A job with no GCS path, no file_urls and no URL must fail loudly."""
+        from backend.workers.audio_worker import download_audio
+        from backend.services.audio_search_service import DownloadError
+
+        no_source_job = Job(
+            job_id="test123",
+            status=JobStatus.PROCESSING,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            artist="Test Artist",
+            title="Test Song",
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with pytest.raises(DownloadError, match="No input audio source"):
+                await download_audio(
+                    "test123", temp_dir, mock_storage, no_source_job,
+                    job_manager_instance=mock_job_manager,
+                )
             mock_storage.download_file.assert_not_called()
 
     @pytest.mark.asyncio
