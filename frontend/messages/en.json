@@ -357,6 +357,15 @@
     "almostThere": "Almost there...",
     "firstLoadNote": "First load can take up to 30 seconds"
   },
+  "backendStatus": {
+    "reconnecting": "Reconnecting…",
+    "unavailable": {
+      "title": "We're having trouble reaching our servers",
+      "body": "This is usually temporary — please try again in a couple of minutes.",
+      "reassurance": "Any karaoke videos currently being created are unaffected and will keep processing."
+    },
+    "dismiss": "Dismiss"
+  },
   "status": {
     "queued": "Queued",
     "processing": "Processing",

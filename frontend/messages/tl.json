@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Orihinal",
     "variantReissue": "Muling inilabas"
+  },
+  "backendStatus": {
+    "reconnecting": "Kumokonekta muli…",
+    "unavailable": {
+      "body": "Kadalasan ay pansamantala lamang ito — pakisubukan muli pagkalipas ng ilang minuto.",
+      "reassurance": "Ang anumang karaoke video na kasalukuyang ginagawa ay hindi maaapektuhan at patuloy na ipoproseso.",
+      "title": "Nahihirapan kaming kumonekta sa aming mga server"
+    },
+    "dismiss": "I-dismiss"
   }
 }

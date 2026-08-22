@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} ボーナス",
     "variantOriginal": "オリジナル",
     "variantReissue": "リイシュー"
+  },
+  "backendStatus": {
+    "reconnecting": "再接続中…",
+    "unavailable": {
+      "body": "通常は一時的な問題ですので、数分後にもう一度お試しください。",
+      "reassurance": "現在作成中のカラオケ動画に影響はありません。そのまま処理が継続されます。",
+      "title": "サーバーへの接続に問題が発生しています"
+    },
+    "dismiss": "閉じる"
   }
 }

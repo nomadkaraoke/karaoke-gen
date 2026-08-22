@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
     "variantReissue": "Nyutgåva"
+  },
+  "backendStatus": {
+    "reconnecting": "Återansluter…",
+    "unavailable": {
+      "body": "Detta är oftast tillfälligt — försök igen om ett par minuter.",
+      "reassurance": "Karaokevideor som håller på att skapas påverkas inte, utan fortsätter att bearbetas.",
+      "title": "Vi har problem med att nå våra servrar"
+    },
+    "dismiss": "Avfärda"
   }
 }

@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} Bonus",
     "variantOriginal": "Original",
     "variantReissue": "Neuauflage"
+  },
+  "backendStatus": {
+    "reconnecting": "Verbindung wird wiederhergestellt…",
+    "unavailable": {
+      "body": "Dies ist meist nur vorübergehend — bitte versuche es in ein paar Minuten noch einmal.",
+      "reassurance": "Alle Karaoke-Videos, die gerade erstellt werden, sind davon nicht betroffen und werden weiterverarbeitet.",
+      "title": "Wir haben Probleme, unsere Server zu erreichen"
+    },
+    "dismiss": "Ausblenden"
   }
 }

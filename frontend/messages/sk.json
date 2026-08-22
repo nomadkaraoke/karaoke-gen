@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Originál",
     "variantReissue": "Reedícia"
+  },
+  "backendStatus": {
+    "reconnecting": "Obnovuje sa pripojenie…",
+    "unavailable": {
+      "body": "Zvyčajne ide len o dočasný problém — skús to znova o pár minút.",
+      "reassurance": "Karaoke videá, ktoré sa práve vytvárajú, to neovplyvní a ich spracovanie bude pokračovať.",
+      "title": "Máme problémy s pripojením k našim serverom"
+    },
+    "dismiss": "Zavrieť"
   }
 }

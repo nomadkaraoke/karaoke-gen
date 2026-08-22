@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
     "variantReissue": "Reizdanje"
+  },
+  "backendStatus": {
+    "reconnecting": "Ponovno povezivanje…",
+    "unavailable": {
+      "body": "Ovo je obično privremeno — molim te pokušaj ponovno za nekoliko minuta.",
+      "reassurance": "Ovo ne utječe na karaoke videozapise koji se trenutno izrađuju i njihova će se obrada nastaviti.",
+      "title": "Imamo problema s povezivanjem na naše servere"
+    },
+    "dismiss": "Odbaci"
   }
 }

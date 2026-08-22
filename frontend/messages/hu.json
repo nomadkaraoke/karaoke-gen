@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bónusz",
     "variantOriginal": "Eredeti",
     "variantReissue": "Újrakiadás"
+  },
+  "backendStatus": {
+    "reconnecting": "Újracsatlakozás…",
+    "unavailable": {
+      "body": "Ez általában átmeneti — kérlek, próbáld újra néhány perc múlva.",
+      "reassurance": "A jelenleg készülő karaoke videókat ez nem érinti, a feldolgozásuk zavartalanul folytatódik.",
+      "title": "Nem tudjuk elérni a szervereinket"
+    },
+    "dismiss": "Elvetés"
   }
 }

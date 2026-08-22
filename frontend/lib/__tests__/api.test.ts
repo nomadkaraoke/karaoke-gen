@@ -2,7 +2,7 @@
  * Tests for API client
  */
 
-import { api, ApiError, extractErrorMessage } from "../api"
+import { api, ApiError, BackendUnavailableError, extractErrorMessage } from "../api"
 
 // Mock fetch globally
 global.fetch = jest.fn()
@@ -307,12 +307,18 @@ describe("API Client", () => {
       expect(global.fetch).toHaveBeenCalledTimes(2)
     })
 
-    it("gives up after 3 network failures and rethrows the network error", async () => {
-      ;(global.fetch as jest.Mock).mockRejectedValue(new TypeError("Failed to fetch"))
+    it("gives up after 3 network failures with BackendUnavailableError (preserving the cause)", async () => {
+      const networkError = new TypeError("Failed to fetch")
+      ;(global.fetch as jest.Mock).mockRejectedValue(networkError)
 
-      await expect(api.completeJobUpload("job-789", ["audio"])).rejects.toThrow(
-        "Failed to fetch"
-      )
+      // apiFetch maps a network-level failure to a typed BackendUnavailableError
+      // (which drives the app-wide connectivity banner) while keeping the original
+      // error as `.cause`, so nothing is silently swallowed.
+      const err = await api
+        .completeJobUpload("job-789", ["audio"])
+        .catch((e) => e)
+      expect(err).toBeInstanceOf(BackendUnavailableError)
+      expect(err.cause).toBe(networkError)
       expect(global.fetch).toHaveBeenCalledTimes(3)
     })
 

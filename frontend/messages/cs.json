@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Originál",
     "variantReissue": "Reedice"
+  },
+  "backendStatus": {
+    "reconnecting": "Obnovování připojení…",
+    "unavailable": {
+      "body": "Většinou jde o dočasný problém — zkus to prosím znovu za pár minut.",
+      "reassurance": "Právě vytvářená karaoke videa nejsou nijak ovlivněna a budou se nadále zpracovávat.",
+      "title": "Nedaří se nám spojit s našimi servery"
+    },
+    "dismiss": "Zavřít"
   }
 }

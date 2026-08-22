@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} 附加曲目",
     "variantOriginal": "原版",
     "variantReissue": "再版"
+  },
+  "backendStatus": {
+    "reconnecting": "重新连接中…",
+    "unavailable": {
+      "body": "这通常是暂时现象，请几分钟后再试。",
+      "reassurance": "当前正在制作的卡拉OK视频不会受到影响，系统将继续进行处理。",
+      "title": "我们连接服务器时遇到了一些问题"
+    },
+    "dismiss": "忽略"
   }
 }

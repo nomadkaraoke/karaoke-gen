@@ -9,6 +9,7 @@
  * flows through the existing corrections/complete paths.
  */
 import type { LyricsSegment, ReferenceSource } from '@/lib/lyrics-review/types'
+import { apiFetch } from '@/lib/api'
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? 'https://api.nomadkaraoke.com'
@@ -100,7 +101,7 @@ export async function fetchAutoCorrectSuggestions(
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE}/api/review/${encodeURIComponent(jobId)}/auto-correct`,
     {
       method: 'POST',

@@ -218,6 +218,28 @@ def create_alert_policies(
     #   by host), NOT broad geographic regions — two failed US checkers is enough
     #   to fire. That is intentional: >1 failing location is a real reachability
     #   problem worth paging, and requiring >1 filters out single-checker noise.
+    #
+    #   HISTORY — why `duration` is 300s, not 60s:
+    #   The service runs on `--min-instances 1` (a single warm instance). Two
+    #   self-healing failure modes each briefly take health checks down from ALL
+    #   checker locations at once, tripping the >1-location threshold:
+    #     (a) Instance recycle. Cloud Run periodically replaces the lone instance
+    #         (host maintenance / max-lifetime). On 2026-08-22 06:02:30–06:03:50
+    #         UTC the instance was replaced (log: "Starting new instance …
+    #         MIN_INSTANCE" then AUTOSCALING; STARTUP probe ready ~06:03:13),
+    #         leaving ~80s with no warm origin — every uptime checker failed, then
+    #         it self-healed. The alert fired at 06:06 and auto-cleared in ~1m41s.
+    #     (b) Event-loop stall. The single instance can block on synchronous-ish
+    #         work (e.g. orchestrating an encoding-worker fallback cold-start with
+    #         blocking timeouts, seen 2026-08-22 00:11–00:12 UTC where four queued
+    #         health probes all flushed at the same instant), so probes queue past
+    #         the 10s uptime timeout across regions until it frees up.
+    #   Both clear on their own well under 5 minutes. Rather than pay for a second
+    #   always-on instance, we require the >1-location failure to PERSIST for 300s
+    #   before paging: sub-5-min blips are suppressed, a genuine sustained hard-down
+    #   still pages (at ~5–6 min instead of ~1–2). If real outages ever slip
+    #   through undetected, the cheaper-detection lever is `--min-instances 2`
+    #   (ci.yml) — that removes both failure modes at the source.
     uptime_health = gcp.monitoring.UptimeCheckConfig(
         "backend-health-uptime-check",
         display_name="Karaoke Backend - /api/health",
@@ -273,7 +295,11 @@ def create_alert_policies(
                     # over the window; fire when more than one location is failing.
                     comparison="COMPARISON_GT",
                     threshold_value=1,
-                    duration="60s",
+                    # Require the >1-location failure to persist for 5 minutes
+                    # before paging. Filters out sub-5-min self-healing blips on
+                    # the single min-instance (recycle gap + event-loop stall);
+                    # see the HISTORY note above. A sustained hard-down still fires.
+                    duration="300s",
                     aggregations=[
                         gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
                             alignment_period="1200s",
