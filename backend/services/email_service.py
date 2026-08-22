@@ -259,6 +259,32 @@ class EmailService:
         """Check if a real email provider is configured (not just console logging)."""
         return isinstance(self.provider, PostmarkEmailProvider)
 
+    def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
+        bcc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
+    ) -> bool:
+        """Send a raw email via the configured provider.
+
+        Thin passthrough for callers that need to send an ad-hoc/plain email
+        (e.g. internal failure alerts) without a dedicated template method.
+        Prefer a dedicated ``send_*`` template method for customer-facing mail.
+        """
+        return self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            cc_emails=cc_emails,
+            bcc_emails=bcc_emails,
+            from_email_override=from_email_override,
+        )
+
     def send_magic_link(
         self,
         email: str,
