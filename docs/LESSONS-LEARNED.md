@@ -1025,6 +1025,41 @@ All status transitions after workers complete fail silently because they're inva
 - `test_youtube_url_calls_start_job_processing_after_download` - verifies proper sequence
 - `TestInvalidStateTransitionError`, `TestValidateStateTransitionRaisesBehavior`, `TestStartJobProcessing` in `test_job_manager.py`
 
+### Made-For-You Order Emails Must Be Isolated From Audio Acquisition (Aug 2026)
+
+**Problem**: Job 17dc6f48 (made_for_you order) failed on a YouTube "confirm you're
+not a bot" download error, and the admin never received the "New Made-For-You Order
+Received!" email. The error-fallback then crashed with
+`'EmailService' object has no attribute 'send_email'`, so even the failure alert was lost.
+
+**Root cause**: In `_handle_made_for_you_order`, both the customer order-confirmation
+and the admin notification were sent *after* the fallible audio-acquisition step
+(YouTube download / audio search). When acquisition raised, execution jumped straight
+to the outer `except`, skipping BOTH emails. Separately, the fallback called
+`email_service.send_email(...)` — a method that only existed on the *provider*
+(`self.provider.send_email`), never on `EmailService` itself.
+
+**Fix**:
+1. Send the customer order-confirmation email **up-front**, right after job creation and
+   *before* audio acquisition — the order is paid/confirmed regardless of whether the
+   download or search succeeds. Wrapped so an email error is logged, not fatal.
+2. Wrap the admin notification so an email hiccup on a successful order can't fake a
+   `[FAILED]` alert.
+3. Route the outer failure handler through `_send_mfy_failure_alert()` (never raises,
+   HTML-escapes user input, tolerates `job_id=None`): success → normal admin
+   notification; acquisition failure → `[FAILED]` admin alert while the customer is
+   still confirmed.
+4. Add a thin `EmailService.send_email()` passthrough to the provider so ad-hoc/plain
+   emails (like the failure alert) work.
+
+**Why tests didn't catch it**: `email_service` was a `MagicMock` in the handler tests,
+so `mock.send_email(...)` auto-created the attribute and never surfaced the real
+`AttributeError`. **Pattern**: for critical fallbacks, add at least one test that
+exercises the real `EmailService` (only mocking `.provider`), and assert that a failure
+in a *later* step (audio) does not suppress *earlier* side effects (the confirmation
+email). Idempotency note: mark the Stripe session processed *before* sending the
+confirmation so a webhook retry can't double-send.
+
 ### Use data-testid for E2E
 Prefer `data-testid` over label/text selectors. They're immune to label changes and won't break when similar fields are added.
 
