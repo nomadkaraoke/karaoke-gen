@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from backend.config import get_settings
+from backend.config import get_settings, is_production
 from backend.i18n import t, get_locale_prefix
 from karaoke_gen.utils import sanitize_filename
 
@@ -231,7 +231,7 @@ class EmailService:
         """Get the configured email provider.
 
         Postmark is used when POSTMARK_SERVER_TOKEN is set; otherwise falls
-        back to console logging (dev/test).
+        back to console logging (dev/test only).
         """
         postmark_token = os.getenv("POSTMARK_SERVER_TOKEN")
         from_email = os.getenv("EMAIL_FROM", "gen@nomadkaraoke.com")
@@ -241,7 +241,18 @@ class EmailService:
             logger.info("Using Postmark email provider")
             return PostmarkEmailProvider(postmark_token, from_email, from_name)
 
-        logger.warning("No email provider configured, using console logging")
+        # In production a missing Postmark token used to silently fall back to
+        # console logging — every send "succeeded" while magic-link/completion/
+        # receipt emails vanished (users can't log in or get downloads). Fail
+        # loudly instead. (Fallback audit 2026-06-09, Theme 7.)
+        if is_production():
+            raise RuntimeError(
+                "POSTMARK_SERVER_TOKEN is not set in production. Refusing to "
+                "silently drop emails via the console provider — set the Postmark "
+                "token secret."
+            )
+
+        logger.warning("No email provider configured, using console logging (dev/test)")
         return ConsoleEmailProvider()
 
     def is_configured(self) -> bool:

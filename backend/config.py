@@ -307,3 +307,51 @@ def get_settings() -> Settings:
     """Get the global settings instance."""
     return settings
 
+
+def is_production() -> bool:
+    """True when running in a deployed/production environment.
+
+    Cloud Run automatically sets ``K_SERVICE``, so we treat its presence as
+    production even if ``ENVIRONMENT`` were somehow unset — a production-safe
+    default. Local dev/test have no ``K_SERVICE`` and a non-"production"
+    ``ENVIRONMENT``. (Fallback audit 2026-06-09, Theme 7.)
+    """
+    env = (os.environ.get("ENVIRONMENT") or os.environ.get("ENV") or "").lower()
+    if env == "production":
+        return True
+    return bool(os.environ.get("K_SERVICE"))
+
+
+# Env vars that MUST be explicitly set in production. A missing one used to
+# silently fall back to a dev default and produce wrong behaviour with only a
+# warning (wrong GCP project for secret lookups, wrong GCS bucket, localhost
+# worker URL). We only require vars that infra confirms are set on every service
+# (GCS temp/output buckets are intentionally excluded — their defaults are
+# load-bearing and not set via env). (Fallback audit 2026-06-09, Theme 7.)
+_REQUIRED_PRODUCTION_ENV_VARS = (
+    "GOOGLE_CLOUD_PROJECT",
+    "GCS_BUCKET_NAME",
+    "CLOUD_RUN_SERVICE_URL",
+)
+
+
+def validate_production_config() -> None:
+    """Fail fast at startup if required production env vars are missing.
+
+    In production each var in ``_REQUIRED_PRODUCTION_ENV_VARS`` must be explicitly
+    set; otherwise the service would silently run with a dev default (wrong GCP
+    project / wrong GCS bucket / localhost worker URL) and appear to work while
+    doing the wrong thing. Raises RuntimeError listing every missing var. No-op
+    outside production. (Fallback audit 2026-06-09, Theme 7.)
+    """
+    if not is_production():
+        return
+    missing = [v for v in _REQUIRED_PRODUCTION_ENV_VARS if not (os.environ.get(v) or "").strip()]
+    if missing:
+        raise RuntimeError(
+            "Production misconfiguration: required environment variable(s) not set: "
+            + ", ".join(missing)
+            + ". Refusing to start with silent dev defaults (wrong GCP project / "
+            "GCS bucket / localhost worker URL)."
+        )
+

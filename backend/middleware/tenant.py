@@ -26,9 +26,14 @@ from backend.models.tenant import TenantConfig
 
 logger = logging.getLogger(__name__)
 
-# Only allow query param tenant override in non-production environments
+# Only allow the `?tenant=` query-param override in non-production environments —
+# in production it is a tenant-spoofing vector. Production-safe by default: Cloud
+# Run always sets K_SERVICE, so we treat its presence as production even if
+# ENVIRONMENT were somehow unset (which would otherwise re-enable the override).
+# (Fallback audit 2026-06-09, Theme 7.)
 IS_PRODUCTION = os.environ.get("ENV", "").lower() == "production" or \
-                os.environ.get("ENVIRONMENT", "").lower() == "production"
+                os.environ.get("ENVIRONMENT", "").lower() == "production" or \
+                bool(os.environ.get("K_SERVICE"))
 
 
 # Known non-tenant subdomains that should be treated as default Nomad Karaoke

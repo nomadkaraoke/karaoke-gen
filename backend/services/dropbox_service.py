@@ -30,8 +30,13 @@ class DropboxService:
         """Load OAuth credentials from Secret Manager."""
         try:
             client = secretmanager.SecretManagerServiceClient()
-            # Try to get the project ID from environment or use default
-            project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "karaoke-gen")
+            # Use the configured GCP project. The old default "karaoke-gen" was a
+            # WRONG literal (the real project is "nomadkaraoke"); an unset var
+            # would silently target a non-existent project and disable Dropbox.
+            # Prod always sets GOOGLE_CLOUD_PROJECT (startup validation requires
+            # it), so use an empty default rather than a misleading wrong one.
+            # (Fallback audit 2026-06-09, Theme 7.)
+            project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
             name = f"projects/{project_id}/secrets/dropbox-oauth-credentials/versions/latest"
             response = client.access_secret_version(request={"name": name})
             return json.loads(response.payload.data.decode("UTF-8"))
